@@ -74,6 +74,9 @@ pub struct CameraShutter2dDocument {
     #[serde(default = "default_true")]
     pub enabled: bool,
 
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub speed_s: Option<f32>,
+
     #[serde(default = "default_shutter_fps")]
     pub fps: f32,
 
@@ -103,6 +106,7 @@ impl Default for CameraShutter2dDocument {
     fn default() -> Self {
         Self {
             enabled: true,
+            speed_s: None,
             fps: default_shutter_fps(),
             angle: default_shutter_angle(),
             opacity: default_shutter_opacity(),

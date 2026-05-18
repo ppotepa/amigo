@@ -74,6 +74,7 @@ impl RuntimeSceneCommandHandler for CameraSceneCommandHandler {
                     },
                     shutter: CameraShutter2d {
                         enabled: command.shutter.enabled,
+                        speed_s: command.shutter.speed_s,
                         fps: command.shutter.fps,
                         angle: command.shutter.angle,
                         opacity: command.shutter.opacity,

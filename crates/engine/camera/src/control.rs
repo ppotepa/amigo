@@ -116,6 +116,39 @@ impl RuntimeControlProvider for Camera2dControlProvider {
                         max: Some(1.0),
                     }),
                 ),
+                ("shutter.enabled", ControlValueType::Bool, None),
+                (
+                    "shutter.speed_s",
+                    ControlValueType::F32,
+                    Some(ControlRange {
+                        min: Some(1.0 / 8000.0),
+                        max: Some(2.0),
+                    }),
+                ),
+                (
+                    "shutter.opacity",
+                    ControlValueType::F32,
+                    Some(ControlRange {
+                        min: Some(0.0),
+                        max: Some(1.0),
+                    }),
+                ),
+                (
+                    "shutter.history_mix",
+                    ControlValueType::F32,
+                    Some(ControlRange {
+                        min: Some(0.0),
+                        max: Some(0.98),
+                    }),
+                ),
+                (
+                    "shutter.edge_rejection",
+                    ControlValueType::F32,
+                    Some(ControlRange {
+                        min: Some(0.0),
+                        max: Some(1.0),
+                    }),
+                ),
                 (
                     "aperture.dof.max_blur_px",
                     ControlValueType::F32,
@@ -238,6 +271,18 @@ impl RuntimeControlProvider for Camera2dControlProvider {
             "rig.dolly_signal" => Ok(ControlValue::F64(
                 self.service.camera_depth_motion_2d(&camera.id).dolly_signal as f64,
             )),
+            "shutter.enabled" => Ok(ControlValue::Bool(camera.shutter.enabled)),
+            "shutter.speed_s" => Ok(ControlValue::F64(
+                camera
+                    .shutter
+                    .speed_s
+                    .unwrap_or_else(|| camera.shutter.exposure_seconds()) as f64,
+            )),
+            "shutter.opacity" => Ok(ControlValue::F64(camera.shutter.opacity as f64)),
+            "shutter.history_mix" => Ok(ControlValue::F64(camera.shutter.history_mix as f64)),
+            "shutter.edge_rejection" => {
+                Ok(ControlValue::F64(camera.shutter.edge_rejection as f64))
+            }
             "aperture.dof.max_blur_px" => Ok(ControlValue::F64(
                 camera.aperture.depth_of_field.max_blur_px as f64,
             )),
@@ -366,6 +411,41 @@ impl RuntimeControlProvider for Camera2dControlProvider {
                 };
                 self.service.set_dolly_signal_2d(&camera.id, dolly_signal)
             }
+            "shutter.enabled" => self.service.update_camera_2d(&camera.id, |state| {
+                let Some(enabled) = value.as_bool() else {
+                    return false;
+                };
+                state.shutter.enabled = enabled;
+                true
+            }),
+            "shutter.speed_s" => self.service.update_camera_2d(&camera.id, |state| {
+                let Some(speed_s) = value.as_f32() else {
+                    return false;
+                };
+                state.shutter.speed_s = Some(speed_s.clamp(1.0 / 8000.0, 2.0));
+                true
+            }),
+            "shutter.opacity" => self.service.update_camera_2d(&camera.id, |state| {
+                let Some(opacity) = value.as_f32() else {
+                    return false;
+                };
+                state.shutter.opacity = opacity.clamp(0.0, 1.0);
+                true
+            }),
+            "shutter.history_mix" => self.service.update_camera_2d(&camera.id, |state| {
+                let Some(history_mix) = value.as_f32() else {
+                    return false;
+                };
+                state.shutter.history_mix = history_mix.clamp(0.0, 0.98);
+                true
+            }),
+            "shutter.edge_rejection" => self.service.update_camera_2d(&camera.id, |state| {
+                let Some(edge_rejection) = value.as_f32() else {
+                    return false;
+                };
+                state.shutter.edge_rejection = edge_rejection.clamp(0.0, 1.0);
+                true
+            }),
             "aperture.dof.max_blur_px" => self.service.update_camera_2d(&camera.id, |state| {
                 let Some(max_blur_px) = value.as_f32() else {
                     return false;
@@ -718,6 +798,7 @@ mod tests {
             },
             shutter: CameraShutter2d {
                 enabled: false,
+                speed_s: None,
                 fps: 24.0,
                 angle: 180.0,
                 opacity: 0.0,

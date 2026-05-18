@@ -321,6 +321,25 @@ pub fn register_world_api(engine: &mut rhai::Engine) {
         .register_fn("set_main_dolly_signal", CameraApi::set_main_dolly_signal)
         .register_fn("set_dolly_signal", CameraApi::set_dolly_signal)
         .register_fn(
+            "set_main_shutter_speed_s",
+            CameraApi::set_main_shutter_speed_s,
+        )
+        .register_fn("set_shutter_speed_s", CameraApi::set_shutter_speed_s)
+        .register_fn(
+            "set_main_shutter_fraction",
+            CameraApi::set_main_shutter_fraction,
+        )
+        .register_fn(
+            "set_main_shutter_enabled",
+            CameraApi::set_main_shutter_enabled,
+        )
+        .register_fn("set_shutter_enabled", CameraApi::set_shutter_enabled)
+        .register_fn(
+            "set_main_shutter_opacity",
+            CameraApi::set_main_shutter_opacity,
+        )
+        .register_fn("set_shutter_opacity", CameraApi::set_shutter_opacity)
+        .register_fn(
             "set_main_sway_affects_focus",
             CameraApi::set_main_sway_affects_focus,
         )

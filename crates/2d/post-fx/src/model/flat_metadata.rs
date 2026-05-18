@@ -233,6 +233,9 @@ pub fn post_fx_from_flat_metadata(
             let defaults = ShutterBlur2d::default();
             Some(PostFx2d::ShutterBlur(
                 ShutterBlur2d {
+                    exposure_seconds: metadata_f32(metadata, &format!("{prefix}.exposure_seconds"))
+                        .or_else(|| metadata_f32(metadata, &format!("{prefix}.speed_s")))
+                        .unwrap_or(defaults.exposure_seconds),
                     fps: metadata_f32(metadata, &format!("{prefix}.fps")).unwrap_or(defaults.fps),
                     shutter_angle: metadata_f32(metadata, &format!("{prefix}.shutter_angle"))
                         .or_else(|| metadata_f32(metadata, &format!("{prefix}.angle")))
@@ -868,6 +871,7 @@ mod tests {
     #[test]
     fn shutter_blur_normalized_clamps_values() {
         let effect = ShutterBlur2d {
+            exposure_seconds: 999.0,
             fps: 999.0,
             shutter_angle: 999.0,
             opacity: 999.0,

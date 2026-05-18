@@ -771,6 +771,7 @@ mod tests {
             vec![amigo_2d_post_fx::PostFx2dInstance::new(
                 "motion",
                 amigo_2d_post_fx::PostFx2d::ShutterBlur(amigo_2d_post_fx::ShutterBlur2d {
+                    exposure_seconds: 1.0 / 48.0,
                     opacity: 0.8,
                     shutter_angle: 180.0,
                     ..Default::default()

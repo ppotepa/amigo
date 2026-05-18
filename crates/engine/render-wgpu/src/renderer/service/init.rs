@@ -1601,6 +1601,7 @@ struct ShutterBlurUniform {
     resolution: vec2<f32>,
     opacity: f32,
     shutter_fraction: f32,
+    exposure_seconds: f32,
     history_mix: f32,
     history_mix_2: f32,
     edge_rejection: f32,
@@ -1611,6 +1612,7 @@ struct ShutterBlurUniform {
     history_ready_b: f32,
     frame_hold: f32,
     debug_motion: f32,
+    padding: f32,
 }
 
 @group(0) @binding(0) var current_texture: texture_2d<f32>;
@@ -1642,7 +1644,8 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
     if (uniforms.debug_motion > 0.5) {
         let trail = clamp(delta1 * 3.5, 0.0, 1.0);
         let echo = clamp(delta2 * 2.5, 0.0, 1.0);
-        let rgb = vec3<f32>(trail, max(trail - echo * 0.35, 0.0), echo);
+        let exposure_frames = clamp(uniforms.exposure_seconds / max(uniforms.dt, 0.0001), 0.0, 12.0) / 12.0;
+        let rgb = vec3<f32>(trail, exposure_frames, echo);
         let alpha = max(uniforms.history_ready_a, uniforms.history_ready_b);
         return vec4<f32>(rgb, alpha);
     }
@@ -1670,18 +1673,13 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
         return vec4<f32>(color, alpha);
     }
 
-    let delta = abs(luma(current.rgb) - luma(previous.rgb));
-    let reject = smoothstep(
-        uniforms.luma_threshold,
-        uniforms.luma_threshold + max(uniforms.edge_rejection, 0.001),
-        delta
-    );
+    let retention = exp(-uniforms.dt / max(uniforms.exposure_seconds, 0.0001));
+    let history_weight = clamp(retention * uniforms.opacity, 0.0, 0.98) * uniforms.history_ready_a;
+    let current_weight = 1.0 - history_weight;
+    let color = current.rgb * current_weight + previous.rgb * history_weight;
+    let alpha = max(current.a, previous.a * history_weight);
 
-    let frame_scale = clamp(uniforms.target_dt / max(uniforms.dt, 0.001), 0.35, 2.0);
-    let exposure = clamp(uniforms.opacity * uniforms.shutter_fraction * frame_scale, 0.0, 0.86);
-    let temporal_weight = exposure * (1.0 - reject) * uniforms.history_ready_a;
-
-    return mix(current, previous, temporal_weight);
+    return vec4<f32>(color, alpha);
 }
 "#;
 

@@ -306,6 +306,55 @@ impl CameraApi {
         service.set_dolly_signal_2d(&camera_id, value)
     }
 
+    pub fn set_main_shutter_speed_s(&mut self, value: rhai::FLOAT) -> bool {
+        self.set_shutter_speed_s("main", value)
+    }
+
+    pub fn set_shutter_speed_s(&mut self, camera_id: &str, value: rhai::FLOAT) -> bool {
+        let Some(value) = finite_clamped(value, 1.0 / 8000.0, 2.0) else {
+            return false;
+        };
+
+        self.update_camera_2d(camera_id, |camera| {
+            camera.shutter.speed_s = Some(value);
+            true
+        })
+    }
+
+    pub fn set_main_shutter_fraction(&mut self, denominator: rhai::FLOAT) -> bool {
+        let denominator = denominator as f32;
+        if !denominator.is_finite() || denominator <= 0.0 {
+            return false;
+        }
+        self.set_main_shutter_speed_s((1.0 / denominator) as rhai::FLOAT)
+    }
+
+    pub fn set_main_shutter_enabled(&mut self, enabled: bool) -> bool {
+        self.set_shutter_enabled("main", enabled)
+    }
+
+    pub fn set_shutter_enabled(&mut self, camera_id: &str, enabled: bool) -> bool {
+        self.update_camera_2d(camera_id, |camera| {
+            camera.shutter.enabled = enabled;
+            true
+        })
+    }
+
+    pub fn set_main_shutter_opacity(&mut self, value: rhai::FLOAT) -> bool {
+        self.set_shutter_opacity("main", value)
+    }
+
+    pub fn set_shutter_opacity(&mut self, camera_id: &str, value: rhai::FLOAT) -> bool {
+        let Some(value) = finite_clamped(value, 0.0, 1.0) else {
+            return false;
+        };
+
+        self.update_camera_2d(camera_id, |camera| {
+            camera.shutter.opacity = value;
+            true
+        })
+    }
+
     pub fn set_sway_z_offset(&mut self, camera_id: &str, z_offset: rhai::FLOAT) -> bool {
         let Some(service) = self.camera_service.as_ref() else {
             return false;
@@ -388,12 +437,11 @@ impl CameraApi {
             return false;
         };
 
-        let camera_id = camera_id.trim();
-        if camera_id.is_empty() {
+        let Some(camera_id) = resolve_camera_id(service, camera_id) else {
             return false;
-        }
+        };
 
-        service.update_camera_2d(&CameraId::new(camera_id), update)
+        service.update_camera_2d(&camera_id, update)
     }
 }
 

@@ -25,7 +25,7 @@ entities:
     render_contributions:
       camera.projection: true
       camera.exposure: true
-      camera.shutter: false
+      camera.shutter: true
       camera.optics: true
       camera.focus_blur: true
       camera.lens_surface: true
@@ -36,14 +36,15 @@ entities:
       iso: 400
       compensation: 0.0
     shutter:
-      enabled: false
+      enabled: true
+      speed_s: 0.14
       fps: 24.0
       angle: 180.0
-      opacity: 0.0
-      history_mix: 0.72
-      history_mix_2: 0.38
-      edge_rejection: 0.35
-      luma_threshold: 0.04
+      opacity: 0.92
+      history_mix: 0.0
+      history_mix_2: 0.0
+      edge_rejection: 0.08
+      luma_threshold: 0.018
       frame_hold: false
     lens:
       profile: clean_modern_35mm

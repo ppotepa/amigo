@@ -260,6 +260,7 @@ pub struct CameraAutoExposure2dSceneCommand {
 #[derive(Debug, Clone, PartialEq)]
 pub struct CameraShutter2dSceneCommand {
     pub enabled: bool,
+    pub speed_s: Option<f32>,
     pub fps: f32,
     pub angle: f32,
     pub opacity: f32,

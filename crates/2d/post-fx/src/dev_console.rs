@@ -618,6 +618,9 @@ fn handle_shutter_blur(
                 };
                 match field {
                     "fps" => effect.fps = value,
+                    "speed_s" | "exposure_seconds" | "exposure_s" => {
+                        effect.exposure_seconds = value
+                    }
                     "shutter_angle" | "angle" => effect.shutter_angle = value,
                     "opacity" | "strength" => effect.opacity = value,
                     "history_mix" | "previous_mix" | "mix" => effect.history_mix = value,
@@ -643,7 +646,9 @@ fn handle_shutter_blur(
     )]);
 
     PostFxDevConsoleCommandOutcome::Handled(format!(
-        "shutter_blur fps={:.1} angle={:.1} opacity={:.2} history_mix={:.2} history_mix_2={:.2} edge_rejection={:.2} luma_threshold={:.3} frame_hold={}",
+        "shutter_blur speed_s={:.3} exposure_frames_60fps={:.1} fps={:.1} angle={:.1} opacity={:.2} history_mix={:.2} history_mix_2={:.2} edge_rejection={:.2} luma_threshold={:.3} frame_hold={}",
+        effect.exposure_seconds,
+        effect.exposure_frames(1.0 / 60.0),
         effect.fps,
         effect.shutter_angle,
         effect.opacity,

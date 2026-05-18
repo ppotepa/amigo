@@ -48,6 +48,7 @@ pub struct CameraAutoExposure2d {
 #[derive(Debug, Clone, PartialEq)]
 pub struct CameraShutter2d {
     pub enabled: bool,
+    pub speed_s: Option<f32>,
     pub fps: f32,
     pub angle: f32,
     pub opacity: f32,
@@ -56,6 +57,18 @@ pub struct CameraShutter2d {
     pub edge_rejection: f32,
     pub luma_threshold: f32,
     pub frame_hold: bool,
+}
+
+impl CameraShutter2d {
+    pub fn exposure_seconds(&self) -> f32 {
+        if let Some(speed_s) = self.speed_s {
+            return speed_s.clamp(1.0 / 8000.0, 2.0);
+        }
+
+        let fps = self.fps.max(1.0);
+        let angle_fraction = (self.angle / 360.0).clamp(0.0, 1.0);
+        (angle_fraction / fps).clamp(1.0 / 8000.0, 2.0)
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -166,6 +179,10 @@ impl Camera2dRuntimeState {
             .clamp(self.exposure.auto.min_iso, 12800.0);
 
         self.shutter.fps = self.shutter.fps.clamp(1.0, 240.0);
+        self.shutter.speed_s = self
+            .shutter
+            .speed_s
+            .map(|speed_s| speed_s.clamp(1.0 / 8000.0, 2.0));
         self.shutter.angle = self.shutter.angle.clamp(0.0, 360.0);
         self.shutter.opacity = self.shutter.opacity.clamp(0.0, 1.0);
         self.shutter.history_mix = self.shutter.history_mix.clamp(0.0, 0.98);
@@ -388,4 +405,38 @@ fn normalized_layer_list(layers: Vec<String>) -> Vec<String> {
     layers.sort();
     layers.dedup();
     layers
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn shutter_with(speed_s: Option<f32>, fps: f32, angle: f32) -> CameraShutter2d {
+        CameraShutter2d {
+            enabled: true,
+            speed_s,
+            fps,
+            angle,
+            opacity: 1.0,
+            history_mix: 0.0,
+            history_mix_2: 0.0,
+            edge_rejection: 0.0,
+            luma_threshold: 0.0,
+            frame_hold: false,
+        }
+    }
+
+    #[test]
+    fn shutter_speed_seconds_override_legacy_angle_model() {
+        let shutter = shutter_with(Some(0.1), 24.0, 180.0);
+
+        assert!((shutter.exposure_seconds() - 0.1).abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn shutter_angle_fps_remain_legacy_exposure_fallback() {
+        let shutter = shutter_with(None, 24.0, 180.0);
+
+        assert!((shutter.exposure_seconds() - (1.0 / 48.0)).abs() < 0.0001);
+    }
 }

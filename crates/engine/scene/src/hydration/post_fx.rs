@@ -160,6 +160,7 @@ pub fn post_fx_from_document(
         PostFx2dDocument::ShutterBlur(effect) => (
             PostFx2d::ShutterBlur(
                 ShutterBlur2d {
+                    exposure_seconds: ShutterBlur2d::default().exposure_seconds,
                     fps: effect.fps,
                     shutter_angle: effect.shutter_angle,
                     opacity: effect.opacity,

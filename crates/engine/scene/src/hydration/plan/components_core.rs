@@ -44,9 +44,10 @@ fn hydrate_component_core(
                             max_iso: exposure.auto.max_iso,
                         },
                     },
-                    shutter: CameraShutter2dSceneCommand {
-                        enabled: shutter.enabled,
-                        fps: shutter.fps,
+                shutter: CameraShutter2dSceneCommand {
+                    enabled: shutter.enabled,
+                    speed_s: shutter.speed_s,
+                    fps: shutter.fps,
                         angle: shutter.angle,
                         opacity: shutter.opacity,
                         history_mix: shutter.history_mix,

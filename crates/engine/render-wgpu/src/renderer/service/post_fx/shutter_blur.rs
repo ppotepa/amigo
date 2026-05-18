@@ -31,6 +31,7 @@ struct ShutterBlurUniform {
     resolution: [f32; 2],
     opacity: f32,
     shutter_fraction: f32,
+    exposure_seconds: f32,
     history_mix: f32,
     history_mix_2: f32,
     edge_rejection: f32,
@@ -41,6 +42,7 @@ struct ShutterBlurUniform {
     history_ready_b: f32,
     frame_hold: f32,
     debug_motion: f32,
+    _padding: f32,
 }
 
 #[repr(C)]
@@ -173,6 +175,7 @@ impl ShutterBlurRuntime {
             resolution: [width as f32, height as f32],
             opacity: effect.opacity,
             shutter_fraction: (effect.shutter_angle / 360.0).clamp(0.0, 1.0),
+            exposure_seconds: effect.exposure_seconds,
             history_mix: effect.history_mix,
             history_mix_2: effect.history_mix_2,
             edge_rejection: effect.edge_rejection,
@@ -183,6 +186,7 @@ impl ShutterBlurRuntime {
             history_ready_b: if history_ready_b { 1.0 } else { 0.0 },
             frame_hold: if effect.frame_hold { 1.0 } else { 0.0 },
             debug_motion: if debug_motion { 1.0 } else { 0.0 },
+            _padding: 0.0,
         };
         let uniform_buffer = output
             .device
@@ -216,7 +220,7 @@ impl ShutterBlurRuntime {
                 entries: &[
                     wgpu::BindGroupEntry {
                         binding: 0,
-                        resource: wgpu::BindingResource::TextureView(input_view),
+                        resource: wgpu::BindingResource::TextureView(&output.view),
                     },
                     wgpu::BindGroupEntry {
                         binding: 1,

@@ -725,12 +725,13 @@ impl CameraService {
         if contributions.enabled_or(roles::CAMERA_SHUTTER, false)
             && rig.shutter.state.enabled
             && rig.shutter.state.opacity > 0.0
-            && rig.shutter.state.angle > 0.0
+            && rig.shutter.state.exposure_seconds() > 0.0
         {
             effects.push(PostFx2dInstance {
                 id: format!("camera:{camera_id}:1:shutter_blur").into(),
                 effect: PostFx2d::ShutterBlur(
                     ShutterBlur2d {
+                        exposure_seconds: rig.shutter.state.exposure_seconds(),
                         fps: rig.shutter.state.fps,
                         shutter_angle: rig.shutter.state.angle,
                         opacity: rig.shutter.state.opacity,
@@ -1252,6 +1253,7 @@ mod tests {
             },
             shutter: CameraShutter2d {
                 enabled: false,
+                speed_s: None,
                 fps: 24.0,
                 angle: 180.0,
                 opacity: 0.0,

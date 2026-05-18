@@ -255,6 +255,7 @@ mod tests {
             },
             shutter: CameraShutter2d {
                 enabled: false,
+                speed_s: None,
                 fps: 24.0,
                 angle: 180.0,
                 opacity: 0.0,
