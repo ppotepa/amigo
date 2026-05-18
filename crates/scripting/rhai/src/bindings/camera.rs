@@ -255,6 +255,57 @@ impl CameraApi {
         self.set_sway_z_offset("main", z_offset)
     }
 
+    pub fn set_main_camera_z_m(&mut self, value: rhai::FLOAT) -> bool {
+        self.set_camera_z_m("main", value)
+    }
+
+    pub fn set_camera_z_m(&mut self, camera_id: &str, value: rhai::FLOAT) -> bool {
+        let Some(value) = finite_clamped(value, -50.0, 50.0) else {
+            return false;
+        };
+        let Some(service) = self.camera_service.as_ref() else {
+            return false;
+        };
+        let Some(camera_id) = resolve_camera_id(service, camera_id) else {
+            return false;
+        };
+        service.set_camera_z_m_2d(&camera_id, value)
+    }
+
+    pub fn set_main_focus_residual_m(&mut self, value: rhai::FLOAT) -> bool {
+        self.set_focus_residual_m("main", value)
+    }
+
+    pub fn set_focus_residual_m(&mut self, camera_id: &str, value: rhai::FLOAT) -> bool {
+        let Some(value) = finite_clamped(value, -5.0, 5.0) else {
+            return false;
+        };
+        let Some(service) = self.camera_service.as_ref() else {
+            return false;
+        };
+        let Some(camera_id) = resolve_camera_id(service, camera_id) else {
+            return false;
+        };
+        service.set_focus_residual_m_2d(&camera_id, value)
+    }
+
+    pub fn set_main_dolly_signal(&mut self, value: rhai::FLOAT) -> bool {
+        self.set_dolly_signal("main", value)
+    }
+
+    pub fn set_dolly_signal(&mut self, camera_id: &str, value: rhai::FLOAT) -> bool {
+        let Some(value) = finite_clamped(value, -1.0, 1.0) else {
+            return false;
+        };
+        let Some(service) = self.camera_service.as_ref() else {
+            return false;
+        };
+        let Some(camera_id) = resolve_camera_id(service, camera_id) else {
+            return false;
+        };
+        service.set_dolly_signal_2d(&camera_id, value)
+    }
+
     pub fn set_sway_z_offset(&mut self, camera_id: &str, z_offset: rhai::FLOAT) -> bool {
         let Some(service) = self.camera_service.as_ref() else {
             return false;
@@ -349,4 +400,15 @@ impl CameraApi {
 fn finite_clamped(value: rhai::FLOAT, min: f32, max: f32) -> Option<f32> {
     let value = value as f32;
     value.is_finite().then(|| value.clamp(min, max))
+}
+
+fn resolve_camera_id(service: &CameraService, camera_id: &str) -> Option<CameraId> {
+    let camera_id = camera_id.trim();
+    if camera_id.is_empty() {
+        return None;
+    }
+    if camera_id == "main" {
+        return service.main_camera2d_id();
+    }
+    Some(CameraId::new(camera_id))
 }

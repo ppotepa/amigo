@@ -31,6 +31,6 @@ state:
   skyline.mul: 1.0
   pharmacy.next_fault: 12.0
   pharmacy.mul: 0.0
-  camera_motion.sway.z.current: 0.0
-  camera_motion.sway.z.target: 0.0
-  camera_motion.sway.z.next_target: 0.0
+  camera_motion.dolly.signal: 0.0
+  camera_motion.dolly.camera_z_m: 0.0
+  camera_motion.focus_residual.current_m: 0.0

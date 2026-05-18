@@ -201,6 +201,8 @@ fn focus_depth_for_layer(
     layer: &amigo_2d_composition::RenderLayer2dCommand,
     depth_space: amigo_2d_spatial::DepthSpace2d,
 ) -> CameraFocusTargetDepth2d {
+    // Focus targets expose authored/base layer depth. Camera rig motion applies camera_z_m
+    // later when resolving effective focus distance for DOF/capture.
     match layer.depth.mode {
         amigo_2d_composition::RenderDepthMode2d::Distance => {
             let meters = layer.depth.distance_m.unwrap_or(1.0).max(0.0);

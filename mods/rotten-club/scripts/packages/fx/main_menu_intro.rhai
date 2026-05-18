@@ -167,6 +167,19 @@ fn update_title(world_api, time) {
         let t = seq::ramp(time, 15.00, 2.0);
         world_api.camera.set_main_aperture_f_stop(seq::mix(4.0, 1.6, t));
     }
+
+    if world_api.state.get_bool("intro.focus.title_started") {
+        if world_api.state.get_bool("camera_motion.focus_residual.enabled") {
+            let freq = world_api.state.get_float("camera_motion.focus_residual.frequency");
+            let amp = world_api.state.get_float("camera_motion.focus_residual.amplitude_m");
+            let residual = (time * freq).sin() * amp * seq::ramp(time, 17.00, 2.0);
+            world_api.state.set_float("camera_motion.focus_residual.current_m", residual);
+            world_api.camera.set_main_focus_residual_m(residual);
+        }
+    } else {
+        world_api.state.set_float("camera_motion.focus_residual.current_m", 0.0);
+        world_api.camera.set_main_focus_residual_m(0.0);
+    }
 }
 
 fn update_lights(world_api, time) {

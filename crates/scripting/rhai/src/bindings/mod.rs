@@ -311,6 +311,15 @@ pub fn register_world_api(engine: &mut rhai::Engine) {
         .register_fn("set_sway_frequency", CameraApi::set_sway_frequency)
         .register_fn("set_main_sway_z_offset", CameraApi::set_main_sway_z_offset)
         .register_fn("set_sway_z_offset", CameraApi::set_sway_z_offset)
+        .register_fn("set_main_camera_z_m", CameraApi::set_main_camera_z_m)
+        .register_fn("set_camera_z_m", CameraApi::set_camera_z_m)
+        .register_fn(
+            "set_main_focus_residual_m",
+            CameraApi::set_main_focus_residual_m,
+        )
+        .register_fn("set_focus_residual_m", CameraApi::set_focus_residual_m)
+        .register_fn("set_main_dolly_signal", CameraApi::set_main_dolly_signal)
+        .register_fn("set_dolly_signal", CameraApi::set_dolly_signal)
         .register_fn(
             "set_main_sway_affects_focus",
             CameraApi::set_main_sway_affects_focus,

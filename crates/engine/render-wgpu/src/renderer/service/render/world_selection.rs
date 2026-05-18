@@ -189,7 +189,7 @@ pub(super) fn base_world_selection(
     post_fx_stacks: &[amigo_2d_post_fx::ScopedPostFx2dStack],
     render_layers: &[RenderLayer2dCommand],
 ) -> OwnedWorldRenderSelection {
-    let plan = super::focus_depth_plan::focus_blur_layer_plan(post_fx_stacks, render_layers);
+    let plan = super::focus_depth_plan::focus_blur_layer_plan(post_fx_stacks, render_layers, None);
     let draw_layer_post_fx_exclusions = draw_layer_post_fx_layers(post_fx_stacks);
     let scene_object_post_fx_exclusions = scene_object_post_fx_objects(post_fx_stacks);
     let scene_group_post_fx_exclusions = scene_group_post_fx_roots(post_fx_stacks);

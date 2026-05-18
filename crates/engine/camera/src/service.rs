@@ -13,7 +13,10 @@ use amigo_scene::{CameraFollow2dSceneCommand, Parallax2dSceneCommand};
 
 use crate::optics::{Camera2dRuntimeState, CameraAperture2d, CameraFocus2d};
 use crate::quality::{CameraQualityProfile2d, CameraQualitySettings2d};
-use crate::rig::{ResolvedCameraRig2d, resolve_camera_rig_2d};
+use crate::rig::{
+    CameraDepthMotion2d, ResolvedCameraRig2d, apply_camera_depth_motion_to_rig,
+    resolve_camera_rig_2d,
+};
 use crate::{
     Camera, CameraFocusTarget2dService, CameraFocusTargetDepth2d, CameraFocusTransition2d,
     CameraFocusTransitionTarget2d, CameraId,
@@ -41,6 +44,9 @@ pub struct CameraSway2d {
     pub frequency: f32,
     pub phase_seconds: f32,
     pub affects_focus: bool,
+    pub camera_z_m: f32,
+    pub focus_residual_m: f32,
+    pub dolly_signal: f32,
 }
 
 impl Default for CameraSway2d {
@@ -55,6 +61,9 @@ impl Default for CameraSway2d {
             frequency: 0.0,
             phase_seconds: 0.0,
             affects_focus: false,
+            camera_z_m: 0.0,
+            focus_residual_m: 0.0,
+            dolly_signal: 0.0,
         }
     }
 }
@@ -69,7 +78,19 @@ impl CameraSway2d {
         self.rotation = finite_or_zero(self.rotation).clamp(-1.0, 1.0);
         self.frequency = finite_or_zero(self.frequency).clamp(0.0, 20.0);
         self.phase_seconds = finite_or_zero(self.phase_seconds).max(0.0);
+        self.camera_z_m = finite_or_zero(self.camera_z_m).clamp(-50.0, 50.0);
+        self.focus_residual_m = finite_or_zero(self.focus_residual_m).clamp(-5.0, 5.0);
+        self.dolly_signal = finite_or_zero(self.dolly_signal).clamp(-1.0, 1.0);
         self
+    }
+
+    pub fn depth_motion(self) -> CameraDepthMotion2d {
+        CameraDepthMotion2d {
+            camera_z_m: self.camera_z_m,
+            focus_residual_m: self.focus_residual_m,
+            dolly_signal: self.dolly_signal,
+        }
+        .normalized()
     }
 
     pub fn focus_offset(self) -> f32 {
@@ -335,6 +356,51 @@ impl CameraService {
         true
     }
 
+    pub fn set_camera_z_m_2d(&self, camera_id: &CameraId, camera_z_m: f32) -> bool {
+        if !camera_z_m.is_finite() {
+            return false;
+        }
+
+        let mut sways = self
+            .sway_2d
+            .lock()
+            .expect("camera sway mutex should not be poisoned");
+        let mut sway = sways.get(camera_id).copied().unwrap_or_default();
+        sway.camera_z_m = camera_z_m;
+        sways.insert(camera_id.clone(), sway.normalized());
+        true
+    }
+
+    pub fn set_focus_residual_m_2d(&self, camera_id: &CameraId, focus_residual_m: f32) -> bool {
+        if !focus_residual_m.is_finite() {
+            return false;
+        }
+
+        let mut sways = self
+            .sway_2d
+            .lock()
+            .expect("camera sway mutex should not be poisoned");
+        let mut sway = sways.get(camera_id).copied().unwrap_or_default();
+        sway.focus_residual_m = focus_residual_m;
+        sways.insert(camera_id.clone(), sway.normalized());
+        true
+    }
+
+    pub fn set_dolly_signal_2d(&self, camera_id: &CameraId, dolly_signal: f32) -> bool {
+        if !dolly_signal.is_finite() {
+            return false;
+        }
+
+        let mut sways = self
+            .sway_2d
+            .lock()
+            .expect("camera sway mutex should not be poisoned");
+        let mut sway = sways.get(camera_id).copied().unwrap_or_default();
+        sway.dolly_signal = dolly_signal;
+        sways.insert(camera_id.clone(), sway.normalized());
+        true
+    }
+
     pub fn set_sway_affects_focus_2d(&self, camera_id: &CameraId, affects_focus: bool) -> bool {
         let mut sways = self
             .sway_2d
@@ -361,6 +427,15 @@ impl CameraService {
             .get(camera_id)
             .copied()
             .unwrap_or_default()
+    }
+
+    pub fn camera_depth_motion_2d(&self, camera_id: &CameraId) -> CameraDepthMotion2d {
+        self.active_sway_2d(camera_id).depth_motion()
+    }
+
+    pub fn main_camera_depth_motion_2d(&self) -> Option<CameraDepthMotion2d> {
+        let camera_id = self.main_camera2d_id()?;
+        Some(self.camera_depth_motion_2d(&camera_id))
     }
 
     pub fn tick_sway_2d(&self, delta_seconds: f32) {
@@ -585,7 +660,9 @@ impl CameraService {
     ) -> Option<ResolvedCameraRig2d> {
         self.get_2d(camera_id).map(|camera| {
             let quality = self.quality_profile_2d(camera_id);
-            resolve_camera_rig_2d(&camera, assets, depth_space, quality)
+            let mut rig = resolve_camera_rig_2d(&camera, assets, depth_space, quality);
+            apply_camera_depth_motion_to_rig(&mut rig, self.camera_depth_motion_2d(camera_id));
+            rig
         })
     }
 
@@ -612,7 +689,7 @@ impl CameraService {
         };
         let quality = self.quality_profile_2d(&camera.id);
         let mut rig = resolve_camera_rig_2d(&camera, assets, depth_space, quality);
-        apply_camera_sway_to_rig(&mut rig, self.active_sway_2d(&camera.id));
+        apply_camera_depth_motion_to_rig(&mut rig, self.camera_depth_motion_2d(&camera.id));
         rig.lens_surface.rain = self.resolved_lens_rain_2d(&camera, assets);
 
         let mut effects = Vec::new();
@@ -727,8 +804,15 @@ impl CameraService {
                             }
                         },
                         f_stop: rig.aperture.state.f_stop,
-                        focus_distance_m: rig.aperture.focus_distance_m,
-                        focus_radius: (rig.aperture.focus_distance_m.recip()
+                        focus_distance_m: rig
+                            .aperture
+                            .effective_focus_distance_m
+                            .unwrap_or(rig.aperture.focus_distance_m),
+                        focus_radius: (rig
+                            .aperture
+                            .effective_focus_distance_m
+                            .unwrap_or(rig.aperture.focus_distance_m)
+                            .recip()
                             * rig.aperture.state.f_stop)
                             .clamp(0.02, 0.28),
                         blur_radius: ((8.0 - rig.aperture.state.f_stop).max(0.0) * 1.2
@@ -1131,28 +1215,6 @@ fn apply_camera_quality_to_rain_glass(rain: &mut RainGlass2d, quality: CameraQua
         resolution_scale = 1.0;
     }
     rain.quality_scale = resolution_scale;
-}
-
-fn apply_camera_sway_to_rig(rig: &mut ResolvedCameraRig2d, sway: CameraSway2d) {
-    let offset = sway.focus_offset();
-    if offset.abs() <= f32::EPSILON {
-        return;
-    }
-
-    match &mut rig.aperture.focus {
-        CameraFocus2d::Distance { meters } => {
-            let focus_z_depth =
-                (amigo_2d_spatial::distance_to_z_depth(*meters, rig.depth_space) + offset)
-                    .clamp(0.0, 1.0);
-            rig.aperture.computed_focus_z_depth = Some(focus_z_depth);
-        }
-        CameraFocus2d::Depth { value } => {
-            *value = (*value + offset).clamp(0.0, 1.0);
-            rig.aperture.state.focus = CameraFocus2d::Depth { value: *value };
-            rig.aperture.computed_focus_z_depth = Some(*value);
-        }
-        _ => {}
-    }
 }
 
 fn finite_or_zero(value: f32) -> f32 {
@@ -1578,8 +1640,34 @@ mod tests {
     }
 
     #[test]
-    fn camera_sway_modulates_distance_focus_when_enabled() {
-        let camera = camera_state_with_rain_profile(None);
+    fn camera_depth_motion_modulates_distance_focus() {
+        let mut camera = camera_state_with_rain_profile(None);
+        camera.aperture.focus_distance_m = 8.0;
+        camera.aperture.focus = CameraFocus2d::Distance { meters: 8.0 };
+        let mut rig = resolve_camera_rig_2d(
+            &camera,
+            None,
+            amigo_2d_spatial::DepthSpace2d::default(),
+            CameraQualityProfile2d::default(),
+        );
+
+        apply_camera_depth_motion_to_rig(
+            &mut rig,
+            CameraDepthMotion2d {
+                camera_z_m: 2.0,
+                ..Default::default()
+            },
+        );
+
+        assert_eq!(rig.aperture.base_focus_distance_m, Some(8.0));
+        assert_eq!(rig.aperture.effective_focus_distance_m, Some(6.0));
+    }
+
+    #[test]
+    fn legacy_z_offset_does_not_directly_change_computed_focus_z_depth() {
+        let mut camera = camera_state_with_rain_profile(None);
+        camera.aperture.focus_distance_m = 8.0;
+        camera.aperture.focus = CameraFocus2d::Distance { meters: 8.0 };
         let mut rig = resolve_camera_rig_2d(
             &camera,
             None,
@@ -1588,16 +1676,17 @@ mod tests {
         );
         let base_focus_z_depth = rig.aperture.computed_focus_z_depth;
 
-        apply_camera_sway_to_rig(
+        apply_camera_depth_motion_to_rig(
             &mut rig,
             CameraSway2d {
                 z_offset: 0.10,
                 affects_focus: true,
                 ..Default::default()
-            },
+            }
+            .depth_motion(),
         );
 
-        assert!(rig.aperture.computed_focus_z_depth > base_focus_z_depth);
+        assert_eq!(rig.aperture.computed_focus_z_depth, base_focus_z_depth);
     }
 
     #[test]

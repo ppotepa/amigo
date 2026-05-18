@@ -269,13 +269,17 @@ impl RenderFrameExtractor<Runtime, WgpuRenderFramePacket> for WgpuPostFx2dRender
                 .map(|service| service.depth_space())
                 .unwrap_or_default();
 
-            let quality_settings = if let Some(camera) = camera_service.main_camera2d() {
+            let (quality_settings, camera_motion) = if let Some(camera) = camera_service.main_camera2d() {
                 let settings = camera_service.quality_profile_2d(&camera.id).settings();
+                let camera_motion = camera_service.camera_depth_motion_2d(&camera.id);
                 packet.set_active_camera_2d_entity(Some(camera.entity_name));
                 packet.set_camera_debug_view_2d(camera_service.debug_view_2d(&camera.id));
-                settings
+                (settings, camera_motion)
             } else {
-                amigo_camera::CameraQualityProfile2d::default().settings()
+                (
+                    amigo_camera::CameraQualityProfile2d::default().settings(),
+                    amigo_camera::CameraDepthMotion2d::default(),
+                )
             };
 
             let assets = runtime.resolve::<amigo_assets::AssetCatalog>();
@@ -286,7 +290,11 @@ impl RenderFrameExtractor<Runtime, WgpuRenderFramePacket> for WgpuPostFx2dRender
                 stacks.extend(packet.post_fx_stacks().iter().cloned());
                 packet.set_post_fx_stacks(stacks);
             }
-            packet.set_camera_capture_input_2d(build_camera_capture_input(packet, depth_space));
+            packet.set_camera_capture_input_2d(build_camera_capture_input(
+                packet,
+                depth_space,
+                camera_motion,
+            ));
             packet.set_visual_source_flags_2d(build_visual_source_flags_2d(packet, quality_settings));
         }
     }
@@ -346,18 +354,55 @@ fn is_produced(
 fn build_camera_capture_input(
     packet: &WgpuRenderFramePacket,
     depth_space: amigo_2d_spatial::DepthSpace2d,
+    camera_motion: amigo_camera::CameraDepthMotion2d,
 ) -> amigo_render_api::CameraCaptureInput2d {
+    let depth_space = depth_space.normalized();
+    let camera_motion = camera_motion.normalized();
     let layers = packet
         .world_2d_render_layers()
         .iter()
         .map(|layer| {
-            let z_depth = layer.depth.z_depth.clamp(0.0, 1.0);
+            let base_z_depth = match layer.depth.mode {
+                amigo_2d_composition::RenderDepthMode2d::Distance => layer
+                    .depth
+                    .distance_m
+                    .map(|distance_m| {
+                        amigo_2d_spatial::distance_to_z_depth(distance_m, depth_space)
+                    })
+                    .unwrap_or(layer.depth.z_depth)
+                    .clamp(0.0, 1.0),
+                amigo_2d_composition::RenderDepthMode2d::Infinity => 0.0,
+                amigo_2d_composition::RenderDepthMode2d::Overlay => 1.0,
+                _ => layer.depth.z_depth.clamp(0.0, 1.0),
+            };
+            let effective_distance_m = match layer.depth.mode {
+                amigo_2d_composition::RenderDepthMode2d::Distance => layer
+                    .depth
+                    .distance_m
+                    .map(|distance_m| (distance_m - camera_motion.camera_z_m).max(0.05)),
+                _ => None,
+            };
+            let effective_z_depth = match layer.depth.mode {
+                amigo_2d_composition::RenderDepthMode2d::Distance => effective_distance_m
+                    .map(|distance_m| {
+                        amigo_2d_spatial::distance_to_z_depth(distance_m, depth_space)
+                    })
+                    .unwrap_or(base_z_depth)
+                    .clamp(0.0, 1.0),
+                amigo_2d_composition::RenderDepthMode2d::Infinity => 0.0,
+                amigo_2d_composition::RenderDepthMode2d::Overlay => base_z_depth,
+                _ => base_z_depth,
+            };
+            let z_depth = effective_z_depth;
             amigo_render_api::ResolvedLayerOptics2d {
                 layer_id: layer.id.clone(),
                 role: layer.optical_role,
                 depth_mode: depth_mode_label(layer.depth.mode).to_owned(),
                 distance_m: layer.depth.distance_m,
                 z_depth,
+                base_z_depth,
+                effective_z_depth,
+                effective_distance_m,
                 blur_scale: layer.depth.blur_scale,
                 camera_motion_scale: amigo_2d_spatial::z_depth_to_camera_motion_scale(z_depth),
             }
@@ -541,7 +586,11 @@ mod tests {
             optical_role: amigo_2d_spatial::OpticalLayerRole2d::WorldSurface,
         });
 
-        let input = build_camera_capture_input(&packet, amigo_2d_spatial::DepthSpace2d::default());
+        let input = build_camera_capture_input(
+            &packet,
+            amigo_2d_spatial::DepthSpace2d::default(),
+            amigo_camera::CameraDepthMotion2d::default(),
+        );
 
         assert_eq!(
             input.color.kind,
@@ -569,6 +618,43 @@ mod tests {
     }
 
     #[test]
+    fn camera_capture_input_applies_camera_z_to_distance_layers() {
+        let mut packet = WgpuRenderFramePacket::default();
+        packet.push_world_2d_render_layer(amigo_2d_composition::RenderLayer2dCommand {
+            source_mod: "rotten-club".to_owned(),
+            id: "weather.rain.mid".to_owned(),
+            label: None,
+            order: 0.0,
+            visible: true,
+            opacity: 1.0,
+            depth: amigo_2d_composition::RenderDepth2d {
+                mode: amigo_2d_composition::RenderDepthMode2d::Distance,
+                distance_m: Some(75.0),
+                ..Default::default()
+            },
+            optical_role: amigo_2d_spatial::OpticalLayerRole2d::SceneMedium,
+        });
+        let depth_space = amigo_2d_spatial::DepthSpace2d::default();
+
+        let input = build_camera_capture_input(
+            &packet,
+            depth_space,
+            amigo_camera::CameraDepthMotion2d {
+                camera_z_m: 2.0,
+                ..Default::default()
+            },
+        );
+
+        assert_eq!(input.layers[0].distance_m, Some(75.0));
+        assert_eq!(input.layers[0].effective_distance_m, Some(73.0));
+        assert_eq!(
+            input.layers[0].effective_z_depth,
+            amigo_2d_spatial::distance_to_z_depth(73.0, depth_space)
+        );
+        assert_eq!(input.layers[0].z_depth, input.layers[0].effective_z_depth);
+    }
+
+    #[test]
     fn camera_capture_input_sets_highlight_when_lightmaps_exist() {
         let mut packet = WgpuRenderFramePacket::default();
         packet.push_world_2d_lightmap(amigo_2d_lighting::LightMap2dSourceCommand {
@@ -582,7 +668,11 @@ mod tests {
             channels: Vec::new(),
         });
 
-        let input = build_camera_capture_input(&packet, amigo_2d_spatial::DepthSpace2d::default());
+        let input = build_camera_capture_input(
+            &packet,
+            amigo_2d_spatial::DepthSpace2d::default(),
+            amigo_camera::CameraDepthMotion2d::default(),
+        );
 
         assert_eq!(
             input.highlight.as_ref().map(|source| source.kind),
@@ -610,7 +700,11 @@ mod tests {
             )],
         )]);
 
-        let input = build_camera_capture_input(&packet, amigo_2d_spatial::DepthSpace2d::default());
+        let input = build_camera_capture_input(
+            &packet,
+            amigo_2d_spatial::DepthSpace2d::default(),
+            amigo_camera::CameraDepthMotion2d::default(),
+        );
 
         assert_eq!(
             input.wetness.as_ref().map(|source| source.kind),
@@ -648,7 +742,11 @@ mod tests {
             )],
         )]);
 
-        let input = build_camera_capture_input(&packet, amigo_2d_spatial::DepthSpace2d::default());
+        let input = build_camera_capture_input(
+            &packet,
+            amigo_2d_spatial::DepthSpace2d::default(),
+            amigo_camera::CameraDepthMotion2d::default(),
+        );
 
         assert_eq!(
             input.normal.as_ref().map(|source| source.kind),
@@ -680,7 +778,11 @@ mod tests {
             )],
         )]);
 
-        let input = build_camera_capture_input(&packet, amigo_2d_spatial::DepthSpace2d::default());
+        let input = build_camera_capture_input(
+            &packet,
+            amigo_2d_spatial::DepthSpace2d::default(),
+            amigo_camera::CameraDepthMotion2d::default(),
+        );
 
         assert_eq!(
             input.motion.as_ref().map(|source| source.kind),

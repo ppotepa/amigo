@@ -30,6 +30,19 @@ pub(crate) use services::{
     build_text3d_scene_service_from_packet,
 };
 
+#[derive(Debug, Clone, Copy)]
+struct CameraFocusPlanInfo {
+    base_focus_distance_m: Option<f32>,
+    effective_focus_distance_m: Option<f32>,
+    camera_z_m: f32,
+    focus_residual_m: f32,
+    dolly_signal: f32,
+    computed_focus_z_depth: Option<f32>,
+    focus_width: f32,
+    f_stop: f32,
+    max_blur_px: f32,
+}
+
 #[cfg(test)]
 #[allow(dead_code)]
 pub(crate) fn build_render_frame_for_session(
@@ -646,9 +659,15 @@ fn render_visual_items_summary(
                 item.z_index()
             ));
             lines.push(format!(
-                "payload={} camera_pipeline={} z_depth={:.3} blur_scale={:.2} camera_motion_scale={:.2}",
+                "payload={} camera_pipeline={} base_z_depth={:.3} effective_z_depth={:.3} effective_distance_m={} z_depth={:.3} blur_scale={:.2} camera_motion_scale={:.2}",
                 item.payload_kind(),
                 item.uses_camera_pipeline(),
+                layer.base_z_depth,
+                layer.effective_z_depth,
+                layer
+                    .effective_distance_m
+                    .map(|meters| format!("{meters:.2}"))
+                    .unwrap_or_else(|| "?".to_owned()),
                 layer.z_depth,
                 layer.blur_scale,
                 layer.camera_motion_scale
@@ -679,14 +698,22 @@ fn camera_focus_for_input(
     runtime: &amigo_runtime::Runtime,
     assets: &AssetCatalog,
     input: &amigo_render_api::CameraCaptureInput2d,
-) -> Option<(f32, Option<f32>)> {
+) -> Option<CameraFocusPlanInfo> {
     let camera_service =
         required::<amigo_runtime_bundles::amigo_camera::CameraService>(runtime).ok()?;
     let rig = camera_service.main_resolved_camera_rig_2d(Some(assets), input.depth_space)?;
-    Some((
-        rig.aperture.focus_distance_m,
-        rig.aperture.computed_focus_z_depth,
-    ))
+    let motion = camera_service.main_camera_depth_motion_2d().unwrap_or_default();
+    Some(CameraFocusPlanInfo {
+        base_focus_distance_m: rig.aperture.base_focus_distance_m,
+        effective_focus_distance_m: rig.aperture.effective_focus_distance_m,
+        camera_z_m: rig.aperture.camera_z_m,
+        focus_residual_m: rig.aperture.focus_residual_m,
+        dolly_signal: motion.dolly_signal,
+        computed_focus_z_depth: rig.aperture.computed_focus_z_depth,
+        focus_width: rig.aperture.depth_of_field.focus_width,
+        f_stop: rig.aperture.state.f_stop,
+        max_blur_px: rig.aperture.depth_of_field.max_blur_px,
+    })
 }
 
 fn render_camera_contributions_summary(
@@ -711,7 +738,7 @@ fn render_camera_contributions_summary(
 
 fn render_camera_focus_plan_summary(
     input: &amigo_render_api::CameraCaptureInput2d,
-    focus: Option<(f32, Option<f32>)>,
+    focus: Option<CameraFocusPlanInfo>,
 ) -> String {
     let mut lines = Vec::new();
     lines.push("FocusBlur plan:".to_owned());
@@ -721,16 +748,38 @@ fn render_camera_focus_plan_summary(
     ));
 
     match focus {
-        Some((focus_distance_m, Some(z_depth))) => {
-            lines.push(format!("focus_distance_m: {focus_distance_m:.2}"));
-            lines.push(format!("computed_focus_z_depth: {z_depth:.3}"));
-        }
-        Some((focus_distance_m, None)) => {
-            lines.push(format!("focus_distance_m: {focus_distance_m:.2}"));
-            lines.push("computed_focus_z_depth: unavailable".to_owned());
+        Some(info) => {
+            lines.push(format!(
+                "base_focus_distance_m: {}",
+                info.base_focus_distance_m
+                    .map(|value| format!("{value:.2}"))
+                    .unwrap_or_else(|| "unavailable".to_owned())
+            ));
+            lines.push(format!(
+                "effective_focus_distance_m: {}",
+                info.effective_focus_distance_m
+                    .map(|value| format!("{value:.2}"))
+                    .unwrap_or_else(|| "unavailable".to_owned())
+            ));
+            lines.push(format!("camera_z_m: {:.3}", info.camera_z_m));
+            lines.push(format!("focus_residual_m: {:.3}", info.focus_residual_m));
+            lines.push(format!("dolly_signal: {:.3}", info.dolly_signal));
+            lines.push(format!(
+                "computed_focus_z_depth: {}",
+                info.computed_focus_z_depth
+                    .map(|value| format!("{value:.3}"))
+                    .unwrap_or_else(|| "unavailable".to_owned())
+            ));
+            lines.push(format!("focus_width: {:.3}", info.focus_width));
+            lines.push(format!("f_stop: {:.2}", info.f_stop));
+            lines.push(format!("max_blur_px: {:.2}", info.max_blur_px));
         }
         None => {
-            lines.push("focus_distance_m: unavailable".to_owned());
+            lines.push("base_focus_distance_m: unavailable".to_owned());
+            lines.push("effective_focus_distance_m: unavailable".to_owned());
+            lines.push("camera_z_m: unavailable".to_owned());
+            lines.push("focus_residual_m: unavailable".to_owned());
+            lines.push("dolly_signal: unavailable".to_owned());
             lines.push("computed_focus_z_depth: unavailable".to_owned());
         }
     }
@@ -745,16 +794,23 @@ fn render_camera_focus_plan_summary(
                 .distance_m
                 .map(|meters| format!("{meters:.2}"))
                 .unwrap_or_else(|| "-".to_owned());
+            let effective_distance = layer
+                .effective_distance_m
+                .map(|meters| format!("{meters:.2}"))
+                .unwrap_or_else(|| "-".to_owned());
             let focus_delta = focus
-                .and_then(|(_, z)| z)
+                .and_then(|info| info.computed_focus_z_depth)
                 .map(|focus_z| format!("{:.3}", (layer.z_depth - focus_z).abs() * layer.blur_scale))
                 .unwrap_or_else(|| "-".to_owned());
             lines.push(format!(
-                "{} mode={} role={:?} distance_m={} z_depth={:.3} blur_scale={:.2} camera_motion_scale={:.2} focus_delta={}",
+                "{} mode={} role={:?} distance_m={} effective_distance_m={} base_z_depth={:.3} effective_z_depth={:.3} z_depth={:.3} blur_scale={:.2} camera_motion_scale={:.2} focus_delta={}",
                 layer.layer_id,
                 layer.depth_mode,
                 layer.role,
                 distance,
+                effective_distance,
+                layer.base_z_depth,
+                layer.effective_z_depth,
                 layer.z_depth,
                 layer.blur_scale,
                 layer.camera_motion_scale,

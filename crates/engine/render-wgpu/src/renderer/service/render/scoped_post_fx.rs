@@ -194,6 +194,7 @@ pub(super) fn execute_post_fx_graph_node(
     let Some(plan) = super::focus_blur_layer_plan_for_effect(
         request.post_fx_stacks,
         request.world_2d.render_layers,
+        request.camera_capture_input_2d,
         host_id,
         effect_id,
     ) else {

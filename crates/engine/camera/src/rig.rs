@@ -10,6 +10,32 @@ use crate::optics::{
 use crate::profiles::{FilmStockProfile2d, LensProfile2d};
 use crate::quality::{CameraQualityProfile2d, CameraQualitySettings2d};
 
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct CameraDepthMotion2d {
+    pub camera_z_m: f32,
+    pub focus_residual_m: f32,
+    pub dolly_signal: f32,
+}
+
+impl Default for CameraDepthMotion2d {
+    fn default() -> Self {
+        Self {
+            camera_z_m: 0.0,
+            focus_residual_m: 0.0,
+            dolly_signal: 0.0,
+        }
+    }
+}
+
+impl CameraDepthMotion2d {
+    pub fn normalized(mut self) -> Self {
+        self.camera_z_m = finite_or_zero(self.camera_z_m).clamp(-50.0, 50.0);
+        self.focus_residual_m = finite_or_zero(self.focus_residual_m).clamp(-5.0, 5.0);
+        self.dolly_signal = finite_or_zero(self.dolly_signal).clamp(-1.0, 1.0);
+        self
+    }
+}
+
 /// Fully resolved 2D camera rig used by render/camera-owned post-fx construction.
 /// Do not build camera-owned effects from raw Camera2dRuntimeState when a rig is available.
 #[derive(Debug, Clone, PartialEq)]
@@ -57,6 +83,10 @@ pub struct ResolvedAperture2d {
     pub state: CameraAperture2d,
     pub focus: CameraFocus2d,
     pub focus_distance_m: f32,
+    pub base_focus_distance_m: Option<f32>,
+    pub effective_focus_distance_m: Option<f32>,
+    pub camera_z_m: f32,
+    pub focus_residual_m: f32,
     pub computed_focus_z_depth: Option<f32>,
     pub depth_of_field: CameraDepthOfField2d,
 }
@@ -95,6 +125,10 @@ pub fn resolve_camera_rig_2d(
         .sqrt()
         .clamp(0.35, 3.0);
     let focus = camera.aperture.focus.clone();
+    let base_focus_distance_m = match focus {
+        CameraFocus2d::Distance { meters } => Some(meters),
+        _ => None,
+    };
     let computed_focus_z_depth = match focus {
         CameraFocus2d::Distance { meters } => Some(distance_to_z_depth(meters, depth_space)),
         CameraFocus2d::Depth { value } => Some(value.clamp(0.0, 1.0)),
@@ -127,6 +161,10 @@ pub fn resolve_camera_rig_2d(
             state: camera.aperture.clone(),
             focus,
             focus_distance_m: camera.aperture.focus_distance_m,
+            base_focus_distance_m,
+            effective_focus_distance_m: base_focus_distance_m,
+            camera_z_m: 0.0,
+            focus_residual_m: 0.0,
             computed_focus_z_depth,
             depth_of_field: camera.aperture.depth_of_field.clone(),
         },
@@ -148,6 +186,45 @@ pub fn resolve_camera_rig_2d(
         quality,
         quality_settings: quality.settings(),
     }
+}
+
+pub fn effective_distance_after_camera_z_m(distance_m: f32, camera_z_m: f32) -> f32 {
+    if !distance_m.is_finite() {
+        return 1.0;
+    }
+    (distance_m - finite_or_zero(camera_z_m)).max(0.05)
+}
+
+pub fn apply_camera_depth_motion_to_rig(
+    rig: &mut ResolvedCameraRig2d,
+    motion: CameraDepthMotion2d,
+) {
+    let motion = motion.normalized();
+    rig.aperture.camera_z_m = motion.camera_z_m;
+    rig.aperture.focus_residual_m = motion.focus_residual_m;
+
+    match &mut rig.aperture.focus {
+        CameraFocus2d::Distance { meters } => {
+            let base = *meters;
+            let effective = (effective_distance_after_camera_z_m(base, motion.camera_z_m)
+                + motion.focus_residual_m)
+                .max(0.05);
+            rig.aperture.base_focus_distance_m = Some(base);
+            rig.aperture.effective_focus_distance_m = Some(effective);
+            rig.aperture.computed_focus_z_depth =
+                Some(distance_to_z_depth(effective, rig.depth_space));
+        }
+        CameraFocus2d::Depth { value } => {
+            rig.aperture.base_focus_distance_m = None;
+            rig.aperture.effective_focus_distance_m = None;
+            rig.aperture.computed_focus_z_depth = Some(value.clamp(0.0, 1.0));
+        }
+        _ => {}
+    }
+}
+
+fn finite_or_zero(value: f32) -> f32 {
+    if value.is_finite() { value } else { 0.0 }
 }
 
 #[cfg(test)]
@@ -270,5 +347,8 @@ mod tests {
             rig.aperture.computed_focus_z_depth,
             Some(value) if (value - expected).abs() < 0.0001
         ));
+        assert_eq!(rig.aperture.base_focus_distance_m, Some(6.0));
+        assert_eq!(rig.aperture.effective_focus_distance_m, Some(6.0));
     }
+
 }

@@ -6,6 +6,10 @@ pub(super) struct FocusBlurZDepthLayer {
     pub(super) layer_id: String,
     pub(super) order: f32,
     pub(super) z_depth: f32,
+    pub(super) base_z_depth: f32,
+    pub(super) effective_z_depth: f32,
+    pub(super) distance_m: Option<f32>,
+    pub(super) effective_distance_m: Option<f32>,
     pub(super) blur_scale: f32,
 }
 
@@ -51,16 +55,22 @@ pub(super) fn shutter_blur_effect_for(
 pub(super) fn focus_blur_layer_plan_for_effect(
     stacks: &[amigo_2d_post_fx::ScopedPostFx2dStack],
     render_layers: &[RenderLayer2dCommand],
+    capture_input: Option<&amigo_render_api::CameraCaptureInput2d>,
     host_id: &amigo_2d_post_fx::PostFxHost2dId,
     effect_id: &amigo_2d_post_fx::PostFx2dId,
 ) -> Option<FocusBlurLayerPlan> {
     let effect = focus_blur_effect_for(stacks, host_id, effect_id)?;
-    Some(build_focus_blur_layer_plan(effect, render_layers))
+    Some(build_focus_blur_layer_plan(
+        effect,
+        render_layers,
+        capture_input,
+    ))
 }
 
 pub(super) fn focus_blur_layer_plan(
     stacks: &[amigo_2d_post_fx::ScopedPostFx2dStack],
     render_layers: &[RenderLayer2dCommand],
+    capture_input: Option<&amigo_render_api::CameraCaptureInput2d>,
 ) -> Option<FocusBlurLayerPlan> {
     let effect = stacks.iter().find_map(|stack| {
         stack
@@ -71,12 +81,17 @@ pub(super) fn focus_blur_layer_plan(
                 _ => None,
             })
     })?;
-    Some(build_focus_blur_layer_plan(effect, render_layers))
+    Some(build_focus_blur_layer_plan(
+        effect,
+        render_layers,
+        capture_input,
+    ))
 }
 
 pub(super) fn build_focus_blur_layer_plan(
     effect: amigo_2d_post_fx::FocusBlur2d,
     render_layers: &[RenderLayer2dCommand],
+    capture_input: Option<&amigo_render_api::CameraCaptureInput2d>,
 ) -> FocusBlurLayerPlan {
     let has_explicit_render_depth = render_layers
         .iter()
@@ -95,10 +110,26 @@ pub(super) fn build_focus_blur_layer_plan(
             }
             amigo_2d_composition::RenderDepthMode2d::Distance
             | amigo_2d_composition::RenderDepthMode2d::ZDepth => {
+                let capture_layer = capture_input.and_then(|input| {
+                    input.layers.iter().find(|candidate| candidate.layer_id == layer.id)
+                });
+                let base_z_depth = capture_layer
+                    .map(|capture| capture.base_z_depth)
+                    .unwrap_or(layer.depth.z_depth)
+                    .clamp(0.0, 1.0);
+                let effective_z_depth = capture_layer
+                    .map(|capture| capture.effective_z_depth)
+                    .unwrap_or(layer.depth.z_depth)
+                    .clamp(0.0, 1.0);
                 z_depth_layers.push(FocusBlurZDepthLayer {
                     layer_id: layer.id.clone(),
                     order: layer.order,
-                    z_depth: layer.depth.z_depth,
+                    z_depth: effective_z_depth,
+                    base_z_depth,
+                    effective_z_depth,
+                    distance_m: layer.depth.distance_m,
+                    effective_distance_m: capture_layer
+                        .and_then(|capture| capture.effective_distance_m),
                     blur_scale: layer.depth.blur_scale,
                 });
             }
@@ -107,6 +138,10 @@ pub(super) fn build_focus_blur_layer_plan(
                     layer_id: layer.id.clone(),
                     order: layer.order,
                     z_depth: 0.0,
+                    base_z_depth: 0.0,
+                    effective_z_depth: 0.0,
+                    distance_m: layer.depth.distance_m,
+                    effective_distance_m: None,
                     blur_scale: layer.depth.blur_scale,
                 });
             }
@@ -162,6 +197,7 @@ mod tests {
                 layer("title.depth2d", 20.0),
                 layer("weather.rain.1m", 35.0),
             ],
+            None,
         );
 
         let layer_ids = plan
@@ -174,5 +210,37 @@ mod tests {
             layer_ids,
             vec!["title.depth2d", "weather.rain.1m", "weather.rain.super_near"]
         );
+    }
+
+    #[test]
+    fn focus_blur_plan_uses_effective_capture_layer_depth() {
+        let mut capture_input = amigo_render_api::CameraCaptureInput2d::world_color(
+            amigo_2d_spatial::DepthSpace2d::default(),
+            Vec::new(),
+        );
+        capture_input
+            .layers
+            .push(amigo_render_api::ResolvedLayerOptics2d {
+                layer_id: "weather.rain.mid".to_owned(),
+                role: amigo_2d_spatial::OpticalLayerRole2d::SceneMedium,
+                depth_mode: "distance".to_owned(),
+                distance_m: Some(75.0),
+                z_depth: 0.33,
+                base_z_depth: 0.35,
+                effective_z_depth: 0.33,
+                effective_distance_m: Some(73.0),
+                blur_scale: 1.0,
+                camera_motion_scale: amigo_2d_spatial::z_depth_to_camera_motion_scale(0.33),
+            });
+
+        let plan = build_focus_blur_layer_plan(
+            amigo_2d_post_fx::FocusBlur2d::default(),
+            &[layer("weather.rain.mid", 0.0)],
+            Some(&capture_input),
+        );
+
+        assert_eq!(plan.z_depth_layers[0].z_depth, 0.33);
+        assert_eq!(plan.z_depth_layers[0].base_z_depth, 0.35);
+        assert_eq!(plan.z_depth_layers[0].effective_distance_m, Some(73.0));
     }
 }

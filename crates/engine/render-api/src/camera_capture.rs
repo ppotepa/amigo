@@ -333,6 +333,9 @@ pub struct ResolvedLayerOptics2d {
     pub depth_mode: String,
     pub distance_m: Option<f32>,
     pub z_depth: f32,
+    pub base_z_depth: f32,
+    pub effective_z_depth: f32,
+    pub effective_distance_m: Option<f32>,
     pub blur_scale: f32,
     pub camera_motion_scale: f32,
 }
@@ -768,13 +771,20 @@ impl CameraCaptureInput2d {
                     .map(|value| format!("{value:.2}m"))
                     .unwrap_or_else(|| "none".to_owned());
                 lines.push(format!(
-                    "  layer={} role={} depth_mode={} distance_m={} z_depth={:.3} blur_scale={:.2}",
+                    "  layer={} role={} depth_mode={} distance_m/base={} effective_distance_m={} base_z_depth={:.3} effective_z_depth={:.3} z_depth={:.3} blur_scale={:.2} camera_motion_scale={:.2}",
                     layer.layer_id,
                     optical_role_label(layer.role),
                     layer.depth_mode,
                     distance,
+                    layer
+                        .effective_distance_m
+                        .map(|value| format!("{value:.2}m"))
+                        .unwrap_or_else(|| "none".to_owned()),
+                    layer.base_z_depth,
+                    layer.effective_z_depth,
                     layer.z_depth,
-                    layer.blur_scale
+                    layer.blur_scale,
+                    layer.camera_motion_scale
                 ));
             }
             let role_summary = role_counts
@@ -970,6 +980,9 @@ mod tests {
                 depth_mode: "distance".to_owned(),
                 distance_m: Some(75.0),
                 z_depth: 0.41,
+                base_z_depth: 0.41,
+                effective_z_depth: 0.41,
+                effective_distance_m: Some(75.0),
                 blur_scale: 0.25,
                 camera_motion_scale: amigo_2d_spatial::z_depth_to_camera_motion_scale(0.41),
             }],
@@ -986,6 +999,9 @@ mod tests {
         assert!(summary.contains("source layer_mask id=world.layer_mask"));
         assert!(summary.contains("source scene_wetness id=none availability=missing"));
         assert!(summary.contains("layer=weather.rain.mid role=scene_medium"));
+        assert!(summary.contains("base_z_depth="));
+        assert!(summary.contains("effective_z_depth="));
+        assert!(summary.contains("effective_distance_m="));
         assert!(summary.contains("optical_roles=scene_medium:1"));
     }
 }

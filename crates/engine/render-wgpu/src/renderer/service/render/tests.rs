@@ -76,6 +76,7 @@ mod focus_blur_layer_plan_tests {
                     amigo_2d_composition::RenderDepthMode2d::Overlay,
                 ),
             ],
+            None,
         );
 
         assert!(plan.has_explicit_render_depth);
@@ -106,6 +107,7 @@ mod focus_blur_layer_plan_tests {
                 },
                 layer("ui", amigo_2d_composition::RenderDepthMode2d::Overlay),
             ],
+            None,
         );
 
         assert!(plan.depth_map_layers.contains("background.city"));
@@ -161,6 +163,7 @@ mod focus_blur_layer_plan_tests {
                     )
                 },
             ],
+            None,
         );
 
         assert_eq!(
@@ -188,6 +191,7 @@ mod focus_blur_layer_plan_tests {
                     amigo_2d_composition::RenderDepthMode2d::Distance,
                 )
             }],
+            None,
         );
 
         assert_eq!(plan.z_depth_layers.len(), 1);
@@ -203,6 +207,7 @@ mod focus_blur_layer_plan_tests {
                 "sky",
                 amigo_2d_composition::RenderDepthMode2d::Infinity,
             )],
+            None,
         );
         assert_eq!(plan.z_depth_layers.len(), 1);
         assert_eq!(plan.z_depth_layers[0].z_depth, 0.0);

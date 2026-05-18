@@ -93,6 +93,30 @@ impl RuntimeControlProvider for Camera2dControlProvider {
                     }),
                 ),
                 (
+                    "rig.camera_z_m",
+                    ControlValueType::F32,
+                    Some(ControlRange {
+                        min: Some(-50.0),
+                        max: Some(50.0),
+                    }),
+                ),
+                (
+                    "rig.focus_residual_m",
+                    ControlValueType::F32,
+                    Some(ControlRange {
+                        min: Some(-5.0),
+                        max: Some(5.0),
+                    }),
+                ),
+                (
+                    "rig.dolly_signal",
+                    ControlValueType::F32,
+                    Some(ControlRange {
+                        min: Some(-1.0),
+                        max: Some(1.0),
+                    }),
+                ),
+                (
                     "aperture.dof.max_blur_px",
                     ControlValueType::F32,
                     Some(ControlRange {
@@ -203,6 +227,17 @@ impl RuntimeControlProvider for Camera2dControlProvider {
             "aperture.focus_distance_m" => {
                 Ok(ControlValue::F64(camera.aperture.focus_distance_m as f64))
             }
+            "rig.camera_z_m" => Ok(ControlValue::F64(
+                self.service.camera_depth_motion_2d(&camera.id).camera_z_m as f64,
+            )),
+            "rig.focus_residual_m" => Ok(ControlValue::F64(
+                self.service
+                    .camera_depth_motion_2d(&camera.id)
+                    .focus_residual_m as f64,
+            )),
+            "rig.dolly_signal" => Ok(ControlValue::F64(
+                self.service.camera_depth_motion_2d(&camera.id).dolly_signal as f64,
+            )),
             "aperture.dof.max_blur_px" => Ok(ControlValue::F64(
                 camera.aperture.depth_of_field.max_blur_px as f64,
             )),
@@ -303,6 +338,34 @@ impl RuntimeControlProvider for Camera2dControlProvider {
                 };
                 true
             }),
+            "rig.camera_z_m" => {
+                let Some(camera_z_m) = value.as_f32() else {
+                    return Err(RuntimeControlError::Unsupported {
+                        path: path.console_path.clone(),
+                        reason: "rig.camera_z_m expects number".to_owned(),
+                    });
+                };
+                self.service.set_camera_z_m_2d(&camera.id, camera_z_m)
+            }
+            "rig.focus_residual_m" => {
+                let Some(focus_residual_m) = value.as_f32() else {
+                    return Err(RuntimeControlError::Unsupported {
+                        path: path.console_path.clone(),
+                        reason: "rig.focus_residual_m expects number".to_owned(),
+                    });
+                };
+                self.service
+                    .set_focus_residual_m_2d(&camera.id, focus_residual_m)
+            }
+            "rig.dolly_signal" => {
+                let Some(dolly_signal) = value.as_f32() else {
+                    return Err(RuntimeControlError::Unsupported {
+                        path: path.console_path.clone(),
+                        reason: "rig.dolly_signal expects number".to_owned(),
+                    });
+                };
+                self.service.set_dolly_signal_2d(&camera.id, dolly_signal)
+            }
             "aperture.dof.max_blur_px" => self.service.update_camera_2d(&camera.id, |state| {
                 let Some(max_blur_px) = value.as_f32() else {
                     return false;

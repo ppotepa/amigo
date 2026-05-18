@@ -3,6 +3,13 @@ schema_version: 1
 
 state:
   camera_motion.enabled: true
+  camera_motion.dolly.frequency: 0.42
+  camera_motion.dolly.zoom_intro_amount: 0.045
+  camera_motion.dolly.zoom_final_amount: 0.025
+  camera_motion.dolly.amplitude_m: 0.08
+  camera_motion.focus_residual.enabled: true
+  camera_motion.focus_residual.frequency: 0.38
+  camera_motion.focus_residual.amplitude_m: 0.035
   camera_motion.sway.x.primary_frequency: 0.41
   camera_motion.sway.x.primary_amplitude: 10.0
   camera_motion.sway.x.secondary_frequency: 1.13

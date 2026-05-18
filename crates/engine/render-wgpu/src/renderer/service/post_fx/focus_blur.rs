@@ -706,6 +706,9 @@ mod tests {
             depth_mode: "distance".to_owned(),
             distance_m: Some(75.0),
             z_depth: 0.41,
+            base_z_depth: 0.41,
+            effective_z_depth: 0.41,
+            effective_distance_m: Some(75.0),
             blur_scale: 0.25,
             camera_motion_scale: amigo_2d_spatial::z_depth_to_camera_motion_scale(0.41),
         });
