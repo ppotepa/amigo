@@ -1676,7 +1676,12 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
     let retention = exp(-uniforms.dt / max(uniforms.exposure_seconds, 0.0001));
     let history_weight = clamp(retention * uniforms.opacity, 0.0, 0.98) * uniforms.history_ready_a;
     let current_weight = 1.0 - history_weight;
-    let color = current.rgb * current_weight + previous.rgb * history_weight;
+    let exposure_frames = uniforms.exposure_seconds / max(uniforms.dt, 0.0001);
+    let trail_strength = clamp((exposure_frames - 1.0) / 8.0, 0.0, 0.65) * uniforms.opacity * uniforms.history_ready_a;
+    let accumulated = current.rgb * current_weight + previous.rgb * history_weight;
+    let lifted_history = clamp(previous.rgb * (0.65 + trail_strength), vec3<f32>(0.0), vec3<f32>(1.0));
+    let trail = vec3<f32>(1.0) - (vec3<f32>(1.0) - current.rgb) * (vec3<f32>(1.0) - lifted_history);
+    let color = mix(accumulated, trail, trail_strength);
     let alpha = max(current.a, previous.a * history_weight);
 
     return vec4<f32>(color, alpha);
