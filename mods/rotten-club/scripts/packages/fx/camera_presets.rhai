@@ -22,6 +22,9 @@ fn apply_slot(world_api, slot) {
     let focal = clamp(world_api.state.get_float(slot_key(slot, "focal_length_mm")), 8.0, 300.0);
     let f_stop = clamp(world_api.state.get_float(slot_key(slot, "aperture_f_stop")), 0.7, 32.0);
     let focus = clamp(world_api.state.get_float(slot_key(slot, "focus_distance_m")), 0.2, 1000.0);
+    let shutter_enabled = world_api.state.get_bool(slot_key(slot, "shutter_enabled"));
+    let shutter_speed_s = clamp(world_api.state.get_float(slot_key(slot, "shutter_speed_s")), 1.0 / 8000.0, 2.0);
+    let shutter_opacity = clamp(world_api.state.get_float(slot_key(slot, "shutter_opacity")), 0.0, 1.0);
 
     if !world_api.camera.set_main_preset(preset_id) {
         return false;
@@ -37,6 +40,9 @@ fn apply_slot(world_api, slot) {
     world_api.camera.set_main_focal_length_mm(focal);
     world_api.camera.set_main_aperture_f_stop(f_stop);
     world_api.camera.set_main_focus_distance_m(focus);
+    world_api.camera.set_main_shutter_enabled(shutter_enabled);
+    world_api.camera.set_main_shutter_speed_s(shutter_speed_s);
+    world_api.camera.set_main_shutter_opacity(shutter_opacity);
     world_api.dev.log("Camera preset [" + slot + "] " + label + " -> " + preset_id);
     true
 }
