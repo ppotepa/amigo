@@ -1,0 +1,35 @@
+id = "amigo.camera.film-look"
+family = "camera"
+kind = "target-consumer"
+renderable = false
+render_participation = "target-consumer"
+
+[capabilities]
+provides = ["camera.film_look.2d@1"]
+requires = ["camera.frame_context.2d@1"]
+
+[slots]
+implements = ["camera.film_model.2d"]
+requires = ["camera.frame_provider.2d"]
+replaces = []
+
+[targets]
+reads = ["SceneColor", "CameraArtifactLayer"]
+writes = ["FinalComposite"]
+contributes = []
+
+[contributions]
+emits = []
+consumes = []
+
+[diagnostics]
+channels = ["film-look.composite"]
+
+[docs]
+pipeline = "docs/pipeline.md"
+contributions = "docs/contributions.md"
+diagnostics = "docs/diagnostics.md"
+
+[tests]
+waterfall = "tests/waterfall_tests.rs"
+diagnostics = "tests/diagnostics_tests.rs"

@@ -9,8 +9,8 @@ use amigo_assets::{
 };
 use amigo_math::{Transform2, Vec2};
 use amigo_render_api::RenderContributionSet;
+use amigo_camera_optics_plugin::scene::CameraOpticalResponse2dSceneCommand;
 use amigo_scene::{
-    CameraOpticalResponse2dSceneCommand,
     Material2dOpticalModeSceneCommand, Material2dOpticalSceneCommand, Material2dSceneCommand,
     Material2dLightingSceneCommand, SceneCommand,
     SceneEntityId, SceneEvent, SceneEventQueue, SceneService, Sprite2dSceneCommand,

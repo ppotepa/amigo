@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use super::visual2d::CameraOpticalResponse2dDocument;
+use amigo_camera_optics_plugin::scene::CameraOpticalResponse2dDocument;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]

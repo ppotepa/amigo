@@ -6,10 +6,11 @@ use std::sync::Mutex;
 use amigo_2d_post_fx::PostFxHost2dId;
 use amigo_assets::AssetKey;
 use amigo_capabilities::{register_domain_plugin, DEFAULT_CAPABILITY_VERSION};
+use amigo_camera_optics_plugin::api::CameraOpticalResponse2d;
 use amigo_math::{ColorRgba, Transform2, Vec2};
 use amigo_render_api::{
-    render_contribution_roles, CameraOpticalResponse2d, Material2d, Material2dLighting,
-    Material2dOptical, Material2dOpticalMode, RenderContributionSet,
+    render_contribution_roles, Material2d, Material2dLighting, Material2dOptical,
+    Material2dOpticalMode, RenderContributionSet,
 };
 use amigo_runtime::{RuntimePlugin, ServiceRegistry};
 use amigo_scene::{

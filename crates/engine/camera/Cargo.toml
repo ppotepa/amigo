@@ -18,3 +18,4 @@ amigo-runtime.workspace = true
 amigo-runtime-control.workspace = true
 amigo-scene.workspace = true
 amigo-session.workspace = true
+amigo-camera-core-plugin = { path = "../../../plugins/camera/camera-core" }

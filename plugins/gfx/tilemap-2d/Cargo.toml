@@ -1,0 +1,8 @@
+[package]
+name = "amigo-tilemap-2d-plugin"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+amigo-plugin-api = { path = "../../../crates/core/plugin-api" }
+amigo-focus-depth-plugin.workspace = true

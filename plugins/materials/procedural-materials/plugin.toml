@@ -1,0 +1,38 @@
+id = "amigo.materials.procedural-materials"
+family = "materials"
+kind = "target-consumer"
+renderable = false
+render_participation = "target-writer"
+
+[capabilities]
+provides = ["materials.procedural-materials@1"]
+requires = ["render.backend@1"]
+
+[slots]
+implements = []
+requires = ["render.backend"]
+replaces = []
+
+[targets]
+reads = ["SceneColor"]
+writes = ["SceneHighlight", "SceneEmissive", "SceneDepth"]
+contributes = []
+
+[contributions]
+emits = []
+consumes = [
+  { domain = "camera.optics", type = "CameraOpticsContribution2d", policy = "ExplicitOnly" },
+  { domain = "camera.focus_depth", type = "FocusDepthContribution2d", policy = "DerivedAtHydration" }
+]
+
+[diagnostics]
+channels = ["procedural-materials.targets", "procedural-materials.diagnostics"]
+
+[docs]
+pipeline = "docs/pipeline.md"
+contributions = "docs/contributions.md"
+diagnostics = "docs/diagnostics.md"
+
+[tests]
+waterfall = "tests/waterfall_tests.rs"
+diagnostics = "tests/diagnostics_tests.rs"

@@ -1,0 +1,37 @@
+id = "amigo.lighting.relight-2d"
+family = "lighting"
+kind = "target-consumer"
+renderable = false
+render_participation = "target-consumer"
+
+[capabilities]
+provides = ["lighting.relight.2d@1"]
+requires = ["lighting.light.2d@1"]
+
+[slots]
+implements = []
+requires = ["render.backend"]
+replaces = []
+
+[targets]
+reads = ["SceneColor", "SceneLighting", "LightMap"]
+writes = ["SceneColor"]
+contributes = []
+
+[contributions]
+emits = []
+consumes = [
+  { domain = "lighting", type = "LightContribution2d", policy = "ExplicitOnly" }
+]
+
+[diagnostics]
+channels = ["relight-2d.targets", "relight-2d.diagnostics"]
+
+[docs]
+pipeline = "docs/pipeline.md"
+contributions = "docs/contributions.md"
+diagnostics = "docs/diagnostics.md"
+
+[tests]
+waterfall = "tests/waterfall_tests.rs"
+diagnostics = "tests/diagnostics_tests.rs"

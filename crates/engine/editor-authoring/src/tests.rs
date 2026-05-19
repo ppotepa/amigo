@@ -809,27 +809,27 @@ fn rotten_club_main_menu_render_layers_generate_runtime_bindings() {
     assert!(option_ids.contains(&"distance"));
     assert!(option_ids.contains(&"infinity"));
 
-    let rain_node = first_render_layer_by_id(&graph, "weather.rain.mid");
+    let rain_node = first_render_layer_by_id(&graph, "weather.rain.5m");
     let rain_panel = build_property_panel_for_node(rain_node);
     let distance_m = property_by_suffix(&rain_panel, "::depth.distance_m");
     assert_eq!(
         distance_m.binding,
         Some(AuthoringRuntimeBinding::RenderLayerDistanceM {
-            layer_id: "weather.rain.mid".to_owned(),
+            layer_id: "weather.rain.5m".to_owned(),
         })
     );
     let z_depth = property_by_suffix(&rain_panel, "::depth.z_depth");
     assert_eq!(
         z_depth.binding,
         Some(AuthoringRuntimeBinding::RenderLayerZDepth {
-            layer_id: "weather.rain.mid".to_owned(),
+            layer_id: "weather.rain.5m".to_owned(),
         })
     );
     let blur_scale = property_by_suffix(&rain_panel, "::depth.blur_scale");
     assert_eq!(
         blur_scale.binding,
         Some(AuthoringRuntimeBinding::RenderLayerDepthBlurScale {
-            layer_id: "weather.rain.mid".to_owned(),
+            layer_id: "weather.rain.5m".to_owned(),
         })
     );
 }
@@ -869,15 +869,15 @@ fn rotten_club_main_menu_camera_reports_profile_refs_without_scene_postfx_mock_d
 }
 
 #[test]
-fn rotten_club_main_menu_particle_emitters_use_component_descriptors() {
+fn rotten_club_main_menu_particle_emitters_use_component_metadata() {
     let graph = load_rotten_club_main_menu_graph();
     let particle = nodes_by_kind(&graph, AuthoringNodeKind::Component)
         .into_iter()
         .find(|node| {
-            node.semantic.component_type.as_deref() == Some("ParticleEmitter2D")
-                && node.semantic.owner_entity_name.as_deref() == Some("rain-far")
+                node.semantic.component_type.as_deref() == Some("ParticleEmitter2D")
+                && node.semantic.owner_entity_name.as_deref() == Some("rain-10m")
         })
-        .expect("rain-far ParticleEmitter2D");
+        .expect("rain-10m ParticleEmitter2D");
     let panel = build_property_panel_for_node(particle);
     let spawn_rate = property_by_suffix(&panel, "::spawn_rate");
     assert_eq!(spawn_rate.label, "Spawn Rate");
@@ -888,7 +888,7 @@ fn rotten_club_main_menu_particle_emitters_use_component_descriptors() {
     assert_eq!(
         spawn_rate.binding,
         Some(AuthoringRuntimeBinding::ParticleEmitterProperty {
-            entity_name: "rain-far".to_owned(),
+            entity_name: "rain-10m".to_owned(),
             field: "spawn_rate".to_owned(),
         })
     );
@@ -908,7 +908,8 @@ fn rotten_club_main_menu_has_light_group_and_route_nodes() {
     assert!(
         light_routes.iter().any(|node| {
             node.semantic.light_route_receiver_layer.as_deref() == Some("weather.rain.near")
+                || node.semantic.light_route_receiver_layer.as_deref() == Some("weather.rain.1m")
         }),
-        "expected weather.rain.near light route"
+        "expected weather.rain.1m light route"
     );
 }

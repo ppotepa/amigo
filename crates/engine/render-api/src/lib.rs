@@ -3,7 +3,6 @@
 
 pub mod camera_binding;
 pub mod camera_capture;
-pub mod camera_optical;
 pub mod composition;
 pub mod composition_layer;
 pub mod contributions;
@@ -19,11 +18,10 @@ pub mod stats;
 
 pub use camera_binding::*;
 pub use camera_capture::*;
-pub use camera_optical::*;
 pub use composition::*;
 pub use composition_layer::*;
 pub use contributions::*;
-pub use contributions::roles as render_contribution_roles;
+pub use amigo_plugin_api::roles as render_contribution_roles;
 pub use diagnostics::*;
 pub use frame_graph::*;
 pub use light_source_2d::*;

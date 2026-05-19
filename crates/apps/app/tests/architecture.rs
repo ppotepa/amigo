@@ -228,9 +228,9 @@ fn runtime_bundles_render_bridges_do_not_use_app_owned_names() {
     let workspace = workspace_root();
 
     for relative in [
-        "crates/runtime/bundles/src/wgpu_render_extractors/world_2d.rs",
-        "crates/runtime/bundles/src/wgpu_render_extractors/world_3d.rs",
-        "crates/runtime/bundles/src/wgpu_render_extractors/host_overlay.rs",
+        "crates/runtime/bundles/src/render_extractor_bridges/world_2d.rs",
+        "crates/runtime/bundles/src/render_extractor_bridges/world_3d.rs",
+        "crates/runtime/bundles/src/render_extractor_bridges/host_overlay.rs",
     ] {
         let content = std::fs::read_to_string(workspace.join(relative))
             .unwrap_or_else(|error| panic!("failed to read {relative}: {error}"));

@@ -21,3 +21,10 @@ pub struct SlotBinding {
     pub slot: SlotId,
     pub provider: PluginId,
 }
+
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct SlotManifest {
+    pub implements: Vec<SlotId>,
+    pub requires: Vec<SlotId>,
+    pub replaces: Vec<PluginId>,
+}

@@ -444,10 +444,11 @@ fn bytes_of<T>(value: &T) -> &[u8] {
 mod tests {
     use super::*;
     use amigo_assets::AssetKey;
+    use amigo_camera_optics_plugin::api::CameraOpticalResponse2d;
     use amigo_math::Transform2;
     use amigo_render_api::{
-        CameraOpticalResponse2d, Material2dOptical, Material2dOpticalMode,
-        MaterialCandidate2dCommon, MaterialCoverageKind2d,
+        Material2dOptical, Material2dOpticalMode, MaterialCandidate2dCommon,
+        MaterialCoverageKind2d,
     };
     use amigo_scene::SceneEntityId;
 

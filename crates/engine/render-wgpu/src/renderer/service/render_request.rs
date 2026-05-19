@@ -12,9 +12,10 @@ use amigo_3d_material::MaterialDrawCommand;
 use amigo_3d_mesh::MeshDrawCommand;
 use amigo_3d_text::Text3dDrawCommand;
 use amigo_assets::AssetCatalog;
+use amigo_camera_optics_plugin::api::CameraOpticalCandidate2d;
 use amigo_render_api::{
-    CameraCaptureInput2d, CameraDebugView2d, CameraOpticalCandidate2d, FrameCompositionPlan,
-    FrameGraph, LightSource2dCommon,
+    CameraCaptureInput2d, CameraDebugView2d, FrameCompositionPlan, FrameGraph,
+    LightSource2dCommon,
 };
 use amigo_scene::SceneService;
 

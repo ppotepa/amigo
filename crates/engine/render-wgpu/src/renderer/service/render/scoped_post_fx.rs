@@ -262,7 +262,7 @@ pub(super) fn execute_post_fx_graph_node(
         return Ok(());
     }
 
-    let Some(affected_layers) = plan.legacy_affected_layers.as_ref() else {
+    let Some(affected_layers) = plan.implicit_affected_layers.as_ref() else {
         return Ok(());
     };
 

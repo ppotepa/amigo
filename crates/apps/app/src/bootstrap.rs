@@ -50,7 +50,7 @@ pub(crate) fn bootstrap_with_options(
     options: BootstrapOptions,
 ) -> AmigoResult<(Runtime, BootstrapSummary)> {
     // NOTE:
-    // This function still contains the legacy app-owned bootstrap implementation.
+    // This function still contains the previous app-owned bootstrap implementation.
     // New host/editor-facing code should prefer `bootstrap_session_with_options`.
     let modding_plugin = match options.active_mods.clone() {
         Some(active_mods) => ModdingPlugin::with_selected_mods(&options.mods_root, active_mods),

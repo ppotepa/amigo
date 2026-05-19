@@ -4,10 +4,11 @@ mod devtools;
 mod focus_targets_2d;
 mod full;
 mod platform;
+mod plugin_composition;
 mod scripting;
 mod three_d;
 mod two_d;
-pub mod wgpu_render_extractors;
+pub mod render_extractor_bridges;
 
 pub use audio::*;
 pub use core::*;
@@ -15,10 +16,11 @@ pub use devtools::*;
 pub use focus_targets_2d::*;
 pub use full::*;
 pub use platform::*;
+pub use plugin_composition::*;
 pub use scripting::*;
 pub use three_d::*;
 pub use two_d::*;
-pub use wgpu_render_extractors::{
+pub use render_extractor_bridges::{
     WgpuFrameCompositionBuilder, WgpuFrameCompositionOptions, WgpuRenderExtractorRegistry,
     default_wgpu_render_extractor_registry, register_host_render_extractor_provider,
 };

@@ -37,7 +37,7 @@ pub fn queue_light_group_2d_scene_command(
         render_contributions: amigo_render_api::RenderContributionSet::from_pairs(
             command.render_contributions.roles,
         ),
-        camera_response: amigo_render_api::CameraOpticalResponse2d {
+        camera_response: amigo_camera_optics_plugin::api::CameraOpticalResponse2d {
             enabled: command.camera_response.enabled,
             intensity: command.camera_response.intensity,
             bloom: command.camera_response.bloom,

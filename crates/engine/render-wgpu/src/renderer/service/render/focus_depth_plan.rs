@@ -18,7 +18,7 @@ pub(super) struct FocusBlurLayerPlan {
     pub(super) depth_map_layers: BTreeSet<String>,
     pub(super) z_depth_layers: Vec<FocusBlurZDepthLayer>,
     pub(super) overlay_layers: BTreeSet<String>,
-    pub(super) legacy_affected_layers: Option<BTreeSet<String>>,
+    pub(super) implicit_affected_layers: Option<BTreeSet<String>>,
     pub(super) has_explicit_render_depth: bool,
 }
 
@@ -96,7 +96,7 @@ pub(super) fn build_focus_blur_layer_plan(
     let has_explicit_render_depth = render_layers
         .iter()
         .any(|layer| !layer.depth.is_depth_map());
-    let legacy_affected_layers = (!has_explicit_render_depth && !effect.affected_layers.is_empty())
+    let implicit_affected_layers = (!has_explicit_render_depth && !effect.affected_layers.is_empty())
         .then(|| effect.affected_layers.into_iter().collect::<BTreeSet<_>>());
 
     let mut depth_map_layers = BTreeSet::new();
@@ -161,7 +161,7 @@ pub(super) fn build_focus_blur_layer_plan(
         depth_map_layers,
         z_depth_layers,
         overlay_layers,
-        legacy_affected_layers,
+        implicit_affected_layers,
         has_explicit_render_depth,
     }
 }

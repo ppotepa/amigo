@@ -117,11 +117,11 @@ pub(crate) fn build_render_frame_for_session(
                     camera_focus_for_input(runtime, assets.as_ref(), input),
                 )
             }),
-            Some(amigo_runtime_bundles::wgpu_render_extractors::format_light_sources_2d(
+            Some(amigo_runtime_bundles::render_extractor_bridges::format_light_sources_2d(
                 render_packet.world_2d_light_sources(),
             )),
             Some(
-                amigo_runtime_bundles::wgpu_render_extractors::format_camera_optical_candidates_2d(
+                amigo_camera_optics_plugin::diagnostics::format_camera_optical_candidates_2d(
                     render_packet.camera_optical_candidates_2d(),
                 ),
             ),
@@ -129,7 +129,7 @@ pub(crate) fn build_render_frame_for_session(
                 runtime,
                 assets.as_ref(),
                 render_packet.camera_capture_input_2d(),
-                amigo_runtime_bundles::wgpu_render_extractors::render_contribution_decisions_summary(
+                amigo_runtime_bundles::render_extractor_bridges::render_contribution_decisions_summary(
                     render_packet.renderables_2d(),
                     render_packet.world_2d_light_sources(),
                 ),
@@ -406,11 +406,11 @@ pub(crate) fn render_game_frame_to_cache(
                     camera_focus_for_input(runtime, assets.as_ref(), input),
                 )
             }),
-            Some(amigo_runtime_bundles::wgpu_render_extractors::format_light_sources_2d(
+            Some(amigo_runtime_bundles::render_extractor_bridges::format_light_sources_2d(
                 render_packet.world_2d_light_sources(),
             )),
             Some(
-                amigo_runtime_bundles::wgpu_render_extractors::format_camera_optical_candidates_2d(
+                amigo_camera_optics_plugin::diagnostics::format_camera_optical_candidates_2d(
                     render_packet.camera_optical_candidates_2d(),
                 ),
             ),
@@ -418,7 +418,7 @@ pub(crate) fn render_game_frame_to_cache(
                 runtime,
                 assets.as_ref(),
                 render_packet.camera_capture_input_2d(),
-                amigo_runtime_bundles::wgpu_render_extractors::render_contribution_decisions_summary(
+                amigo_runtime_bundles::render_extractor_bridges::render_contribution_decisions_summary(
                     render_packet.renderables_2d(),
                     render_packet.world_2d_light_sources(),
                 ),

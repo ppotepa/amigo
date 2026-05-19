@@ -13,6 +13,7 @@ amigo-2d-post-fx.workspace = true
 amigo-core.workspace = true
 amigo-math.workspace = true
 amigo-render-api.workspace = true
+amigo-camera-optics-plugin.workspace = true
 amigo-capabilities.workspace = true
 amigo-runtime.workspace = true
 amigo-scene.workspace = true

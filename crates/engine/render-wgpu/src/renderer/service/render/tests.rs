@@ -60,7 +60,7 @@ mod focus_blur_layer_plan_tests {
     }
 
     #[test]
-    fn focus_blur_plan_prefers_explicit_render_depth_over_legacy_affected_layers() {
+    fn focus_blur_plan_prefers_explicit_render_depth_over_implicit_affected_layers() {
         let plan = build_focus_blur_layer_plan(
             amigo_2d_post_fx::FocusBlur2d {
                 affected_layers: vec!["background.city".to_owned()],
@@ -80,7 +80,7 @@ mod focus_blur_layer_plan_tests {
         );
 
         assert!(plan.has_explicit_render_depth);
-        assert!(plan.legacy_affected_layers.is_none());
+        assert!(plan.implicit_affected_layers.is_none());
         assert!(plan.overlay_layers.contains("weather.rain.front"));
     }
 

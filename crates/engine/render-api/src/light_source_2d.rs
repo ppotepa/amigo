@@ -1,4 +1,4 @@
-use crate::CameraOpticalResponse2d;
+use amigo_camera_optics_plugin::api::CameraOpticalResponse2d;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LightEmitterKind2d {

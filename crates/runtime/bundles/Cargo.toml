@@ -48,6 +48,10 @@ amigo-3d-material.workspace = true
 amigo-modding.workspace = true
 amigo-scripting-api.workspace = true
 amigo-scripting-rhai.workspace = true
+amigo-camera-core-plugin = { path = "../../../plugins/camera/camera-core" }
+amigo-camera-optics-plugin.workspace = true
+amigo-focus-depth-plugin.workspace = true
 
 amigo-core.workspace = true
 amigo-math.workspace = true
+amigo-plugin-api.workspace = true

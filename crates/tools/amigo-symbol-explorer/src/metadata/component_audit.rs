@@ -51,7 +51,7 @@ impl ComponentMetadataAuditReport {
 
 pub fn audit_component_metadata(root: &Path) -> Result<ComponentMetadataAuditReport> {
     let components_path = root.join("crates/engine/scene/src/document/components.rs");
-    let descriptors_path = root.join("crates/engine/scene/src/component_descriptors.rs");
+    let descriptors_path = root.join("crates/engine/scene/src/component_metadata.rs");
 
     let components = std::fs::read_to_string(components_path)?;
     let descriptors = std::fs::read_to_string(descriptors_path)?;

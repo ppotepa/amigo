@@ -1,0 +1,8 @@
+[package]
+name = "amigo-trails-2d-plugin"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+amigo-plugin-api = { path = "../../../crates/core/plugin-api" }
+amigo-shutter-motion-plugin.workspace = true

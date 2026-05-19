@@ -1,0 +1,41 @@
+id = "amigo.camera.camera-optics"
+family = "camera"
+kind = "target-consumer"
+renderable = false
+render_participation = "target-consumer"
+
+[capabilities]
+provides = ["camera.optics.2d@1"]
+requires = ["camera.frame_context.2d@1"]
+
+[slots]
+implements = ["camera.optics.consumer.2d"]
+requires = ["camera.frame_provider.2d"]
+replaces = []
+
+[targets]
+reads = ["SceneHighlight", "SceneEmissive", "SceneDepth"]
+writes = ["CameraArtifactLayer"]
+contributes = []
+
+[contributions]
+emits = []
+consumes = [
+  { domain = "camera.optics", type = "CameraOpticsContribution2d", policy = "ExplicitOnly" }
+]
+
+[diagnostics]
+channels = [
+  "camera.optical.contributions",
+  "camera.optical.candidates",
+  "camera.optical.targets"
+]
+
+[docs]
+pipeline = "docs/pipeline.md"
+contributions = "docs/contributions.md"
+diagnostics = "docs/diagnostics.md"
+
+[tests]
+waterfall = "tests/waterfall_tests.rs"
+diagnostics = "tests/diagnostics_tests.rs"

@@ -20,6 +20,7 @@ amigo-runtime.workspace = true
 amigo-assets.workspace = true
 amigo-camera.workspace = true
 amigo-math.workspace = true
+amigo-plugin-api.workspace = true
 amigo-render-api.workspace = true
 amigo-render-wgpu.workspace = true
 amigo-runtime-control.workspace = true

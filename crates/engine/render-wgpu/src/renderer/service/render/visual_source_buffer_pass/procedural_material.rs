@@ -1,4 +1,8 @@
 use super::*;
+use amigo_camera_optics_plugin::api::{
+    CameraOpticalCandidate2d, CameraOpticalCoverage2d, CameraOpticalResponse2d,
+};
+use amigo_camera_optics_plugin::render_wgpu::CameraOpticalRenderTargetPlan;
 
 pub(super) fn render_procedural_material_buffer(
     renderer: &mut WgpuSceneRenderer,
@@ -28,21 +32,22 @@ pub(super) fn append_procedural_material_buffers(
     kind: amigo_render_api::VisualSourceKind2d,
     candidate_buffers_already_appended: bool,
 ) {
-    if !matches!(
-        kind,
-        amigo_render_api::VisualSourceKind2d::SceneNormal
-            | amigo_render_api::VisualSourceKind2d::SceneWetness
-            | amigo_render_api::VisualSourceKind2d::SceneHighlight
-            | amigo_render_api::VisualSourceKind2d::SceneEmissive
-    ) {
+    let optical_plan = CameraOpticalRenderTargetPlan::for_visual_kind_name(kind.as_str());
+
+    if optical_plan.is_none()
+        && !matches!(
+            kind,
+            amigo_render_api::VisualSourceKind2d::SceneNormal
+                | amigo_render_api::VisualSourceKind2d::SceneWetness
+        )
+    {
         return;
     }
 
-    if matches!(
-        kind,
-        amigo_render_api::VisualSourceKind2d::SceneHighlight
-            | amigo_render_api::VisualSourceKind2d::SceneEmissive
-    ) && append_camera_optical_candidate_color_buffers(color_batches, request, viewport, camera, kind)
+    if optical_plan
+        .as_ref()
+        .is_some_and(|plan| plan.accepts_color_candidates)
+        && append_camera_optical_candidate_color_buffers(color_batches, request, viewport, camera, kind)
     {
         return;
     }
@@ -51,11 +56,7 @@ pub(super) fn append_procedural_material_buffers(
         return;
     }
 
-    if matches!(
-        kind,
-        amigo_render_api::VisualSourceKind2d::SceneHighlight
-            | amigo_render_api::VisualSourceKind2d::SceneEmissive
-    ) {
+    if optical_plan.is_some() {
         return;
     }
 
@@ -159,13 +160,14 @@ pub(super) fn append_camera_optical_candidate_texture_buffers(
     camera: Transform2,
     kind: amigo_render_api::VisualSourceKind2d,
 ) -> bool {
-    if !matches!(
-        kind,
-        amigo_render_api::VisualSourceKind2d::SceneHighlight
-            | amigo_render_api::VisualSourceKind2d::SceneEmissive
-    ) {
+    let Some(plan) =
+        CameraOpticalRenderTargetPlan::for_visual_kind_name(kind.as_str())
+    else {
         return false;
-    }
+    };
+    if !plan.accepts_texture_candidates {
+        return false;
+    };
 
     let mut appended = false;
     for candidate in request
@@ -174,8 +176,8 @@ pub(super) fn append_camera_optical_candidate_texture_buffers(
         .iter()
         .filter(|candidate| candidate.is_active())
     {
-        let amigo_render_api::CameraOpticalCoverage2d::LightMapChannel { source, channel } =
-            &candidate.coverage
+        let Some((source, channel)) =
+            amigo_camera_optics_plugin::render_wgpu::lightmap_channel_parts(&candidate.coverage)
         else {
             continue;
         };
@@ -234,7 +236,7 @@ fn append_camera_optical_candidate_color_buffers(
     {
         let color = optical_candidate_color_for_kind(candidate, kind);
         match &candidate.coverage {
-            amigo_render_api::CameraOpticalCoverage2d::Hotspot {
+            CameraOpticalCoverage2d::Hotspot {
                 entity_name: _,
                 radius_px,
             } => {
@@ -253,7 +255,7 @@ fn append_camera_optical_candidate_color_buffers(
                 );
                 appended = true;
             }
-            amigo_render_api::CameraOpticalCoverage2d::ParticleCoverage {
+            CameraOpticalCoverage2d::ParticleCoverage {
                 emitter_entity_name,
             } => {
                 for command in request
@@ -277,7 +279,7 @@ fn append_camera_optical_candidate_color_buffers(
                     appended = true;
                 }
             }
-            amigo_render_api::CameraOpticalCoverage2d::Glyphs {
+            CameraOpticalCoverage2d::Glyphs {
                 entity_name,
                 render_layer,
             } => {
@@ -300,7 +302,7 @@ fn append_camera_optical_candidate_color_buffers(
                     appended = true;
                 }
             }
-            amigo_render_api::CameraOpticalCoverage2d::TextureAlpha {
+            CameraOpticalCoverage2d::TextureAlpha {
                 entity_name,
                 render_layer,
             } => {
@@ -323,7 +325,7 @@ fn append_camera_optical_candidate_color_buffers(
                     appended = true;
                 }
             }
-            amigo_render_api::CameraOpticalCoverage2d::VectorCoverage {
+            CameraOpticalCoverage2d::VectorCoverage {
                 entity_name,
                 render_layer,
             } => {
@@ -353,61 +355,74 @@ fn append_camera_optical_candidate_color_buffers(
                     appended = true;
                 }
             }
-            amigo_render_api::CameraOpticalCoverage2d::LightMapChannel { .. } => {
+            coverage if amigo_camera_optics_plugin::render_wgpu::coverage_uses_texture_path(coverage) => {
                 // Texture-backed LightMapChannel candidates are handled by
                 // append_camera_optical_candidate_texture_buffers.
             }
-            amigo_render_api::CameraOpticalCoverage2d::Unsupported { .. } => {}
+            CameraOpticalCoverage2d::LightMapChannel { .. } => {
+                // Handled above through plugin-owned texture-path policy.
+            }
+            CameraOpticalCoverage2d::Unsupported { .. } => {}
         }
     }
     appended
 }
 
 fn optical_candidate_color_for_kind(
-    candidate: &amigo_render_api::CameraOpticalCandidate2d,
+    candidate: &CameraOpticalCandidate2d,
     kind: amigo_render_api::VisualSourceKind2d,
 ) -> ColorRgba {
-    let gain = match kind {
-        amigo_render_api::VisualSourceKind2d::SceneHighlight => candidate.highlight_gain(),
-        amigo_render_api::VisualSourceKind2d::SceneEmissive => candidate.emissive_gain(),
-        _ => 0.0,
+    let Some(plan) =
+        CameraOpticalRenderTargetPlan::for_visual_kind_name(kind.as_str())
+    else {
+        return ColorRgba::new(0.0, 0.0, 0.0, candidate.color_rgba[3]);
     };
-    ColorRgba::new(
-        candidate.color_rgba[0] * gain,
-        candidate.color_rgba[1] * gain,
-        candidate.color_rgba[2] * gain,
-        candidate.color_rgba[3],
-    )
+    let rgba =
+        amigo_camera_optics_plugin::render_wgpu::optical_candidate_color_rgba_for_target(
+            candidate,
+            &plan.target,
+        );
+    ColorRgba::new(rgba[0], rgba[1], rgba[2], rgba[3])
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use amigo_camera_optics_plugin::api::CameraOpticalCandidateStatus2d;
 
-    fn candidate(roles: &[&str]) -> amigo_render_api::CameraOpticalCandidate2d {
-        amigo_render_api::CameraOpticalCandidate2d {
+    fn candidate(roles: &[&str]) -> CameraOpticalCandidate2d {
+        let roles =
+            amigo_render_api::RenderContributionSet::from_pairs(roles.iter().map(|role| (*role, true)));
+        let mut target_ids = Vec::new();
+        if roles.enabled_or(amigo_render_api::render_contribution_roles::CAMERA_FX_SOURCE, false) {
+            target_ids.push(amigo_camera_optics_plugin::render_wgpu::scene_highlight_target_id());
+        }
+        if roles.enabled_or(amigo_render_api::render_contribution_roles::BLOOM_SOURCE, false) {
+            target_ids.push(amigo_camera_optics_plugin::render_wgpu::scene_emissive_target_id());
+        }
+        CameraOpticalCandidate2d {
             owner: "neon.mid".to_owned(),
             component_kind: "LightGroup2D".to_owned(),
             render_layer: None,
             color_rgba: [0.5, 0.25, 1.0, 0.8],
             intensity: 2.0,
-            response: amigo_render_api::CameraOpticalResponse2d {
+            response: CameraOpticalResponse2d {
                 enabled: true,
                 intensity: 0.25,
                 bloom: 0.5,
                 glare: 0.75,
-                ..amigo_render_api::CameraOpticalResponse2d::default()
+                ..CameraOpticalResponse2d::default()
             },
-            coverage: amigo_render_api::CameraOpticalCoverage2d::LightMapChannel {
+            coverage: CameraOpticalCoverage2d::LightMapChannel {
                 source: "neon-alley-lightmap".to_owned(),
                 channel: "mid_neon".to_owned(),
             },
-            roles: amigo_render_api::RenderContributionSet::from_pairs(
-                roles.iter().map(|role| (*role, true)),
-            ),
-            status: amigo_render_api::CameraOpticalCandidateStatus2d::Active,
+            roles,
+            status: CameraOpticalCandidateStatus2d::Active,
             reason: "test".to_owned(),
             position_px: None,
+            target_ids,
+            trace: None,
         }
     }
 
@@ -450,8 +465,8 @@ mod tests {
     #[test]
     fn lightmap_channel_candidate_resolves_source_and_channel() {
         let candidate = candidate(&[amigo_render_api::render_contribution_roles::CAMERA_FX_SOURCE]);
-        let amigo_render_api::CameraOpticalCoverage2d::LightMapChannel { source, channel } =
-            candidate.coverage
+        let Some((source, channel)) =
+            amigo_camera_optics_plugin::render_wgpu::lightmap_channel_parts(&candidate.coverage)
         else {
             panic!("expected lightmap channel coverage");
         };
@@ -472,7 +487,7 @@ pub(super) fn material_color_for_kind(
             let wet = ((source.r + source.g + source.b) / 3.0 * 0.35).clamp(0.0, 1.0);
             ColorRgba::new(0.0, wet * 0.55, wet * 0.72, source.a)
         }
-        // Highlight/emissive are candidate-driven. This keeps accidental legacy
+        // Highlight/emissive are candidate-driven. This keeps accidental retired
         // procedural calls from reintroducing scene-color luma extraction.
         amigo_render_api::VisualSourceKind2d::SceneHighlight
         | amigo_render_api::VisualSourceKind2d::SceneEmissive => source,

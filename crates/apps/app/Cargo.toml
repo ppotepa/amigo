@@ -26,6 +26,7 @@ amigo-render-wgpu.workspace = true
 amigo-runtime.workspace = true
 amigo-runtime-control.workspace = true
 amigo-runtime-bundles.workspace = true
+amigo-camera-optics-plugin.workspace = true
 amigo-session.workspace = true
 amigo-scene.workspace = true
 amigo-scripting-api.workspace = true

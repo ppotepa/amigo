@@ -1076,7 +1076,7 @@ fn rebuilds_material_scene_service_from_packet() {
 
 #[test]
 fn render_extractor_registry_stays_split_into_three_groups() {
-    let source = include_str!("../../../../runtime/bundles/src/wgpu_render_extractors/mod.rs");
+    let source = include_str!("../../../../runtime/bundles/src/render_extractor_bridges/mod.rs");
 
     assert!(source.contains("world_2d::register_world_2d_render_extractors"));
     assert!(source.contains("world_3d::register_world_3d_render_extractors"));
@@ -1127,14 +1127,14 @@ fn render_runtime_uses_only_frame_graph_render_flow() {
     }
 
     for banned in [
-        "render_frame_request_legacy",
+        "render_frame_request_retired",
         "LegacyComposite",
         "SplitPassExperimental",
         "render_scene_with_ui_primitives_and_3d_commands",
     ] {
         assert!(
             !source.contains(banned),
-            "render_runtime.rs should not contain legacy render symbol `{banned}`",
+            "render_runtime.rs should not contain retired render symbol `{banned}`",
         );
     }
 }

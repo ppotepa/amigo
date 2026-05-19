@@ -4,6 +4,7 @@ use crate::{
 };
 use amigo_assets::AssetKey;
 use amigo_math::{Transform2, Vec2};
+use amigo_render_api::RenderContributionSet;
 use amigo_scene::{SceneCommand, SceneEvent, SceneEventQueue, SceneService, Text2dSceneCommand};
 
 #[test]
@@ -23,6 +24,8 @@ fn stores_text_draw_commands() {
             post_fx_host_id: None,
         },
         z_index: 0.0,
+        material: None,
+        render_contributions: RenderContributionSet::default(),
     });
 
     assert_eq!(service.commands().len(), 1);

@@ -203,7 +203,7 @@ pub(super) fn base_world_selection(
                 layers,
                 include_layerless: true,
             }
-        } else if let Some(layers) = plan.legacy_affected_layers.as_ref() {
+        } else if let Some(layers) = plan.implicit_affected_layers.as_ref() {
             let mut included = layers.clone();
             included.retain(|layer| !draw_layer_post_fx_exclusions.contains(layer));
             OwnedWorldLayerFilter::Include {

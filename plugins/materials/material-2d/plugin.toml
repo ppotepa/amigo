@@ -1,0 +1,38 @@
+id = "amigo.materials.material-2d"
+family = "materials"
+kind = "semantic-source"
+renderable = false
+render_participation = "none"
+
+[capabilities]
+provides = ["materials.material.2d@1"]
+requires = []
+
+[slots]
+implements = []
+requires = ["scene.component_hydrator"]
+replaces = []
+
+[targets]
+reads = []
+writes = []
+contributes = ["SceneHighlight", "SceneEmissive", "SceneDepth"]
+
+[contributions]
+emits = [
+  { domain = "camera.optics", type = "CameraOpticsContribution2d", policy = "ExplicitOnly" },
+  { domain = "camera.focus_depth", type = "FocusDepthContribution2d", policy = "DerivedAtHydration" }
+]
+consumes = []
+
+[diagnostics]
+channels = ["material-2d.contributions"]
+
+[docs]
+pipeline = "docs/pipeline.md"
+contributions = "docs/contributions.md"
+diagnostics = "docs/diagnostics.md"
+
+[tests]
+waterfall = "tests/waterfall_tests.rs"
+diagnostics = "tests/diagnostics_tests.rs"

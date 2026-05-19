@@ -2,7 +2,11 @@
 resolver = "2"
 default-members = ["crates/apps/launcher"]
 members = [
+    "crates/core/codemap-api",
     "crates/core/plugin-api",
+    "crates/core/plugin-index",
+    "crates/core/plugin-loader",
+    "crates/core/plugin-manifest",
     "crates/foundation/core",
     "crates/foundation/math",
     "crates/foundation/fx",
@@ -64,9 +68,37 @@ members = [
     "crates/tools/scene-snapshot",
     "crates/tools/amigo-codemap",
     "crates/tools/amigo-symbol-explorer",
+    "crates/tools/plugin-check",
+    "crates/tools/plugin-new",
     "crates/apps/launcher",
     "crates/platform/app-host-api",
     "crates/platform/app-host-winit",
+    "plugins/camera/camera-core",
+    "plugins/camera/camera-optics",
+    "plugins/camera/focus-depth",
+    "plugins/camera/shutter-motion",
+    "plugins/camera/film-look",
+    "plugins/camera/camera-profiles",
+    "plugins/gfx/sprite-2d",
+    "plugins/gfx/text-2d",
+    "plugins/gfx/vector-2d",
+    "plugins/gfx/layered-image-2d",
+    "plugins/gfx/tilemap-2d",
+    "plugins/lighting/light-2d",
+    "plugins/lighting/light-groups-2d",
+    "plugins/lighting/lightmaps-2d",
+    "plugins/lighting/beacon-light-2d",
+    "plugins/lighting/relight-2d",
+    "plugins/materials/material-2d",
+    "plugins/materials/material-maps",
+    "plugins/materials/procedural-materials",
+    "plugins/vfx/particles-2d",
+    "plugins/vfx/trails-2d",
+    "plugins/postfx/bloom",
+    "plugins/postfx/color-grading",
+    "plugins/postfx/scopes",
+    "plugins/postfx/composite",
+    "plugins/postfx/debug-views",
 ]
 
 [workspace.package]
@@ -78,6 +110,7 @@ authors = ["Amigo Engine Team"]
 
 [workspace.dependencies]
 amigo-core = { path = "crates/foundation/core" }
+amigo-plugin-api = { path = "crates/core/plugin-api" }
 amigo-math = { path = "crates/foundation/math" }
 amigo-fx = { path = "crates/foundation/fx" }
 amigo-runtime = { path = "crates/engine/runtime" }
@@ -96,6 +129,31 @@ amigo-event-pipeline = { path = "crates/engine/event-pipeline" }
 amigo-modding = { path = "crates/engine/modding" }
 amigo-devtools = { path = "crates/engine/devtools" }
 amigo-camera = { path = "crates/engine/camera" }
+amigo-camera-optics-plugin = { path = "plugins/camera/camera-optics" }
+amigo-focus-depth-plugin = { path = "plugins/camera/focus-depth" }
+amigo-shutter-motion-plugin = { path = "plugins/camera/shutter-motion" }
+amigo-film-look-plugin = { path = "plugins/camera/film-look" }
+amigo-camera-profiles-plugin = { path = "plugins/camera/camera-profiles" }
+amigo-sprite-2d-plugin = { path = "plugins/gfx/sprite-2d" }
+amigo-text-2d-plugin = { path = "plugins/gfx/text-2d" }
+amigo-vector-2d-plugin = { path = "plugins/gfx/vector-2d" }
+amigo-layered-image-2d-plugin = { path = "plugins/gfx/layered-image-2d" }
+amigo-tilemap-2d-plugin = { path = "plugins/gfx/tilemap-2d" }
+amigo-light-2d-plugin = { path = "plugins/lighting/light-2d" }
+amigo-light-groups-2d-plugin = { path = "plugins/lighting/light-groups-2d" }
+amigo-lightmaps-2d-plugin = { path = "plugins/lighting/lightmaps-2d" }
+amigo-beacon-light-2d-plugin = { path = "plugins/lighting/beacon-light-2d" }
+amigo-relight-2d-plugin = { path = "plugins/lighting/relight-2d" }
+amigo-material-2d-plugin = { path = "plugins/materials/material-2d" }
+amigo-material-maps-plugin = { path = "plugins/materials/material-maps" }
+amigo-procedural-materials-plugin = { path = "plugins/materials/procedural-materials" }
+amigo-particles-2d-plugin = { path = "plugins/vfx/particles-2d" }
+amigo-trails-2d-plugin = { path = "plugins/vfx/trails-2d" }
+amigo-bloom-plugin = { path = "plugins/postfx/bloom" }
+amigo-color-grading-plugin = { path = "plugins/postfx/color-grading" }
+amigo-scopes-plugin = { path = "plugins/postfx/scopes" }
+amigo-composite-plugin = { path = "plugins/postfx/composite" }
+amigo-debug-views-plugin = { path = "plugins/postfx/debug-views" }
 amigo-runtime-control = { path = "crates/engine/runtime-control" }
 amigo-editor-api = { path = "crates/engine/editor-api" }
 amigo-editor-session = { path = "crates/engine/editor-session" }

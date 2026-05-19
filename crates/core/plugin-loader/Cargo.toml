@@ -1,0 +1,8 @@
+[package]
+name = "amigo-plugin-loader"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+amigo-plugin-api = { path = "../plugin-api" }
+amigo-plugin-manifest = { path = "../plugin-manifest" }

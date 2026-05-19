@@ -1,5 +1,7 @@
 use std::collections::BTreeMap;
 
+use amigo_camera_optics_plugin::scene::CameraOpticalResponse2dSceneCommand;
+
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct DepthSpace2dSceneCommand {
     pub near_m: f32,
@@ -431,20 +433,6 @@ pub struct LightGroup2dSceneCommand {
     pub render_contributions: RenderContributions2dSceneCommand,
     pub camera_response: CameraOpticalResponse2dSceneCommand,
     pub sources: Vec<LightGroup2dSourceSceneCommand>,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub struct CameraOpticalResponse2dSceneCommand {
-    pub enabled: bool,
-    pub intensity: f32,
-    pub bloom: f32,
-    pub glare: f32,
-    pub ghosting: f32,
-    pub streaks: f32,
-    pub chromatic_smear: f32,
-    pub dirt_response: f32,
-    pub halation: f32,
-    pub threshold: f32,
 }
 
 #[derive(Debug, Clone, PartialEq)]

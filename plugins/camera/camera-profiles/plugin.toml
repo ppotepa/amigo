@@ -1,0 +1,35 @@
+id = "amigo.camera.camera-profiles"
+family = "camera"
+kind = "bundle"
+renderable = false
+render_participation = "none"
+
+[capabilities]
+provides = []
+requires = []
+
+[slots]
+implements = []
+requires = []
+replaces = []
+
+[targets]
+reads = []
+writes = []
+contributes = []
+
+[contributions]
+emits = []
+consumes = []
+
+[diagnostics]
+channels = ["camera-profiles.catalog"]
+
+[docs]
+pipeline = "docs/pipeline.md"
+contributions = "docs/contributions.md"
+diagnostics = "docs/diagnostics.md"
+
+[tests]
+waterfall = "tests/waterfall_tests.rs"
+diagnostics = "tests/diagnostics_tests.rs"

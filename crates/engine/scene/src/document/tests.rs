@@ -662,13 +662,13 @@ entities:
 }
 
 #[test]
-fn rejects_legacy_platformer_controller_component_alias() {
+fn rejects_retired_platformer_controller_component_alias() {
     let result = load_scene_document_from_str(
         r#"
 version: 1
 scene:
-  id: legacy-motion-alias
-  label: Legacy Motion Alias
+  id: retired-motion-alias
+  label: Retired Motion Alias
 entities:
   - id: player
     components:
@@ -692,16 +692,16 @@ fn old_scene_without_prefab_fields_still_loads() {
         r#"
 version: 1
 scene:
-  id: legacy-no-prefab
+  id: retired-no-prefab
 entities:
   - id: camera
     components:
       - type: Camera2D
 "#,
     )
-    .expect("legacy scene should parse without prefab fields");
+    .expect("retired scene shape should parse without prefab fields");
 
-    assert_eq!(document.scene.id, "legacy-no-prefab");
+    assert_eq!(document.scene.id, "retired-no-prefab");
     assert_eq!(document.entities.len(), 1);
     assert!(document.entities[0].prefab.is_none());
     assert!(document.entities[0].prefab_overrides.is_empty());

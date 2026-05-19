@@ -1,0 +1,35 @@
+id = "amigo.postfx.color-grading"
+family = "postfx"
+kind = "target-consumer"
+renderable = false
+render_participation = "target-consumer"
+
+[capabilities]
+provides = ["postfx.color-grading@1"]
+requires = ["render.backend@1"]
+
+[slots]
+implements = []
+requires = ["render.backend"]
+replaces = []
+
+[targets]
+reads = ["SceneColor"]
+writes = ["SceneColor"]
+contributes = []
+
+[contributions]
+emits = []
+consumes = []
+
+[diagnostics]
+channels = ["postfx.color-grading"]
+
+[docs]
+pipeline = "docs/pipeline.md"
+contributions = "docs/contributions.md"
+diagnostics = "docs/diagnostics.md"
+
+[tests]
+waterfall = "tests/waterfall_tests.rs"
+diagnostics = "tests/diagnostics_tests.rs"

@@ -1,0 +1,41 @@
+id = "amigo.vfx.particles-2d"
+family = "vfx"
+kind = "renderable-source"
+renderable = true
+render_participation = "source-renderer"
+
+[capabilities]
+provides = ["vfx.particle.2d@1"]
+requires = []
+
+[slots]
+implements = []
+requires = []
+replaces = []
+
+[targets]
+reads = []
+writes = ["SceneColor", "SceneAlpha"]
+contributes = ["SceneVelocity", "SceneHighlight", "SceneEmissive"]
+
+[contributions]
+emits = [
+  { domain = "camera.optics", type = "CameraOpticsContribution2d", policy = "ExplicitOnly" },
+  { domain = "camera.shutter_motion", type = "MotionShutterContribution2d", policy = "DisabledByDefault" }
+]
+consumes = []
+
+[diagnostics]
+channels = [
+  "particles-2d.render",
+  "particles-2d.contributions"
+]
+
+[docs]
+pipeline = "docs/pipeline.md"
+contributions = "docs/contributions.md"
+diagnostics = "docs/diagnostics.md"
+
+[tests]
+waterfall = "tests/waterfall_tests.rs"
+diagnostics = "tests/diagnostics_tests.rs"

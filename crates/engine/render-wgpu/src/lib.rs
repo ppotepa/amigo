@@ -4,6 +4,7 @@
 /// GPU backend bootstrap, surfaces, and platform-facing WGPU helpers.
 mod backend;
 mod frame_packet;
+mod plugin_pass;
 /// Frame extraction and scene rendering code built on top of WGPU.
 mod renderer;
 /// Immediate overlay model, layout, and drawing primitives for tools.
@@ -17,6 +18,7 @@ pub use frame_packet::{
     Renderable2dItem, Renderable2dPayload, WgpuRenderFramePacket, WgpuVisualSourceFlags2d,
     supported_renderable_2d_component_kinds,
 };
+pub use plugin_pass::*;
 pub use renderer::{
     WgpuEmergencyOverlayLevel, WgpuEmergencyOverlayLine, WgpuFrameRenderRequest,
     WgpuFrameRenderTarget, WgpuGameViewportPlacement, WgpuSceneRenderer, WgpuSurfaceRect,

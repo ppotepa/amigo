@@ -1,0 +1,37 @@
+id = "amigo.lighting.lightmaps-2d"
+family = "lighting"
+kind = "semantic-source"
+renderable = false
+render_participation = "none"
+
+[capabilities]
+provides = ["lighting.lightmaps.2d@1"]
+requires = []
+
+[slots]
+implements = []
+requires = []
+replaces = []
+
+[targets]
+reads = []
+writes = ["LightMap"]
+contributes = ["SceneLighting", "SceneHighlight", "SceneEmissive"]
+
+[contributions]
+emits = [
+  { domain = "camera.optics", type = "CameraOpticsContribution2d", policy = "ExplicitOnly" }
+]
+consumes = []
+
+[diagnostics]
+channels = ["lightmaps-2d.contributions"]
+
+[docs]
+pipeline = "docs/pipeline.md"
+contributions = "docs/contributions.md"
+diagnostics = "docs/diagnostics.md"
+
+[tests]
+waterfall = "tests/waterfall_tests.rs"
+diagnostics = "tests/diagnostics_tests.rs"

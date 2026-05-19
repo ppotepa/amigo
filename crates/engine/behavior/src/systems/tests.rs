@@ -1,6 +1,6 @@
 mod tests {
     use super::*;
-    use amigo_behavior::BehaviorCondition;
+    use crate::BehaviorCondition;
 
     #[test]
     fn behavior_condition_matches_string_scene_state() {

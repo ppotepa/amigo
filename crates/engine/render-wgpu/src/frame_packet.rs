@@ -12,9 +12,10 @@ use amigo_2d_vector::VectorShape2dDrawCommand;
 use amigo_3d_material::MaterialDrawCommand;
 use amigo_3d_mesh::MeshDrawCommand;
 use amigo_3d_text::Text3dDrawCommand;
+use amigo_camera_optics_plugin::api::CameraOpticalCandidate2d;
 use amigo_render_api::{
-    CameraCaptureInput2d, CameraDebugView2d, CameraOpticalCandidate2d, LightSource2dCommon,
-    RenderSpace2d, Renderable2dCommon, Renderable2dKind,
+    CameraCaptureInput2d, CameraDebugView2d, LightSource2dCommon, RenderSpace2d,
+    Renderable2dCommon, Renderable2dKind,
 };
 
 use crate::UiOverlayDocument;

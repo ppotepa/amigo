@@ -1,6 +1,7 @@
 use amigo_2d_post_fx::{ColorRamp2d, RainGlass2d};
 use amigo_2d_spatial::{DepthSpace2d, distance_to_z_depth};
 use amigo_assets::AssetCatalog;
+use amigo_camera_core_plugin::api::CameraDepthMotion2d;
 
 use crate::CameraId;
 use crate::optics::{
@@ -9,32 +10,6 @@ use crate::optics::{
 };
 use crate::profiles::{FilmStockProfile2d, LensProfile2d};
 use crate::quality::{CameraQualityProfile2d, CameraQualitySettings2d};
-
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub struct CameraDepthMotion2d {
-    pub camera_z_m: f32,
-    pub focus_residual_m: f32,
-    pub dolly_signal: f32,
-}
-
-impl Default for CameraDepthMotion2d {
-    fn default() -> Self {
-        Self {
-            camera_z_m: 0.0,
-            focus_residual_m: 0.0,
-            dolly_signal: 0.0,
-        }
-    }
-}
-
-impl CameraDepthMotion2d {
-    pub fn normalized(mut self) -> Self {
-        self.camera_z_m = finite_or_zero(self.camera_z_m).clamp(-50.0, 50.0);
-        self.focus_residual_m = finite_or_zero(self.focus_residual_m).clamp(-5.0, 5.0);
-        self.dolly_signal = finite_or_zero(self.dolly_signal).clamp(-1.0, 1.0);
-        self
-    }
-}
 
 /// Fully resolved 2D camera rig used by render/camera-owned post-fx construction.
 /// Do not build camera-owned effects from raw Camera2dRuntimeState when a rig is available.

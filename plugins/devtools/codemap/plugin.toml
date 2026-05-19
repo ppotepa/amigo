@@ -1,0 +1,35 @@
+id = "amigo.devtools.codemap"
+family = "devtools"
+kind = "tooling"
+renderable = false
+render_participation = "none"
+
+[capabilities]
+provides = ["devtools.codemap.index@1", "devtools.diagnostics.provider@1"]
+requires = []
+
+[slots]
+implements = ["codemap.index_provider", "diagnostics.provider"]
+requires = []
+replaces = []
+
+[targets]
+reads = ["DiagnosticsSnapshot"]
+writes = ["DiagnosticsSnapshot"]
+contributes = []
+
+[contributions]
+emits = []
+consumes = []
+
+[diagnostics]
+channels = ["devtools.codemap.index"]
+
+[docs]
+pipeline = "docs/pipeline.md"
+contributions = "docs/contributions.md"
+diagnostics = "docs/diagnostics.md"
+
+[tests]
+waterfall = "tests/waterfall_tests.rs"
+diagnostics = "tests/diagnostics_tests.rs"

@@ -821,18 +821,10 @@ fn material2d_scene_command(material: Option<Material2dDocument>) -> Option<Mate
             receives_light: material.lighting.receives_light,
             response: material.lighting.response,
         },
-        camera_response: CameraOpticalResponse2dSceneCommand {
-            enabled: material.camera_response.enabled,
-            intensity: material.camera_response.intensity,
-            bloom: material.camera_response.bloom,
-            glare: material.camera_response.glare,
-            ghosting: material.camera_response.ghosting,
-            streaks: material.camera_response.streaks,
-            chromatic_smear: material.camera_response.chromatic_smear,
-            dirt_response: material.camera_response.dirt_response,
-            halation: material.camera_response.halation,
-            threshold: material.camera_response.threshold,
-        },
+        camera_response:
+            amigo_camera_optics_plugin::scene::camera_optical_response_from_document(
+                material.camera_response,
+            ),
     })
 }
 

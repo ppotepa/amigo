@@ -1,0 +1,35 @@
+id = "amigo.camera.camera-core"
+family = "camera"
+kind = "bundle"
+renderable = false
+render_participation = "none"
+
+[capabilities]
+provides = ["camera.frame_context.2d@1"]
+requires = []
+
+[slots]
+implements = ["camera.frame_provider.2d"]
+requires = []
+replaces = []
+
+[targets]
+reads = []
+writes = []
+contributes = []
+
+[contributions]
+emits = []
+consumes = []
+
+[diagnostics]
+channels = ["camera-core.binding"]
+
+[docs]
+pipeline = "docs/pipeline.md"
+contributions = "docs/contributions.md"
+diagnostics = "docs/diagnostics.md"
+
+[tests]
+waterfall = "tests/waterfall_tests.rs"
+diagnostics = "tests/diagnostics_tests.rs"

@@ -5,10 +5,10 @@ use crate::model::{
 };
 use crate::plugin::Vector2dPlugin;
 use amigo_math::{ColorRgba, Transform2, Vec2};
+use amigo_camera_optics_plugin::scene::CameraOpticalResponse2dSceneCommand;
 use amigo_render_api::{RenderContributionSet, render_contribution_roles as roles};
 use amigo_runtime::RuntimeBuilder;
 use amigo_scene::{
-    CameraOpticalResponse2dSceneCommand,
     Material2dOpticalModeSceneCommand, Material2dOpticalSceneCommand, Material2dSceneCommand,
     Material2dLightingSceneCommand,
     RenderContributions2dSceneCommand, RuntimeSceneCommandHandlerRegistry, SceneCommand, SceneEvent,

@@ -7,6 +7,8 @@ mod bindings;
 mod handles;
 /// Rhai package construction and source registration helpers.
 mod package;
+/// Plugin-owned Rhai binding provider contracts.
+mod plugin_bindings;
 /// Runtime contribution descriptors for scripting-owned scene handlers and systems.
 mod runtime_capabilities;
 /// Scene command execution owned by the Rhai scripting domain.
@@ -43,6 +45,7 @@ use package::PackageModuleResolver;
 use rhai::CallFnOptions;
 
 pub use runtime_capabilities::*;
+pub use plugin_bindings::*;
 pub use scene_command::*;
 pub use systems::*;
 

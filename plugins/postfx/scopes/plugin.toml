@@ -1,0 +1,35 @@
+id = "amigo.postfx.scopes"
+family = "postfx"
+kind = "tooling"
+renderable = false
+render_participation = "target-consumer"
+
+[capabilities]
+provides = ["postfx.scopes@1"]
+requires = ["render.backend@1"]
+
+[slots]
+implements = []
+requires = ["render.backend"]
+replaces = []
+
+[targets]
+reads = ["SceneColor", "SceneHighlight", "SceneEmissive"]
+writes = ["DiagnosticsSnapshot"]
+contributes = []
+
+[contributions]
+emits = []
+consumes = []
+
+[diagnostics]
+channels = ["postfx.scopes"]
+
+[docs]
+pipeline = "docs/pipeline.md"
+contributions = "docs/contributions.md"
+diagnostics = "docs/diagnostics.md"
+
+[tests]
+waterfall = "tests/waterfall_tests.rs"
+diagnostics = "tests/diagnostics_tests.rs"

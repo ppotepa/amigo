@@ -44,7 +44,7 @@ impl ConsoleCommandHandler for AssetsConsoleCommandHandler {
         ctx: &ConsoleCommandContext<'_>,
         mut command: ParsedConsoleCommand,
     ) -> ConsoleCommandResult {
-        normalize_legacy_asset_command(&mut command);
+        normalize_asset_alias_command(&mut command);
         match command.name.as_str() {
             "assets" => assets_summary(ctx),
             "asset.reload" => {
@@ -125,7 +125,7 @@ fn assets_summary(ctx: &ConsoleCommandContext<'_>) -> ConsoleCommandResult {
     ))
 }
 
-fn normalize_legacy_asset_command(command: &mut ParsedConsoleCommand) {
+fn normalize_asset_alias_command(command: &mut ParsedConsoleCommand) {
     if command.name != "asset" {
         return;
     }

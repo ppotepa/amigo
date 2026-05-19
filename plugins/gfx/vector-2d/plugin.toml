@@ -1,0 +1,41 @@
+id = "amigo.gfx.vector-2d"
+family = "gfx"
+kind = "renderable-source"
+renderable = true
+render_participation = "source-renderer"
+
+[capabilities]
+provides = ["gfx.vector.2d@1"]
+requires = []
+
+[slots]
+implements = []
+requires = []
+replaces = []
+
+[targets]
+reads = []
+writes = ["SceneColor", "SceneAlpha"]
+contributes = ["SceneDepth", "SceneHighlight"]
+
+[contributions]
+emits = [
+  { domain = "camera.optics", type = "CameraOpticsContribution2d", policy = "ExplicitOnly" },
+  { domain = "camera.focus_depth", type = "FocusDepthContribution2d", policy = "DerivedAtHydration" }
+]
+consumes = []
+
+[diagnostics]
+channels = [
+  "vector-2d.render",
+  "vector-2d.contributions"
+]
+
+[docs]
+pipeline = "docs/pipeline.md"
+contributions = "docs/contributions.md"
+diagnostics = "docs/diagnostics.md"
+
+[tests]
+waterfall = "tests/waterfall_tests.rs"
+diagnostics = "tests/diagnostics_tests.rs"

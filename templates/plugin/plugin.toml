@@ -1,0 +1,37 @@
+id = "amigo.family.plugin-name"
+family = "family"
+kind = "noop"
+renderable = false
+
+[capabilities]
+provides = []
+requires = []
+
+[slots]
+implements = []
+requires = []
+replaces = []
+
+[targets]
+reads = []
+writes = []
+contributes = []
+
+[contributions]
+emits = []
+consumes = []
+
+[diagnostics]
+channels = []
+
+[docs]
+pipeline = "docs/pipeline.md"
+contributions = "docs/contributions.md"
+diagnostics = "docs/diagnostics.md"
+
+[tests]
+hydration = "tests/hydration_tests.rs"
+participation = "tests/participation_tests.rs"
+candidate = "tests/candidate_tests.rs"
+waterfall = "tests/waterfall_tests.rs"
+diagnostics = "tests/diagnostics_tests.rs"

@@ -40,7 +40,7 @@ where
                         if is_host_category {
                             "host".to_string()
                         } else {
-                            "legacy".to_string()
+                            "standalone".to_string()
                         },
                     ],
                     migration_seam: !is_host_category,

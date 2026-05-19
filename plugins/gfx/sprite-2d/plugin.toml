@@ -1,0 +1,42 @@
+id = "amigo.gfx.sprite-2d"
+family = "gfx"
+kind = "renderable-source"
+renderable = true
+render_participation = "source-renderer"
+
+[capabilities]
+provides = ["gfx.sprite.2d@1"]
+requires = []
+
+[slots]
+implements = []
+requires = []
+replaces = []
+
+[targets]
+reads = []
+writes = ["SceneColor", "SceneAlpha"]
+contributes = ["SceneDepth", "SceneHighlight", "SceneVelocity"]
+
+[contributions]
+emits = [
+  { domain = "camera.optics", type = "CameraOpticsContribution2d", policy = "ExplicitOnly" },
+  { domain = "camera.focus_depth", type = "FocusDepthContribution2d", policy = "DerivedAtHydration" },
+  { domain = "camera.shutter_motion", type = "MotionShutterContribution2d", policy = "DisabledByDefault" }
+]
+consumes = []
+
+[diagnostics]
+channels = [
+  "sprite-2d.render",
+  "sprite-2d.contributions"
+]
+
+[docs]
+pipeline = "docs/pipeline.md"
+contributions = "docs/contributions.md"
+diagnostics = "docs/diagnostics.md"
+
+[tests]
+waterfall = "tests/waterfall_tests.rs"
+diagnostics = "tests/diagnostics_tests.rs"

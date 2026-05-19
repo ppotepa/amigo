@@ -154,6 +154,8 @@ fn update_function_can_set_vector_polygon_points() {
         transform: Transform2::default(),
         viewport_fit: VectorViewportFit2d::Fixed,
         viewport_canvas_size: None,
+        material: None,
+        render_contributions: amigo_render_api::RenderContributionSet::default(),
     });
 
     let runtime = RhaiScriptRuntime::new_with_motion_and_vector(

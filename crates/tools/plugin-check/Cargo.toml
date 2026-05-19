@@ -1,0 +1,9 @@
+[package]
+name = "amigo-plugin-check"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+amigo-plugin-loader = { path = "../../core/plugin-loader" }
+amigo-plugin-index = { path = "../../core/plugin-index" }
+amigo-codemap-api = { path = "../../core/codemap-api" }

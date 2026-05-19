@@ -3,7 +3,8 @@ use amigo_core::AmigoResult;
 use crate::{
     CameraOptics2d, FilmNoise2d, FocusBlur2d, PostFx2d, PostFx2dInstance, PostFx2dService,
     PostFx2dStack, PostFxBlur2d, PostFxRole2d, PostFxSceneCommandContext, PostFxScope2d,
-    RainGlass2d, ScopedPostFx2dStack, diagnose_post_fx_stacks, handle_post_fx_scoped_stacks,
+    PostFxPipelineKind, RainGlass2d, ScopedPostFx2dStack, diagnose_post_fx_stacks,
+    handle_post_fx_scoped_stacks,
 };
 
 #[test]
@@ -146,7 +147,7 @@ fn duplicate_look_reports_specific_warning() {
 
 #[test]
 fn non_frame_scoped_post_fx_reports_unsupported_warning() {
-    let object_stack = ScopedPostFx2dStack::new(
+    let mut object_stack = ScopedPostFx2dStack::new(
         "object:rain",
         PostFxScope2d::SceneObjectPixels {
             scene_object_id: "rain-mid-emitter".to_owned(),
@@ -156,6 +157,7 @@ fn non_frame_scoped_post_fx_reports_unsupported_warning() {
             PostFx2d::Blur(PostFxBlur2d::default()),
         )],
     );
+    object_stack.pipeline = PostFxPipelineKind::Unsupported;
 
     let diagnostics = diagnose_post_fx_stacks(&[object_stack]);
 

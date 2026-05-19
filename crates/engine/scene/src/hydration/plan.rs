@@ -1,5 +1,6 @@
 use super::style::{parse_color_rgba_hex, parse_optional_color_rgba_hex, ui_theme_from_component};
 use super::*;
+use amigo_camera_optics_plugin::scene::camera_optical_response_from_document;
 use amigo_2d_post_fx::PostFxScope2d;
 use amigo_assets::AssetKey;
 use amigo_math::{ColorRgba, Curve1d};
@@ -17,7 +18,6 @@ use crate::{
     CameraDepthOfField2dSceneCommand, CameraExposure2dSceneCommand,
     CameraExposureMode2dSceneCommand, CameraFilm2dSceneCommand, CameraFocus2dDocument,
     CameraFocus2dSceneCommand, CameraFollow2dSceneCommand, CameraLens2dSceneCommand,
-    CameraOpticalResponse2dSceneCommand,
     CameraLensSurface2dSceneCommand, CameraLook2dSceneCommand, CameraShutter2dSceneCommand,
     CircleCollider2dSceneCommand, CollisionEventRule2dSceneCommand, DepthCurve2dSceneCommand,
     DepthAuxMap2dChannelsDocument, DepthAuxMap2dChannelsSceneCommand,
@@ -371,22 +371,6 @@ fn light_group_render_contribution_defaults(
     ])
 }
 
-fn camera_optical_response_from_document(
-    response: crate::CameraOpticalResponse2dDocument,
-) -> CameraOpticalResponse2dSceneCommand {
-    CameraOpticalResponse2dSceneCommand {
-        enabled: response.enabled,
-        intensity: response.intensity,
-        bloom: response.bloom,
-        glare: response.glare,
-        ghosting: response.ghosting,
-        streaks: response.streaks,
-        chromatic_smear: response.chromatic_smear,
-        dirt_response: response.dirt_response,
-        halation: response.halation,
-        threshold: response.threshold,
-    }
-}
 
 fn optical_layer_role_from_document(
     role: OpticalLayerRole2dDocument,

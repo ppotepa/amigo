@@ -7,16 +7,14 @@ use amigo_2d_post_fx::{
     PostFxPipelineKind, PostFxScope2d, RainGlass2d, ScopedPostFx2dStack, ShutterBlur2d,
 };
 use amigo_assets::AssetCatalog;
+use amigo_camera_core_plugin::api::CameraDepthMotion2d;
 use amigo_math::Vec2;
 use amigo_render_api::render_contribution_roles as roles;
 use amigo_scene::{CameraFollow2dSceneCommand, Parallax2dSceneCommand};
 
 use crate::optics::{Camera2dRuntimeState, CameraAperture2d, CameraFocus2d};
 use crate::quality::{CameraQualityProfile2d, CameraQualitySettings2d};
-use crate::rig::{
-    CameraDepthMotion2d, ResolvedCameraRig2d, apply_camera_depth_motion_to_rig,
-    resolve_camera_rig_2d,
-};
+use crate::rig::{ResolvedCameraRig2d, apply_camera_depth_motion_to_rig, resolve_camera_rig_2d};
 use crate::{
     Camera, CameraFocusTarget2dService, CameraFocusTargetDepth2d, CameraFocusTransition2d,
     CameraFocusTransitionTarget2d, CameraId,

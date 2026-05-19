@@ -14,6 +14,7 @@ mod graph;
 mod input_router;
 mod model;
 mod plugin;
+mod plugin_diagnostics;
 mod registry;
 mod script_command;
 mod snapshot;
@@ -54,6 +55,7 @@ pub use model::{
     DebugOverlayCorner, DebugOverlayLayoutMode, DebugOverlayPanel, DebugOverlaySettings,
 };
 pub use plugin::DevtoolsPlugin;
+pub use plugin_diagnostics::*;
 pub use registry::{ConsoleCommandRegistry, ConsoleCommandSpec};
 pub use script_command::{DebugScriptCommandHandler, DevShellScriptCommandHandler};
 pub use snapshot::{

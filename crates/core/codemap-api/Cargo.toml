@@ -1,0 +1,7 @@
+[package]
+name = "amigo-codemap-api"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+amigo-plugin-api = { path = "../plugin-api" }
