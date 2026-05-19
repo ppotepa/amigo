@@ -1,5 +1,6 @@
 use amigo_math::{ColorRgba, Vec2};
-use amigo_render_api::{Material2d, RenderContributionSet};
+use amigo_material_2d_plugin::Material2d;
+use amigo_render_api::RenderContributionSet;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct RadialJitterPolygon {

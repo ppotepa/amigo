@@ -4,8 +4,9 @@ use amigo_camera_optics_plugin::api::{
 };
 use amigo_render_api::{
     CameraCaptureInput2d, LightContributionKind2d, LightEmitterKind2d, LightSource2dCommon,
-    LightSourceStatus2d, Material2d, RenderContributionSet, VisualSourceAvailability2d,
+    LightSourceStatus2d, RenderContributionSet, VisualSourceAvailability2d,
 };
+use amigo_material_2d_plugin::Material2d;
 
 use super::visual_2d_items::{Renderable2dItem, Renderable2dPayload};
 

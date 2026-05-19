@@ -1,7 +1,9 @@
 use super::material_candidates::{MaterialCoveragePayload2d, WgpuMaterialCandidate2d};
 use super::offscreen_ops::{append_fullscreen_texture_vertices, compatible_offscreen_target};
 use super::*;
-use amigo_render_api::{Material2d, MaterialCandidateDecision2d, MaterialCandidateStatus2d};
+use amigo_material_2d_plugin::{
+    Material2d, MaterialCandidateDecision2d, MaterialCandidateStatus2d,
+};
 use wgpu::util::DeviceExt;
 
 #[repr(C)]
@@ -446,7 +448,7 @@ mod tests {
     use amigo_assets::AssetKey;
     use amigo_camera_optics_plugin::api::CameraOpticalResponse2d;
     use amigo_math::Transform2;
-    use amigo_render_api::{
+    use amigo_material_2d_plugin::{
         Material2dOptical, Material2dOpticalMode, MaterialCandidate2dCommon,
         MaterialCoverageKind2d,
     };

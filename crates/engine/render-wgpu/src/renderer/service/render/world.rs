@@ -2,7 +2,7 @@ use super::material_candidates::{collect_material_candidate_2d, WgpuMaterialCand
 use super::world_filters::WorldPassLoad;
 use super::*;
 use amigo_text_2d_plugin::Text2dDrawCommand;
-use amigo_render_api::MaterialCandidateDecision2d;
+use amigo_material_2d_plugin::MaterialCandidateDecision2d;
 
 #[derive(Clone, Copy)]
 pub(super) struct WorldRenderContext<'a> {

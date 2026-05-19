@@ -31,6 +31,7 @@ amigo-plugin-api.workspace = true
 amigo-render-api.workspace = true
 amigo-camera-optics-plugin.workspace = true
 amigo-focus-depth-plugin.workspace = true
+amigo-material-2d-plugin.workspace = true
 amigo-ui-layout.workspace = true
 amigo-scene.workspace = true
 amigo-window-api.workspace = true

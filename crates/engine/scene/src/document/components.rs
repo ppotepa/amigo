@@ -8,7 +8,6 @@ use super::behavior::*;
 use super::camera::*;
 use super::core::*;
 use super::defaults::*;
-use super::material2d::*;
 use super::particles::*;
 use super::render_contributions::*;
 use super::render_values::*;
@@ -17,6 +16,7 @@ use super::ui::*;
 use super::visual2d::PostFx2dDocument;
 use super::visual2d::RenderDepth2dDocument;
 use amigo_camera_optics_plugin::scene::CameraOpticalResponse2dDocument;
+use amigo_material_2d_plugin::scene::Material2dDocument;
 
 impl SceneEntityDocument {
     pub fn display_name(&self) -> String {

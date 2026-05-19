@@ -1,3 +1,7 @@
+pub mod document;
+
+pub use document::*;
+
 use amigo_plugin_api::PluginSceneComponentDescriptor;
 
 pub fn material_2d_scene_descriptor() -> PluginSceneComponentDescriptor {

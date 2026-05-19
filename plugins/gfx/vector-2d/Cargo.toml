@@ -10,6 +10,7 @@ amigo-camera-optics-plugin.workspace = true
 amigo-core.workspace = true
 amigo-editor-api.workspace = true
 amigo-math.workspace = true
+amigo-material-2d-plugin.workspace = true
 amigo-render-api.workspace = true
 amigo-runtime.workspace = true
 amigo-scene.workspace = true

@@ -17,8 +17,6 @@ mod defaults;
 mod loader;
 /// Particle-specific authored document structures.
 mod particles;
-/// Shared authored 2D material fragments.
-mod material2d;
 /// Prefab document schema for reusable entity hierarchies.
 mod prefab;
 /// Render-oriented scalar and color value decoding.
@@ -40,7 +38,10 @@ pub use compiler::*;
 pub use components::*;
 pub use core::*;
 pub use loader::*;
-pub use material2d::*;
+pub use amigo_material_2d_plugin::scene::{
+    Material2dDocument, Material2dLightingDocument, Material2dOpticalDocument,
+    Material2dOpticalModeDocument,
+};
 pub use particles::*;
 pub use prefab::*;
 pub use render_values::*;

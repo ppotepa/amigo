@@ -1,3 +1,7 @@
+pub mod runtime;
+
+pub use runtime::*;
+
 use amigo_plugin_api::{scene_color, CandidateStatus, TargetId};
 
 #[derive(Clone, Debug, PartialEq)]

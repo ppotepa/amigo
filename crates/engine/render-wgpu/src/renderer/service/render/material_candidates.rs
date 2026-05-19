@@ -1,7 +1,9 @@
 use super::*;
+use amigo_material_2d_plugin::{
+    Material2d, MaterialCandidate2dCommon, MaterialCandidateDecision2d, MaterialCoverageKind2d,
+};
 use amigo_render_api::{
-    render_contribution_roles as roles, Material2d, MaterialCandidate2dCommon,
-    MaterialCandidateDecision2d, MaterialCoverageKind2d, RenderContributionSet,
+    render_contribution_roles as roles, RenderContributionSet,
 };
 
 #[derive(Debug, Clone)]
@@ -397,8 +399,8 @@ mod tests {
 
     fn refractive_material() -> Material2d {
         Material2d {
-            optical: amigo_render_api::Material2dOptical {
-                mode: amigo_render_api::Material2dOpticalMode::Refractive,
+            optical: amigo_material_2d_plugin::Material2dOptical {
+                mode: amigo_material_2d_plugin::Material2dOpticalMode::Refractive,
                 transmission: 0.5,
                 refraction_px: 4.0,
                 distortion: 0.2,

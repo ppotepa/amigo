@@ -18,5 +18,6 @@ amigo-runtime.workspace = true
 amigo-session.workspace = true
 amigo-scripting-api.workspace = true
 amigo-camera-optics-plugin.workspace = true
+amigo-material-2d-plugin.workspace = true
 serde.workspace = true
 serde_yaml.workspace = true
