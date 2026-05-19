@@ -34,7 +34,6 @@ amigo-2d-lighting-beacon.workspace = true
 amigo-2d-particles.workspace = true
 amigo-2d-physics.workspace = true
 amigo-2d-tilemap.workspace = true
-amigo-2d-motion.workspace = true
 amigo-ui.workspace = true
 amigo-audio-api.workspace = true
 amigo-audio-generated.workspace = true
@@ -49,6 +48,7 @@ amigo-scripting-rhai.workspace = true
 amigo-camera-core-plugin.workspace = true
 amigo-camera-optics-plugin.workspace = true
 amigo-focus-depth-plugin.workspace = true
+amigo-shutter-motion-plugin.workspace = true
 
 amigo-core.workspace = true
 amigo-math.workspace = true

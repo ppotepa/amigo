@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use amigo_2d_lighting::Material2dLightingMode;
-use amigo_2d_motion::{
+use amigo_shutter_motion_plugin::{
     Facing2d, FreeflightMotion2dCommand, FreeflightMotionProfile2d, FreeflightMotionState2d,
     Motion2dSceneService, MotionAnimationState, MotionController2d, MotionController2dCommand,
     MotionIntent2d, MotionProfile2d, MotionState2d, ProjectileEmitter2d,

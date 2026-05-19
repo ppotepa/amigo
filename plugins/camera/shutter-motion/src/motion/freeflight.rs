@@ -1,7 +1,7 @@
 use amigo_math::Vec2;
 use amigo_scene::SceneEntityId;
 
-use crate::math::{move_towards, signed_curve_response};
+use super::math::{move_towards, signed_curve_response};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct FreeflightMotionProfile2d {

@@ -4,7 +4,7 @@ use amigo_2d_physics::Physics2dSceneService;
 use amigo_math::Vec2;
 use amigo_scene::{EntityPoolSceneService, SceneEntityId, SceneService};
 
-use crate::{
+use super::{
     bounds::{Bounds2d, Bounds2dCommand},
     controller::{MotionController2dCommand, MotionIntent2d, MotionState2d},
     freeflight::{FreeflightMotion2dCommand, FreeflightMotionIntent2d, FreeflightMotionState2d},

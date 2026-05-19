@@ -7,7 +7,7 @@ use amigo_input_api::InputServiceInfo;
 use amigo_modding::ModCatalog;
 use amigo_render_api::RenderBackendInfo;
 use amigo_runtime::Runtime;
-use amigo_runtime_bundles::amigo_2d_motion::motion_runtime_plugin_report_label;
+use amigo_runtime_bundles::amigo_shutter_motion_plugin::motion_runtime_plugin_report_label;
 use amigo_runtime_bundles::amigo_2d_sprite::SpriteSceneService;
 use amigo_runtime_bundles::amigo_2d_text::Text2dSceneService;
 use amigo_runtime_bundles::amigo_2d_vector::VectorSceneService;

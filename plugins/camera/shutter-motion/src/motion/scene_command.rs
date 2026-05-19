@@ -4,7 +4,7 @@ use amigo_scene::{
     SceneEvent, SceneEventQueue, SceneService, format_scene_command,
 };
 
-use crate::{
+use super::{
     Bounds2d, Bounds2dCommand, BoundsBehavior2d, FreeflightMotion2dCommand,
     FreeflightMotionProfile2d, FreeflightMotionState2d, Motion2dSceneService, MotionController2d,
     MotionController2dCommand, MotionProfile2d, ProjectileEmitter2d, ProjectileEmitter2dCommand,

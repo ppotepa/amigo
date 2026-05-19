@@ -9,7 +9,7 @@ authors.workspace = true
 [dependencies]
 amigo-core.workspace = true
 amigo-camera-core-plugin.workspace = true
-amigo-2d-motion.workspace = true
+amigo-shutter-motion-plugin.workspace = true
 amigo-2d-particles.workspace = true
 amigo-2d-physics.workspace = true
 amigo-audio-api.workspace = true

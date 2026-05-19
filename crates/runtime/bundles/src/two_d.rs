@@ -2,7 +2,6 @@ use amigo_2d_composition::Composition2dPlugin;
 use amigo_2d_layered_image::LayeredImagePlugin;
 use amigo_2d_lighting::Lighting2dPlugin;
 use amigo_2d_lighting_beacon::Beacon2dPlugin;
-use amigo_2d_motion::MOTION_2D_PLUGIN;
 use amigo_2d_particles::Particle2dPlugin;
 use amigo_2d_physics::Physics2dPlugin;
 use amigo_2d_post_fx::PostFx2dPlugin;
@@ -14,6 +13,7 @@ use amigo_core::AmigoResult;
 use amigo_focus_depth_plugin::{DepthMap2dPlugin, FocusTargets2dRuntimePlugin};
 use amigo_runtime::{PluginBundle, RuntimeBuilder};
 use amigo_session::RuntimeSession;
+use amigo_shutter_motion_plugin::MOTION_2D_PLUGIN;
 use amigo_ui::UiPlugin;
 
 pub struct TwoDRuntimeBundle;
@@ -53,7 +53,7 @@ pub fn register_two_d_runtime_capabilities(session: &mut RuntimeSession) {
     amigo_2d_lighting::register_lighting2d_runtime_capabilities(session);
     amigo_2d_post_fx::register_post_fx_runtime_capabilities(session);
     amigo_2d_particles::register_particles2d_runtime_capabilities(session);
-    amigo_2d_motion::register_motion2d_runtime_capabilities(session);
+    amigo_shutter_motion_plugin::register_motion2d_runtime_capabilities(session);
     amigo_2d_physics::register_physics2d_runtime_capabilities(session);
     amigo_2d_vector::register_vector2d_runtime_capabilities(session);
     amigo_2d_lighting_beacon::register_beacon2d_runtime_capabilities(session);

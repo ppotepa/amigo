@@ -1,4 +1,4 @@
-use amigo_2d_motion::Motion2dSceneService;
+use amigo_shutter_motion_plugin::Motion2dSceneService;
 use amigo_core::{AmigoError, AmigoResult};
 use amigo_math::{Transform2, Vec2};
 use amigo_runtime::{

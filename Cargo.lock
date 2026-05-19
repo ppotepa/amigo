@@ -140,27 +140,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "amigo-2d-motion"
-version = "0.1.0"
-dependencies = [
- "amigo-2d-physics",
- "amigo-capabilities",
- "amigo-core",
- "amigo-input-actions",
- "amigo-input-api",
- "amigo-math",
- "amigo-runtime",
- "amigo-scene",
- "amigo-scripting-api",
- "amigo-session",
-]
-
-[[package]]
 name = "amigo-2d-particles"
 version = "0.1.0"
 dependencies = [
  "amigo-2d-lighting",
- "amigo-2d-motion",
  "amigo-capabilities",
  "amigo-core",
  "amigo-fx",
@@ -169,6 +152,7 @@ dependencies = [
  "amigo-runtime-control",
  "amigo-scene",
  "amigo-session",
+ "amigo-shutter-motion-plugin",
 ]
 
 [[package]]
@@ -443,7 +427,6 @@ dependencies = [
 name = "amigo-behavior"
 version = "0.1.0"
 dependencies = [
- "amigo-2d-motion",
  "amigo-2d-particles",
  "amigo-2d-physics",
  "amigo-audio-api",
@@ -457,6 +440,7 @@ dependencies = [
  "amigo-scene",
  "amigo-scripting-api",
  "amigo-session",
+ "amigo-shutter-motion-plugin",
  "amigo-state",
  "amigo-ui",
 ]
@@ -961,7 +945,6 @@ dependencies = [
  "amigo-2d-layered-image",
  "amigo-2d-lighting",
  "amigo-2d-lighting-beacon",
- "amigo-2d-motion",
  "amigo-2d-particles",
  "amigo-2d-physics",
  "amigo-2d-post-fx",
@@ -999,6 +982,7 @@ dependencies = [
  "amigo-scripting-api",
  "amigo-scripting-rhai",
  "amigo-session",
+ "amigo-shutter-motion-plugin",
  "amigo-state",
  "amigo-ui",
  "amigo-window-winit",
@@ -1054,7 +1038,6 @@ name = "amigo-scripting-rhai"
 version = "0.1.0"
 dependencies = [
  "amigo-2d-lighting",
- "amigo-2d-motion",
  "amigo-2d-particles",
  "amigo-2d-physics",
  "amigo-2d-post-fx",
@@ -1078,6 +1061,7 @@ dependencies = [
  "amigo-scene",
  "amigo-scripting-api",
  "amigo-session",
+ "amigo-shutter-motion-plugin",
  "amigo-state",
  "amigo-ui",
  "rhai",
@@ -1099,7 +1083,17 @@ dependencies = [
 name = "amigo-shutter-motion-plugin"
 version = "0.1.0"
 dependencies = [
+ "amigo-2d-physics",
+ "amigo-capabilities",
+ "amigo-core",
+ "amigo-input-actions",
+ "amigo-input-api",
+ "amigo-math",
  "amigo-plugin-api",
+ "amigo-runtime",
+ "amigo-scene",
+ "amigo-scripting-api",
+ "amigo-session",
 ]
 
 [[package]]

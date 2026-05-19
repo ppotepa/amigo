@@ -2,7 +2,7 @@ use amigo_2d_physics::PhysicsBodyState2d;
 use amigo_math::Vec2;
 use amigo_scene::SceneEntityId;
 
-use crate::math::move_towards;
+use super::math::move_towards;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Facing2d {

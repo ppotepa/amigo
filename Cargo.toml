@@ -49,7 +49,6 @@ members = [
     "crates/2d/lighting/beacon",
     "crates/2d/physics",
     "crates/2d/tilemap",
-    "crates/2d/motion",
     "crates/2d/particles",
     "crates/3d/mesh",
     "crates/3d/text",
@@ -182,7 +181,6 @@ amigo-2d-vector = { path = "crates/2d/vector" }
 amigo-2d-lighting-beacon = { path = "crates/2d/lighting/beacon" }
 amigo-2d-physics = { path = "crates/2d/physics" }
 amigo-2d-tilemap = { path = "crates/2d/tilemap" }
-amigo-2d-motion = { path = "crates/2d/motion" }
 amigo-2d-particles = { path = "crates/2d/particles" }
 amigo-3d-mesh = { path = "crates/3d/mesh" }
 amigo-3d-text = { path = "crates/3d/text" }

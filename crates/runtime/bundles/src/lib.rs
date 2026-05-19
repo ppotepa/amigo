@@ -31,7 +31,6 @@ use amigo_session::{
 pub use amigo_2d_composition;
 pub use amigo_2d_layered_image;
 pub use amigo_2d_lighting;
-pub use amigo_2d_motion;
 pub use amigo_2d_particles;
 pub use amigo_2d_physics;
 pub use amigo_2d_post_fx;
@@ -50,6 +49,7 @@ pub use amigo_event_pipeline;
 pub use amigo_focus_depth_plugin;
 pub use amigo_input_actions;
 pub use amigo_scripting_rhai;
+pub use amigo_shutter_motion_plugin;
 pub use amigo_ui;
 
 pub fn register_runtime_bundle_capabilities(session: &mut RuntimeSession) {

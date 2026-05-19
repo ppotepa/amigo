@@ -1,4 +1,4 @@
-# amigo-2d-motion
+# amigo-shutter-motion-plugin
 
 2D movement controllers and projectile helpers.
 

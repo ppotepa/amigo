@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use amigo_2d_motion::{
+use amigo_shutter_motion_plugin::{
     Facing2d, FreeflightMotionIntent2d, Motion2dSceneService, motion_facing_to_str,
 };
 use rhai::{Dynamic, FLOAT, INT, Map};

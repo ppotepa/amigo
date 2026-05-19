@@ -5,3 +5,13 @@ edition = "2021"
 
 [dependencies]
 amigo-plugin-api = { path = "../../../crates/core/plugin-api" }
+amigo-2d-physics.workspace = true
+amigo-capabilities.workspace = true
+amigo-core.workspace = true
+amigo-input-actions.workspace = true
+amigo-input-api.workspace = true
+amigo-math.workspace = true
+amigo-runtime.workspace = true
+amigo-scene.workspace = true
+amigo-session.workspace = true
+amigo-scripting-api.workspace = true

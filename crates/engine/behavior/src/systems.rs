@@ -1,4 +1,4 @@
-use amigo_2d_motion::{FreeflightMotionIntent2d, Motion2dSceneService, projectile_launch_2d};
+use amigo_shutter_motion_plugin::{FreeflightMotionIntent2d, Motion2dSceneService, projectile_launch_2d};
 use amigo_2d_particles::{
     Particle2dSceneService, ParticleShape2d, ParticleSpawnArea2d, ParticleVelocityMode2d,
     WeightedParticleShape2d,

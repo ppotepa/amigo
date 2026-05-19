@@ -9,7 +9,7 @@ use amigo_runtime::Runtime;
 use amigo_scene::SceneService;
 use amigo_scripting_api::{ScriptEvent, ScriptEventQueue};
 
-use crate::{
+use super::{
     BoundsOutcome2d, Facing2d, Motion2dSceneService, MotionAnimationState, MotionState2d,
     apply_bounds_2d, drive_motion_2d, motion_animation_state_for, step_freeflight_motion_2d,
     step_velocity_2d,

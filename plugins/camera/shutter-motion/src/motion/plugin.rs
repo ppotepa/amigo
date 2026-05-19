@@ -1,11 +1,12 @@
 use amigo_capabilities::{DEFAULT_CAPABILITY_VERSION, register_domain_plugin};
 use amigo_runtime::{RuntimePlugin, ServiceRegistry, SystemPhase, SystemRegistry};
 
-use crate::service::Motion2dSceneService;
+use super::service::Motion2dSceneService;
 
-pub const CANONICAL_MOTION_2D_PLUGIN_LABEL: &str = "amigo-2d-motion";
+pub const CANONICAL_MOTION_2D_PLUGIN_LABEL: &str = "amigo.camera.shutter-motion";
 pub const CANONICAL_MOTION_2D_CAPABILITY: &str = "motion_2d";
-pub const CANONICAL_MOTION_2D_RUNTIME_REPORT_LABEL: &str = "motion_2d via amigo-2d-motion";
+pub const CANONICAL_MOTION_2D_RUNTIME_REPORT_LABEL: &str =
+    "motion_2d via amigo.camera.shutter-motion";
 
 #[derive(Debug, Clone)]
 pub struct Motion2dDomainInfo {
@@ -82,7 +83,7 @@ impl RuntimePlugin for Motion2dPlugin {
             registry.required::<amigo_scene::RuntimeSceneCommandHandlerRegistry>()?;
         amigo_scene::register_runtime_scene_command_handler(
             scene_handlers.as_ref(),
-            crate::scene_command::Motion2dSceneCommandHandler,
+            crate::Motion2dSceneCommandHandler,
         );
         registry.required::<SystemRegistry>()?.register_fn(
             SystemPhase::Update,

@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use crate::{
+use super::{
     bounds::Bounds2dCommand,
     controller::{MotionController2dCommand, MotionIntent2d, MotionState2d},
     freeflight::{FreeflightMotion2dCommand, FreeflightMotionIntent2d, FreeflightMotionState2d},
