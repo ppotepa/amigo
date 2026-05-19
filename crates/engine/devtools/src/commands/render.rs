@@ -2,7 +2,7 @@ use crate::DevConsoleCommandContext as ConsoleCommandContext;
 use crate::RuntimeConsoleCommandHandler as ConsoleCommandHandler;
 use crate::{ConsoleCommandDescriptor, ConsoleCommandResult, ParsedConsoleCommand};
 
-use amigo_camera::CameraFocusTarget2dService;
+use amigo_camera_core_plugin::CameraFocusTarget2dService;
 use amigo_render_api::{RenderCompositionDiagnosticsService, RenderFrameStatsService};
 
 pub(crate) struct RenderConsoleCommandHandler;

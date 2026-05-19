@@ -22,7 +22,6 @@ members = [
     "crates/engine/event-pipeline",
     "crates/engine/modding",
     "crates/engine/devtools",
-    "crates/engine/camera",
     "crates/engine/runtime-control",
     "crates/engine/editor-api",
     "crates/engine/editor-session",
@@ -129,7 +128,7 @@ amigo-behavior = { path = "crates/engine/behavior" }
 amigo-event-pipeline = { path = "crates/engine/event-pipeline" }
 amigo-modding = { path = "crates/engine/modding" }
 amigo-devtools = { path = "crates/engine/devtools" }
-amigo-camera = { path = "crates/engine/camera" }
+amigo-camera-core-plugin = { path = "plugins/camera/camera-core" }
 amigo-codemap-plugin = { path = "plugins/devtools/codemap" }
 amigo-camera-optics-plugin = { path = "plugins/camera/camera-optics" }
 amigo-focus-depth-plugin = { path = "plugins/camera/focus-depth" }

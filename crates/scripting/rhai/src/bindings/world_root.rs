@@ -7,7 +7,7 @@ use amigo_2d_post_fx::PostFx2dService;
 use amigo_2d_sprite::SpriteSceneService;
 use amigo_2d_vector::VectorSceneService;
 use amigo_assets::AssetCatalog;
-use amigo_camera::{CameraFocusTarget2dService, CameraService};
+use amigo_camera_core_plugin::{CameraFocusTarget2dService, CameraService};
 use amigo_core::{LaunchSelection, RuntimeDiagnostics};
 use amigo_editor_api::{InspectRequest, InspectRequestService};
 use amigo_input_actions::InputActionService;

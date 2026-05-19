@@ -49,7 +49,6 @@ pub use amigo_audio_api;
 pub use amigo_audio_mixer;
 pub use amigo_audio_output;
 pub use amigo_behavior;
-pub use amigo_camera;
 pub use amigo_event_pipeline;
 pub use amigo_input_actions;
 pub use amigo_scripting_rhai;

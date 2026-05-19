@@ -5,3 +5,6 @@ edition = "2021"
 
 [dependencies]
 amigo-plugin-api = { path = "../../../crates/core/plugin-api" }
+amigo-2d-post-fx.workspace = true
+amigo-assets.workspace = true
+amigo-film-look-plugin.workspace = true

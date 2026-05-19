@@ -306,7 +306,7 @@ fn editor_capabilities_use_placeholder_schema_helpers() {
         "crates/3d/text/src/editor_capability.rs",
         "crates/audio/api/src/editor_capability.rs",
         "crates/ui/core/src/editor_capability.rs",
-        "crates/engine/camera/src/editor_capability.rs",
+        "plugins/camera/camera-core/src/diagnostics/editor_capability.rs",
         "crates/engine/devtools/src/editor_capability.rs",
     ] {
         let content = std::fs::read_to_string(workspace.join(relative))

@@ -6,7 +6,7 @@ use amigo_scene::{
     SceneService, format_scene_command,
 };
 
-use crate::optics::{
+use amigo_camera_optics_plugin::runtime::{
     Camera2dRuntimeState, CameraAperture2d, CameraAutoExposure2d, CameraDepthOfField2d,
     CameraExposure2d, CameraExposureMode2d, CameraFilm2d, CameraFocus2d, CameraLens2d,
     CameraLensSurface2d, CameraLook2d, CameraShutter2d,

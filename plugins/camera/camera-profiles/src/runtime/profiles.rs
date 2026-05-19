@@ -1,7 +1,7 @@
 use amigo_2d_post_fx::{ColorRamp2d, RainGlass2d, RainGlassDebugView, RainGlassRaindropCompose};
 use amigo_assets::{AssetCatalog, AssetKey, PreparedAsset, PreparedAssetKind};
 
-pub use crate::film_grain::FilmGrainProfile2d;
+pub use amigo_film_look_plugin::runtime::FilmGrainProfile2d;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct LensProfile2d {

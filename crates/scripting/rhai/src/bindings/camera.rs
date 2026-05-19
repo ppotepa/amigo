@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use amigo_2d_post_fx::RainGlassPatch;
 use amigo_assets::AssetCatalog;
-use amigo_camera::{
+use amigo_camera_core_plugin::{
     CameraDebugView2d, CameraFocus2d, CameraFocusTarget2dService, CameraId,
     CameraQualityProfile2d, CameraService,
 };
@@ -431,7 +431,7 @@ impl CameraApi {
 
     fn update_camera_2d<F>(&mut self, camera_id: &str, update: F) -> bool
     where
-        F: FnOnce(&mut amigo_camera::Camera2dRuntimeState) -> bool,
+        F: FnOnce(&mut amigo_camera_core_plugin::Camera2dRuntimeState) -> bool,
     {
         let Some(service) = self.camera_service.as_ref() else {
             return false;

@@ -1,11 +1,28 @@
 use amigo_2d_post_fx::{ColorRamp2d, RainGlass2d};
 use amigo_assets::AssetCatalog;
-use amigo_render_api::{render_contribution_roles as roles, RenderContributionSet};
+use amigo_plugin_api::{roles, RenderContributionSet};
 
-use crate::profiles::{
+use amigo_camera_profiles_plugin::runtime::{
     film_stock_2d, film_stock_2d_from_catalog, lens_profile_2d, lens_profile_2d_from_catalog,
     look_profile_2d_from_catalog, rain_glass_profile_2d_from_catalog,
 };
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub struct CameraId(pub String);
+
+impl CameraId {
+    pub fn new(value: impl Into<String>) -> Self {
+        Self(value.into())
+    }
+
+    pub fn main() -> Self {
+        Self::new("main")
+    }
+
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CameraExposureMode2d {
@@ -15,7 +32,7 @@ pub enum CameraExposureMode2d {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Camera2dRuntimeState {
-    pub id: crate::CameraId,
+    pub id: CameraId,
     pub entity_name: String,
     pub mode: CameraExposureMode2d,
     pub exposure: CameraExposure2d,
@@ -278,7 +295,7 @@ impl Camera2dRuntimeState {
     pub fn resolved_lens_profile(
         &self,
         assets: Option<&AssetCatalog>,
-    ) -> crate::profiles::LensProfile2d {
+    ) -> amigo_camera_profiles_plugin::runtime::LensProfile2d {
         let mut profile = assets
             .and_then(|assets| lens_profile_2d_from_catalog(assets, &self.lens.profile))
             .or_else(|| lens_profile_2d(&self.lens.profile))
@@ -330,7 +347,7 @@ impl Camera2dRuntimeState {
     pub fn resolved_film_stock(
         &self,
         assets: Option<&AssetCatalog>,
-    ) -> crate::profiles::FilmStockProfile2d {
+    ) -> amigo_camera_profiles_plugin::runtime::FilmStockProfile2d {
         let mut profile = assets
             .and_then(|assets| film_stock_2d_from_catalog(assets, &self.film.profile))
             .or_else(|| film_stock_2d(&self.film.profile))

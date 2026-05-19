@@ -1,6 +1,6 @@
 use amigo_assets::AssetsPlugin;
 use amigo_behavior::BehaviorPlugin;
-use amigo_camera::CameraPlugin;
+use amigo_camera_core_plugin::CameraPlugin;
 use amigo_core::AmigoResult;
 use amigo_event_pipeline::EventPipelinePlugin;
 use amigo_file_watch_notify::NotifyFileWatchPlugin;
@@ -75,7 +75,7 @@ impl RuntimePlugin for ScriptCommandRegistryPlugin {
 pub fn register_core_runtime_capabilities(session: &mut RuntimeSession) {
     amigo_assets::register_assets_runtime_capabilities(session);
     amigo_scene::register_scene_runtime_capabilities(session);
-    amigo_camera::register_camera_runtime_capabilities(session);
+    amigo_camera_core_plugin::register_camera_runtime_capabilities(session);
     amigo_behavior::register_behavior_runtime_capabilities(session);
     amigo_event_pipeline::register_event_pipeline_runtime_capabilities(session);
     amigo_render_api::register_render_runtime_capabilities(session);

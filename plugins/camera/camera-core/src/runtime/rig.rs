@@ -1,15 +1,15 @@
 use amigo_2d_post_fx::{ColorRamp2d, RainGlass2d};
 use amigo_2d_spatial::{DepthSpace2d, distance_to_z_depth};
 use amigo_assets::AssetCatalog;
-use amigo_camera_core_plugin::api::CameraDepthMotion2d;
+use crate::api::CameraDepthMotion2d;
 
 use crate::CameraId;
-use crate::optics::{
+use amigo_camera_optics_plugin::runtime::{
     Camera2dRuntimeState, CameraAperture2d, CameraAutoExposure2d, CameraDepthOfField2d,
     CameraExposureMode2d, CameraFilm2d, CameraFocus2d, CameraLensSurface2d, CameraShutter2d,
 };
-use crate::profiles::{FilmStockProfile2d, LensProfile2d};
-use crate::quality::{CameraQualityProfile2d, CameraQualitySettings2d};
+use amigo_camera_profiles_plugin::runtime::{FilmStockProfile2d, LensProfile2d};
+use amigo_camera_profiles_plugin::api::{CameraQualityProfile2d, CameraQualitySettings2d};
 
 /// Fully resolved 2D camera rig used by render/camera-owned post-fx construction.
 /// Do not build camera-owned effects from raw Camera2dRuntimeState when a rig is available.
@@ -205,7 +205,7 @@ fn finite_or_zero(value: f32) -> f32 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::optics::{
+    use amigo_camera_optics_plugin::runtime::{
         CameraAperture2d, CameraAutoExposure2d, CameraDepthOfField2d, CameraExposure2d,
         CameraFilm2d, CameraLens2d, CameraLook2d,
     };

@@ -329,6 +329,7 @@ dependencies = [
  "amigo-app-host-api",
  "amigo-app-host-winit",
  "amigo-assets",
+ "amigo-camera-core-plugin",
  "amigo-camera-optics-plugin",
  "amigo-capabilities",
  "amigo-core",
@@ -458,7 +459,7 @@ dependencies = [
  "amigo-2d-particles",
  "amigo-2d-physics",
  "amigo-audio-api",
- "amigo-camera",
+ "amigo-camera-core-plugin",
  "amigo-core",
  "amigo-fx",
  "amigo-input-actions",
@@ -480,16 +481,18 @@ dependencies = [
 ]
 
 [[package]]
-name = "amigo-camera"
+name = "amigo-camera-core-plugin"
 version = "0.1.0"
 dependencies = [
  "amigo-2d-post-fx",
  "amigo-2d-spatial",
  "amigo-assets",
- "amigo-camera-core-plugin",
+ "amigo-camera-optics-plugin",
+ "amigo-camera-profiles-plugin",
  "amigo-core",
  "amigo-editor-api",
  "amigo-math",
+ "amigo-plugin-api",
  "amigo-render-api",
  "amigo-runtime",
  "amigo-runtime-control",
@@ -498,16 +501,12 @@ dependencies = [
 ]
 
 [[package]]
-name = "amigo-camera-core-plugin"
-version = "0.1.0"
-dependencies = [
- "amigo-plugin-api",
-]
-
-[[package]]
 name = "amigo-camera-optics-plugin"
 version = "0.1.0"
 dependencies = [
+ "amigo-2d-post-fx",
+ "amigo-assets",
+ "amigo-camera-profiles-plugin",
  "amigo-plugin-api",
  "serde",
 ]
@@ -516,6 +515,9 @@ dependencies = [
 name = "amigo-camera-profiles-plugin"
 version = "0.1.0"
 dependencies = [
+ "amigo-2d-post-fx",
+ "amigo-assets",
+ "amigo-film-look-plugin",
  "amigo-plugin-api",
 ]
 
@@ -591,9 +593,10 @@ dependencies = [
  "amigo-2d-post-fx",
  "amigo-assets",
  "amigo-audio-output",
- "amigo-camera",
+ "amigo-camera-core-plugin",
  "amigo-core",
  "amigo-editor-api",
+ "amigo-focus-depth-plugin",
  "amigo-input-api",
  "amigo-math",
  "amigo-plugin-api",
@@ -691,6 +694,7 @@ dependencies = [
 name = "amigo-film-look-plugin"
 version = "0.1.0"
 dependencies = [
+ "amigo-2d-post-fx",
  "amigo-plugin-api",
 ]
 
@@ -972,7 +976,6 @@ dependencies = [
  "amigo-audio-mixer",
  "amigo-audio-output",
  "amigo-behavior",
- "amigo-camera",
  "amigo-camera-core-plugin",
  "amigo-camera-optics-plugin",
  "amigo-core",
@@ -1055,10 +1058,11 @@ dependencies = [
  "amigo-2d-sprite",
  "amigo-2d-vector",
  "amigo-assets",
- "amigo-camera",
+ "amigo-camera-core-plugin",
  "amigo-capabilities",
  "amigo-core",
  "amigo-editor-api",
+ "amigo-focus-depth-plugin",
  "amigo-fx",
  "amigo-input-actions",
  "amigo-input-api",

@@ -5,7 +5,7 @@ use amigo_2d_particles::{
 };
 use amigo_2d_physics::Physics2dSceneService;
 use amigo_audio_api::{AudioClipKey, AudioCommand, AudioCommandQueue};
-use amigo_camera::CameraFollow2dSceneService;
+use amigo_camera_core_plugin::CameraFollow2dSceneService;
 use amigo_core::{AmigoError, AmigoResult};
 use amigo_input_actions::InputActionService;
 use amigo_input_api::InputState;

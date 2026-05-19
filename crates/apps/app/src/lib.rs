@@ -44,7 +44,7 @@ use amigo_runtime_bundles::amigo_audio_output::{
     AudioOutputBackendService, AudioOutputStartStatus,
 };
 use amigo_runtime_bundles::amigo_behavior::BehaviorSceneService;
-use amigo_runtime_bundles::amigo_camera::{CameraFollow2dSceneService, Parallax2dSceneService};
+use amigo_camera_core_plugin::{CameraFollow2dSceneService, Parallax2dSceneService};
 use amigo_runtime_bundles::amigo_event_pipeline::EventPipelineService;
 use amigo_runtime_bundles::amigo_input_actions::InputActionService;
 use amigo_runtime_bundles::amigo_ui::{

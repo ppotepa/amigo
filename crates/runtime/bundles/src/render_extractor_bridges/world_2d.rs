@@ -267,7 +267,7 @@ impl RenderFrameExtractor<Runtime, WgpuRenderFramePacket> for WgpuPostFx2dRender
             packet,
         );
 
-        if let Some(camera_service) = runtime.resolve::<amigo_camera::CameraService>() {
+        if let Some(camera_service) = runtime.resolve::<amigo_camera_core_plugin::CameraService>() {
             let depth_space = runtime
                 .resolve::<amigo_2d_composition::RenderLayer2dSceneService>()
                 .map(|service| service.depth_space())
@@ -281,7 +281,7 @@ impl RenderFrameExtractor<Runtime, WgpuRenderFramePacket> for WgpuPostFx2dRender
                 (settings, camera_motion)
             } else {
                 (
-                    amigo_camera::CameraQualityProfile2d::default().settings(),
+                    amigo_camera_core_plugin::CameraQualityProfile2d::default().settings(),
                     amigo_camera_core_plugin::api::CameraDepthMotion2d::default(),
                 )
             };
@@ -320,7 +320,7 @@ impl RenderFrameExtractor<Runtime, WgpuRenderFramePacket> for WgpuPostFx2dRender
 
 fn build_visual_source_flags_2d(
     packet: &WgpuRenderFramePacket,
-    quality_settings: amigo_camera::CameraQualitySettings2d,
+    quality_settings: amigo_camera_core_plugin::CameraQualitySettings2d,
 ) -> amigo_render_wgpu::WgpuVisualSourceFlags2d {
     let capture = packet.camera_capture_input_2d();
     let generate_visual = quality_settings.debug_buffers

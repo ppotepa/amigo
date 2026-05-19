@@ -722,7 +722,7 @@ fn camera_focus_for_input(
     input: &amigo_render_api::CameraCaptureInput2d,
 ) -> Option<CameraFocusPlanInfo> {
     let camera_service =
-        required::<amigo_runtime_bundles::amigo_camera::CameraService>(runtime).ok()?;
+        required::<amigo_camera_core_plugin::CameraService>(runtime).ok()?;
     let rig = camera_service.main_resolved_camera_rig_2d(Some(assets), input.depth_space)?;
     let motion = camera_service.main_camera_depth_motion_2d().unwrap_or_default();
     Some(CameraFocusPlanInfo {
@@ -745,7 +745,7 @@ fn render_camera_contributions_summary(
     beacon_contributions_summary: Option<String>,
 ) -> Option<String> {
     let camera_service =
-        required::<amigo_runtime_bundles::amigo_camera::CameraService>(runtime).ok()?;
+        required::<amigo_camera_core_plugin::CameraService>(runtime).ok()?;
     let depth_space = input.map(|input| input.depth_space).unwrap_or_default();
     let mut summary = camera_service.camera_render_contributions_summary_for_depth_space(
         Some(assets),

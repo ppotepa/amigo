@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use amigo_camera::{
+use amigo_camera_core_plugin::{
     CameraFocusTarget2d, CameraFocusTarget2dKind, CameraFocusTarget2dService,
     CameraFocusTargetDepth2d,
 };

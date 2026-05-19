@@ -7,14 +7,14 @@ use amigo_2d_post_fx::{
     PostFxPipelineKind, PostFxScope2d, RainGlass2d, ScopedPostFx2dStack, ShutterBlur2d,
 };
 use amigo_assets::AssetCatalog;
-use amigo_camera_core_plugin::api::CameraDepthMotion2d;
+use crate::api::CameraDepthMotion2d;
 use amigo_math::Vec2;
 use amigo_render_api::render_contribution_roles as roles;
 use amigo_scene::{CameraFollow2dSceneCommand, Parallax2dSceneCommand};
 
-use crate::optics::{Camera2dRuntimeState, CameraAperture2d, CameraFocus2d};
-use crate::quality::{CameraQualityProfile2d, CameraQualitySettings2d};
-use crate::rig::{ResolvedCameraRig2d, apply_camera_depth_motion_to_rig, resolve_camera_rig_2d};
+use amigo_camera_optics_plugin::runtime::{Camera2dRuntimeState, CameraAperture2d, CameraFocus2d};
+use amigo_camera_profiles_plugin::api::{CameraQualityProfile2d, CameraQualitySettings2d};
+use crate::runtime::rig::{ResolvedCameraRig2d, apply_camera_depth_motion_to_rig, resolve_camera_rig_2d};
 use crate::{
     Camera, CameraFocusTarget2dService, CameraFocusTargetDepth2d, CameraFocusTransition2d,
     CameraFocusTransitionTarget2d, CameraId,
@@ -470,12 +470,12 @@ impl CameraService {
     }
 
     pub fn apply_builtin_preset_2d(&self, camera_id: &CameraId, preset_id: &str) -> bool {
-        let Some(preset) = crate::profiles::camera_preset_2d(preset_id.trim()) else {
+        let Some(preset) = amigo_camera_profiles_plugin::runtime::camera_preset_2d(preset_id.trim()) else {
             return false;
         };
 
         self.update_camera_2d(camera_id, |camera| {
-            camera.mode = crate::optics::CameraExposureMode2d::Manual;
+            camera.mode = amigo_camera_optics_plugin::runtime::CameraExposureMode2d::Manual;
             camera.exposure.iso = preset.exposure_iso;
             camera.exposure.compensation = preset.exposure_compensation;
             camera.shutter.enabled = preset.shutter_enabled;
@@ -503,7 +503,7 @@ impl CameraService {
             camera.aperture.enabled = true;
             camera.aperture.f_stop = preset.f_stop;
             camera.aperture.focus_distance_m = preset.focus_distance_m;
-            camera.aperture.focus = crate::optics::CameraFocus2d::Distance {
+            camera.aperture.focus = amigo_camera_optics_plugin::runtime::CameraFocus2d::Distance {
                 meters: preset.focus_distance_m,
             };
             camera.aperture.depth_of_field.max_blur_px = preset.max_blur_px;
@@ -700,8 +700,8 @@ impl CameraService {
                 effect: PostFx2d::CameraExposure(
                     CameraExposure2d {
                         mode: match rig.exposure.mode {
-                            crate::optics::CameraExposureMode2d::Auto => PostFxExposureMode2d::Auto,
-                            crate::optics::CameraExposureMode2d::Manual => {
+                            amigo_camera_optics_plugin::runtime::CameraExposureMode2d::Auto => PostFxExposureMode2d::Auto,
+                            amigo_camera_optics_plugin::runtime::CameraExposureMode2d::Manual => {
                                 PostFxExposureMode2d::Manual
                             }
                         },
@@ -775,18 +775,18 @@ impl CameraService {
                 effect: PostFx2d::FocusBlur(
                     FocusBlur2d {
                         focus: match &rig.aperture.focus {
-                            crate::optics::CameraFocus2d::None => FocusTarget2d::None,
-                            crate::optics::CameraFocus2d::RenderLayer { layer } => {
+                            amigo_camera_optics_plugin::runtime::CameraFocus2d::None => FocusTarget2d::None,
+                            amigo_camera_optics_plugin::runtime::CameraFocus2d::RenderLayer { layer } => {
                                 FocusTarget2d::RenderLayer {
                                     layer: layer.clone(),
                                 }
                             }
-                            crate::optics::CameraFocus2d::SceneObject { object } => {
+                            amigo_camera_optics_plugin::runtime::CameraFocus2d::SceneObject { object } => {
                                 FocusTarget2d::SceneObject {
                                     object: object.clone(),
                                 }
                             }
-                            crate::optics::CameraFocus2d::Distance { meters } => {
+                            amigo_camera_optics_plugin::runtime::CameraFocus2d::Distance { meters } => {
                                 FocusTarget2d::Depth {
                                     value: rig.aperture.computed_focus_z_depth.unwrap_or_else(
                                         || {
@@ -798,7 +798,7 @@ impl CameraService {
                                     ),
                                 }
                             }
-                            crate::optics::CameraFocus2d::Depth { value } => {
+                            amigo_camera_optics_plugin::runtime::CameraFocus2d::Depth { value } => {
                                 FocusTarget2d::Depth { value: *value }
                             }
                         },
@@ -1188,10 +1188,10 @@ fn apply_camera_focus_to_rain_glass(rain: &mut RainGlass2d, rig: &ResolvedCamera
         .aperture
         .computed_focus_z_depth
         .or_else(|| match &rig.aperture.focus {
-            crate::optics::CameraFocus2d::Distance { meters } => Some(
+            amigo_camera_optics_plugin::runtime::CameraFocus2d::Distance { meters } => Some(
                 amigo_2d_spatial::distance_to_z_depth(*meters, rig.depth_space),
             ),
-            crate::optics::CameraFocus2d::Depth { value } => Some(value.clamp(0.0, 1.0)),
+            amigo_camera_optics_plugin::runtime::CameraFocus2d::Depth { value } => Some(value.clamp(0.0, 1.0)),
             _ => None,
         });
     let Some(value) = value else {
@@ -1223,7 +1223,7 @@ fn finite_or_zero(value: f32) -> f32 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::optics::{
+    use amigo_camera_optics_plugin::runtime::{
         Camera2dRuntimeState, CameraAperture2d, CameraAutoExposure2d, CameraDepthOfField2d,
         CameraExposure2d, CameraExposureMode2d, CameraFilm2d, CameraFocus2d, CameraLens2d,
         CameraLensSurface2d, CameraLook2d, CameraShutter2d,
@@ -1728,7 +1728,7 @@ mod tests {
             far_m: 1500.0,
             curve: amigo_2d_spatial::DepthCurve2d::Logarithmic,
         };
-        let rig = crate::rig::resolve_camera_rig_2d(
+        let rig = crate::runtime::rig::resolve_camera_rig_2d(
             &camera,
             None,
             custom_space,

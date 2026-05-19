@@ -15,7 +15,7 @@ pub struct CameraPlugin;
 
 impl RuntimePlugin for CameraPlugin {
     fn name(&self) -> &'static str {
-        "amigo-camera"
+        "amigo-camera-core-plugin"
     }
 
     fn register(&self, registry: &mut ServiceRegistry) -> AmigoResult<()> {

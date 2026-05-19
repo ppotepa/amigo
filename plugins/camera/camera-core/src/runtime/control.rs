@@ -254,7 +254,7 @@ impl RuntimeControlProvider for Camera2dControlProvider {
             "aperture.enabled" => Ok(ControlValue::Bool(camera.aperture.enabled)),
             "aperture.f_stop" => Ok(ControlValue::F64(camera.aperture.f_stop as f64)),
             "aperture.focus_depth" => Ok(ControlValue::F64(match camera.aperture.focus {
-                crate::optics::CameraFocus2d::Depth { value } => value,
+                amigo_camera_optics_plugin::runtime::CameraFocus2d::Depth { value } => value,
                 _ => 0.5,
             } as f64)),
             "aperture.focus_distance_m" => {
@@ -368,7 +368,7 @@ impl RuntimeControlProvider for Camera2dControlProvider {
                 let Some(focus_depth) = value.as_f32() else {
                     return false;
                 };
-                state.aperture.focus = crate::optics::CameraFocus2d::Depth {
+                state.aperture.focus = amigo_camera_optics_plugin::runtime::CameraFocus2d::Depth {
                     value: focus_depth.clamp(0.0, 1.0),
                 };
                 true
@@ -378,7 +378,7 @@ impl RuntimeControlProvider for Camera2dControlProvider {
                     return false;
                 };
                 state.aperture.focus_distance_m = focus_distance_m.clamp(0.2, 1000.0);
-                state.aperture.focus = crate::optics::CameraFocus2d::Distance {
+                state.aperture.focus = amigo_camera_optics_plugin::runtime::CameraFocus2d::Distance {
                     meters: state.aperture.focus_distance_m,
                 };
                 true
@@ -772,7 +772,7 @@ fn update_rain(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::optics::{
+    use amigo_camera_optics_plugin::runtime::{
         Camera2dRuntimeState, CameraAperture2d, CameraAutoExposure2d, CameraDepthOfField2d,
         CameraExposure2d, CameraExposureMode2d, CameraFilm2d, CameraFocus2d, CameraLens2d,
         CameraLensSurface2d, CameraLook2d, CameraShutter2d,
