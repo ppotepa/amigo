@@ -1,0 +1,1 @@
+//! Codemap plugin API contracts.

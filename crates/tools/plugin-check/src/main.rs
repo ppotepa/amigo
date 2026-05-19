@@ -1,18 +1,38 @@
-use std::path::PathBuf;
+use std::collections::BTreeSet;
+use std::fs;
+use std::path::{Path, PathBuf};
 
 use amigo_codemap_api::{validate_codemap_graph, CodeMapNodeId};
-use amigo_plugin_index::{
-    build_codemap_graph_from_index, validate_plugin_index, PluginIndex,
-};
+use amigo_plugin_index::{build_codemap_graph_from_index, validate_plugin_index, PluginIndex};
 use amigo_plugin_loader::load_plugin_manifests_from_plugins_dir;
 
 fn main() {
     let mut args = std::env::args().skip(1);
-    let command = args.next().unwrap_or_else(|| "summary".to_owned());
-    let plugins_dir = args
-        .next()
-        .map(PathBuf::from)
-        .unwrap_or_else(|| PathBuf::from("plugins"));
+    let first = args.next().unwrap_or_else(|| "summary".to_owned());
+    let known_command = matches!(
+        first.as_str(),
+        "summary" | "check" | "plugins" | "targets" | "diagnostics" | "graph"
+    );
+    let command = if known_command {
+        first.clone()
+    } else {
+        "check".to_owned()
+    };
+    let plugins_dir = args.next().map(PathBuf::from).unwrap_or_else(|| {
+        if known_command {
+            PathBuf::from("plugins")
+        } else {
+            PathBuf::from(first)
+        }
+    });
+
+    if let Err(errors) = validate_plugin_tree(&plugins_dir) {
+        eprintln!("plugin tree validation failed:");
+        for error in errors {
+            eprintln!("- {error}");
+        }
+        std::process::exit(1);
+    }
 
     let manifests = match load_plugin_manifests_from_plugins_dir(&plugins_dir) {
         Ok(manifests) => manifests,
@@ -46,6 +66,214 @@ fn main() {
             eprintln!("unknown command: {other}");
             eprintln!("usage: amigo-plugin-check [summary|plugins|targets|diagnostics|graph] [plugins_dir]");
             std::process::exit(2);
+        }
+    }
+}
+
+fn validate_plugin_tree(root: &Path) -> Result<(), Vec<String>> {
+    let mut errors = Vec::new();
+    let plugin_dirs = collect_plugin_dirs(root, &mut errors);
+    let mut ids = BTreeSet::new();
+
+    for plugin_dir in plugin_dirs {
+        validate_plugin_dir(&plugin_dir, &mut ids, &mut errors);
+    }
+
+    if errors.is_empty() {
+        Ok(())
+    } else {
+        Err(errors)
+    }
+}
+
+fn collect_plugin_dirs(root: &Path, errors: &mut Vec<String>) -> Vec<PathBuf> {
+    if root.join("plugin.toml").exists() {
+        return vec![root.to_path_buf()];
+    }
+
+    let mut plugins = Vec::new();
+    let Ok(families) = fs::read_dir(root) else {
+        errors.push(format!("{} is not readable", root.display()));
+        return plugins;
+    };
+
+    for family in families.flatten() {
+        let family_path = family.path();
+        if !family_path.is_dir() {
+            continue;
+        }
+
+        let Ok(entries) = fs::read_dir(&family_path) else {
+            errors.push(format!("{} is not readable", family_path.display()));
+            continue;
+        };
+
+        for entry in entries.flatten() {
+            let plugin_path = entry.path();
+            if plugin_path.is_dir() {
+                plugins.push(plugin_path);
+            }
+        }
+    }
+
+    plugins
+}
+
+fn validate_plugin_dir(plugin_dir: &Path, ids: &mut BTreeSet<String>, errors: &mut Vec<String>) {
+    let manifest_path = plugin_dir.join("plugin.toml");
+    let cargo_path = plugin_dir.join("Cargo.toml");
+
+    require_file(plugin_dir, "plugin.toml", errors);
+    require_file(plugin_dir, "Cargo.toml", errors);
+    require_file(plugin_dir, "README.md", errors);
+    require_file(plugin_dir, "docs/pipeline.md", errors);
+    require_file(plugin_dir, "tests/waterfall_tests.rs", errors);
+    require_file(plugin_dir, "src/plugin.rs", errors);
+
+    for dir in [
+        "src/api",
+        "src/scene",
+        "src/runtime",
+        "src/render_wgpu",
+        "src/scripting",
+        "src/diagnostics",
+    ] {
+        require_dir(plugin_dir, dir, errors);
+    }
+
+    if plugin_dir.join("src/render-wgpu").exists() {
+        errors.push(format!(
+            "{} must use src/render_wgpu, not src/render-wgpu",
+            plugin_dir.display()
+        ));
+    }
+
+    if manifest_path.exists() {
+        validate_manifest_identity(plugin_dir, &manifest_path, ids, errors);
+    }
+
+    if cargo_path.exists() {
+        validate_cargo_package_name(plugin_dir, &cargo_path, errors);
+    }
+
+    validate_forbidden_patterns(plugin_dir, errors);
+}
+
+fn require_file(plugin_dir: &Path, relative: &str, errors: &mut Vec<String>) {
+    if !plugin_dir.join(relative).is_file() {
+        errors.push(format!("{} missing {relative}", plugin_dir.display()));
+    }
+}
+
+fn require_dir(plugin_dir: &Path, relative: &str, errors: &mut Vec<String>) {
+    if !plugin_dir.join(relative).is_dir() {
+        errors.push(format!("{} missing {relative}", plugin_dir.display()));
+    }
+}
+
+fn validate_manifest_identity(
+    plugin_dir: &Path,
+    manifest_path: &Path,
+    ids: &mut BTreeSet<String>,
+    errors: &mut Vec<String>,
+) {
+    let Ok(content) = fs::read_to_string(manifest_path) else {
+        errors.push(format!("{} is not readable", manifest_path.display()));
+        return;
+    };
+
+    let id = manifest_scalar(&content, "id");
+    let family = manifest_scalar(&content, "family");
+    let actual_family = plugin_dir
+        .parent()
+        .and_then(|path| path.file_name())
+        .and_then(|name| name.to_str())
+        .unwrap_or("");
+
+    match family {
+        Some(family) if family == actual_family => {}
+        Some(family) => errors.push(format!(
+            "{} family `{family}` does not match plugins/{actual_family}",
+            manifest_path.display()
+        )),
+        None => errors.push(format!("{} missing family", manifest_path.display())),
+    }
+
+    match id {
+        Some(id) if ids.insert(id.to_owned()) => {}
+        Some(id) => errors.push(format!("duplicate plugin id `{id}`")),
+        None => errors.push(format!("{} missing id", manifest_path.display())),
+    }
+}
+
+fn validate_cargo_package_name(plugin_dir: &Path, cargo_path: &Path, errors: &mut Vec<String>) {
+    let Ok(content) = fs::read_to_string(cargo_path) else {
+        errors.push(format!("{} is not readable", cargo_path.display()));
+        return;
+    };
+
+    if manifest_scalar(&content, "name").is_none() {
+        errors.push(format!("{} missing package name", plugin_dir.display()));
+    }
+}
+
+fn manifest_scalar<'a>(content: &'a str, key: &str) -> Option<&'a str> {
+    let prefix = format!("{key} = ");
+    content.lines().find_map(|line| {
+        let line = line.trim();
+        line.strip_prefix(&prefix)
+            .and_then(|value| value.trim().strip_prefix('"'))
+            .and_then(|value| value.strip_suffix('"'))
+    })
+}
+
+fn validate_forbidden_patterns(plugin_dir: &Path, errors: &mut Vec<String>) {
+    const FORBIDDEN: &[&str] = &[
+        "legacy",
+        "deprecated",
+        "_v2",
+        "luma_fallback",
+        "should_produce_scene_highlight",
+        "direct_lens_flare",
+        "guess_optical",
+    ];
+
+    for path in files_under(plugin_dir) {
+        let Ok(content) = fs::read_to_string(&path) else {
+            continue;
+        };
+
+        for forbidden in FORBIDDEN {
+            if content.contains(forbidden) {
+                errors.push(format!(
+                    "{} contains forbidden `{forbidden}`",
+                    path.display()
+                ));
+            }
+        }
+    }
+}
+
+fn files_under(root: &Path) -> Vec<PathBuf> {
+    let mut files = Vec::new();
+    collect_files(root, &mut files);
+    files
+}
+
+fn collect_files(path: &Path, files: &mut Vec<PathBuf>) {
+    let Ok(entries) = fs::read_dir(path) else {
+        return;
+    };
+
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if path.is_dir() {
+            if path.file_name().and_then(|name| name.to_str()) == Some("target") {
+                continue;
+            }
+            collect_files(&path, files);
+        } else {
+            files.push(path);
         }
     }
 }

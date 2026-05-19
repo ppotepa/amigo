@@ -4,10 +4,8 @@ use amigo_plugin_loader::load_plugin_manifests_from_plugins_dir;
 
 #[test]
 fn loads_two_level_plugin_manifest() {
-    let root = std::env::temp_dir().join(format!(
-        "amigo-plugin-loader-test-{}",
-        std::process::id()
-    ));
+    let root =
+        std::env::temp_dir().join(format!("amigo-plugin-loader-test-{}", std::process::id()));
     let plugin_dir = root.join("camera").join("camera-optics");
     fs::create_dir_all(&plugin_dir).unwrap();
 

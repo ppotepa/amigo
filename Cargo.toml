@@ -79,6 +79,7 @@ members = [
     "plugins/camera/shutter-motion",
     "plugins/camera/film-look",
     "plugins/camera/camera-profiles",
+    "plugins/devtools/codemap",
     "plugins/gfx/sprite-2d",
     "plugins/gfx/text-2d",
     "plugins/gfx/vector-2d",
@@ -129,6 +130,7 @@ amigo-event-pipeline = { path = "crates/engine/event-pipeline" }
 amigo-modding = { path = "crates/engine/modding" }
 amigo-devtools = { path = "crates/engine/devtools" }
 amigo-camera = { path = "crates/engine/camera" }
+amigo-codemap-plugin = { path = "plugins/devtools/codemap" }
 amigo-camera-optics-plugin = { path = "plugins/camera/camera-optics" }
 amigo-focus-depth-plugin = { path = "plugins/camera/focus-depth" }
 amigo-shutter-motion-plugin = { path = "plugins/camera/shutter-motion" }

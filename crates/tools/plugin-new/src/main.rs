@@ -2,22 +2,16 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 fn main() {
-    let args: Vec<String> = std::env::args().collect();
-
-    if args.len() != 5 {
-        eprintln!(
-            "usage: amigo-plugin-new <family> <plugin-name> <kind> <renderable:true|false>"
-        );
+    let args: Vec<String> = std::env::args().skip(1).collect();
+    let Some(options) = PluginNewOptions::from_args(&args) else {
+        eprintln!("usage: amigo-plugin-new --family <family> --name <plugin-name> --kind <kind> [--renderable true|false]");
         std::process::exit(2);
-    }
-
-    let family = &args[1];
-    let plugin_name = &args[2];
-    let kind = &args[3];
-    let renderable = &args[4];
+    };
 
     let source = PathBuf::from("templates/plugin");
-    let target = PathBuf::from("plugins").join(family).join(plugin_name);
+    let target = PathBuf::from("plugins")
+        .join(&options.family)
+        .join(&options.name);
 
     if target.exists() {
         eprintln!("target already exists: {}", target.display());
@@ -31,15 +25,81 @@ fn main() {
     let manifest = manifest
         .replace(
             "amigo.family.plugin-name",
-            &format!("amigo.{family}.{plugin_name}"),
+            &format!("amigo.{}.{}", options.family, options.name),
         )
-        .replace("family = \"family\"", &format!("family = \"{family}\""))
-        .replace("kind = \"noop\"", &format!("kind = \"{kind}\""))
-        .replace("renderable = false", &format!("renderable = {renderable}"));
+        .replace(
+            "family = \"family\"",
+            &format!("family = \"{}\"", options.family),
+        )
+        .replace("kind = \"noop\"", &format!("kind = \"{}\"", options.kind))
+        .replace(
+            "renderable = false",
+            &format!("renderable = {}", options.renderable),
+        );
 
     fs::write(manifest_path, manifest).unwrap();
 
+    let cargo_path = target.join("Cargo.toml");
+    let cargo = fs::read_to_string(&cargo_path).unwrap();
+    let cargo = cargo.replace(
+        "amigo-plugin-template",
+        &format!("amigo-{}-plugin", options.name),
+    );
+    fs::write(cargo_path, cargo).unwrap();
+
     println!("{}", target.display());
+}
+
+struct PluginNewOptions {
+    family: String,
+    name: String,
+    kind: String,
+    renderable: bool,
+}
+
+impl PluginNewOptions {
+    fn from_args(args: &[String]) -> Option<Self> {
+        let mut family = None;
+        let mut name = None;
+        let mut kind = None;
+        let mut renderable = None;
+        let mut index = 0;
+
+        while index < args.len() {
+            match args[index].as_str() {
+                "--family" => {
+                    index += 1;
+                    family = args.get(index).cloned();
+                }
+                "--name" => {
+                    index += 1;
+                    name = args.get(index).cloned();
+                }
+                "--kind" => {
+                    index += 1;
+                    kind = args.get(index).cloned();
+                }
+                "--renderable" => {
+                    index += 1;
+                    renderable = args.get(index).and_then(|value| value.parse().ok());
+                }
+                _ => return None,
+            }
+            index += 1;
+        }
+
+        let family = family?;
+        let name = name?;
+        let kind = kind?;
+        let renderable = renderable.unwrap_or(kind == "renderable-source");
+
+        Some(Self {
+            family,
+            name,
+            kind,
+            renderable,
+        })
+    }
 }
 
 fn copy_dir(source: &Path, target: &Path) -> std::io::Result<()> {

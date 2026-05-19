@@ -44,7 +44,7 @@ Every plugin must eventually contain:
 - `src/scene/`
 - `src/participation/`
 - `src/runtime/`
-- `src/render-wgpu/`
+- `src/render_wgpu/`
 - `src/scripting/`
 - `src/diagnostics/`
 - `tests/waterfall_tests.rs`

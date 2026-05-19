@@ -48,7 +48,7 @@ plugins/<family>/<plugin>/
       resources.rs
       frame_state.rs
 
-    render-wgpu/
+    render_wgpu/
       mod.rs
       buffers.rs
       targets.rs
@@ -86,7 +86,7 @@ plugins/<family>/<plugin>/
 
 ## Rules
 
-* A plugin without rendering still keeps `src/render-wgpu/noop.rs`.
+* A plugin without rendering still keeps `src/render_wgpu/noop.rs`.
 * A plugin without scripting still keeps `src/scripting/noop.rs`.
 * A plugin without contributions still declares empty contribution lists in `plugin.toml`.
 * Source plugins do not execute effects owned by another domain.

@@ -9,6 +9,13 @@ use crate::error::PluginLoadError;
 pub fn load_plugin_manifests_from_plugins_dir(
     plugins_dir: &Path,
 ) -> Result<Vec<PluginManifest>, Vec<PluginLoadError>> {
+    let single_manifest_path = plugins_dir.join("plugin.toml");
+    if single_manifest_path.exists() {
+        return load_one(&single_manifest_path)
+            .map(|manifest| vec![manifest])
+            .map_err(|error| vec![error]);
+    }
+
     let mut manifests = Vec::new();
     let mut errors = Vec::new();
 

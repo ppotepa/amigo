@@ -549,6 +549,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "amigo-codemap-plugin"
+version = "0.1.0"
+dependencies = [
+ "amigo-plugin-api",
+]
+
+[[package]]
 name = "amigo-color-grading-plugin"
 version = "0.1.0"
 dependencies = [
