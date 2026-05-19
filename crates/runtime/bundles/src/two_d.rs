@@ -1,5 +1,4 @@
 use amigo_2d_composition::Composition2dPlugin;
-use amigo_2d_depth_map::DepthMap2dPlugin;
 use amigo_2d_layered_image::LayeredImagePlugin;
 use amigo_2d_lighting::Lighting2dPlugin;
 use amigo_2d_lighting_beacon::Beacon2dPlugin;
@@ -12,11 +11,10 @@ use amigo_2d_text::Text2dPlugin;
 use amigo_2d_tilemap::TileMap2dPlugin;
 use amigo_2d_vector::Vector2dPlugin;
 use amigo_core::AmigoResult;
+use amigo_focus_depth_plugin::{DepthMap2dPlugin, FocusTargets2dRuntimePlugin};
 use amigo_runtime::{PluginBundle, RuntimeBuilder};
 use amigo_session::RuntimeSession;
 use amigo_ui::UiPlugin;
-
-use crate::FocusTargets2dRuntimePlugin;
 
 pub struct TwoDRuntimeBundle;
 
@@ -50,7 +48,7 @@ pub fn register_two_d_runtime_capabilities(session: &mut RuntimeSession) {
     amigo_2d_sprite::register_sprite2d_runtime_capabilities(session);
     amigo_2d_tilemap::register_tilemap2d_runtime_capabilities(session);
     amigo_2d_layered_image::register_layered_image_runtime_capabilities(session);
-    amigo_2d_depth_map::register_depth_map_runtime_capabilities(session);
+    amigo_focus_depth_plugin::register_depth_map_runtime_capabilities(session);
     amigo_2d_composition::register_composition2d_runtime_capabilities(session);
     amigo_2d_lighting::register_lighting2d_runtime_capabilities(session);
     amigo_2d_post_fx::register_post_fx_runtime_capabilities(session);

@@ -131,7 +131,7 @@ pub struct WgpuWorld2dRenderInput<'a> {
     pub tilemaps: &'a TileMap2dSceneService,
     pub sprites: &'a SpriteSceneService,
     pub layered_images: &'a LayeredImageSceneService,
-    pub depth_maps: &'a amigo_2d_depth_map::DepthMap2dSceneService,
+    pub depth_maps: &'a amigo_focus_depth_plugin::DepthMap2dSceneService,
     pub global_lights: &'a GlobalLight2dSceneService,
     pub lightmaps: &'a LightMap2dSceneService,
     pub text2d: &'a Text2dSceneService,

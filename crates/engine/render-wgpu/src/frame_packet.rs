@@ -1,5 +1,5 @@
 use amigo_2d_composition::{LightRoute2dCommand, RenderLayer2dCommand};
-use amigo_2d_depth_map::{DepthAuxMap2dDrawCommand, DepthMap2dDrawCommand};
+use amigo_focus_depth_plugin::{DepthAuxMap2dDrawCommand, DepthMap2dDrawCommand};
 use amigo_2d_layered_image::LayeredImageDrawCommand;
 use amigo_2d_lighting::{GlobalLight2dCommand, LightGroup2dCommand, LightMap2dSourceCommand};
 use amigo_2d_lighting_beacon::{Beacon2dRenderOutput, BeaconLight2dDrawCommand};
@@ -525,7 +525,7 @@ impl amigo_2d_layered_image::LayeredImage2dRenderOutput for WgpuRenderFramePacke
     }
 }
 
-impl amigo_2d_depth_map::DepthMap2dRenderOutput for WgpuRenderFramePacket {
+impl amigo_focus_depth_plugin::DepthMap2dRenderOutput for WgpuRenderFramePacket {
     fn push_depth_map2d_render_command(&mut self, command: DepthMap2dDrawCommand) {
         self.push_world_2d_depth_map(command);
     }

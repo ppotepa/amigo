@@ -1,4 +1,4 @@
-use amigo_2d_depth_map::{DepthMap2dDrawCommand, DepthMapViewportFit2d};
+use amigo_focus_depth_plugin::{DepthMap2dDrawCommand, DepthMapViewportFit2d};
 use amigo_2d_layered_image::LayeredImageSceneService;
 use amigo_2d_particles::Particle2dDrawCommand;
 use amigo_2d_post_fx::{FocusBlur2d, FocusTarget2d};

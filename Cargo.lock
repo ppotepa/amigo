@@ -89,19 +89,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "amigo-2d-depth-map"
-version = "0.1.0"
-dependencies = [
- "amigo-assets",
- "amigo-capabilities",
- "amigo-core",
- "amigo-math",
- "amigo-runtime",
- "amigo-scene",
- "amigo-session",
-]
-
-[[package]]
 name = "amigo-2d-layered-image"
 version = "0.1.0"
 dependencies = [
@@ -703,8 +690,24 @@ dependencies = [
 name = "amigo-focus-depth-plugin"
 version = "0.1.0"
 dependencies = [
+ "amigo-2d-composition",
+ "amigo-2d-layered-image",
+ "amigo-2d-lighting-beacon",
+ "amigo-2d-particles",
+ "amigo-2d-spatial",
+ "amigo-2d-sprite",
+ "amigo-2d-text",
+ "amigo-2d-vector",
+ "amigo-assets",
  "amigo-camera-core-plugin",
+ "amigo-capabilities",
+ "amigo-core",
+ "amigo-math",
  "amigo-plugin-api",
+ "amigo-render-api",
+ "amigo-runtime",
+ "amigo-scene",
+ "amigo-session",
 ]
 
 [[package]]
@@ -912,7 +915,6 @@ name = "amigo-render-wgpu"
 version = "0.1.0"
 dependencies = [
  "amigo-2d-composition",
- "amigo-2d-depth-map",
  "amigo-2d-layered-image",
  "amigo-2d-lighting",
  "amigo-2d-lighting-beacon",
@@ -929,6 +931,7 @@ dependencies = [
  "amigo-assets",
  "amigo-camera-optics-plugin",
  "amigo-core",
+ "amigo-focus-depth-plugin",
  "amigo-font",
  "amigo-fx",
  "amigo-math",
@@ -955,7 +958,6 @@ name = "amigo-runtime-bundles"
 version = "0.1.0"
 dependencies = [
  "amigo-2d-composition",
- "amigo-2d-depth-map",
  "amigo-2d-layered-image",
  "amigo-2d-lighting",
  "amigo-2d-lighting-beacon",

@@ -8,14 +8,14 @@ pub struct DepthMap2dPlugin;
 
 impl RuntimePlugin for DepthMap2dPlugin {
     fn name(&self) -> &'static str {
-        "amigo-2d-depth-map"
+        "amigo-focus-depth-plugin"
     }
 
     fn register(&self, registry: &mut ServiceRegistry) -> AmigoResult<()> {
         registry.register(DepthMap2dSceneService::default())?;
         register_domain_plugin(
             registry,
-            "amigo-2d-depth-map",
+            "amigo-focus-depth-plugin",
             &["rendering_2d", "camera_2d"],
             &[],
             DEFAULT_CAPABILITY_VERSION,
@@ -24,7 +24,7 @@ impl RuntimePlugin for DepthMap2dPlugin {
             registry.required::<amigo_scene::RuntimeSceneCommandHandlerRegistry>()?;
         amigo_scene::register_runtime_scene_command_handler(
             scene_handlers.as_ref(),
-            crate::scene_command::DepthMap2dSceneCommandHandler,
+            crate::DepthMap2dSceneCommandHandler,
         );
         Ok(())
     }

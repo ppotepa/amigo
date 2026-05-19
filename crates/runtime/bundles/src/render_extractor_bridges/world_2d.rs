@@ -98,15 +98,15 @@ pub struct WgpuDepthMap2dRenderExtractorBridge;
 
 impl RenderFrameExtractor<Runtime, WgpuRenderFramePacket> for WgpuDepthMap2dRenderExtractorBridge {
     fn name(&self) -> &'static str {
-        amigo_2d_depth_map::DepthMap2dRenderExtractor.name()
+        amigo_focus_depth_plugin::DepthMap2dRenderExtractor.name()
     }
 
     fn extract(&self, runtime: &Runtime, packet: &mut WgpuRenderFramePacket) {
         let scene_service = required::<SceneService>(runtime);
         let depth_map_scene_service =
-            required::<amigo_2d_depth_map::DepthMap2dSceneService>(runtime);
-        amigo_2d_depth_map::DepthMap2dRenderExtractor.extract(
-            amigo_2d_depth_map::DepthMap2dRenderExtractionContext {
+            required::<amigo_focus_depth_plugin::DepthMap2dSceneService>(runtime);
+        amigo_focus_depth_plugin::DepthMap2dRenderExtractor.extract(
+            amigo_focus_depth_plugin::DepthMap2dRenderExtractionContext {
                 scene_service: scene_service.as_ref(),
                 depth_map_scene_service: depth_map_scene_service.as_ref(),
             },

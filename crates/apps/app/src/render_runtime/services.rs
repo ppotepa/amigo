@@ -1,7 +1,7 @@
 use amigo_runtime_bundles::amigo_2d_composition::{
     LightRoute2dSceneService, RenderLayer2dSceneService,
 };
-use amigo_runtime_bundles::amigo_2d_depth_map::DepthMap2dSceneService;
+use amigo_runtime_bundles::amigo_focus_depth_plugin::DepthMap2dSceneService;
 use amigo_runtime_bundles::amigo_2d_layered_image::LayeredImageSceneService;
 use amigo_runtime_bundles::amigo_2d_lighting::{GlobalLight2dSceneService, LightMap2dSceneService};
 use amigo_runtime_bundles::amigo_2d_sprite::SpriteSceneService;

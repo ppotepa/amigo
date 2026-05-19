@@ -246,7 +246,7 @@ fn app_render_extractor_registry_collects_vector_and_ui_data() {
     let text3d = Text3dSceneService::default();
     let layered_images =
         amigo_runtime_bundles::amigo_2d_layered_image::LayeredImageSceneService::default();
-    let depth_maps = amigo_runtime_bundles::amigo_2d_depth_map::DepthMap2dSceneService::default();
+    let depth_maps = amigo_runtime_bundles::amigo_focus_depth_plugin::DepthMap2dSceneService::default();
     let global_lights =
         amigo_runtime_bundles::amigo_2d_lighting::GlobalLight2dSceneService::default();
     let lightmaps = amigo_runtime_bundles::amigo_2d_lighting::LightMap2dSceneService::default();
@@ -411,7 +411,7 @@ fn app_render_extractor_registry_appends_enabled_debug_overlay() {
     let text2d = Text2dSceneService::default();
     let vectors = VectorSceneService::default();
     let particles = Particle2dSceneService::default();
-    let depth_maps = amigo_runtime_bundles::amigo_2d_depth_map::DepthMap2dSceneService::default();
+    let depth_maps = amigo_runtime_bundles::amigo_focus_depth_plugin::DepthMap2dSceneService::default();
     let meshes = MeshSceneService::default();
     let materials = MaterialSceneService::default();
     let text3d = Text3dSceneService::default();

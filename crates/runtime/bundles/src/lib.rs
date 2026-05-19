@@ -1,7 +1,6 @@
 mod audio;
 mod core;
 mod devtools;
-mod focus_targets_2d;
 mod full;
 mod platform;
 mod plugin_composition;
@@ -13,7 +12,6 @@ pub mod render_extractor_bridges;
 pub use audio::*;
 pub use core::*;
 pub use devtools::*;
-pub use focus_targets_2d::*;
 pub use full::*;
 pub use platform::*;
 pub use plugin_composition::*;
@@ -31,7 +29,6 @@ use amigo_session::{
 };
 
 pub use amigo_2d_composition;
-pub use amigo_2d_depth_map;
 pub use amigo_2d_layered_image;
 pub use amigo_2d_lighting;
 pub use amigo_2d_motion;
@@ -50,6 +47,7 @@ pub use amigo_audio_mixer;
 pub use amigo_audio_output;
 pub use amigo_behavior;
 pub use amigo_event_pipeline;
+pub use amigo_focus_depth_plugin;
 pub use amigo_input_actions;
 pub use amigo_scripting_rhai;
 pub use amigo_ui;
