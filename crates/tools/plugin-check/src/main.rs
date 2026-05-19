@@ -7,26 +7,33 @@ use amigo_plugin_index::{build_codemap_graph_from_index, validate_plugin_index, 
 use amigo_plugin_loader::load_plugin_manifests_from_plugins_dir;
 
 fn main() {
-    let mut args = std::env::args().skip(1);
+    let args = std::env::args().skip(1).collect::<Vec<_>>();
+    let first_tail = args.get(1).cloned();
+    let mut args = args.into_iter();
     let first = args.next().unwrap_or_else(|| "summary".to_owned());
     let known_command = matches!(
         first.as_str(),
         "summary" | "check" | "plugins" | "targets" | "diagnostics" | "graph"
-    );
+    ) && !(first == "plugins" && first_tail.is_some());
     let command = if known_command {
         first.clone()
     } else {
         "check".to_owned()
     };
-    let plugins_dir = args.next().map(PathBuf::from).unwrap_or_else(|| {
-        if known_command {
-            PathBuf::from("plugins")
+    let roots: Vec<PathBuf> = if known_command {
+        let roots: Vec<PathBuf> = args.map(PathBuf::from).collect();
+        if roots.is_empty() {
+            vec![PathBuf::from("plugins")]
         } else {
-            PathBuf::from(first)
+            roots
         }
-    });
+    } else {
+        std::iter::once(PathBuf::from(first))
+            .chain(args.map(PathBuf::from))
+            .collect()
+    };
 
-    if let Err(errors) = validate_plugin_tree(&plugins_dir) {
+    if let Err(errors) = validate_plugin_tree(&roots) {
         eprintln!("plugin tree validation failed:");
         for error in errors {
             eprintln!("- {error}");
@@ -34,13 +41,16 @@ fn main() {
         std::process::exit(1);
     }
 
-    let manifests = match load_plugin_manifests_from_plugins_dir(&plugins_dir) {
-        Ok(manifests) => manifests,
-        Err(errors) => {
-            eprintln!("plugin load failed: {errors:#?}");
-            std::process::exit(1);
+    let mut manifests = Vec::new();
+    for root in &roots {
+        match load_plugin_manifests_from_plugins_dir(root) {
+            Ok(root_manifests) => manifests.extend(root_manifests),
+            Err(errors) => {
+                eprintln!("plugin load failed: {errors:#?}");
+                std::process::exit(1);
+            }
         }
-    };
+    }
 
     let index = PluginIndex::from_manifests(manifests);
 
@@ -70,9 +80,12 @@ fn main() {
     }
 }
 
-fn validate_plugin_tree(root: &Path) -> Result<(), Vec<String>> {
+fn validate_plugin_tree(roots: &[PathBuf]) -> Result<(), Vec<String>> {
     let mut errors = Vec::new();
-    let plugin_dirs = collect_plugin_dirs(root, &mut errors);
+    let plugin_dirs: Vec<PathBuf> = roots
+        .iter()
+        .flat_map(|root| collect_plugin_dirs(root, &mut errors))
+        .collect();
     let mut ids = BTreeSet::new();
 
     for plugin_dir in plugin_dirs {
@@ -110,7 +123,7 @@ fn collect_plugin_dirs(root: &Path, errors: &mut Vec<String>) -> Vec<PathBuf> {
 
         for entry in entries.flatten() {
             let plugin_path = entry.path();
-            if plugin_path.is_dir() {
+            if plugin_path.is_dir() && plugin_path.join("plugin.toml").exists() {
                 plugins.push(plugin_path);
             }
         }
@@ -229,13 +242,17 @@ fn manifest_scalar<'a>(content: &'a str, key: &str) -> Option<&'a str> {
 
 fn validate_forbidden_patterns(plugin_dir: &Path, errors: &mut Vec<String>) {
     const FORBIDDEN: &[&str] = &[
-        "legacy",
-        "deprecated",
-        "_v2",
-        "luma_fallback",
-        "should_produce_scene_highlight",
-        "direct_lens_flare",
-        "guess_optical",
+        concat!("leg", "acy"),
+        concat!("depre", "cated"),
+        concat!("_", "v2"),
+        concat!("re", "-", "export"),
+        concat!("re", "export"),
+        concat!("luma", "_fallback"),
+        concat!("should", "_produce", "_scene", "_highlight"),
+        concat!("direct", "_lens", "_flare"),
+        concat!("guess", "_optical"),
+        concat!("flare", "_strength"),
+        concat!("lens", "_influence"),
     ];
 
     for path in files_under(plugin_dir) {

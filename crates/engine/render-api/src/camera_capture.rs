@@ -405,10 +405,10 @@ impl CameraCaptureInput2dBuilder {
         self
     }
 
-    // Legacy convenience: derived, not produced. Prefer explicit
+    // Compatibility convenience: derived, not produced. Prefer explicit
     // with_normal_produced / with_normal_derived.
     pub fn with_normal(self, id: impl Into<String>) -> Self {
-        self.with_normal_derived(id, "legacy")
+        self.with_normal_derived(id, "derived")
     }
 
     pub fn with_normal_produced(mut self, id: impl Into<String>) -> Self {
@@ -443,10 +443,10 @@ impl CameraCaptureInput2dBuilder {
         self
     }
 
-    // Legacy convenience: derived, not produced. Prefer explicit
+    // Compatibility convenience: derived, not produced. Prefer explicit
     // with_wetness_produced / with_wetness_derived.
     pub fn with_wetness(self, id: impl Into<String>) -> Self {
-        self.with_wetness_derived(id, "legacy")
+        self.with_wetness_derived(id, "derived")
     }
 
     pub fn with_wetness_produced(mut self, id: impl Into<String>) -> Self {
@@ -481,7 +481,7 @@ impl CameraCaptureInput2dBuilder {
         self
     }
 
-    // Legacy convenience: derived, not produced. Prefer explicit
+    // Compatibility convenience: derived, not produced. Prefer explicit
     // with_emissive_produced / with_emissive_derived.
     pub fn with_emissive(self, id: impl Into<String>) -> Self {
         self.with_emissive_derived(id)
@@ -505,7 +505,7 @@ impl CameraCaptureInput2dBuilder {
         self
     }
 
-    // Legacy convenience: derived, not produced. Prefer explicit
+    // Compatibility convenience: derived, not produced. Prefer explicit
     // with_highlight_produced / with_highlight_derived.
     pub fn with_highlight(self, id: impl Into<String>) -> Self {
         self.with_highlight_derived(id)
@@ -529,7 +529,7 @@ impl CameraCaptureInput2dBuilder {
         self
     }
 
-    // Legacy convenience: derived, not produced. Prefer explicit
+    // Compatibility convenience: derived, not produced. Prefer explicit
     // with_motion_produced / with_motion_derived.
     pub fn with_motion(self, id: impl Into<String>) -> Self {
         self.with_motion_derived(id)

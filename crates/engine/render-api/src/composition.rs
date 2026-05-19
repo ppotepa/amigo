@@ -95,7 +95,7 @@ impl FrameCompositionPlan {
                 ui_policy: UiCompositionPolicy::default(),
                 passes,
             }],
-            layers: default_legacy_layers(),
+            layers: default_composition_layers(),
         }
     }
 
@@ -129,7 +129,7 @@ impl FrameCompositionPlan {
     }
 }
 
-pub fn default_legacy_layers() -> Vec<CompositionLayer> {
+pub fn default_composition_layers() -> Vec<CompositionLayer> {
     vec![
         CompositionLayer {
             id: RenderLayerId::new("world"),

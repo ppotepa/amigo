@@ -120,7 +120,7 @@ impl Default for SchedulingFrameStats {
     fn default() -> Self {
         Self {
             mode: EngineSchedulerMode::SingleThread,
-            particle_mode: "legacy".to_owned(),
+            particle_mode: "single_thread".to_owned(),
             particle_update_ms: 0.0,
             render_prepare_ms: 0.0,
             worker_jobs_submitted: 0,

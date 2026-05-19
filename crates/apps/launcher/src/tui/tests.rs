@@ -74,7 +74,7 @@ fn activating_mod_sets_root_mod_and_scene() {
 }
 
 #[test]
-fn launcher_hides_legacy_fixture_scenes_for_playgrounds() {
+fn launcher_hides_old_fixture_scenes_for_playgrounds() {
     let mut state = state();
     state.focus = FocusPane::Tree;
     state.selected_mod_index = state

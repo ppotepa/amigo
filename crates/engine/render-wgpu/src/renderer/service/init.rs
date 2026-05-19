@@ -897,7 +897,7 @@ struct CameraOpticsUniform {
     distortion: f32,
     vignette: f32,
     edge_softness_px: f32,
-    flare_strength: f32,
+    glare_strength: f32,
     lens_bloom: f32,
     flare_ghosts: f32,
     anamorphic_squeeze: f32,
@@ -987,7 +987,7 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
 
     let streak = exp(-abs(centered.y) * 22.0 * squeeze) * smoothstep(0.18, 0.92, abs(centered.x));
     let source_energy = max(luminance(highlight_source), luminance(emissive_source));
-    let flare = max(luma, source_energy) * (uniforms.flare_strength + uniforms.lens_bloom * 0.45) * (0.03 + streak * (0.12 + uniforms.flare_ghosts * 0.18));
+    let flare = max(luma, source_energy) * (uniforms.glare_strength + uniforms.lens_bloom * 0.45) * (0.03 + streak * (0.12 + uniforms.flare_ghosts * 0.18));
     let ghost_uv_1 = clamp(vec2<f32>(1.0, 1.0) - distorted_uv, vec2<f32>(0.001), vec2<f32>(0.999));
     let ghost_uv_2 = clamp(vec2<f32>(0.5, 0.5) + (vec2<f32>(0.5, 0.5) - centered * 1.35), vec2<f32>(0.001), vec2<f32>(0.999));
     let ghost_1 = max(textureSample(source_tex, source_sampler, ghost_uv_1).rgb, textureSample(highlight_tex, source_sampler, ghost_uv_1).rgb);
@@ -1008,7 +1008,7 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
         * uniforms.halation_bias
         * 0.16;
 
-    optics_rgb += vec3<f32>(flare + dirt_veil) + halation + ghost_rgb + highlight_source * uniforms.lens_bloom * (0.08 + wetness_amount * 0.10) + emissive_source * uniforms.flare_strength * (0.05 + wetness_amount * 0.06);
+    optics_rgb += vec3<f32>(flare + dirt_veil) + halation + ghost_rgb + highlight_source * uniforms.lens_bloom * (0.08 + wetness_amount * 0.10) + emissive_source * uniforms.glare_strength * (0.05 + wetness_amount * 0.06);
     optics_rgb = mix(optics_rgb, soft_rgb, uniforms.lens_bloom * 0.12);
 
     let rgb = mix(base.rgb, clamp(optics_rgb, vec3<f32>(0.0), vec3<f32>(1.0)), uniforms.opacity);

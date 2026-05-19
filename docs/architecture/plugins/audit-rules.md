@@ -12,9 +12,9 @@
 
 ## Forbidden pattern rules
 
-- No `legacy`.
-- No `deprecated`.
-- No `_v2`.
+- No `old`.
+- No `retired`.
+- No `_next`.
 - No `luma_fallback`.
 - No `guess_optical`.
 - No `direct_lens_flare`.

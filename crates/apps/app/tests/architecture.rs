@@ -124,7 +124,7 @@ fn app_systems_do_not_reintroduce_domain_system_plugins() {
     ] {
         assert!(
             !contents.contains(forbidden),
-            "apps/app systems must not define legacy domain plugin {forbidden}"
+            "apps/app systems must not define old domain plugin {forbidden}"
         );
     }
 }
@@ -162,14 +162,14 @@ fn moved_services_remain_owned_by_engine_or_devtools() {
     ] {
         assert!(
             render_runtime.contains(required),
-            "src/render_runtime.rs must re-export moved render service via `{required}`"
+            "src/render_runtime.rs must forward moved render service via `{required}`"
         );
     }
 
     let debug_overlay = read_app_file("src/debug_overlay/mod.rs");
     assert!(
         debug_overlay.contains("pub(crate) use amigo_devtools::DebugOverlayService;"),
-        "src/debug_overlay/mod.rs must re-export DebugOverlayService from amigo_devtools"
+        "src/debug_overlay/mod.rs must forward DebugOverlayService from amigo_devtools"
     );
     for forbidden in [
         "mod service;",
@@ -296,11 +296,11 @@ fn editor_capabilities_use_placeholder_schema_helpers() {
     let workspace = workspace_root();
 
     for relative in [
-        "crates/2d/sprite/src/editor_capability.rs",
-        "crates/2d/text/src/editor_capability.rs",
-        "crates/2d/vector/src/editor_capability.rs",
-        "crates/2d/tilemap/src/editor_capability.rs",
-        "crates/2d/layered-image/src/editor_capability.rs",
+        "plugins/gfx/sprite-2d/src/sprite/editor_capability.rs",
+        "plugins/gfx/text-2d/src/text/editor_capability.rs",
+        "plugins/gfx/vector-2d/src/vector/editor_capability.rs",
+        "plugins/gfx/tilemap-2d/src/tilemap/editor_capability.rs",
+        "plugins/gfx/layered-image-2d/src/layered_image/editor_capability.rs",
         "crates/3d/mesh/src/editor_capability.rs",
         "crates/3d/material/src/editor_capability.rs",
         "crates/3d/text/src/editor_capability.rs",

@@ -96,7 +96,7 @@ pub struct CameraLens2d {
     pub distortion: Option<f32>,
     pub vignette: Option<f32>,
     pub edge_softness_px: Option<f32>,
-    pub flare_strength: Option<f32>,
+    pub glare_strength: Option<f32>,
     pub dirt: Option<f32>,
     pub focal_length_mm: Option<f32>,
     pub lens_bloom: Option<f32>,
@@ -313,8 +313,8 @@ impl Camera2dRuntimeState {
         if let Some(value) = self.lens.edge_softness_px {
             profile.edge_softness_px = value;
         }
-        if let Some(value) = self.lens.flare_strength {
-            profile.flare_strength = value;
+        if let Some(value) = self.lens.glare_strength {
+            profile.glare_strength = value;
         }
         if let Some(value) = self.lens.dirt {
             profile.dirt = value;
@@ -444,14 +444,14 @@ mod tests {
     }
 
     #[test]
-    fn shutter_speed_seconds_override_legacy_angle_model() {
+    fn shutter_speed_seconds_override_previous_angle_model() {
         let shutter = shutter_with(Some(0.1), 24.0, 180.0);
 
         assert!((shutter.exposure_seconds() - 0.1).abs() < f32::EPSILON);
     }
 
     #[test]
-    fn shutter_angle_fps_remain_legacy_exposure_fallback() {
+    fn shutter_angle_fps_remain_previous_exposure_fallback() {
         let shutter = shutter_with(None, 24.0, 180.0);
 
         assert!((shutter.exposure_seconds() - (1.0 / 48.0)).abs() < 0.0001);

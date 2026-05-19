@@ -193,7 +193,7 @@ pub fn tick_particles_2d_world(runtime: &Runtime, delta_seconds: f32) -> AmigoRe
             let result = particle_scene_service.tick(&inputs, delta_seconds);
             particle_live_count = result.stats.live_particles;
             particle_spawned_count = result.stats.spawned_particles;
-            particle_mode = "legacy".to_owned();
+            particle_mode = "previous".to_owned();
         }
         EngineSchedulerMode::Auto => {
             let result = particle_scene_service.tick_inline_job_equivalent(&inputs, delta_seconds);

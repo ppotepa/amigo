@@ -75,7 +75,7 @@ fn counts_solid_cells_with_collision_only_when_symbol_is_solid() {
 }
 
 #[test]
-fn extracts_solid_cells_from_resolved_collision_before_legacy_symbols() {
+fn extracts_solid_cells_from_resolved_collision_before_previous_symbols() {
     let tilemap = TileMap2d {
         tileset: AssetKey::new(
             "playground-sidescroller/spritesheets/platformer/tilesets/platform/base",
@@ -100,7 +100,7 @@ fn extracts_solid_cells_from_resolved_collision_before_legacy_symbols() {
 }
 
 #[test]
-fn keeps_legacy_solid_symbol_fallback_without_resolved_data() {
+fn keeps_previous_solid_symbol_fallback_without_resolved_data() {
     let tilemap = TileMap2d {
         tileset: AssetKey::new(
             "playground-sidescroller/spritesheets/platformer/tilesets/platform/base",

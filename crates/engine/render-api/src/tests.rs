@@ -141,7 +141,7 @@ fn sample_post_fx_node() -> FrameGraphNodeKind {
     }
 
     #[test]
-    fn frame_graph_node_kind_has_no_legacy_composite() {
+    fn frame_graph_node_kind_has_no_old_composite() {
         let mut graph = FrameGraph::new();
         let surface = graph.add_resource("surface", FrameResourceKind::SurfaceColor);
 

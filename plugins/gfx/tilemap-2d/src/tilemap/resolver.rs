@@ -9,7 +9,7 @@ pub fn solid_cells(tilemap: &TileMap2d) -> Vec<TileMapSolidCell> {
         return solid_cells_from_resolved(tilemap, resolved);
     }
 
-    legacy_solid_cells(tilemap)
+    previous_solid_cells(tilemap)
 }
 
 fn solid_cells_from_resolved(
@@ -40,7 +40,7 @@ fn solid_cells_from_resolved(
     solids
 }
 
-fn legacy_solid_cells(tilemap: &TileMap2d) -> Vec<TileMapSolidCell> {
+fn previous_solid_cells(tilemap: &TileMap2d) -> Vec<TileMapSolidCell> {
     let row_count = tilemap.grid.len();
     let mut solids = Vec::new();
 

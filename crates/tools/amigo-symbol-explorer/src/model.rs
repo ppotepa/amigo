@@ -193,7 +193,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn codemap_schema_version_is_v2() {
+    fn codemap_schema_version_is_two() {
         assert_eq!(CODEMAP_SCHEMA_VERSION, 2);
     }
 

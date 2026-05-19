@@ -30,7 +30,7 @@ relevant engine/domain crate, not in `amigo-app`.
 - Render lifecycle goes through `build_render_frame_for_session` and updates `RenderSessionService` through `RuntimeSession`.
 - System phases go through `run_app_system_phase_for_session` and update `SchedulerSessionService`.
 - Script dispatch goes through `dispatch_script_command_for_session` and updates `ScriptSessionService`.
-- Remaining app-owned scene/script/systems/render helpers are explicit temporary migration seams (legacy adapters) until domain providers replace them.
+- Remaining app-owned scene/script/systems/render helpers are explicit temporary migration seams (old adapters) until domain providers replace them.
 
 ## Migration seams still in app
 - `register_app_dev_console_command_provider`
@@ -47,7 +47,7 @@ relevant engine/domain crate, not in `amigo-app`.
 ## Dev console / debug boundary
 - `amigo-app` owns the console shell, overlay presentation, and host-facing controls.
 - Domain-owned console commands are exposed via contribution descriptors; runtime uses
-  temporary legacy providers in app until domain crates own them directly.
+  temporary old providers in app until domain crates own them directly.
 - Debug overlay ownership stays app-side and renders after post-fx in the hosted render path.
 ## Thin App Host boundary
 

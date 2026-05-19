@@ -82,7 +82,7 @@ fn particle_color_ramp_alpha_multiplies_alpha_curve() {
 }
 
 #[test]
-fn particle_missing_color_ramp_preserves_legacy_color() {
+fn particle_missing_color_ramp_preserves_previous_color() {
     let service = Particle2dSceneService::default();
     let mut command = test_emitter(true);
     command.emitter.color = ColorRgba::new(0.25, 0.5, 0.75, 1.0);
@@ -194,7 +194,7 @@ fn set_color_ramp_updates_draw_color() {
 }
 
 #[test]
-fn clear_color_ramp_restores_legacy_color() {
+fn clear_color_ramp_restores_previous_color() {
     let service = Particle2dSceneService::default();
     let mut command = test_emitter(true);
     command.emitter.color = ColorRgba::new(0.2, 0.3, 0.4, 1.0);

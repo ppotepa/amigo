@@ -81,7 +81,7 @@ pub fn handle_post_fx_dev_console_command(
             let mut scene_local_count = 0usize;
             let mut presentation_count = 0usize;
             let mut debug_count = 0usize;
-            let mut legacy_count = 0usize;
+            let mut previous_count = 0usize;
             let mut draw_layer_stacks = 0usize;
             let mut unsupported_scoped_stacks = 0usize;
             for scoped in &scoped_stacks {
@@ -96,7 +96,7 @@ pub fn handle_post_fx_dev_console_command(
                         crate::PostFxRole2d::SceneLocal => scene_local_count += 1,
                         crate::PostFxRole2d::Presentation => presentation_count += 1,
                         crate::PostFxRole2d::Debug => debug_count += 1,
-                        crate::PostFxRole2d::Legacy => legacy_count += 1,
+                        crate::PostFxRole2d::Legacy => previous_count += 1,
                     }
                 }
             }
@@ -129,7 +129,7 @@ pub fn handle_post_fx_dev_console_command(
                 .iter()
                 .any(|effect| matches!(effect, PostFx2d::ShutterBlur(_)));
             PostFxDevConsoleCommandOutcome::Handled(format!(
-                "postfx.effects={} dirty_bloom_active={} crt_active={} film_noise_active={} lens_droplets_active={} wet_reflections_active={} rain_glass_active={} shutter_blur_active={} role.camera_capture={} role.scene_local={} role.presentation={} role.debug={} role.legacy={} draw_layer_stacks={} unsupported_scoped_stacks={} renderer_mode={} overlay_supported={} blur_supported={} world_offscreen_post_fx_supported={}",
+                "postfx.effects={} dirty_bloom_active={} crt_active={} film_noise_active={} lens_droplets_active={} wet_reflections_active={} rain_glass_active={} shutter_blur_active={} role.camera_capture={} role.scene_local={} role.presentation={} role.debug={} role.previous={} draw_layer_stacks={} unsupported_scoped_stacks={} renderer_mode={} overlay_supported={} blur_supported={} world_offscreen_post_fx_supported={}",
                 stack.effects.len(),
                 dirty_bloom_active,
                 crt_active,
@@ -142,7 +142,7 @@ pub fn handle_post_fx_dev_console_command(
                 scene_local_count,
                 presentation_count,
                 debug_count,
-                legacy_count,
+                previous_count,
                 draw_layer_stacks,
                 unsupported_scoped_stacks,
                 ctx.post_fx_service.renderer_mode(),

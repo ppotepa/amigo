@@ -63,7 +63,7 @@ fn hydrate_component_core(
                         distortion: lens.distortion,
                         vignette: lens.vignette,
                         edge_softness_px: lens.edge_softness_px,
-                        flare_strength: lens.flare_strength,
+                        glare_strength: lens.glare_strength,
                         dirt: lens.dirt,
                         focal_length_mm: lens.focal_length_mm,
                         lens_bloom: lens.lens_bloom,

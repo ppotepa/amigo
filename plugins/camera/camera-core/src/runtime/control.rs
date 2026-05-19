@@ -815,7 +815,7 @@ mod tests {
                 distortion: None,
                 vignette: None,
                 edge_softness_px: None,
-                flare_strength: None,
+                glare_strength: None,
                 dirt: None,
                 focal_length_mm: None,
                 lens_bloom: None,

@@ -6,7 +6,7 @@ use amigo_devtools::{
 use amigo_scripting_api::ScriptRuntimeService;
 
 use crate::inspect::{
-    format_inspect_error, process_pending_inspect_requests, resolve_legacy_inspect_selector,
+    format_inspect_error, process_pending_inspect_requests, resolve_text_inspect_selector,
 };
 use crate::runtime_apply::apply_property_value;
 use crate::selection::{select_node_by_id, select_viewport_target};
@@ -39,7 +39,7 @@ impl RuntimeConsoleCommandHandler for IngameEditorConsoleCommandHandler {
                 aliases: &["i"],
                 category: "editor",
                 help: "Open the right-side inspector dock for a real inspectable runtime handle.",
-                usage: "inspect <entity(\"name\")|postfx.item(index)|render2d.get_layer(\"id\")|variable|legacy-selector>",
+                usage: "inspect <entity(\"name\")|postfx.item(index)|render2d.get_layer(\"id\")|variable|text-selector>",
                 examples: &[
                     "inspect entity(\"player\")",
                     "let fx = postfx.item(0)",
@@ -383,7 +383,7 @@ impl RuntimeConsoleCommandHandler for IngameEditorConsoleCommandHandler {
                     Err(error) => return ConsoleCommandResult::error(error),
                 };
                 let selector = format!("node:{node_id}");
-                match resolve_legacy_inspect_selector(ctx.runtime, state.as_ref(), &selector) {
+                match resolve_text_inspect_selector(ctx.runtime, state.as_ref(), &selector) {
                     Ok(resolved) => {
                         let label = resolved.target.label.clone();
                         state.open_inspector_dock(resolved.target, resolved.selection);
@@ -565,7 +565,7 @@ fn inspect_tail(command: &ParsedConsoleCommand) -> String {
         .unwrap_or_else(|| command.args.join(" "))
 }
 
-fn is_legacy_inspect_selector(tail: &str) -> bool {
+fn is_text_inspect_selector(tail: &str) -> bool {
     tail == "selected"
         || tail.starts_with("entity:")
         || tail.starts_with("postfx:")
@@ -586,8 +586,8 @@ fn handle_inspect_command(
         );
     }
 
-    if is_legacy_inspect_selector(&tail) {
-        return match resolve_legacy_inspect_selector(ctx.runtime, state, &tail) {
+    if is_text_inspect_selector(&tail) {
+        return match resolve_text_inspect_selector(ctx.runtime, state, &tail) {
             Ok(resolved) => {
                 let label = resolved.target.label.clone();
                 state.open_inspector_dock(resolved.target, resolved.selection);

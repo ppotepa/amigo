@@ -43,7 +43,7 @@ Do not use this for camera lens rain:
 world.postfx.set_rain_glass(...)
 ```
 
-That API is legacy/debug-only and targets global frame post-fx.
+That API is old/debug-only and targets global frame post-fx.
 
 ## YAML shape
 

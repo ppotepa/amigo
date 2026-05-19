@@ -755,7 +755,7 @@ impl CameraService {
                         distortion: lens.distortion,
                         vignette: lens.vignette,
                         edge_softness_px: lens.edge_softness_px,
-                        flare_strength: lens.flare_strength,
+                        glare_strength: lens.glare_strength,
                         lens_bloom: lens.lens_bloom,
                         flare_ghosts: lens.flare_ghosts,
                         anamorphic_squeeze: lens.anamorphic_squeeze,
@@ -1268,7 +1268,7 @@ mod tests {
                 distortion: None,
                 vignette: None,
                 edge_softness_px: None,
-                flare_strength: None,
+                glare_strength: None,
                 dirt: None,
                 focal_length_mm: None,
                 lens_bloom: None,
@@ -1664,7 +1664,7 @@ mod tests {
     }
 
     #[test]
-    fn legacy_z_offset_does_not_directly_change_computed_focus_z_depth() {
+    fn previous_z_offset_does_not_directly_change_computed_focus_z_depth() {
         let mut camera = camera_state_with_rain_profile(None);
         camera.aperture.focus_distance_m = 8.0;
         camera.aperture.focus = CameraFocus2d::Distance { meters: 8.0 };

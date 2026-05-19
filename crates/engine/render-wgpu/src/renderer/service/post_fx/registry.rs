@@ -73,7 +73,7 @@ pub(crate) fn execute_screen_space_post_fx(
             super::camera_exposure::execute_camera_exposure(renderer, effect, input_view, output)
         }
         PostFx2d::CameraOptics(effect) => {
-            let response = (effect.flare_strength + effect.lens_bloom + effect.halation_bias)
+            let response = (effect.glare_strength + effect.lens_bloom + effect.halation_bias)
                 .clamp(0.0, 3.0)
                 / 3.0;
             let normal_view = renderer

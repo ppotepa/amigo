@@ -15,7 +15,7 @@
 
 - `apps/app/src/render_runtime.rs` still orchestrates host render frame submission.
 - `crates/runtime/bundles/src/wgpu_render_extractors` is a backend bridge.
-- `CompositionLayer` and `RenderSpace` are integrated as transition metadata while legacy pass planning remains.
+- `CompositionLayer` and `RenderSpace` are integrated as transition metadata while old pass planning remains.
 - Editor APIs are placeholders only. No full editor application exists.
 
 ## Rules

@@ -303,7 +303,6 @@ mod tests {
             None,
             None,
             None,
-            None,
             vec![LightContributionKind2d::LightingEmit],
             "light_group_lightmap_channel",
             None,

@@ -318,7 +318,7 @@ fn resolved_from_node(
     })
 }
 
-pub(crate) fn resolve_legacy_inspect_selector(
+pub(crate) fn resolve_text_inspect_selector(
     runtime: &Runtime,
     state: &IngameEditorState,
     selector: &str,

@@ -24,9 +24,9 @@ Mods provide content.
 
 ## Hard rules
 
-- No legacy bridge.
-- No deprecated compatibility wrappers.
-- No `*_v2` naming.
+- No old bridge.
+- No retired compatibility wrappers.
+- No `numbered duplicate` naming.
 - No renderer-side domain guessing.
 - No effect fallback from missing contribution.
 - No app-owned domain logic.

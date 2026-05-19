@@ -281,7 +281,7 @@ pub struct CameraLens2dSceneCommand {
     pub distortion: Option<f32>,
     pub vignette: Option<f32>,
     pub edge_softness_px: Option<f32>,
-    pub flare_strength: Option<f32>,
+    pub glare_strength: Option<f32>,
     pub dirt: Option<f32>,
     pub focal_length_mm: Option<f32>,
     pub lens_bloom: Option<f32>,

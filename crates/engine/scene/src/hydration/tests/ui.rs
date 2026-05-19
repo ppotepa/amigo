@@ -126,7 +126,7 @@ entities:
 }
 
 #[test]
-fn hydrates_curve_editor_points_and_legacy_values() {
+fn hydrates_curve_editor_points_and_previous_values() {
     let document = load_scene_document_from_str(
         r#####"
 version: 1

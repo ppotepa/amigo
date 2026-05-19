@@ -86,7 +86,7 @@ fn layout_to_ui_layout_node(node: LayoutNode<UiNode>) -> UiLayoutNode {
     }
 }
 
-fn apply_legacy_paths(node: &mut UiLayoutNode) {
+fn apply_stable_paths(node: &mut UiLayoutNode) {
     for (index, child) in node.children.iter_mut().enumerate() {
         let segment = child
             .node
@@ -94,7 +94,7 @@ fn apply_legacy_paths(node: &mut UiLayoutNode) {
             .clone()
             .unwrap_or_else(|| format!("{}-{index}", child.node.kind.label()));
         child.path = format!("{}.{}", node.path, segment);
-        apply_legacy_paths(child);
+        apply_stable_paths(child);
     }
 }
 
@@ -109,6 +109,6 @@ fn compute_layout_with_kernel(document: &UiDocument, viewport: UiRect) -> UiLayo
     );
     let mut ui_layout = layout_to_ui_layout_node(layout);
     ui_layout.path = root_path;
-    apply_legacy_paths(&mut ui_layout);
+    apply_stable_paths(&mut ui_layout);
     ui_layout
 }

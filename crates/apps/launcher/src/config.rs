@@ -94,9 +94,9 @@ impl LauncherConfig {
         let mut config = match toml::from_str::<Self>(&raw) {
             Ok(config) => config,
             Err(_) => {
-                let legacy = toml::from_str::<LegacyLauncherConfig>(&raw)
+                let imported =  toml::from_str::<ImportedLauncherConfig>(&raw)
                     .map_err(|error| AmigoError::Message(error.to_string()))?;
-                legacy.into_current()
+                imported.into_current()
             }
         };
 
@@ -224,7 +224,7 @@ impl LauncherConfig {
 }
 
 #[derive(Debug, Clone, Deserialize)]
-struct LegacyLauncherConfig {
+struct ImportedLauncherConfig {
     #[serde(default = "default_profile")]
     profile: String,
     #[serde(default = "default_window_backend")]
@@ -247,14 +247,14 @@ struct LegacyLauncherConfig {
     hosted_default: bool,
 }
 
-impl LegacyLauncherConfig {
+impl ImportedLauncherConfig {
     fn into_current(self) -> LauncherConfig {
         LauncherConfig {
             active_profile: self.profile.clone(),
             mods_root: self.mods_root,
             profiles: vec![LauncherProfile {
                 id: self.profile,
-                label: "Legacy Imported Profile".to_owned(),
+                label: "Imported Profile".to_owned(),
                 description: "Migrated from the previous single-profile launcher config."
                     .to_owned(),
                 cargo_profile: CargoProfile::Dev,
@@ -264,7 +264,7 @@ impl LegacyLauncherConfig {
                 script_backend: self.script_backend,
                 root_mod: self
                     .startup_mod
-                    .or_else(|| derive_root_mod_from_legacy_mods(&self.mods)),
+                    .or_else(|| derive_root_mod_from_imported_mods(&self.mods)),
                 startup_scene: self.startup_scene,
                 hosted_default: self.hosted_default,
             }],
@@ -444,7 +444,7 @@ fn normalize_profile(profile: &mut LauncherProfile) {
     }
 }
 
-fn derive_root_mod_from_legacy_mods(mods: &[String]) -> Option<String> {
+fn derive_root_mod_from_imported_mods(mods: &[String]) -> Option<String> {
     mods.iter()
         .find(|mod_id| mod_id.as_str() != "core")
         .cloned()

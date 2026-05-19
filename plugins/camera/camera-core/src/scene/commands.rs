@@ -91,7 +91,7 @@ impl RuntimeSceneCommandHandler for CameraSceneCommandHandler {
                         distortion: command.lens.distortion,
                         vignette: command.lens.vignette,
                         edge_softness_px: command.lens.edge_softness_px,
-                        flare_strength: command.lens.flare_strength,
+                        glare_strength: command.lens.glare_strength,
                         dirt: command.lens.dirt,
                         focal_length_mm: command.lens.focal_length_mm,
                         lens_bloom: command.lens.lens_bloom,

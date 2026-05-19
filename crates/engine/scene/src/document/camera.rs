@@ -140,7 +140,7 @@ pub struct CameraLens2dDocument {
     pub edge_softness_px: Option<f32>,
 
     #[serde(default)]
-    pub flare_strength: Option<f32>,
+    pub glare_strength: Option<f32>,
 
     #[serde(default)]
     pub dirt: Option<f32>,
@@ -176,7 +176,7 @@ impl Default for CameraLens2dDocument {
             distortion: None,
             vignette: None,
             edge_softness_px: None,
-            flare_strength: None,
+            glare_strength: None,
             dirt: None,
             focal_length_mm: None,
             lens_bloom: None,
