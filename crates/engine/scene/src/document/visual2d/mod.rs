@@ -1,5 +1,3 @@
-use serde::{Deserialize, Serialize};
-
 mod core;
 mod draw_layer;
 mod lighting;

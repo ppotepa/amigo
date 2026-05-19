@@ -1,1 +1,1 @@
-//! Plugin scaffold module.
+pub mod rhai_api;

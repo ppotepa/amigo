@@ -1,1 +1,1 @@
-//! Placeholder plugin module.
+pub mod rhai_api;

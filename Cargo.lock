@@ -338,6 +338,7 @@ dependencies = [
  "amigo-runtime-control",
  "amigo-scene",
  "amigo-session",
+ "rhai",
 ]
 
 [[package]]
@@ -413,6 +414,7 @@ dependencies = [
  "amigo-plugin-api",
  "amigo-runtime",
  "amigo-session",
+ "rhai",
  "serde",
 ]
 

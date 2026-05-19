@@ -12,6 +12,7 @@ pub mod scene;
 mod scene_command;
 mod scope;
 mod service;
+pub mod scripting;
 
 pub use dev_console::*;
 pub use diagnostics::*;

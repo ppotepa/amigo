@@ -18,3 +18,4 @@ amigo-scene.workspace = true
 amigo-session.workspace = true
 amigo-camera-optics-plugin.workspace = true
 amigo-camera-profiles-plugin.workspace = true
+rhai.workspace = true
