@@ -313,7 +313,7 @@ fn app_render_extractor_registry_collects_vector_and_ui_data() {
     let dev_console_state = DevConsoleState::default();
     let dev_console_completion = amigo_devtools::ConsoleCompletionState::default();
     let debug_overlay_service = crate::debug_overlay::DebugOverlayService::default();
-    let post_fx_service = amigo_runtime_bundles::amigo_2d_post_fx::PostFx2dService::default();
+    let post_fx_service = amigo_runtime_bundles::amigo_composite_plugin::PostFx2dService::default();
     let ui_viewport_state = amigo_runtime_bundles::amigo_ui::UiInputViewportState::default();
 
     let runtime = amigo_runtime::RuntimeBuilder::default()
@@ -422,7 +422,7 @@ fn app_render_extractor_registry_appends_enabled_debug_overlay() {
     let dev_console_state = DevConsoleState::default();
     let dev_console_completion = amigo_devtools::ConsoleCompletionState::default();
     let debug_overlay_service = crate::debug_overlay::DebugOverlayService::default();
-    let post_fx_service = amigo_runtime_bundles::amigo_2d_post_fx::PostFx2dService::default();
+    let post_fx_service = amigo_runtime_bundles::amigo_composite_plugin::PostFx2dService::default();
     let ui_viewport_state = amigo_runtime_bundles::amigo_ui::UiInputViewportState::default();
     debug_overlay_service.set_enabled(true);
 
@@ -520,10 +520,10 @@ fn composition_orders_game_ui_before_debug_overlay() {
 fn composition_places_wet_reflections_between_world_and_ui() {
     let mut packet = WgpuRenderFramePacket::default();
     packet.set_post_fx_stacks(vec![
-        amigo_runtime_bundles::amigo_2d_post_fx::ScopedPostFx2dStack::from_frame_stack(
-            amigo_runtime_bundles::amigo_2d_post_fx::PostFx2dStack::single(
-                amigo_runtime_bundles::amigo_2d_post_fx::PostFx2d::WetReflections(
-                    amigo_runtime_bundles::amigo_2d_post_fx::PostFxWetReflections2d {
+        amigo_runtime_bundles::amigo_composite_plugin::ScopedPostFx2dStack::from_frame_stack(
+            amigo_runtime_bundles::amigo_composite_plugin::PostFx2dStack::single(
+                amigo_runtime_bundles::amigo_composite_plugin::PostFx2d::WetReflections(
+                    amigo_runtime_bundles::amigo_composite_plugin::PostFxWetReflections2d {
                         reflection_mask:
                             "rotten-club/layered-images/neon-alley/reflection_mask.png".to_owned(),
                         edge_map: Some(
@@ -561,10 +561,10 @@ fn composition_places_wet_reflections_between_world_and_ui() {
 fn composition_places_post_fx_before_game_and_debug_ui() {
     let mut packet = WgpuRenderFramePacket::default();
     packet.set_post_fx_stacks(vec![
-        amigo_runtime_bundles::amigo_2d_post_fx::ScopedPostFx2dStack::from_frame_stack(
-            amigo_runtime_bundles::amigo_2d_post_fx::PostFx2dStack::single(
-                amigo_runtime_bundles::amigo_2d_post_fx::PostFx2d::Blur(
-                    amigo_runtime_bundles::amigo_2d_post_fx::PostFxBlur2d::default(),
+        amigo_runtime_bundles::amigo_composite_plugin::ScopedPostFx2dStack::from_frame_stack(
+            amigo_runtime_bundles::amigo_composite_plugin::PostFx2dStack::single(
+                amigo_runtime_bundles::amigo_composite_plugin::PostFx2d::Blur(
+                    amigo_runtime_bundles::amigo_composite_plugin::PostFxBlur2d::default(),
                 ),
             ),
         ),
@@ -614,10 +614,10 @@ fn composition_plan_inserts_post_fx_between_world_and_ui() {
         render_contributions: amigo_render_api::RenderContributionSet::default(),
     });
     packet.set_post_fx_stacks(vec![
-        amigo_runtime_bundles::amigo_2d_post_fx::ScopedPostFx2dStack::from_frame_stack(
-            amigo_runtime_bundles::amigo_2d_post_fx::PostFx2dStack::single(
-                amigo_runtime_bundles::amigo_2d_post_fx::PostFx2d::LensDroplets(
-                    amigo_runtime_bundles::amigo_2d_post_fx::PostFxLensDroplets2d::default(),
+        amigo_runtime_bundles::amigo_composite_plugin::ScopedPostFx2dStack::from_frame_stack(
+            amigo_runtime_bundles::amigo_composite_plugin::PostFx2dStack::single(
+                amigo_runtime_bundles::amigo_composite_plugin::PostFx2d::LensDroplets(
+                    amigo_runtime_bundles::amigo_composite_plugin::PostFxLensDroplets2d::default(),
                 ),
             ),
         ),
@@ -648,26 +648,26 @@ fn composition_plan_inserts_post_fx_between_world_and_ui() {
 fn composition_places_film_noise_before_game_ui() {
     let mut packet = WgpuRenderFramePacket::default();
     packet.set_post_fx_stacks(vec![
-        amigo_runtime_bundles::amigo_2d_post_fx::ScopedPostFx2dStack::from_frame_stack(
-            amigo_runtime_bundles::amigo_2d_post_fx::PostFx2dStack {
+        amigo_runtime_bundles::amigo_composite_plugin::ScopedPostFx2dStack::from_frame_stack(
+            amigo_runtime_bundles::amigo_composite_plugin::PostFx2dStack {
                 effects: vec![
-                    amigo_runtime_bundles::amigo_2d_post_fx::PostFx2d::WetReflections(
-                        amigo_runtime_bundles::amigo_2d_post_fx::PostFxWetReflections2d {
+                    amigo_runtime_bundles::amigo_composite_plugin::PostFx2d::WetReflections(
+                        amigo_runtime_bundles::amigo_composite_plugin::PostFxWetReflections2d {
                             reflection_mask: "debug/mask.png".to_owned(),
                             ..Default::default()
                         },
                     ),
-                    amigo_runtime_bundles::amigo_2d_post_fx::PostFx2d::DirtyBloom(
-                        amigo_runtime_bundles::amigo_2d_post_fx::DirtyBloom2d::default(),
+                    amigo_runtime_bundles::amigo_composite_plugin::PostFx2d::DirtyBloom(
+                        amigo_runtime_bundles::amigo_composite_plugin::DirtyBloom2d::default(),
                     ),
-                    amigo_runtime_bundles::amigo_2d_post_fx::PostFx2d::FilmNoise(
-                        amigo_runtime_bundles::amigo_2d_post_fx::FilmNoise2d {
+                    amigo_runtime_bundles::amigo_composite_plugin::PostFx2d::FilmNoise(
+                        amigo_runtime_bundles::amigo_composite_plugin::FilmNoise2d {
                             iso: 3200.0,
                             ..Default::default()
                         },
                     ),
-                    amigo_runtime_bundles::amigo_2d_post_fx::PostFx2d::Crt(
-                        amigo_runtime_bundles::amigo_2d_post_fx::Crt2d::default(),
+                    amigo_runtime_bundles::amigo_composite_plugin::PostFx2d::Crt(
+                        amigo_runtime_bundles::amigo_composite_plugin::Crt2d::default(),
                     ),
                 ],
             },
@@ -788,25 +788,25 @@ fn composition_default_packet_uses_world_base_before_present() {
 
 #[test]
 fn composition_preserves_original_postfx_effect_order_in_labels() {
-    let mut stack = amigo_runtime_bundles::amigo_2d_post_fx::PostFx2dStack::default();
+    let mut stack = amigo_runtime_bundles::amigo_composite_plugin::PostFx2dStack::default();
 
-    let mut inactive = amigo_runtime_bundles::amigo_2d_post_fx::PostFxBlur2d::default();
+    let mut inactive = amigo_runtime_bundles::amigo_composite_plugin::PostFxBlur2d::default();
     inactive.intensity = 0.0;
 
     stack
         .effects
-        .push(amigo_runtime_bundles::amigo_2d_post_fx::PostFx2d::Blur(
+        .push(amigo_runtime_bundles::amigo_composite_plugin::PostFx2d::Blur(
             inactive,
         ));
     stack.effects.push(
-        amigo_runtime_bundles::amigo_2d_post_fx::PostFx2d::LensDroplets(
-            amigo_runtime_bundles::amigo_2d_post_fx::PostFxLensDroplets2d::default(),
+        amigo_runtime_bundles::amigo_composite_plugin::PostFx2d::LensDroplets(
+            amigo_runtime_bundles::amigo_composite_plugin::PostFxLensDroplets2d::default(),
         ),
     );
 
     let mut packet = WgpuRenderFramePacket::default();
     packet.set_post_fx_stacks(vec![
-        amigo_runtime_bundles::amigo_2d_post_fx::ScopedPostFx2dStack::from_frame_stack(stack),
+        amigo_runtime_bundles::amigo_composite_plugin::ScopedPostFx2dStack::from_frame_stack(stack),
     ]);
 
     let plan = WgpuFrameCompositionBuilder::build(&packet);

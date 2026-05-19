@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 use std::sync::Mutex;
 
-use amigo_2d_post_fx::{
+use amigo_composite_plugin::{
     CameraExposure2d, CameraExposureMode2d as PostFxExposureMode2d, FocusBlur2d,
     FocusBlurDebugView2d, FocusTarget2d, PostFx2d, PostFx2dInstance, PostFxHost2dId,
     PostFxPipelineKind, PostFxScope2d, RainGlass2d, ScopedPostFx2dStack, ShutterBlur2d,
@@ -749,7 +749,7 @@ impl CameraService {
             effects.push(PostFx2dInstance {
                 id: format!("camera:{camera_id}:2:camera_optics").into(),
                 effect: PostFx2d::CameraOptics(
-                    amigo_2d_post_fx::CameraOptics2d {
+                    amigo_composite_plugin::CameraOptics2d {
                         focal_length_mm: lens.focal_length_mm,
                         aberration_px: lens.aberration_px,
                         distortion: lens.distortion,
@@ -877,7 +877,7 @@ impl CameraService {
             effects.push(PostFx2dInstance {
                 id: format!("camera:{camera_id}:5:film_emulsion").into(),
                 effect: PostFx2d::FilmEmulsion(
-                    amigo_2d_post_fx::FilmEmulsion2d {
+                    amigo_composite_plugin::FilmEmulsion2d {
                         color_shift: film.color_shift,
                         contrast: film.contrast,
                         saturation: film.saturation,
@@ -907,7 +907,7 @@ impl CameraService {
             effects.push(PostFx2dInstance {
                 id: format!("camera:{camera_id}:7:scan_output").into(),
                 effect: PostFx2d::ScanOutput(
-                    amigo_2d_post_fx::ScanOutput2d {
+                    amigo_composite_plugin::ScanOutput2d {
                         iso: rig.exposure.iso,
                         flicker: film.flicker,
                         vignette: film.vignette,

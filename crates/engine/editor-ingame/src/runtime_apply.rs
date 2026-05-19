@@ -1,5 +1,5 @@
 use amigo_2d_composition::RenderDepthMode2d;
-use amigo_2d_post_fx::{PostFx2d, PostFx2dService, RainGlass2d, RainGlassDebugView};
+use amigo_composite_plugin::{PostFx2d, PostFx2dService, RainGlass2d, RainGlassDebugView};
 use amigo_core::{AmigoError, AmigoResult};
 use amigo_editor_authoring::AuthoringRuntimeBinding;
 use amigo_runtime::Runtime;

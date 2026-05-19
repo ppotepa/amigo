@@ -34,7 +34,7 @@ pub use amigo_light_2d_plugin;
 pub use amigo_material_2d_plugin;
 pub use amigo_particles_2d_plugin;
 pub use amigo_2d_physics;
-pub use amigo_2d_post_fx;
+pub use amigo_composite_plugin;
 pub use amigo_sprite_2d_plugin;
 pub use amigo_text_2d_plugin;
 pub use amigo_tilemap_2d_plugin;

@@ -24,10 +24,10 @@ pub struct FrameGraphResource {
 pub enum FrameGraphNodeKind {
     World,
     PostFx {
-        host_id: amigo_2d_post_fx::PostFxHost2dId,
-        effect_id: amigo_2d_post_fx::PostFx2dId,
-        scope: amigo_2d_post_fx::PostFxScope2d,
-        pipeline: amigo_2d_post_fx::PostFxPipelineKind,
+        host_id: amigo_composite_plugin::PostFxHost2dId,
+        effect_id: amigo_composite_plugin::PostFx2dId,
+        scope: amigo_composite_plugin::PostFxScope2d,
+        pipeline: amigo_composite_plugin::PostFxPipelineKind,
         feature_id: RenderFeatureId,
     },
     GameUi,

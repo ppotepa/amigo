@@ -186,7 +186,7 @@ impl OwnedWorldRenderSelection {
 }
 
 pub(super) fn base_world_selection(
-    post_fx_stacks: &[amigo_2d_post_fx::ScopedPostFx2dStack],
+    post_fx_stacks: &[amigo_composite_plugin::ScopedPostFx2dStack],
     render_layers: &[RenderLayer2dCommand],
 ) -> OwnedWorldRenderSelection {
     let plan = super::focus_depth_plan::focus_blur_layer_plan(post_fx_stacks, render_layers, None);
@@ -251,18 +251,18 @@ pub(super) fn base_world_selection(
 }
 
 pub(super) fn draw_layer_post_fx_layers(
-    stacks: &[amigo_2d_post_fx::ScopedPostFx2dStack],
+    stacks: &[amigo_composite_plugin::ScopedPostFx2dStack],
 ) -> BTreeSet<String> {
     stacks
         .iter()
         .filter_map(|stack| {
             if !matches!(
                 stack.pipeline,
-                amigo_2d_post_fx::PostFxPipelineKind::OffscreenDrawLayer
+                amigo_composite_plugin::PostFxPipelineKind::OffscreenDrawLayer
             ) {
                 return None;
             }
-            let amigo_2d_post_fx::PostFxScope2d::DrawLayer { draw_layer_id } = &stack.scope else {
+            let amigo_composite_plugin::PostFxScope2d::DrawLayer { draw_layer_id } = &stack.scope else {
                 return None;
             };
             if stack.effects.iter().any(|effect| effect.effect.is_active()) {
@@ -275,18 +275,18 @@ pub(super) fn draw_layer_post_fx_layers(
 }
 
 pub(super) fn scene_object_post_fx_objects(
-    stacks: &[amigo_2d_post_fx::ScopedPostFx2dStack],
+    stacks: &[amigo_composite_plugin::ScopedPostFx2dStack],
 ) -> BTreeSet<String> {
     stacks
         .iter()
         .filter_map(|stack| {
             if !matches!(
                 stack.pipeline,
-                amigo_2d_post_fx::PostFxPipelineKind::OffscreenObject
+                amigo_composite_plugin::PostFxPipelineKind::OffscreenObject
             ) {
                 return None;
             }
-            let amigo_2d_post_fx::PostFxScope2d::SceneObjectPixels { scene_object_id } =
+            let amigo_composite_plugin::PostFxScope2d::SceneObjectPixels { scene_object_id } =
                 &stack.scope
             else {
                 return None;
@@ -301,18 +301,18 @@ pub(super) fn scene_object_post_fx_objects(
 }
 
 pub(super) fn scene_group_post_fx_roots(
-    stacks: &[amigo_2d_post_fx::ScopedPostFx2dStack],
+    stacks: &[amigo_composite_plugin::ScopedPostFx2dStack],
 ) -> BTreeSet<String> {
     stacks
         .iter()
         .filter_map(|stack| {
             if !matches!(
                 stack.pipeline,
-                amigo_2d_post_fx::PostFxPipelineKind::OffscreenGroup
+                amigo_composite_plugin::PostFxPipelineKind::OffscreenGroup
             ) {
                 return None;
             }
-            let amigo_2d_post_fx::PostFxScope2d::GroupSubtree {
+            let amigo_composite_plugin::PostFxScope2d::GroupSubtree {
                 root_scene_object_id,
             } = &stack.scope
             else {
@@ -328,17 +328,17 @@ pub(super) fn scene_group_post_fx_roots(
 }
 
 pub(super) fn image_part_post_fx_targets(
-    stacks: &[amigo_2d_post_fx::ScopedPostFx2dStack],
+    stacks: &[amigo_composite_plugin::ScopedPostFx2dStack],
 ) -> BTreeMap<String, BTreeSet<String>> {
     let mut targets = BTreeMap::new();
     for stack in stacks {
         if !matches!(
             stack.pipeline,
-            amigo_2d_post_fx::PostFxPipelineKind::CachedImage
+            amigo_composite_plugin::PostFxPipelineKind::CachedImage
         ) {
             continue;
         }
-        let amigo_2d_post_fx::PostFxScope2d::ImagePart {
+        let amigo_composite_plugin::PostFxScope2d::ImagePart {
             owner_scene_object_id,
             part_id,
             ..

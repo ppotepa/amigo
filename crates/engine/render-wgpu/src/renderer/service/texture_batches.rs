@@ -257,7 +257,7 @@ impl WgpuSceneRenderer {
         image_path: PathBuf,
         blend_mode: TextureBlendMode,
         opacity: f32,
-        post_fx: Option<&amigo_2d_post_fx::PostFx2dStack>,
+        post_fx: Option<&amigo_composite_plugin::PostFx2dStack>,
         tint: ColorRgba,
     ) -> bool {
         let Some(texture) =
@@ -298,7 +298,7 @@ impl WgpuSceneRenderer {
         queue: &wgpu::Queue,
         image_path: PathBuf,
         linear_sampling: bool,
-        post_fx: Option<&amigo_2d_post_fx::PostFx2dStack>,
+        post_fx: Option<&amigo_composite_plugin::PostFx2dStack>,
     ) -> Option<&CachedTextureResource> {
         match post_fx.and_then(post_fx_effect) {
             Some(effect) => {
@@ -654,7 +654,7 @@ fn apply_alpha_from_ink(rgba: &mut image::RgbaImage) {
 
 fn layered_image_layer_render_size(
     size: Vec2,
-    post_fx: Option<&amigo_2d_post_fx::PostFx2dStack>,
+    post_fx: Option<&amigo_composite_plugin::PostFx2dStack>,
 ) -> Vec2 {
     let Some(PostFx2d::Blur(blur)) = post_fx.and_then(post_fx_effect) else {
         return size;
@@ -664,7 +664,7 @@ fn layered_image_layer_render_size(
     Vec2::new(size.x + spread, size.y + spread)
 }
 
-fn post_fx_effect(stack: &amigo_2d_post_fx::PostFx2dStack) -> Option<PostFx2d> {
+fn post_fx_effect(stack: &amigo_composite_plugin::PostFx2dStack) -> Option<PostFx2d> {
     stack.effects.first().cloned()
 }
 

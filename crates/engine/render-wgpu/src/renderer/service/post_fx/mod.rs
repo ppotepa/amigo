@@ -17,7 +17,7 @@ mod scan_output;
 pub(crate) mod shutter_blur;
 pub(crate) mod wet_reflections;
 
-use amigo_2d_post_fx::{PostFx2d, PostFxEmbossMode2d};
+use amigo_composite_plugin::{PostFx2d, PostFxEmbossMode2d};
 use image::RgbaImage;
 
 pub(crate) use registry::execute_screen_space_post_fx;

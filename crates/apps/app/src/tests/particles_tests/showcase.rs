@@ -306,7 +306,7 @@ fn particles_showcase_hydrates_emitters() {
         .resolve::<crate::debug_overlay::DebugOverlayService>()
         .expect("debug overlay service should exist");
     let post_fx_service = runtime
-        .resolve::<amigo_runtime_bundles::amigo_2d_post_fx::PostFx2dService>()
+        .resolve::<amigo_runtime_bundles::amigo_composite_plugin::PostFx2dService>()
         .expect("post-fx service should exist");
     let ui_viewport_state = runtime
         .resolve::<amigo_runtime_bundles::amigo_ui::UiInputViewportState>()

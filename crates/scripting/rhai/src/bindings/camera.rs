@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use amigo_2d_post_fx::RainGlassPatch;
+use amigo_composite_plugin::RainGlassPatch;
 use amigo_assets::AssetCatalog;
 use amigo_camera_core_plugin::{
     CameraDebugView2d, CameraFocus2d, CameraFocusTarget2dService, CameraId,

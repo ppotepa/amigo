@@ -23,41 +23,41 @@ pub(super) struct FocusBlurLayerPlan {
 }
 
 pub(super) fn focus_blur_effect_for(
-    stacks: &[amigo_2d_post_fx::ScopedPostFx2dStack],
-    host_id: &amigo_2d_post_fx::PostFxHost2dId,
-    effect_id: &amigo_2d_post_fx::PostFx2dId,
-) -> Option<amigo_2d_post_fx::FocusBlur2d> {
+    stacks: &[amigo_composite_plugin::ScopedPostFx2dStack],
+    host_id: &amigo_composite_plugin::PostFxHost2dId,
+    effect_id: &amigo_composite_plugin::PostFx2dId,
+) -> Option<amigo_composite_plugin::FocusBlur2d> {
     stacks
         .iter()
         .find(|stack| &stack.host_id == host_id)
         .and_then(|stack| stack.effects.iter().find(|effect| &effect.id == effect_id))
         .and_then(|instance| match &instance.effect {
-            amigo_2d_post_fx::PostFx2d::FocusBlur(effect) => Some(effect.clone()),
+            amigo_composite_plugin::PostFx2d::FocusBlur(effect) => Some(effect.clone()),
             _ => None,
         })
 }
 
 pub(super) fn shutter_blur_effect_for(
-    stacks: &[amigo_2d_post_fx::ScopedPostFx2dStack],
-    host_id: &amigo_2d_post_fx::PostFxHost2dId,
-    effect_id: &amigo_2d_post_fx::PostFx2dId,
-) -> Option<amigo_2d_post_fx::ShutterBlur2d> {
+    stacks: &[amigo_composite_plugin::ScopedPostFx2dStack],
+    host_id: &amigo_composite_plugin::PostFxHost2dId,
+    effect_id: &amigo_composite_plugin::PostFx2dId,
+) -> Option<amigo_composite_plugin::ShutterBlur2d> {
     stacks
         .iter()
         .find(|stack| &stack.host_id == host_id)
         .and_then(|stack| stack.effects.iter().find(|effect| &effect.id == effect_id))
         .and_then(|instance| match &instance.effect {
-            amigo_2d_post_fx::PostFx2d::ShutterBlur(effect) => Some(effect.clone()),
+            amigo_composite_plugin::PostFx2d::ShutterBlur(effect) => Some(effect.clone()),
             _ => None,
         })
 }
 
 pub(super) fn focus_blur_layer_plan_for_effect(
-    stacks: &[amigo_2d_post_fx::ScopedPostFx2dStack],
+    stacks: &[amigo_composite_plugin::ScopedPostFx2dStack],
     render_layers: &[RenderLayer2dCommand],
     capture_input: Option<&amigo_render_api::CameraCaptureInput2d>,
-    host_id: &amigo_2d_post_fx::PostFxHost2dId,
-    effect_id: &amigo_2d_post_fx::PostFx2dId,
+    host_id: &amigo_composite_plugin::PostFxHost2dId,
+    effect_id: &amigo_composite_plugin::PostFx2dId,
 ) -> Option<FocusBlurLayerPlan> {
     let effect = focus_blur_effect_for(stacks, host_id, effect_id)?;
     Some(build_focus_blur_layer_plan(
@@ -68,7 +68,7 @@ pub(super) fn focus_blur_layer_plan_for_effect(
 }
 
 pub(super) fn focus_blur_layer_plan(
-    stacks: &[amigo_2d_post_fx::ScopedPostFx2dStack],
+    stacks: &[amigo_composite_plugin::ScopedPostFx2dStack],
     render_layers: &[RenderLayer2dCommand],
     capture_input: Option<&amigo_render_api::CameraCaptureInput2d>,
 ) -> Option<FocusBlurLayerPlan> {
@@ -77,7 +77,7 @@ pub(super) fn focus_blur_layer_plan(
             .effects
             .iter()
             .find_map(|instance| match &instance.effect {
-                amigo_2d_post_fx::PostFx2d::FocusBlur(effect) => Some(effect.clone()),
+                amigo_composite_plugin::PostFx2d::FocusBlur(effect) => Some(effect.clone()),
                 _ => None,
             })
     })?;
@@ -89,7 +89,7 @@ pub(super) fn focus_blur_layer_plan(
 }
 
 pub(super) fn build_focus_blur_layer_plan(
-    effect: amigo_2d_post_fx::FocusBlur2d,
+    effect: amigo_composite_plugin::FocusBlur2d,
     render_layers: &[RenderLayer2dCommand],
     capture_input: Option<&amigo_render_api::CameraCaptureInput2d>,
 ) -> FocusBlurLayerPlan {
@@ -191,7 +191,7 @@ mod tests {
     #[test]
     fn focus_blur_plan_sorts_z_depth_layers_by_render_layer_order() {
         let plan = build_focus_blur_layer_plan(
-            amigo_2d_post_fx::FocusBlur2d::default(),
+            amigo_composite_plugin::FocusBlur2d::default(),
             &[
                 layer("weather.rain.super_near", 60.0),
                 layer("title.depth2d", 20.0),
@@ -234,7 +234,7 @@ mod tests {
             });
 
         let plan = build_focus_blur_layer_plan(
-            amigo_2d_post_fx::FocusBlur2d::default(),
+            amigo_composite_plugin::FocusBlur2d::default(),
             &[layer("weather.rain.mid", 0.0)],
             Some(&capture_input),
         );

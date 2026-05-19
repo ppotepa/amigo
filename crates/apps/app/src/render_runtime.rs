@@ -265,7 +265,7 @@ pub(crate) fn build_render_frame_for_session(
     let extracted_vectors = build_vector_scene_service_from_packet(&render_packet);
 
     if let Ok(post_fx_service) =
-        required::<amigo_runtime_bundles::amigo_2d_post_fx::PostFx2dService>(runtime)
+        required::<amigo_runtime_bundles::amigo_composite_plugin::PostFx2dService>(runtime)
     {
         let has_post_fx = !render_packet.post_fx_stacks().is_empty();
         let renderer_mode = if has_post_fx {
@@ -495,7 +495,7 @@ pub(crate) fn render_game_frame_to_cache(
     let extracted_vectors = build_vector_scene_service_from_packet(&render_packet);
 
     if let Ok(post_fx_service) =
-        required::<amigo_runtime_bundles::amigo_2d_post_fx::PostFx2dService>(runtime)
+        required::<amigo_runtime_bundles::amigo_composite_plugin::PostFx2dService>(runtime)
     {
         let has_post_fx = !render_packet.post_fx_stacks().is_empty();
         let renderer_mode = if has_post_fx {

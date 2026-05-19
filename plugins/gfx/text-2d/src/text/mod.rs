@@ -3,7 +3,7 @@
 
 use std::sync::Mutex;
 
-use amigo_2d_post_fx::PostFxHost2dId;
+use amigo_composite_plugin::PostFxHost2dId;
 use amigo_assets::AssetKey;
 use amigo_capabilities::{register_domain_plugin, DEFAULT_CAPABILITY_VERSION};
 use amigo_camera_optics_plugin::api::CameraOpticalResponse2d;

@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use amigo_2d_post_fx::RainGlass2d;
+use amigo_composite_plugin::RainGlass2d;
 use amigo_assets::{AssetCatalog, PreparedAsset, PreparedAssetKind};
 use amigo_runtime_control::{
     ControlRange, ControlValue, ControlValueType, RuntimeControlError, RuntimeControlProperty,

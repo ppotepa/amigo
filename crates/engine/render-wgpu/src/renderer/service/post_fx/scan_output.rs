@@ -1,4 +1,4 @@
-use amigo_2d_post_fx::ScanOutput2d;
+use amigo_composite_plugin::ScanOutput2d;
 use amigo_core::AmigoResult;
 use amigo_math::{ColorRgba, Vec2};
 use std::sync::atomic::{AtomicU32, Ordering};

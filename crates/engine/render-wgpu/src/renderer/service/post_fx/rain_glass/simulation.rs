@@ -1,4 +1,4 @@
-use amigo_2d_post_fx::RainGlass2d;
+use amigo_composite_plugin::RainGlass2d;
 
 use super::types::{
     RainGlassDrop, RainGlassDropKind, RainGlassInstance, RainGlassTrailSegment,

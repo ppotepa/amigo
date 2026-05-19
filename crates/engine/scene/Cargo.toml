@@ -9,7 +9,7 @@ authors.workspace = true
 [dependencies]
 amigo-assets.workspace = true
 amigo-2d-spatial.workspace = true
-amigo-2d-post-fx.workspace = true
+amigo-composite-plugin.workspace = true
 amigo-core.workspace = true
 amigo-fx.workspace = true
 amigo-math.workspace = true

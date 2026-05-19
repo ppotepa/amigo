@@ -102,16 +102,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "amigo-2d-post-fx"
-version = "0.1.0"
-dependencies = [
- "amigo-capabilities",
- "amigo-core",
- "amigo-runtime",
- "amigo-session",
-]
-
-[[package]]
 name = "amigo-2d-spatial"
 version = "0.1.0"
 
@@ -334,11 +324,11 @@ dependencies = [
 name = "amigo-camera-core-plugin"
 version = "0.1.0"
 dependencies = [
- "amigo-2d-post-fx",
  "amigo-2d-spatial",
  "amigo-assets",
  "amigo-camera-optics-plugin",
  "amigo-camera-profiles-plugin",
+ "amigo-composite-plugin",
  "amigo-core",
  "amigo-editor-api",
  "amigo-math",
@@ -354,9 +344,9 @@ dependencies = [
 name = "amigo-camera-optics-plugin"
 version = "0.1.0"
 dependencies = [
- "amigo-2d-post-fx",
  "amigo-assets",
  "amigo-camera-profiles-plugin",
+ "amigo-composite-plugin",
  "amigo-plugin-api",
  "serde",
 ]
@@ -365,8 +355,8 @@ dependencies = [
 name = "amigo-camera-profiles-plugin"
 version = "0.1.0"
 dependencies = [
- "amigo-2d-post-fx",
  "amigo-assets",
+ "amigo-composite-plugin",
  "amigo-film-look-plugin",
  "amigo-plugin-api",
 ]
@@ -418,7 +408,11 @@ dependencies = [
 name = "amigo-composite-plugin"
 version = "0.1.0"
 dependencies = [
+ "amigo-capabilities",
+ "amigo-core",
  "amigo-plugin-api",
+ "amigo-runtime",
+ "amigo-session",
 ]
 
 [[package]]
@@ -437,10 +431,10 @@ name = "amigo-devtools"
 version = "0.1.0"
 dependencies = [
  "amigo-2d-composition",
- "amigo-2d-post-fx",
  "amigo-assets",
  "amigo-audio-output",
  "amigo-camera-core-plugin",
+ "amigo-composite-plugin",
  "amigo-core",
  "amigo-editor-api",
  "amigo-focus-depth-plugin",
@@ -485,8 +479,8 @@ name = "amigo-editor-ingame"
 version = "0.1.0"
 dependencies = [
  "amigo-2d-composition",
- "amigo-2d-post-fx",
  "amigo-assets",
+ "amigo-composite-plugin",
  "amigo-core",
  "amigo-devtools",
  "amigo-editor-api",
@@ -544,7 +538,7 @@ dependencies = [
 name = "amigo-film-look-plugin"
 version = "0.1.0"
 dependencies = [
- "amigo-2d-post-fx",
+ "amigo-composite-plugin",
  "amigo-plugin-api",
 ]
 
@@ -639,9 +633,9 @@ dependencies = [
 name = "amigo-layered-image-2d-plugin"
 version = "0.1.0"
 dependencies = [
- "amigo-2d-post-fx",
  "amigo-assets",
  "amigo-capabilities",
+ "amigo-composite-plugin",
  "amigo-core",
  "amigo-editor-api",
  "amigo-math",
@@ -794,9 +788,9 @@ dependencies = [
 name = "amigo-render-api"
 version = "0.1.0"
 dependencies = [
- "amigo-2d-post-fx",
  "amigo-2d-spatial",
  "amigo-camera-optics-plugin",
+ "amigo-composite-plugin",
  "amigo-core",
  "amigo-plugin-api",
  "amigo-session",
@@ -807,7 +801,6 @@ name = "amigo-render-wgpu"
 version = "0.1.0"
 dependencies = [
  "amigo-2d-composition",
- "amigo-2d-post-fx",
  "amigo-2d-spatial",
  "amigo-3d-material",
  "amigo-3d-mesh",
@@ -815,6 +808,7 @@ dependencies = [
  "amigo-assets",
  "amigo-beacon-light-2d-plugin",
  "amigo-camera-optics-plugin",
+ "amigo-composite-plugin",
  "amigo-core",
  "amigo-focus-depth-plugin",
  "amigo-font",
@@ -852,7 +846,6 @@ version = "0.1.0"
 dependencies = [
  "amigo-2d-composition",
  "amigo-2d-physics",
- "amigo-2d-post-fx",
  "amigo-2d-spatial",
  "amigo-3d-material",
  "amigo-3d-mesh",
@@ -866,6 +859,7 @@ dependencies = [
  "amigo-behavior",
  "amigo-camera-core-plugin",
  "amigo-camera-optics-plugin",
+ "amigo-composite-plugin",
  "amigo-core",
  "amigo-devtools",
  "amigo-event-pipeline",
@@ -913,10 +907,10 @@ dependencies = [
 name = "amigo-scene"
 version = "0.1.0"
 dependencies = [
- "amigo-2d-post-fx",
  "amigo-2d-spatial",
  "amigo-assets",
  "amigo-camera-optics-plugin",
+ "amigo-composite-plugin",
  "amigo-core",
  "amigo-fx",
  "amigo-material-2d-plugin",
@@ -949,10 +943,10 @@ name = "amigo-scripting-rhai"
 version = "0.1.0"
 dependencies = [
  "amigo-2d-physics",
- "amigo-2d-post-fx",
  "amigo-assets",
  "amigo-camera-core-plugin",
  "amigo-capabilities",
+ "amigo-composite-plugin",
  "amigo-core",
  "amigo-editor-api",
  "amigo-focus-depth-plugin",
@@ -1049,10 +1043,10 @@ dependencies = [
 name = "amigo-text-2d-plugin"
 version = "0.1.0"
 dependencies = [
- "amigo-2d-post-fx",
  "amigo-assets",
  "amigo-camera-optics-plugin",
  "amigo-capabilities",
+ "amigo-composite-plugin",
  "amigo-core",
  "amigo-editor-api",
  "amigo-material-2d-plugin",

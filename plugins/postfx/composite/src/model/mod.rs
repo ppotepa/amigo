@@ -1,5 +1,5 @@
 pub const POST_FX_2D_CAPABILITY: &str = "post_fx_2d";
-pub const POST_FX_2D_PLUGIN_LABEL: &str = "amigo-2d-post-fx";
+pub const POST_FX_2D_PLUGIN_LABEL: &str = "amigo-composite-plugin";
 
 pub(crate) fn finite_or(value: f32, fallback: f32) -> f32 {
     if value.is_finite() { value } else { fallback }

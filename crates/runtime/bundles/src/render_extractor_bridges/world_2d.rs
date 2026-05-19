@@ -249,17 +249,17 @@ pub struct WgpuPostFx2dRenderExtractorBridge;
 
 impl RenderFrameExtractor<Runtime, WgpuRenderFramePacket> for WgpuPostFx2dRenderExtractorBridge {
     fn name(&self) -> &'static str {
-        amigo_2d_post_fx::PostFx2dRenderExtractor.name()
+        amigo_composite_plugin::PostFx2dRenderExtractor.name()
     }
 
     fn extract(&self, runtime: &Runtime, packet: &mut WgpuRenderFramePacket) {
-        let post_fx_service = required::<amigo_2d_post_fx::PostFx2dService>(runtime);
+        let post_fx_service = required::<amigo_composite_plugin::PostFx2dService>(runtime);
         let viewport = runtime
             .resolve::<amigo_ui::UiInputViewportState>()
             .and_then(|state| state.get())
             .unwrap_or_else(|| amigo_render_wgpu::UiViewportSize::new(1280.0, 720.0));
-        amigo_2d_post_fx::PostFx2dRenderExtractor.extract(
-            amigo_2d_post_fx::PostFx2dRenderExtractionContext {
+        amigo_composite_plugin::PostFx2dRenderExtractor.extract(
+            amigo_composite_plugin::PostFx2dRenderExtractionContext {
                 post_fx_service: post_fx_service.as_ref(),
                 viewport_width: viewport.width,
                 viewport_height: viewport.height,
@@ -536,12 +536,12 @@ fn visual_map_for_kind(
     }
 }
 
-fn wetness_normal_source(stacks: &[amigo_2d_post_fx::ScopedPostFx2dStack]) -> Option<&str> {
+fn wetness_normal_source(stacks: &[amigo_composite_plugin::ScopedPostFx2dStack]) -> Option<&str> {
     stacks
         .iter()
         .flat_map(|stack| stack.effects.iter())
         .find_map(|effect| match &effect.effect {
-            amigo_2d_post_fx::PostFx2d::WetReflections(wet)
+            amigo_composite_plugin::PostFx2d::WetReflections(wet)
                 if wet.is_active()
                     && wet
                         .noise_normal
@@ -554,12 +554,12 @@ fn wetness_normal_source(stacks: &[amigo_2d_post_fx::ScopedPostFx2dStack]) -> Op
         })
 }
 
-fn wetness_mask_source(stacks: &[amigo_2d_post_fx::ScopedPostFx2dStack]) -> Option<&str> {
+fn wetness_mask_source(stacks: &[amigo_composite_plugin::ScopedPostFx2dStack]) -> Option<&str> {
     stacks
         .iter()
         .flat_map(|stack| stack.effects.iter())
         .find_map(|effect| match &effect.effect {
-            amigo_2d_post_fx::PostFx2d::WetReflections(wet)
+            amigo_composite_plugin::PostFx2d::WetReflections(wet)
                 if wet.is_active() && !wet.reflection_mask.trim().is_empty() =>
             {
                 Some(wet.reflection_mask.as_str())
@@ -568,12 +568,12 @@ fn wetness_mask_source(stacks: &[amigo_2d_post_fx::ScopedPostFx2dStack]) -> Opti
         })
 }
 
-fn motion_source(stacks: &[amigo_2d_post_fx::ScopedPostFx2dStack]) -> Option<&'static str> {
+fn motion_source(stacks: &[amigo_composite_plugin::ScopedPostFx2dStack]) -> Option<&'static str> {
     stacks
         .iter()
         .flat_map(|stack| stack.effects.iter())
         .find_map(|effect| match &effect.effect {
-            amigo_2d_post_fx::PostFx2d::ShutterBlur(shutter) if shutter.is_active() => {
+            amigo_composite_plugin::PostFx2d::ShutterBlur(shutter) if shutter.is_active() => {
                 Some("camera.shutter_history.motion")
             }
             _ => None,
@@ -847,13 +847,13 @@ mod tests {
     #[test]
     fn camera_capture_input_sets_wetness_from_active_wet_reflections_mask() {
         let mut packet = WgpuRenderFramePacket::default();
-        packet.set_post_fx_stacks(vec![amigo_2d_post_fx::ScopedPostFx2dStack::new(
+        packet.set_post_fx_stacks(vec![amigo_composite_plugin::ScopedPostFx2dStack::new(
             "scene.weather",
-            amigo_2d_post_fx::PostFxScope2d::Frame,
-            vec![amigo_2d_post_fx::PostFx2dInstance::new(
+            amigo_composite_plugin::PostFxScope2d::Frame,
+            vec![amigo_composite_plugin::PostFx2dInstance::new(
                 "wetness",
-                amigo_2d_post_fx::PostFx2d::WetReflections(
-                    amigo_2d_post_fx::PostFxWetReflections2d {
+                amigo_composite_plugin::PostFx2d::WetReflections(
+                    amigo_composite_plugin::PostFxWetReflections2d {
                         enabled: true,
                         reflection_mask:
                             "rotten-club/layered-images/neon-alley/reflection_mask.png".to_owned(),
@@ -886,13 +886,13 @@ mod tests {
     #[test]
     fn camera_capture_input_sets_normal_from_wet_reflections_noise_normal() {
         let mut packet = WgpuRenderFramePacket::default();
-        packet.set_post_fx_stacks(vec![amigo_2d_post_fx::ScopedPostFx2dStack::new(
+        packet.set_post_fx_stacks(vec![amigo_composite_plugin::ScopedPostFx2dStack::new(
             "scene.weather",
-            amigo_2d_post_fx::PostFxScope2d::Frame,
-            vec![amigo_2d_post_fx::PostFx2dInstance::new(
+            amigo_composite_plugin::PostFxScope2d::Frame,
+            vec![amigo_composite_plugin::PostFx2dInstance::new(
                 "wetness",
-                amigo_2d_post_fx::PostFx2d::WetReflections(
-                    amigo_2d_post_fx::PostFxWetReflections2d {
+                amigo_composite_plugin::PostFx2d::WetReflections(
+                    amigo_composite_plugin::PostFxWetReflections2d {
                         enabled: true,
                         reflection_mask:
                             "rotten-club/layered-images/neon-alley/reflection_mask.png".to_owned(),
@@ -928,12 +928,12 @@ mod tests {
     #[test]
     fn camera_capture_input_sets_motion_from_active_shutter_blur() {
         let mut packet = WgpuRenderFramePacket::default();
-        packet.set_post_fx_stacks(vec![amigo_2d_post_fx::ScopedPostFx2dStack::new(
+        packet.set_post_fx_stacks(vec![amigo_composite_plugin::ScopedPostFx2dStack::new(
             "camera.main",
-            amigo_2d_post_fx::PostFxScope2d::Frame,
-            vec![amigo_2d_post_fx::PostFx2dInstance::new(
+            amigo_composite_plugin::PostFxScope2d::Frame,
+            vec![amigo_composite_plugin::PostFx2dInstance::new(
                 "motion",
-                amigo_2d_post_fx::PostFx2d::ShutterBlur(amigo_2d_post_fx::ShutterBlur2d {
+                amigo_composite_plugin::PostFx2d::ShutterBlur(amigo_composite_plugin::ShutterBlur2d {
                     exposure_seconds: 1.0 / 48.0,
                     opacity: 0.8,
                     shutter_angle: 180.0,

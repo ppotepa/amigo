@@ -126,25 +126,25 @@ impl ConsoleCommandHandler for PostFxConsoleCommandHandler {
         ctx: &ConsoleCommandContext<'_>,
         command: ParsedConsoleCommand,
     ) -> ConsoleCommandResult {
-        let post_fx = match ctx.required::<amigo_2d_post_fx::PostFx2dService>() {
+        let post_fx = match ctx.required::<amigo_composite_plugin::PostFx2dService>() {
             Ok(service) => service,
             Err(error) => return ConsoleCommandResult::error(error.to_string()),
         };
 
-        match amigo_2d_post_fx::handle_post_fx_dev_console_command(
-            amigo_2d_post_fx::PostFxDevConsoleCommandContext {
+        match amigo_composite_plugin::handle_post_fx_dev_console_command(
+            amigo_composite_plugin::PostFxDevConsoleCommandContext {
                 post_fx_service: post_fx.as_ref(),
             },
             &command.name,
             &command.args,
         ) {
-            amigo_2d_post_fx::PostFxDevConsoleCommandOutcome::Handled(message) => {
+            amigo_composite_plugin::PostFxDevConsoleCommandOutcome::Handled(message) => {
                 ConsoleCommandResult::ok(message)
             }
-            amigo_2d_post_fx::PostFxDevConsoleCommandOutcome::Error(message) => {
+            amigo_composite_plugin::PostFxDevConsoleCommandOutcome::Error(message) => {
                 ConsoleCommandResult::error(message)
             }
-            amigo_2d_post_fx::PostFxDevConsoleCommandOutcome::Unhandled => {
+            amigo_composite_plugin::PostFxDevConsoleCommandOutcome::Unhandled => {
                 ConsoleCommandResult::unknown(command.raw)
             }
         }

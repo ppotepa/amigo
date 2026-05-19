@@ -22,7 +22,7 @@ use amigo_particles_2d_plugin::{
     Particle2dDrawCommand, ParticleBlendMode2d, ParticleLightMode2d, ParticleLineAnchor2d,
     ParticleShape2d,
 };
-use amigo_2d_post_fx::{PostFx2d, PostFx2dCacheKey};
+use amigo_composite_plugin::{PostFx2d, PostFx2dCacheKey};
 use amigo_sprite_2d_plugin::{Sprite, SpriteSceneService, SpriteSheet};
 use amigo_text_2d_plugin::Text2dSceneService;
 use amigo_tilemap_2d_plugin::{TileMap2d, TileMap2dSceneService};

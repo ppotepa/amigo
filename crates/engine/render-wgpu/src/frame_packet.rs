@@ -4,7 +4,7 @@ use amigo_layered_image_2d_plugin::LayeredImageDrawCommand;
 use amigo_light_2d_plugin::{GlobalLight2dCommand, LightGroup2dCommand, LightMap2dSourceCommand};
 use amigo_beacon_light_2d_plugin::{Beacon2dRenderOutput, BeaconLight2dDrawCommand};
 use amigo_particles_2d_plugin::Particle2dDrawCommand;
-use amigo_2d_post_fx::ScopedPostFx2dStack;
+use amigo_composite_plugin::ScopedPostFx2dStack;
 use amigo_sprite_2d_plugin::SpriteDrawCommand;
 use amigo_text_2d_plugin::Text2dDrawCommand;
 use amigo_tilemap_2d_plugin::TileMap2dDrawCommand;
@@ -583,7 +583,7 @@ impl amigo_particles_2d_plugin::Particle2dRenderOutput for WgpuRenderFramePacket
     }
 }
 
-impl amigo_2d_post_fx::PostFx2dRenderOutput for WgpuRenderFramePacket {
+impl amigo_composite_plugin::PostFx2dRenderOutput for WgpuRenderFramePacket {
     fn set_post_fx2d_stacks(&mut self, stacks: Vec<ScopedPostFx2dStack>) {
         self.set_post_fx_stacks(stacks);
     }

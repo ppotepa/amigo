@@ -1,4 +1,4 @@
-use amigo_2d_post_fx::{ColorRamp2d, RainGlass2d};
+use amigo_composite_plugin::{ColorRamp2d, RainGlass2d};
 use amigo_assets::AssetCatalog;
 use amigo_plugin_api::{roles, RenderContributionSet};
 

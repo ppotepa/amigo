@@ -1,4 +1,4 @@
-use amigo_2d_post_fx::{
+use amigo_composite_plugin::{
     PostFx2d, PostFx2dId, PostFxHost2dId, PostFxPipelineKind, PostFxScope2d, ScopedPostFx2dStack,
 };
 use amigo_render_api::{
@@ -222,7 +222,7 @@ fn active_post_fx(stacks: &[ScopedPostFx2dStack]) -> Vec<ActivePostFxPass> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use amigo_2d_post_fx::{
+    use amigo_composite_plugin::{
         PostFx2d, PostFx2dInstance, PostFxBlur2d, PostFxPipelineKind, PostFxScope2d,
         ScopedPostFx2dStack,
     };
@@ -234,7 +234,7 @@ mod tests {
     #[test]
     fn active_post_fx_includes_draw_layer_offscreen_pipeline() {
         let passes = active_post_fx(&[ScopedPostFx2dStack {
-            host_id: amigo_2d_post_fx::PostFxHost2dId::new("layer.weather"),
+            host_id: amigo_composite_plugin::PostFxHost2dId::new("layer.weather"),
             scope: PostFxScope2d::DrawLayer {
                 draw_layer_id: "weather.rain.mid".to_owned(),
             },
@@ -251,7 +251,7 @@ mod tests {
     fn active_post_fx_includes_supported_non_frame_scopes() {
         let passes = active_post_fx(&[
             ScopedPostFx2dStack {
-                host_id: amigo_2d_post_fx::PostFxHost2dId::new("object.rain"),
+                host_id: amigo_composite_plugin::PostFxHost2dId::new("object.rain"),
                 scope: PostFxScope2d::SceneObjectPixels {
                     scene_object_id: "rain.mid".to_owned(),
                 },
@@ -259,7 +259,7 @@ mod tests {
                 effects: vec![effect_item()],
             },
             ScopedPostFx2dStack {
-                host_id: amigo_2d_post_fx::PostFxHost2dId::new("source.cached"),
+                host_id: amigo_composite_plugin::PostFxHost2dId::new("source.cached"),
                 scope: PostFxScope2d::SourceImage {
                     asset: "test/image".to_owned(),
                 },
@@ -281,7 +281,7 @@ mod tests {
     #[test]
     fn active_post_fx_includes_frame_pipeline() {
         let passes = active_post_fx(&[ScopedPostFx2dStack {
-            host_id: amigo_2d_post_fx::PostFxHost2dId::new("frame"),
+            host_id: amigo_composite_plugin::PostFxHost2dId::new("frame"),
             scope: PostFxScope2d::Frame,
             pipeline: PostFxPipelineKind::FrameGraph,
             effects: vec![effect_item()],

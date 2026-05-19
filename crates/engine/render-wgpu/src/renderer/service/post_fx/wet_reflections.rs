@@ -1,4 +1,4 @@
-use amigo_2d_post_fx::PostFxWetReflections2d;
+use amigo_composite_plugin::PostFxWetReflections2d;
 use amigo_assets::AssetKey;
 use amigo_core::{AmigoError, AmigoResult};
 use wgpu::util::DeviceExt;

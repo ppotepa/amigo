@@ -1,4 +1,4 @@
-use amigo_2d_post_fx::{ColorRamp2d, RainGlass2d, RainGlassDebugView, RainGlassRaindropCompose};
+use amigo_composite_plugin::{ColorRamp2d, RainGlass2d, RainGlassDebugView, RainGlassRaindropCompose};
 use amigo_assets::{AssetCatalog, AssetKey, PreparedAsset, PreparedAssetKind};
 
 pub use amigo_film_look_plugin::runtime::FilmGrainProfile2d;

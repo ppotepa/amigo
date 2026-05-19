@@ -5,7 +5,7 @@ use super::{
     RenderExtractorRegistry, RenderFrameExtractor, RenderFrameExtractorRegistry, RenderFramePacket,
     RenderPassInput, RenderPassOutput, RenderPassPlan, WorldPassPlan,
 };
-use amigo_2d_post_fx::{PostFx2dId, PostFxHost2dId, PostFxPipelineKind, PostFxScope2d};
+use amigo_composite_plugin::{PostFx2dId, PostFxHost2dId, PostFxPipelineKind, PostFxScope2d};
 
 fn sample_post_fx_node() -> FrameGraphNodeKind {
     FrameGraphNodeKind::PostFx {

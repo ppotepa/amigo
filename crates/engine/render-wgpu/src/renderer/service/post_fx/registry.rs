@@ -1,4 +1,4 @@
-use amigo_2d_post_fx::{PostFx2d, PostFx2dId, PostFxHost2dId, PostFxPipelineKind, PostFxScope2d};
+use amigo_composite_plugin::{PostFx2d, PostFx2dId, PostFxHost2dId, PostFxPipelineKind, PostFxScope2d};
 use amigo_core::{AmigoError, AmigoResult};
 use amigo_math::ColorRgba;
 use amigo_render_api::RenderFeatureId;

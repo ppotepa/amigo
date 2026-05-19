@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use amigo_2d_post_fx::PostFx2d;
+use amigo_composite_plugin::PostFx2d;
 use amigo_assets::{AssetCatalog, AssetKey, AssetSourceKind, PreparedAsset, PreparedAssetKind};
 use amigo_math::{Transform2, Vec2};
 use amigo_runtime_control::{ControlValue, RuntimeControlService};

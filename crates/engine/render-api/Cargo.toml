@@ -10,6 +10,6 @@ authors.workspace = true
 amigo-core.workspace = true
 amigo-session.workspace = true
 amigo-2d-spatial.workspace = true
-amigo-2d-post-fx = { path = "../../2d/post-fx" }
+amigo-composite-plugin.workspace = true
 amigo-plugin-api = { path = "../../core/plugin-api" }
 amigo-camera-optics-plugin.workspace = true

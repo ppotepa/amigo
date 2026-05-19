@@ -1,4 +1,4 @@
-use amigo_2d_post_fx::{ColorQuantize2d, ColorRamp2d};
+use amigo_composite_plugin::{ColorQuantize2d, ColorRamp2d};
 use amigo_core::AmigoResult;
 use amigo_fx::{ColorInterpolation, ColorRamp, ColorStop};
 use amigo_math::{ColorRgba, Vec2};

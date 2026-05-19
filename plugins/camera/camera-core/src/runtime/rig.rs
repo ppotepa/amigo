@@ -1,4 +1,4 @@
-use amigo_2d_post_fx::{ColorRamp2d, RainGlass2d};
+use amigo_composite_plugin::{ColorRamp2d, RainGlass2d};
 use amigo_2d_spatial::{DepthSpace2d, distance_to_z_depth};
 use amigo_assets::AssetCatalog;
 use crate::api::CameraDepthMotion2d;

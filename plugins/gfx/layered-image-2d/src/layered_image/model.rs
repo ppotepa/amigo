@@ -1,4 +1,4 @@
-use amigo_2d_post_fx::PostFx2dStack;
+use amigo_composite_plugin::PostFx2dStack;
 use amigo_assets::AssetKey;
 use amigo_math::{ColorRgba, Transform2, Vec2};
 use amigo_scene::SceneEntityId;

@@ -283,7 +283,7 @@ impl ScenePreviewHost {
         let _ = crate::runtime_context::required::<UiStateService>(runtime)?;
         let _ = crate::runtime_context::required::<UiThemeService>(runtime)?;
         let _ = crate::runtime_context::required::<
-            amigo_runtime_bundles::amigo_2d_post_fx::PostFx2dService,
+            amigo_runtime_bundles::amigo_composite_plugin::PostFx2dService,
         >(runtime)?;
         let _ = crate::runtime_context::required::<amigo_scripting_api::DevConsoleState>(runtime)?;
         let _ =

@@ -9,7 +9,7 @@ authors.workspace = true
 [dependencies]
 amigo-2d-physics.workspace = true
 amigo-particles-2d-plugin.workspace = true
-amigo-2d-post-fx.workspace = true
+amigo-composite-plugin.workspace = true
 amigo-light-2d-plugin.workspace = true
 amigo-shutter-motion-plugin.workspace = true
 amigo-sprite-2d-plugin.workspace = true

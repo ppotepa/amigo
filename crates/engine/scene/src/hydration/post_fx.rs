@@ -1,4 +1,4 @@
-use amigo_2d_post_fx::{
+use amigo_composite_plugin::{
     ColorQuantize2d, ColorRamp2d, Crt2d, DirtyBloom2d, Downscale2d, FilmNoise2d,
     LensDroplets2dStage, PostFx2d, PostFx2dId, PostFx2dInstance, PostFxHost2dId,
     PostFxLensDroplets2d, PostFxPipelineKind, PostFxScope2d, PostFxWetReflections2d, RainGlass2d,
@@ -49,7 +49,7 @@ pub fn build_scoped_post_fx_stack(
     owner_kind: &str,
 ) -> SceneDocumentResult<(
     Option<ScopedPostFx2dStack>,
-    Vec<amigo_2d_post_fx::LensDroplets2dCertificationReport>,
+    Vec<amigo_composite_plugin::LensDroplets2dCertificationReport>,
 )> {
     if docs.is_empty() {
         return Ok((None, Vec::new()));
@@ -104,7 +104,7 @@ pub fn post_fx_from_document(
     owner_kind: &str,
 ) -> SceneDocumentResult<(
     PostFx2d,
-    Option<amigo_2d_post_fx::LensDroplets2dCertificationReport>,
+    Option<amigo_composite_plugin::LensDroplets2dCertificationReport>,
 )> {
     let output = match document {
         PostFx2dDocument::ColorQuantize(effect) => (

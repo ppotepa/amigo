@@ -23,39 +23,39 @@ enum ScopedPostFxTarget<'a> {
 
 impl<'a> ScopedPostFxTarget<'a> {
     fn from_scope(
-        scope: &'a amigo_2d_post_fx::PostFxScope2d,
-        pipeline: amigo_2d_post_fx::PostFxPipelineKind,
+        scope: &'a amigo_composite_plugin::PostFxScope2d,
+        pipeline: amigo_composite_plugin::PostFxPipelineKind,
     ) -> Option<Self> {
         match (scope, pipeline) {
             (
-                amigo_2d_post_fx::PostFxScope2d::DrawLayer { draw_layer_id },
-                amigo_2d_post_fx::PostFxPipelineKind::OffscreenDrawLayer,
+                amigo_composite_plugin::PostFxScope2d::DrawLayer { draw_layer_id },
+                amigo_composite_plugin::PostFxPipelineKind::OffscreenDrawLayer,
             ) => Some(Self::DrawLayer {
                 layer_id: draw_layer_id,
             }),
             (
-                amigo_2d_post_fx::PostFxScope2d::SceneObjectPixels { scene_object_id },
-                amigo_2d_post_fx::PostFxPipelineKind::OffscreenObject,
+                amigo_composite_plugin::PostFxScope2d::SceneObjectPixels { scene_object_id },
+                amigo_composite_plugin::PostFxPipelineKind::OffscreenObject,
             ) => Some(Self::SceneObject { scene_object_id }),
             (
-                amigo_2d_post_fx::PostFxScope2d::GroupSubtree {
+                amigo_composite_plugin::PostFxScope2d::GroupSubtree {
                     root_scene_object_id,
                 },
-                amigo_2d_post_fx::PostFxPipelineKind::OffscreenGroup,
+                amigo_composite_plugin::PostFxPipelineKind::OffscreenGroup,
             ) => Some(Self::GroupSubtree {
                 root_scene_object_id,
             }),
             (
-                amigo_2d_post_fx::PostFxScope2d::SourceImage { asset },
-                amigo_2d_post_fx::PostFxPipelineKind::CachedImage,
+                amigo_composite_plugin::PostFxScope2d::SourceImage { asset },
+                amigo_composite_plugin::PostFxPipelineKind::CachedImage,
             ) => Some(Self::SourceImage { asset }),
             (
-                amigo_2d_post_fx::PostFxScope2d::ImagePart {
+                amigo_composite_plugin::PostFxScope2d::ImagePart {
                     owner_scene_object_id,
                     part_id,
                     ..
                 },
-                amigo_2d_post_fx::PostFxPipelineKind::CachedImage,
+                amigo_composite_plugin::PostFxPipelineKind::CachedImage,
             ) => Some(Self::ImagePart {
                 owner_scene_object_id,
                 part_id,
@@ -91,10 +91,10 @@ pub(super) fn execute_post_fx_graph_node(
     renderer: &mut WgpuSceneRenderer,
     request: &mut WgpuFrameRenderRequest<'_>,
     node: &amigo_render_api::FrameGraphNode,
-    host_id: &amigo_2d_post_fx::PostFxHost2dId,
-    effect_id: &amigo_2d_post_fx::PostFx2dId,
-    scope: &amigo_2d_post_fx::PostFxScope2d,
-    pipeline: amigo_2d_post_fx::PostFxPipelineKind,
+    host_id: &amigo_composite_plugin::PostFxHost2dId,
+    effect_id: &amigo_composite_plugin::PostFx2dId,
+    scope: &amigo_composite_plugin::PostFxScope2d,
+    pipeline: amigo_composite_plugin::PostFxPipelineKind,
     feature_id: amigo_render_api::RenderFeatureId,
     resources: &mut crate::renderer::graph::WgpuFrameResourceAllocator,
 ) -> AmigoResult<()> {
@@ -118,7 +118,7 @@ pub(super) fn execute_post_fx_graph_node(
         return renderer.copy_offscreen_to_offscreen(target, &source);
     }
 
-    if matches!(pipeline, amigo_2d_post_fx::PostFxPipelineKind::Unsupported) {
+    if matches!(pipeline, amigo_composite_plugin::PostFxPipelineKind::Unsupported) {
         return renderer.copy_offscreen_to_offscreen(target, &source);
     }
 
@@ -152,7 +152,7 @@ pub(super) fn execute_post_fx_graph_node(
         if let Some(mut effect) =
             super::focus_blur_effect_for(request.post_fx_stacks, host_id, effect_id)
         {
-            effect.debug_view = amigo_2d_post_fx::FocusBlurDebugView2d::Depth;
+            effect.debug_view = amigo_composite_plugin::FocusBlurDebugView2d::Depth;
             return crate::renderer::service::post_fx::focus_blur::execute_focus_blur(
                 renderer, request, effect, &source, target,
             );
@@ -279,10 +279,10 @@ fn execute_scoped_post_fx(
     target: &mut WgpuOffscreenTarget,
     source: &wgpu::TextureView,
     scoped_target: ScopedPostFxTarget<'_>,
-    host_id: &amigo_2d_post_fx::PostFxHost2dId,
-    effect_id: &amigo_2d_post_fx::PostFx2dId,
-    scope: &amigo_2d_post_fx::PostFxScope2d,
-    pipeline: amigo_2d_post_fx::PostFxPipelineKind,
+    host_id: &amigo_composite_plugin::PostFxHost2dId,
+    effect_id: &amigo_composite_plugin::PostFx2dId,
+    scope: &amigo_composite_plugin::PostFxScope2d,
+    pipeline: amigo_composite_plugin::PostFxPipelineKind,
     feature_id: &amigo_render_api::RenderFeatureId,
 ) -> AmigoResult<()> {
     renderer.copy_offscreen_to_offscreen(target, source)?;

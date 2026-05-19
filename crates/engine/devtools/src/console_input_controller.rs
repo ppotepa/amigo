@@ -377,7 +377,7 @@ fn console_completion_context(
         .unwrap_or_default();
 
     let postfx_indices = runtime
-        .resolve::<amigo_2d_post_fx::PostFx2dService>()
+        .resolve::<amigo_composite_plugin::PostFx2dService>()
         .map(|postfx| {
             (0..postfx.frame_effect_count())
                 .map(|index| index.to_string())

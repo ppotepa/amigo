@@ -132,19 +132,19 @@ fn runtime_render_graph_with_lens_droplets_has_plan_and_no_surface_write_warning
     .expect("console bootstrap should succeed");
 
     let post_fx_service = runtime
-        .resolve::<amigo_runtime_bundles::amigo_2d_post_fx::PostFx2dService>()
+        .resolve::<amigo_runtime_bundles::amigo_composite_plugin::PostFx2dService>()
         .expect("post-fx service should exist");
     post_fx_service.set_scoped_stacks(vec![
-        amigo_runtime_bundles::amigo_2d_post_fx::ScopedPostFx2dStack::from_frame_stack(
-            amigo_runtime_bundles::amigo_2d_post_fx::PostFx2dStack {
+        amigo_runtime_bundles::amigo_composite_plugin::ScopedPostFx2dStack::from_frame_stack(
+            amigo_runtime_bundles::amigo_composite_plugin::PostFx2dStack {
                 effects: vec![
-                    amigo_runtime_bundles::amigo_2d_post_fx::PostFx2d::LensDroplets(
-                        amigo_runtime_bundles::amigo_2d_post_fx::PostFxLensDroplets2d {
+                    amigo_runtime_bundles::amigo_composite_plugin::PostFx2d::LensDroplets(
+                        amigo_runtime_bundles::amigo_composite_plugin::PostFxLensDroplets2d {
                             enabled: true,
                             affects_world: true,
                             affects_game_ui: true,
                             affects_debug_ui: true,
-                            ..amigo_runtime_bundles::amigo_2d_post_fx::PostFxLensDroplets2d::default()
+                            ..amigo_runtime_bundles::amigo_composite_plugin::PostFxLensDroplets2d::default()
                         },
                     ),
                 ],

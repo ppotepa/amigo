@@ -1,6 +1,6 @@
 use std::time::Instant;
 
-use amigo_2d_post_fx::ShutterBlur2d;
+use amigo_composite_plugin::ShutterBlur2d;
 use amigo_core::AmigoResult;
 use wgpu::util::DeviceExt;
 
@@ -55,8 +55,8 @@ struct DownscaleUniform {
 
 pub(crate) fn execute_shutter_blur(
     renderer: &mut WgpuSceneRenderer,
-    host_id: &amigo_2d_post_fx::PostFxHost2dId,
-    effect_id: &amigo_2d_post_fx::PostFx2dId,
+    host_id: &amigo_composite_plugin::PostFxHost2dId,
+    effect_id: &amigo_composite_plugin::PostFx2dId,
     effect: ShutterBlur2d,
     input_view: &wgpu::TextureView,
     output: &mut WgpuOffscreenTarget,
@@ -73,8 +73,8 @@ pub(crate) fn execute_shutter_blur(
 
 pub(crate) fn execute_motion_debug(
     renderer: &mut WgpuSceneRenderer,
-    host_id: &amigo_2d_post_fx::PostFxHost2dId,
-    effect_id: &amigo_2d_post_fx::PostFx2dId,
+    host_id: &amigo_composite_plugin::PostFxHost2dId,
+    effect_id: &amigo_composite_plugin::PostFx2dId,
     effect: ShutterBlur2d,
     input_view: &wgpu::TextureView,
     output: &mut WgpuOffscreenTarget,

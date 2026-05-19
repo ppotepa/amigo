@@ -1,4 +1,4 @@
-use amigo_2d_post_fx::{RainGlass2d, RainGlassDebugView, RainGlassRaindropCompose};
+use amigo_composite_plugin::{RainGlass2d, RainGlassDebugView, RainGlassRaindropCompose};
 
 #[repr(C)]
 #[derive(Debug, Clone, Copy)]

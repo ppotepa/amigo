@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use amigo_2d_post_fx::{
+use amigo_composite_plugin::{
     ColorQuantize2d, ColorRamp2d, PostFx2d, PostFx2dService, RainGlass2d, RainGlassPatch,
 };
 
@@ -222,7 +222,7 @@ impl PostFxApi {
         update(&mut rain);
         stack.effects[index] = PostFx2d::RainGlass(rain.normalized());
         service.set_scoped_stacks(vec![
-            amigo_2d_post_fx::ScopedPostFx2dStack::from_frame_stack(stack.normalized()),
+            amigo_composite_plugin::ScopedPostFx2dStack::from_frame_stack(stack.normalized()),
         ]);
         true
     }
@@ -253,7 +253,7 @@ impl PostFxApi {
         let palette_size = effect.palette_size as rhai::INT;
         stack.effects[index] = PostFx2d::ColorQuantize(effect);
         service.set_scoped_stacks(vec![
-            amigo_2d_post_fx::ScopedPostFx2dStack::from_frame_stack(stack.normalized()),
+            amigo_composite_plugin::ScopedPostFx2dStack::from_frame_stack(stack.normalized()),
         ]);
         palette_size
     }
@@ -284,7 +284,7 @@ impl PostFxApi {
         let palette_size = effect.palette_size as rhai::INT;
         stack.effects[index] = PostFx2d::ColorRamp(effect);
         service.set_scoped_stacks(vec![
-            amigo_2d_post_fx::ScopedPostFx2dStack::from_frame_stack(stack.normalized()),
+            amigo_composite_plugin::ScopedPostFx2dStack::from_frame_stack(stack.normalized()),
         ]);
         palette_size
     }
