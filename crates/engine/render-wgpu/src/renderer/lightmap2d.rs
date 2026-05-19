@@ -171,17 +171,17 @@ pub(crate) fn lit_particle_color(
     }
 
     match particle.material.lighting_mode {
-        amigo_2d_lighting::Material2dLightingMode::Unlit => particle.color,
-        amigo_2d_lighting::Material2dLightingMode::DynamicLights => {
+        amigo_light_2d_plugin::Material2dLightingMode::Unlit => particle.color,
+        amigo_light_2d_plugin::Material2dLightingMode::DynamicLights => {
             dynamic_lit_particle_color(particle, lights)
         }
-        amigo_2d_lighting::Material2dLightingMode::LightMapSampled => particle
+        amigo_light_2d_plugin::Material2dLightingMode::LightMapSampled => particle
             .material
             .light_receiver
             .as_ref()
             .map(|binding| lightmapped_particle_color(particle, binding, lightmaps, global_lights))
             .unwrap_or(particle.color),
-        amigo_2d_lighting::Material2dLightingMode::LightGroupSampled => particle
+        amigo_light_2d_plugin::Material2dLightingMode::LightGroupSampled => particle
             .material
             .light_receiver
             .as_ref()
@@ -260,7 +260,7 @@ fn light_group_particle_color(
                 continue;
             }
             match &source.kind {
-                amigo_2d_lighting::LightGroup2dSourceKind::LightMapChannel { source, channel } => {
+                amigo_light_2d_plugin::LightGroup2dSourceKind::LightMapChannel { source, channel } => {
                     let any = sample_lightmap_channel_into(
                         particle,
                         binding,
@@ -275,7 +275,7 @@ fn light_group_particle_color(
                     );
                     sampled_any_position = sampled_any_position || any;
                 }
-                amigo_2d_lighting::LightGroup2dSourceKind::GlobalLight { id } => {
+                amigo_light_2d_plugin::LightGroup2dSourceKind::GlobalLight { id } => {
                     sample_global_light_into(
                         global_lights,
                         id,
@@ -631,7 +631,7 @@ fn inverse_transform_point_2d(point: Vec2, transform: Transform2) -> Vec2 {
 mod tests {
     use super::*;
     use amigo_2d_composition::LightRoute2dCommand;
-    use amigo_2d_lighting::{
+    use amigo_light_2d_plugin::{
         LightGroup2dCommand, LightGroup2dSourceCommand, LightGroup2dSourceKind,
         LightReceiver2dBinding, LightReceiverDarkPolicy2d, LightReceiverGlobalLight2d,
         LightSampleStrategy2d, Material2dLightingMode,

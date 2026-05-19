@@ -917,9 +917,9 @@ pub(super) fn clear_runtime_scene_content(
     layered_image_scene_service: &amigo_runtime_bundles::amigo_layered_image_2d_plugin::LayeredImageSceneService,
     render_layer2d_scene_service: &amigo_runtime_bundles::amigo_2d_composition::RenderLayer2dSceneService,
     light_route2d_scene_service: &amigo_runtime_bundles::amigo_2d_composition::LightRoute2dSceneService,
-    global_light2d_scene_service: &amigo_runtime_bundles::amigo_2d_lighting::GlobalLight2dSceneService,
-    lightmap2d_scene_service: &amigo_runtime_bundles::amigo_2d_lighting::LightMap2dSceneService,
-    light_group2d_scene_service: &amigo_runtime_bundles::amigo_2d_lighting::LightGroup2dSceneService,
+    global_light2d_scene_service: &amigo_runtime_bundles::amigo_light_2d_plugin::GlobalLight2dSceneService,
+    lightmap2d_scene_service: &amigo_runtime_bundles::amigo_light_2d_plugin::LightMap2dSceneService,
+    light_group2d_scene_service: &amigo_runtime_bundles::amigo_light_2d_plugin::LightGroup2dSceneService,
     text_scene_service: &Text2dSceneService,
     vector_scene_service: &VectorSceneService,
     physics_scene_service: &Physics2dSceneService,
@@ -1047,11 +1047,11 @@ pub(super) fn clear_runtime_scene_content_with_runtime(runtime: &Runtime) -> Ami
         .as_ref(),
         required::<amigo_runtime_bundles::amigo_2d_composition::LightRoute2dSceneService>(runtime)?
             .as_ref(),
-        required::<amigo_runtime_bundles::amigo_2d_lighting::GlobalLight2dSceneService>(runtime)?
+        required::<amigo_runtime_bundles::amigo_light_2d_plugin::GlobalLight2dSceneService>(runtime)?
             .as_ref(),
-        required::<amigo_runtime_bundles::amigo_2d_lighting::LightMap2dSceneService>(runtime)?
+        required::<amigo_runtime_bundles::amigo_light_2d_plugin::LightMap2dSceneService>(runtime)?
             .as_ref(),
-        required::<amigo_runtime_bundles::amigo_2d_lighting::LightGroup2dSceneService>(runtime)?
+        required::<amigo_runtime_bundles::amigo_light_2d_plugin::LightGroup2dSceneService>(runtime)?
             .as_ref(),
         required::<Text2dSceneService>(runtime)?.as_ref(),
         required::<VectorSceneService>(runtime)?.as_ref(),

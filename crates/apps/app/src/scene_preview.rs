@@ -265,13 +265,13 @@ impl ScenePreviewHost {
             amigo_runtime_bundles::amigo_2d_composition::LightRoute2dSceneService,
         >(runtime)?;
         let _ = crate::runtime_context::required::<
-            amigo_runtime_bundles::amigo_2d_lighting::GlobalLight2dSceneService,
+            amigo_runtime_bundles::amigo_light_2d_plugin::GlobalLight2dSceneService,
         >(runtime)?;
         let _ = crate::runtime_context::required::<
-            amigo_runtime_bundles::amigo_2d_lighting::LightMap2dSceneService,
+            amigo_runtime_bundles::amigo_light_2d_plugin::LightMap2dSceneService,
         >(runtime)?;
         let _ = crate::runtime_context::required::<
-            amigo_runtime_bundles::amigo_2d_lighting::LightGroup2dSceneService,
+            amigo_runtime_bundles::amigo_light_2d_plugin::LightGroup2dSceneService,
         >(runtime)?;
         let _ = crate::runtime_context::required::<Text2dSceneService>(runtime)?;
         let _ = crate::runtime_context::required::<VectorSceneService>(runtime)?;

@@ -1,4 +1,4 @@
-use amigo_2d_lighting_beacon::BeaconLight2dDrawCommand;
+use amigo_beacon_light_2d_plugin::BeaconLight2dDrawCommand;
 use amigo_scene::LayeredImageViewportFit2dSceneCommand;
 
 use crate::renderer::*;

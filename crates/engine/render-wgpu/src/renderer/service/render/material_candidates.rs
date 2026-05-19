@@ -283,7 +283,7 @@ mod tests {
                 blend_mode: amigo_2d_particles::ParticleBlendMode2d::Alpha,
                 motion_stretch: None,
                 material: amigo_2d_particles::ParticleMaterial2d {
-                    lighting_mode: amigo_2d_lighting::Material2dLightingMode::Unlit,
+                    lighting_mode: amigo_light_2d_plugin::Material2dLightingMode::Unlit,
                     receives_light: false,
                     light_response: 0.0,
                     light_receiver: None,

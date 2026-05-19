@@ -8,9 +8,9 @@ authors.workspace = true
 
 [dependencies]
 amigo-sprite-2d-plugin.workspace = true
-amigo-2d-lighting-beacon.workspace = true
+amigo-beacon-light-2d-plugin.workspace = true
 amigo-layered-image-2d-plugin.workspace = true
-amigo-2d-lighting.workspace = true
+amigo-light-2d-plugin.workspace = true
 amigo-2d-composition.workspace = true
 amigo-2d-spatial.workspace = true
 amigo-2d-post-fx.workspace = true

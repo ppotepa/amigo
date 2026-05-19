@@ -72,7 +72,7 @@ struct PlateRelightLight {
 
 #[derive(Clone, Copy)]
 enum PlateRelightSourcePayload<'a> {
-    Beacon(&'a amigo_2d_lighting_beacon::BeaconLight2dDrawCommand),
+    Beacon(&'a amigo_beacon_light_2d_plugin::BeaconLight2dDrawCommand),
     Unsupported,
 }
 
@@ -434,7 +434,7 @@ fn plate_relight_uniforms(
 
 fn plate_relight_sources_from_frame<'a>(
     light_sources: &'a [amigo_render_api::LightSource2dCommon],
-    beacons: &'a [amigo_2d_lighting_beacon::BeaconLight2dDrawCommand],
+    beacons: &'a [amigo_beacon_light_2d_plugin::BeaconLight2dDrawCommand],
 ) -> Vec<WgpuPlateRelightSource<'a>> {
     light_sources
         .iter()
@@ -487,8 +487,8 @@ fn plate_relight_sources_from_frame<'a>(
 
 fn beacon_payload_for_light_source<'a>(
     source: &amigo_render_api::LightSource2dCommon,
-    beacons: &'a [amigo_2d_lighting_beacon::BeaconLight2dDrawCommand],
-) -> Option<&'a amigo_2d_lighting_beacon::BeaconLight2dDrawCommand> {
+    beacons: &'a [amigo_beacon_light_2d_plugin::BeaconLight2dDrawCommand],
+) -> Option<&'a amigo_beacon_light_2d_plugin::BeaconLight2dDrawCommand> {
     if source.emitter_kind != amigo_render_api::LightEmitterKind2d::Beacon {
         return None;
     }
@@ -514,7 +514,7 @@ fn plate_relight_source_active(source: &WgpuPlateRelightSource<'_>) -> bool {
 }
 
 fn normalize_beacon_for_plate_relight(
-    beacon: &amigo_2d_lighting_beacon::BeaconLight2dDrawCommand,
+    beacon: &amigo_beacon_light_2d_plugin::BeaconLight2dDrawCommand,
     aux_size: Vec2,
 ) -> PlateRelightLight {
     let canvas = beacon.viewport_canvas_size.unwrap_or(aux_size);
@@ -1066,8 +1066,8 @@ mod tests {
         name: &str,
         x: f32,
         y: f32,
-    ) -> amigo_2d_lighting_beacon::BeaconLight2dDrawCommand {
-        amigo_2d_lighting_beacon::BeaconLight2dDrawCommand {
+    ) -> amigo_beacon_light_2d_plugin::BeaconLight2dDrawCommand {
+        amigo_beacon_light_2d_plugin::BeaconLight2dDrawCommand {
             entity_name: name.to_owned(),
             render_layer: "lighting.beacons".to_owned(),
             z_index: 0.0,
@@ -1100,7 +1100,7 @@ mod tests {
     }
 
     fn test_light_source_for_beacon(
-        beacon: &amigo_2d_lighting_beacon::BeaconLight2dDrawCommand,
+        beacon: &amigo_beacon_light_2d_plugin::BeaconLight2dDrawCommand,
     ) -> amigo_render_api::LightSource2dCommon {
         let relight_enabled = beacon.render_contributions.enabled_or(roles::RELIGHT_PLATE, true);
         let mut contributions = Vec::new();

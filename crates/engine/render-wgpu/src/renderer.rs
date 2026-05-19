@@ -12,12 +12,12 @@ use amigo_layered_image_2d_plugin::{
     LayeredImageAssetSource, LayeredImageBlendMode2d, LayeredImageDrawCommand,
     apply_layer_overrides,
 };
-use amigo_2d_lighting::{
+use amigo_light_2d_plugin::{
     GlobalLight2dCommand, GlobalLight2dSceneService, LightGroup2dCommand, LightMap2dSceneService,
     LightMap2dSourceCommand, LightMap2dSourceKind, LightReceiver2dBinding,
     LightReceiverDarkPolicy2d, LightSampleStrategy2d,
 };
-use amigo_2d_lighting_beacon::BeaconLight2dDrawCommand;
+use amigo_beacon_light_2d_plugin::BeaconLight2dDrawCommand;
 use amigo_2d_particles::{
     Particle2dDrawCommand, ParticleBlendMode2d, ParticleLightMode2d, ParticleLineAnchor2d,
     ParticleShape2d,

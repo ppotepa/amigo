@@ -3,7 +3,7 @@ use amigo_math::ColorRgba;
 use amigo_runtime::Runtime;
 use amigo_scripting_api::{RuntimeScriptCommandHandler, ScriptCommand};
 
-use crate::{GlobalLight2dSceneService, LightGroup2dSceneService};
+use super::{GlobalLight2dSceneService, LightGroup2dSceneService};
 
 pub struct Lighting2dScriptCommandContext<'a> {
     pub global_light2d_scene_service: &'a GlobalLight2dSceneService,

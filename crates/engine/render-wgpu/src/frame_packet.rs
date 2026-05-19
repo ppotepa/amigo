@@ -1,8 +1,8 @@
 use amigo_2d_composition::{LightRoute2dCommand, RenderLayer2dCommand};
 use amigo_focus_depth_plugin::{DepthAuxMap2dDrawCommand, DepthMap2dDrawCommand};
 use amigo_layered_image_2d_plugin::LayeredImageDrawCommand;
-use amigo_2d_lighting::{GlobalLight2dCommand, LightGroup2dCommand, LightMap2dSourceCommand};
-use amigo_2d_lighting_beacon::{Beacon2dRenderOutput, BeaconLight2dDrawCommand};
+use amigo_light_2d_plugin::{GlobalLight2dCommand, LightGroup2dCommand, LightMap2dSourceCommand};
+use amigo_beacon_light_2d_plugin::{Beacon2dRenderOutput, BeaconLight2dDrawCommand};
 use amigo_2d_particles::Particle2dDrawCommand;
 use amigo_2d_post_fx::ScopedPostFx2dStack;
 use amigo_sprite_2d_plugin::SpriteDrawCommand;
@@ -563,7 +563,7 @@ impl amigo_2d_composition::Composition2dRenderOutput for WgpuRenderFramePacket {
     }
 }
 
-impl amigo_2d_lighting::Lighting2dRenderOutput for WgpuRenderFramePacket {
+impl amigo_light_2d_plugin::Lighting2dRenderOutput for WgpuRenderFramePacket {
     fn push_global_light2d_command(&mut self, command: GlobalLight2dCommand) {
         self.push_world_2d_global_light(command);
     }

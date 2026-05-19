@@ -1,6 +1,6 @@
 use amigo_math::ColorRgba;
 
-use crate::{GlobalLight2dSceneService, LightGroup2dSceneService, LightMap2dSceneService};
+use super::{GlobalLight2dSceneService, LightGroup2dSceneService, LightMap2dSceneService};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Lighting2dDevConsoleCommandOutcome {

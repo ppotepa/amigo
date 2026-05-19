@@ -7,7 +7,7 @@ pub struct Beacon2dPlugin;
 
 impl RuntimePlugin for Beacon2dPlugin {
     fn name(&self) -> &'static str {
-        "amigo-2d-lighting-beacon"
+        "amigo-beacon-light-2d-plugin"
     }
 
     fn register(&self, registry: &mut ServiceRegistry) -> amigo_core::AmigoResult<()> {
@@ -20,7 +20,7 @@ impl RuntimePlugin for Beacon2dPlugin {
         }
         register_domain_plugin(
             registry,
-            "amigo-2d-lighting-beacon",
+            "amigo-beacon-light-2d-plugin",
             &["beacon_2d"],
             &[],
             DEFAULT_CAPABILITY_VERSION,

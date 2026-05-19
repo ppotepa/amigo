@@ -282,10 +282,10 @@ fn particles_showcase_hydrates_emitters() {
         .resolve::<amigo_runtime_bundles::amigo_layered_image_2d_plugin::LayeredImageSceneService>()
         .expect("layered image service should exist");
     let global_light2d_scene_service = runtime
-        .resolve::<amigo_runtime_bundles::amigo_2d_lighting::GlobalLight2dSceneService>()
+        .resolve::<amigo_runtime_bundles::amigo_light_2d_plugin::GlobalLight2dSceneService>()
         .expect("global light2d service should exist");
     let lightmap2d_scene_service = runtime
-        .resolve::<amigo_runtime_bundles::amigo_2d_lighting::LightMap2dSceneService>()
+        .resolve::<amigo_runtime_bundles::amigo_light_2d_plugin::LightMap2dSceneService>()
         .expect("lightmap2d service should exist");
     let render_layer2d_scene_service = runtime
         .resolve::<amigo_runtime_bundles::amigo_2d_composition::RenderLayer2dSceneService>()
@@ -294,7 +294,7 @@ fn particles_showcase_hydrates_emitters() {
         .resolve::<amigo_runtime_bundles::amigo_2d_composition::LightRoute2dSceneService>()
         .expect("light route2d service should exist");
     let light_group2d_scene_service = runtime
-        .resolve::<amigo_runtime_bundles::amigo_2d_lighting::LightGroup2dSceneService>()
+        .resolve::<amigo_runtime_bundles::amigo_light_2d_plugin::LightGroup2dSceneService>()
         .expect("light group2d service should exist");
     let dev_console_state = runtime
         .resolve::<amigo_scripting_api::DevConsoleState>()

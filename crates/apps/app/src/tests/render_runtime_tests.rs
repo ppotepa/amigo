@@ -355,9 +355,9 @@ fn handle_script_command_updates_layered_image_overrides() {
     let render_layers =
         amigo_runtime_bundles::amigo_2d_composition::RenderLayer2dSceneService::default();
     let global_lights =
-        amigo_runtime_bundles::amigo_2d_lighting::GlobalLight2dSceneService::default();
+        amigo_runtime_bundles::amigo_light_2d_plugin::GlobalLight2dSceneService::default();
     let light_groups =
-        amigo_runtime_bundles::amigo_2d_lighting::LightGroup2dSceneService::default();
+        amigo_runtime_bundles::amigo_light_2d_plugin::LightGroup2dSceneService::default();
     let ui_state = UiStateService::default();
     let audio_command_queue = AudioCommandQueue::default();
     let audio_scene_service = AudioSceneService::default();

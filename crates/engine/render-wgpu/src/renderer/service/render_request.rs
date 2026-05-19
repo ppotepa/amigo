@@ -1,7 +1,7 @@
 use amigo_2d_composition::{LightRoute2dCommand, RenderLayer2dCommand};
 use amigo_layered_image_2d_plugin::LayeredImageSceneService;
-use amigo_2d_lighting::{GlobalLight2dSceneService, LightGroup2dCommand, LightMap2dSceneService};
-use amigo_2d_lighting_beacon::BeaconLight2dDrawCommand;
+use amigo_light_2d_plugin::{GlobalLight2dSceneService, LightGroup2dCommand, LightMap2dSceneService};
+use amigo_beacon_light_2d_plugin::BeaconLight2dDrawCommand;
 use amigo_2d_particles::Particle2dDrawCommand;
 use amigo_2d_post_fx::ScopedPostFx2dStack;
 use amigo_sprite_2d_plugin::SpriteSceneService;

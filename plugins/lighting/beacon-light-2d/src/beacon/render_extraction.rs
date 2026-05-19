@@ -1,4 +1,4 @@
-use crate::{BeaconLight2dDrawCommand, BeaconLight2dSceneService};
+use super::{BeaconLight2dDrawCommand, BeaconLight2dSceneService};
 
 pub struct Beacon2dRenderExtractionContext<'a> {
     pub beacon_scene_service: &'a BeaconLight2dSceneService,

@@ -5,7 +5,7 @@ use amigo_scene::{
     SceneEventQueue, SceneService,
 };
 
-use crate::{
+use super::{
     GlobalLight2dSceneService, LightGroup2dSceneService, LightMap2dSceneService,
     LightMap2dSourceKind, LightingSceneCommandContext, LightingSceneCommandOutcome,
     can_handle_lighting_scene_command, handle_lighting_scene_command,

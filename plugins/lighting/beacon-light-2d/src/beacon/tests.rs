@@ -4,7 +4,7 @@ use amigo_math::{ColorRgba, Transform2};
 use amigo_runtime_control::{ControlValue, RuntimeControlService};
 use amigo_scene::LayeredImageViewportFit2dSceneCommand;
 
-use crate::{Beacon2dControlProvider, BeaconLight2dCommand};
+use super::{Beacon2dControlProvider, BeaconLight2dCommand};
 
 #[test]
 fn beacon_service_ticks() {

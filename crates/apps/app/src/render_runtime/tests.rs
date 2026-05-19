@@ -177,7 +177,7 @@ fn app_render_extractor_registry_collects_vector_and_ui_data() {
                 motion_stretch: None,
                 material: amigo_runtime_bundles::amigo_2d_particles::ParticleMaterial2d {
                     lighting_mode:
-                        amigo_runtime_bundles::amigo_2d_lighting::Material2dLightingMode::Unlit,
+                        amigo_runtime_bundles::amigo_light_2d_plugin::Material2dLightingMode::Unlit,
                     receives_light: false,
                     light_response: 1.0,
                     light_receiver: None,
@@ -248,14 +248,14 @@ fn app_render_extractor_registry_collects_vector_and_ui_data() {
         amigo_runtime_bundles::amigo_layered_image_2d_plugin::LayeredImageSceneService::default();
     let depth_maps = amigo_runtime_bundles::amigo_focus_depth_plugin::DepthMap2dSceneService::default();
     let global_lights =
-        amigo_runtime_bundles::amigo_2d_lighting::GlobalLight2dSceneService::default();
-    let lightmaps = amigo_runtime_bundles::amigo_2d_lighting::LightMap2dSceneService::default();
+        amigo_runtime_bundles::amigo_light_2d_plugin::GlobalLight2dSceneService::default();
+    let lightmaps = amigo_runtime_bundles::amigo_light_2d_plugin::LightMap2dSceneService::default();
     let render_layers =
         amigo_runtime_bundles::amigo_2d_composition::RenderLayer2dSceneService::default();
     let light_routes =
         amigo_runtime_bundles::amigo_2d_composition::LightRoute2dSceneService::default();
     let light_groups =
-        amigo_runtime_bundles::amigo_2d_lighting::LightGroup2dSceneService::default();
+        amigo_runtime_bundles::amigo_light_2d_plugin::LightGroup2dSceneService::default();
     text3d.queue(Text3dDrawCommand {
         entity_id: SceneEntityId::new(10),
         entity_name: "hello-3d".to_owned(),
@@ -404,10 +404,10 @@ fn app_render_extractor_registry_appends_enabled_debug_overlay() {
     let light_routes =
         amigo_runtime_bundles::amigo_2d_composition::LightRoute2dSceneService::default();
     let global_lights =
-        amigo_runtime_bundles::amigo_2d_lighting::GlobalLight2dSceneService::default();
-    let lightmaps = amigo_runtime_bundles::amigo_2d_lighting::LightMap2dSceneService::default();
+        amigo_runtime_bundles::amigo_light_2d_plugin::GlobalLight2dSceneService::default();
+    let lightmaps = amigo_runtime_bundles::amigo_light_2d_plugin::LightMap2dSceneService::default();
     let light_groups =
-        amigo_runtime_bundles::amigo_2d_lighting::LightGroup2dSceneService::default();
+        amigo_runtime_bundles::amigo_light_2d_plugin::LightGroup2dSceneService::default();
     let text2d = Text2dSceneService::default();
     let vectors = VectorSceneService::default();
     let particles = Particle2dSceneService::default();

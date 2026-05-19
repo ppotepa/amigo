@@ -3,7 +3,7 @@ use std::sync::Mutex;
 
 use amigo_math::Vec2;
 
-use crate::{BeaconLight2dCommand, BeaconLight2dDrawCommand};
+use super::{BeaconLight2dCommand, BeaconLight2dDrawCommand};
 
 #[derive(Debug, Default)]
 pub struct BeaconLight2dSceneService {

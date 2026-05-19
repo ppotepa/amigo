@@ -6,7 +6,7 @@ use amigo_render_api::{
 use amigo_scene::{BeaconLight2dSceneCommand, LayeredImageViewportFit2dSceneCommand};
 
 pub const BEACON_2D_CAPABILITY: &str = "beacon_2d";
-pub const BEACON_2D_PLUGIN_LABEL: &str = "amigo-2d-lighting-beacon";
+pub const BEACON_2D_PLUGIN_LABEL: &str = "amigo-beacon-light-2d-plugin";
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct BeaconLight2dCommand {

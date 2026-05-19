@@ -3,7 +3,7 @@ use amigo_math::ColorRgba;
 use amigo_render_api::RenderContributionSet;
 
 pub const LIGHTING_2D_CAPABILITY: &str = "lighting_2d";
-pub const LIGHTING_2D_PLUGIN_LABEL: &str = "amigo-2d-lighting";
+pub const LIGHTING_2D_PLUGIN_LABEL: &str = "amigo-light-2d-plugin";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LightMap2dSourceKind {

@@ -1,4 +1,4 @@
-use crate::{BeaconLight2dCommand, BeaconLight2dSceneService};
+use super::{BeaconLight2dCommand, BeaconLight2dSceneService};
 use amigo_scene::{BeaconLight2dSceneCommand, SceneService};
 
 pub fn queue_beacon_light2d_scene_command(

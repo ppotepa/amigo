@@ -1,4 +1,4 @@
-use crate::{
+use super::{
     GlobalLight2dCommand, GlobalLight2dSceneService, LightGroup2dCommand, LightGroup2dSceneService,
     LightMap2dSceneService, LightMap2dSourceCommand,
 };

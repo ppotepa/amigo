@@ -3,7 +3,7 @@ use amigo_scene::{
     SceneEntityId, SceneService,
 };
 
-use crate::{
+use super::{
     GlobalLight2dCommand, GlobalLight2dSceneService, LightGroup2dCommand, LightGroup2dSceneService,
     LightMap2dChannel, LightMap2dSceneService, LightMap2dSourceCommand, LightMap2dSourceRef,
 };

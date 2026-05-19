@@ -2,7 +2,7 @@ use std::sync::Mutex;
 
 use amigo_math::ColorRgba;
 
-use crate::{GlobalLight2dCommand, LightGroup2dCommand, LightMap2dSourceCommand};
+use super::{GlobalLight2dCommand, LightGroup2dCommand, LightMap2dSourceCommand};
 
 #[derive(Debug, Default)]
 pub struct GlobalLight2dSceneService {

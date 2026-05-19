@@ -11,10 +11,10 @@ use super::visual_2d_items::{Renderable2dItem, Renderable2dPayload};
 
 pub fn collect_light_sources_2d(
     renderables: &[Renderable2dItem],
-    beacons: &[amigo_2d_lighting_beacon::BeaconLight2dDrawCommand],
-    global_lights: &[amigo_2d_lighting::GlobalLight2dCommand],
-    lightmaps: &[amigo_2d_lighting::LightMap2dSourceCommand],
-    light_groups: &[amigo_2d_lighting::LightGroup2dCommand],
+    beacons: &[amigo_beacon_light_2d_plugin::BeaconLight2dDrawCommand],
+    global_lights: &[amigo_light_2d_plugin::GlobalLight2dCommand],
+    lightmaps: &[amigo_light_2d_plugin::LightMap2dSourceCommand],
+    light_groups: &[amigo_light_2d_plugin::LightGroup2dCommand],
     particles: &[amigo_2d_particles::Particle2dDrawCommand],
     camera_capture_input: Option<&CameraCaptureInput2d>,
 ) -> Vec<LightSource2dCommon> {
@@ -202,7 +202,7 @@ pub fn collect_light_sources_2d(
 
         for source in group.sources.iter() {
             match &source.kind {
-                amigo_2d_lighting::LightGroup2dSourceKind::GlobalLight { id } => {
+                amigo_light_2d_plugin::LightGroup2dSourceKind::GlobalLight { id } => {
                     let global = global_lights.iter().find(|light| &light.id == id);
                     let (status, effective_intensity, reason) = match global {
                         Some(light) => (
@@ -226,7 +226,7 @@ pub fn collect_light_sources_2d(
                         reason,
                     );
                 }
-                amigo_2d_lighting::LightGroup2dSourceKind::LightMapChannel {
+                amigo_light_2d_plugin::LightGroup2dSourceKind::LightMapChannel {
                     source: source_id,
                     channel,
                 } => {
@@ -616,7 +616,7 @@ fn light_source_roles(source: &LightSource2dCommon) -> RenderContributionSet {
 
 fn push_light_group_source(
     sources: &mut Vec<LightSource2dCommon>,
-    group: &amigo_2d_lighting::LightGroup2dCommand,
+    group: &amigo_light_2d_plugin::LightGroup2dCommand,
     emitter_id: Option<String>,
     response: f32,
     effective_intensity: f32,
@@ -669,7 +669,7 @@ fn push_light_group_source(
 }
 
 fn light_group_contributions(
-    group: &amigo_2d_lighting::LightGroup2dCommand,
+    group: &amigo_light_2d_plugin::LightGroup2dCommand,
 ) -> Vec<LightContributionKind2d> {
     let mut contributions = Vec::new();
     if group.render_contributions.enabled_or(
@@ -796,15 +796,15 @@ mod tests {
 
     #[test]
     fn light_sources_collects_lightmap_channels() {
-        let lightmap = amigo_2d_lighting::LightMap2dSourceCommand {
+        let lightmap = amigo_light_2d_plugin::LightMap2dSourceCommand {
             source_mod: "test".to_owned(),
             entity_name: "neon-map".to_owned(),
             id: "neon-alley-lightmap".to_owned(),
-            source: amigo_2d_lighting::LightMap2dSourceRef {
-                kind: amigo_2d_lighting::LightMap2dSourceKind::LayeredImage2d,
+            source: amigo_light_2d_plugin::LightMap2dSourceRef {
+                kind: amigo_light_2d_plugin::LightMap2dSourceKind::LayeredImage2d,
                 entity_name: "neon-map".to_owned(),
             },
-            channels: vec![amigo_2d_lighting::LightMap2dChannel {
+            channels: vec![amigo_light_2d_plugin::LightMap2dChannel {
                 id: "mid_neon".to_owned(),
                 layers: vec!["club.mid".to_owned()],
             }],
@@ -822,14 +822,14 @@ mod tests {
 
     #[test]
     fn light_sources_resolves_light_group_effective_intensity() {
-        let global = amigo_2d_lighting::GlobalLight2dCommand {
+        let global = amigo_light_2d_plugin::GlobalLight2dCommand {
             source_mod: "test".to_owned(),
             entity_name: "sky-light".to_owned(),
             id: "sky".to_owned(),
             color: amigo_math::ColorRgba::new(1.0, 0.9, 0.8, 1.0),
             intensity: 0.5,
         };
-        let group = amigo_2d_lighting::LightGroup2dCommand {
+        let group = amigo_light_2d_plugin::LightGroup2dCommand {
             source_mod: "test".to_owned(),
             id: "street-neon".to_owned(),
             label: None,
@@ -837,8 +837,8 @@ mod tests {
             intensity: 2.0,
             render_contributions: amigo_render_api::RenderContributionSet::default(),
             camera_response: CameraOpticalResponse2d::default(),
-            sources: vec![amigo_2d_lighting::LightGroup2dSourceCommand {
-                kind: amigo_2d_lighting::LightGroup2dSourceKind::GlobalLight {
+            sources: vec![amigo_light_2d_plugin::LightGroup2dSourceCommand {
+                kind: amigo_light_2d_plugin::LightGroup2dSourceKind::GlobalLight {
                     id: "sky".to_owned(),
                 },
                 response: 0.25,
@@ -856,20 +856,20 @@ mod tests {
 
     #[test]
     fn camera_optical_candidates_report_light_group_lightmap_coverage() {
-        let lightmap = amigo_2d_lighting::LightMap2dSourceCommand {
+        let lightmap = amigo_light_2d_plugin::LightMap2dSourceCommand {
             source_mod: "test".to_owned(),
             entity_name: "neon-map".to_owned(),
             id: "neon-alley-lightmap".to_owned(),
-            source: amigo_2d_lighting::LightMap2dSourceRef {
-                kind: amigo_2d_lighting::LightMap2dSourceKind::LayeredImage2d,
+            source: amigo_light_2d_plugin::LightMap2dSourceRef {
+                kind: amigo_light_2d_plugin::LightMap2dSourceKind::LayeredImage2d,
                 entity_name: "neon-map".to_owned(),
             },
-            channels: vec![amigo_2d_lighting::LightMap2dChannel {
+            channels: vec![amigo_light_2d_plugin::LightMap2dChannel {
                 id: "mid_neon".to_owned(),
                 layers: vec!["club.mid".to_owned()],
             }],
         };
-        let group = amigo_2d_lighting::LightGroup2dCommand {
+        let group = amigo_light_2d_plugin::LightGroup2dCommand {
             source_mod: "test".to_owned(),
             id: "neon.mid".to_owned(),
             label: None,
@@ -887,8 +887,8 @@ mod tests {
                 ghosting: 0.22,
                 ..CameraOpticalResponse2d::default()
             },
-            sources: vec![amigo_2d_lighting::LightGroup2dSourceCommand {
-                kind: amigo_2d_lighting::LightGroup2dSourceKind::LightMapChannel {
+            sources: vec![amigo_light_2d_plugin::LightGroup2dSourceCommand {
+                kind: amigo_light_2d_plugin::LightGroup2dSourceKind::LightMapChannel {
                     source: "neon-alley-lightmap".to_owned(),
                     channel: "mid_neon".to_owned(),
                 },
@@ -974,7 +974,7 @@ mod tests {
 
     #[test]
     fn camera_optical_candidates_report_beacon_hotspot_coverage() {
-        let beacon = amigo_2d_lighting_beacon::BeaconLight2dDrawCommand {
+        let beacon = amigo_beacon_light_2d_plugin::BeaconLight2dDrawCommand {
             entity_name: "beacon-a".to_owned(),
             render_layer: "foreground.lights".to_owned(),
             z_index: 0.0,

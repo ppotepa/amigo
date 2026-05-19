@@ -159,17 +159,17 @@ pub struct WgpuBeacon2dRenderExtractorBridge;
 
 impl RenderFrameExtractor<Runtime, WgpuRenderFramePacket> for WgpuBeacon2dRenderExtractorBridge {
     fn name(&self) -> &'static str {
-        amigo_2d_lighting_beacon::Beacon2dRenderExtractor.name()
+        amigo_beacon_light_2d_plugin::Beacon2dRenderExtractor.name()
     }
 
     fn extract(&self, runtime: &Runtime, packet: &mut WgpuRenderFramePacket) {
         let Some(beacon_scene_service) =
-            runtime.resolve::<amigo_2d_lighting_beacon::BeaconLight2dSceneService>()
+            runtime.resolve::<amigo_beacon_light_2d_plugin::BeaconLight2dSceneService>()
         else {
             return;
         };
-        amigo_2d_lighting_beacon::Beacon2dRenderExtractor.extract(
-            amigo_2d_lighting_beacon::Beacon2dRenderExtractionContext {
+        amigo_beacon_light_2d_plugin::Beacon2dRenderExtractor.extract(
+            amigo_beacon_light_2d_plugin::Beacon2dRenderExtractionContext {
                 beacon_scene_service: beacon_scene_service.as_ref(),
             },
             packet,
@@ -205,18 +205,18 @@ pub struct WgpuLighting2dRenderExtractorBridge;
 
 impl RenderFrameExtractor<Runtime, WgpuRenderFramePacket> for WgpuLighting2dRenderExtractorBridge {
     fn name(&self) -> &'static str {
-        amigo_2d_lighting::Lighting2dRenderExtractor.name()
+        amigo_light_2d_plugin::Lighting2dRenderExtractor.name()
     }
 
     fn extract(&self, runtime: &Runtime, packet: &mut WgpuRenderFramePacket) {
         let global_light2d_scene_service =
-            required::<amigo_2d_lighting::GlobalLight2dSceneService>(runtime);
+            required::<amigo_light_2d_plugin::GlobalLight2dSceneService>(runtime);
         let lightmap2d_scene_service =
-            required::<amigo_2d_lighting::LightMap2dSceneService>(runtime);
+            required::<amigo_light_2d_plugin::LightMap2dSceneService>(runtime);
         let light_group2d_scene_service =
-            required::<amigo_2d_lighting::LightGroup2dSceneService>(runtime);
-        amigo_2d_lighting::Lighting2dRenderExtractor.extract(
-            amigo_2d_lighting::Lighting2dRenderExtractionContext {
+            required::<amigo_light_2d_plugin::LightGroup2dSceneService>(runtime);
+        amigo_light_2d_plugin::Lighting2dRenderExtractor.extract(
+            amigo_light_2d_plugin::Lighting2dRenderExtractionContext {
                 global_light2d_scene_service: global_light2d_scene_service.as_ref(),
                 lightmap2d_scene_service: lightmap2d_scene_service.as_ref(),
                 light_group2d_scene_service: light_group2d_scene_service.as_ref(),
@@ -704,12 +704,12 @@ mod tests {
     #[test]
     fn camera_capture_input_does_not_set_highlight_for_lightmaps_without_candidates() {
         let mut packet = WgpuRenderFramePacket::default();
-        packet.push_world_2d_lightmap(amigo_2d_lighting::LightMap2dSourceCommand {
+        packet.push_world_2d_lightmap(amigo_light_2d_plugin::LightMap2dSourceCommand {
             source_mod: "rotten-club".to_owned(),
             entity_name: "bar.lightmap".to_owned(),
             id: "bar.lightmap".to_owned(),
-            source: amigo_2d_lighting::LightMap2dSourceRef {
-                kind: amigo_2d_lighting::LightMap2dSourceKind::LayeredImage2d,
+            source: amigo_light_2d_plugin::LightMap2dSourceRef {
+                kind: amigo_light_2d_plugin::LightMap2dSourceKind::LayeredImage2d,
                 entity_name: "bar.lightmap".to_owned(),
             },
             channels: Vec::new(),

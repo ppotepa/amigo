@@ -105,7 +105,7 @@ pub fn refresh_focus_targets_2d_system(runtime: &Runtime) -> AmigoResult<()> {
             );
         }
     }
-    if let Some(beacons) = runtime.resolve::<amigo_2d_lighting_beacon::BeaconLight2dSceneService>()
+    if let Some(beacons) = runtime.resolve::<amigo_beacon_light_2d_plugin::BeaconLight2dSceneService>()
     {
         for command in beacons.commands() {
             push_entity_focus_target(

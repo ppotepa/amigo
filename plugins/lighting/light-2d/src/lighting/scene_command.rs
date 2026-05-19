@@ -5,7 +5,7 @@ use amigo_scene::{
     format_scene_command,
 };
 
-use crate::{
+use super::{
     GlobalLight2dSceneService, LightGroup2dSceneService, LightMap2dSceneService,
     queue_global_light_2d_scene_command, queue_light_group_2d_scene_command,
     queue_lightmap_2d_source_scene_command,

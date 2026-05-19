@@ -89,47 +89,13 @@ dependencies = [
 ]
 
 [[package]]
-name = "amigo-2d-lighting"
-version = "0.1.0"
-dependencies = [
- "amigo-assets",
- "amigo-camera-optics-plugin",
- "amigo-capabilities",
- "amigo-core",
- "amigo-layered-image-2d-plugin",
- "amigo-math",
- "amigo-render-api",
- "amigo-runtime",
- "amigo-scene",
- "amigo-scripting-api",
- "amigo-session",
-]
-
-[[package]]
-name = "amigo-2d-lighting-beacon"
-version = "0.1.0"
-dependencies = [
- "amigo-camera-optics-plugin",
- "amigo-capabilities",
- "amigo-core",
- "amigo-math",
- "amigo-render-api",
- "amigo-runtime",
- "amigo-runtime-control",
- "amigo-scene",
- "amigo-scripting-api",
- "amigo-session",
- "amigo-vector-2d-plugin",
-]
-
-[[package]]
 name = "amigo-2d-particles"
 version = "0.1.0"
 dependencies = [
- "amigo-2d-lighting",
  "amigo-capabilities",
  "amigo-core",
  "amigo-fx",
+ "amigo-light-2d-plugin",
  "amigo-math",
  "amigo-runtime",
  "amigo-runtime-control",
@@ -336,9 +302,19 @@ name = "amigo-beacon-light-2d-plugin"
 version = "0.1.0"
 dependencies = [
  "amigo-camera-optics-plugin",
+ "amigo-capabilities",
+ "amigo-core",
+ "amigo-math",
  "amigo-plugin-api",
  "amigo-relight-2d-plugin",
+ "amigo-render-api",
+ "amigo-runtime",
+ "amigo-runtime-control",
+ "amigo-scene",
+ "amigo-scripting-api",
+ "amigo-session",
  "amigo-shutter-motion-plugin",
+ "amigo-vector-2d-plugin",
 ]
 
 [[package]]
@@ -477,7 +453,6 @@ name = "amigo-devtools"
 version = "0.1.0"
 dependencies = [
  "amigo-2d-composition",
- "amigo-2d-lighting",
  "amigo-2d-particles",
  "amigo-2d-post-fx",
  "amigo-assets",
@@ -488,6 +463,7 @@ dependencies = [
  "amigo-focus-depth-plugin",
  "amigo-input-api",
  "amigo-layered-image-2d-plugin",
+ "amigo-light-2d-plugin",
  "amigo-math",
  "amigo-plugin-api",
  "amigo-render-api",
@@ -593,10 +569,10 @@ name = "amigo-focus-depth-plugin"
 version = "0.1.0"
 dependencies = [
  "amigo-2d-composition",
- "amigo-2d-lighting-beacon",
  "amigo-2d-particles",
  "amigo-2d-spatial",
  "amigo-assets",
+ "amigo-beacon-light-2d-plugin",
  "amigo-camera-core-plugin",
  "amigo-capabilities",
  "amigo-core",
@@ -697,8 +673,18 @@ dependencies = [
 name = "amigo-light-2d-plugin"
 version = "0.1.0"
 dependencies = [
+ "amigo-assets",
  "amigo-camera-optics-plugin",
+ "amigo-capabilities",
+ "amigo-core",
+ "amigo-layered-image-2d-plugin",
+ "amigo-math",
  "amigo-plugin-api",
+ "amigo-render-api",
+ "amigo-runtime",
+ "amigo-scene",
+ "amigo-scripting-api",
+ "amigo-session",
 ]
 
 [[package]]
@@ -827,8 +813,6 @@ name = "amigo-render-wgpu"
 version = "0.1.0"
 dependencies = [
  "amigo-2d-composition",
- "amigo-2d-lighting",
- "amigo-2d-lighting-beacon",
  "amigo-2d-particles",
  "amigo-2d-post-fx",
  "amigo-2d-spatial",
@@ -836,12 +820,14 @@ dependencies = [
  "amigo-3d-mesh",
  "amigo-3d-text",
  "amigo-assets",
+ "amigo-beacon-light-2d-plugin",
  "amigo-camera-optics-plugin",
  "amigo-core",
  "amigo-focus-depth-plugin",
  "amigo-font",
  "amigo-fx",
  "amigo-layered-image-2d-plugin",
+ "amigo-light-2d-plugin",
  "amigo-math",
  "amigo-plugin-api",
  "amigo-render-api",
@@ -870,8 +856,6 @@ name = "amigo-runtime-bundles"
 version = "0.1.0"
 dependencies = [
  "amigo-2d-composition",
- "amigo-2d-lighting",
- "amigo-2d-lighting-beacon",
  "amigo-2d-particles",
  "amigo-2d-physics",
  "amigo-2d-post-fx",
@@ -884,6 +868,7 @@ dependencies = [
  "amigo-audio-generated",
  "amigo-audio-mixer",
  "amigo-audio-output",
+ "amigo-beacon-light-2d-plugin",
  "amigo-behavior",
  "amigo-camera-core-plugin",
  "amigo-camera-optics-plugin",
@@ -896,6 +881,7 @@ dependencies = [
  "amigo-input-actions",
  "amigo-input-winit",
  "amigo-layered-image-2d-plugin",
+ "amigo-light-2d-plugin",
  "amigo-math",
  "amigo-modding",
  "amigo-plugin-api",
@@ -965,7 +951,6 @@ dependencies = [
 name = "amigo-scripting-rhai"
 version = "0.1.0"
 dependencies = [
- "amigo-2d-lighting",
  "amigo-2d-particles",
  "amigo-2d-physics",
  "amigo-2d-post-fx",
@@ -978,6 +963,7 @@ dependencies = [
  "amigo-fx",
  "amigo-input-actions",
  "amigo-input-api",
+ "amigo-light-2d-plugin",
  "amigo-math",
  "amigo-modding",
  "amigo-plugin-api",

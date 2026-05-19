@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use amigo_2d_lighting::Material2dLightingMode;
+use amigo_light_2d_plugin::Material2dLightingMode;
 use amigo_shutter_motion_plugin::{
     Facing2d, FreeflightMotion2dCommand, FreeflightMotionProfile2d, FreeflightMotionState2d,
     Motion2dSceneService, MotionAnimationState, MotionController2d, MotionController2dCommand,

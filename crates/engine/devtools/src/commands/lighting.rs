@@ -30,20 +30,20 @@ impl ConsoleCommandHandler for Lighting2dConsoleCommandHandler {
         ctx: &ConsoleCommandContext<'_>,
         command: ParsedConsoleCommand,
     ) -> ConsoleCommandResult {
-        let global_lights = match ctx.required::<amigo_2d_lighting::GlobalLight2dSceneService>() {
+        let global_lights = match ctx.required::<amigo_light_2d_plugin::GlobalLight2dSceneService>() {
             Ok(service) => service,
             Err(error) => return ConsoleCommandResult::error(error.to_string()),
         };
-        let light_groups = match ctx.required::<amigo_2d_lighting::LightGroup2dSceneService>() {
+        let light_groups = match ctx.required::<amigo_light_2d_plugin::LightGroup2dSceneService>() {
             Ok(service) => service,
             Err(error) => return ConsoleCommandResult::error(error.to_string()),
         };
-        let lightmaps = match ctx.required::<amigo_2d_lighting::LightMap2dSceneService>() {
+        let lightmaps = match ctx.required::<amigo_light_2d_plugin::LightMap2dSceneService>() {
             Ok(service) => service,
             Err(error) => return ConsoleCommandResult::error(error.to_string()),
         };
-        match amigo_2d_lighting::handle_lighting2d_dev_console_command(
-            amigo_2d_lighting::Lighting2dDevConsoleCommandContext {
+        match amigo_light_2d_plugin::handle_lighting2d_dev_console_command(
+            amigo_light_2d_plugin::Lighting2dDevConsoleCommandContext {
                 global_light2d_scene_service: global_lights.as_ref(),
                 light_group2d_scene_service: light_groups.as_ref(),
                 light_map2d_scene_service: lightmaps.as_ref(),
@@ -51,13 +51,13 @@ impl ConsoleCommandHandler for Lighting2dConsoleCommandHandler {
             &command.name,
             &command.args,
         ) {
-            amigo_2d_lighting::Lighting2dDevConsoleCommandOutcome::Handled(message) => {
+            amigo_light_2d_plugin::Lighting2dDevConsoleCommandOutcome::Handled(message) => {
                 ConsoleCommandResult::ok(message)
             }
-            amigo_2d_lighting::Lighting2dDevConsoleCommandOutcome::Error(message) => {
+            amigo_light_2d_plugin::Lighting2dDevConsoleCommandOutcome::Error(message) => {
                 ConsoleCommandResult::error(message)
             }
-            amigo_2d_lighting::Lighting2dDevConsoleCommandOutcome::Unhandled => {
+            amigo_light_2d_plugin::Lighting2dDevConsoleCommandOutcome::Unhandled => {
                 ConsoleCommandResult::unknown(command.raw)
             }
         }
