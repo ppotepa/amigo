@@ -13,8 +13,8 @@ use super::*;
 fn particles_scene_command_handler_queues_emitter_and_event() {
     let scene = SceneService::default();
     let particles = Particle2dSceneService::default();
-    let global_lights = amigo_2d_lighting::GlobalLight2dSceneService::default();
-    let lightmaps = amigo_2d_lighting::LightMap2dSceneService::default();
+    let global_lights = amigo_light_2d_plugin::GlobalLight2dSceneService::default();
+    let lightmaps = amigo_light_2d_plugin::LightMap2dSceneService::default();
     let events = SceneEventQueue::default();
     let command = particle_emitter_command();
 

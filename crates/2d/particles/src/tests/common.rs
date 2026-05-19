@@ -3,7 +3,7 @@ use crate::{
     ParticleEmitter2dCommand, ParticleLineAnchor2d, ParticleMaterial2d, ParticleShape2d,
     ParticleSimulationSpace2d, ParticleSpawnArea2d, ParticleVelocityMode2d,
 };
-use amigo_2d_lighting::Material2dLightingMode;
+use amigo_light_2d_plugin::Material2dLightingMode;
 use amigo_math::{ColorRgba, Curve1d, Transform2, Vec2};
 use amigo_scene::SceneEntityId;
 

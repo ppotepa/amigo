@@ -1,4 +1,4 @@
-use amigo_2d_lighting::{GlobalLight2dSceneService, LightMap2dSceneService};
+use amigo_light_2d_plugin::{GlobalLight2dSceneService, LightMap2dSceneService};
 use amigo_core::{AmigoError, AmigoResult};
 use amigo_scene::{
     LightReceiver2dBindingSceneCommand, ParticleEmitter2dSceneCommand, SceneCommand, SceneEvent,

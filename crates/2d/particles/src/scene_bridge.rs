@@ -132,7 +132,7 @@ pub fn particle_emitter_to_scene_yaml(emitter: &ParticleEmitter2d) -> String {
             yaml.push_str(&format!("  head_alpha: {}\n", fmt_f32(stretch.head_alpha)));
         }
     }
-    if emitter.material.lighting_mode != amigo_2d_lighting::Material2dLightingMode::Unlit
+    if emitter.material.lighting_mode != amigo_light_2d_plugin::Material2dLightingMode::Unlit
         || (emitter.material.light_response - 1.0).abs() > 0.001
         || emitter.material.light_receiver.is_some()
     {
@@ -337,12 +337,12 @@ fn blend_mode_name(blend_mode: ParticleBlendMode2d) -> &'static str {
     }
 }
 
-fn material_lighting_mode_name(mode: amigo_2d_lighting::Material2dLightingMode) -> &'static str {
+fn material_lighting_mode_name(mode: amigo_light_2d_plugin::Material2dLightingMode) -> &'static str {
     match mode {
-        amigo_2d_lighting::Material2dLightingMode::Unlit => "unlit",
-        amigo_2d_lighting::Material2dLightingMode::DynamicLights => "dynamic_lights",
-        amigo_2d_lighting::Material2dLightingMode::LightMapSampled => "lightmap_sampled",
-        amigo_2d_lighting::Material2dLightingMode::LightGroupSampled => "light_group_sampled",
+        amigo_light_2d_plugin::Material2dLightingMode::Unlit => "unlit",
+        amigo_light_2d_plugin::Material2dLightingMode::DynamicLights => "dynamic_lights",
+        amigo_light_2d_plugin::Material2dLightingMode::LightMapSampled => "lightmap_sampled",
+        amigo_light_2d_plugin::Material2dLightingMode::LightGroupSampled => "light_group_sampled",
     }
 }
 

@@ -1,4 +1,4 @@
-use amigo_2d_lighting::{LightReceiver2dBinding, Material2dLightingMode};
+use amigo_light_2d_plugin::{LightReceiver2dBinding, Material2dLightingMode};
 use amigo_fx::ColorRamp;
 use amigo_math::{ColorRgba, Curve1d, Transform2, Vec2};
 use amigo_scene::{
