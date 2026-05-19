@@ -6,11 +6,8 @@ aberration_px: 0.58
 distortion: 0.072
 vignette: 0.50
 edge_softness_px: 1.08
-flare_strength: 0.86
 dirt: 0.70
 halation_bias: 0.54
-lens_bloom: 0.66
-flare_ghosts: 0.60
 anamorphic_squeeze: 1.06
 coma: 0.46
 cat_eye_bokeh: 0.50
