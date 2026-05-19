@@ -413,6 +413,7 @@ dependencies = [
  "amigo-plugin-api",
  "amigo-runtime",
  "amigo-session",
+ "serde",
 ]
 
 [[package]]

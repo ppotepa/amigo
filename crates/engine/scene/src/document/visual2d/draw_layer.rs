@@ -1,4 +1,4 @@
-use super::post_fx::PostFx2dDocument;
+use amigo_composite_plugin::scene::document::PostFx2dDocument;
 use super::{default_one, default_true};
 use serde::{Deserialize, Serialize};
 

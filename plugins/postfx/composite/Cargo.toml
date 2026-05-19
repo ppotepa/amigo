@@ -12,3 +12,4 @@ amigo-capabilities.workspace = true
 amigo-core.workspace = true
 amigo-runtime.workspace = true
 amigo-session.workspace = true
+serde.workspace = true
