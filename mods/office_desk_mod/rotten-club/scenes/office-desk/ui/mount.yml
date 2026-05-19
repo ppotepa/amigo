@@ -1,9 +1,0 @@
-kind: scene-fragment
-schema_version: 1
-
-# Placeholder for UI widgets in the office desk scene.  The scene
-# currently has no interactive UI, but an empty mount keeps the
-# layer reserved and prevents errors when loading.  Additional
-# widgets can be added here using UI2D components.
-
-widgets: []

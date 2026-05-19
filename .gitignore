@@ -36,3 +36,6 @@ obj/
 /concat-output/
 /codebase/
 
+# Local/experimental mod exports
+/mods/office_desk_mod/
+

@@ -1,8 +1,0 @@
-kind: scene-fragment
-schema_version: 1
-
-# Default state values for the office desk scene.  State entries
-# defined here will be available at runtime via the state system.  No
-# custom state is needed, so the map remains empty for now.
-
-state: {}
