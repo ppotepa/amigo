@@ -8,8 +8,9 @@ use amigo_math::{ColorRgba, Transform2, Vec2};
 use amigo_render_api::{RenderContributionSet, render_contribution_roles as roles};
 use amigo_runtime::RuntimeBuilder;
 use amigo_scene::{
+    CameraOpticalResponse2dSceneCommand,
     Material2dOpticalModeSceneCommand, Material2dOpticalSceneCommand, Material2dSceneCommand,
-    Material2dCameraResponseSceneCommand, Material2dLightingSceneCommand,
+    Material2dLightingSceneCommand,
     RenderContributions2dSceneCommand, RuntimeSceneCommandHandlerRegistry, SceneCommand, SceneEvent,
     SceneEventQueue, SceneService, VectorShape2dSceneCommand, VectorShapeKind2dSceneCommand,
     VectorStyle2dSceneCommand,
@@ -284,10 +285,17 @@ fn queues_vector_shape_scene_command_with_material_and_render_contributions() {
             receives_light: false,
             response: 0.0,
         },
-        camera_response: Material2dCameraResponseSceneCommand {
-            highlight: 0.0,
-            bloom_source: false,
-            rain_glass_affects: false,
+        camera_response: CameraOpticalResponse2dSceneCommand {
+            enabled: false,
+            intensity: 0.0,
+            bloom: 0.0,
+            glare: 0.0,
+            ghosting: 0.0,
+            streaks: 0.0,
+            chromatic_smear: 0.0,
+            dirt_response: 0.0,
+            halation: 0.0,
+            threshold: 0.0,
         },
     });
 

@@ -1,6 +1,6 @@
 use crate::{
-    Text2d, Text2dDrawCommand, Text2dSceneService, Text2dStyle, TextSceneCommandContext,
-    can_handle_text_scene_command, handle_text_scene_command, queue_text2d_scene_command,
+    can_handle_text_scene_command, handle_text_scene_command, queue_text2d_scene_command, Text2d,
+    Text2dDrawCommand, Text2dSceneService, Text2dStyle, TextSceneCommandContext,
 };
 use amigo_assets::AssetKey;
 use amigo_math::{Transform2, Vec2};

@@ -101,6 +101,24 @@ impl ConsoleCommandHandler for RenderConsoleCommandHandler {
                 dev_only: true,
             },
             ConsoleCommandDescriptor {
+                name: "render.light.sources",
+                aliases: &["light.sources"],
+                category: "render",
+                help: "Show resolved 2D light and emissive sources for the last rendered frame.",
+                usage: "render.light.sources",
+                examples: &["render.light.sources", "light.sources"],
+                dev_only: true,
+            },
+            ConsoleCommandDescriptor {
+                name: "camera.optical.candidates",
+                aliases: &["optical.candidates"],
+                category: "camera",
+                help: "Show camera optical candidates for the last rendered frame.",
+                usage: "camera.optical.candidates",
+                examples: &["camera.optical.candidates", "optical.candidates"],
+                dev_only: true,
+            },
+            ConsoleCommandDescriptor {
                 name: "camera.effects",
                 aliases: &[],
                 category: "camera",
@@ -144,6 +162,10 @@ impl ConsoleCommandHandler for RenderConsoleCommandHandler {
                     | "materials"
                     | "render.visual.items"
                     | "visual.items"
+                    | "render.light.sources"
+                    | "light.sources"
+                    | "camera.optical.candidates"
+                    | "optical.candidates"
                     | "camera.effects"
                     | "plate.relight.status"
                     | "relight.status"
@@ -301,6 +323,30 @@ impl ConsoleCommandHandler for RenderConsoleCommandHandler {
                     "render.visual.items: no visual item diagnostics captured yet".to_owned()
                 } else {
                     diagnostics.visual_items_summary
+                })
+            }
+            "render.light.sources" | "light.sources" => {
+                let diagnostics = match ctx.required::<RenderCompositionDiagnosticsService>() {
+                    Ok(service) => service.snapshot(),
+                    Err(error) => return ConsoleCommandResult::error(error.to_string()),
+                };
+                ConsoleCommandResult::ok(if diagnostics.light_sources_summary.is_empty() {
+                    "render.light.sources: no light source diagnostics captured yet".to_owned()
+                } else {
+                    diagnostics.light_sources_summary
+                })
+            }
+            "camera.optical.candidates" | "optical.candidates" => {
+                let diagnostics = match ctx.required::<RenderCompositionDiagnosticsService>() {
+                    Ok(service) => service.snapshot(),
+                    Err(error) => return ConsoleCommandResult::error(error.to_string()),
+                };
+                ConsoleCommandResult::ok(if diagnostics.camera_optical_candidates_summary.is_empty()
+                {
+                    "camera.optical.candidates: no optical candidate diagnostics captured yet"
+                        .to_owned()
+                } else {
+                    diagnostics.camera_optical_candidates_summary
                 })
             }
             "plate.relight.status" | "relight.status" | "plate.relight.lights" | "relight.lights" => {
@@ -492,6 +538,24 @@ mod tests {
         let alias = ParsedConsoleCommand {
             raw: "visual.items".to_owned(),
             name: "visual.items".to_owned(),
+            args: Vec::new(),
+        };
+
+        assert!(handler.can_handle(&command));
+        assert!(handler.can_handle(&alias));
+    }
+
+    #[test]
+    fn render_console_handles_light_sources() {
+        let handler = RenderConsoleCommandHandler;
+        let command = ParsedConsoleCommand {
+            raw: "render.light.sources".to_owned(),
+            name: "render.light.sources".to_owned(),
+            args: Vec::new(),
+        };
+        let alias = ParsedConsoleCommand {
+            raw: "light.sources".to_owned(),
+            name: "light.sources".to_owned(),
             args: Vec::new(),
         };
 

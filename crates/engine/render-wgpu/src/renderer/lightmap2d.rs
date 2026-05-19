@@ -713,6 +713,8 @@ mod tests {
             label: None,
             color: ColorRgba::WHITE,
             intensity: 1.0,
+            render_contributions: amigo_render_api::RenderContributionSet::default(),
+            camera_response: amigo_render_api::CameraOpticalResponse2d::default(),
             sources: vec![LightGroup2dSourceCommand {
                 kind: LightGroup2dSourceKind::LightMapChannel {
                     source: "test-lightmap".to_owned(),

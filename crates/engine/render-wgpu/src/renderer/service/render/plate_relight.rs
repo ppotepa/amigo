@@ -70,6 +70,17 @@ struct PlateRelightLight {
     extra: [f32; 4],
 }
 
+#[derive(Clone, Copy)]
+enum PlateRelightSourcePayload<'a> {
+    Beacon(&'a amigo_2d_lighting_beacon::BeaconLight2dDrawCommand),
+    Unsupported,
+}
+
+struct WgpuPlateRelightSource<'a> {
+    common: amigo_render_api::LightSource2dCommon,
+    payload: PlateRelightSourcePayload<'a>,
+}
+
 pub(super) fn apply_plate_relight_after_world(
     renderer: &mut WgpuSceneRenderer,
     request: &WgpuFrameRenderRequest<'_>,
@@ -78,11 +89,11 @@ pub(super) fn apply_plate_relight_after_world(
     let aux_commands = request.world_2d.depth_maps.aux_commands();
     let aux_count = aux_commands.len();
     let debug_requested = is_plate_relight_debug(request);
-    let light_count = request
-        .world_2d
-        .beacons
+    let relight_sources =
+        plate_relight_sources_from_frame(request.world_2d.light_sources, request.world_2d.beacons);
+    let light_count = relight_sources
         .iter()
-        .filter(|beacon| beacon_contributes_to_plate_relight(beacon))
+        .filter(|source| plate_relight_source_active(source))
         .count();
 
     let Some(aux) = aux_commands
@@ -263,8 +274,11 @@ pub(super) fn apply_plate_relight_after_world(
         aux_view.clone()
     };
 
-    let mut uniforms =
-        plate_relight_uniforms(request.world_2d.beacons, aux.depth_aux_map.size, depth_mode);
+    let mut uniforms = plate_relight_uniforms(
+        relight_sources.as_slice(),
+        aux.depth_aux_map.size,
+        depth_mode,
+    );
     uniforms.params4[1] = plate_relight_debug_mode(request.camera_debug_view);
     if uniforms.canvas[3] <= 0.0 && uniforms.params4[1] <= 0.5 {
         set_status(
@@ -376,7 +390,7 @@ pub(super) fn apply_plate_relight_after_world(
 }
 
 fn plate_relight_uniforms(
-    beacons: &[amigo_2d_lighting_beacon::BeaconLight2dDrawCommand],
+    sources: &[WgpuPlateRelightSource<'_>],
     canvas_size: Vec2,
     depth_mode: f32,
 ) -> PlateRelightUniform {
@@ -399,13 +413,13 @@ fn plate_relight_uniforms(
     };
 
     let mut count = 0usize;
-    for beacon in beacons
-        .iter()
-        .filter(|beacon| beacon_contributes_to_plate_relight(beacon))
-    {
+    for source in sources.iter().filter(|source| plate_relight_source_active(source)) {
         if count >= MAX_PLATE_RELIGHT_LIGHTS {
             break;
         }
+        let PlateRelightSourcePayload::Beacon(beacon) = source.payload else {
+            continue;
+        };
         let light = normalize_beacon_for_plate_relight(beacon, canvas_size);
         uniform.light_pos_rad[count] = light.pos_rad;
         uniform.light_color_intensity[count] = light.color_intensity;
@@ -418,14 +432,85 @@ fn plate_relight_uniforms(
     uniform
 }
 
-fn beacon_contributes_to_plate_relight(
-    beacon: &amigo_2d_lighting_beacon::BeaconLight2dDrawCommand,
+fn plate_relight_sources_from_frame<'a>(
+    light_sources: &'a [amigo_render_api::LightSource2dCommon],
+    beacons: &'a [amigo_2d_lighting_beacon::BeaconLight2dDrawCommand],
+) -> Vec<WgpuPlateRelightSource<'a>> {
+    light_sources
+        .iter()
+        .map(|source| {
+            let payload = beacon_payload_for_light_source(source, beacons)
+                .map(PlateRelightSourcePayload::Beacon)
+                .unwrap_or(PlateRelightSourcePayload::Unsupported);
+            let mut common = source.clone();
+
+            if !light_source_has_contribution(
+                source,
+                amigo_render_api::LightContributionKind2d::RelightPlate,
+            ) {
+                common.status = amigo_render_api::LightSourceStatus2d::Skipped;
+                common.reason = "relight_plate_disabled".to_owned();
+                return WgpuPlateRelightSource { common, payload };
+            }
+
+            if source.status == amigo_render_api::LightSourceStatus2d::Skipped {
+                return WgpuPlateRelightSource { common, payload };
+            }
+
+            match payload {
+                PlateRelightSourcePayload::Beacon(beacon) => {
+                    if beacon.intensity <= 0.001 || beacon.color.a <= 0.001 {
+                        common.status = amigo_render_api::LightSourceStatus2d::Skipped;
+                        common.reason = "no_visible_light_energy".to_owned();
+                    } else {
+                        common.status = amigo_render_api::LightSourceStatus2d::Active;
+                        common.reason = "relight_plate_active".to_owned();
+                    }
+                }
+                PlateRelightSourcePayload::Unsupported => {
+                    common.status = amigo_render_api::LightSourceStatus2d::Skipped;
+                    common.reason = match source.emitter_kind {
+                        amigo_render_api::LightEmitterKind2d::Beacon => "missing_beacon_payload",
+                        amigo_render_api::LightEmitterKind2d::GlobalLight => {
+                            "non_spatial_for_plate_relight_v1"
+                        }
+                        _ => "unsupported_by_plate_relight_v1",
+                    }
+                    .to_owned();
+                }
+            }
+
+            WgpuPlateRelightSource { common, payload }
+        })
+        .collect()
+}
+
+fn beacon_payload_for_light_source<'a>(
+    source: &amigo_render_api::LightSource2dCommon,
+    beacons: &'a [amigo_2d_lighting_beacon::BeaconLight2dDrawCommand],
+) -> Option<&'a amigo_2d_lighting_beacon::BeaconLight2dDrawCommand> {
+    if source.emitter_kind != amigo_render_api::LightEmitterKind2d::Beacon {
+        return None;
+    }
+    beacons
+        .iter()
+        .find(|beacon| beacon.entity_name == source.owner && source.component_kind == "BeaconLight2D")
+}
+
+fn light_source_has_contribution(
+    source: &amigo_render_api::LightSource2dCommon,
+    contribution: amigo_render_api::LightContributionKind2d,
 ) -> bool {
-    beacon
-        .render_contributions
-        .enabled_or(roles::RELIGHT_PLATE, true)
-        && beacon.intensity > 0.001
-        && beacon.color.a > 0.001
+    source.contributions.contains(&contribution)
+}
+
+fn plate_relight_source_active(source: &WgpuPlateRelightSource<'_>) -> bool {
+    source.common.status == amigo_render_api::LightSourceStatus2d::Active
+        && matches!(source.payload, PlateRelightSourcePayload::Beacon(_))
+        && light_source_has_contribution(
+            &source.common,
+            amigo_render_api::LightContributionKind2d::RelightPlate,
+        )
 }
 
 fn normalize_beacon_for_plate_relight(
@@ -513,11 +598,14 @@ fn relight_light_z_from_distance_m(distance_m: f32) -> f32 {
     (0.18 + 0.62 / (1.0 + distance * 0.85)).clamp(0.18, 0.80)
 }
 
-fn first_light_summary(beacons: &[amigo_2d_lighting_beacon::BeaconLight2dDrawCommand]) -> String {
-    let Some(beacon) = beacons
+fn first_light_summary(sources: &[WgpuPlateRelightSource<'_>]) -> String {
+    let Some(source) = sources
         .iter()
-        .find(|beacon| beacon_contributes_to_plate_relight(beacon))
+        .find(|source| plate_relight_source_active(source))
     else {
+        return "first_light=-".to_owned();
+    };
+    let PlateRelightSourcePayload::Beacon(beacon) = source.payload else {
         return "first_light=-".to_owned();
     };
     let canvas = beacon
@@ -544,12 +632,15 @@ fn first_light_summary(beacons: &[amigo_2d_lighting_beacon::BeaconLight2dDrawCom
     )
 }
 
-fn light_list_summary(beacons: &[amigo_2d_lighting_beacon::BeaconLight2dDrawCommand]) -> String {
-    let lights = beacons
+fn light_list_summary(sources: &[WgpuPlateRelightSource<'_>]) -> String {
+    let lights = sources
         .iter()
-        .filter(|beacon| beacon_contributes_to_plate_relight(beacon))
+        .filter(|source| plate_relight_source_active(source))
         .take(4)
-        .map(|beacon| {
+        .map(|source| {
+            let PlateRelightSourcePayload::Beacon(beacon) = source.payload else {
+                return "-".to_owned();
+            };
             let canvas = beacon
                 .viewport_canvas_size
                 .unwrap_or(Vec2::new(1672.0, 941.0));
@@ -598,6 +689,8 @@ fn set_status(
     aux_loaded: bool,
     depth_loaded: bool,
 ) {
+    let relight_sources =
+        plate_relight_sources_from_frame(request.world_2d.light_sources, request.world_2d.beacons);
     let target_overwrite_hint =
         if request.camera_debug_view.wants_plate_relight_debug() && (drawn || fallback_drawn) {
             "if_image_plain_check_post_world_overwrite"
@@ -621,8 +714,8 @@ fn set_status(
         aux_loaded,
         depth_loaded,
         target_overwrite_hint,
-        first_light_summary(request.world_2d.beacons),
-        light_list_summary(request.world_2d.beacons),
+        first_light_summary(relight_sources.as_slice()),
+        light_list_summary(relight_sources.as_slice()),
     ));
 }
 
@@ -850,10 +943,80 @@ mod tests {
     #[test]
     fn plate_relight_status_lists_first_lights() {
         let beacon = test_beacon("cursor", 0.0, 0.0);
-        let summary = light_list_summary(&[beacon]);
+        let beacons = [beacon];
+        let light_sources = [test_light_source_for_beacon(&beacons[0])];
+        let sources = plate_relight_sources_from_frame(&light_sources, &beacons);
+        let summary = light_list_summary(&sources);
         assert!(summary.contains("light_list=cursor:point"));
         assert!(summary.contains("uv=(0.500,0.500)"));
         assert!(summary.contains("radius="));
+    }
+
+    #[test]
+    fn plate_relight_sources_use_light_source_contract_for_gating() {
+        let mut beacon = test_beacon("disabled", 0.0, 0.0);
+        beacon
+            .render_contributions
+            .set(amigo_render_api::render_contribution_roles::RELIGHT_PLATE, false);
+
+        let beacons = [beacon];
+        let light_sources = [test_light_source_for_beacon(&beacons[0])];
+        let sources = plate_relight_sources_from_frame(&light_sources, &beacons);
+
+        assert_eq!(sources.len(), 1);
+        assert_eq!(
+            sources[0].common.status,
+            amigo_render_api::LightSourceStatus2d::Skipped
+        );
+        assert_eq!(sources[0].common.reason, "relight_plate_disabled");
+    }
+
+    #[test]
+    fn plate_relight_sources_report_zero_energy_as_skipped() {
+        let mut beacon = test_beacon("dark", 0.0, 0.0);
+        beacon.intensity = 0.0;
+        let beacons = [beacon];
+        let light_sources = [test_light_source_for_beacon(&beacons[0])];
+        let sources = plate_relight_sources_from_frame(&light_sources, &beacons);
+
+        assert_eq!(
+            sources[0].common.status,
+            amigo_render_api::LightSourceStatus2d::Skipped
+        );
+        assert_eq!(sources[0].common.reason, "no_visible_light_energy");
+    }
+
+    #[test]
+    fn plate_relight_sources_report_unsupported_light_kinds() {
+        let source = amigo_render_api::LightSource2dCommon::active(
+            "ambient".to_owned(),
+            "GlobalLight2D",
+            amigo_render_api::LightEmitterKind2d::GlobalLight,
+            Some("ambient".to_owned()),
+            None,
+            Some([1.0, 1.0, 1.0, 1.0]),
+            Some(1.0),
+            Some(1.0),
+            Some(1.0),
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            vec![amigo_render_api::LightContributionKind2d::RelightPlate],
+            "global_light_command",
+            None,
+        );
+        let light_sources = [source];
+        let sources = plate_relight_sources_from_frame(&light_sources, &[]);
+
+        assert_eq!(
+            sources[0].common.status,
+            amigo_render_api::LightSourceStatus2d::Skipped
+        );
+        assert_eq!(sources[0].common.reason, "non_spatial_for_plate_relight_v1");
     }
 
     #[test]
@@ -935,5 +1098,48 @@ mod tests {
             viewport_fit: amigo_scene::LayeredImageViewportFit2dSceneCommand::Cover,
             viewport_canvas_size: Some(Vec2::new(1672.0, 941.0)),
         }
+    }
+
+    fn test_light_source_for_beacon(
+        beacon: &amigo_2d_lighting_beacon::BeaconLight2dDrawCommand,
+    ) -> amigo_render_api::LightSource2dCommon {
+        let relight_enabled = beacon.render_contributions.enabled_or(roles::RELIGHT_PLATE, true);
+        let mut contributions = Vec::new();
+        if relight_enabled {
+            contributions.push(amigo_render_api::LightContributionKind2d::RelightPlate);
+        }
+        if beacon
+            .render_contributions
+            .enabled_or(roles::BLOOM_SOURCE, true)
+        {
+            contributions.push(amigo_render_api::LightContributionKind2d::BloomSource);
+        }
+        if beacon
+            .render_contributions
+            .enabled_or(roles::CAMERA_FX_SOURCE, true)
+        {
+            contributions.push(amigo_render_api::LightContributionKind2d::CameraFxSource);
+        }
+        amigo_render_api::LightSource2dCommon::active(
+            beacon.entity_name.clone(),
+            "BeaconLight2D",
+            amigo_render_api::LightEmitterKind2d::Beacon,
+            None,
+            Some(beacon.render_layer.clone()),
+            Some([beacon.color.r, beacon.color.g, beacon.color.b, beacon.color.a]),
+            Some(beacon.intensity),
+            Some(beacon.intensity * beacon.color.a),
+            Some(1.0),
+            None,
+            Some(beacon.bloom),
+            Some(beacon.lens_influence),
+            Some(beacon.halo_radius_px.max(beacon.core_radius_px)),
+            None,
+            beacon.distance_m,
+            beacon.z_depth,
+            contributions,
+            "active_light_emitter",
+            Some([beacon.center.x, beacon.center.y]),
+        )
     }
 }

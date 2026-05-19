@@ -352,6 +352,8 @@ impl ScenePreviewHost {
                 text2d: &extracted_text2d,
                 vectors: &extracted_vectors,
                 beacons: render_packet.world_2d_beacons(),
+                light_sources: render_packet.world_2d_light_sources(),
+                camera_optical_candidates: render_packet.camera_optical_candidates_2d(),
                 render_layers: extracted_render_layer_commands.as_slice(),
                 light_routes: extracted_light_route_commands.as_slice(),
                 light_groups: render_packet.world_2d_light_groups(),

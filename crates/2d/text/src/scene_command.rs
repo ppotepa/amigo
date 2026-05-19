@@ -1,11 +1,11 @@
 use amigo_assets::AssetKey;
 use amigo_core::{AmigoError, AmigoResult};
 use amigo_scene::{
-    SceneCommand, SceneEvent, SceneEventQueue, SceneService, Text2dSceneCommand,
-    format_scene_command,
+    format_scene_command, SceneCommand, SceneEvent, SceneEventQueue, SceneService,
+    Text2dSceneCommand,
 };
 
-use crate::{Text2dSceneService, queue_text2d_scene_command};
+use crate::{queue_text2d_scene_command, Text2dSceneService};
 
 pub struct Text2dSceneCommandHandler;
 

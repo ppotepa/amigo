@@ -12,7 +12,10 @@ use amigo_3d_material::MaterialDrawCommand;
 use amigo_3d_mesh::MeshDrawCommand;
 use amigo_3d_text::Text3dDrawCommand;
 use amigo_assets::AssetCatalog;
-use amigo_render_api::{CameraCaptureInput2d, CameraDebugView2d, FrameCompositionPlan, FrameGraph};
+use amigo_render_api::{
+    CameraCaptureInput2d, CameraDebugView2d, CameraOpticalCandidate2d, FrameCompositionPlan,
+    FrameGraph, LightSource2dCommon,
+};
 use amigo_scene::SceneService;
 
 use crate::{
@@ -133,6 +136,8 @@ pub struct WgpuWorld2dRenderInput<'a> {
     pub text2d: &'a Text2dSceneService,
     pub vectors: &'a VectorSceneService,
     pub beacons: &'a [BeaconLight2dDrawCommand],
+    pub light_sources: &'a [LightSource2dCommon],
+    pub camera_optical_candidates: &'a [CameraOpticalCandidate2d],
     pub render_layers: &'a [RenderLayer2dCommand],
     pub light_routes: &'a [LightRoute2dCommand],
     pub light_groups: &'a [LightGroup2dCommand],

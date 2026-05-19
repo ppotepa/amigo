@@ -3,6 +3,7 @@ param(
     [string]$Output = "concat-output.txt",
     [switch]$NoZip,
     [switch]$Split,
+    [switch]$Full,
     [ValidateSet("domain", "top-folder", "extension")]
     [string]$SplitMode = "domain",
     [string[]]$IncludeExtensions = @(
@@ -44,7 +45,8 @@ param(
         ".vscode",
         "bin",
         "obj"
-    )
+    ),
+    [string[]]$ExcludePathPrefixes = @()
 )
 
 Set-StrictMode -Version Latest
@@ -64,6 +66,31 @@ $ExcludeExtensions = $ExcludeExtensions |
     ForEach-Object { $_.Trim().ToLowerInvariant() } |
     Where-Object { -not [string]::IsNullOrWhiteSpace($_) } |
     Sort-Object -Unique
+
+$ExcludePathPrefixes = $ExcludePathPrefixes |
+    ForEach-Object { $_.Trim().Replace("\", "/").TrimStart("/") } |
+    Where-Object { -not [string]::IsNullOrWhiteSpace($_) } |
+    Sort-Object -Unique
+
+if (-not $Full) {
+    $DefaultCompactExcludePathPrefixes = @(
+        "crates/tools/",
+        "proto/",
+        "extras/",
+        "steps/",
+        "tools/audit-build.toml",
+        "mods/playground-2d/",
+        "mods/playground-2d-beacon/",
+        "mods/playground-2d-particles/",
+        "mods/playground-3d/",
+        "mods/playground-sidescroller/"
+    )
+
+    $ExcludePathPrefixes = @($ExcludePathPrefixes + $DefaultCompactExcludePathPrefixes) |
+        ForEach-Object { $_.Trim().Replace("\", "/").TrimStart("/") } |
+        Where-Object { -not [string]::IsNullOrWhiteSpace($_) } |
+        Sort-Object -Unique
+}
 
 function New-ConcatSnapshotId {
     $alphabet = "abcdefghijklmnopqrstuvwxyz0123456789"
@@ -181,6 +208,29 @@ function Get-RelativePath {
     ).Replace("\", "/")
 }
 
+function Test-ExcludedRelativePath {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$RelativePath
+    )
+
+    $normalizedPath = $RelativePath.Replace("\", "/").TrimStart("/")
+    foreach ($prefix in $ExcludePathPrefixes) {
+        $normalizedPrefix = $prefix.TrimEnd("/")
+        if (
+            $normalizedPath.Equals($normalizedPrefix, [System.StringComparison]::OrdinalIgnoreCase) -or
+            $normalizedPath.StartsWith(
+                "$normalizedPrefix/",
+                [System.StringComparison]::OrdinalIgnoreCase
+            )
+        ) {
+            return $true
+        }
+    }
+
+    return $false
+}
+
 function Get-SourceFiles {
     param(
         [Parameter(Mandatory = $true)]
@@ -197,6 +247,11 @@ function Get-SourceFiles {
     }
 
     foreach ($entry in $entries) {
+        $relativePath = Get-RelativePath -BasePath $resolvedRoot -Path $entry.FullName
+        if (Test-ExcludedRelativePath -RelativePath $relativePath) {
+            continue
+        }
+
         if ($entry.PSIsContainer) {
             if ($ExcludeDirectories -contains $entry.Name) {
                 continue
@@ -375,6 +430,8 @@ if (-not $Split) {
     Write-Host ("Included extensions: {0}" -f ($IncludeExtensions -join ", "))
     Write-Host ("Excluded extensions: {0}" -f ($ExcludeExtensions -join ", "))
     Write-Host ("Excluded directories: {0}" -f ($ExcludeDirectories -join ", "))
+    Write-Host ("Excluded path prefixes: {0}" -f ($ExcludePathPrefixes -join ", "))
+    Write-Host ("Full snapshot: {0}" -f ([bool]$Full))
     return
 }
 
@@ -427,9 +484,11 @@ $manifest = [ordered]@{
     splitMode = $SplitMode
     sourceFileCount = $files.Count
     files = $manifestFiles
+    full = [bool]$Full
     includeExtensions = $IncludeExtensions
     excludeExtensions = $ExcludeExtensions
     excludeDirectories = $ExcludeDirectories
+    excludePathPrefixes = $ExcludePathPrefixes
 }
 
 $manifestPath = Join-Path -Path $splitDirectory -ChildPath "concat.manifest.json"
@@ -456,3 +515,5 @@ if (-not $NoZip) {
 Write-Host ("Included extensions: {0}" -f ($IncludeExtensions -join ", "))
 Write-Host ("Excluded extensions: {0}" -f ($ExcludeExtensions -join ", "))
 Write-Host ("Excluded directories: {0}" -f ($ExcludeDirectories -join ", "))
+Write-Host ("Excluded path prefixes: {0}" -f ($ExcludePathPrefixes -join ", "))
+Write-Host ("Full snapshot: {0}" -f ([bool]$Full))

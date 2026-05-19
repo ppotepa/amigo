@@ -1,10 +1,8 @@
+use super::material_candidates::{collect_material_candidate_2d, WgpuMaterialCandidate2d};
 use super::world_filters::WorldPassLoad;
 use super::*;
-use super::material_candidates::{MaterialCandidate2d, MaterialCoverageSource2d};
-use super::refractive_material::{
-    RefractiveMaterialMaskCommand, RefractiveMaterialMaskPayload,
-};
 use amigo_2d_text::Text2dDrawCommand;
+use amigo_render_api::MaterialCandidateDecision2d;
 
 #[derive(Clone, Copy)]
 pub(super) struct WorldRenderContext<'a> {
@@ -219,13 +217,13 @@ pub(super) fn execute_world_to_offscreen(
             && selection.object_filter.allows(item.owner_entity())
     });
     world2d_items.sort_by_key(|item| world2d_sort_key(item, &render_layer_lookup));
-    let mut material_candidates = Vec::new();
-    let mut refractive_material_commands = Vec::new();
+    let mut material_candidates: Vec<WgpuMaterialCandidate2d> = Vec::new();
+    let mut material_decisions: Vec<MaterialCandidateDecision2d> = Vec::new();
 
     for item in world2d_items {
         let layer_camera =
             camera2d_for_render_layer(camera2d, item.render_layer(), &render_layer_lookup);
-        match item.payload {
+        match &item.payload {
             Renderable2dPayload::TileMap(command) => {
                 let transform =
                     resolve_transform2(ctx.scene, &command.entity_name, Transform2::default());
@@ -255,10 +253,10 @@ pub(super) fn execute_world_to_offscreen(
                     render_layer_opacity(&command.render_layer, &render_layer_lookup);
                 let transform =
                     resolve_transform2(ctx.scene, &command.entity_name, command.transform);
-                if command
-                    .render_contributions
-                    .enabled_or(amigo_render_api::render_contribution_roles::WORLD_COLOR, true)
-                {
+                if command.render_contributions.enabled_or(
+                    amigo_render_api::render_contribution_roles::WORLD_COLOR,
+                    true,
+                ) {
                     if !renderer.append_sprite_texture_batch(
                         &mut texture_batches,
                         &target.device,
@@ -282,41 +280,13 @@ pub(super) fn execute_world_to_offscreen(
                     }
                 }
 
-                if let Some(material) = command
-                    .material
-                    .filter(|material| material.requires_material_mask())
-                {
-                    let material_mask_enabled = command.render_contributions.enabled_or(
-                        amigo_render_api::render_contribution_roles::MATERIAL_MASK,
-                        false,
-                    );
-                    let optics_refract_enabled = command.render_contributions.enabled_or(
-                        amigo_render_api::render_contribution_roles::OPTICS_REFRACT,
-                        false,
-                    );
-
-                    if material_mask_enabled || optics_refract_enabled {
-                        material_candidates.push(MaterialCandidate2d {
-                            entity_name: command.entity_name.clone(),
-                            component_kind: "Sprite2D",
-                            render_layer: command.render_layer.clone(),
-                            z_index: command.z_index,
-                            material,
-                            coverage_source: MaterialCoverageSource2d::TextureAlpha {
-                                entity_name: command.entity_name.clone(),
-                                render_layer: command.render_layer.clone(),
-                            },
-                            layer_opacity,
-                            visible: true,
-                        });
-                        refractive_material_commands.push(RefractiveMaterialMaskCommand {
-                            payload: RefractiveMaterialMaskPayload::Sprite(command.clone()),
-                            camera: layer_camera,
-                            material,
-                            layer_opacity,
-                        });
-                    }
-                }
+                collect_material_candidate_2d(
+                    &item,
+                    layer_camera,
+                    layer_opacity,
+                    &mut material_candidates,
+                    &mut material_decisions,
+                );
             }
             Renderable2dPayload::LayeredImage(command) => {
                 let transform =
@@ -329,7 +299,7 @@ pub(super) fn execute_world_to_offscreen(
                     &viewport,
                     layer_camera,
                     transform,
-                    &command,
+                    command,
                     selection
                         .layered_image_part_filter
                         .included_parts(&command.entity_name),
@@ -341,6 +311,14 @@ pub(super) fn execute_world_to_offscreen(
                         .included_parts(&command.entity_name)
                         .is_none(),
                 );
+                let layer_opacity = render_layer_opacity(&command.render_layer, &render_layer_lookup);
+                collect_material_candidate_2d(
+                    &item,
+                    layer_camera,
+                    layer_opacity,
+                    &mut material_candidates,
+                    &mut material_decisions,
+                );
             }
             Renderable2dPayload::Vector(command) => {
                 let layer_opacity =
@@ -351,10 +329,10 @@ pub(super) fn execute_world_to_offscreen(
                     command.viewport_fit,
                     command.viewport_canvas_size,
                 );
-                if command
-                    .render_contributions
-                    .enabled_or(amigo_render_api::render_contribution_roles::WORLD_COLOR, true)
-                {
+                if command.render_contributions.enabled_or(
+                    amigo_render_api::render_contribution_roles::WORLD_COLOR,
+                    true,
+                ) {
                     let vertices =
                         color_batch_vertices(&mut color_batches, ParticleBlendMode2d::Alpha);
                     append_vector_shape_vertices(
@@ -366,46 +344,18 @@ pub(super) fn execute_world_to_offscreen(
                     );
                 }
 
-                if let Some(material) = command
-                    .material
-                    .filter(|material| material.requires_material_mask())
-                {
-                    let material_mask_enabled = command.render_contributions.enabled_or(
-                        amigo_render_api::render_contribution_roles::MATERIAL_MASK,
-                        false,
-                    );
-                    let optics_refract_enabled = command.render_contributions.enabled_or(
-                        amigo_render_api::render_contribution_roles::OPTICS_REFRACT,
-                        false,
-                    );
-
-                    if material_mask_enabled || optics_refract_enabled {
-                        material_candidates.push(MaterialCandidate2d {
-                            entity_name: command.entity_name.clone(),
-                            component_kind: "VectorShape2D",
-                            render_layer: command.render_layer.clone(),
-                            z_index: command.z_index,
-                            material,
-                            coverage_source: MaterialCoverageSource2d::VectorCoverage {
-                                entity_name: command.entity_name.clone(),
-                                render_layer: command.render_layer.clone(),
-                            },
-                            layer_opacity,
-                            visible: true,
-                        });
-                        refractive_material_commands.push(RefractiveMaterialMaskCommand {
-                            payload: RefractiveMaterialMaskPayload::Vector(command.clone()),
-                            camera: layer_camera,
-                            material,
-                            layer_opacity,
-                        });
-                    }
-                }
+                collect_material_candidate_2d(
+                    &item,
+                    layer_camera,
+                    layer_opacity,
+                    &mut material_candidates,
+                    &mut material_decisions,
+                );
             }
             Renderable2dPayload::Beacon(command) => {
                 let vertices =
                     color_batch_vertices(&mut color_batches, ParticleBlendMode2d::Additive);
-                append_beacon_vfx_vertices(vertices, &viewport, layer_camera, &command);
+                append_beacon_vfx_vertices(vertices, &viewport, layer_camera, command);
             }
             Renderable2dPayload::Particle(command) => {
                 if command
@@ -428,14 +378,22 @@ pub(super) fn execute_world_to_offscreen(
                     ctx.light_groups,
                     ctx.light_routes,
                 );
+                let layer_opacity = render_layer_opacity(&command.render_layer, &render_layer_lookup);
+                collect_material_candidate_2d(
+                    &item,
+                    layer_camera,
+                    layer_opacity,
+                    &mut material_candidates,
+                    &mut material_decisions,
+                );
             }
             Renderable2dPayload::Text(command) => {
                 let layer_opacity =
                     render_layer_opacity(&command.render_layer, &render_layer_lookup);
-                if command
-                    .render_contributions
-                    .enabled_or(amigo_render_api::render_contribution_roles::WORLD_COLOR, true)
-                {
+                if command.render_contributions.enabled_or(
+                    amigo_render_api::render_contribution_roles::WORLD_COLOR,
+                    true,
+                ) {
                     append_text2d_draw_command(
                         renderer,
                         &mut texture_batches,
@@ -450,27 +408,13 @@ pub(super) fn execute_world_to_offscreen(
                         layer_opacity,
                     );
                 }
-                if let Some(material) = command.material.filter(|material| material.requires_material_mask()) {
-                    material_candidates.push(MaterialCandidate2d {
-                        entity_name: command.entity_name.clone(),
-                        component_kind: "Text2D",
-                        render_layer: command.render_layer.clone(),
-                        z_index: command.z_index,
-                        material,
-                        coverage_source: MaterialCoverageSource2d::Glyphs {
-                            entity_name: command.entity_name.clone(),
-                            render_layer: command.render_layer.clone(),
-                        },
-                        layer_opacity,
-                        visible: true,
-                    });
-                    refractive_material_commands.push(RefractiveMaterialMaskCommand {
-                        payload: RefractiveMaterialMaskPayload::Text(command.clone()),
-                        camera: layer_camera,
-                        material,
-                        layer_opacity,
-                    });
-                }
+                collect_material_candidate_2d(
+                    &item,
+                    layer_camera,
+                    layer_opacity,
+                    &mut material_candidates,
+                    &mut material_decisions,
+                );
             }
         }
     }
@@ -617,8 +561,8 @@ pub(super) fn execute_world_to_offscreen(
         ctx.assets,
         &viewport,
         ctx.scene,
-        &refractive_material_commands,
         &material_candidates,
+        &material_decisions,
     )
 }
 

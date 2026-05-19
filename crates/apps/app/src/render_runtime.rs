@@ -105,7 +105,7 @@ pub(crate) fn build_render_frame_for_session(
     };
 
     if let Ok(render_diagnostics) = required::<RenderCompositionDiagnosticsService>(runtime) {
-        render_diagnostics.set_with_camera_capture_focus_and_contributions(
+        render_diagnostics.set_with_camera_capture_focus_contributions_and_optical(
             &composition_plan,
             &frame_graph,
             render_packet.camera_capture_input_2d().map(|input| {
@@ -117,12 +117,21 @@ pub(crate) fn build_render_frame_for_session(
                     camera_focus_for_input(runtime, assets.as_ref(), input),
                 )
             }),
+            Some(amigo_runtime_bundles::wgpu_render_extractors::format_light_sources_2d(
+                render_packet.world_2d_light_sources(),
+            )),
+            Some(
+                amigo_runtime_bundles::wgpu_render_extractors::format_camera_optical_candidates_2d(
+                    render_packet.camera_optical_candidates_2d(),
+                ),
+            ),
             render_camera_contributions_summary(
                 runtime,
                 assets.as_ref(),
                 render_packet.camera_capture_input_2d(),
                 amigo_runtime_bundles::wgpu_render_extractors::render_contribution_decisions_summary(
-                    render_packet.world_2d_beacons(),
+                    render_packet.renderables_2d(),
+                    render_packet.world_2d_light_sources(),
                 ),
             ),
             None,
@@ -285,6 +294,8 @@ pub(crate) fn build_render_frame_for_session(
             text2d: &extracted_text2d,
             vectors: &extracted_vectors,
             beacons: render_packet.world_2d_beacons(),
+            light_sources: render_packet.world_2d_light_sources(),
+            camera_optical_candidates: render_packet.camera_optical_candidates_2d(),
             render_layers: extracted_render_layer_commands.as_slice(),
             light_routes: extracted_light_route_commands.as_slice(),
             light_groups: render_packet.world_2d_light_groups(),
@@ -383,7 +394,7 @@ pub(crate) fn render_game_frame_to_cache(
     };
 
     if let Ok(render_diagnostics) = required::<RenderCompositionDiagnosticsService>(runtime) {
-        render_diagnostics.set_with_camera_capture_focus_and_contributions(
+        render_diagnostics.set_with_camera_capture_focus_contributions_and_optical(
             &composition_plan,
             &frame_graph,
             render_packet.camera_capture_input_2d().map(|input| {
@@ -395,12 +406,21 @@ pub(crate) fn render_game_frame_to_cache(
                     camera_focus_for_input(runtime, assets.as_ref(), input),
                 )
             }),
+            Some(amigo_runtime_bundles::wgpu_render_extractors::format_light_sources_2d(
+                render_packet.world_2d_light_sources(),
+            )),
+            Some(
+                amigo_runtime_bundles::wgpu_render_extractors::format_camera_optical_candidates_2d(
+                    render_packet.camera_optical_candidates_2d(),
+                ),
+            ),
             render_camera_contributions_summary(
                 runtime,
                 assets.as_ref(),
                 render_packet.camera_capture_input_2d(),
                 amigo_runtime_bundles::wgpu_render_extractors::render_contribution_decisions_summary(
-                    render_packet.world_2d_beacons(),
+                    render_packet.renderables_2d(),
+                    render_packet.world_2d_light_sources(),
                 ),
             ),
             None,
@@ -503,6 +523,8 @@ pub(crate) fn render_game_frame_to_cache(
             text2d: &extracted_text2d,
             vectors: &extracted_vectors,
             beacons: render_packet.world_2d_beacons(),
+            light_sources: render_packet.world_2d_light_sources(),
+            camera_optical_candidates: render_packet.camera_optical_candidates_2d(),
             render_layers: extracted_render_layer_commands.as_slice(),
             light_routes: extracted_light_route_commands.as_slice(),
             light_groups: render_packet.world_2d_light_groups(),

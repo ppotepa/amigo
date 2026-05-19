@@ -1,0 +1,21 @@
+pub mod capability;
+pub mod candidate;
+pub mod contribution;
+pub mod diagnostics;
+pub mod ids;
+pub mod kinds;
+pub mod manifest;
+pub mod slot;
+pub mod status;
+pub mod target;
+
+pub use capability::*;
+pub use candidate::*;
+pub use contribution::*;
+pub use diagnostics::*;
+pub use ids::*;
+pub use kinds::*;
+pub use manifest::*;
+pub use slot::*;
+pub use status::*;
+pub use target::*;

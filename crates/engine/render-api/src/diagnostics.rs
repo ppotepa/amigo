@@ -8,6 +8,8 @@ pub struct RenderCompositionDiagnostics {
     pub graph_summary: String,
     pub camera_capture_summary: String,
     pub camera_focus_plan_summary: String,
+    pub light_sources_summary: String,
+    pub camera_optical_candidates_summary: String,
     pub plate_relight_summary: String,
     pub render_contributions_summary: String,
     pub render_materials_summary: String,
@@ -53,6 +55,8 @@ impl RenderCompositionDiagnostics {
             graph_summary,
             camera_capture_summary: String::new(),
             camera_focus_plan_summary: String::new(),
+            light_sources_summary: String::new(),
+            camera_optical_candidates_summary: String::new(),
             plate_relight_summary: String::new(),
             render_contributions_summary: String::new(),
             render_materials_summary: String::new(),
@@ -193,6 +197,7 @@ impl RenderCompositionDiagnosticsService {
             None,
             None,
             None,
+            None,
         );
     }
 
@@ -202,6 +207,33 @@ impl RenderCompositionDiagnosticsService {
         graph: &FrameGraph,
         camera_capture_summary: Option<String>,
         camera_focus_plan_summary: Option<String>,
+        light_sources_summary: Option<String>,
+        render_contributions_summary: Option<String>,
+        render_materials_summary: Option<String>,
+        visual_items_summary: Option<String>,
+    ) {
+        self.set_with_camera_capture_focus_contributions_and_optical(
+            plan,
+            graph,
+            camera_capture_summary,
+            camera_focus_plan_summary,
+            light_sources_summary,
+            None,
+            render_contributions_summary,
+            render_materials_summary,
+            visual_items_summary,
+        );
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub fn set_with_camera_capture_focus_contributions_and_optical(
+        &self,
+        plan: &FrameCompositionPlan,
+        graph: &FrameGraph,
+        camera_capture_summary: Option<String>,
+        camera_focus_plan_summary: Option<String>,
+        light_sources_summary: Option<String>,
+        camera_optical_candidates_summary: Option<String>,
         render_contributions_summary: Option<String>,
         render_materials_summary: Option<String>,
         visual_items_summary: Option<String>,
@@ -212,6 +244,12 @@ impl RenderCompositionDiagnosticsService {
         }
         if let Some(summary) = camera_focus_plan_summary {
             diagnostics.camera_focus_plan_summary = summary;
+        }
+        if let Some(summary) = light_sources_summary {
+            diagnostics.light_sources_summary = summary;
+        }
+        if let Some(summary) = camera_optical_candidates_summary {
+            diagnostics.camera_optical_candidates_summary = summary;
         }
         if let Some(summary) = render_contributions_summary {
             diagnostics.render_contributions_summary = summary;
@@ -240,6 +278,13 @@ impl RenderCompositionDiagnosticsService {
             .lock()
             .expect("render composition diagnostics mutex should not be poisoned")
             .plate_relight_summary = summary.into();
+    }
+
+    pub fn set_light_sources_summary(&self, summary: impl Into<String>) {
+        self.inner
+            .lock()
+            .expect("render composition diagnostics mutex should not be poisoned")
+            .light_sources_summary = summary.into();
     }
 
     pub fn set_render_materials_summary(&self, summary: impl Into<String>) {
@@ -276,6 +321,7 @@ mod tests {
             &FrameGraph::default(),
             None,
             None,
+            None,
             Some("render.contributions ok".to_owned()),
             None,
             None,
@@ -293,6 +339,7 @@ mod tests {
         service.set_with_camera_capture_focus_and_contributions(
             &FrameCompositionPlan::single_main_view(Vec::new()),
             &FrameGraph::default(),
+            None,
             None,
             None,
             None,
@@ -314,6 +361,17 @@ mod tests {
         assert_eq!(
             service.snapshot().visual_items_summary,
             "render.visual.items ok"
+        );
+    }
+
+    #[test]
+    fn render_diagnostics_service_stores_light_sources_summary() {
+        let service = RenderCompositionDiagnosticsService::default();
+        service.set_light_sources_summary("render.light.sources ok");
+
+        assert_eq!(
+            service.snapshot().light_sources_summary,
+            "render.light.sources ok"
         );
     }
 }

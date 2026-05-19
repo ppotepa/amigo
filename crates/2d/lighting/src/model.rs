@@ -1,4 +1,5 @@
 use amigo_math::ColorRgba;
+use amigo_render_api::{CameraOpticalResponse2d, RenderContributionSet};
 
 pub const LIGHTING_2D_CAPABILITY: &str = "lighting_2d";
 pub const LIGHTING_2D_PLUGIN_LABEL: &str = "amigo-2d-lighting";
@@ -71,6 +72,8 @@ pub struct LightGroup2dCommand {
     pub label: Option<String>,
     pub color: ColorRgba,
     pub intensity: f32,
+    pub render_contributions: RenderContributionSet,
+    pub camera_response: CameraOpticalResponse2d,
     pub sources: Vec<LightGroup2dSourceCommand>,
 }
 

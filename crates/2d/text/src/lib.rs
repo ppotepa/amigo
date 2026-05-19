@@ -5,11 +5,11 @@ use std::sync::Mutex;
 
 use amigo_2d_post_fx::PostFxHost2dId;
 use amigo_assets::AssetKey;
-use amigo_capabilities::{DEFAULT_CAPABILITY_VERSION, register_domain_plugin};
+use amigo_capabilities::{register_domain_plugin, DEFAULT_CAPABILITY_VERSION};
 use amigo_math::{ColorRgba, Transform2, Vec2};
 use amigo_render_api::{
-    Material2d, Material2dCameraResponse, Material2dLighting, Material2dOptical,
-    Material2dOpticalMode, RenderContributionSet,
+    render_contribution_roles, CameraOpticalResponse2d, Material2d, Material2dLighting,
+    Material2dOptical, Material2dOpticalMode, RenderContributionSet,
 };
 use amigo_runtime::{RuntimePlugin, ServiceRegistry};
 use amigo_scene::{
@@ -213,11 +213,23 @@ pub fn queue_text2d_scene_command(
         },
         z_index: command.z_index,
         material: material_from_scene_command(command.material.as_ref()),
-        render_contributions: RenderContributionSet::from_pairs(
-            command.render_contributions.roles.clone(),
-        ),
+        render_contributions: text_render_contributions(command),
     });
     entity
+}
+
+fn text_render_contributions(command: &Text2dSceneCommand) -> RenderContributionSet {
+    let mut render_contributions =
+        RenderContributionSet::from_pairs(command.render_contributions.roles.clone());
+    render_contributions.merge_defaults([
+        (render_contribution_roles::WORLD_COLOR, true),
+        (render_contribution_roles::MATERIAL_MASK, false),
+        (render_contribution_roles::OPTICS_REFRACT, false),
+        (render_contribution_roles::TRANSMISSION_SOURCE, false),
+        (render_contribution_roles::BLOOM_SOURCE, false),
+        (render_contribution_roles::CAMERA_FX_SOURCE, false),
+    ]);
+    render_contributions
 }
 
 fn material_from_scene_command(material: Option<&Material2dSceneCommand>) -> Option<Material2d> {
@@ -245,10 +257,17 @@ fn material_from_scene_command(material: Option<&Material2dSceneCommand>) -> Opt
                 receives_light: material.lighting.receives_light,
                 response: material.lighting.response,
             },
-            camera_response: Material2dCameraResponse {
-                highlight: material.camera_response.highlight,
-                bloom_source: material.camera_response.bloom_source,
-                rain_glass_affects: material.camera_response.rain_glass_affects,
+            camera_response: CameraOpticalResponse2d {
+                enabled: material.camera_response.enabled,
+                intensity: material.camera_response.intensity,
+                bloom: material.camera_response.bloom,
+                glare: material.camera_response.glare,
+                ghosting: material.camera_response.ghosting,
+                streaks: material.camera_response.streaks,
+                chromatic_smear: material.camera_response.chromatic_smear,
+                dirt_response: material.camera_response.dirt_response,
+                halation: material.camera_response.halation,
+                threshold: material.camera_response.threshold,
             },
         }
         .normalized()

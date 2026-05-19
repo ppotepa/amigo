@@ -17,6 +17,7 @@ use crate::{
     CameraDepthOfField2dSceneCommand, CameraExposure2dSceneCommand,
     CameraExposureMode2dSceneCommand, CameraFilm2dSceneCommand, CameraFocus2dDocument,
     CameraFocus2dSceneCommand, CameraFollow2dSceneCommand, CameraLens2dSceneCommand,
+    CameraOpticalResponse2dSceneCommand,
     CameraLensSurface2dSceneCommand, CameraLook2dSceneCommand, CameraShutter2dSceneCommand,
     CircleCollider2dSceneCommand, CollisionEventRule2dSceneCommand, DepthCurve2dSceneCommand,
     DepthAuxMap2dChannelsDocument, DepthAuxMap2dChannelsSceneCommand,
@@ -35,7 +36,7 @@ use crate::{
     LightReceiverDarkPolicy2dSceneDocument, LightReceiverGlobalLight2dSceneCommand,
     LightReceiverGlobalLight2dSceneDocument, LightRoute2dSceneCommand,
     LightSampleStrategy2dSceneCommand, LightSampleStrategy2dSceneDocument,
-    Material2dCameraResponseSceneCommand, Material2dDocument,
+    Material2dDocument,
     Material2dLightingModeSceneCommand, Material2dLightingModeSceneDocument,
     Material2dLightingSceneCommand, Material2dOpticalModeDocument,
     Material2dOpticalModeSceneCommand, Material2dOpticalSceneCommand, Material2dSceneCommand,
@@ -45,7 +46,8 @@ use crate::{
     ParticleShapeChoice2dSceneCommand, ParticleShapeKeyframe2dSceneCommand, PostFx2dDocument,
     ProjectileEmitter2dSceneCommand, RenderDepth2dDocument, RenderDepth2dSceneCommand,
     RenderDepthMode2dDocument, RenderDepthMode2dSceneCommand, RenderLayer2dSceneCommand,
-    RenderContributions2dSceneCommand, SceneCommand, SceneComponentDocument, SceneDocument, SceneDocumentResult,
+    RenderContributions2dSceneCommand, RenderContributionsDocument, SceneCommand,
+    SceneComponentDocument, SceneDocument, SceneDocumentResult,
     SceneEntityLifecycleOverride, SceneVectorShapeKindComponentDocument,
     ScriptComponentSceneCommand, Sprite2dSceneCommand, StaticCollider2dSceneCommand,
     Text2dAlignDocument, Text2dAlignSceneCommand, Text2dBlendModeDocument,
@@ -240,6 +242,11 @@ fn hydrate_visual2d(
                     "LightGroup2D",
                 )?,
                 intensity: group.intensity.max(0.0),
+                render_contributions: RenderContributions2dSceneCommand {
+                    roles: light_group_render_contribution_defaults(&group.render_contributions)
+                        .into_roles(),
+                },
+                camera_response: camera_optical_response_from_document(group.camera_response),
                 sources: group
                     .sources
                     .iter()
@@ -352,6 +359,33 @@ fn hydrate_visual2d(
     }
 
     Ok(())
+}
+
+fn light_group_render_contribution_defaults(
+    contributions: &RenderContributionsDocument,
+) -> RenderContributionsDocument {
+    contributions.clone().with_defaults([
+        ("lighting.emit", true),
+        ("bloom.source", false),
+        ("camera.fx_source", false),
+    ])
+}
+
+fn camera_optical_response_from_document(
+    response: crate::CameraOpticalResponse2dDocument,
+) -> CameraOpticalResponse2dSceneCommand {
+    CameraOpticalResponse2dSceneCommand {
+        enabled: response.enabled,
+        intensity: response.intensity,
+        bloom: response.bloom,
+        glare: response.glare,
+        ghosting: response.ghosting,
+        streaks: response.streaks,
+        chromatic_smear: response.chromatic_smear,
+        dirt_response: response.dirt_response,
+        halation: response.halation,
+        threshold: response.threshold,
+    }
 }
 
 fn optical_layer_role_from_document(

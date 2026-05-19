@@ -94,18 +94,29 @@ fn produce_one_material_source(
         _ => return Ok(()),
     };
 
-    let scene_color_view = scene_color_target.view.clone();
     let mut target = existing.unwrap_or_else(|| {
         super::super::offscreen_ops::compatible_offscreen_target(scene_color_target, label)
     });
     if !render_per_draw_visual_map_buffer(renderer, request, &mut target, kind)? {
-        procedural_material::render_procedural_material_buffer(
-            renderer,
-            request,
-            &mut target,
+        if matches!(
             kind,
-            Some(&scene_color_view),
-        )?;
+            amigo_render_api::VisualSourceKind2d::SceneHighlight
+                | amigo_render_api::VisualSourceKind2d::SceneEmissive
+        ) {
+            renderer.clear_offscreen_to_color(
+                &mut target,
+                util::color_to_wgpu(crate::renderer::service::fallback_color_for(kind)),
+            )?;
+        } else {
+            let scene_color_view = scene_color_target.view.clone();
+            procedural_material::render_procedural_material_buffer(
+                renderer,
+                request,
+                &mut target,
+                kind,
+                Some(&scene_color_view),
+            )?;
+        }
     }
     set_material_target(renderer, kind, Some(target));
     Ok(())
@@ -215,12 +226,24 @@ fn render_per_draw_visual_map_buffer(
         }
     }
 
+    let candidate_texture_appended =
+        procedural_material::append_camera_optical_candidate_texture_buffers(
+            renderer,
+            &mut texture_batches,
+            target,
+            request,
+            &viewport,
+            camera,
+            kind,
+        );
+
     procedural_material::append_procedural_material_buffers(
         &mut color_batches,
         request,
         &viewport,
         camera,
         kind,
+        candidate_texture_appended,
     );
 
     if texture_batches.is_empty() && color_batches.is_empty() {

@@ -130,6 +130,38 @@ impl WgpuSceneRenderer {
         excluded_parts: Option<&BTreeSet<String>>,
         include_base_image: bool,
     ) -> bool {
+        self.append_layered_image_texture_batches_filtered_tinted(
+            batches,
+            device,
+            queue,
+            assets,
+            viewport,
+            camera,
+            transform,
+            command,
+            included_parts,
+            excluded_parts,
+            include_base_image,
+            ColorRgba::WHITE,
+        )
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub(crate) fn append_layered_image_texture_batches_filtered_tinted(
+        &mut self,
+        batches: &mut Vec<TextureBatch>,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        assets: &AssetCatalog,
+        viewport: &Viewport,
+        camera: Transform2,
+        transform: Transform2,
+        command: &LayeredImageDrawCommand,
+        included_parts: Option<&BTreeSet<String>>,
+        excluded_parts: Option<&BTreeSet<String>>,
+        include_base_image: bool,
+        tint: ColorRgba,
+    ) -> bool {
         let Some(prepared) = assets.prepared_asset(&command.image.asset) else {
             return false;
         };
@@ -165,6 +197,7 @@ impl WgpuSceneRenderer {
                 TextureBlendMode::Alpha,
                 command.image.base_opacity,
                 None,
+                tint,
             );
         }
 
@@ -204,6 +237,7 @@ impl WgpuSceneRenderer {
                 texture_blend_from_layer(layer.blend_mode),
                 layer.opacity,
                 layer.post_fx.as_ref(),
+                tint,
             );
         }
 
@@ -224,6 +258,7 @@ impl WgpuSceneRenderer {
         blend_mode: TextureBlendMode,
         opacity: f32,
         post_fx: Option<&amigo_2d_post_fx::PostFx2dStack>,
+        tint: ColorRgba,
     ) -> bool {
         let Some(texture) =
             self.ensure_layered_image_texture_from_path(device, queue, image_path, true, post_fx)
@@ -246,7 +281,7 @@ impl WgpuSceneRenderer {
                 u1: 1.0,
                 v1: 1.0,
             },
-            texture_color_for_opacity(blend_mode, opacity),
+            texture_color_for_opacity_tinted(blend_mode, opacity, tint),
         );
         batches.push(TextureBatch {
             blend_mode,
@@ -640,6 +675,20 @@ fn texture_color_for_opacity(blend_mode: TextureBlendMode, opacity: f32) -> Colo
     } else {
         ColorRgba::new(1.0, 1.0, 1.0, opacity)
     }
+}
+
+fn texture_color_for_opacity_tinted(
+    blend_mode: TextureBlendMode,
+    opacity: f32,
+    tint: ColorRgba,
+) -> ColorRgba {
+    let base = texture_color_for_opacity(blend_mode, opacity);
+    ColorRgba::new(
+        base.r * tint.r,
+        base.g * tint.g,
+        base.b * tint.b,
+        base.a * tint.a,
+    )
 }
 
 impl WgpuSceneRenderer {

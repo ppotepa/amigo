@@ -51,7 +51,14 @@ entities:
         receives_light: true
         response: 0.28
       camera_response:
-        highlight: 0.58
-        bloom_source: false
-        rain_glass_affects: true
+        enabled: true
+        intensity: 0.58
+        bloom: 0.0
+        glare: 0.58
+        ghosting: 0.04
+        streaks: 0.03
+        chromatic_smear: 0.08
+        dirt_response: 0.25
+        halation: 0.12
+        threshold: 0.0
     z_index: 40.0

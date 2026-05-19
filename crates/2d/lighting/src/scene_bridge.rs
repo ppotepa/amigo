@@ -34,6 +34,22 @@ pub fn queue_light_group_2d_scene_command(
         label: command.label,
         color: command.color,
         intensity: command.intensity.max(0.0),
+        render_contributions: amigo_render_api::RenderContributionSet::from_pairs(
+            command.render_contributions.roles,
+        ),
+        camera_response: amigo_render_api::CameraOpticalResponse2d {
+            enabled: command.camera_response.enabled,
+            intensity: command.camera_response.intensity,
+            bloom: command.camera_response.bloom,
+            glare: command.camera_response.glare,
+            ghosting: command.camera_response.ghosting,
+            streaks: command.camera_response.streaks,
+            chromatic_smear: command.camera_response.chromatic_smear,
+            dirt_response: command.camera_response.dirt_response,
+            halation: command.camera_response.halation,
+            threshold: command.camera_response.threshold,
+        }
+        .normalized(),
         sources: command.sources.into_iter().map(Into::into).collect(),
     });
 }

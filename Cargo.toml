@@ -2,6 +2,7 @@
 resolver = "2"
 default-members = ["crates/apps/launcher"]
 members = [
+    "crates/core/plugin-api",
     "crates/foundation/core",
     "crates/foundation/math",
     "crates/foundation/fx",

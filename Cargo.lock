@@ -127,6 +127,7 @@ dependencies = [
  "amigo-capabilities",
  "amigo-core",
  "amigo-math",
+ "amigo-render-api",
  "amigo-runtime",
  "amigo-scene",
  "amigo-scripting-api",

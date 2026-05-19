@@ -1,26 +1,8 @@
-use super::material_candidates::MaterialCandidate2d;
+use super::material_candidates::{MaterialCoveragePayload2d, WgpuMaterialCandidate2d};
 use super::offscreen_ops::{append_fullscreen_texture_vertices, compatible_offscreen_target};
 use super::*;
-use amigo_2d_sprite::SpriteDrawCommand;
-use amigo_2d_text::Text2dDrawCommand;
-use amigo_2d_vector::VectorShape2dDrawCommand;
-use amigo_render_api::Material2d;
+use amigo_render_api::{Material2d, MaterialCandidateDecision2d, MaterialCandidateStatus2d};
 use wgpu::util::DeviceExt;
-
-#[derive(Clone)]
-pub(super) enum RefractiveMaterialMaskPayload {
-    Text(Text2dDrawCommand),
-    Sprite(SpriteDrawCommand),
-    Vector(VectorShape2dDrawCommand),
-}
-
-#[derive(Clone)]
-pub(super) struct RefractiveMaterialMaskCommand {
-    pub(super) payload: RefractiveMaterialMaskPayload,
-    pub(super) camera: Transform2,
-    pub(super) material: Material2d,
-    pub(super) layer_opacity: f32,
-}
 
 #[repr(C)]
 #[derive(Clone, Copy)]
@@ -42,16 +24,17 @@ pub(super) fn execute_refractive_material_2d(
     assets: &AssetCatalog,
     viewport: &Viewport,
     scene: &SceneService,
-    mask_commands: &[RefractiveMaterialMaskCommand],
-    candidates: &[MaterialCandidate2d],
+    candidates: &[WgpuMaterialCandidate2d],
+    decisions: &[MaterialCandidateDecision2d],
 ) -> AmigoResult<()> {
-    let active_commands = mask_commands
+    let active_candidates = candidates
         .iter()
-        .filter(|command| command.material.is_refractive() && command.layer_opacity > 0.001)
+        .filter(|candidate| candidate.is_refractive())
         .collect::<Vec<_>>();
-    if active_commands.is_empty() {
+    if active_candidates.is_empty() {
         renderer.set_render_materials_last_summary(refractive_material_summary(
             candidates,
+            decisions,
             MaterialPassState::Inactive("no_refractive_candidates"),
         ));
         return Ok(());
@@ -64,9 +47,11 @@ pub(super) fn execute_refractive_material_2d(
     let mut mask_batches = Vec::new();
     let mut mask_color_batches = Vec::new();
     let mut fallback_masks = 0usize;
-    for command in &active_commands {
-        match &command.payload {
-            RefractiveMaterialMaskPayload::Text(text_command) => {
+    let mut mask_sources = Vec::new();
+
+    for candidate in &active_candidates {
+        match &candidate.payload {
+            MaterialCoveragePayload2d::Text(text_command) => {
                 let transform = resolve_transform2(
                     scene,
                     &text_command.entity_name,
@@ -74,7 +59,7 @@ pub(super) fn execute_refractive_material_2d(
                 );
                 let alpha = (text_command.text.style.color.a
                     * text_command.text.style.opacity
-                    * command.layer_opacity)
+                    * candidate.common.layer_opacity)
                     .clamp(0.0, 1.0);
                 if !renderer.append_text2d_ttf_font_texture_batch(
                     &mut mask_batches,
@@ -82,7 +67,7 @@ pub(super) fn execute_refractive_material_2d(
                     &mask_target.queue,
                     assets,
                     viewport,
-                    command.camera,
+                    candidate.camera,
                     &text_command.text.font,
                     &text_command.text.content,
                     transform,
@@ -95,33 +80,44 @@ pub(super) fn execute_refractive_material_2d(
                     append_text_2d_vertices(
                         vertices,
                         viewport,
-                        command.camera,
+                        candidate.camera,
                         &text_command.text.content,
                         transform,
                         text_command.text.bounds,
                         ColorRgba::new(1.0, 1.0, 1.0, alpha),
                     );
                     fallback_masks += 1;
+                    mask_sources.push("fallback_geometry");
+                } else {
+                    mask_sources.push("ttf_font");
                 }
             }
-            RefractiveMaterialMaskPayload::Sprite(sprite_command) => {
-                let transform =
-                    resolve_transform2(scene, &sprite_command.entity_name, sprite_command.transform);
+            MaterialCoveragePayload2d::Sprite(sprite_command) => {
+                let transform = resolve_transform2(
+                    scene,
+                    &sprite_command.entity_name,
+                    sprite_command.transform,
+                );
                 let _ = renderer.append_sprite_texture_batch(
                     &mut mask_batches,
                     &mask_target.device,
                     &mask_target.queue,
                     assets,
                     viewport,
-                    command.camera,
+                    candidate.camera,
                     transform,
                     &sprite_command.sprite,
                 );
+                mask_sources.push("texture_alpha");
             }
-            RefractiveMaterialMaskPayload::Vector(vector_command) => {
+            MaterialCoveragePayload2d::Vector(vector_command) => {
                 let transform = vector_viewport_fit_transform(
                     viewport,
-                    resolve_transform2(scene, &vector_command.entity_name, vector_command.transform),
+                    resolve_transform2(
+                        scene,
+                        &vector_command.entity_name,
+                        vector_command.transform,
+                    ),
                     vector_command.viewport_fit,
                     vector_command.viewport_canvas_size,
                 );
@@ -130,10 +126,11 @@ pub(super) fn execute_refractive_material_2d(
                 append_vector_shape_vertices(
                     vertices,
                     viewport,
-                    command.camera,
+                    candidate.camera,
                     transform,
                     &vector_command.shape,
                 );
+                mask_sources.push("vector_coverage");
             }
         }
     }
@@ -141,6 +138,7 @@ pub(super) fn execute_refractive_material_2d(
     if mask_batches.is_empty() && mask_color_batches.is_empty() {
         renderer.set_render_materials_last_summary(refractive_material_summary(
             candidates,
+            decisions,
             MaterialPassState::Inactive("missing_mask_target"),
         ));
         return Ok(());
@@ -159,7 +157,7 @@ pub(super) fn execute_refractive_material_2d(
         &[],
     )?;
 
-    let uniform = aggregate_uniform(target, &active_commands);
+    let uniform = aggregate_uniform(target, &active_candidates);
     let device = &target.device;
     let queue = &target.queue;
     let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
@@ -250,72 +248,85 @@ pub(super) fn execute_refractive_material_2d(
     queue.submit(Some(encoder.finish()));
     renderer.set_render_materials_last_summary(refractive_material_summary(
         candidates,
+        decisions,
         MaterialPassState::Active {
-            mask_commands: active_commands.len(),
+            candidates: active_candidates.len(),
             fallback_masks,
+            mask_sources,
         },
     ));
     Ok(())
 }
 
 fn copy_target_texture(
-    renderer: &mut WgpuSceneRenderer,
+    _renderer: &mut WgpuSceneRenderer,
     source: &WgpuOffscreenTarget,
     target: &mut WgpuOffscreenTarget,
 ) -> AmigoResult<()> {
-    renderer.copy_offscreen_to_offscreen(target, &source.view)
+    let mut encoder = target
+        .device
+        .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: Some("amigo-refractive-material-source-copy-encoder"),
+        });
+    encoder.copy_texture_to_texture(
+        wgpu::TexelCopyTextureInfo {
+            texture: &source.texture,
+            mip_level: 0,
+            origin: wgpu::Origin3d::ZERO,
+            aspect: wgpu::TextureAspect::All,
+        },
+        wgpu::TexelCopyTextureInfo {
+            texture: &target.texture,
+            mip_level: 0,
+            origin: wgpu::Origin3d::ZERO,
+            aspect: wgpu::TextureAspect::All,
+        },
+        wgpu::Extent3d {
+            width: source.width,
+            height: source.height,
+            depth_or_array_layers: 1,
+        },
+    );
+    target.queue.submit(Some(encoder.finish()));
+    Ok(())
 }
 
 fn aggregate_uniform(
     target: &WgpuOffscreenTarget,
-    commands: &[&RefractiveMaterialMaskCommand],
+    candidates: &[&WgpuMaterialCandidate2d],
 ) -> RefractiveMaterialUniform {
-    let mut transmission = 0.0f32;
-    let mut refraction_px = 0.0f32;
-    let mut distortion = 0.0f32;
-    let mut dispersion = 0.0f32;
-    let mut roughness = 0.0f32;
-    let mut edge_boost = 0.0f32;
-    let mut opacity = 0.0f32;
-    let mut highlight = 0.0f32;
-    let count = commands.len().max(1) as f32;
-
-    for command in commands {
-        let optical = command.material.optical;
-        transmission += optical.transmission;
-        refraction_px = refraction_px.max(optical.refraction_px);
-        distortion += optical.distortion;
-        dispersion += optical.dispersion;
-        roughness += optical.roughness;
-        edge_boost = edge_boost.max(optical.edge_boost);
-        opacity = opacity.max(command.layer_opacity);
-        highlight = highlight.max(command.material.camera_response.highlight);
-    }
-
+    let material = candidates
+        .last()
+        .map(|candidate| candidate.common.material)
+        .unwrap_or_else(Material2d::default);
     RefractiveMaterialUniform {
-        resolution: [target.width.max(1) as f32, target.height.max(1) as f32],
-        transmission: (transmission / count).clamp(0.0, 1.0),
-        refraction_px: refraction_px.max(0.0),
-        distortion: (distortion / count).clamp(0.0, 1.0),
-        dispersion: (dispersion / count).clamp(0.0, 1.0),
-        roughness: (roughness / count).clamp(0.0, 1.0),
-        edge_boost: edge_boost.clamp(0.0, 2.0),
-        opacity: opacity.clamp(0.0, 1.0),
-        highlight: highlight.clamp(0.0, 2.0),
+        resolution: [target.width as f32, target.height as f32],
+        transmission: material.optical.transmission,
+        refraction_px: material.optical.refraction_px,
+        distortion: material.optical.distortion,
+        dispersion: material.optical.dispersion,
+        roughness: material.optical.roughness,
+        edge_boost: material.optical.edge_boost,
+        opacity: candidates
+            .iter()
+            .map(|candidate| candidate.common.layer_opacity)
+            .fold(0.0, f32::max),
+        highlight: material.camera_response.glare.max(material.camera_response.intensity),
     }
 }
 
-#[derive(Clone, Copy)]
 enum MaterialPassState {
     Active {
-        mask_commands: usize,
+        candidates: usize,
         fallback_masks: usize,
+        mask_sources: Vec<&'static str>,
     },
     Inactive(&'static str),
 }
 
 fn refractive_material_summary(
-    candidates: &[MaterialCandidate2d],
+    candidates: &[WgpuMaterialCandidate2d],
+    decisions: &[MaterialCandidateDecision2d],
     state: MaterialPassState,
 ) -> String {
     let refractive = candidates
@@ -327,24 +338,17 @@ fn refractive_material_summary(
     lines.push(String::new());
     lines.push("refractive_material_2d:".to_owned());
 
-    match state {
+    match &state {
         MaterialPassState::Active {
-            mask_commands,
+            candidates,
             fallback_masks,
+            mask_sources,
         } => {
             lines.push("active=true".to_owned());
-            lines.push(format!("candidates={}", refractive.len()));
-            lines.push(format!("mask_commands={mask_commands}"));
+            lines.push(format!("candidates={candidates}"));
             lines.push(format!("fallback_masks={fallback_masks}"));
             lines.push("mask=input_ok".to_owned());
-            lines.push(format!(
-                "mask_source={}",
-                if fallback_masks > 0 {
-                    "ttf_font+fallback_geometry"
-                } else {
-                    "ttf_font_or_texture"
-                }
-            ));
+            lines.push(format!("mask_source={}", mask_sources.join("+")));
             lines.push("scene_color=input_ok".to_owned());
             lines.push("output=composited_scene_color".to_owned());
         }
@@ -355,12 +359,29 @@ fn refractive_material_summary(
         }
     }
 
-    for candidate in refractive {
-        let optical = candidate.material.optical;
+    for candidate in candidates {
+        let optical = candidate.common.material.optical;
+        let pass_state =
+            if candidate.is_refractive() && matches!(state, MaterialPassState::Active { .. }) {
+                "active"
+            } else {
+                "skipped"
+            };
+        let reason = decisions
+            .iter()
+            .find(|decision| {
+                decision.owner == candidate.common.owner
+                    && decision.component_kind == candidate.common.component_kind
+                    && decision.render_layer == candidate.common.render_layer
+                    && decision.coverage_kind == candidate.common.coverage_kind
+            })
+            .map(|decision| decision.reason.as_str())
+            .unwrap_or("no_decision");
+
         lines.push(String::new());
         lines.push(format!(
             "entity={} component={} layer={}",
-            candidate.entity_name, candidate.component_kind, candidate.render_layer
+            candidate.common.owner, candidate.common.component_kind, candidate.common.render_layer
         ));
         lines.push("material=optical.refractive".to_owned());
         lines.push(format!("coverage_source={}", candidate.coverage_label()));
@@ -369,47 +390,95 @@ fn refractive_material_summary(
         lines.push(format!("distortion={:.2}", optical.distortion));
         lines.push(format!(
             "highlight={:.2}",
-            candidate.material.camera_response.highlight
+            candidate
+                .common
+                .material
+                .camera_response
+                .glare
+                .max(candidate.common.material.camera_response.intensity)
         ));
-        lines.push(format!("layer_opacity={:.2}", candidate.layer_opacity));
         lines.push(format!(
-            "pass={}",
-            if matches!(state, MaterialPassState::Active { .. }) {
-                "active"
-            } else {
-                "skipped"
-            }
+            "layer_opacity={:.2}",
+            candidate.common.layer_opacity
         ));
+        lines.push(format!("pass={pass_state}"));
+        lines.push(format!("reason={reason}"));
+    }
+
+    for decision in decisions {
+        if decision.status != MaterialCandidateStatus2d::Skipped {
+            continue;
+        }
+        if candidates.iter().any(|candidate| {
+            candidate.common.owner == decision.owner
+                && candidate.common.component_kind == decision.component_kind
+                && candidate.common.render_layer == decision.render_layer
+                && candidate.common.coverage_kind == decision.coverage_kind
+        }) {
+            continue;
+        }
+
+        lines.push(String::new());
+        lines.push(format!(
+            "entity={} component={} layer={}",
+            decision.owner, decision.component_kind, decision.render_layer
+        ));
+        lines.push(format!(
+            "coverage_source={}",
+            decision.coverage_kind.as_str()
+        ));
+        lines.push("pass=skipped".to_owned());
+        lines.push(format!("reason={}", decision.reason));
     }
 
     lines.join("\n")
 }
 
 fn bytes_of<T>(value: &T) -> &[u8] {
-    unsafe { std::slice::from_raw_parts((value as *const T).cast::<u8>(), std::mem::size_of::<T>()) }
+    unsafe {
+        std::slice::from_raw_parts((value as *const T).cast::<u8>(), std::mem::size_of::<T>())
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use amigo_render_api::{Material2dCameraResponse, Material2dOptical, Material2dOpticalMode};
+    use amigo_assets::AssetKey;
+    use amigo_math::Transform2;
+    use amigo_render_api::{
+        CameraOpticalResponse2d, Material2dOptical, Material2dOpticalMode,
+        MaterialCandidate2dCommon, MaterialCoverageKind2d,
+    };
+    use amigo_scene::SceneEntityId;
 
     #[test]
     fn refractive_material_summary_reports_real_composite_inputs() {
-        let candidate = candidate();
         let summary = refractive_material_summary(
-            &[candidate],
+            &[candidate(
+                "title",
+                "Text2D",
+                "title.depth2d",
+                MaterialCoverageKind2d::Glyphs,
+            )],
+            &[MaterialCandidateDecision2d::active(
+                "title",
+                "Text2D",
+                "title.depth2d",
+                MaterialCoverageKind2d::Glyphs,
+                "material_pipeline_enabled",
+            )],
             MaterialPassState::Active {
-                mask_commands: 1,
+                candidates: 1,
                 fallback_masks: 0,
+                mask_sources: vec!["ttf_font"],
             },
         );
 
         assert!(summary.contains("active=true"));
-        assert!(summary.contains("mask_commands=1"));
+        assert!(summary.contains("candidates=1"));
         assert!(summary.contains("fallback_masks=0"));
         assert!(summary.contains("mask=input_ok"));
-        assert!(summary.contains("mask_source=ttf_font_or_texture"));
+        assert!(summary.contains("mask_source=ttf_font"));
         assert!(summary.contains("scene_color=input_ok"));
         assert!(summary.contains("output=composited_scene_color"));
         assert!(summary.contains("entity=title component=Text2D layer=title.depth2d"));
@@ -418,7 +487,11 @@ mod tests {
 
     #[test]
     fn refractive_material_summary_reports_inactive_reason() {
-        let summary = refractive_material_summary(&[], MaterialPassState::Inactive("no_refractive_candidates"));
+        let summary = refractive_material_summary(
+            &[],
+            &[],
+            MaterialPassState::Inactive("no_refractive_candidates"),
+        );
 
         assert!(summary.contains("active=false"));
         assert!(summary.contains("reason=no_refractive_candidates"));
@@ -426,25 +499,24 @@ mod tests {
 
     #[test]
     fn refractive_material_summary_reports_texture_alpha_candidate() {
-        let candidate = MaterialCandidate2d {
-            entity_name: "poster".to_owned(),
-            component_kind: "Sprite2D",
-            render_layer: "foreground.props".to_owned(),
-            z_index: 0.0,
-            material: refractive_material(),
-            coverage_source: super::super::material_candidates::MaterialCoverageSource2d::TextureAlpha {
-                entity_name: "poster".to_owned(),
-                render_layer: "foreground.props".to_owned(),
-            },
-            layer_opacity: 1.0,
-            visible: true,
-        };
-
         let summary = refractive_material_summary(
-            &[candidate],
+            &[candidate(
+                "poster",
+                "Sprite2D",
+                "foreground.props",
+                MaterialCoverageKind2d::TextureAlpha,
+            )],
+            &[MaterialCandidateDecision2d::active(
+                "poster",
+                "Sprite2D",
+                "foreground.props",
+                MaterialCoverageKind2d::TextureAlpha,
+                "material_pipeline_enabled",
+            )],
             MaterialPassState::Active {
-                mask_commands: 1,
+                candidates: 1,
                 fallback_masks: 0,
+                mask_sources: vec!["texture_alpha"],
             },
         );
 
@@ -454,45 +526,126 @@ mod tests {
 
     #[test]
     fn refractive_material_summary_reports_vector_coverage_candidate() {
-        let candidate = MaterialCandidate2d {
-            entity_name: "vector-glass".to_owned(),
-            component_kind: "VectorShape2D",
-            render_layer: "foreground.props".to_owned(),
-            z_index: 0.0,
-            material: refractive_material(),
-            coverage_source: super::super::material_candidates::MaterialCoverageSource2d::VectorCoverage {
-                entity_name: "vector-glass".to_owned(),
-                render_layer: "foreground.props".to_owned(),
-            },
-            layer_opacity: 1.0,
-            visible: true,
-        };
-
         let summary = refractive_material_summary(
-            &[candidate],
+            &[candidate(
+                "vector-glass",
+                "VectorShape2D",
+                "foreground.props",
+                MaterialCoverageKind2d::VectorCoverage,
+            )],
+            &[MaterialCandidateDecision2d::active(
+                "vector-glass",
+                "VectorShape2D",
+                "foreground.props",
+                MaterialCoverageKind2d::VectorCoverage,
+                "material_pipeline_enabled",
+            )],
             MaterialPassState::Active {
-                mask_commands: 1,
+                candidates: 1,
                 fallback_masks: 0,
+                mask_sources: vec!["vector_coverage"],
             },
         );
 
-        assert!(summary.contains("entity=vector-glass component=VectorShape2D layer=foreground.props"));
+        assert!(
+            summary.contains("entity=vector-glass component=VectorShape2D layer=foreground.props")
+        );
         assert!(summary.contains("coverage_source=vector_coverage"));
     }
 
-    fn candidate() -> MaterialCandidate2d {
-        MaterialCandidate2d {
-            entity_name: "title".to_owned(),
-            component_kind: "Text2D",
-            render_layer: "title.depth2d".to_owned(),
-            z_index: 40.0,
-            material: refractive_material(),
-            coverage_source: super::super::material_candidates::MaterialCoverageSource2d::Glyphs {
-                entity_name: "title".to_owned(),
-                render_layer: "title.depth2d".to_owned(),
+    #[test]
+    fn refractive_material_summary_reports_skipped_reason_for_disabled_role() {
+        let summary = refractive_material_summary(
+            &[],
+            &[MaterialCandidateDecision2d::skipped(
+                "title",
+                "Text2D",
+                "title.depth2d",
+                MaterialCoverageKind2d::Glyphs,
+                "material_pipeline_role_disabled",
+            )],
+            MaterialPassState::Inactive("no_refractive_candidates"),
+        );
+
+        assert!(summary.contains("entity=title component=Text2D layer=title.depth2d"));
+        assert!(summary.contains("pass=skipped"));
+        assert!(summary.contains("reason=material_pipeline_role_disabled"));
+    }
+
+    #[test]
+    fn refractive_material_summary_reports_out_of_scope_layered_image_reason() {
+        let summary = refractive_material_summary(
+            &[],
+            &[MaterialCandidateDecision2d::skipped(
+                "poster-stack",
+                "LayeredImage2D",
+                "foreground.props",
+                MaterialCoverageKind2d::LayeredImageAlpha,
+                "material_pipeline_out_of_scope_v1",
+            )],
+            MaterialPassState::Inactive("no_refractive_candidates"),
+        );
+
+        assert!(
+            summary.contains("entity=poster-stack component=LayeredImage2D layer=foreground.props")
+        );
+        assert!(summary.contains("coverage_source=layered_image_alpha"));
+        assert!(summary.contains("reason=material_pipeline_out_of_scope_v1"));
+    }
+
+    #[test]
+    fn refractive_material_summary_reports_particle_material_not_mapped_reason() {
+        let summary = refractive_material_summary(
+            &[],
+            &[MaterialCandidateDecision2d::skipped(
+                "rain",
+                "ParticleEmitter2D",
+                "weather.rain.near",
+                MaterialCoverageKind2d::ParticleCoverage,
+                "particle_material_not_mapped_to_material2d",
+            )],
+            MaterialPassState::Inactive("no_refractive_candidates"),
+        );
+
+        assert!(summary.contains("entity=rain component=ParticleEmitter2D layer=weather.rain.near"));
+        assert!(summary.contains("coverage_source=particle_coverage"));
+        assert!(summary.contains("reason=particle_material_not_mapped_to_material2d"));
+    }
+
+    fn candidate(
+        owner: &str,
+        component_kind: &str,
+        render_layer: &str,
+        coverage_kind: MaterialCoverageKind2d,
+    ) -> WgpuMaterialCandidate2d {
+        WgpuMaterialCandidate2d {
+            common: MaterialCandidate2dCommon {
+                owner: owner.to_owned(),
+                component_kind: component_kind.to_owned(),
+                render_layer: render_layer.to_owned(),
+                z_index: 40.0,
+                layer_opacity: 0.72,
+                visible: true,
+                material: refractive_material(),
+                coverage_kind,
             },
-            layer_opacity: 0.72,
-            visible: true,
+            payload: MaterialCoveragePayload2d::Text(amigo_2d_text::Text2dDrawCommand {
+                entity_id: SceneEntityId::new(1),
+                entity_name: owner.to_owned(),
+                render_layer: render_layer.to_owned(),
+                text: amigo_2d_text::Text2d {
+                    content: owner.to_owned(),
+                    font: AssetKey::new("test/font"),
+                    bounds: amigo_math::Vec2::new(100.0, 40.0),
+                    transform: Transform2::default(),
+                    style: amigo_2d_text::Text2dStyle::default(),
+                    post_fx_host_id: None,
+                },
+                z_index: 40.0,
+                material: Some(refractive_material()),
+                render_contributions: amigo_render_api::RenderContributionSet::default(),
+            }),
+            camera: Transform2::default(),
         }
     }
 
@@ -507,8 +660,10 @@ mod tests {
                 roughness: 0.32,
                 edge_boost: 0.45,
             },
-            camera_response: Material2dCameraResponse {
-                highlight: 0.46,
+            camera_response: CameraOpticalResponse2d {
+                enabled: true,
+                intensity: 0.46,
+                glare: 0.46,
                 ..Default::default()
             },
             ..Default::default()

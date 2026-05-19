@@ -1,3 +1,5 @@
+use crate::CameraOpticalResponse2d;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Material2dOpticalMode {
     Opaque,
@@ -76,35 +78,11 @@ impl Material2dLighting {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub struct Material2dCameraResponse {
-    pub highlight: f32,
-    pub bloom_source: bool,
-    pub rain_glass_affects: bool,
-}
-
-impl Default for Material2dCameraResponse {
-    fn default() -> Self {
-        Self {
-            highlight: 0.0,
-            bloom_source: false,
-            rain_glass_affects: false,
-        }
-    }
-}
-
-impl Material2dCameraResponse {
-    pub fn normalized(mut self) -> Self {
-        self.highlight = self.highlight.clamp(0.0, 2.0);
-        self
-    }
-}
-
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub struct Material2d {
     pub optical: Material2dOptical,
     pub lighting: Material2dLighting,
-    pub camera_response: Material2dCameraResponse,
+    pub camera_response: CameraOpticalResponse2d,
 }
 
 impl Material2d {
@@ -116,13 +94,110 @@ impl Material2d {
     }
 
     pub fn requires_material_mask(self) -> bool {
+        let response = self.camera_response.normalized();
         self.optical.is_refractive()
-            || self.camera_response.highlight > 0.0
-            || self.camera_response.bloom_source
+            || (response.enabled
+                && (response.intensity > 0.0
+                    || response.glare > 0.0
+                    || response.bloom > 0.0
+                    || response.dirt_response > 0.0))
     }
 
     pub fn is_refractive(self) -> bool {
         self.optical.is_refractive()
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum MaterialCoverageKind2d {
+    Glyphs,
+    TextureAlpha,
+    VectorCoverage,
+    LayeredImageAlpha,
+    ParticleCoverage,
+    Unsupported,
+}
+
+impl MaterialCoverageKind2d {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Glyphs => "glyphs",
+            Self::TextureAlpha => "texture_alpha",
+            Self::VectorCoverage => "vector_coverage",
+            Self::LayeredImageAlpha => "layered_image_alpha",
+            Self::ParticleCoverage => "particle_coverage",
+            Self::Unsupported => "unsupported",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum MaterialCandidateStatus2d {
+    Active,
+    Skipped,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct MaterialCandidateDecision2d {
+    pub owner: String,
+    pub component_kind: String,
+    pub render_layer: String,
+    pub coverage_kind: MaterialCoverageKind2d,
+    pub status: MaterialCandidateStatus2d,
+    pub reason: String,
+}
+
+impl MaterialCandidateDecision2d {
+    pub fn active(
+        owner: impl Into<String>,
+        component_kind: impl Into<String>,
+        render_layer: impl Into<String>,
+        coverage_kind: MaterialCoverageKind2d,
+        reason: impl Into<String>,
+    ) -> Self {
+        Self {
+            owner: owner.into(),
+            component_kind: component_kind.into(),
+            render_layer: render_layer.into(),
+            coverage_kind,
+            status: MaterialCandidateStatus2d::Active,
+            reason: reason.into(),
+        }
+    }
+
+    pub fn skipped(
+        owner: impl Into<String>,
+        component_kind: impl Into<String>,
+        render_layer: impl Into<String>,
+        coverage_kind: MaterialCoverageKind2d,
+        reason: impl Into<String>,
+    ) -> Self {
+        Self {
+            owner: owner.into(),
+            component_kind: component_kind.into(),
+            render_layer: render_layer.into(),
+            coverage_kind,
+            status: MaterialCandidateStatus2d::Skipped,
+            reason: reason.into(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct MaterialCandidate2dCommon {
+    pub owner: String,
+    pub component_kind: String,
+    pub render_layer: String,
+    pub z_index: f32,
+    pub layer_opacity: f32,
+    pub visible: bool,
+    pub material: Material2d,
+    pub coverage_kind: MaterialCoverageKind2d,
+}
+
+impl MaterialCandidate2dCommon {
+    pub fn is_refractive(&self) -> bool {
+        self.visible && self.layer_opacity > 0.001 && self.material.is_refractive()
     }
 }
 
@@ -156,5 +231,21 @@ mod tests {
 
         assert!(!material.is_refractive());
         assert!(!material.requires_material_mask());
+    }
+
+    #[test]
+    fn material_candidate_common_reports_coverage_kind() {
+        let candidate = MaterialCandidate2dCommon {
+            owner: "title".to_owned(),
+            component_kind: "Text2D".to_owned(),
+            render_layer: "title.depth2d".to_owned(),
+            z_index: 10.0,
+            layer_opacity: 0.72,
+            visible: true,
+            material: Material2d::default(),
+            coverage_kind: MaterialCoverageKind2d::Glyphs,
+        };
+
+        assert_eq!(candidate.coverage_kind.as_str(), "glyphs");
     }
 }

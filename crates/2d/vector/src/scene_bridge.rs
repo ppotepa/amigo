@@ -3,7 +3,7 @@ use crate::model::{
 };
 use crate::service::VectorSceneService;
 use amigo_render_api::{
-    Material2d, Material2dCameraResponse, Material2dLighting, Material2dOptical,
+    CameraOpticalResponse2d, Material2d, Material2dLighting, Material2dOptical,
     Material2dOpticalMode, RenderContributionSet, render_contribution_roles as roles,
 };
 use amigo_scene::{
@@ -74,10 +74,17 @@ fn material_from_scene_command(material: Option<&Material2dSceneCommand>) -> Opt
                 receives_light: material.lighting.receives_light,
                 response: material.lighting.response,
             },
-            camera_response: Material2dCameraResponse {
-                highlight: material.camera_response.highlight,
-                bloom_source: material.camera_response.bloom_source,
-                rain_glass_affects: material.camera_response.rain_glass_affects,
+            camera_response: CameraOpticalResponse2d {
+                enabled: material.camera_response.enabled,
+                intensity: material.camera_response.intensity,
+                bloom: material.camera_response.bloom,
+                glare: material.camera_response.glare,
+                ghosting: material.camera_response.ghosting,
+                streaks: material.camera_response.streaks,
+                chromatic_smear: material.camera_response.chromatic_smear,
+                dirt_response: material.camera_response.dirt_response,
+                halation: material.camera_response.halation,
+                threshold: material.camera_response.threshold,
             },
         }
         .normalized()

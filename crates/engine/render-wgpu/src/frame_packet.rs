@@ -13,8 +13,8 @@ use amigo_3d_material::MaterialDrawCommand;
 use amigo_3d_mesh::MeshDrawCommand;
 use amigo_3d_text::Text3dDrawCommand;
 use amigo_render_api::{
-    CameraCaptureInput2d, CameraDebugView2d, RenderSpace2d, Renderable2dCommon,
-    Renderable2dKind,
+    CameraCaptureInput2d, CameraDebugView2d, CameraOpticalCandidate2d, LightSource2dCommon,
+    RenderSpace2d, Renderable2dCommon, Renderable2dKind,
 };
 
 use crate::UiOverlayDocument;
@@ -118,6 +118,8 @@ pub struct WgpuRenderFramePacket {
     world_2d_global_lights: Vec<GlobalLight2dCommand>,
     world_2d_lightmaps: Vec<LightMap2dSourceCommand>,
     world_2d_light_groups: Vec<LightGroup2dCommand>,
+    light_sources_2d: Vec<LightSource2dCommon>,
+    camera_optical_candidates_2d: Vec<CameraOpticalCandidate2d>,
     world_2d_text: Vec<Text2dDrawCommand>,
     world_2d_vectors: Vec<VectorShape2dDrawCommand>,
     world_2d_beacons: Vec<BeaconLight2dDrawCommand>,
@@ -312,6 +314,14 @@ impl WgpuRenderFramePacket {
         self.camera_capture_input_2d = Some(input);
     }
 
+    pub fn set_light_sources_2d(&mut self, sources: Vec<LightSource2dCommon>) {
+        self.light_sources_2d = sources;
+    }
+
+    pub fn set_camera_optical_candidates_2d(&mut self, candidates: Vec<CameraOpticalCandidate2d>) {
+        self.camera_optical_candidates_2d = candidates;
+    }
+
     pub fn set_camera_debug_view_2d(&mut self, debug_view: CameraDebugView2d) {
         self.camera_debug_view_2d = Some(debug_view);
     }
@@ -339,6 +349,8 @@ impl WgpuRenderFramePacket {
         self.world_2d_global_lights.clear();
         self.world_2d_lightmaps.clear();
         self.world_2d_light_groups.clear();
+        self.light_sources_2d.clear();
+        self.camera_optical_candidates_2d.clear();
         self.world_2d_text.clear();
         self.world_2d_vectors.clear();
         self.world_2d_beacons.clear();
@@ -396,6 +408,14 @@ impl WgpuRenderFramePacket {
 
     pub fn world_2d_light_groups(&self) -> &[LightGroup2dCommand] {
         &self.world_2d_light_groups
+    }
+
+    pub fn world_2d_light_sources(&self) -> &[LightSource2dCommon] {
+        &self.light_sources_2d
+    }
+
+    pub fn camera_optical_candidates_2d(&self) -> &[CameraOpticalCandidate2d] {
+        &self.camera_optical_candidates_2d
     }
 
     pub fn world_2d_tilemaps(&self) -> &[TileMap2dDrawCommand] {

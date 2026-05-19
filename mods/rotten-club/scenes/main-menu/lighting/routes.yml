@@ -7,6 +7,21 @@ visual2d:
     label: Skyline
     color: "#9bb8ff"
     intensity: 1.0
+    render_contributions:
+      lighting.emit: true
+      bloom.source: true
+      camera.fx_source: true
+    camera_response:
+      enabled: true
+      intensity: 0.35
+      bloom: 0.25
+      glare: 0.18
+      ghosting: 0.08
+      streaks: 0.05
+      chromatic_smear: 0.08
+      dirt_response: 0.18
+      halation: 0.10
+      threshold: 0.0
     sources:
     - kind: lightmap_channel
       source: neon-alley-lightmap
@@ -16,6 +31,21 @@ visual2d:
     label: Mid Neon
     color: "#ff66cc"
     intensity: 1.0
+    render_contributions:
+      lighting.emit: true
+      bloom.source: true
+      camera.fx_source: true
+    camera_response:
+      enabled: true
+      intensity: 0.85
+      bloom: 0.55
+      glare: 0.45
+      ghosting: 0.22
+      streaks: 0.30
+      chromatic_smear: 0.25
+      dirt_response: 0.35
+      halation: 0.25
+      threshold: 0.0
     sources:
     - kind: lightmap_channel
       source: neon-alley-lightmap
@@ -25,6 +55,21 @@ visual2d:
     label: Bar
     color: "#ffcc66"
     intensity: 1.0
+    render_contributions:
+      lighting.emit: true
+      bloom.source: true
+      camera.fx_source: true
+    camera_response:
+      enabled: true
+      intensity: 0.65
+      bloom: 0.45
+      glare: 0.35
+      ghosting: 0.14
+      streaks: 0.18
+      chromatic_smear: 0.12
+      dirt_response: 0.30
+      halation: 0.28
+      threshold: 0.0
     sources:
     - kind: lightmap_channel
       source: neon-alley-lightmap

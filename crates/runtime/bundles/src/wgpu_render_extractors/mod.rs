@@ -1,6 +1,7 @@
 mod composition;
 pub mod context;
 mod host_overlay;
+pub mod light_sources_2d;
 pub mod visual_2d_items;
 mod world_2d;
 mod world_3d;
@@ -13,6 +14,10 @@ pub use host_overlay::register_host_render_extractor_provider;
 
 pub use composition::{WgpuFrameCompositionBuilder, WgpuFrameCompositionOptions};
 pub use context::WgpuRenderExtractorRegistry;
+pub use light_sources_2d::{
+    collect_camera_optical_candidates_2d, collect_light_sources_2d,
+    format_camera_optical_candidates_2d, format_light_sources_2d,
+};
 pub use visual_2d_items::{
     RenderSpace2d, Renderable2dCommon, Renderable2dItem, Renderable2dKind,
     Renderable2dPayload, render_contribution_decisions_summary,

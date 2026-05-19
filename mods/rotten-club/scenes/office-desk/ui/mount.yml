@@ -1,3 +1,95 @@
 kind: scene-fragment
 schema_version: 1
-widgets: []
+
+# Screen-space help overlay for the office desk scene. Text nodes omit a
+# font asset so the runtime can use its generic/default UI font.
+
+entities:
+  - id: office-desk-help-overlay
+    name: office desk help overlay
+    tags:
+      - office-desk
+      - ui
+      - help
+    visible: true
+    simulation_enabled: false
+    collision_enabled: false
+    components:
+      - type: UiDocument
+        target:
+          type: screen-space
+          layer: hud
+          viewport:
+            width: 1280.0
+            height: 720.0
+            scaling: fit
+        root:
+          type: column
+          id: root
+          style:
+            left: 24.0
+            top: 24.0
+            width: 470.0
+            padding: 14.0
+            gap: 7.0
+            background: "#090B0EB8"
+            border_color: "#FFFFFFFF"
+            border_width: 1.0
+            border_radius: 8.0
+          children:
+            - type: text
+              id: title
+              text: "Jak korzystać ze sceny"
+              style:
+                width: 435.0
+                height: 24.0
+                font_size: 20.0
+                color: "#FFFFFFFF"
+            - type: text
+              id: focus-follow
+              text: "Domyślnie focus/światło śledzi kursor według DEPTH"
+              style:
+                width: 435.0
+                height: 18.0
+                font_size: 13.0
+                color: "#E8EEF8FF"
+            - type: text
+              id: mouse
+              text: "LPM: przypnij/odepnij śledzenie kursora"
+              style:
+                width: 435.0
+                height: 18.0
+                font_size: 13.0
+                color: "#E8EEF8FF"
+            - type: text
+              id: movement
+              text: "WASD: ruch przypiętego światła | Q/E: głębia Z"
+              style:
+                width: 435.0
+                height: 18.0
+                font_size: 13.0
+                color: "#E8EEF8FF"
+            - type: text
+              id: wheel
+              text: "Wheel: Z | Shift+Wheel: precyzyjne Z | Alt+Wheel: promień"
+              style:
+                width: 435.0
+                height: 18.0
+                font_size: 13.0
+                color: "#E8EEF8FF"
+            - type: text
+              id: modifiers
+              text: "Ctrl+Wheel: moc światła | Shift+Alt+Wheel: focus/blur"
+              style:
+                width: 435.0
+                height: 18.0
+                font_size: 13.0
+                color: "#E8EEF8FF"
+            - type: text
+              id: debug
+              text: "D: widoki relight debug | R: finalny obraz"
+              style:
+                width: 435.0
+                height: 18.0
+                font_size: 13.0
+                color: "#BFD8FFFF"

@@ -290,6 +290,20 @@ impl RenderFrameExtractor<Runtime, WgpuRenderFramePacket> for WgpuPostFx2dRender
                 stacks.extend(packet.post_fx_stacks().iter().cloned());
                 packet.set_post_fx_stacks(stacks);
             }
+            packet.set_light_sources_2d(super::light_sources_2d::collect_light_sources_2d(
+                packet.renderables_2d(),
+                packet.world_2d_beacons(),
+                packet.world_2d_global_lights(),
+                packet.world_2d_lightmaps(),
+                packet.world_2d_light_groups(),
+                packet.world_2d_particles(),
+                None,
+            ));
+            packet.set_camera_optical_candidates_2d(
+                super::light_sources_2d::collect_camera_optical_candidates_2d(
+                    packet.world_2d_light_sources(),
+                ),
+            );
             packet.set_camera_capture_input_2d(build_camera_capture_input(
                 packet,
                 depth_space,
@@ -414,13 +428,11 @@ fn build_camera_capture_input(
         builder = builder.with_layer_mask("world.layer_mask");
     }
     if should_produce_scene_highlight(packet) {
-        // V1 limitation: produced by authored visual maps and procedural/light extraction.
-        // Final target: dedicated material/light pass writes this buffer before camera post-fx.
+        // Produced by authored visual maps or active CameraOpticalCandidate2d targets.
         builder = builder.with_highlight_produced("world.highlight");
     }
     if should_produce_scene_emissive(packet) {
-        // V1 limitation: produced by authored visual maps and procedural/light extraction.
-        // Final target: dedicated material/light pass writes this buffer before camera post-fx.
+        // Produced by authored visual maps or active CameraOpticalCandidate2d targets.
         builder = builder.with_emissive_produced("world.emissive");
     }
     if should_produce_scene_normal(packet) {
@@ -447,15 +459,18 @@ fn build_camera_capture_input(
 
 fn should_produce_scene_highlight(packet: &WgpuRenderFramePacket) -> bool {
     has_visual_map(packet, amigo_render_api::VisualSourceKind2d::SceneHighlight)
-        || !packet.world_2d_lightmaps().is_empty()
-        || !packet.world_2d_light_groups().is_empty()
-        || !packet.world_2d_beacons().is_empty()
+        || packet
+            .camera_optical_candidates_2d()
+            .iter()
+            .any(|candidate| candidate.targets_scene_highlight())
 }
 
 fn should_produce_scene_emissive(packet: &WgpuRenderFramePacket) -> bool {
     has_visual_map(packet, amigo_render_api::VisualSourceKind2d::SceneEmissive)
-        || !packet.world_2d_beacons().is_empty()
-        || !packet.world_2d_global_lights().is_empty()
+        || packet
+            .camera_optical_candidates_2d()
+            .iter()
+            .any(|candidate| candidate.targets_scene_emissive())
 }
 
 fn should_produce_scene_normal(packet: &WgpuRenderFramePacket) -> bool {
@@ -572,6 +587,28 @@ fn depth_mode_label(mode: amigo_2d_composition::RenderDepthMode2d) -> &'static s
 mod tests {
     use super::*;
 
+    fn optical_candidate_with_roles(
+        roles: &[&str],
+        coverage: amigo_render_api::CameraOpticalCoverage2d,
+        response: amigo_render_api::CameraOpticalResponse2d,
+    ) -> amigo_render_api::CameraOpticalCandidate2d {
+        amigo_render_api::CameraOpticalCandidate2d {
+            owner: "test-source".to_owned(),
+            component_kind: "LightGroup2D".to_owned(),
+            render_layer: None,
+            color_rgba: [1.0, 1.0, 1.0, 1.0],
+            intensity: 1.0,
+            response,
+            coverage,
+            roles: amigo_render_api::RenderContributionSet::from_pairs(
+                roles.iter().map(|role| (*role, true)),
+            ),
+            status: amigo_render_api::CameraOpticalCandidateStatus2d::Active,
+            reason: "camera_optical_candidate_active".to_owned(),
+            position_px: None,
+        }
+    }
+
     #[test]
     fn camera_capture_input_includes_scene_color_depth_and_layers() {
         let mut packet = WgpuRenderFramePacket::default();
@@ -655,7 +692,7 @@ mod tests {
     }
 
     #[test]
-    fn camera_capture_input_sets_highlight_when_lightmaps_exist() {
+    fn camera_capture_input_does_not_set_highlight_for_lightmaps_without_candidates() {
         let mut packet = WgpuRenderFramePacket::default();
         packet.push_world_2d_lightmap(amigo_2d_lighting::LightMap2dSourceCommand {
             source_mod: "rotten-club".to_owned(),
@@ -674,11 +711,127 @@ mod tests {
             amigo_camera::CameraDepthMotion2d::default(),
         );
 
+        assert!(input.highlight.is_none());
+        assert!(input.emissive.is_none());
+    }
+
+    #[test]
+    fn camera_capture_input_sets_highlight_from_active_optical_candidate() {
+        let mut packet = WgpuRenderFramePacket::default();
+        packet.set_camera_optical_candidates_2d(vec![
+            optical_candidate_with_roles(
+                &[
+                    amigo_render_api::render_contribution_roles::CAMERA_FX_SOURCE,
+                    amigo_render_api::render_contribution_roles::BLOOM_SOURCE,
+                ],
+                amigo_render_api::CameraOpticalCoverage2d::LightMapChannel {
+                    source: "neon-alley-lightmap".to_owned(),
+                    channel: "mid_neon".to_owned(),
+                },
+                amigo_render_api::CameraOpticalResponse2d {
+                    enabled: true,
+                    intensity: 0.8,
+                    bloom: 0.4,
+                    glare: 0.6,
+                    ..Default::default()
+                },
+            ),
+        ]);
+
+        let input = build_camera_capture_input(
+            &packet,
+            amigo_2d_spatial::DepthSpace2d::default(),
+            amigo_camera::CameraDepthMotion2d::default(),
+        );
+
         assert_eq!(
             input.highlight.as_ref().map(|source| source.kind),
             Some(amigo_render_api::VisualSourceKind2d::SceneHighlight)
         );
+        assert_eq!(
+            input.emissive.as_ref().map(|source| source.kind),
+            Some(amigo_render_api::VisualSourceKind2d::SceneEmissive)
+        );
+    }
+
+    #[test]
+    fn camera_capture_input_ignores_unsupported_optical_candidate() {
+        let mut packet = WgpuRenderFramePacket::default();
+        packet.set_camera_optical_candidates_2d(vec![optical_candidate_with_roles(
+            &[
+                amigo_render_api::render_contribution_roles::CAMERA_FX_SOURCE,
+                amigo_render_api::render_contribution_roles::BLOOM_SOURCE,
+            ],
+            amigo_render_api::CameraOpticalCoverage2d::Unsupported {
+                reason: "unsupported_for_test".to_owned(),
+            },
+            amigo_render_api::CameraOpticalResponse2d {
+                enabled: true,
+                intensity: 1.0,
+                bloom: 1.0,
+                glare: 1.0,
+                ..Default::default()
+            },
+        )]);
+
+        let input = build_camera_capture_input(
+            &packet,
+            amigo_2d_spatial::DepthSpace2d::default(),
+            amigo_camera::CameraDepthMotion2d::default(),
+        );
+
+        assert!(input.highlight.is_none());
         assert!(input.emissive.is_none());
+    }
+
+    #[test]
+    fn camera_capture_input_uses_role_aware_candidate_targets() {
+        let coverage = amigo_render_api::CameraOpticalCoverage2d::Hotspot {
+            entity_name: "test".to_owned(),
+            radius_px: 16.0,
+        };
+
+        let mut bloom_packet = WgpuRenderFramePacket::default();
+        bloom_packet.set_camera_optical_candidates_2d(vec![optical_candidate_with_roles(
+            &[amigo_render_api::render_contribution_roles::BLOOM_SOURCE],
+            coverage.clone(),
+            amigo_render_api::CameraOpticalResponse2d {
+                enabled: true,
+                bloom: 1.0,
+                ..Default::default()
+            },
+        )]);
+        let bloom_input = build_camera_capture_input(
+            &bloom_packet,
+            amigo_2d_spatial::DepthSpace2d::default(),
+            amigo_camera::CameraDepthMotion2d::default(),
+        );
+        assert!(bloom_input.highlight.is_none());
+        assert_eq!(
+            bloom_input.emissive.as_ref().map(|source| source.kind),
+            Some(amigo_render_api::VisualSourceKind2d::SceneEmissive)
+        );
+
+        let mut camera_fx_packet = WgpuRenderFramePacket::default();
+        camera_fx_packet.set_camera_optical_candidates_2d(vec![optical_candidate_with_roles(
+            &[amigo_render_api::render_contribution_roles::CAMERA_FX_SOURCE],
+            coverage,
+            amigo_render_api::CameraOpticalResponse2d {
+                enabled: true,
+                glare: 1.0,
+                ..Default::default()
+            },
+        )]);
+        let camera_fx_input = build_camera_capture_input(
+            &camera_fx_packet,
+            amigo_2d_spatial::DepthSpace2d::default(),
+            amigo_camera::CameraDepthMotion2d::default(),
+        );
+        assert_eq!(
+            camera_fx_input.highlight.as_ref().map(|source| source.kind),
+            Some(amigo_render_api::VisualSourceKind2d::SceneHighlight)
+        );
+        assert!(camera_fx_input.emissive.is_none());
     }
 
     #[test]

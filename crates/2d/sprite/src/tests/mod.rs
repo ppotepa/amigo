@@ -10,8 +10,9 @@ use amigo_assets::{
 use amigo_math::{Transform2, Vec2};
 use amigo_render_api::RenderContributionSet;
 use amigo_scene::{
+    CameraOpticalResponse2dSceneCommand,
     Material2dOpticalModeSceneCommand, Material2dOpticalSceneCommand, Material2dSceneCommand,
-    Material2dLightingSceneCommand, Material2dCameraResponseSceneCommand, SceneCommand,
+    Material2dLightingSceneCommand, SceneCommand,
     SceneEntityId, SceneEvent, SceneEventQueue, SceneService, Sprite2dSceneCommand,
     SpriteAnimation2dSceneOverride,
 };
@@ -202,10 +203,17 @@ fn queues_sprite_scene_command_with_material_and_render_contributions() {
             receives_light: false,
             response: 0.0,
         },
-        camera_response: Material2dCameraResponseSceneCommand {
-            highlight: 0.0,
-            bloom_source: false,
-            rain_glass_affects: false,
+        camera_response: CameraOpticalResponse2dSceneCommand {
+            enabled: false,
+            intensity: 0.0,
+            bloom: 0.0,
+            glare: 0.0,
+            ghosting: 0.0,
+            streaks: 0.0,
+            chromatic_smear: 0.0,
+            dirt_response: 0.0,
+            halation: 0.0,
+            threshold: 0.0,
         },
     });
 

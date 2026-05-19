@@ -1,5 +1,7 @@
 use serde::{Deserialize, Serialize};
 
+use super::visual2d::CameraOpticalResponse2dDocument;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum Material2dOpticalModeDocument {
@@ -64,26 +66,6 @@ impl Default for Material2dLightingDocument {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
-pub struct Material2dCameraResponseDocument {
-    #[serde(default)]
-    pub highlight: f32,
-    #[serde(default)]
-    pub bloom_source: bool,
-    #[serde(default)]
-    pub rain_glass_affects: bool,
-}
-
-impl Default for Material2dCameraResponseDocument {
-    fn default() -> Self {
-        Self {
-            highlight: 0.0,
-            bloom_source: false,
-            rain_glass_affects: false,
-        }
-    }
-}
-
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, Default)]
 pub struct Material2dDocument {
     #[serde(default)]
@@ -91,5 +73,5 @@ pub struct Material2dDocument {
     #[serde(default)]
     pub lighting: Material2dLightingDocument,
     #[serde(default)]
-    pub camera_response: Material2dCameraResponseDocument,
+    pub camera_response: CameraOpticalResponse2dDocument,
 }
