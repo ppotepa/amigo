@@ -11,18 +11,18 @@ pub struct Vector2dPlugin;
 
 impl RuntimePlugin for Vector2dPlugin {
     fn name(&self) -> &'static str {
-        "amigo-2d-vector"
+        "amigo-vector-2d-plugin"
     }
 
     fn register(&self, registry: &mut ServiceRegistry) -> amigo_core::AmigoResult<()> {
-        registry.register(crate::service::VectorSceneService::default())?;
+        registry.register(super::service::VectorSceneService::default())?;
         registry.register(VectorDomainInfo {
-            crate_name: "amigo-2d-vector",
+            crate_name: "amigo-vector-2d-plugin",
             capability: "vector_2d",
         })?;
         register_domain_plugin(
             registry,
-            "amigo-2d-vector",
+            "amigo-vector-2d-plugin",
             &["vector_2d"],
             &[],
             DEFAULT_CAPABILITY_VERSION,
@@ -31,7 +31,7 @@ impl RuntimePlugin for Vector2dPlugin {
             registry.required::<amigo_scene::RuntimeSceneCommandHandlerRegistry>()?;
         amigo_scene::register_runtime_scene_command_handler(
             scene_handlers.as_ref(),
-            crate::scene_command::Vector2dSceneCommandHandler,
+            super::scene_command::Vector2dSceneCommandHandler,
         );
         Ok(())
     }

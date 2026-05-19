@@ -1,7 +1,7 @@
 use amigo_capabilities::{DEFAULT_CAPABILITY_VERSION, register_domain_plugin};
 use amigo_runtime::{RuntimePlugin, ServiceRegistry};
 
-use crate::service::SpriteSceneService;
+use super::service::SpriteSceneService;
 
 #[derive(Debug, Clone)]
 pub struct SpriteDomainInfo {
@@ -13,18 +13,18 @@ pub struct SpritePlugin;
 
 impl RuntimePlugin for SpritePlugin {
     fn name(&self) -> &'static str {
-        "amigo-2d-sprite"
+        "amigo-sprite-2d-plugin"
     }
 
     fn register(&self, registry: &mut ServiceRegistry) -> amigo_core::AmigoResult<()> {
         registry.register(SpriteSceneService::default())?;
         registry.register(SpriteDomainInfo {
-            crate_name: "amigo-2d-sprite",
+            crate_name: "amigo-sprite-2d-plugin",
             capability: "rendering_2d",
         })?;
         register_domain_plugin(
             registry,
-            "amigo-2d-sprite",
+            "amigo-sprite-2d-plugin",
             &["rendering_2d"],
             &[],
             DEFAULT_CAPABILITY_VERSION,
@@ -33,13 +33,13 @@ impl RuntimePlugin for SpritePlugin {
             registry.required::<amigo_scene::RuntimeSceneCommandHandlerRegistry>()?;
         amigo_scene::register_runtime_scene_command_handler(
             scene_handlers.as_ref(),
-            crate::scene_command::Sprite2dSceneCommandHandler,
+            super::scene_command::Sprite2dSceneCommandHandler,
         );
         let script_handlers =
             registry.required::<amigo_scripting_api::RuntimeScriptCommandHandlerRegistry>()?;
         amigo_scripting_api::register_runtime_script_command_handler(
             script_handlers.as_ref(),
-            crate::script_command::Sprite2dScriptCommandHandler,
+            super::script_command::Sprite2dScriptCommandHandler,
         );
         Ok(())
     }

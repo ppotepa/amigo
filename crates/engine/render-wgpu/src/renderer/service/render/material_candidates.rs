@@ -6,9 +6,9 @@ use amigo_render_api::{
 
 #[derive(Debug, Clone)]
 pub(super) enum MaterialCoveragePayload2d {
-    Text(amigo_2d_text::Text2dDrawCommand),
-    Sprite(amigo_2d_sprite::SpriteDrawCommand),
-    Vector(amigo_2d_vector::VectorShape2dDrawCommand),
+    Text(amigo_text_2d_plugin::Text2dDrawCommand),
+    Sprite(amigo_sprite_2d_plugin::SpriteDrawCommand),
+    Vector(amigo_vector_2d_plugin::VectorShape2dDrawCommand),
 }
 
 #[derive(Debug, Clone)]
@@ -309,16 +309,16 @@ mod tests {
     fn text_item() -> Renderable2dItem {
         Renderable2dItem {
             common: common("title", "Text2D", Renderable2dKind::Text),
-            payload: Renderable2dPayload::Text(amigo_2d_text::Text2dDrawCommand {
+            payload: Renderable2dPayload::Text(amigo_text_2d_plugin::Text2dDrawCommand {
                 entity_id: SceneEntityId::new(1),
                 entity_name: "title".to_owned(),
                 render_layer: "title.depth2d".to_owned(),
-                text: amigo_2d_text::Text2d {
+                text: amigo_text_2d_plugin::Text2d {
                     content: "ROTTEN CLUB".to_owned(),
                     font: AssetKey::new("test/font"),
                     bounds: Vec2::new(100.0, 40.0),
                     transform: Transform2::default(),
-                    style: amigo_2d_text::Text2dStyle {
+                    style: amigo_text_2d_plugin::Text2dStyle {
                         color: ColorRgba::new(1.0, 1.0, 1.0, 1.0),
                         ..Default::default()
                     },
@@ -334,11 +334,11 @@ mod tests {
     fn sprite_item() -> Renderable2dItem {
         Renderable2dItem {
             common: common("poster", "Sprite2D", Renderable2dKind::Sprite),
-            payload: Renderable2dPayload::Sprite(amigo_2d_sprite::SpriteDrawCommand {
+            payload: Renderable2dPayload::Sprite(amigo_sprite_2d_plugin::SpriteDrawCommand {
                 entity_id: SceneEntityId::new(1),
                 entity_name: "poster".to_owned(),
                 render_layer: "foreground.props".to_owned(),
-                sprite: amigo_2d_sprite::Sprite {
+                sprite: amigo_sprite_2d_plugin::Sprite {
                     texture: AssetKey::new("test/poster"),
                     size: Vec2::new(32.0, 32.0),
                     sheet: None,
@@ -359,16 +359,16 @@ mod tests {
     fn vector_item() -> Renderable2dItem {
         Renderable2dItem {
             common: common("glass", "VectorShape2D", Renderable2dKind::Vector),
-            payload: Renderable2dPayload::Vector(amigo_2d_vector::VectorShape2dDrawCommand {
+            payload: Renderable2dPayload::Vector(amigo_vector_2d_plugin::VectorShape2dDrawCommand {
                 entity_id: SceneEntityId::new(1),
                 entity_name: "glass".to_owned(),
                 render_layer: "foreground.props".to_owned(),
-                shape: amigo_2d_vector::VectorShape2d {
-                    kind: amigo_2d_vector::VectorShapeKind2d::Circle {
+                shape: amigo_vector_2d_plugin::VectorShape2d {
+                    kind: amigo_vector_2d_plugin::VectorShapeKind2d::Circle {
                         radius: 10.0,
                         segments: 8,
                     },
-                    style: amigo_2d_vector::VectorStyle2d {
+                    style: amigo_vector_2d_plugin::VectorStyle2d {
                         stroke_color: ColorRgba::WHITE,
                         stroke_width: 0.0,
                         fill_color: Some(ColorRgba::new(1.0, 1.0, 1.0, 1.0)),
@@ -376,7 +376,7 @@ mod tests {
                 },
                 z_index: 0.0,
                 transform: Transform2::default(),
-                viewport_fit: amigo_2d_vector::VectorViewportFit2d::Fixed,
+                viewport_fit: amigo_vector_2d_plugin::VectorViewportFit2d::Fixed,
                 viewport_canvas_size: None,
                 material: Some(refractive_material()),
                 render_contributions: RenderContributionSet::default(),

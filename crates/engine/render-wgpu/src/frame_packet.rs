@@ -5,10 +5,10 @@ use amigo_2d_lighting::{GlobalLight2dCommand, LightGroup2dCommand, LightMap2dSou
 use amigo_2d_lighting_beacon::{Beacon2dRenderOutput, BeaconLight2dDrawCommand};
 use amigo_2d_particles::Particle2dDrawCommand;
 use amigo_2d_post_fx::ScopedPostFx2dStack;
-use amigo_2d_sprite::SpriteDrawCommand;
-use amigo_2d_text::Text2dDrawCommand;
+use amigo_sprite_2d_plugin::SpriteDrawCommand;
+use amigo_text_2d_plugin::Text2dDrawCommand;
 use amigo_2d_tilemap::TileMap2dDrawCommand;
-use amigo_2d_vector::VectorShape2dDrawCommand;
+use amigo_vector_2d_plugin::VectorShape2dDrawCommand;
 use amigo_3d_material::MaterialDrawCommand;
 use amigo_3d_mesh::MeshDrawCommand;
 use amigo_3d_text::Text3dDrawCommand;
@@ -507,7 +507,7 @@ impl WgpuRenderFramePacket {
     }
 }
 
-impl amigo_2d_sprite::Sprite2dRenderOutput for WgpuRenderFramePacket {
+impl amigo_sprite_2d_plugin::Sprite2dRenderOutput for WgpuRenderFramePacket {
     fn push_sprite2d_render_command(&mut self, command: SpriteDrawCommand) {
         self.push_world_2d_sprite(command);
     }
@@ -535,7 +535,7 @@ impl amigo_focus_depth_plugin::DepthMap2dRenderOutput for WgpuRenderFramePacket 
     }
 }
 
-impl amigo_2d_vector::Vector2dRenderOutput for WgpuRenderFramePacket {
+impl amigo_vector_2d_plugin::Vector2dRenderOutput for WgpuRenderFramePacket {
     fn push_vector2d_render_command(&mut self, command: VectorShape2dDrawCommand) {
         self.push_world_2d_vector(command);
     }
@@ -547,7 +547,7 @@ impl Beacon2dRenderOutput for WgpuRenderFramePacket {
     }
 }
 
-impl amigo_2d_text::Text2dRenderOutput for WgpuRenderFramePacket {
+impl amigo_text_2d_plugin::Text2dRenderOutput for WgpuRenderFramePacket {
     fn push_text2d_render_command(&mut self, command: Text2dDrawCommand) {
         self.push_world_2d_text(command);
     }

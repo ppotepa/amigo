@@ -1,5 +1,5 @@
-use crate::model::{Sprite, SpriteAnimationOverride, SpriteDrawCommand, SpriteSheet};
-use crate::service::SpriteSceneService;
+use super::model::{Sprite, SpriteAnimationOverride, SpriteDrawCommand, SpriteSheet};
+use super::service::SpriteSceneService;
 use amigo_assets::{AssetCatalog, PreparedAsset, PreparedAssetKind};
 use amigo_camera_optics_plugin::api::CameraOpticalResponse2d;
 use amigo_math::Vec2;

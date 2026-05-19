@@ -126,7 +126,6 @@ dependencies = [
 name = "amigo-2d-lighting-beacon"
 version = "0.1.0"
 dependencies = [
- "amigo-2d-vector",
  "amigo-camera-optics-plugin",
  "amigo-capabilities",
  "amigo-core",
@@ -137,6 +136,7 @@ dependencies = [
  "amigo-scene",
  "amigo-scripting-api",
  "amigo-session",
+ "amigo-vector-2d-plugin",
 ]
 
 [[package]]
@@ -183,41 +183,6 @@ name = "amigo-2d-spatial"
 version = "0.1.0"
 
 [[package]]
-name = "amigo-2d-sprite"
-version = "0.1.0"
-dependencies = [
- "amigo-assets",
- "amigo-camera-optics-plugin",
- "amigo-capabilities",
- "amigo-core",
- "amigo-editor-api",
- "amigo-math",
- "amigo-render-api",
- "amigo-runtime",
- "amigo-scene",
- "amigo-scripting-api",
- "amigo-session",
-]
-
-[[package]]
-name = "amigo-2d-text"
-version = "0.1.0"
-dependencies = [
- "amigo-2d-post-fx",
- "amigo-assets",
- "amigo-camera-optics-plugin",
- "amigo-capabilities",
- "amigo-core",
- "amigo-editor-api",
- "amigo-math",
- "amigo-render-api",
- "amigo-runtime",
- "amigo-scene",
- "amigo-scripting-api",
- "amigo-session",
-]
-
-[[package]]
 name = "amigo-2d-tilemap"
 version = "0.1.0"
 dependencies = [
@@ -227,21 +192,6 @@ dependencies = [
  "amigo-core",
  "amigo-editor-api",
  "amigo-math",
- "amigo-runtime",
- "amigo-scene",
- "amigo-session",
-]
-
-[[package]]
-name = "amigo-2d-vector"
-version = "0.1.0"
-dependencies = [
- "amigo-camera-optics-plugin",
- "amigo-capabilities",
- "amigo-core",
- "amigo-editor-api",
- "amigo-math",
- "amigo-render-api",
  "amigo-runtime",
  "amigo-scene",
  "amigo-session",
@@ -679,9 +629,6 @@ dependencies = [
  "amigo-2d-lighting-beacon",
  "amigo-2d-particles",
  "amigo-2d-spatial",
- "amigo-2d-sprite",
- "amigo-2d-text",
- "amigo-2d-vector",
  "amigo-assets",
  "amigo-camera-core-plugin",
  "amigo-capabilities",
@@ -692,6 +639,9 @@ dependencies = [
  "amigo-runtime",
  "amigo-scene",
  "amigo-session",
+ "amigo-sprite-2d-plugin",
+ "amigo-text-2d-plugin",
+ "amigo-vector-2d-plugin",
 ]
 
 [[package]]
@@ -905,10 +855,7 @@ dependencies = [
  "amigo-2d-particles",
  "amigo-2d-post-fx",
  "amigo-2d-spatial",
- "amigo-2d-sprite",
- "amigo-2d-text",
  "amigo-2d-tilemap",
- "amigo-2d-vector",
  "amigo-3d-material",
  "amigo-3d-mesh",
  "amigo-3d-text",
@@ -923,7 +870,10 @@ dependencies = [
  "amigo-render-api",
  "amigo-runtime",
  "amigo-scene",
+ "amigo-sprite-2d-plugin",
+ "amigo-text-2d-plugin",
  "amigo-ui-layout",
+ "amigo-vector-2d-plugin",
  "amigo-window-api",
  "fontdue",
  "image",
@@ -949,10 +899,7 @@ dependencies = [
  "amigo-2d-physics",
  "amigo-2d-post-fx",
  "amigo-2d-spatial",
- "amigo-2d-sprite",
- "amigo-2d-text",
  "amigo-2d-tilemap",
- "amigo-2d-vector",
  "amigo-3d-material",
  "amigo-3d-mesh",
  "amigo-3d-text",
@@ -983,8 +930,11 @@ dependencies = [
  "amigo-scripting-rhai",
  "amigo-session",
  "amigo-shutter-motion-plugin",
+ "amigo-sprite-2d-plugin",
  "amigo-state",
+ "amigo-text-2d-plugin",
  "amigo-ui",
+ "amigo-vector-2d-plugin",
  "amigo-window-winit",
 ]
 
@@ -1041,8 +991,6 @@ dependencies = [
  "amigo-2d-particles",
  "amigo-2d-physics",
  "amigo-2d-post-fx",
- "amigo-2d-sprite",
- "amigo-2d-vector",
  "amigo-assets",
  "amigo-camera-core-plugin",
  "amigo-capabilities",
@@ -1062,8 +1010,10 @@ dependencies = [
  "amigo-scripting-api",
  "amigo-session",
  "amigo-shutter-motion-plugin",
+ "amigo-sprite-2d-plugin",
  "amigo-state",
  "amigo-ui",
+ "amigo-vector-2d-plugin",
  "rhai",
  "serde",
  "serde_yaml",
@@ -1100,10 +1050,18 @@ dependencies = [
 name = "amigo-sprite-2d-plugin"
 version = "0.1.0"
 dependencies = [
+ "amigo-assets",
  "amigo-camera-optics-plugin",
- "amigo-focus-depth-plugin",
+ "amigo-capabilities",
+ "amigo-core",
+ "amigo-editor-api",
+ "amigo-math",
  "amigo-plugin-api",
- "amigo-shutter-motion-plugin",
+ "amigo-render-api",
+ "amigo-runtime",
+ "amigo-scene",
+ "amigo-scripting-api",
+ "amigo-session",
 ]
 
 [[package]]
@@ -1129,10 +1087,19 @@ dependencies = [
 name = "amigo-text-2d-plugin"
 version = "0.1.0"
 dependencies = [
+ "amigo-2d-post-fx",
+ "amigo-assets",
  "amigo-camera-optics-plugin",
- "amigo-focus-depth-plugin",
+ "amigo-capabilities",
+ "amigo-core",
+ "amigo-editor-api",
+ "amigo-math",
  "amigo-plugin-api",
- "amigo-shutter-motion-plugin",
+ "amigo-render-api",
+ "amigo-runtime",
+ "amigo-scene",
+ "amigo-scripting-api",
+ "amigo-session",
 ]
 
 [[package]]
@@ -1199,9 +1166,15 @@ name = "amigo-vector-2d-plugin"
 version = "0.1.0"
 dependencies = [
  "amigo-camera-optics-plugin",
- "amigo-focus-depth-plugin",
+ "amigo-capabilities",
+ "amigo-core",
+ "amigo-editor-api",
+ "amigo-math",
  "amigo-plugin-api",
- "amigo-shutter-motion-plugin",
+ "amigo-render-api",
+ "amigo-runtime",
+ "amigo-scene",
+ "amigo-session",
 ]
 
 [[package]]

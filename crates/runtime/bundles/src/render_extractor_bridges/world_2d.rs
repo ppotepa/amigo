@@ -55,14 +55,14 @@ pub struct WgpuSprite2dRenderExtractorBridge;
 
 impl RenderFrameExtractor<Runtime, WgpuRenderFramePacket> for WgpuSprite2dRenderExtractorBridge {
     fn name(&self) -> &'static str {
-        amigo_2d_sprite::Sprite2dRenderExtractor.name()
+        amigo_sprite_2d_plugin::Sprite2dRenderExtractor.name()
     }
 
     fn extract(&self, runtime: &Runtime, packet: &mut WgpuRenderFramePacket) {
         let scene_service = required::<SceneService>(runtime);
-        let sprite_scene_service = required::<amigo_2d_sprite::SpriteSceneService>(runtime);
-        amigo_2d_sprite::Sprite2dRenderExtractor.extract(
-            amigo_2d_sprite::Sprite2dRenderExtractionContext {
+        let sprite_scene_service = required::<amigo_sprite_2d_plugin::SpriteSceneService>(runtime);
+        amigo_sprite_2d_plugin::Sprite2dRenderExtractor.extract(
+            amigo_sprite_2d_plugin::Sprite2dRenderExtractionContext {
                 scene_service: scene_service.as_ref(),
                 sprite_scene_service: sprite_scene_service.as_ref(),
             },
@@ -119,14 +119,14 @@ pub struct WgpuVector2dRenderExtractorBridge;
 
 impl RenderFrameExtractor<Runtime, WgpuRenderFramePacket> for WgpuVector2dRenderExtractorBridge {
     fn name(&self) -> &'static str {
-        amigo_2d_vector::Vector2dRenderExtractor.name()
+        amigo_vector_2d_plugin::Vector2dRenderExtractor.name()
     }
 
     fn extract(&self, runtime: &Runtime, packet: &mut WgpuRenderFramePacket) {
         let scene_service = required::<SceneService>(runtime);
-        let vector_scene_service = required::<amigo_2d_vector::VectorSceneService>(runtime);
-        amigo_2d_vector::Vector2dRenderExtractor.extract(
-            amigo_2d_vector::Vector2dRenderExtractionContext {
+        let vector_scene_service = required::<amigo_vector_2d_plugin::VectorSceneService>(runtime);
+        amigo_vector_2d_plugin::Vector2dRenderExtractor.extract(
+            amigo_vector_2d_plugin::Vector2dRenderExtractionContext {
                 scene_service: scene_service.as_ref(),
                 vector_scene_service: vector_scene_service.as_ref(),
             },
@@ -139,14 +139,14 @@ pub struct WgpuText2dRenderExtractorBridge;
 
 impl RenderFrameExtractor<Runtime, WgpuRenderFramePacket> for WgpuText2dRenderExtractorBridge {
     fn name(&self) -> &'static str {
-        amigo_2d_text::Text2dRenderExtractor.name()
+        amigo_text_2d_plugin::Text2dRenderExtractor.name()
     }
 
     fn extract(&self, runtime: &Runtime, packet: &mut WgpuRenderFramePacket) {
         let scene_service = required::<SceneService>(runtime);
-        let text_scene_service = required::<amigo_2d_text::Text2dSceneService>(runtime);
-        amigo_2d_text::Text2dRenderExtractor.extract(
-            amigo_2d_text::Text2dRenderExtractionContext {
+        let text_scene_service = required::<amigo_text_2d_plugin::Text2dSceneService>(runtime);
+        amigo_text_2d_plugin::Text2dRenderExtractor.extract(
+            amigo_text_2d_plugin::Text2dRenderExtractionContext {
                 scene_service: scene_service.as_ref(),
                 text_scene_service: text_scene_service.as_ref(),
             },

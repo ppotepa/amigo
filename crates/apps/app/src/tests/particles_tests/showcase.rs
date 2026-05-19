@@ -258,7 +258,7 @@ fn particles_showcase_hydrates_emitters() {
         .resolve::<Text2dSceneService>()
         .expect("text2d service should exist");
     let vector_scene_service = runtime
-        .resolve::<amigo_runtime_bundles::amigo_2d_vector::VectorSceneService>()
+        .resolve::<amigo_runtime_bundles::amigo_vector_2d_plugin::VectorSceneService>()
         .expect("vector service should exist");
     let mesh_scene_service = runtime
         .resolve::<amigo_runtime_bundles::amigo_3d_mesh::MeshSceneService>()

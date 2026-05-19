@@ -106,7 +106,7 @@ fn sync_sprite_sheet_metadata(
         return;
     };
     let Some(sheet) =
-        amigo_runtime_bundles::amigo_2d_sprite::infer_sprite_sheet_from_prepared_asset(&prepared)
+        amigo_runtime_bundles::amigo_sprite_2d_plugin::infer_sprite_sheet_from_prepared_asset(&prepared)
     else {
         return;
     };
@@ -134,7 +134,7 @@ pub(super) fn resolve_sprite_sheet_for_command(
     asset_catalog: &AssetCatalog,
     command: &Sprite2dSceneCommand,
 ) -> Option<SpriteSheet> {
-    amigo_runtime_bundles::amigo_2d_sprite::resolve_sprite_sheet_for_command(asset_catalog, command)
+    amigo_runtime_bundles::amigo_sprite_2d_plugin::resolve_sprite_sheet_for_command(asset_catalog, command)
 }
 
 pub(super) fn sync_hot_reload_watches(runtime: &Runtime) -> AmigoResult<()> {

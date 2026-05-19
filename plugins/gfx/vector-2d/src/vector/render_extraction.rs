@@ -1,6 +1,6 @@
 use amigo_scene::SceneService;
 
-use crate::{VectorSceneService, VectorShape2dDrawCommand};
+use super::{VectorSceneService, VectorShape2dDrawCommand};
 
 pub struct Vector2dRenderExtractionContext<'a> {
     pub scene_service: &'a SceneService,

@@ -1,6 +1,6 @@
 use std::sync::Mutex;
 
-use crate::model::{SpriteDrawCommand, SpriteSheet};
+use super::model::{SpriteDrawCommand, SpriteSheet};
 use amigo_assets::AssetKey;
 
 #[derive(Debug, Default)]
@@ -108,7 +108,7 @@ impl SpriteSceneService {
             } else {
                 sheet
             };
-            let merged_sheet = crate::scene_bridge::apply_animation_override(
+            let merged_sheet = super::scene_bridge::apply_animation_override(
                 base_sheet,
                 command.sprite.animation_override,
             );

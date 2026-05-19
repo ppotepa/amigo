@@ -1,6 +1,6 @@
 use amigo_scene::SceneService;
 
-use crate::{SpriteDrawCommand, SpriteSceneService};
+use super::{SpriteDrawCommand, SpriteSceneService};
 
 pub struct Sprite2dRenderExtractionContext<'a> {
     pub scene_service: &'a SceneService,

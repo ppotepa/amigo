@@ -23,10 +23,10 @@ use amigo_2d_particles::{
     ParticleShape2d,
 };
 use amigo_2d_post_fx::{PostFx2d, PostFx2dCacheKey};
-use amigo_2d_sprite::{Sprite, SpriteSceneService, SpriteSheet};
-use amigo_2d_text::Text2dSceneService;
+use amigo_sprite_2d_plugin::{Sprite, SpriteSceneService, SpriteSheet};
+use amigo_text_2d_plugin::Text2dSceneService;
 use amigo_2d_tilemap::{TileMap2d, TileMap2dSceneService};
-use amigo_2d_vector::{
+use amigo_vector_2d_plugin::{
     VectorSceneService, VectorShape2d, VectorShapeKind2d, VectorStyle2d, VectorViewportFit2d,
 };
 use amigo_3d_material::MaterialDrawCommand;

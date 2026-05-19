@@ -162,18 +162,18 @@ pub struct Text2dPlugin;
 
 impl RuntimePlugin for Text2dPlugin {
     fn name(&self) -> &'static str {
-        "amigo-2d-text"
+        "amigo-text-2d-plugin"
     }
 
     fn register(&self, registry: &mut ServiceRegistry) -> amigo_core::AmigoResult<()> {
         registry.register(Text2dSceneService::default())?;
         registry.register(Text2dDomainInfo {
-            crate_name: "amigo-2d-text",
+            crate_name: "amigo-text-2d-plugin",
             capability: "text_2d",
         })?;
         register_domain_plugin(
             registry,
-            "amigo-2d-text",
+            "amigo-text-2d-plugin",
             &["text_2d"],
             &[],
             DEFAULT_CAPABILITY_VERSION,
@@ -182,13 +182,13 @@ impl RuntimePlugin for Text2dPlugin {
             registry.required::<amigo_scene::RuntimeSceneCommandHandlerRegistry>()?;
         amigo_scene::register_runtime_scene_command_handler(
             scene_handlers.as_ref(),
-            crate::scene_command::Text2dSceneCommandHandler,
+            self::scene_command::Text2dSceneCommandHandler,
         );
         let script_handlers =
             registry.required::<amigo_scripting_api::RuntimeScriptCommandHandlerRegistry>()?;
         amigo_scripting_api::register_runtime_script_command_handler(
             script_handlers.as_ref(),
-            crate::script_command::Text2dScriptCommandHandler,
+            self::script_command::Text2dScriptCommandHandler,
         );
         Ok(())
     }

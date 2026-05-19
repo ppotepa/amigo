@@ -141,8 +141,8 @@ pub(crate) fn render_layer_lookup(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use amigo_2d_sprite::{Sprite, SpriteDrawCommand};
-    use amigo_2d_text::{Text2d, Text2dDrawCommand, Text2dStyle};
+    use amigo_sprite_2d_plugin::{Sprite, SpriteDrawCommand};
+    use amigo_text_2d_plugin::{Text2d, Text2dDrawCommand, Text2dStyle};
     use amigo_assets::AssetKey;
     use amigo_scene::SceneEntityId;
 

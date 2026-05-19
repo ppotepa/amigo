@@ -167,7 +167,7 @@ fn render_per_draw_visual_map_buffer(
             &command.entity_name,
             command.transform,
         );
-        let sprite = amigo_2d_sprite::Sprite {
+        let sprite = amigo_sprite_2d_plugin::Sprite {
             texture: asset.clone(),
             size: command.sprite.size,
             sheet: None,
@@ -273,7 +273,7 @@ fn append_visual_map_sprite_batch(
     asset: &amigo_assets::AssetKey,
     size: Vec2,
 ) {
-    let sprite = amigo_2d_sprite::Sprite {
+    let sprite = amigo_sprite_2d_plugin::Sprite {
         texture: asset.clone(),
         size,
         sheet: None,

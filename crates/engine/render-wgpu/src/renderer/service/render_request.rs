@@ -4,10 +4,10 @@ use amigo_2d_lighting::{GlobalLight2dSceneService, LightGroup2dCommand, LightMap
 use amigo_2d_lighting_beacon::BeaconLight2dDrawCommand;
 use amigo_2d_particles::Particle2dDrawCommand;
 use amigo_2d_post_fx::ScopedPostFx2dStack;
-use amigo_2d_sprite::SpriteSceneService;
-use amigo_2d_text::Text2dSceneService;
+use amigo_sprite_2d_plugin::SpriteSceneService;
+use amigo_text_2d_plugin::Text2dSceneService;
 use amigo_2d_tilemap::TileMap2dSceneService;
-use amigo_2d_vector::VectorSceneService;
+use amigo_vector_2d_plugin::VectorSceneService;
 use amigo_3d_material::MaterialDrawCommand;
 use amigo_3d_mesh::MeshDrawCommand;
 use amigo_3d_text::Text3dDrawCommand;

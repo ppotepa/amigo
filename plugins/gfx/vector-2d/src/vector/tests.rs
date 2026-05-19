@@ -1,9 +1,9 @@
 use crate::VectorSceneService;
-use crate::model::{
+use super::model::{
     ProceduralVectorError, RadialJitterPolygon, VectorShape2d, VectorShape2dDrawCommand,
     VectorShapeKind2d, VectorStyle2d, VectorViewportFit2d, radial_jitter_polygon_points,
 };
-use crate::plugin::Vector2dPlugin;
+use super::plugin::Vector2dPlugin;
 use amigo_math::{ColorRgba, Transform2, Vec2};
 use amigo_camera_optics_plugin::scene::CameraOpticalResponse2dSceneCommand;
 use amigo_render_api::{RenderContributionSet, render_contribution_roles as roles};
@@ -246,7 +246,7 @@ fn queues_vector_shape_scene_command() {
         transform: Transform2::default(),
     };
 
-    let entity = crate::scene_bridge::queue_vector_shape_scene_command(&scene, &service, &command);
+    let entity = super::scene_bridge::queue_vector_shape_scene_command(&scene, &service, &command);
     assert_eq!(entity.raw(), 0);
     assert_eq!(service.commands().len(), 1);
     assert_eq!(scene.entity_names(), vec!["test-shape".to_owned()]);
@@ -299,7 +299,7 @@ fn queues_vector_shape_scene_command_with_material_and_render_contributions() {
         },
     });
 
-    crate::scene_bridge::queue_vector_shape_scene_command(&scene, &service, &command);
+    super::scene_bridge::queue_vector_shape_scene_command(&scene, &service, &command);
 
     let commands = service.commands();
     let draw = commands.first().expect("vector command should be queued");
@@ -431,7 +431,7 @@ fn registers_vector_runtime_plugin() {
         .build();
     assert!(
         runtime
-            .resolve::<crate::service::VectorSceneService>()
+            .resolve::<super::service::VectorSceneService>()
             .is_some()
     );
 }

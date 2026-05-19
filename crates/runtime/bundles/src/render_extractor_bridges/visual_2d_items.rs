@@ -268,16 +268,16 @@ mod tests {
                 z_index: 0.0,
                 kind: Renderable2dKind::Text,
             },
-            payload: Renderable2dPayload::Text(amigo_2d_text::Text2dDrawCommand {
+            payload: Renderable2dPayload::Text(amigo_text_2d_plugin::Text2dDrawCommand {
                 entity_id: TypedId::new(1),
                 entity_name: "title".to_owned(),
                 render_layer: "title.depth2d".to_owned(),
-                text: amigo_2d_text::Text2d {
+                text: amigo_text_2d_plugin::Text2d {
                     content: "ROTTEN CLUB".to_owned(),
                     font: AssetKey::new("test/font"),
                     bounds: Vec2::new(128.0, 32.0),
                     transform: Transform2::default(),
-                    style: amigo_2d_text::Text2dStyle::default(),
+                    style: amigo_text_2d_plugin::Text2dStyle::default(),
                     post_fx_host_id: None,
                 },
                 z_index: 0.0,

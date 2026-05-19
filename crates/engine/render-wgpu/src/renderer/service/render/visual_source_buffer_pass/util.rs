@@ -18,7 +18,7 @@ pub(super) fn append_visual_quad(
     size: Vec2,
     color: ColorRgba,
 ) {
-    let sprite = amigo_2d_sprite::Sprite {
+    let sprite = amigo_sprite_2d_plugin::Sprite {
         texture: amigo_assets::AssetKey::new("generated://visual-source/quad"),
         size,
         sheet: None,

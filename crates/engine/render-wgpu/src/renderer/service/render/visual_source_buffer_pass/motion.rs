@@ -148,7 +148,7 @@ fn render_per_draw_motion_buffer(
             transform.translation,
             target_size,
         );
-        let sprite = amigo_2d_sprite::Sprite {
+        let sprite = amigo_sprite_2d_plugin::Sprite {
             texture: command.sprite.texture.clone(),
             size: command.sprite.size,
             sheet: None,
@@ -184,7 +184,7 @@ fn render_per_draw_motion_buffer(
             transform.translation,
             target_size,
         );
-        let sprite = amigo_2d_sprite::Sprite {
+        let sprite = amigo_sprite_2d_plugin::Sprite {
             texture: command.image.asset.clone(),
             size: command.image.size,
             sheet: None,

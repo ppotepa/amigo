@@ -630,16 +630,16 @@ mod tests {
                 material: refractive_material(),
                 coverage_kind,
             },
-            payload: MaterialCoveragePayload2d::Text(amigo_2d_text::Text2dDrawCommand {
+            payload: MaterialCoveragePayload2d::Text(amigo_text_2d_plugin::Text2dDrawCommand {
                 entity_id: SceneEntityId::new(1),
                 entity_name: owner.to_owned(),
                 render_layer: render_layer.to_owned(),
-                text: amigo_2d_text::Text2d {
+                text: amigo_text_2d_plugin::Text2d {
                     content: owner.to_owned(),
                     font: AssetKey::new("test/font"),
                     bounds: amigo_math::Vec2::new(100.0, 40.0),
                     transform: Transform2::default(),
-                    style: amigo_2d_text::Text2dStyle::default(),
+                    style: amigo_text_2d_plugin::Text2dStyle::default(),
                     post_fx_host_id: None,
                 },
                 z_index: 40.0,

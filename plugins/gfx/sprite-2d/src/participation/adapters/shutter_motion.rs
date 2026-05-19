@@ -1,15 +1,13 @@
-use amigo_shutter_motion_plugin::api::MotionShutterCoverage2d;
+use amigo_plugin_api::TargetId;
 
 use crate::api::Sprite2dCoverage;
 
 pub fn sprite_coverage_to_shutter_motion(
     coverage: &Sprite2dCoverage,
-) -> Option<MotionShutterCoverage2d> {
+) -> Option<TargetId> {
     match coverage {
         Sprite2dCoverage::TextureAlpha { render_layer, .. } => {
-            Some(MotionShutterCoverage2d::RenderLayer {
-                layer_id: render_layer.clone(),
-            })
+            Some(TargetId(format!("shutter-motion.render-layer.{render_layer}")))
         }
         Sprite2dCoverage::Unsupported { .. } => None,
     }

@@ -1,7 +1,7 @@
-use crate::model::{
+use super::model::{
     VectorShape2d, VectorShape2dDrawCommand, VectorShapeKind2d, VectorStyle2d, VectorViewportFit2d,
 };
-use crate::service::VectorSceneService;
+use super::service::VectorSceneService;
 use amigo_camera_optics_plugin::api::CameraOpticalResponse2d;
 use amigo_render_api::{
     Material2d, Material2dLighting, Material2dOptical, Material2dOpticalMode,

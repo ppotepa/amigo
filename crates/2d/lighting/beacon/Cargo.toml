@@ -17,4 +17,4 @@ amigo-scene.workspace = true
 amigo-scripting-api.workspace = true
 amigo-session.workspace = true
 amigo-capabilities.workspace = true
-amigo-2d-vector.workspace = true
+amigo-vector-2d-plugin.workspace = true

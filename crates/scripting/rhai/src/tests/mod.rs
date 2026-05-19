@@ -13,8 +13,8 @@ use amigo_2d_particles::{
     Particle2dSceneService, ParticleEmitter2d, ParticleEmitter2dCommand, ParticleShape2d,
 };
 use amigo_2d_physics::{CircleCollider2d, CircleCollider2dCommand, Physics2dSceneService};
-use amigo_2d_sprite::{Sprite, SpriteDrawCommand, SpriteSceneService, SpriteSheet};
-use amigo_2d_vector::{
+use amigo_sprite_2d_plugin::{Sprite, SpriteDrawCommand, SpriteSceneService, SpriteSheet};
+use amigo_vector_2d_plugin::{
     VectorSceneService, VectorShape2d, VectorShape2dDrawCommand, VectorShapeKind2d, VectorStyle2d,
     VectorViewportFit2d,
 };

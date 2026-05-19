@@ -11,14 +11,14 @@ use amigo_scripting_api::DevConsoleState;
 
 use super::*;
 use amigo_runtime_bundles::amigo_2d_particles::Particle2dSceneService;
-use amigo_runtime_bundles::amigo_2d_sprite::{
+use amigo_runtime_bundles::amigo_sprite_2d_plugin::{
     Sprite, SpriteDrawCommand, SpriteSceneService, SpriteSheet,
 };
-use amigo_runtime_bundles::amigo_2d_text::{Text2d, Text2dDrawCommand, Text2dSceneService};
+use amigo_runtime_bundles::amigo_text_2d_plugin::{Text2d, Text2dDrawCommand, Text2dSceneService};
 use amigo_runtime_bundles::amigo_2d_tilemap::{
     TileMap2d, TileMap2dDrawCommand, TileMap2dSceneService,
 };
-use amigo_runtime_bundles::amigo_2d_vector::{
+use amigo_runtime_bundles::amigo_vector_2d_plugin::{
     VectorSceneService, VectorShape2d, VectorShape2dDrawCommand, VectorShapeKind2d, VectorStyle2d,
 };
 use amigo_runtime_bundles::amigo_3d_material::{
@@ -130,7 +130,7 @@ fn app_render_extractor_registry_collects_vector_and_ui_data() {
         render_layer: "default".to_owned(),
         z_index: 2.0,
         transform: Transform2::default(),
-        viewport_fit: amigo_runtime_bundles::amigo_2d_vector::VectorViewportFit2d::Fixed,
+        viewport_fit: amigo_runtime_bundles::amigo_vector_2d_plugin::VectorViewportFit2d::Fixed,
         viewport_canvas_size: None,
         material: None,
         render_contributions: amigo_render_api::RenderContributionSet::default(),
@@ -221,7 +221,7 @@ fn app_render_extractor_registry_collects_vector_and_ui_data() {
         render_layer: "default".to_owned(),
         z_index: 3.0,
         transform: Transform2::default(),
-        viewport_fit: amigo_runtime_bundles::amigo_2d_vector::VectorViewportFit2d::Fixed,
+        viewport_fit: amigo_runtime_bundles::amigo_vector_2d_plugin::VectorViewportFit2d::Fixed,
         viewport_canvas_size: None,
         material: None,
         render_contributions: amigo_render_api::RenderContributionSet::default(),
@@ -235,7 +235,7 @@ fn app_render_extractor_registry_collects_vector_and_ui_data() {
             font: AssetKey::new("playground-2d/fonts/debug-ui"),
             bounds: Vec2::new(320.0, 64.0),
             transform: Transform2::default(),
-            style: amigo_runtime_bundles::amigo_2d_text::Text2dStyle::default(),
+            style: amigo_runtime_bundles::amigo_text_2d_plugin::Text2dStyle::default(),
             post_fx_host_id: None,
         },
         render_layer: "default".to_owned(),
@@ -912,7 +912,7 @@ fn rebuilds_vector_scene_service_from_packet() {
         render_layer: "default".to_owned(),
         z_index: 1.0,
         transform: Transform2::default(),
-        viewport_fit: amigo_runtime_bundles::amigo_2d_vector::VectorViewportFit2d::Fixed,
+        viewport_fit: amigo_runtime_bundles::amigo_vector_2d_plugin::VectorViewportFit2d::Fixed,
         viewport_canvas_size: None,
         material: None,
         render_contributions: amigo_render_api::RenderContributionSet::default(),
@@ -972,7 +972,7 @@ fn rebuilds_text2d_scene_service_from_packet() {
             font: AssetKey::new("playground-2d/fonts/debug-ui"),
             bounds: Vec2::new(240.0, 48.0),
             transform: Transform2::default(),
-            style: amigo_runtime_bundles::amigo_2d_text::Text2dStyle::default(),
+            style: amigo_runtime_bundles::amigo_text_2d_plugin::Text2dStyle::default(),
             post_fx_host_id: None,
         },
         render_layer: "default".to_owned(),

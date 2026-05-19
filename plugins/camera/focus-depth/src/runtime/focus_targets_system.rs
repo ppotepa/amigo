@@ -51,7 +51,7 @@ pub fn refresh_focus_targets_2d_system(runtime: &Runtime) -> AmigoResult<()> {
         push_layer_focus_target(&mut output, layer, depth_space);
     }
 
-    if let Some(text2d) = runtime.resolve::<amigo_2d_text::Text2dSceneService>() {
+    if let Some(text2d) = runtime.resolve::<amigo_text_2d_plugin::Text2dSceneService>() {
         for command in text2d.commands() {
             push_entity_focus_target(
                 &mut output,
@@ -64,7 +64,7 @@ pub fn refresh_focus_targets_2d_system(runtime: &Runtime) -> AmigoResult<()> {
             );
         }
     }
-    if let Some(sprites) = runtime.resolve::<amigo_2d_sprite::SpriteSceneService>() {
+    if let Some(sprites) = runtime.resolve::<amigo_sprite_2d_plugin::SpriteSceneService>() {
         for command in sprites.commands() {
             push_entity_focus_target(
                 &mut output,
@@ -92,7 +92,7 @@ pub fn refresh_focus_targets_2d_system(runtime: &Runtime) -> AmigoResult<()> {
             );
         }
     }
-    if let Some(vectors) = runtime.resolve::<amigo_2d_vector::VectorSceneService>() {
+    if let Some(vectors) = runtime.resolve::<amigo_vector_2d_plugin::VectorSceneService>() {
         for command in vectors.commands() {
             push_entity_focus_target(
                 &mut output,
@@ -225,7 +225,7 @@ fn focus_depth_for_layer(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use amigo_2d_text::{Text2d, Text2dDrawCommand, Text2dStyle};
+    use amigo_text_2d_plugin::{Text2d, Text2dDrawCommand, Text2dStyle};
     use amigo_assets::AssetKey;
     use amigo_math::Transform2;
     use amigo_scene::SceneEntityId;
@@ -237,7 +237,7 @@ mod tests {
             .unwrap()
             .with_service(amigo_2d_composition::RenderLayer2dSceneService::default())
             .unwrap()
-            .with_service(amigo_2d_text::Text2dSceneService::default())
+            .with_service(amigo_text_2d_plugin::Text2dSceneService::default())
             .unwrap()
             .with_service(CameraFocusTarget2dService::default())
             .unwrap()
@@ -263,7 +263,7 @@ mod tests {
             },
             optical_role: amigo_2d_spatial::OpticalLayerRole2d::ForegroundMedium,
         });
-        let text = runtime.required::<amigo_2d_text::Text2dSceneService>().unwrap();
+        let text = runtime.required::<amigo_text_2d_plugin::Text2dSceneService>().unwrap();
         text.queue(Text2dDrawCommand {
             entity_id: SceneEntityId::new(1),
             entity_name: "title".to_owned(),

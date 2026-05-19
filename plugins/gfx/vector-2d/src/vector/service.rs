@@ -1,6 +1,6 @@
 use std::sync::Mutex;
 
-use crate::model::{RadialJitterPolygon, VectorShape2dDrawCommand, VectorShapeKind2d};
+use super::model::{RadialJitterPolygon, VectorShape2dDrawCommand, VectorShapeKind2d};
 use amigo_math::Vec2;
 
 #[derive(Debug, Default)]
@@ -77,7 +77,7 @@ impl VectorSceneService {
         entity_name: &str,
         config: RadialJitterPolygon,
     ) -> bool {
-        let Ok(points) = crate::model::radial_jitter_polygon_points(config) else {
+        let Ok(points) = super::model::radial_jitter_polygon_points(config) else {
             return false;
         };
         let mut commands = self

@@ -4,7 +4,7 @@ use amigo_scene::{
     format_scene_command,
 };
 
-use crate::{VectorSceneService, queue_vector_shape_scene_command};
+use super::{VectorSceneService, queue_vector_shape_scene_command};
 
 pub struct Vector2dSceneCommandHandler;
 

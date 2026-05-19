@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use amigo_2d_vector::{RadialJitterPolygon, VectorSceneService};
+use amigo_vector_2d_plugin::{RadialJitterPolygon, VectorSceneService};
 use amigo_math::Vec2;
 use rhai::{Array, Dynamic, FLOAT, INT, Map};
 
