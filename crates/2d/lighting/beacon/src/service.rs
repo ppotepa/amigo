@@ -103,31 +103,12 @@ impl BeaconLight2dSceneService {
         })
     }
 
-    pub fn set_flare_length_px(&self, target: &str, value: f32) -> bool {
-        self.update_target(target, |beacon| {
-            beacon.flare_length_px = value.clamp(0.0, 2048.0);
-        })
-    }
-
-    pub fn set_flare_strength(&self, target: &str, value: f32) -> bool {
-        self.update_target(target, |beacon| {
-            beacon.flare_strength = value.clamp(0.0, 8.0);
-        })
-    }
-
-    pub fn set_bloom(&self, target: &str, value: f32) -> bool {
+pub fn set_bloom(&self, target: &str, value: f32) -> bool {
         self.update_target(target, |beacon| {
             beacon.bloom = value.clamp(0.0, 8.0);
         })
     }
-
-    pub fn set_lens_influence(&self, target: &str, value: f32) -> bool {
-        self.update_target(target, |beacon| {
-            beacon.lens_influence = value.clamp(0.0, 8.0);
-        })
-    }
-
-    pub fn set_position_2d(&self, target: &str, x: f32, y: f32) -> bool {
+pub fn set_position_2d(&self, target: &str, x: f32, y: f32) -> bool {
         if !x.is_finite() || !y.is_finite() {
             return false;
         }
@@ -210,10 +191,10 @@ impl BeaconLight2dSceneService {
                     beam_width_degrees: b.beam_width_degrees,
                     beam_strength: b.beam_strength,
                     aberration_px: b.aberration_px,
-                    flare_length_px: b.flare_length_px,
-                    flare_strength: b.flare_strength,
+                    
+                    
                     bloom: b.bloom,
-                    lens_influence: b.lens_influence,
+                    camera_response: b.camera_response,
                     distance_m: b.distance_m,
                     z_depth: b.z_depth,
                     render_contributions: b.render_contributions.clone(),

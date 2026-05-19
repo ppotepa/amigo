@@ -39,10 +39,10 @@ fn runtime_control_sets_glow_strength() {
         beam_width_degrees: 5.0,
         beam_strength: 0.2,
         aberration_px: 0.0,
-        flare_length_px: 0.0,
-        flare_strength: 0.0,
+        
+        
         bloom: 0.0,
-        lens_influence: 0.0,
+        camera_response: amigo_camera_optics_plugin::api::CameraOpticalResponse2d::default(),
         distance_m: None,
         z_depth: None,
         z_index: 0.0,
@@ -91,10 +91,10 @@ fn beacon_service_sets_z_depth() {
         beam_width_degrees: 5.0,
         beam_strength: 0.2,
         aberration_px: 0.0,
-        flare_length_px: 0.0,
-        flare_strength: 0.0,
+        
+        
         bloom: 0.0,
-        lens_influence: 0.0,
+        camera_response: amigo_camera_optics_plugin::api::CameraOpticalResponse2d::default(),
         distance_m: None,
         z_depth: None,
         z_index: 0.0,

@@ -64,9 +64,8 @@ pub fn collect_light_sources_2d(
                 Some(beacon.intensity),
                 Some(beacon.intensity * beacon.color.a),
                 Some(1.0),
-                Some(beacon_camera_response(beacon)),
+                Some(beacon.camera_response),
                 Some(beacon.bloom),
-                Some(beacon.lens_influence),
                 Some(beacon.halo_radius_px.max(beacon.core_radius_px)),
                 None,
                 beacon.distance_m,
@@ -85,9 +84,8 @@ pub fn collect_light_sources_2d(
                 Some(beacon.intensity),
                 Some(beacon.intensity * beacon.color.a),
                 Some(1.0),
-                Some(beacon_camera_response(beacon)),
+                Some(beacon.camera_response),
                 Some(beacon.bloom),
-                Some(beacon.lens_influence),
                 Some(beacon.halo_radius_px.max(beacon.core_radius_px)),
                 None,
                 beacon.distance_m,
@@ -117,7 +115,6 @@ pub fn collect_light_sources_2d(
             None,
             None,
             None,
-            None,
             vec![LightContributionKind2d::LightingEmit],
             "global_light_command",
             None,
@@ -131,7 +128,6 @@ pub fn collect_light_sources_2d(
                 "LightMap2D",
                 LightEmitterKind2d::LightMapSource,
                 Some(lightmap.id.clone()),
-                None,
                 None,
                 None,
                 None,
@@ -172,7 +168,6 @@ pub fn collect_light_sources_2d(
                 None,
                 None,
                 None,
-                None,
                 vec![LightContributionKind2d::LightingEmit],
                 format!("lightmap_channel source={} channel={} layers={layers}", lightmap.id, channel.id),
                 None,
@@ -193,7 +188,6 @@ pub fn collect_light_sources_2d(
                 Some(0.0),
                 Some(1.0),
                 Some(group.camera_response),
-                None,
                 None,
                 None,
                 None,
@@ -295,7 +289,6 @@ pub fn collect_light_sources_2d(
                     Some(light.radius),
                     None,
                     None,
-                    None,
                     particle_light_contributions(light),
                     "particle_light_active",
                     position_px,
@@ -315,7 +308,6 @@ pub fn collect_light_sources_2d(
                     None,
                     None,
                     Some(light.radius),
-                    None,
                     None,
                     None,
                     particle_light_contributions(light),
@@ -346,7 +338,6 @@ pub fn collect_light_sources_2d(
                     None,
                     None,
                     None,
-                    None,
                     vec![LightContributionKind2d::EmissiveBuffer],
                     format!(
                         "availability={} origin={:?}",
@@ -361,7 +352,6 @@ pub fn collect_light_sources_2d(
                     "SceneEmissive",
                     LightEmitterKind2d::EmissiveVisualSource,
                     Some(emissive.id.0.clone()),
-                    None,
                     None,
                     None,
                     None,
@@ -421,7 +411,6 @@ fn collect_material_emissive_light_sources(
                 None,
                 None,
                 None,
-                None,
                 Vec::new(),
                 "material_emissive_no_camera_response",
                 None,
@@ -464,7 +453,6 @@ fn collect_material_emissive_light_sources(
             } else {
                 0.0
             }),
-            None,
             None,
             None,
             None,
@@ -540,7 +528,7 @@ pub fn format_light_sources_2d(sources: &[LightSource2dCommon]) -> String {
             source.reason
         ));
         lines.push(format!(
-            "id={} layer={} color={} intensity={} effective_intensity={} response={} bloom={} lens_influence={} radius_px={} falloff={} distance_m={} z_depth={} contributions={} used_by={}",
+            "id={} layer={} color={} intensity={} effective_intensity={} response={} bloom={} radius_px={} falloff={} distance_m={} z_depth={} contributions={} used_by={}",
             source.emitter_id.as_deref().unwrap_or("-"),
             source.render_layer.as_deref().unwrap_or("-"),
             format_color(source.color_rgba),
@@ -548,7 +536,6 @@ pub fn format_light_sources_2d(sources: &[LightSource2dCommon]) -> String {
             format_opt(source.effective_intensity),
             format_opt(source.response),
             format_opt(source.bloom),
-            format_opt(source.lens_influence),
             format_opt(source.radius_px),
             format_opt(source.falloff),
             format_opt(source.distance_m),
@@ -653,7 +640,6 @@ fn push_light_group_source(
             None,
             None,
             None,
-            None,
             light_group_contributions(group),
             reason,
             None,
@@ -669,7 +655,6 @@ fn push_light_group_source(
             Some(effective_intensity),
             Some(response),
             Some(group.camera_response),
-            None,
             None,
             None,
             None,
@@ -706,24 +691,6 @@ fn light_group_contributions(
         contributions.push(LightContributionKind2d::CameraFxSource);
     }
     contributions
-}
-
-fn beacon_camera_response(
-    beacon: &amigo_2d_lighting_beacon::BeaconLight2dDrawCommand,
-) -> CameraOpticalResponse2d {
-    CameraOpticalResponse2d {
-        enabled: beacon.lens_influence > 0.0 || beacon.bloom > 0.0 || beacon.flare_strength > 0.0,
-        intensity: beacon.lens_influence.max(beacon.flare_strength).max(beacon.bloom),
-        bloom: beacon.bloom,
-        glare: beacon.glow_strength.max(beacon.lens_influence),
-        ghosting: beacon.flare_strength,
-        streaks: beacon.flare_length_px / 1000.0,
-        chromatic_smear: beacon.aberration_px / 32.0,
-        dirt_response: beacon.lens_influence * 0.5,
-        halation: beacon.bloom * 0.35,
-        threshold: 0.0,
-    }
-    .normalized()
 }
 
 fn particle_light_camera_response(
@@ -970,7 +937,7 @@ mod tests {
                 ..CameraOpticalResponse2d::default()
             }),
             bloom: None,
-            lens_influence: None,
+            
             radius_px: None,
             falloff: None,
             distance_m: None,
@@ -1024,10 +991,10 @@ mod tests {
             beam_width_degrees: 0.0,
             beam_strength: 0.0,
             aberration_px: 4.0,
-            flare_length_px: 180.0,
-            flare_strength: 0.7,
+            
+            
             bloom: 0.5,
-            lens_influence: 0.8,
+            camera_response: CameraOpticalResponse2d { enabled: true, intensity: 0.8, bloom: 0.5, glare: 0.8, ghosting: 0.7, streaks: 0.18, chromatic_smear: 4.0 / 32.0, dirt_response: 0.4, halation: 0.5 * 0.35, threshold: 0.0 },
             distance_m: Some(2.0),
             z_depth: Some(0.75),
             render_contributions: amigo_render_api::RenderContributionSet::from_pairs([

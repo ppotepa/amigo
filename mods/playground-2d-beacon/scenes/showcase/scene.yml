@@ -102,10 +102,18 @@ entities:
         beam_width_degrees: 21.0
         beam_strength: 0.42
         aberration_px: 2.5
-        flare_length_px: 170.0
-        flare_strength: 0.9
         bloom: 0.72
-        lens_influence: 1.0
+        camera_response:
+          enabled: true
+          intensity: 1
+          bloom: 0.72
+          glare: 1
+          ghosting: 0.9
+          streaks: 0.17
+          chromatic_smear: 0.078
+          dirt_response: 0.5
+          halation: 0.252
+          threshold: 0.0
         z_index: 2000.0
         enabled: true
 
@@ -131,10 +139,18 @@ entities:
         beam_width_degrees: 18.0
         beam_strength: 0.34
         aberration_px: 2.0
-        flare_length_px: 130.0
-        flare_strength: 0.72
         bloom: 0.68
-        lens_influence: 0.75
+        camera_response:
+          enabled: true
+          intensity: 0.75
+          bloom: 0.68
+          glare: 0.75
+          ghosting: 0.72
+          streaks: 0.13
+          chromatic_smear: 0.063
+          dirt_response: 0.375
+          halation: 0.238
+          threshold: 0.0
         z_index: 2000.0
         enabled: true
 
@@ -160,10 +176,18 @@ entities:
         beam_width_degrees: 19.0
         beam_strength: 0.36
         aberration_px: 2.2
-        flare_length_px: 145.0
-        flare_strength: 0.78
         bloom: 0.70
-        lens_influence: 0.82
+        camera_response:
+          enabled: true
+          intensity: 0.82
+          bloom: 0.7
+          glare: 0.82
+          ghosting: 0.78
+          streaks: 0.145
+          chromatic_smear: 0.069
+          dirt_response: 0.41
+          halation: 0.245
+          threshold: 0.0
         z_index: 2000.0
         enabled: true
 
@@ -190,10 +214,18 @@ entities:
         beam_width_degrees: 18.5
         beam_strength: 0.34
         aberration_px: 2.1
-        flare_length_px: 138.0
-        flare_strength: 0.76
         bloom: 0.68
-        lens_influence: 0.78
+        camera_response:
+          enabled: true
+          intensity: 0.78
+          bloom: 0.68
+          glare: 0.78
+          ghosting: 0.76
+          streaks: 0.138
+          chromatic_smear: 0.066
+          dirt_response: 0.39
+          halation: 0.238
+          threshold: 0.0
         z_index: 2000.0
         enabled: true
 
@@ -220,10 +252,18 @@ entities:
         beam_width_degrees: 18.5
         beam_strength: 0.34
         aberration_px: 2.1
-        flare_length_px: 138.0
-        flare_strength: 0.76
         bloom: 0.68
-        lens_influence: 0.78
+        camera_response:
+          enabled: true
+          intensity: 0.78
+          bloom: 0.68
+          glare: 0.78
+          ghosting: 0.76
+          streaks: 0.138
+          chromatic_smear: 0.066
+          dirt_response: 0.39
+          halation: 0.238
+          threshold: 0.0
         z_index: 2000.0
         enabled: true
 

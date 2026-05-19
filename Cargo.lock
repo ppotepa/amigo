@@ -140,6 +140,7 @@ name = "amigo-2d-lighting-beacon"
 version = "0.1.0"
 dependencies = [
  "amigo-2d-vector",
+ "amigo-camera-optics-plugin",
  "amigo-capabilities",
  "amigo-core",
  "amigo-math",

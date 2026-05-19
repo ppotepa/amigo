@@ -400,22 +400,6 @@ pub fn queue_beacon2d_set_aberration_px(
     queue_beacon2d_value(command_queue, "set_aberration_px", target, value)
 }
 
-pub fn queue_beacon2d_set_flare_length_px(
-    command_queue: Option<&Arc<ScriptCommandQueue>>,
-    target: &str,
-    value: f32,
-) -> bool {
-    queue_beacon2d_value(command_queue, "set_flare_length_px", target, value)
-}
-
-pub fn queue_beacon2d_set_flare_strength(
-    command_queue: Option<&Arc<ScriptCommandQueue>>,
-    target: &str,
-    value: f32,
-) -> bool {
-    queue_beacon2d_value(command_queue, "set_flare_strength", target, value)
-}
-
 pub fn queue_beacon2d_set_bloom(
     command_queue: Option<&Arc<ScriptCommandQueue>>,
     target: &str,
@@ -423,15 +407,6 @@ pub fn queue_beacon2d_set_bloom(
 ) -> bool {
     queue_beacon2d_value(command_queue, "set_bloom", target, value)
 }
-
-pub fn queue_beacon2d_set_lens_influence(
-    command_queue: Option<&Arc<ScriptCommandQueue>>,
-    target: &str,
-    value: f32,
-) -> bool {
-    queue_beacon2d_value(command_queue, "set_lens_influence", target, value)
-}
-
 pub fn queue_beacon2d_set_position_2d(
     command_queue: Option<&Arc<ScriptCommandQueue>>,
     target: &str,

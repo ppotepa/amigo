@@ -1986,22 +1986,6 @@ pub fn beacon_light_2d_descriptor() -> ComponentTypeDescriptor {
                 "render2d.beacon"
             ),
             p!(
-                "flare_length_px",
-                "Flare Length",
-                EditorPropertyValueKind::Number,
-                EditorPropertyEditorKind::Number,
-                MetadataTraitKind::RuntimeControllable,
-                "render2d.beacon"
-            ),
-            p!(
-                "flare_strength",
-                "Flare Strength",
-                EditorPropertyValueKind::Number,
-                EditorPropertyEditorKind::Number,
-                MetadataTraitKind::RuntimeControllable,
-                "render2d.beacon"
-            ),
-            p!(
                 "bloom",
                 "Bloom",
                 EditorPropertyValueKind::Number,
@@ -2010,11 +1994,11 @@ pub fn beacon_light_2d_descriptor() -> ComponentTypeDescriptor {
                 "render2d.beacon"
             ),
             p!(
-                "lens_influence",
-                "Lens Influence",
-                EditorPropertyValueKind::Number,
-                EditorPropertyEditorKind::Number,
-                MetadataTraitKind::RuntimeControllable,
+                "camera_response",
+                "Camera Response",
+                EditorPropertyValueKind::String,
+                EditorPropertyEditorKind::ReadOnly,
+                MetadataTraitKind::Renderable2D,
                 "render2d.beacon"
             ),
         ],

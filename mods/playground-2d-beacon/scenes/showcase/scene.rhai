@@ -26,7 +26,6 @@ fn apply_controls(world_api) {
     world_api.beacon2d.set_duty_cycle(target(), world_api.state.get_float("duty"));
     world_api.beacon2d.set_halo_radius_px(target(), world_api.state.get_float("halo"));
     world_api.beacon2d.set_aberration_px(target(), world_api.state.get_float("aberration"));
-    world_api.beacon2d.set_flare_strength(target(), world_api.state.get_float("flare"));
 }
 
 fn set_intensity(world_api, value) {
@@ -61,7 +60,6 @@ fn set_aberration(world_api, value) {
 
 fn set_flare(world_api, value) {
     world_api.state.set_float("flare", clamp(value, 0.0, 3.0));
-    world_api.beacon2d.set_flare_strength(target(), world_api.state.get_float("flare"));
     sync_labels(world_api);
 }
 

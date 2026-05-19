@@ -329,8 +329,6 @@ fn configure_cursor_light(world_api, intensity) {
     world_api.state.set_float("office.light_radius_px", 620.0);
     world_api.beacon2d.set_glow_strength("office-desk-point-light", 0.0);
     world_api.beacon2d.set_bloom("office-desk-point-light", 0.0);
-    world_api.beacon2d.set_lens_influence("office-desk-point-light", 1.25);
-    world_api.beacon2d.set_flare_strength("office-desk-point-light", 0.0);
 }
 
 fn clamp_float(value, min_value, max_value) {

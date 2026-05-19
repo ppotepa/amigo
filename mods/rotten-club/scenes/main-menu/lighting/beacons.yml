@@ -39,10 +39,18 @@ entities:
     beam_width_degrees: 1.0
     beam_strength: 0.0
     aberration_px: 0.62
-    flare_length_px: 72.0
-    flare_strength: 0.18
     bloom: 0.28
-    lens_influence: 0.58
+    camera_response:
+      enabled: true
+      intensity: 0.58
+      bloom: 0.28
+      glare: 0.58
+      ghosting: 0.18
+      streaks: 0.072
+      chromatic_smear: 0.019
+      dirt_response: 0.29
+      halation: 0.098
+      threshold: 0.0
     depth:
       mode: distance
       distance_m: 150.0
@@ -86,10 +94,18 @@ entities:
     beam_width_degrees: 1.0
     beam_strength: 0.0
     aberration_px: 0.55
-    flare_length_px: 58.0
-    flare_strength: 0.14
     bloom: 0.25
-    lens_influence: 0.42
+    camera_response:
+      enabled: true
+      intensity: 0.42
+      bloom: 0.25
+      glare: 0.42
+      ghosting: 0.14
+      streaks: 0.058
+      chromatic_smear: 0.017
+      dirt_response: 0.21
+      halation: 0.088
+      threshold: 0.0
     depth:
       mode: distance
       distance_m: 180.0
@@ -133,10 +149,18 @@ entities:
     beam_width_degrees: 1.0
     beam_strength: 0.0
     aberration_px: 0.58
-    flare_length_px: 64.0
-    flare_strength: 0.16
     bloom: 0.27
-    lens_influence: 0.50
+    camera_response:
+      enabled: true
+      intensity: 0.5
+      bloom: 0.27
+      glare: 0.5
+      ghosting: 0.16
+      streaks: 0.064
+      chromatic_smear: 0.018
+      dirt_response: 0.25
+      halation: 0.095
+      threshold: 0.0
     depth:
       mode: distance
       distance_m: 130.0
@@ -181,10 +205,18 @@ entities:
     beam_width_degrees: 1.0
     beam_strength: 0.0
     aberration_px: 0.56
-    flare_length_px: 60.0
-    flare_strength: 0.15
     bloom: 0.26
-    lens_influence: 0.46
+    camera_response:
+      enabled: true
+      intensity: 0.46
+      bloom: 0.26
+      glare: 0.46
+      ghosting: 0.15
+      streaks: 0.06
+      chromatic_smear: 0.018
+      dirt_response: 0.23
+      halation: 0.091
+      threshold: 0.0
     depth:
       mode: distance
       distance_m: 90.0
@@ -229,10 +261,18 @@ entities:
     beam_width_degrees: 1.0
     beam_strength: 0.0
     aberration_px: 0.56
-    flare_length_px: 60.0
-    flare_strength: 0.15
     bloom: 0.26
-    lens_influence: 0.46
+    camera_response:
+      enabled: true
+      intensity: 0.46
+      bloom: 0.26
+      glare: 0.46
+      ghosting: 0.15
+      streaks: 0.06
+      chromatic_smear: 0.018
+      dirt_response: 0.23
+      halation: 0.091
+      threshold: 0.0
     depth:
       mode: distance
       distance_m: 90.0

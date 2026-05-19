@@ -165,12 +165,6 @@ pub(super) fn default_beacon_beam_strength() -> f32 {
 pub(super) fn default_beacon_aberration_px() -> f32 {
     0.8
 }
-pub(super) fn default_beacon_flare_length_px() -> f32 {
-    16.0
-}
-pub(super) fn default_beacon_flare_strength() -> f32 {
-    0.25
-}
 pub(super) fn default_beacon_bloom() -> f32 {
     1.0
 }

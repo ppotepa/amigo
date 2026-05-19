@@ -80,25 +80,11 @@ pub fn handle_beacon2d_script_command(
                 ctx.beacon_scene_service.set_aberration_px(target, value)
             })
         }
-        ("set_flare_length_px", [target, value]) => {
-            update_f32(target, value, "flare length", |target, value| {
-                ctx.beacon_scene_service.set_flare_length_px(target, value)
-            })
-        }
-        ("set_flare_strength", [target, value]) => {
-            update_f32(target, value, "flare strength", |target, value| {
-                ctx.beacon_scene_service.set_flare_strength(target, value)
-            })
-        }
-        ("set_bloom", [target, value]) => update_f32(target, value, "bloom", |target, value| {
+
+("set_bloom", [target, value]) => update_f32(target, value, "bloom", |target, value| {
             ctx.beacon_scene_service.set_bloom(target, value)
         }),
-        ("set_lens_influence", [target, value]) => {
-            update_f32(target, value, "lens influence", |target, value| {
-                ctx.beacon_scene_service.set_lens_influence(target, value)
-            })
-        }
-        ("set_position_2d", [target, x, y]) => {
+("set_position_2d", [target, x, y]) => {
             update_vec2(target, x, y, "position", |target, x, y| {
                 ctx.beacon_scene_service.set_position_2d(target, x, y)
             })

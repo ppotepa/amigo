@@ -39,10 +39,18 @@ entities:
     beam_width_degrees: 1.0
     beam_strength: 0.0
     aberration_px: 0.24
-    flare_length_px: 58.0
-    flare_strength: 0.0
     bloom: 0.0
-    lens_influence: 1.25
+    camera_response:
+      enabled: true
+      intensity: 1.25
+      bloom: 0
+      glare: 1.25
+      ghosting: 0
+      streaks: 0.058
+      chromatic_smear: 0.008
+      dirt_response: 0.625
+      halation: 0
+      threshold: 0.0
     depth:
       mode: distance
       distance_m: 1.2

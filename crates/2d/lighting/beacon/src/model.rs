@@ -1,4 +1,5 @@
 use amigo_math::{ColorRgba, Transform2, Vec2};
+use amigo_camera_optics_plugin::api::CameraOpticalResponse2d;
 use amigo_render_api::{
     render_contribution_roles as roles, RenderContributionSet,
 };
@@ -31,10 +32,8 @@ pub struct BeaconLight2dCommand {
     pub beam_width_degrees: f32,
     pub beam_strength: f32,
     pub aberration_px: f32,
-    pub flare_length_px: f32,
-    pub flare_strength: f32,
     pub bloom: f32,
-    pub lens_influence: f32,
+    pub camera_response: CameraOpticalResponse2d,
     pub distance_m: Option<f32>,
     pub z_depth: Option<f32>,
     pub z_index: f32,
@@ -63,10 +62,8 @@ pub struct BeaconLight2dDrawCommand {
     pub beam_width_degrees: f32,
     pub beam_strength: f32,
     pub aberration_px: f32,
-    pub flare_length_px: f32,
-    pub flare_strength: f32,
     pub bloom: f32,
-    pub lens_influence: f32,
+    pub camera_response: CameraOpticalResponse2d,
     pub distance_m: Option<f32>,
     pub z_depth: Option<f32>,
     pub render_contributions: RenderContributionSet,
@@ -108,10 +105,20 @@ impl From<&BeaconLight2dSceneCommand> for BeaconLight2dCommand {
             beam_width_degrees: value.beam_width_degrees,
             beam_strength: value.beam_strength,
             aberration_px: value.aberration_px,
-            flare_length_px: value.flare_length_px,
-            flare_strength: value.flare_strength,
             bloom: value.bloom,
-            lens_influence: value.lens_influence,
+            camera_response: CameraOpticalResponse2d {
+                enabled: value.camera_response.enabled,
+                intensity: value.camera_response.intensity,
+                bloom: value.camera_response.bloom,
+                glare: value.camera_response.glare,
+                ghosting: value.camera_response.ghosting,
+                streaks: value.camera_response.streaks,
+                chromatic_smear: value.camera_response.chromatic_smear,
+                dirt_response: value.camera_response.dirt_response,
+                halation: value.camera_response.halation,
+                threshold: value.camera_response.threshold,
+            }
+            .normalized(),
             distance_m: value.depth.as_ref().and_then(|depth| depth.distance_m),
             z_depth: value.z_depth.map(|z_depth| z_depth.clamp(0.0, 1.0)),
             z_index: value.z_index,

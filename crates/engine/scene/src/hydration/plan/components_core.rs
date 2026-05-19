@@ -436,10 +436,8 @@ fn hydrate_component_core(
             beam_width_degrees,
             beam_strength,
             aberration_px,
-            flare_length_px,
-            flare_strength,
             bloom,
-            lens_influence,
+            camera_response,
             depth,
             z_depth,
             z_index,
@@ -478,10 +476,11 @@ fn hydrate_component_core(
                     beam_width_degrees: beam_width_degrees.clamp(1.0, 179.0),
                     beam_strength: (*beam_strength).max(0.0),
                     aberration_px: (*aberration_px).max(0.0),
-                    flare_length_px: (*flare_length_px).max(0.0),
-                    flare_strength: (*flare_strength).max(0.0),
                     bloom: (*bloom).max(0.0),
-                    lens_influence: (*lens_influence).max(0.0),
+                    camera_response:
+                        amigo_camera_optics_plugin::scene::camera_optical_response_from_document(
+                            *camera_response,
+                        ),
                     depth: depth.as_ref().map(|depth| {
                         render_depth_from_document(
                             depth,

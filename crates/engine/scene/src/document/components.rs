@@ -16,6 +16,7 @@ use super::text2d::*;
 use super::ui::*;
 use super::visual2d::PostFx2dDocument;
 use super::visual2d::RenderDepth2dDocument;
+use amigo_camera_optics_plugin::scene::CameraOpticalResponse2dDocument;
 
 impl SceneEntityDocument {
     pub fn display_name(&self) -> String {
@@ -255,14 +256,10 @@ pub enum SceneComponentDocument {
         beam_strength: f32,
         #[serde(default = "default_beacon_aberration_px")]
         aberration_px: f32,
-        #[serde(default = "default_beacon_flare_length_px")]
-        flare_length_px: f32,
-        #[serde(default = "default_beacon_flare_strength")]
-        flare_strength: f32,
         #[serde(default = "default_beacon_bloom")]
         bloom: f32,
         #[serde(default)]
-        lens_influence: f32,
+        camera_response: CameraOpticalResponse2dDocument,
         #[serde(default, skip_serializing_if = "Option::is_none")]
         depth: Option<RenderDepth2dDocument>,
         #[serde(default)]

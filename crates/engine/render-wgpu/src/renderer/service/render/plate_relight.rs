@@ -547,7 +547,7 @@ fn normalize_beacon_for_plate_relight(
         -1.0
     };
     let casts_shadow = if beacon.intensity > 0.001 { 1.0 } else { 0.0 };
-    let spec = beacon.lens_influence.max(beacon.flare_strength).max(0.7);
+    let spec = beacon.camera_response.glare.max(beacon.camera_response.intensity).max(0.7);
     PlateRelightLight {
         pos_rad: [center_uv.x, center_uv.y, z, radius_uv],
         color_intensity: [beacon.color.r, beacon.color.g, beacon.color.b, strength],
@@ -1085,10 +1085,10 @@ mod tests {
             beam_width_degrees: 1.0,
             beam_strength: 0.0,
             aberration_px: 0.0,
-            flare_length_px: 0.0,
-            flare_strength: 0.2,
+            
+            
             bloom: 0.0,
-            lens_influence: 1.0,
+            camera_response: amigo_camera_optics_plugin::api::CameraOpticalResponse2d { enabled: true, intensity: 1.0, glare: 1.0, ..amigo_camera_optics_plugin::api::CameraOpticalResponse2d::default() },
             distance_m: Some(1.2),
             z_depth: None,
             render_contributions: amigo_render_api::RenderContributionSet::from_pairs([(
@@ -1132,7 +1132,7 @@ mod tests {
             Some(1.0),
             None,
             Some(beacon.bloom),
-            Some(beacon.lens_influence),
+            
             Some(beacon.halo_radius_px.max(beacon.core_radius_px)),
             None,
             beacon.distance_m,
