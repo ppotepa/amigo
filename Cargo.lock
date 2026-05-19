@@ -684,6 +684,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "amigo-plugin-api"
+version = "0.1.0"
+
+[[package]]
 name = "amigo-render-api"
 version = "0.1.0"
 dependencies = [
