@@ -18,7 +18,7 @@ use amigo_light_2d_plugin::{
     LightReceiverDarkPolicy2d, LightSampleStrategy2d,
 };
 use amigo_beacon_light_2d_plugin::BeaconLight2dDrawCommand;
-use amigo_2d_particles::{
+use amigo_particles_2d_plugin::{
     Particle2dDrawCommand, ParticleBlendMode2d, ParticleLightMode2d, ParticleLineAnchor2d,
     ParticleShape2d,
 };

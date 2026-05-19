@@ -1,4 +1,4 @@
-use amigo_2d_particles::ParticleVelocityMode2d;
+use amigo_particles_2d_plugin::ParticleVelocityMode2d;
 use amigo_math::ColorRgba;
 
 use super::ParticlesApi;
@@ -162,10 +162,10 @@ impl ParticlesApi {
 
     pub fn set_align(&mut self, entity_name: &str, align: &str) -> bool {
         let align = match align {
-            "none" => amigo_2d_particles::ParticleAlignMode2d::None,
-            "emitter" => amigo_2d_particles::ParticleAlignMode2d::Emitter,
-            "random" => amigo_2d_particles::ParticleAlignMode2d::Random,
-            _ => amigo_2d_particles::ParticleAlignMode2d::Velocity,
+            "none" => amigo_particles_2d_plugin::ParticleAlignMode2d::None,
+            "emitter" => amigo_particles_2d_plugin::ParticleAlignMode2d::Emitter,
+            "random" => amigo_particles_2d_plugin::ParticleAlignMode2d::Random,
+            _ => amigo_particles_2d_plugin::ParticleAlignMode2d::Velocity,
         };
         self.particles
             .as_ref()
@@ -175,10 +175,10 @@ impl ParticlesApi {
 
     pub fn set_blend_mode(&mut self, entity_name: &str, blend_mode: &str) -> bool {
         let blend_mode = match blend_mode {
-            "additive" => amigo_2d_particles::ParticleBlendMode2d::Additive,
-            "multiply" => amigo_2d_particles::ParticleBlendMode2d::Multiply,
-            "screen" => amigo_2d_particles::ParticleBlendMode2d::Screen,
-            _ => amigo_2d_particles::ParticleBlendMode2d::Alpha,
+            "additive" => amigo_particles_2d_plugin::ParticleBlendMode2d::Additive,
+            "multiply" => amigo_particles_2d_plugin::ParticleBlendMode2d::Multiply,
+            "screen" => amigo_particles_2d_plugin::ParticleBlendMode2d::Screen,
+            _ => amigo_particles_2d_plugin::ParticleBlendMode2d::Alpha,
         };
         self.particles
             .as_ref()
@@ -191,7 +191,7 @@ impl ParticlesApi {
             .as_ref()
             .map(|particles| {
                 particles
-                    .set_spawn_area(entity_name, amigo_2d_particles::ParticleSpawnArea2d::Point)
+                    .set_spawn_area(entity_name, amigo_particles_2d_plugin::ParticleSpawnArea2d::Point)
             })
             .unwrap_or(false)
     }
@@ -207,7 +207,7 @@ impl ParticlesApi {
             .map(|particles| {
                 particles.set_spawn_area(
                     entity_name,
-                    amigo_2d_particles::ParticleSpawnArea2d::Rect {
+                    amigo_particles_2d_plugin::ParticleSpawnArea2d::Rect {
                         size: amigo_math::Vec2::new(
                             (width as f32).max(0.0),
                             (height as f32).max(0.0),
@@ -224,7 +224,7 @@ impl ParticlesApi {
             .map(|particles| {
                 particles.set_spawn_area(
                     entity_name,
-                    amigo_2d_particles::ParticleSpawnArea2d::Circle {
+                    amigo_particles_2d_plugin::ParticleSpawnArea2d::Circle {
                         radius: (radius as f32).max(0.0),
                     },
                 )
@@ -238,7 +238,7 @@ impl ParticlesApi {
             .map(|particles| {
                 particles.set_spawn_area(
                     entity_name,
-                    amigo_2d_particles::ParticleSpawnArea2d::Line {
+                    amigo_particles_2d_plugin::ParticleSpawnArea2d::Line {
                         length: (length as f32).max(0.0),
                     },
                 )
@@ -257,7 +257,7 @@ impl ParticlesApi {
             .map(|particles| {
                 particles.set_spawn_area(
                     entity_name,
-                    amigo_2d_particles::ParticleSpawnArea2d::Ring {
+                    amigo_particles_2d_plugin::ParticleSpawnArea2d::Ring {
                         inner_radius: (inner_radius as f32).max(0.0),
                         outer_radius: (outer_radius as f32).max(0.0),
                     },
@@ -272,7 +272,7 @@ impl ParticlesApi {
             .map(|particles| {
                 particles.set_shape(
                     entity_name,
-                    amigo_2d_particles::ParticleShape2d::Circle {
+                    amigo_particles_2d_plugin::ParticleShape2d::Circle {
                         segments: (segments as u32).max(3),
                     },
                 )
@@ -286,7 +286,7 @@ impl ParticlesApi {
             .map(|particles| {
                 particles.set_shape(
                     entity_name,
-                    amigo_2d_particles::ParticleShape2d::Line {
+                    amigo_particles_2d_plugin::ParticleShape2d::Line {
                         length: (length as f32).max(0.0),
                     },
                 )
@@ -298,7 +298,7 @@ impl ParticlesApi {
         self.particles
             .as_ref()
             .map(|particles| {
-                particles.set_shape(entity_name, amigo_2d_particles::ParticleShape2d::Quad)
+                particles.set_shape(entity_name, amigo_particles_2d_plugin::ParticleShape2d::Quad)
             })
             .unwrap_or(false)
     }
@@ -316,16 +316,16 @@ impl ParticlesApi {
                 particles.set_shape_choices(
                     entity_name,
                     vec![
-                        amigo_2d_particles::WeightedParticleShape2d {
-                            shape: amigo_2d_particles::ParticleShape2d::Circle { segments: 8 },
+                        amigo_particles_2d_plugin::WeightedParticleShape2d {
+                            shape: amigo_particles_2d_plugin::ParticleShape2d::Circle { segments: 8 },
                             weight: circle_weight as f32,
                         },
-                        amigo_2d_particles::WeightedParticleShape2d {
-                            shape: amigo_2d_particles::ParticleShape2d::Line { length: 14.0 },
+                        amigo_particles_2d_plugin::WeightedParticleShape2d {
+                            shape: amigo_particles_2d_plugin::ParticleShape2d::Line { length: 14.0 },
                             weight: line_weight as f32,
                         },
-                        amigo_2d_particles::WeightedParticleShape2d {
-                            shape: amigo_2d_particles::ParticleShape2d::Quad,
+                        amigo_particles_2d_plugin::WeightedParticleShape2d {
+                            shape: amigo_particles_2d_plugin::ParticleShape2d::Quad,
                             weight: quad_weight as f32,
                         },
                     ],

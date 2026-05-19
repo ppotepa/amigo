@@ -32,7 +32,7 @@ pub use amigo_2d_composition;
 pub use amigo_layered_image_2d_plugin;
 pub use amigo_light_2d_plugin;
 pub use amigo_material_2d_plugin;
-pub use amigo_2d_particles;
+pub use amigo_particles_2d_plugin;
 pub use amigo_2d_physics;
 pub use amigo_2d_post_fx;
 pub use amigo_sprite_2d_plugin;

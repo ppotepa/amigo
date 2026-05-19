@@ -89,22 +89,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "amigo-2d-particles"
-version = "0.1.0"
-dependencies = [
- "amigo-capabilities",
- "amigo-core",
- "amigo-fx",
- "amigo-light-2d-plugin",
- "amigo-math",
- "amigo-runtime",
- "amigo-runtime-control",
- "amigo-scene",
- "amigo-session",
- "amigo-shutter-motion-plugin",
-]
-
-[[package]]
 name = "amigo-2d-physics"
 version = "0.1.0"
 dependencies = [
@@ -321,7 +305,6 @@ dependencies = [
 name = "amigo-behavior"
 version = "0.1.0"
 dependencies = [
- "amigo-2d-particles",
  "amigo-2d-physics",
  "amigo-audio-api",
  "amigo-camera-core-plugin",
@@ -330,6 +313,7 @@ dependencies = [
  "amigo-input-actions",
  "amigo-input-api",
  "amigo-math",
+ "amigo-particles-2d-plugin",
  "amigo-runtime",
  "amigo-scene",
  "amigo-scripting-api",
@@ -453,7 +437,6 @@ name = "amigo-devtools"
 version = "0.1.0"
 dependencies = [
  "amigo-2d-composition",
- "amigo-2d-particles",
  "amigo-2d-post-fx",
  "amigo-assets",
  "amigo-audio-output",
@@ -465,6 +448,7 @@ dependencies = [
  "amigo-layered-image-2d-plugin",
  "amigo-light-2d-plugin",
  "amigo-math",
+ "amigo-particles-2d-plugin",
  "amigo-plugin-api",
  "amigo-render-api",
  "amigo-render-wgpu",
@@ -501,7 +485,6 @@ name = "amigo-editor-ingame"
 version = "0.1.0"
 dependencies = [
  "amigo-2d-composition",
- "amigo-2d-particles",
  "amigo-2d-post-fx",
  "amigo-assets",
  "amigo-core",
@@ -511,6 +494,7 @@ dependencies = [
  "amigo-input-api",
  "amigo-layered-image-2d-plugin",
  "amigo-math",
+ "amigo-particles-2d-plugin",
  "amigo-render-wgpu",
  "amigo-runtime",
  "amigo-scene",
@@ -569,7 +553,6 @@ name = "amigo-focus-depth-plugin"
 version = "0.1.0"
 dependencies = [
  "amigo-2d-composition",
- "amigo-2d-particles",
  "amigo-2d-spatial",
  "amigo-assets",
  "amigo-beacon-light-2d-plugin",
@@ -578,6 +561,7 @@ dependencies = [
  "amigo-core",
  "amigo-layered-image-2d-plugin",
  "amigo-math",
+ "amigo-particles-2d-plugin",
  "amigo-plugin-api",
  "amigo-render-api",
  "amigo-runtime",
@@ -737,7 +721,16 @@ name = "amigo-particles-2d-plugin"
 version = "0.1.0"
 dependencies = [
  "amigo-camera-optics-plugin",
+ "amigo-capabilities",
+ "amigo-core",
+ "amigo-fx",
+ "amigo-light-2d-plugin",
+ "amigo-math",
  "amigo-plugin-api",
+ "amigo-runtime",
+ "amigo-runtime-control",
+ "amigo-scene",
+ "amigo-session",
  "amigo-shutter-motion-plugin",
 ]
 
@@ -814,7 +807,6 @@ name = "amigo-render-wgpu"
 version = "0.1.0"
 dependencies = [
  "amigo-2d-composition",
- "amigo-2d-particles",
  "amigo-2d-post-fx",
  "amigo-2d-spatial",
  "amigo-3d-material",
@@ -831,6 +823,7 @@ dependencies = [
  "amigo-light-2d-plugin",
  "amigo-material-2d-plugin",
  "amigo-math",
+ "amigo-particles-2d-plugin",
  "amigo-plugin-api",
  "amigo-render-api",
  "amigo-runtime",
@@ -858,7 +851,6 @@ name = "amigo-runtime-bundles"
 version = "0.1.0"
 dependencies = [
  "amigo-2d-composition",
- "amigo-2d-particles",
  "amigo-2d-physics",
  "amigo-2d-post-fx",
  "amigo-2d-spatial",
@@ -887,6 +879,7 @@ dependencies = [
  "amigo-material-2d-plugin",
  "amigo-math",
  "amigo-modding",
+ "amigo-particles-2d-plugin",
  "amigo-plugin-api",
  "amigo-render-api",
  "amigo-render-wgpu",
@@ -955,7 +948,6 @@ dependencies = [
 name = "amigo-scripting-rhai"
 version = "0.1.0"
 dependencies = [
- "amigo-2d-particles",
  "amigo-2d-physics",
  "amigo-2d-post-fx",
  "amigo-assets",
@@ -970,6 +962,7 @@ dependencies = [
  "amigo-light-2d-plugin",
  "amigo-math",
  "amigo-modding",
+ "amigo-particles-2d-plugin",
  "amigo-plugin-api",
  "amigo-render-api",
  "amigo-runtime",

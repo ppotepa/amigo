@@ -651,7 +651,7 @@ mod tests {
             line_anchor: ParticleLineAnchor2d::Center,
             blend_mode: ParticleBlendMode2d::Screen,
             motion_stretch: None,
-            material: amigo_2d_particles::ParticleMaterial2d {
+            material: amigo_particles_2d_plugin::ParticleMaterial2d {
                 lighting_mode: Material2dLightingMode::LightMapSampled,
                 receives_light: true,
                 light_response: 1.0,

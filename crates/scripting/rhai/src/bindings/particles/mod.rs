@@ -3,7 +3,7 @@
 
 use std::sync::Arc;
 
-use amigo_2d_particles::{Particle2dSceneService, ParticlePreset2dService};
+use amigo_particles_2d_plugin::{Particle2dSceneService, ParticlePreset2dService};
 
 mod curves;
 mod emitter;

@@ -42,7 +42,6 @@ members = [
     "crates/2d/spatial",
     "crates/2d/post-fx",
     "crates/2d/physics",
-    "crates/2d/particles",
     "crates/3d/mesh",
     "crates/3d/text",
     "crates/3d/material",
@@ -167,7 +166,6 @@ amigo-2d-composition = { path = "crates/2d/composition" }
 amigo-2d-spatial = { path = "crates/2d/spatial" }
 amigo-2d-post-fx = { path = "crates/2d/post-fx" }
 amigo-2d-physics = { path = "crates/2d/physics" }
-amigo-2d-particles = { path = "crates/2d/particles" }
 amigo-3d-mesh = { path = "crates/3d/mesh" }
 amigo-3d-text = { path = "crates/3d/text" }
 amigo-3d-material = { path = "crates/3d/material" }

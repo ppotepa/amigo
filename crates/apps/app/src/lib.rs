@@ -26,7 +26,7 @@ use amigo_render_wgpu::UiLayoutNode as OverlayUiLayoutNode;
 use amigo_render_wgpu::{UiViewportSize, WgpuRenderBackend, WgpuSceneRenderer, WgpuSurfaceState};
 use amigo_runtime::{Runtime, RuntimePlugin, ServiceRegistry};
 use amigo_runtime_bundles::amigo_shutter_motion_plugin::Motion2dSceneService;
-use amigo_runtime_bundles::amigo_2d_particles::Particle2dSceneService;
+use amigo_runtime_bundles::amigo_particles_2d_plugin::Particle2dSceneService;
 use amigo_runtime_bundles::amigo_2d_physics::Physics2dSceneService;
 use amigo_runtime_bundles::amigo_sprite_2d_plugin::{SpriteSceneService, SpriteSheet};
 use amigo_runtime_bundles::amigo_text_2d_plugin::Text2dSceneService;

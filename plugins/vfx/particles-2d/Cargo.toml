@@ -1,9 +1,21 @@
 [package]
 name = "amigo-particles-2d-plugin"
-version = "0.1.0"
-edition = "2021"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
 
 [dependencies]
 amigo-plugin-api = { path = "../../../crates/core/plugin-api" }
 amigo-camera-optics-plugin.workspace = true
 amigo-shutter-motion-plugin.workspace = true
+amigo-core.workspace = true
+amigo-fx.workspace = true
+amigo-light-2d-plugin.workspace = true
+amigo-math.workspace = true
+amigo-capabilities.workspace = true
+amigo-runtime.workspace = true
+amigo-runtime-control.workspace = true
+amigo-scene.workspace = true
+amigo-session.workspace = true

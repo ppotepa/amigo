@@ -16,7 +16,7 @@ pub fn collect_light_sources_2d(
     global_lights: &[amigo_light_2d_plugin::GlobalLight2dCommand],
     lightmaps: &[amigo_light_2d_plugin::LightMap2dSourceCommand],
     light_groups: &[amigo_light_2d_plugin::LightGroup2dCommand],
-    particles: &[amigo_2d_particles::Particle2dDrawCommand],
+    particles: &[amigo_particles_2d_plugin::Particle2dDrawCommand],
     camera_capture_input: Option<&CameraCaptureInput2d>,
 ) -> Vec<LightSource2dCommon> {
     let mut sources = Vec::new();
@@ -695,7 +695,7 @@ fn light_group_contributions(
 }
 
 fn particle_light_camera_response(
-    light: amigo_2d_particles::ParticleLight2d,
+    light: amigo_particles_2d_plugin::ParticleLight2d,
 ) -> CameraOpticalResponse2d {
     CameraOpticalResponse2d {
         enabled: light.intensity > 0.0 && light.glow,
@@ -713,7 +713,7 @@ fn particle_light_camera_response(
 }
 
 fn particle_light_contributions(
-    light: amigo_2d_particles::ParticleLight2d,
+    light: amigo_particles_2d_plugin::ParticleLight2d,
 ) -> Vec<LightContributionKind2d> {
     let mut contributions = vec![LightContributionKind2d::LightingEmit];
     if light.glow && light.intensity > 0.0 {

@@ -10,7 +10,7 @@ use amigo_scene::SceneEntityId;
 use amigo_scripting_api::DevConsoleState;
 
 use super::*;
-use amigo_runtime_bundles::amigo_2d_particles::Particle2dSceneService;
+use amigo_runtime_bundles::amigo_particles_2d_plugin::Particle2dSceneService;
 use amigo_runtime_bundles::amigo_sprite_2d_plugin::{
     Sprite, SpriteDrawCommand, SpriteSceneService, SpriteSheet,
 };
@@ -137,14 +137,14 @@ fn app_render_extractor_registry_collects_vector_and_ui_data() {
     });
     let particles = Particle2dSceneService::default();
     particles.queue_emitter(
-        amigo_runtime_bundles::amigo_2d_particles::ParticleEmitter2dCommand {
+        amigo_runtime_bundles::amigo_particles_2d_plugin::ParticleEmitter2dCommand {
             entity_id: SceneEntityId::new(14),
             entity_name: "spark".to_owned(),
-            emitter: amigo_runtime_bundles::amigo_2d_particles::ParticleEmitter2d {
+            emitter: amigo_runtime_bundles::amigo_particles_2d_plugin::ParticleEmitter2d {
                 attached_to: None,
                 local_offset: Vec2::ZERO,
                 local_direction_radians: 0.0,
-                spawn_area: amigo_runtime_bundles::amigo_2d_particles::ParticleSpawnArea2d::Point,
+                spawn_area: amigo_runtime_bundles::amigo_particles_2d_plugin::ParticleSpawnArea2d::Point,
                 active: true,
                 spawn_rate: 1.0,
                 max_particles: 4,
@@ -155,9 +155,9 @@ fn app_render_extractor_registry_collects_vector_and_ui_data() {
                 spread_radians: 0.0,
                 inherit_parent_velocity: 0.0,
                 velocity_mode:
-                    amigo_runtime_bundles::amigo_2d_particles::ParticleVelocityMode2d::Free,
+                    amigo_runtime_bundles::amigo_particles_2d_plugin::ParticleVelocityMode2d::Free,
                 simulation_space:
-                    amigo_runtime_bundles::amigo_2d_particles::ParticleSimulationSpace2d::World,
+                    amigo_runtime_bundles::amigo_particles_2d_plugin::ParticleSimulationSpace2d::World,
                 initial_size: 2.0,
                 final_size: 2.0,
                 size_jitter: 0.0,
@@ -165,17 +165,17 @@ fn app_render_extractor_registry_collects_vector_and_ui_data() {
                 color_ramp: None,
                 render_layer: "default".to_owned(),
                 z_index: 3.5,
-                shape: amigo_runtime_bundles::amigo_2d_particles::ParticleShape2d::Circle {
+                shape: amigo_runtime_bundles::amigo_particles_2d_plugin::ParticleShape2d::Circle {
                     segments: 8,
                 },
                 shape_choices: Vec::new(),
                 shape_over_lifetime: Vec::new(),
                 line_anchor:
-                    amigo_runtime_bundles::amigo_2d_particles::ParticleLineAnchor2d::Center,
-                align: amigo_runtime_bundles::amigo_2d_particles::ParticleAlignMode2d::Velocity,
-                blend_mode: amigo_runtime_bundles::amigo_2d_particles::ParticleBlendMode2d::Alpha,
+                    amigo_runtime_bundles::amigo_particles_2d_plugin::ParticleLineAnchor2d::Center,
+                align: amigo_runtime_bundles::amigo_particles_2d_plugin::ParticleAlignMode2d::Velocity,
+                blend_mode: amigo_runtime_bundles::amigo_particles_2d_plugin::ParticleBlendMode2d::Alpha,
                 motion_stretch: None,
-                material: amigo_runtime_bundles::amigo_2d_particles::ParticleMaterial2d {
+                material: amigo_runtime_bundles::amigo_particles_2d_plugin::ParticleMaterial2d {
                     lighting_mode:
                         amigo_runtime_bundles::amigo_light_2d_plugin::Material2dLightingMode::Unlit,
                     receives_light: false,
@@ -193,7 +193,7 @@ fn app_render_extractor_registry_collects_vector_and_ui_data() {
     );
     particles.tick(
         &[
-            amigo_runtime_bundles::amigo_2d_particles::Particle2dEmitterRuntimeInput {
+            amigo_runtime_bundles::amigo_particles_2d_plugin::Particle2dEmitterRuntimeInput {
                 emitter_entity_name: "spark".to_owned(),
                 source_entity_name: "spark".to_owned(),
                 source_transform: Transform2::default(),

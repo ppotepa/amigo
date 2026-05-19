@@ -1,7 +1,7 @@
 use amigo_assets::AssetKey;
 use amigo_core::AmigoResult;
 use amigo_runtime::Runtime;
-use amigo_runtime_bundles::amigo_2d_particles::Particle2dSceneService;
+use amigo_runtime_bundles::amigo_particles_2d_plugin::Particle2dSceneService;
 use amigo_runtime_bundles::amigo_audio_api::{AudioCommand, AudioCommandQueue, AudioPlaybackMode};
 use amigo_runtime_bundles::amigo_event_pipeline::{EventPipelineService, EventPipelineStep};
 use amigo_runtime_bundles::amigo_ui::UiStateService;

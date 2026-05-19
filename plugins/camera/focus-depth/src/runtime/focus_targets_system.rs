@@ -119,7 +119,7 @@ pub fn refresh_focus_targets_2d_system(runtime: &Runtime) -> AmigoResult<()> {
             );
         }
     }
-    if let Some(particles) = runtime.resolve::<amigo_2d_particles::Particle2dSceneService>() {
+    if let Some(particles) = runtime.resolve::<amigo_particles_2d_plugin::Particle2dSceneService>() {
         for command in particles.draw_commands() {
             push_entity_focus_target(
                 &mut output,

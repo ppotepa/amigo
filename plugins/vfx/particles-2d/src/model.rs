@@ -10,7 +10,7 @@ use amigo_scene::{
     ParticleSpawnArea2dSceneCommand, ParticleVelocityMode2dSceneCommand, SceneEntityId,
 };
 
-pub const PARTICLES_2D_PLUGIN_LABEL: &str = "amigo-2d-particles";
+pub const PARTICLES_2D_PLUGIN_LABEL: &str = "amigo-particles-2d-plugin";
 pub const PARTICLES_2D_CAPABILITY: &str = "particles_2d";
 
 #[derive(Debug, Clone, Copy, PartialEq)]

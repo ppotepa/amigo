@@ -4,7 +4,7 @@ use std::path::Path;
 use amigo_core::{AmigoError, AmigoResult};
 use amigo_modding::ModCatalog;
 use amigo_runtime::Runtime;
-use amigo_runtime_bundles::amigo_2d_particles::{
+use amigo_runtime_bundles::amigo_particles_2d_plugin::{
     ParticleEmitter2d, ParticlePreset2d, ParticlePreset2dService,
 };
 use amigo_scene::{

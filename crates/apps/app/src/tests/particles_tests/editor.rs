@@ -24,11 +24,11 @@ fn particles_editor_applies_registry_preset() {
     process_placeholder_bridges(&runtime).expect("preset event should dispatch");
 
     let presets = runtime
-        .resolve::<amigo_runtime_bundles::amigo_2d_particles::ParticlePreset2dService>()
+        .resolve::<amigo_runtime_bundles::amigo_particles_2d_plugin::ParticlePreset2dService>()
         .expect("preset service should exist");
     let smoke = presets.preset("smoke").expect("smoke preset should exist");
     let particles = runtime
-        .resolve::<amigo_runtime_bundles::amigo_2d_particles::Particle2dSceneService>()
+        .resolve::<amigo_runtime_bundles::amigo_particles_2d_plugin::Particle2dSceneService>()
         .expect("particle scene service should exist");
     let emitter = particles
         .emitter("playground-2d-particles-editor-preview-emitter")
@@ -69,7 +69,7 @@ fn particles_editor_color_ramp_preset_updates_emitter_ramp() {
     process_placeholder_bridges(&runtime).expect("ramp preset event should dispatch");
 
     let particles = runtime
-        .resolve::<amigo_runtime_bundles::amigo_2d_particles::Particle2dSceneService>()
+        .resolve::<amigo_runtime_bundles::amigo_particles_2d_plugin::Particle2dSceneService>()
         .expect("particle scene service should exist");
     let emitter = particles
         .emitter("playground-2d-particles-editor-preview-emitter")
@@ -289,7 +289,7 @@ fn particles_editor_mutates_emitter_from_script_event() {
     process_placeholder_bridges(&runtime).expect("z-index event should dispatch");
 
     let particles = runtime
-        .resolve::<amigo_runtime_bundles::amigo_2d_particles::Particle2dSceneService>()
+        .resolve::<amigo_runtime_bundles::amigo_particles_2d_plugin::Particle2dSceneService>()
         .expect("particle scene service should exist");
     let emitter = particles
         .emitter("playground-2d-particles-editor-preview-emitter")
@@ -302,11 +302,11 @@ fn particles_editor_mutates_emitter_from_script_event() {
     assert_eq!(emitter.emitter.shape_choices.len(), 3);
     assert_eq!(
         emitter.emitter.align,
-        amigo_runtime_bundles::amigo_2d_particles::ParticleAlignMode2d::Emitter
+        amigo_runtime_bundles::amigo_particles_2d_plugin::ParticleAlignMode2d::Emitter
     );
     assert_eq!(
         emitter.emitter.blend_mode,
-        amigo_runtime_bundles::amigo_2d_particles::ParticleBlendMode2d::Additive
+        amigo_runtime_bundles::amigo_particles_2d_plugin::ParticleBlendMode2d::Additive
     );
     assert!((emitter.emitter.z_index - 50.0).abs() < 0.01);
 }
@@ -376,7 +376,7 @@ fn particles_editor_rgb_color_picker_updates_emitter_color() {
     process_placeholder_bridges(&runtime).expect("rgb picker event should dispatch");
 
     let particles = runtime
-        .resolve::<amigo_runtime_bundles::amigo_2d_particles::Particle2dSceneService>()
+        .resolve::<amigo_runtime_bundles::amigo_particles_2d_plugin::Particle2dSceneService>()
         .expect("particle scene service should exist");
     let emitter = particles
         .emitter("playground-2d-particles-editor-preview-emitter")

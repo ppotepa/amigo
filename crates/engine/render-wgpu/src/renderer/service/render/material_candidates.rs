@@ -271,7 +271,7 @@ mod tests {
     fn particle_material_path_reports_not_mapped_to_material2d() {
         let item = Renderable2dItem {
             common: common("rain", "ParticleEmitter2D", Renderable2dKind::Particle),
-            payload: Renderable2dPayload::Particle(amigo_2d_particles::Particle2dDrawCommand {
+            payload: Renderable2dPayload::Particle(amigo_particles_2d_plugin::Particle2dDrawCommand {
                 emitter_entity_name: "rain".to_owned(),
                 previous_position: Vec2::ZERO,
                 position: Vec2::ZERO,
@@ -280,11 +280,11 @@ mod tests {
                 color: ColorRgba::WHITE,
                 render_layer: "weather.rain.near".to_owned(),
                 z_index: 0.0,
-                shape: amigo_2d_particles::ParticleShape2d::Quad,
-                line_anchor: amigo_2d_particles::ParticleLineAnchor2d::Center,
-                blend_mode: amigo_2d_particles::ParticleBlendMode2d::Alpha,
+                shape: amigo_particles_2d_plugin::ParticleShape2d::Quad,
+                line_anchor: amigo_particles_2d_plugin::ParticleLineAnchor2d::Center,
+                blend_mode: amigo_particles_2d_plugin::ParticleBlendMode2d::Alpha,
                 motion_stretch: None,
-                material: amigo_2d_particles::ParticleMaterial2d {
+                material: amigo_particles_2d_plugin::ParticleMaterial2d {
                     lighting_mode: amigo_light_2d_plugin::Material2dLightingMode::Unlit,
                     receives_light: false,
                     light_response: 0.0,

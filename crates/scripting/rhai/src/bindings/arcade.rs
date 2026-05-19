@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use amigo_shutter_motion_plugin::{FreeflightMotionIntent2d, Motion2dSceneService};
-use amigo_2d_particles::Particle2dSceneService;
+use amigo_particles_2d_plugin::Particle2dSceneService;
 use amigo_input_actions::InputActionService;
 use amigo_input_api::InputState;
 

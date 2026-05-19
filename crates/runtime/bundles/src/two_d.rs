@@ -2,7 +2,7 @@ use amigo_2d_composition::Composition2dPlugin;
 use amigo_layered_image_2d_plugin::LayeredImagePlugin;
 use amigo_light_2d_plugin::Lighting2dPlugin;
 use amigo_beacon_light_2d_plugin::Beacon2dPlugin;
-use amigo_2d_particles::Particle2dPlugin;
+use amigo_particles_2d_plugin::Particle2dPlugin;
 use amigo_2d_physics::Physics2dPlugin;
 use amigo_2d_post_fx::PostFx2dPlugin;
 use amigo_sprite_2d_plugin::SpritePlugin;
@@ -52,7 +52,7 @@ pub fn register_two_d_runtime_capabilities(session: &mut RuntimeSession) {
     amigo_2d_composition::register_composition2d_runtime_capabilities(session);
     amigo_light_2d_plugin::register_lighting2d_runtime_capabilities(session);
     amigo_2d_post_fx::register_post_fx_runtime_capabilities(session);
-    amigo_2d_particles::register_particles2d_runtime_capabilities(session);
+    amigo_particles_2d_plugin::register_particles2d_runtime_capabilities(session);
     amigo_shutter_motion_plugin::register_motion2d_runtime_capabilities(session);
     amigo_2d_physics::register_physics2d_runtime_capabilities(session);
     amigo_vector_2d_plugin::register_vector2d_runtime_capabilities(session);

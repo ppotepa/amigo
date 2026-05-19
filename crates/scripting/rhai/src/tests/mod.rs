@@ -9,7 +9,7 @@ use amigo_shutter_motion_plugin::{
     MotionIntent2d, MotionProfile2d, MotionState2d, ProjectileEmitter2d,
     ProjectileEmitter2dCommand,
 };
-use amigo_2d_particles::{
+use amigo_particles_2d_plugin::{
     Particle2dSceneService, ParticleEmitter2d, ParticleEmitter2dCommand, ParticleShape2d,
 };
 use amigo_2d_physics::{CircleCollider2d, CircleCollider2dCommand, Physics2dSceneService};
@@ -63,7 +63,7 @@ fn test_particle_emitter() -> ParticleEmitter2d {
         attached_to: None,
         local_offset: Vec2::ZERO,
         local_direction_radians: 0.0,
-        spawn_area: amigo_2d_particles::ParticleSpawnArea2d::Point,
+        spawn_area: amigo_particles_2d_plugin::ParticleSpawnArea2d::Point,
         active: false,
         spawn_rate: 10.0,
         max_particles: 16,
@@ -73,8 +73,8 @@ fn test_particle_emitter() -> ParticleEmitter2d {
         speed_jitter: 0.0,
         spread_radians: 0.0,
         inherit_parent_velocity: 0.0,
-        velocity_mode: amigo_2d_particles::ParticleVelocityMode2d::Free,
-        simulation_space: amigo_2d_particles::ParticleSimulationSpace2d::World,
+        velocity_mode: amigo_particles_2d_plugin::ParticleVelocityMode2d::Free,
+        simulation_space: amigo_particles_2d_plugin::ParticleSimulationSpace2d::World,
         initial_size: 1.0,
         final_size: 1.0,
         size_jitter: 0.0,
@@ -85,11 +85,11 @@ fn test_particle_emitter() -> ParticleEmitter2d {
         shape: ParticleShape2d::Circle { segments: 8 },
         shape_choices: Vec::new(),
         shape_over_lifetime: Vec::new(),
-        line_anchor: amigo_2d_particles::ParticleLineAnchor2d::Center,
-        align: amigo_2d_particles::ParticleAlignMode2d::Velocity,
-        blend_mode: amigo_2d_particles::ParticleBlendMode2d::Alpha,
+        line_anchor: amigo_particles_2d_plugin::ParticleLineAnchor2d::Center,
+        align: amigo_particles_2d_plugin::ParticleAlignMode2d::Velocity,
+        blend_mode: amigo_particles_2d_plugin::ParticleBlendMode2d::Alpha,
         motion_stretch: None,
-        material: amigo_2d_particles::ParticleMaterial2d {
+        material: amigo_particles_2d_plugin::ParticleMaterial2d {
             lighting_mode: Material2dLightingMode::Unlit,
             receives_light: false,
             light_response: 1.0,

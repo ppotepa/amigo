@@ -317,7 +317,7 @@ fn apply_particle_property(
     field: &str,
     value: EditorPropertyValue,
 ) -> AmigoResult<ApplyResult> {
-    let service = runtime.required::<amigo_2d_particles::Particle2dSceneService>()?;
+    let service = runtime.required::<amigo_particles_2d_plugin::Particle2dSceneService>()?;
     let attempted = apply_particle_property_to_service(&service, entity_name, field, value);
     match attempted {
         Some(true) => Ok(ApplyResult::Applied),
@@ -329,7 +329,7 @@ fn apply_particle_property(
 }
 
 fn apply_particle_property_to_service(
-    service: &amigo_2d_particles::Particle2dSceneService,
+    service: &amigo_particles_2d_plugin::Particle2dSceneService,
     entity_name: &str,
     field: &str,
     value: EditorPropertyValue,

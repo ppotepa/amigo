@@ -59,7 +59,7 @@ impl ConsoleCommandHandler for ParticlesConsoleCommandHandler {
         ctx: &ConsoleCommandContext<'_>,
         command: ParsedConsoleCommand,
     ) -> ConsoleCommandResult {
-        let particles = match ctx.required::<amigo_2d_particles::Particle2dSceneService>() {
+        let particles = match ctx.required::<amigo_particles_2d_plugin::Particle2dSceneService>() {
             Ok(service) => service,
             Err(error) => return ConsoleCommandResult::error(error.to_string()),
         };
@@ -67,21 +67,21 @@ impl ConsoleCommandHandler for ParticlesConsoleCommandHandler {
             Ok(service) => service,
             Err(error) => return ConsoleCommandResult::error(error.to_string()),
         };
-        match amigo_2d_particles::handle_particles_dev_console_command(
-            amigo_2d_particles::ParticlesDevConsoleCommandContext {
+        match amigo_particles_2d_plugin::handle_particles_dev_console_command(
+            amigo_particles_2d_plugin::ParticlesDevConsoleCommandContext {
                 particle2d_scene_service: particles.as_ref(),
                 app_scheduling_service: scheduling.as_ref(),
             },
             &command.name,
             &command.args,
         ) {
-            amigo_2d_particles::ParticlesDevConsoleCommandOutcome::Handled(message) => {
+            amigo_particles_2d_plugin::ParticlesDevConsoleCommandOutcome::Handled(message) => {
                 ConsoleCommandResult::ok(message)
             }
-            amigo_2d_particles::ParticlesDevConsoleCommandOutcome::Error(message) => {
+            amigo_particles_2d_plugin::ParticlesDevConsoleCommandOutcome::Error(message) => {
                 ConsoleCommandResult::error(message)
             }
-            amigo_2d_particles::ParticlesDevConsoleCommandOutcome::Unhandled => {
+            amigo_particles_2d_plugin::ParticlesDevConsoleCommandOutcome::Unhandled => {
                 ConsoleCommandResult::unknown(command.raw)
             }
         }

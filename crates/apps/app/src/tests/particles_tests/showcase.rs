@@ -153,11 +153,11 @@ fn particles_showcase_explosion_burst_work() {
         vec!["explosion".to_owned()],
     ));
     process_placeholder_bridges(&runtime).expect("select event should dispatch");
-    amigo_runtime_bundles::amigo_2d_particles::tick_particles_2d_world(&runtime, 1.0 / 60.0)
+    amigo_runtime_bundles::amigo_particles_2d_plugin::tick_particles_2d_world(&runtime, 1.0 / 60.0)
         .expect("particle runtime tick should succeed");
 
     let particles = runtime
-        .resolve::<amigo_runtime_bundles::amigo_2d_particles::Particle2dSceneService>()
+        .resolve::<amigo_runtime_bundles::amigo_particles_2d_plugin::Particle2dSceneService>()
         .expect("particle scene service should exist");
     assert!(
         particles.particle_count("playground-2d-particles-preview-emitter") > 0,
@@ -181,7 +181,7 @@ fn particles_showcase_hydrates_emitters() {
 
     assert_eq!(summary.active_scene.as_deref(), Some("showcase"));
     let particles = runtime
-        .resolve::<amigo_runtime_bundles::amigo_2d_particles::Particle2dSceneService>()
+        .resolve::<amigo_runtime_bundles::amigo_particles_2d_plugin::Particle2dSceneService>()
         .expect("particle scene service should exist");
     let emitters = particles
         .emitters()
@@ -194,7 +194,7 @@ fn particles_showcase_hydrates_emitters() {
         "showcase should hydrate only the preview emitter; preset data comes from registry"
     );
     let presets = runtime
-        .resolve::<amigo_runtime_bundles::amigo_2d_particles::ParticlePreset2dService>()
+        .resolve::<amigo_runtime_bundles::amigo_particles_2d_plugin::ParticlePreset2dService>()
         .expect("particle preset service should exist");
     let fire = presets.preset("fire").expect("fire preset should exist");
     assert!(
@@ -239,7 +239,7 @@ fn particles_showcase_hydrates_emitters() {
         other => panic!("preset-options should resolve as dropdown, got {other:?}"),
     }
 
-    amigo_runtime_bundles::amigo_2d_particles::tick_particles_2d_world(&runtime, 1.0 / 10.0)
+    amigo_runtime_bundles::amigo_particles_2d_plugin::tick_particles_2d_world(&runtime, 1.0 / 10.0)
         .expect("particle runtime tick should succeed");
     assert!(
         !particles.draw_commands().is_empty(),

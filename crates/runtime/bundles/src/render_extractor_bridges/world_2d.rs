@@ -230,14 +230,14 @@ pub struct WgpuParticle2dRenderExtractorBridge;
 
 impl RenderFrameExtractor<Runtime, WgpuRenderFramePacket> for WgpuParticle2dRenderExtractorBridge {
     fn name(&self) -> &'static str {
-        amigo_2d_particles::Particle2dRenderExtractor.name()
+        amigo_particles_2d_plugin::Particle2dRenderExtractor.name()
     }
 
     fn extract(&self, runtime: &Runtime, packet: &mut WgpuRenderFramePacket) {
         let particle2d_scene_service =
-            required::<amigo_2d_particles::Particle2dSceneService>(runtime);
-        amigo_2d_particles::Particle2dRenderExtractor.extract(
-            amigo_2d_particles::Particle2dRenderExtractionContext {
+            required::<amigo_particles_2d_plugin::Particle2dSceneService>(runtime);
+        amigo_particles_2d_plugin::Particle2dRenderExtractor.extract(
+            amigo_particles_2d_plugin::Particle2dRenderExtractionContext {
                 particle2d_scene_service: particle2d_scene_service.as_ref(),
             },
             packet,

@@ -1,4 +1,4 @@
-# amigo-2d-particles
+# amigo-particles-2d-plugin
 
 2D particle runtime and authored emitter services.
 

@@ -221,11 +221,11 @@ fn script_can_control_particle_emitter() {
     assert_eq!(emitter.emitter.shape_choices.len(), 3);
     assert_eq!(
         emitter.emitter.align,
-        amigo_2d_particles::ParticleAlignMode2d::Emitter
+        amigo_particles_2d_plugin::ParticleAlignMode2d::Emitter
     );
     assert_eq!(
         emitter.emitter.blend_mode,
-        amigo_2d_particles::ParticleBlendMode2d::Additive
+        amigo_particles_2d_plugin::ParticleBlendMode2d::Additive
     );
     assert_eq!(emitter.emitter.lifetime_jitter, 0.25);
     assert_eq!(emitter.emitter.speed_jitter, 7.0);

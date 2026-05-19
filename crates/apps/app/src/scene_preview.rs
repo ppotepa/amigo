@@ -9,7 +9,7 @@ use amigo_render_wgpu::{
 use amigo_runtime::Runtime;
 use amigo_runtime::{SystemPhase, SystemRegistry};
 use amigo_runtime_bundles::amigo_layered_image_2d_plugin::LayeredImageSceneService;
-use amigo_runtime_bundles::amigo_2d_particles::Particle2dSceneService;
+use amigo_runtime_bundles::amigo_particles_2d_plugin::Particle2dSceneService;
 use amigo_runtime_bundles::amigo_sprite_2d_plugin::SpriteSceneService;
 use amigo_runtime_bundles::amigo_text_2d_plugin::Text2dSceneService;
 use amigo_runtime_bundles::amigo_tilemap_2d_plugin::TileMap2dSceneService;
