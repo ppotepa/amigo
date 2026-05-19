@@ -438,10 +438,12 @@ fn build_camera_capture_input(
     }
     if targets_scene_highlight_buffer(packet) {
         // Produced by authored visual maps or active CameraOpticalCandidate2d targets.
+        // CameraOptics consumes this semantic buffer before camera post-fx.
         builder = builder.with_highlight_produced("world.highlight");
     }
     if targets_scene_emissive_buffer(packet) {
         // Produced by authored visual maps or active CameraOpticalCandidate2d targets.
+        // CameraOptics consumes this semantic buffer before camera post-fx.
         builder = builder.with_emissive_produced("world.emissive");
     }
     if should_produce_scene_normal(packet) {

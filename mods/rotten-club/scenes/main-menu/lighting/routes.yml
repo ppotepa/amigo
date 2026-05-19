@@ -13,14 +13,14 @@ visual2d:
       camera.fx_source: true
     camera_response:
       enabled: true
-      intensity: 0.35
-      bloom: 0.25
-      glare: 0.18
-      ghosting: 0.08
-      streaks: 0.05
-      chromatic_smear: 0.08
-      dirt_response: 0.18
-      halation: 0.10
+      intensity: 0.30
+      bloom: 0.22
+      glare: 0.15
+      ghosting: 0.04
+      streaks: 0.03
+      chromatic_smear: 0.05
+      dirt_response: 0.15
+      halation: 0.08
       threshold: 0.0
     sources:
     - kind: lightmap_channel
@@ -37,14 +37,14 @@ visual2d:
       camera.fx_source: true
     camera_response:
       enabled: true
-      intensity: 0.85
-      bloom: 0.55
-      glare: 0.45
-      ghosting: 0.22
-      streaks: 0.30
-      chromatic_smear: 0.25
-      dirt_response: 0.35
-      halation: 0.25
+      intensity: 0.92
+      bloom: 0.60
+      glare: 0.54
+      ghosting: 0.20
+      streaks: 0.36
+      chromatic_smear: 0.30
+      dirt_response: 0.38
+      halation: 0.24
       threshold: 0.0
     sources:
     - kind: lightmap_channel
@@ -62,13 +62,13 @@ visual2d:
     camera_response:
       enabled: true
       intensity: 0.65
-      bloom: 0.45
-      glare: 0.35
-      ghosting: 0.14
-      streaks: 0.18
-      chromatic_smear: 0.12
-      dirt_response: 0.30
-      halation: 0.28
+      bloom: 0.50
+      glare: 0.32
+      ghosting: 0.10
+      streaks: 0.14
+      chromatic_smear: 0.08
+      dirt_response: 0.32
+      halation: 0.34
       threshold: 0.0
     sources:
     - kind: lightmap_channel

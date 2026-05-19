@@ -11,17 +11,10 @@ pub(super) fn render_procedural_material_buffer(
     kind: amigo_render_api::VisualSourceKind2d,
     _scene_color_view: Option<&wgpu::TextureView>,
 ) -> AmigoResult<()> {
-    match kind {
-        amigo_render_api::VisualSourceKind2d::SceneHighlight
-        | amigo_render_api::VisualSourceKind2d::SceneEmissive => renderer.clear_offscreen_to_color(
-            target,
-            util::color_to_wgpu(crate::renderer::service::fallback_color_for(kind)),
-        ),
-        _ => renderer.clear_offscreen_to_color(
-            target,
-            util::color_to_wgpu(crate::renderer::service::fallback_color_for(kind)),
-        ),
-    }
+    renderer.clear_offscreen_to_color(
+        target,
+        util::color_to_wgpu(crate::renderer::service::fallback_color_for(kind)),
+    )
 }
 
 pub(super) fn append_procedural_material_buffers(

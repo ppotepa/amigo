@@ -52,13 +52,13 @@ entities:
         response: 0.28
       camera_response:
         enabled: true
-        intensity: 0.58
+        intensity: 0.50
         bloom: 0.0
-        glare: 0.58
-        ghosting: 0.04
-        streaks: 0.03
-        chromatic_smear: 0.08
-        dirt_response: 0.25
-        halation: 0.12
+        glare: 0.46
+        ghosting: 0.025
+        streaks: 0.020
+        chromatic_smear: 0.06
+        dirt_response: 0.20
+        halation: 0.10
         threshold: 0.0
     z_index: 40.0

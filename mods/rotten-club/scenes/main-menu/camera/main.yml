@@ -67,9 +67,9 @@ entities:
         distance_m: 6.0
       depth_of_field:
         depth_map: main-menu-depth
-        max_blur_px: 18.0
+        max_blur_px: 16.0
         depth_contrast: 1.0
-        focus_width: 0.060
+        focus_width: 0.070
         foreground_blur_boost: 1.00
         background_blur_boost: 1.05
         edge_aware: true
