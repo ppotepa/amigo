@@ -122,7 +122,7 @@ fn sync_tile_ruleset_metadata(
         return;
     };
     let Some(ruleset) =
-        amigo_runtime_bundles::amigo_2d_tilemap::infer_tile_ruleset_from_prepared_asset(&prepared)
+        amigo_runtime_bundles::amigo_tilemap_2d_plugin::infer_tile_ruleset_from_prepared_asset(&prepared)
     else {
         return;
     };

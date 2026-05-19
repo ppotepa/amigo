@@ -1,4 +1,4 @@
-use amigo_2d_layered_image::LayeredImageAssetSource;
+use amigo_layered_image_2d_plugin::LayeredImageAssetSource;
 use amigo_core::{AmigoError, AmigoResult};
 use amigo_scene::{
     LightMap2dSourceSceneCommand, SceneCommand, SceneEvent, SceneEventQueue, SceneService,
@@ -187,7 +187,7 @@ impl amigo_scene::RuntimeSceneCommandHandler for Lighting2dSceneCommandHandler {
         let light_group2d_scene_service = runtime.required::<LightGroup2dSceneService>()?;
         let scene_event_queue = runtime.required::<SceneEventQueue>()?;
         let layered_image_scene_service =
-            runtime.required::<amigo_2d_layered_image::LayeredImageSceneService>()?;
+            runtime.required::<amigo_layered_image_2d_plugin::LayeredImageSceneService>()?;
         let asset_catalog = runtime.required::<amigo_assets::AssetCatalog>()?;
 
         handle_lighting_scene_command(

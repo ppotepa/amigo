@@ -1,6 +1,6 @@
 use amigo_scene::SceneService;
 
-use crate::{TileMap2dDrawCommand, TileMap2dSceneService};
+use super::{TileMap2dDrawCommand, TileMap2dSceneService};
 
 pub struct TileMap2dRenderExtractionContext<'a> {
     pub scene_service: &'a SceneService,

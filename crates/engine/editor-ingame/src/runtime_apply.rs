@@ -270,7 +270,7 @@ fn apply_layered_image_binding(
     target: &AuthoringRuntimeBinding,
     value: EditorPropertyValue,
 ) -> AmigoResult<ApplyResult> {
-    let service = runtime.required::<amigo_2d_layered_image::LayeredImageSceneService>()?;
+    let service = runtime.required::<amigo_layered_image_2d_plugin::LayeredImageSceneService>()?;
     let applied = match (target, value) {
         (
             AuthoringRuntimeBinding::LayeredImageBaseOpacity { entity_name },

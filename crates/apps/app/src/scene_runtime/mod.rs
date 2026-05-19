@@ -914,7 +914,7 @@ pub(super) fn clear_runtime_scene_content(
     runtime_control_service: &RuntimeControlService,
     dev_console_state: &DevConsoleState,
     sprite_scene_service: &SpriteSceneService,
-    layered_image_scene_service: &amigo_runtime_bundles::amigo_2d_layered_image::LayeredImageSceneService,
+    layered_image_scene_service: &amigo_runtime_bundles::amigo_layered_image_2d_plugin::LayeredImageSceneService,
     render_layer2d_scene_service: &amigo_runtime_bundles::amigo_2d_composition::RenderLayer2dSceneService,
     light_route2d_scene_service: &amigo_runtime_bundles::amigo_2d_composition::LightRoute2dSceneService,
     global_light2d_scene_service: &amigo_runtime_bundles::amigo_2d_lighting::GlobalLight2dSceneService,
@@ -1037,7 +1037,7 @@ pub(super) fn clear_runtime_scene_content_with_runtime(runtime: &Runtime) -> Ami
         required::<RuntimeControlService>(runtime)?.as_ref(),
         required::<DevConsoleState>(runtime)?.as_ref(),
         required::<SpriteSceneService>(runtime)?.as_ref(),
-        required::<amigo_runtime_bundles::amigo_2d_layered_image::LayeredImageSceneService>(
+        required::<amigo_runtime_bundles::amigo_layered_image_2d_plugin::LayeredImageSceneService>(
             runtime,
         )?
         .as_ref(),

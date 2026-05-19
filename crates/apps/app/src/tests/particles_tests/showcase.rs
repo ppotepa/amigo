@@ -279,7 +279,7 @@ fn particles_showcase_hydrates_emitters() {
         .resolve::<UiThemeService>()
         .expect("ui theme should exist");
     let layered_image_scene_service = runtime
-        .resolve::<amigo_runtime_bundles::amigo_2d_layered_image::LayeredImageSceneService>()
+        .resolve::<amigo_runtime_bundles::amigo_layered_image_2d_plugin::LayeredImageSceneService>()
         .expect("layered image service should exist");
     let global_light2d_scene_service = runtime
         .resolve::<amigo_runtime_bundles::amigo_2d_lighting::GlobalLight2dSceneService>()

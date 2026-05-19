@@ -2,11 +2,11 @@ use amigo_runtime_bundles::amigo_2d_composition::{
     LightRoute2dSceneService, RenderLayer2dSceneService,
 };
 use amigo_runtime_bundles::amigo_focus_depth_plugin::DepthMap2dSceneService;
-use amigo_runtime_bundles::amigo_2d_layered_image::LayeredImageSceneService;
+use amigo_runtime_bundles::amigo_layered_image_2d_plugin::LayeredImageSceneService;
 use amigo_runtime_bundles::amigo_2d_lighting::{GlobalLight2dSceneService, LightMap2dSceneService};
 use amigo_runtime_bundles::amigo_sprite_2d_plugin::SpriteSceneService;
 use amigo_runtime_bundles::amigo_text_2d_plugin::Text2dSceneService;
-use amigo_runtime_bundles::amigo_2d_tilemap::TileMap2dSceneService;
+use amigo_runtime_bundles::amigo_tilemap_2d_plugin::TileMap2dSceneService;
 use amigo_runtime_bundles::amigo_vector_2d_plugin::VectorSceneService;
 
 use amigo_render_wgpu::WgpuRenderFramePacket;

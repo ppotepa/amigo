@@ -779,16 +779,16 @@ fn layered_image_render_size(
     viewport: &Viewport,
     fixed_size: Vec2,
     canvas_size: Vec2,
-    fit: amigo_2d_layered_image::LayeredImageViewportFit2d,
+    fit: amigo_layered_image_2d_plugin::LayeredImageViewportFit2d,
 ) -> Vec2 {
     let viewport_size = viewport.size();
     match fit {
-        amigo_2d_layered_image::LayeredImageViewportFit2d::Fixed => fixed_size,
-        amigo_2d_layered_image::LayeredImageViewportFit2d::Stretch => viewport_size,
-        amigo_2d_layered_image::LayeredImageViewportFit2d::Contain => {
+        amigo_layered_image_2d_plugin::LayeredImageViewportFit2d::Fixed => fixed_size,
+        amigo_layered_image_2d_plugin::LayeredImageViewportFit2d::Stretch => viewport_size,
+        amigo_layered_image_2d_plugin::LayeredImageViewportFit2d::Contain => {
             scaled_to_viewport(canvas_size, viewport_size, f32::min)
         }
-        amigo_2d_layered_image::LayeredImageViewportFit2d::Cover => {
+        amigo_layered_image_2d_plugin::LayeredImageViewportFit2d::Cover => {
             scaled_to_viewport(canvas_size, viewport_size, f32::max)
         }
     }

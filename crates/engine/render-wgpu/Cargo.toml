@@ -9,7 +9,7 @@ authors.workspace = true
 [dependencies]
 amigo-sprite-2d-plugin.workspace = true
 amigo-2d-lighting-beacon.workspace = true
-amigo-2d-layered-image.workspace = true
+amigo-layered-image-2d-plugin.workspace = true
 amigo-2d-lighting.workspace = true
 amigo-2d-composition.workspace = true
 amigo-2d-spatial.workspace = true
@@ -17,7 +17,7 @@ amigo-2d-post-fx.workspace = true
 amigo-text-2d-plugin.workspace = true
 amigo-vector-2d-plugin.workspace = true
 amigo-2d-particles.workspace = true
-amigo-2d-tilemap.workspace = true
+amigo-tilemap-2d-plugin.workspace = true
 amigo-3d-material.workspace = true
 amigo-3d-mesh.workspace = true
 amigo-3d-text.workspace = true

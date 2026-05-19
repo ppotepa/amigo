@@ -78,7 +78,7 @@ pub fn refresh_focus_targets_2d_system(runtime: &Runtime) -> AmigoResult<()> {
         }
     }
     if let Some(layered_images) =
-        runtime.resolve::<amigo_2d_layered_image::LayeredImageSceneService>()
+        runtime.resolve::<amigo_layered_image_2d_plugin::LayeredImageSceneService>()
     {
         for command in layered_images.commands() {
             push_entity_focus_target(

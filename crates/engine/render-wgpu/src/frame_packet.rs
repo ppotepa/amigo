@@ -1,13 +1,13 @@
 use amigo_2d_composition::{LightRoute2dCommand, RenderLayer2dCommand};
 use amigo_focus_depth_plugin::{DepthAuxMap2dDrawCommand, DepthMap2dDrawCommand};
-use amigo_2d_layered_image::LayeredImageDrawCommand;
+use amigo_layered_image_2d_plugin::LayeredImageDrawCommand;
 use amigo_2d_lighting::{GlobalLight2dCommand, LightGroup2dCommand, LightMap2dSourceCommand};
 use amigo_2d_lighting_beacon::{Beacon2dRenderOutput, BeaconLight2dDrawCommand};
 use amigo_2d_particles::Particle2dDrawCommand;
 use amigo_2d_post_fx::ScopedPostFx2dStack;
 use amigo_sprite_2d_plugin::SpriteDrawCommand;
 use amigo_text_2d_plugin::Text2dDrawCommand;
-use amigo_2d_tilemap::TileMap2dDrawCommand;
+use amigo_tilemap_2d_plugin::TileMap2dDrawCommand;
 use amigo_vector_2d_plugin::VectorShape2dDrawCommand;
 use amigo_3d_material::MaterialDrawCommand;
 use amigo_3d_mesh::MeshDrawCommand;
@@ -513,13 +513,13 @@ impl amigo_sprite_2d_plugin::Sprite2dRenderOutput for WgpuRenderFramePacket {
     }
 }
 
-impl amigo_2d_tilemap::TileMap2dRenderOutput for WgpuRenderFramePacket {
+impl amigo_tilemap_2d_plugin::TileMap2dRenderOutput for WgpuRenderFramePacket {
     fn push_tilemap2d_render_command(&mut self, command: TileMap2dDrawCommand) {
         self.push_world_2d_tilemap(command);
     }
 }
 
-impl amigo_2d_layered_image::LayeredImage2dRenderOutput for WgpuRenderFramePacket {
+impl amigo_layered_image_2d_plugin::LayeredImage2dRenderOutput for WgpuRenderFramePacket {
     fn push_layered_image2d_render_command(&mut self, command: LayeredImageDrawCommand) {
         self.push_world_2d_layered_image(command);
     }

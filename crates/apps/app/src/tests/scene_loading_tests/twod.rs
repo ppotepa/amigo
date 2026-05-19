@@ -146,7 +146,7 @@ fn rotten_club_main_menu_queues_layered_image_background() {
     assert!(summary.failed_assets.is_empty());
 
     let layered_images = runtime
-        .resolve::<amigo_runtime_bundles::amigo_2d_layered_image::LayeredImageSceneService>()
+        .resolve::<amigo_runtime_bundles::amigo_layered_image_2d_plugin::LayeredImageSceneService>()
         .expect("layered image scene service should be registered");
     let commands = layered_images.commands();
     let background = commands
@@ -200,7 +200,7 @@ fn rotten_club_main_menu_script_animates_layered_image_intro() {
     process_placeholder_bridges(&runtime).expect("intro update commands should dispatch");
 
     let layered_images = runtime
-        .resolve::<amigo_runtime_bundles::amigo_2d_layered_image::LayeredImageSceneService>()
+        .resolve::<amigo_runtime_bundles::amigo_layered_image_2d_plugin::LayeredImageSceneService>()
         .expect("layered image scene service should be registered");
     let commands = layered_images.commands();
     let command = commands

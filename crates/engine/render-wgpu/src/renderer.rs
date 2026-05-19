@@ -8,7 +8,7 @@ use std::sync::Arc;
 use std::time::SystemTime;
 
 use amigo_2d_composition::{LightRoute2dCommand, RenderLayer2dCommand};
-use amigo_2d_layered_image::{
+use amigo_layered_image_2d_plugin::{
     LayeredImageAssetSource, LayeredImageBlendMode2d, LayeredImageDrawCommand,
     apply_layer_overrides,
 };
@@ -25,7 +25,7 @@ use amigo_2d_particles::{
 use amigo_2d_post_fx::{PostFx2d, PostFx2dCacheKey};
 use amigo_sprite_2d_plugin::{Sprite, SpriteSceneService, SpriteSheet};
 use amigo_text_2d_plugin::Text2dSceneService;
-use amigo_2d_tilemap::{TileMap2d, TileMap2dSceneService};
+use amigo_tilemap_2d_plugin::{TileMap2d, TileMap2dSceneService};
 use amigo_vector_2d_plugin::{
     VectorSceneService, VectorShape2d, VectorShapeKind2d, VectorStyle2d, VectorViewportFit2d,
 };

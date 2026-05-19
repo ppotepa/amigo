@@ -30,7 +30,7 @@ use amigo_runtime_bundles::amigo_2d_particles::Particle2dSceneService;
 use amigo_runtime_bundles::amigo_2d_physics::Physics2dSceneService;
 use amigo_runtime_bundles::amigo_sprite_2d_plugin::{SpriteSceneService, SpriteSheet};
 use amigo_runtime_bundles::amigo_text_2d_plugin::Text2dSceneService;
-use amigo_runtime_bundles::amigo_2d_tilemap::TileMap2dSceneService;
+use amigo_runtime_bundles::amigo_tilemap_2d_plugin::TileMap2dSceneService;
 use amigo_runtime_bundles::amigo_vector_2d_plugin::VectorSceneService;
 use amigo_runtime_bundles::amigo_3d_material::MaterialSceneService;
 use amigo_runtime_bundles::amigo_3d_mesh::MeshSceneService;

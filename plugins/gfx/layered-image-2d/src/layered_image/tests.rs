@@ -8,7 +8,7 @@ use amigo_math::{Transform2, Vec2};
 use amigo_runtime_control::{ControlValue, RuntimeControlService};
 use amigo_scene::{SceneCommand, SceneEntityId, SceneEvent, SceneEventQueue, SceneService};
 
-use crate::{
+use super::{
     LayeredImageBlendMode2d, LayeredImageDrawCommand, LayeredImageInstance,
     LayeredImageSceneCommandContext, LayeredImageSceneService, LayeredImageViewportFit2d,
     can_handle_layered_image_scene_command, handle_layered_image_scene_command,

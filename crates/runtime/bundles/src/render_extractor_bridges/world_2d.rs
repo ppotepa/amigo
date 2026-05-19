@@ -35,14 +35,14 @@ pub struct WgpuTileMap2dRenderExtractorBridge;
 
 impl RenderFrameExtractor<Runtime, WgpuRenderFramePacket> for WgpuTileMap2dRenderExtractorBridge {
     fn name(&self) -> &'static str {
-        amigo_2d_tilemap::TileMap2dRenderExtractor.name()
+        amigo_tilemap_2d_plugin::TileMap2dRenderExtractor.name()
     }
 
     fn extract(&self, runtime: &Runtime, packet: &mut WgpuRenderFramePacket) {
         let scene_service = required::<SceneService>(runtime);
-        let tilemap_scene_service = required::<amigo_2d_tilemap::TileMap2dSceneService>(runtime);
-        amigo_2d_tilemap::TileMap2dRenderExtractor.extract(
-            amigo_2d_tilemap::TileMap2dRenderExtractionContext {
+        let tilemap_scene_service = required::<amigo_tilemap_2d_plugin::TileMap2dSceneService>(runtime);
+        amigo_tilemap_2d_plugin::TileMap2dRenderExtractor.extract(
+            amigo_tilemap_2d_plugin::TileMap2dRenderExtractionContext {
                 scene_service: scene_service.as_ref(),
                 tilemap_scene_service: tilemap_scene_service.as_ref(),
             },
@@ -77,15 +77,15 @@ impl RenderFrameExtractor<Runtime, WgpuRenderFramePacket>
     for WgpuLayeredImage2dRenderExtractorBridge
 {
     fn name(&self) -> &'static str {
-        amigo_2d_layered_image::LayeredImage2dRenderExtractor.name()
+        amigo_layered_image_2d_plugin::LayeredImage2dRenderExtractor.name()
     }
 
     fn extract(&self, runtime: &Runtime, packet: &mut WgpuRenderFramePacket) {
         let scene_service = required::<SceneService>(runtime);
         let layered_image_scene_service =
-            required::<amigo_2d_layered_image::LayeredImageSceneService>(runtime);
-        amigo_2d_layered_image::LayeredImage2dRenderExtractor.extract(
-            amigo_2d_layered_image::LayeredImage2dRenderExtractionContext {
+            required::<amigo_layered_image_2d_plugin::LayeredImageSceneService>(runtime);
+        amigo_layered_image_2d_plugin::LayeredImage2dRenderExtractor.extract(
+            amigo_layered_image_2d_plugin::LayeredImage2dRenderExtractionContext {
                 scene_service: scene_service.as_ref(),
                 layered_image_scene_service: layered_image_scene_service.as_ref(),
             },

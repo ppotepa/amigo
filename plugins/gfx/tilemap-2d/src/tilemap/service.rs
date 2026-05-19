@@ -1,7 +1,7 @@
 use std::sync::Mutex;
 
-use crate::model::{TileMap2dDrawCommand, TileRuleSet2d};
-use crate::resolver::resolve_tilemap;
+use super::model::{TileMap2dDrawCommand, TileRuleSet2d};
+use super::resolver::resolve_tilemap;
 use amigo_assets::AssetKey;
 
 #[derive(Debug, Default)]

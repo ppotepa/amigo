@@ -10,7 +10,7 @@ pub struct LayeredImagePlugin;
 
 impl RuntimePlugin for LayeredImagePlugin {
     fn name(&self) -> &'static str {
-        "amigo-2d-layered-image"
+        "amigo-layered-image-2d-plugin"
     }
 
     fn register(&self, registry: &mut ServiceRegistry) -> AmigoResult<()> {
@@ -26,7 +26,7 @@ impl RuntimePlugin for LayeredImagePlugin {
         }
         register_domain_plugin(
             registry,
-            "amigo-2d-layered-image",
+            "amigo-layered-image-2d-plugin",
             &["rendering_2d"],
             &[],
             DEFAULT_CAPABILITY_VERSION,
@@ -35,13 +35,13 @@ impl RuntimePlugin for LayeredImagePlugin {
             registry.required::<amigo_scene::RuntimeSceneCommandHandlerRegistry>()?;
         amigo_scene::register_runtime_scene_command_handler(
             scene_handlers.as_ref(),
-            crate::scene_command::LayeredImage2dSceneCommandHandler,
+            super::scene_command::LayeredImage2dSceneCommandHandler,
         );
         let script_handlers =
             registry.required::<amigo_scripting_api::RuntimeScriptCommandHandlerRegistry>()?;
         amigo_scripting_api::register_runtime_script_command_handler(
             script_handlers.as_ref(),
-            crate::script_command::LayeredImage2dScriptCommandHandler,
+            super::script_command::LayeredImage2dScriptCommandHandler,
         );
         Ok(())
     }

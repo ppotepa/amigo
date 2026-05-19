@@ -2,7 +2,7 @@ use amigo_core::AmigoResult;
 use amigo_runtime::Runtime;
 use amigo_scripting_api::{RuntimeScriptCommandHandler, ScriptCommand};
 
-use crate::{LayeredImageBlendMode2d, LayeredImageSceneService};
+use super::{LayeredImageBlendMode2d, LayeredImageSceneService};
 
 pub struct LayeredImageScriptCommandContext<'a> {
     pub layered_image_scene_service: &'a LayeredImageSceneService,

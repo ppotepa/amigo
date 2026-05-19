@@ -2,7 +2,7 @@ use amigo_assets::AssetKey;
 use amigo_core::{AmigoError, AmigoResult};
 use amigo_scene::{SceneCommand, SceneEvent, SceneEventQueue, SceneService, format_scene_command};
 
-use crate::{LayeredImageSceneService, queue_layered_image_scene_command};
+use super::{LayeredImageSceneService, queue_layered_image_scene_command};
 
 pub struct LayeredImage2dSceneCommandHandler;
 

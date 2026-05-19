@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use crate::model::{
+use super::model::{
     TileCollisionKind2d, TileMarkerRule2d, TilePaintRule2d, TileRuleSet2d, TileRuleSetSymbols2d,
     TileTerrainRule2d, TileVariantSet2d,
 };

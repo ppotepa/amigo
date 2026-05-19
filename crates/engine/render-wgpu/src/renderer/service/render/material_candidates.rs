@@ -238,15 +238,15 @@ mod tests {
                 Renderable2dKind::LayeredImage,
             ),
             payload: Renderable2dPayload::LayeredImage(
-                amigo_2d_layered_image::LayeredImageDrawCommand {
+                amigo_layered_image_2d_plugin::LayeredImageDrawCommand {
                     entity_id: SceneEntityId::new(1),
                     entity_name: "poster-stack".to_owned(),
                     render_layer: "foreground.props".to_owned(),
-                    image: amigo_2d_layered_image::LayeredImageInstance {
+                    image: amigo_layered_image_2d_plugin::LayeredImageInstance {
                         asset: AssetKey::new("test/poster-stack"),
                         size: Vec2::new(64.0, 64.0),
                         base_opacity: 1.0,
-                        viewport_fit: amigo_2d_layered_image::LayeredImageViewportFit2d::Fixed,
+                        viewport_fit: amigo_layered_image_2d_plugin::LayeredImageViewportFit2d::Fixed,
                         visual_maps: None,
                         layer_overrides: Vec::new(),
                     },

@@ -47,7 +47,7 @@ pub(super) fn color_to_wgpu(color: ColorRgba) -> wgpu::Color {
     }
 }
 
-pub(super) fn tilemap_draw_size(tilemap: &amigo_2d_tilemap::TileMap2d) -> Vec2 {
+pub(super) fn tilemap_draw_size(tilemap: &amigo_tilemap_2d_plugin::TileMap2d) -> Vec2 {
     let width = tilemap
         .grid
         .iter()

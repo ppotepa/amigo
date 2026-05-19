@@ -1,12 +1,12 @@
 use amigo_2d_composition::{LightRoute2dCommand, RenderLayer2dCommand};
-use amigo_2d_layered_image::LayeredImageSceneService;
+use amigo_layered_image_2d_plugin::LayeredImageSceneService;
 use amigo_2d_lighting::{GlobalLight2dSceneService, LightGroup2dCommand, LightMap2dSceneService};
 use amigo_2d_lighting_beacon::BeaconLight2dDrawCommand;
 use amigo_2d_particles::Particle2dDrawCommand;
 use amigo_2d_post_fx::ScopedPostFx2dStack;
 use amigo_sprite_2d_plugin::SpriteSceneService;
 use amigo_text_2d_plugin::Text2dSceneService;
-use amigo_2d_tilemap::TileMap2dSceneService;
+use amigo_tilemap_2d_plugin::TileMap2dSceneService;
 use amigo_vector_2d_plugin::VectorSceneService;
 use amigo_3d_material::MaterialDrawCommand;
 use amigo_3d_mesh::MeshDrawCommand;

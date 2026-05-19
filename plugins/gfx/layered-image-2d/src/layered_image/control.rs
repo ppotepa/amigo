@@ -6,7 +6,7 @@ use amigo_runtime_control::{
     RuntimeControlProvider, RuntimeControlRegistry, RuntimeControlTarget,
 };
 
-use crate::{
+use super::{
     LayeredImageAssetSource, LayeredImageBlendMode2d, LayeredImageSceneService,
     apply_layer_overrides,
 };

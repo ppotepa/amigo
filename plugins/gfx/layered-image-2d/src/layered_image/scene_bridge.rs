@@ -1,6 +1,6 @@
 use amigo_scene::{LayeredImage2dSceneCommand, SceneEntityId, SceneService};
 
-use crate::{
+use super::{
     LayeredImageDrawCommand, LayeredImageInstance, LayeredImageLayerOverride,
     LayeredImageSceneService,
 };

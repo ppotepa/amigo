@@ -787,7 +787,7 @@ fn preview_opacity_report(ctx: &DevConsoleCommandContext<'_>) -> ConsoleCommandR
         }
     }
 
-    if let Ok(layered) = ctx.required::<amigo_2d_layered_image::LayeredImageSceneService>() {
+    if let Ok(layered) = ctx.required::<amigo_layered_image_2d_plugin::LayeredImageSceneService>() {
         if let Some(command) = layered
             .commands()
             .into_iter()
@@ -841,7 +841,7 @@ fn preview_reveal(ctx: &DevConsoleCommandContext<'_>) -> ConsoleCommandResult {
         }
     }
 
-    if let Ok(layered) = ctx.required::<amigo_2d_layered_image::LayeredImageSceneService>() {
+    if let Ok(layered) = ctx.required::<amigo_layered_image_2d_plugin::LayeredImageSceneService>() {
         if layered.set_base_opacity("background", 1.0) {
             changed.push("layered background base".to_owned());
         }

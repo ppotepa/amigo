@@ -3,7 +3,7 @@ use amigo_assets::{AssetCatalog, AssetKey};
 use amigo_core::{AmigoError, AmigoResult};
 use amigo_scene::{SceneCommand, SceneEvent, SceneEventQueue, SceneService, format_scene_command};
 
-use crate::{TileMap2dSceneService, marker_cells, queue_tilemap_scene_command};
+use super::{TileMap2dSceneService, marker_cells, queue_tilemap_scene_command};
 
 pub struct TileMap2dSceneCommandHandler;
 

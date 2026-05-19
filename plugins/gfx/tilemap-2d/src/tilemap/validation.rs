@@ -1,6 +1,6 @@
 use std::collections::{BTreeMap, BTreeSet};
 
-use crate::model::{TileMap2d, TileRuleSet2d};
+use super::model::{TileMap2d, TileRuleSet2d};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TileWorldDiagnosticSeverity {

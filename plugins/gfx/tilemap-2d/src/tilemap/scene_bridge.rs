@@ -6,7 +6,7 @@ use amigo_scene::{
     SceneEntityId, SceneService, TileMap2dSceneCommand as SceneTileMap2dSceneCommand,
 };
 
-use crate::{
+use super::{
     TileMap2dDrawCommand, TileMap2dSceneService, infer_tile_ruleset_from_prepared_asset,
     model::TileMap2d, resolver, resolver::resolve_tilemap,
 };

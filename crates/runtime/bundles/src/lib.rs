@@ -29,14 +29,14 @@ use amigo_session::{
 };
 
 pub use amigo_2d_composition;
-pub use amigo_2d_layered_image;
+pub use amigo_layered_image_2d_plugin;
 pub use amigo_2d_lighting;
 pub use amigo_2d_particles;
 pub use amigo_2d_physics;
 pub use amigo_2d_post_fx;
 pub use amigo_sprite_2d_plugin;
 pub use amigo_text_2d_plugin;
-pub use amigo_2d_tilemap;
+pub use amigo_tilemap_2d_plugin;
 pub use amigo_vector_2d_plugin;
 pub use amigo_3d_material;
 pub use amigo_3d_mesh;

@@ -19,10 +19,11 @@ fn layered_image_collects_renderable_candidate_and_focus_depth_adapter() {
     .remove(0);
 
     assert_eq!(candidate.entity_name, "alley");
-    assert!(matches!(
-        layered_image_layer_to_focus_depth(&layer),
-        amigo_focus_depth_plugin::api::FocusDepthCoverage2d::Distance { .. }
-    ));
+    assert!(
+        layered_image_layer_to_focus_depth(&layer)
+            .0
+            .starts_with("focus-depth.distance.")
+    );
 }
 
 #[test]

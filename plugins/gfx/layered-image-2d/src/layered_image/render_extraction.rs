@@ -1,6 +1,6 @@
 use amigo_scene::SceneService;
 
-use crate::{LayeredImageDrawCommand, LayeredImageSceneService};
+use super::{LayeredImageDrawCommand, LayeredImageSceneService};
 
 pub struct LayeredImage2dRenderExtractionContext<'a> {
     pub scene_service: &'a SceneService,

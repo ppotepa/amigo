@@ -1,7 +1,7 @@
 use amigo_assets::{AssetCatalog, AssetKey, PreparedAsset, PreparedAssetKind};
 use amigo_math::{ColorRgba, Vec2};
 
-use crate::{
+use super::{
     LayeredImageAsset, LayeredImageBlendMode2d, LayeredImageLayer, LayeredImageLayerOverride,
 };
 

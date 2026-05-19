@@ -13,10 +13,10 @@ fn tilemap_collects_renderable_candidate_and_focus_depth_adapter() {
     .remove(0);
 
     assert_eq!(candidate.entity_name, "ground");
-    assert!(matches!(
-        tilemap_to_focus_depth(&candidate),
-        amigo_focus_depth_plugin::api::FocusDepthCoverage2d::RenderLayer { .. }
-    ));
+    assert_eq!(
+        tilemap_to_focus_depth(&candidate).0,
+        "focus-depth.render-layer.world"
+    );
 }
 
 #[test]

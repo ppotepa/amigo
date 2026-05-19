@@ -1,4 +1,4 @@
-use crate::model::{
+use super::model::{
     ResolvedTile2d, ResolvedTileMap2d, TileCollisionKind2d, TileMap2d, TileMapMarkerCell,
     TileMapSolidCell, TileNeighborInfo2d, TileRuleSet2d, TileVariantKind2d,
 };

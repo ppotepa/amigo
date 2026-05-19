@@ -123,7 +123,7 @@ pub(crate) fn dispatch_script_command_with_layered_image_service(
     script_event_queue: &amigo_scripting_api::ScriptEventQueue,
     dev_console_state: &amigo_scripting_api::DevConsoleState,
     asset_catalog: &amigo_assets::AssetCatalog,
-    layered_images: &amigo_runtime_bundles::amigo_2d_layered_image::LayeredImageSceneService,
+    layered_images: &amigo_runtime_bundles::amigo_layered_image_2d_plugin::LayeredImageSceneService,
     _render_layers: &amigo_runtime_bundles::amigo_2d_composition::RenderLayer2dSceneService,
     _global_lights: &amigo_runtime_bundles::amigo_2d_lighting::GlobalLight2dSceneService,
     _light_groups: &amigo_runtime_bundles::amigo_2d_lighting::LightGroup2dSceneService,
@@ -133,23 +133,23 @@ pub(crate) fn dispatch_script_command_with_layered_image_service(
     diagnostics: &RuntimeDiagnostics,
     launch_selection: &LaunchSelection,
 ) {
-    if amigo_runtime_bundles::amigo_2d_layered_image::can_handle_layered_image_script_command(
+    if amigo_runtime_bundles::amigo_layered_image_2d_plugin::can_handle_layered_image_script_command(
         &command,
     ) {
         let outcome =
-            amigo_runtime_bundles::amigo_2d_layered_image::handle_layered_image_script_command(
-                amigo_runtime_bundles::amigo_2d_layered_image::LayeredImageScriptCommandContext {
+            amigo_runtime_bundles::amigo_layered_image_2d_plugin::handle_layered_image_script_command(
+                amigo_runtime_bundles::amigo_layered_image_2d_plugin::LayeredImageScriptCommandContext {
                     layered_image_scene_service: layered_images,
                 },
                 command,
             );
 
         match outcome {
-            amigo_runtime_bundles::amigo_2d_layered_image::LayeredImageScriptCommandOutcome::Updated(message)
-            | amigo_runtime_bundles::amigo_2d_layered_image::LayeredImageScriptCommandOutcome::ParseError(message) => {
+            amigo_runtime_bundles::amigo_layered_image_2d_plugin::LayeredImageScriptCommandOutcome::Updated(message)
+            | amigo_runtime_bundles::amigo_layered_image_2d_plugin::LayeredImageScriptCommandOutcome::ParseError(message) => {
                 dev_console_state.write_line(message);
             }
-            amigo_runtime_bundles::amigo_2d_layered_image::LayeredImageScriptCommandOutcome::Unhandled => {}
+            amigo_runtime_bundles::amigo_layered_image_2d_plugin::LayeredImageScriptCommandOutcome::Unhandled => {}
         }
         return;
     }

@@ -1,4 +1,4 @@
-# amigo-2d-tilemap
+# amigo-tilemap-2d-plugin
 
 2D tilemap scene services and ruleset resolution.
 

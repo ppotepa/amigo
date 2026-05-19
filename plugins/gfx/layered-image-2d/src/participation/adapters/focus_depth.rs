@@ -1,12 +1,10 @@
-use amigo_focus_depth_plugin::api::FocusDepthCoverage2d;
+use amigo_plugin_api::TargetId;
 
 use crate::api::LayeredImage2dLayer;
 
-pub fn layered_image_layer_to_focus_depth(layer: &LayeredImage2dLayer) -> FocusDepthCoverage2d {
+pub fn layered_image_layer_to_focus_depth(layer: &LayeredImage2dLayer) -> TargetId {
     match layer.distance_m {
-        Some(meters) => FocusDepthCoverage2d::Distance { meters },
-        None => FocusDepthCoverage2d::RenderLayer {
-            layer_id: layer.id.clone(),
-        },
+        Some(meters) => TargetId(format!("focus-depth.distance.{meters:.3}")),
+        None => TargetId(format!("focus-depth.layer.{}", layer.id)),
     }
 }

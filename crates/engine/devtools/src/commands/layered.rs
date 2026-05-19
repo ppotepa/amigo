@@ -30,24 +30,24 @@ impl ConsoleCommandHandler for LayeredImageConsoleCommandHandler {
         ctx: &ConsoleCommandContext<'_>,
         command: ParsedConsoleCommand,
     ) -> ConsoleCommandResult {
-        let layered = match ctx.required::<amigo_2d_layered_image::LayeredImageSceneService>() {
+        let layered = match ctx.required::<amigo_layered_image_2d_plugin::LayeredImageSceneService>() {
             Ok(service) => service,
             Err(error) => return ConsoleCommandResult::error(error.to_string()),
         };
-        match amigo_2d_layered_image::handle_layered_image_dev_console_command(
-            amigo_2d_layered_image::LayeredImageDevConsoleCommandContext {
+        match amigo_layered_image_2d_plugin::handle_layered_image_dev_console_command(
+            amigo_layered_image_2d_plugin::LayeredImageDevConsoleCommandContext {
                 layered_image_scene_service: layered.as_ref(),
             },
             &command.name,
             &command.args,
         ) {
-            amigo_2d_layered_image::LayeredImageDevConsoleCommandOutcome::Handled(message) => {
+            amigo_layered_image_2d_plugin::LayeredImageDevConsoleCommandOutcome::Handled(message) => {
                 ConsoleCommandResult::ok(message)
             }
-            amigo_2d_layered_image::LayeredImageDevConsoleCommandOutcome::Error(message) => {
+            amigo_layered_image_2d_plugin::LayeredImageDevConsoleCommandOutcome::Error(message) => {
                 ConsoleCommandResult::error(message)
             }
-            amigo_2d_layered_image::LayeredImageDevConsoleCommandOutcome::Unhandled => {
+            amigo_layered_image_2d_plugin::LayeredImageDevConsoleCommandOutcome::Unhandled => {
                 ConsoleCommandResult::unknown(command.raw)
             }
         }

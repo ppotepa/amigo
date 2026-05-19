@@ -15,7 +15,7 @@ use amigo_runtime_bundles::amigo_sprite_2d_plugin::{
     Sprite, SpriteDrawCommand, SpriteSceneService, SpriteSheet,
 };
 use amigo_runtime_bundles::amigo_text_2d_plugin::{Text2d, Text2dDrawCommand, Text2dSceneService};
-use amigo_runtime_bundles::amigo_2d_tilemap::{
+use amigo_runtime_bundles::amigo_tilemap_2d_plugin::{
     TileMap2d, TileMap2dDrawCommand, TileMap2dSceneService,
 };
 use amigo_runtime_bundles::amigo_vector_2d_plugin::{
@@ -245,7 +245,7 @@ fn app_render_extractor_registry_collects_vector_and_ui_data() {
     });
     let text3d = Text3dSceneService::default();
     let layered_images =
-        amigo_runtime_bundles::amigo_2d_layered_image::LayeredImageSceneService::default();
+        amigo_runtime_bundles::amigo_layered_image_2d_plugin::LayeredImageSceneService::default();
     let depth_maps = amigo_runtime_bundles::amigo_focus_depth_plugin::DepthMap2dSceneService::default();
     let global_lights =
         amigo_runtime_bundles::amigo_2d_lighting::GlobalLight2dSceneService::default();
@@ -398,7 +398,7 @@ fn app_render_extractor_registry_appends_enabled_debug_overlay() {
     let tilemaps = TileMap2dSceneService::default();
     let sprites = SpriteSceneService::default();
     let layered_images =
-        amigo_runtime_bundles::amigo_2d_layered_image::LayeredImageSceneService::default();
+        amigo_runtime_bundles::amigo_layered_image_2d_plugin::LayeredImageSceneService::default();
     let render_layers =
         amigo_runtime_bundles::amigo_2d_composition::RenderLayer2dSceneService::default();
     let light_routes =

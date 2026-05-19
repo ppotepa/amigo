@@ -5,4 +5,14 @@ edition = "2021"
 
 [dependencies]
 amigo-plugin-api = { path = "../../../crates/core/plugin-api" }
-amigo-focus-depth-plugin.workspace = true
+amigo-2d-post-fx.workspace = true
+amigo-assets.workspace = true
+amigo-capabilities.workspace = true
+amigo-core.workspace = true
+amigo-editor-api.workspace = true
+amigo-math.workspace = true
+amigo-runtime.workspace = true
+amigo-runtime-control.workspace = true
+amigo-scene.workspace = true
+amigo-session.workspace = true
+amigo-scripting-api.workspace = true

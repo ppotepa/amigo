@@ -1,6 +1,6 @@
 use std::sync::Mutex;
 
-use crate::{LayeredImageBlendMode2d, LayeredImageDrawCommand, LayeredImageLayerOverride};
+use super::{LayeredImageBlendMode2d, LayeredImageDrawCommand, LayeredImageLayerOverride};
 
 #[derive(Debug, Default)]
 pub struct LayeredImageSceneService {
