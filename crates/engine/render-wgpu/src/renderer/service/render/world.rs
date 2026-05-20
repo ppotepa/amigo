@@ -216,6 +216,8 @@ pub(super) fn execute_world_to_offscreen(
         selection.layer_filter.allows(item.render_layer())
             && selection.object_filter.allows(item.owner_entity())
     });
+    let renderable_adapters = crate::default_renderable_2d_adapter_registry();
+    world2d_items.retain(|item| renderable_adapters.supports_kind(&item.payload_kind_id()));
     world2d_items.sort_by_key(|item| world2d_sort_key(item, &render_layer_lookup));
     let mut material_candidates: Vec<WgpuMaterialCandidate2d> = Vec::new();
     let mut material_decisions: Vec<MaterialCandidateDecision2d> = Vec::new();

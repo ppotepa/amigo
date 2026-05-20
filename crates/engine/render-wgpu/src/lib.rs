@@ -6,6 +6,7 @@ mod backend;
 mod frame_packet;
 mod plugin_pass;
 mod renderable_adapter;
+mod renderable_adapters;
 /// Frame extraction and scene rendering code built on top of WGPU.
 mod renderer;
 /// Immediate overlay model, layout, and drawing primitives for tools.
@@ -21,6 +22,7 @@ pub use frame_packet::{
 };
 pub use plugin_pass::*;
 pub use renderable_adapter::*;
+pub use renderable_adapters::*;
 pub use renderer::{
     WgpuEmergencyOverlayLevel, WgpuEmergencyOverlayLine, WgpuFrameRenderRequest,
     WgpuFrameRenderTarget, WgpuGameViewportPlacement, WgpuSceneRenderer, WgpuSurfaceRect,

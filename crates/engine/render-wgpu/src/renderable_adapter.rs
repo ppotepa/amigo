@@ -28,4 +28,8 @@ impl WgpuRenderable2dAdapterRegistry {
     pub fn is_empty(&self) -> bool {
         self.adapters.is_empty()
     }
+
+    pub fn supports_kind(&self, kind: &Renderable2dPayloadKind) -> bool {
+        self.adapters.iter().any(|adapter| adapter.kind() == *kind)
+    }
 }

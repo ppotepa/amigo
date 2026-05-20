@@ -1,0 +1,27 @@
+mod beacon;
+mod layered_image;
+mod particle;
+mod sprite;
+mod text;
+mod tilemap;
+mod vector;
+
+use std::sync::OnceLock;
+
+use crate::WgpuRenderable2dAdapterRegistry;
+
+pub fn default_renderable_2d_adapter_registry() -> &'static WgpuRenderable2dAdapterRegistry {
+    static REGISTRY: OnceLock<WgpuRenderable2dAdapterRegistry> = OnceLock::new();
+
+    REGISTRY.get_or_init(|| {
+        let mut registry = WgpuRenderable2dAdapterRegistry::default();
+        registry.register(tilemap::TileMap2dRenderableAdapter);
+        registry.register(layered_image::LayeredImage2dRenderableAdapter);
+        registry.register(vector::Vector2dRenderableAdapter);
+        registry.register(beacon::Beacon2dRenderableAdapter);
+        registry.register(sprite::Sprite2dRenderableAdapter);
+        registry.register(text::Text2dRenderableAdapter);
+        registry.register(particle::Particle2dRenderableAdapter);
+        registry
+    })
+}
