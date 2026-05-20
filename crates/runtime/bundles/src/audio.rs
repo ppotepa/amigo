@@ -7,8 +7,9 @@ use amigo_runtime::{PluginBundle, RuntimeBuilder};
 use amigo_session::RuntimeSession;
 
 pub use amigo_audio_api::{
-    AudioClip, AudioClipKey, AudioCommand, AudioCommandQueue, AudioPlaybackMode,
-    AudioSceneService, AudioStateService,
+    AudioClip, AudioClipKey, AudioCommand, AudioCommandQueue, AudioPlaybackMode, AudioSceneService,
+    AudioScriptCommandContext, AudioScriptCommandOutcome, AudioStateService,
+    handle_audio_script_command,
 };
 pub use amigo_audio_output::{AudioOutputBackendService, AudioOutputStartStatus};
 

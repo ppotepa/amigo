@@ -7,9 +7,9 @@ pub(crate) fn dispatch_script_command(
     script_event_queue: &amigo_scripting_api::ScriptEventQueue,
     dev_console_state: &amigo_scripting_api::DevConsoleState,
     asset_catalog: &amigo_assets::AssetCatalog,
-    ui_state: &amigo_runtime_bundles::amigo_ui::UiStateService,
-    audio_command_queue: &amigo_runtime_bundles::amigo_audio_api::AudioCommandQueue,
-    audio_scene_service: &amigo_runtime_bundles::amigo_audio_api::AudioSceneService,
+    ui_state: &amigo_runtime_bundles::UiStateService,
+    audio_command_queue: &amigo_runtime_bundles::AudioCommandQueue,
+    audio_scene_service: &amigo_runtime_bundles::AudioSceneService,
     _diagnostics: &RuntimeDiagnostics,
     launch_selection: &LaunchSelection,
 ) {
@@ -32,8 +32,8 @@ pub(crate) fn dispatch_script_command(
             );
         }
         "ui" => {
-            let _ = amigo_runtime_bundles::amigo_ui::handle_ui_script_command(
-                amigo_runtime_bundles::amigo_ui::UiScriptCommandContext {
+            let _ = amigo_runtime_bundles::handle_ui_script_command(
+                amigo_runtime_bundles::UiScriptCommandContext {
                     ui_state_service: ui_state,
                 },
                 command,
@@ -62,33 +62,33 @@ pub(crate) fn dispatch_script_command_with_layered_image_service(
     script_event_queue: &amigo_scripting_api::ScriptEventQueue,
     dev_console_state: &amigo_scripting_api::DevConsoleState,
     asset_catalog: &amigo_assets::AssetCatalog,
-    layered_images: &amigo_runtime_bundles::amigo_layered_image_2d_plugin::LayeredImageSceneService,
-    _render_layers: &amigo_runtime_bundles::amigo_2d_composition::RenderLayer2dSceneService,
-    _global_lights: &amigo_runtime_bundles::amigo_light_2d_plugin::GlobalLight2dSceneService,
-    _light_groups: &amigo_runtime_bundles::amigo_light_2d_plugin::LightGroup2dSceneService,
-    ui_state: &amigo_runtime_bundles::amigo_ui::UiStateService,
-    audio_command_queue: &amigo_runtime_bundles::amigo_audio_api::AudioCommandQueue,
-    audio_scene_service: &amigo_runtime_bundles::amigo_audio_api::AudioSceneService,
+    layered_images: &amigo_runtime_bundles::LayeredImageSceneService,
+    _render_layers: &amigo_runtime_bundles::RenderLayer2dSceneService,
+    _global_lights: &amigo_runtime_bundles::GlobalLight2dSceneService,
+    _light_groups: &amigo_runtime_bundles::LightGroup2dSceneService,
+    ui_state: &amigo_runtime_bundles::UiStateService,
+    audio_command_queue: &amigo_runtime_bundles::AudioCommandQueue,
+    audio_scene_service: &amigo_runtime_bundles::AudioSceneService,
     diagnostics: &RuntimeDiagnostics,
     launch_selection: &LaunchSelection,
 ) {
-    if amigo_runtime_bundles::amigo_layered_image_2d_plugin::can_handle_layered_image_script_command(
+    if amigo_runtime_bundles::can_handle_layered_image_script_command(
         &command,
     ) {
         let outcome =
-            amigo_runtime_bundles::amigo_layered_image_2d_plugin::handle_layered_image_script_command(
-                amigo_runtime_bundles::amigo_layered_image_2d_plugin::LayeredImageScriptCommandContext {
+            amigo_runtime_bundles::handle_layered_image_script_command(
+                amigo_runtime_bundles::LayeredImageScriptCommandContext {
                     layered_image_scene_service: layered_images,
                 },
                 command,
             );
 
         match outcome {
-            amigo_runtime_bundles::amigo_layered_image_2d_plugin::LayeredImageScriptCommandOutcome::Updated(message)
-            | amigo_runtime_bundles::amigo_layered_image_2d_plugin::LayeredImageScriptCommandOutcome::ParseError(message) => {
+            amigo_runtime_bundles::LayeredImageScriptCommandOutcome::Updated(message)
+            | amigo_runtime_bundles::LayeredImageScriptCommandOutcome::ParseError(message) => {
                 dev_console_state.write_line(message);
             }
-            amigo_runtime_bundles::amigo_layered_image_2d_plugin::LayeredImageScriptCommandOutcome::Unhandled => {}
+            amigo_runtime_bundles::LayeredImageScriptCommandOutcome::Unhandled => {}
         }
         return;
     }
@@ -109,12 +109,12 @@ pub(crate) fn dispatch_script_command_with_layered_image_service(
 
 fn dispatch_audio_script_command_for_test(
     command: ScriptCommand,
-    audio_command_queue: &amigo_runtime_bundles::amigo_audio_api::AudioCommandQueue,
-    audio_scene_service: &amigo_runtime_bundles::amigo_audio_api::AudioSceneService,
+    audio_command_queue: &amigo_runtime_bundles::AudioCommandQueue,
+    audio_scene_service: &amigo_runtime_bundles::AudioSceneService,
     launch_selection: &LaunchSelection,
 ) {
-    let outcome = amigo_runtime_bundles::amigo_audio_api::handle_audio_script_command(
-        amigo_runtime_bundles::amigo_audio_api::AudioScriptCommandContext {
+    let outcome = amigo_runtime_bundles::handle_audio_script_command(
+        amigo_runtime_bundles::AudioScriptCommandContext {
             audio_command_queue,
             audio_scene_service,
         },
@@ -123,22 +123,22 @@ fn dispatch_audio_script_command_for_test(
     );
 
     match outcome {
-        amigo_runtime_bundles::amigo_audio_api::AudioScriptCommandOutcome::PlayOnce {
+        amigo_runtime_bundles::AudioScriptCommandOutcome::PlayOnce {
             asset_key,
         }
-        | amigo_runtime_bundles::amigo_audio_api::AudioScriptCommandOutcome::SourceStarted {
+        | amigo_runtime_bundles::AudioScriptCommandOutcome::SourceStarted {
             asset_key,
             ..
         }
-        | amigo_runtime_bundles::amigo_audio_api::AudioScriptCommandOutcome::Preloaded {
+        | amigo_runtime_bundles::AudioScriptCommandOutcome::Preloaded {
             asset_key,
             ..
         } => {
-            audio_scene_service.register_clip(amigo_runtime_bundles::amigo_audio_api::AudioClip {
-                key: amigo_runtime_bundles::amigo_audio_api::AudioClipKey::new(
+            audio_scene_service.register_clip(amigo_runtime_bundles::AudioClip {
+                key: amigo_runtime_bundles::AudioClipKey::new(
                     asset_key.as_str().to_owned(),
                 ),
-                mode: amigo_runtime_bundles::amigo_audio_api::AudioPlaybackMode::OneShot,
+                mode: amigo_runtime_bundles::AudioPlaybackMode::OneShot,
             });
         }
         _ => {}

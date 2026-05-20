@@ -8,17 +8,12 @@ use amigo_render_wgpu::{
 };
 use amigo_runtime::Runtime;
 use amigo_runtime::{SystemPhase, SystemRegistry};
-use amigo_runtime_bundles::amigo_layered_image_2d_plugin::LayeredImageSceneService;
-use amigo_runtime_bundles::amigo_particles_2d_plugin::Particle2dSceneService;
-use amigo_runtime_bundles::amigo_sprite_2d_plugin::SpriteSceneService;
-use amigo_runtime_bundles::amigo_text_2d_plugin::Text2dSceneService;
-use amigo_runtime_bundles::amigo_tilemap_2d_plugin::TileMap2dSceneService;
-use amigo_runtime_bundles::amigo_vector_2d_plugin::VectorSceneService;
-use amigo_runtime_bundles::amigo_3d_material::MaterialSceneService;
-use amigo_runtime_bundles::amigo_3d_mesh::MeshSceneService;
-use amigo_runtime_bundles::amigo_3d_text::Text3dSceneService;
-use amigo_runtime_bundles::amigo_ui::{
-    UiInputService, UiSceneService, UiStateService, UiThemeService,
+use amigo_runtime_bundles::{
+    GlobalLight2dSceneService, LayeredImageSceneService, LightGroup2dSceneService,
+    LightMap2dSceneService, LightRoute2dSceneService, MaterialSceneService, MeshSceneService,
+    Particle2dSceneService, PostFx2dService, RenderLayer2dSceneService, SpriteSceneService,
+    Text2dSceneService, Text3dSceneService, TileMap2dSceneService, UiInputService,
+    UiInputViewportState, UiSceneService, UiStateService, UiThemeService, VectorSceneService,
 };
 use amigo_scene::SceneService;
 
@@ -123,9 +118,7 @@ impl ScenePreviewHost {
             let summary = bootstrap.summary().clone();
             let (session, _) = bootstrap.into_parts();
             let runtime = session.into_runtime();
-            crate::runtime_context::required::<
-                amigo_runtime_bundles::amigo_ui::UiInputViewportState,
-            >(&runtime)?
+            crate::runtime_context::required::<UiInputViewportState>(&runtime)?
             .set(Some(UiViewportSize::new(
                 self.options.width as f32,
                 self.options.height as f32,
@@ -258,21 +251,11 @@ impl ScenePreviewHost {
         let _ = crate::runtime_context::required::<TileMap2dSceneService>(runtime)?;
         let _ = crate::runtime_context::required::<SpriteSceneService>(runtime)?;
         let _ = crate::runtime_context::required::<LayeredImageSceneService>(runtime)?;
-        let _ = crate::runtime_context::required::<
-            amigo_runtime_bundles::amigo_2d_composition::RenderLayer2dSceneService,
-        >(runtime)?;
-        let _ = crate::runtime_context::required::<
-            amigo_runtime_bundles::amigo_2d_composition::LightRoute2dSceneService,
-        >(runtime)?;
-        let _ = crate::runtime_context::required::<
-            amigo_runtime_bundles::amigo_light_2d_plugin::GlobalLight2dSceneService,
-        >(runtime)?;
-        let _ = crate::runtime_context::required::<
-            amigo_runtime_bundles::amigo_light_2d_plugin::LightMap2dSceneService,
-        >(runtime)?;
-        let _ = crate::runtime_context::required::<
-            amigo_runtime_bundles::amigo_light_2d_plugin::LightGroup2dSceneService,
-        >(runtime)?;
+        let _ = crate::runtime_context::required::<RenderLayer2dSceneService>(runtime)?;
+        let _ = crate::runtime_context::required::<LightRoute2dSceneService>(runtime)?;
+        let _ = crate::runtime_context::required::<GlobalLight2dSceneService>(runtime)?;
+        let _ = crate::runtime_context::required::<LightMap2dSceneService>(runtime)?;
+        let _ = crate::runtime_context::required::<LightGroup2dSceneService>(runtime)?;
         let _ = crate::runtime_context::required::<Text2dSceneService>(runtime)?;
         let _ = crate::runtime_context::required::<VectorSceneService>(runtime)?;
         let _ = crate::runtime_context::required::<Particle2dSceneService>(runtime)?;
@@ -282,17 +265,13 @@ impl ScenePreviewHost {
         let _ = crate::runtime_context::required::<UiSceneService>(runtime)?;
         let _ = crate::runtime_context::required::<UiStateService>(runtime)?;
         let _ = crate::runtime_context::required::<UiThemeService>(runtime)?;
-        let _ = crate::runtime_context::required::<
-            amigo_runtime_bundles::amigo_composite_plugin::PostFx2dService,
-        >(runtime)?;
+        let _ = crate::runtime_context::required::<PostFx2dService>(runtime)?;
         let _ = crate::runtime_context::required::<amigo_scripting_api::DevConsoleState>(runtime)?;
         let _ =
             crate::runtime_context::required::<amigo_devtools::ConsoleCompletionState>(runtime)?;
         let _ =
             crate::runtime_context::required::<crate::debug_overlay::DebugOverlayService>(runtime)?;
-        let _ = crate::runtime_context::required::<
-            amigo_runtime_bundles::amigo_ui::UiInputViewportState,
-        >(runtime)?;
+        let _ = crate::runtime_context::required::<UiInputViewportState>(runtime)?;
         let render_packet =
             amigo_runtime_bundles::default_wgpu_render_extractor_registry().extract_all(runtime);
         let extracted_tilemaps =

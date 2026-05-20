@@ -16,8 +16,18 @@ use amigo_tilemap_2d_plugin::TileMap2dPlugin;
 use amigo_ui::UiPlugin;
 use amigo_vector_2d_plugin::Vector2dPlugin;
 
-pub use amigo_particles_2d_plugin::Particle2dSceneService;
-pub use amigo_ui::{UiInputService, UiStateService, tick_ui_bindings};
+pub use amigo_particles_2d_plugin::{
+    ParticleEmitter2d, ParticlePreset2d, ParticlePreset2dService, Particle2dSceneService,
+};
+pub use amigo_ui::{
+    UiDocument, UiInputService, UiStateService, collect_scene_ui_font_asset_keys,
+    handle_ui_script_command, scene_ui_document_to_runtime_document, tick_ui_bindings,
+    UiInputViewportState, UiSceneService, UiScriptCommandContext, UiThemeService,
+};
+pub use amigo_layered_image_2d_plugin::{
+    LayeredImageScriptCommandContext, LayeredImageScriptCommandOutcome,
+    can_handle_layered_image_script_command, handle_layered_image_script_command,
+};
 
 pub struct TwoDRuntimeBundle;
 

@@ -1,13 +1,19 @@
-use amigo_2d_composition::{
+pub use amigo_2d_composition::{
     LightRoute2dSceneService, RenderLayer2dSceneService,
 };
+pub use amigo_3d_material::MaterialSceneService;
+pub use amigo_3d_mesh::MeshSceneService;
+pub use amigo_3d_text::Text3dSceneService;
+pub use amigo_composite_plugin::PostFx2dService;
 use amigo_focus_depth_plugin::DepthMap2dSceneService;
-use amigo_layered_image_2d_plugin::LayeredImageSceneService;
-use amigo_light_2d_plugin::{GlobalLight2dSceneService, LightMap2dSceneService};
+pub use amigo_layered_image_2d_plugin::LayeredImageSceneService;
+pub use amigo_light_2d_plugin::{
+    GlobalLight2dSceneService, LightGroup2dSceneService, LightMap2dSceneService,
+};
 pub use amigo_sprite_2d_plugin::{SpriteSceneService, SpriteSheet};
-use amigo_text_2d_plugin::Text2dSceneService;
+pub use amigo_text_2d_plugin::Text2dSceneService;
 pub use amigo_tilemap_2d_plugin::TileMap2dSceneService;
-use amigo_vector_2d_plugin::VectorSceneService;
+pub use amigo_vector_2d_plugin::VectorSceneService;
 
 use amigo_render_wgpu::WgpuRenderFramePacket;
 use amigo_scene::Sprite2dSceneCommand;
