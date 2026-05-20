@@ -75,7 +75,7 @@ pub fn apply_property_request(
         AuthoringRuntimeBinding::LayeredImageBaseOpacity { .. }
         | AuthoringRuntimeBinding::LayeredImageLayerOpacity { .. }
         | AuthoringRuntimeBinding::LayeredImageLayerEnabled { .. } => {
-            apply_layered_image_binding(runtime, target, request.next)
+            apply_runtime_property_provider(runtime, request.property_id, target, request.next)
         }
         AuthoringRuntimeBinding::ParticleEmitterProperty { entity_name, field } => {
             apply_particle_property(runtime, request.property_id, target, entity_name, field, request.next)
@@ -268,39 +268,26 @@ fn parse_render_depth_mode(value: &str) -> Option<RenderDepthMode2d> {
     }
 }
 
-fn apply_layered_image_binding(
+fn apply_runtime_property_provider(
     runtime: &Runtime,
+    property_id: &str,
     target: &AuthoringRuntimeBinding,
     value: EditorPropertyValue,
 ) -> AmigoResult<ApplyResult> {
-    let service = runtime.required::<amigo_layered_image_2d_plugin::LayeredImageSceneService>()?;
-    let applied = match (target, value) {
-        (
-            AuthoringRuntimeBinding::LayeredImageBaseOpacity { entity_name },
-            EditorPropertyValue::Number(value),
-        ) => service.set_base_opacity(entity_name, value),
-        (
-            AuthoringRuntimeBinding::LayeredImageLayerOpacity {
-                entity_name,
-                layer_id,
-            },
-            EditorPropertyValue::Number(value),
-        ) => service.set_layer_opacity(entity_name, layer_id, value),
-        (
-            AuthoringRuntimeBinding::LayeredImageLayerEnabled {
-                entity_name,
-                layer_id,
-            },
-            EditorPropertyValue::Bool(value),
-        ) => service.set_layer_enabled(entity_name, layer_id, value),
-        _ => return Ok(ApplyResult::Unsupported),
+    let Some(registry) = runtime.resolve::<IngameEditorRuntimeApplyProviderRegistry>() else {
+        return Ok(ApplyResult::Unsupported);
     };
-    if applied {
-        Ok(ApplyResult::Applied)
-    } else {
-        Err(AmigoError::Message(
-            "unknown layered image binding target".to_owned(),
-        ))
+    let Some(value) = editor_property_value_to_yaml(value) else {
+        return Ok(ApplyResult::Unsupported);
+    };
+    let request = EditorRuntimeApplyRequest::RuntimeProperty {
+        property_id: property_id.to_owned(),
+        binding: target.clone(),
+        value,
+    };
+    match registry.apply_first(runtime, request)? {
+        Some(EditorRuntimeApplyOutcome::Applied(_)) => Ok(ApplyResult::Applied),
+        Some(EditorRuntimeApplyOutcome::Ignored) | None => Ok(ApplyResult::Unsupported),
     }
 }
 
@@ -322,21 +309,7 @@ fn apply_particle_property(
     field: &str,
     value: EditorPropertyValue,
 ) -> AmigoResult<ApplyResult> {
-    let Some(registry) = runtime.resolve::<IngameEditorRuntimeApplyProviderRegistry>() else {
-        return Ok(ApplyResult::Unsupported);
-    };
-    let Some(value) = editor_property_value_to_yaml(value) else {
-        return Ok(ApplyResult::Unsupported);
-    };
-    let request = EditorRuntimeApplyRequest::RuntimeProperty {
-        property_id: property_id.to_owned(),
-        binding: target.clone(),
-        value,
-    };
-    match registry.apply_first(runtime, request)? {
-        Some(EditorRuntimeApplyOutcome::Applied(_)) => Ok(ApplyResult::Applied),
-        Some(EditorRuntimeApplyOutcome::Ignored) | None => Ok(ApplyResult::Unsupported),
-    }
+    apply_runtime_property_provider(runtime, property_id, target, value)
 }
 
 fn editor_property_value_to_yaml(value: EditorPropertyValue) -> Option<serde_yaml::Value> {

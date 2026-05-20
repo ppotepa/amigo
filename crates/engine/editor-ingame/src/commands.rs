@@ -3,6 +3,7 @@ use amigo_devtools::{
     ConsoleCommandResult, ConsoleCommandSchema, DevConsoleCommandContext, ParsedConsoleCommand,
     RuntimeConsoleCommandHandler,
 };
+use amigo_editor_api::{EditorRuntimeApplyOutcome, EditorRuntimeApplyRequest};
 use amigo_scripting_api::ScriptRuntimeService;
 
 use crate::inspect::{
@@ -11,6 +12,7 @@ use crate::inspect::{
 use crate::runtime_apply::apply_property_value;
 use crate::selection::{select_node_by_id, select_viewport_target};
 use crate::state::{EditorPropertyValue, IngameEditorState, SelectionSource};
+use crate::IngameEditorRuntimeApplyProviderRegistry;
 use amigo_editor_authoring::{
     AuthoringNode, AuthoringPropertyEditor, AuthoringPropertyValue, AuthoringRuntimeBinding,
     AuthoringSceneGraph, AuthoringSceneGraphService, build_property_panel_for_node_with_registry,
@@ -790,33 +792,10 @@ fn preview_opacity_report(ctx: &DevConsoleCommandContext<'_>) -> ConsoleCommandR
         }
     }
 
-    if let Ok(layered) = ctx.required::<amigo_layered_image_2d_plugin::LayeredImageSceneService>() {
-        if let Some(command) = layered
-            .commands()
-            .into_iter()
-            .find(|command| command.entity_name == "background")
-        {
-            lines.push(format!(
-                "layered background: base_opacity={:.3}",
-                command.image.base_opacity
-            ));
-            for layer in [
-                "club_sign",
-                "club_sign_blur",
-                "bar_sign",
-                "bar_lanterns",
-                "skyline",
-            ] {
-                let opacity = command
-                    .image
-                    .layer_overrides
-                    .iter()
-                    .find(|override_layer| override_layer.id == layer)
-                    .and_then(|override_layer| override_layer.opacity)
-                    .unwrap_or(1.0);
-                lines.push(format!("layered background.{layer}: opacity={opacity:.3}"));
-            }
-        }
+    if let Some(report) =
+        editor_runtime_command(ctx, "editor.preview.opacity.layered-image", Vec::new())
+    {
+        lines.push(report);
     }
 
     if lines.is_empty() {
@@ -844,31 +823,36 @@ fn preview_reveal(ctx: &DevConsoleCommandContext<'_>) -> ConsoleCommandResult {
         }
     }
 
-    if let Ok(layered) = ctx.required::<amigo_layered_image_2d_plugin::LayeredImageSceneService>() {
-        if layered.set_base_opacity("background", 1.0) {
-            changed.push("layered background base".to_owned());
-        }
-        for layer in [
-            "club_sign",
-            "club_sign_blur",
-            "bar_sign",
-            "bar_sign_blur",
-            "pharmacy_cross",
-            "pharmacy_cross_blur",
-            "bar_lanterns",
-            "bar_lanterns_blur",
-            "skyline",
-            "skyline_blur",
-            "club_entry",
-            "club_entry_blur",
-        ] {
-            if layered.set_layer_opacity("background", layer, 1.0) {
-                changed.push(format!("background.{layer}"));
-            }
-        }
+    if let Some(count) = editor_runtime_command(ctx, "editor.preview.reveal.layered-image", Vec::new())
+        .and_then(|value| value.parse::<usize>().ok())
+    {
+        changed.extend((0..count).map(|index| format!("layered value {index}")));
     }
 
     ConsoleCommandResult::ok(format!("preview reveal changed {} values", changed.len()))
+}
+
+fn editor_runtime_command(
+    ctx: &DevConsoleCommandContext<'_>,
+    id: &str,
+    args: Vec<String>,
+) -> Option<String> {
+    let registry = ctx
+        .runtime
+        .resolve::<IngameEditorRuntimeApplyProviderRegistry>()?;
+    let outcome = registry
+        .apply_first(
+            ctx.runtime,
+            EditorRuntimeApplyRequest::Command {
+                id: id.to_owned(),
+                args,
+            },
+        )
+        .ok()??;
+    match outcome {
+        EditorRuntimeApplyOutcome::Applied(message) => Some(message),
+        EditorRuntimeApplyOutcome::Ignored => None,
+    }
 }
 
 #[cfg(test)]

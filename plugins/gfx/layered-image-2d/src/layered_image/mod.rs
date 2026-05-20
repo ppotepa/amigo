@@ -3,6 +3,7 @@
 mod asset;
 mod control;
 mod dev_console;
+mod editor_provider;
 mod model;
 mod plugin;
 mod render_extraction;
@@ -16,6 +17,7 @@ mod service;
 pub use asset::*;
 pub use control::*;
 pub use dev_console::*;
+pub use editor_provider::*;
 pub use editor_capability::*;
 pub use model::*;
 pub use plugin::*;
