@@ -9,6 +9,7 @@ pub mod inspector_schema;
 pub mod preview;
 pub mod property_descriptor;
 pub mod provider;
+pub mod runtime_apply;
 pub mod undo_redo;
 pub mod validation;
 
@@ -23,5 +24,6 @@ pub use inspector_schema::*;
 pub use preview::*;
 pub use property_descriptor::*;
 pub use provider::*;
+pub use runtime_apply::*;
 pub use undo_redo::*;
 pub use validation::*;

@@ -475,6 +475,7 @@ version = "0.1.0"
 dependencies = [
  "amigo-core",
  "amigo-runtime",
+ "serde_yaml",
 ]
 
 [[package]]
