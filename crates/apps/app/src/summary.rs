@@ -7,17 +7,6 @@ use amigo_input_api::InputServiceInfo;
 use amigo_modding::ModCatalog;
 use amigo_render_api::RenderBackendInfo;
 use amigo_runtime::Runtime;
-use amigo_runtime_bundles::amigo_shutter_motion_plugin::motion_runtime_plugin_report_label;
-use amigo_runtime_bundles::amigo_sprite_2d_plugin::SpriteSceneService;
-use amigo_runtime_bundles::amigo_text_2d_plugin::Text2dSceneService;
-use amigo_runtime_bundles::amigo_vector_2d_plugin::VectorSceneService;
-use amigo_runtime_bundles::amigo_3d_material::MaterialSceneService;
-use amigo_runtime_bundles::amigo_3d_mesh::MeshSceneService;
-use amigo_runtime_bundles::amigo_3d_text::Text3dSceneService;
-use amigo_runtime_bundles::amigo_audio_api::{AudioSceneService, AudioStateService};
-use amigo_runtime_bundles::amigo_audio_mixer::AudioMixerService;
-use amigo_runtime_bundles::amigo_audio_output::AudioOutputBackendService;
-use amigo_runtime_bundles::amigo_ui::UiSceneService;
 use amigo_scene::SceneService;
 use amigo_scripting_api::{DevConsoleState, ScriptRuntimeInfo};
 use amigo_window_api::WindowServiceInfo;
@@ -29,7 +18,7 @@ use crate::scripting_runtime::current_executed_scripts;
 use crate::{BootstrapSummary, LoadedSceneDocumentSummary, PlaceholderBridgeSummary};
 
 fn summary_plugin_label(plugin_name: &str) -> String {
-    motion_runtime_plugin_report_label(plugin_name)
+    amigo_runtime_bundles::runtime_bundle_plugin_report_label(plugin_name)
 }
 
 pub(crate) fn summarize(
@@ -80,17 +69,7 @@ fn summarize_runtime_state_with_loaded_document(
     let assets = required::<AssetCatalog>(runtime)?;
     let dev_console_state = required::<DevConsoleState>(runtime)?;
     let hot_reload = required::<HotReloadService>(runtime)?;
-    let audio_scene = required::<AudioSceneService>(runtime)?;
-    let audio_state = required::<AudioStateService>(runtime)?;
-    let audio_mixer = required::<AudioMixerService>(runtime)?;
-    let audio_output = required::<AudioOutputBackendService>(runtime)?;
-    let sprite_scene = required::<SpriteSceneService>(runtime)?;
-    let text_scene = required::<Text2dSceneService>(runtime)?;
-    let vector_scene = required::<VectorSceneService>(runtime)?;
-    let mesh_scene = required::<MeshSceneService>(runtime)?;
-    let text3d_scene = required::<Text3dSceneService>(runtime)?;
-    let material_scene = required::<MaterialSceneService>(runtime)?;
-    let ui_scene = required::<UiSceneService>(runtime)?;
+    let bundle_summary = amigo_runtime_bundles::runtime_bundle_summary(runtime)?;
     let file_watch_backend = runtime
         .resolve::<FileWatchBackendInfo>()
         .map(|info| {
@@ -128,8 +107,6 @@ fn summarize_runtime_state_with_loaded_document(
         .filter(|fps| fps.is_finite() && *fps > 0.0);
 
     let report = runtime.report();
-    let audio_output_snapshot = audio_output.snapshot();
-
     Ok(BootstrapSummary {
         window_backend: window.backend_name.to_owned(),
         input_backend: input.backend_name.to_owned(),
@@ -176,35 +153,23 @@ fn summarize_runtime_state_with_loaded_document(
             .into_iter()
             .map(|watch| format!("{} -> {}", watch.id, watch.path.display()))
             .collect(),
-        sprite_entities_2d: sprite_scene.entity_names(),
-        text_entities_2d: text_scene.entity_names(),
-        vector_entities_2d: vector_scene.entity_names(),
-        mesh_entities_3d: mesh_scene.entity_names(),
-        material_entities_3d: material_scene.entity_names(),
-        text_entities_3d: text3d_scene.entity_names(),
-        ui_entities: ui_scene.entity_names(),
-        audio_clips: audio_scene
-            .clips()
-            .into_iter()
-            .map(|clip| format!("{} ({:?})", clip.key.as_str(), clip.mode))
-            .collect(),
-        audio_sources: audio_state
-            .playing_sources()
-            .into_iter()
-            .map(|(source, clip)| format!("{source} -> {}", clip.as_str()))
-            .collect(),
-        pending_audio_runtime_commands: audio_state
-            .pending_runtime_commands()
-            .into_iter()
-            .map(|command| crate::app_helpers::format_audio_command(&command))
-            .collect(),
-        audio_master_volume: audio_state.master_volume(),
-        mixed_audio_frame_count: audio_mixer.frames().len(),
-        active_realtime_audio_sources: audio_mixer.active_realtime_sources(),
-        audio_output_started: audio_output_snapshot.started,
-        audio_output_device: audio_output_snapshot.device_name,
-        audio_output_buffered_samples: audio_output_snapshot.buffered_samples,
-        audio_output_last_error: audio_output_snapshot.last_error,
+        sprite_entities_2d: bundle_summary.sprite_entities_2d,
+        text_entities_2d: bundle_summary.text_entities_2d,
+        vector_entities_2d: bundle_summary.vector_entities_2d,
+        mesh_entities_3d: bundle_summary.mesh_entities_3d,
+        material_entities_3d: bundle_summary.material_entities_3d,
+        text_entities_3d: bundle_summary.text_entities_3d,
+        ui_entities: bundle_summary.ui_entities,
+        audio_clips: bundle_summary.audio_clips,
+        audio_sources: bundle_summary.audio_sources,
+        pending_audio_runtime_commands: bundle_summary.pending_audio_runtime_commands,
+        audio_master_volume: bundle_summary.audio_master_volume,
+        mixed_audio_frame_count: bundle_summary.mixed_audio_frame_count,
+        active_realtime_audio_sources: bundle_summary.active_realtime_audio_sources,
+        audio_output_started: bundle_summary.audio_output_started,
+        audio_output_device: bundle_summary.audio_output_device,
+        audio_output_buffered_samples: bundle_summary.audio_output_buffered_samples,
+        audio_output_last_error: bundle_summary.audio_output_last_error,
         processed_script_commands: placeholder_bridge.processed_script_commands,
         processed_audio_commands: placeholder_bridge.processed_audio_commands,
         processed_scene_commands: placeholder_bridge.processed_scene_commands,

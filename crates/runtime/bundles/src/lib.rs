@@ -9,6 +9,7 @@ mod plugin_composition;
 mod render_diagnostics;
 mod render_packet_services;
 mod render_session;
+mod runtime_summary;
 pub mod render_extractor_bridges;
 mod scripting;
 mod three_d;
@@ -24,6 +25,7 @@ pub use plugin_composition::*;
 pub use render_diagnostics::*;
 pub use render_packet_services::*;
 pub use render_session::*;
+pub use runtime_summary::*;
 pub use render_extractor_bridges::{
     WgpuFrameCompositionBuilder, WgpuFrameCompositionOptions, WgpuRenderExtractorRegistry,
     default_wgpu_render_extractor_registry, register_host_render_extractor_provider,
