@@ -3,6 +3,7 @@ mod core;
 mod devtools;
 mod full;
 mod host_viewport;
+pub mod legacy_reexports;
 mod platform;
 mod plugin_composition;
 mod render_diagnostics;
@@ -36,30 +37,9 @@ use amigo_session::{
     RuntimeSession,
 };
 
-pub use amigo_2d_composition;
-pub use amigo_2d_physics;
-pub use amigo_3d_material;
-pub use amigo_3d_mesh;
-pub use amigo_3d_text;
-pub use amigo_audio_api;
-pub use amigo_audio_mixer;
-pub use amigo_audio_output;
-pub use amigo_behavior;
-pub use amigo_composite_plugin;
-pub use amigo_event_pipeline;
-pub use amigo_focus_depth_plugin;
-pub use amigo_input_actions;
-pub use amigo_layered_image_2d_plugin;
-pub use amigo_light_2d_plugin;
-pub use amigo_material_2d_plugin;
-pub use amigo_particles_2d_plugin;
-pub use amigo_scripting_rhai;
-pub use amigo_shutter_motion_plugin;
-pub use amigo_sprite_2d_plugin;
-pub use amigo_text_2d_plugin;
-pub use amigo_tilemap_2d_plugin;
-pub use amigo_ui;
-pub use amigo_vector_2d_plugin;
+// Transitional: app/tests still use these plugin re-exports.
+// Do not add new usages. Prefer neutral helpers or direct plugin crates in plugin-owned code.
+pub use legacy_reexports::*;
 
 pub fn register_runtime_bundle_capabilities(session: &mut RuntimeSession) {
     register_core_runtime_capabilities(session);
