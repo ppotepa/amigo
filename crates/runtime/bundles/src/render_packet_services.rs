@@ -4,12 +4,32 @@ use amigo_2d_composition::{
 use amigo_focus_depth_plugin::DepthMap2dSceneService;
 use amigo_layered_image_2d_plugin::LayeredImageSceneService;
 use amigo_light_2d_plugin::{GlobalLight2dSceneService, LightMap2dSceneService};
-use amigo_sprite_2d_plugin::SpriteSceneService;
+pub use amigo_sprite_2d_plugin::{SpriteSceneService, SpriteSheet};
 use amigo_text_2d_plugin::Text2dSceneService;
-use amigo_tilemap_2d_plugin::TileMap2dSceneService;
+pub use amigo_tilemap_2d_plugin::TileMap2dSceneService;
 use amigo_vector_2d_plugin::VectorSceneService;
 
 use amigo_render_wgpu::WgpuRenderFramePacket;
+use amigo_scene::Sprite2dSceneCommand;
+
+pub fn infer_sprite_sheet_from_prepared_asset(
+    prepared: &amigo_assets::PreparedAsset,
+) -> Option<SpriteSheet> {
+    amigo_sprite_2d_plugin::infer_sprite_sheet_from_prepared_asset(prepared)
+}
+
+pub fn infer_tile_ruleset_from_prepared_asset(
+    prepared: &amigo_assets::PreparedAsset,
+) -> Option<amigo_tilemap_2d_plugin::TileRuleSet2d> {
+    amigo_tilemap_2d_plugin::infer_tile_ruleset_from_prepared_asset(prepared)
+}
+
+pub fn resolve_sprite_sheet_for_command(
+    asset_catalog: &amigo_assets::AssetCatalog,
+    command: &Sprite2dSceneCommand,
+) -> Option<SpriteSheet> {
+    amigo_sprite_2d_plugin::resolve_sprite_sheet_for_command(asset_catalog, command)
+}
 
 pub fn build_sprite_scene_service_from_packet(
     packet: &WgpuRenderFramePacket,

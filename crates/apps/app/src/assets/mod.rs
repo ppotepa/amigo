@@ -4,8 +4,7 @@
 use super::*;
 use crate::runtime_context::RuntimeContext;
 use crate::scene_runtime::current_loaded_scene_document_summary;
-use amigo_runtime_bundles::amigo_sprite_2d_plugin::{SpriteSceneService, SpriteSheet};
-use amigo_runtime_bundles::amigo_tilemap_2d_plugin::TileMap2dSceneService;
+use amigo_runtime_bundles::{SpriteSceneService, SpriteSheet, TileMap2dSceneService};
 
 pub(super) fn process_pending_asset_loads(runtime: &Runtime) -> AmigoResult<()> {
     let ctx = RuntimeContext::new(runtime);
@@ -107,8 +106,7 @@ fn sync_sprite_sheet_metadata(
     let Some(prepared) = asset_catalog.prepared_asset(asset_key) else {
         return;
     };
-    let Some(sheet) =
-        amigo_runtime_bundles::amigo_sprite_2d_plugin::infer_sprite_sheet_from_prepared_asset(&prepared)
+    let Some(sheet) = amigo_runtime_bundles::infer_sprite_sheet_from_prepared_asset(&prepared)
     else {
         return;
     };
@@ -123,8 +121,7 @@ fn sync_tile_ruleset_metadata(
     let Some(prepared) = asset_catalog.prepared_asset(asset_key) else {
         return;
     };
-    let Some(ruleset) =
-        amigo_runtime_bundles::amigo_tilemap_2d_plugin::infer_tile_ruleset_from_prepared_asset(&prepared)
+    let Some(ruleset) = amigo_runtime_bundles::infer_tile_ruleset_from_prepared_asset(&prepared)
     else {
         return;
     };
@@ -134,7 +131,7 @@ pub(super) fn resolve_sprite_sheet_for_command(
     asset_catalog: &AssetCatalog,
     command: &Sprite2dSceneCommand,
 ) -> Option<SpriteSheet> {
-    amigo_runtime_bundles::amigo_sprite_2d_plugin::resolve_sprite_sheet_for_command(asset_catalog, command)
+    amigo_runtime_bundles::resolve_sprite_sheet_for_command(asset_catalog, command)
 }
 
 pub(super) fn sync_hot_reload_watches(runtime: &Runtime) -> AmigoResult<()> {
