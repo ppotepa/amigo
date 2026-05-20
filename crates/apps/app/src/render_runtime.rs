@@ -5,7 +5,6 @@ use super::*;
 use amigo_runtime_bundles::amigo_audio_api::AudioStateService;
 use amigo_runtime_bundles::amigo_audio_output::AudioOutputBackendService;
 use amigo_runtime_bundles::amigo_input_actions::InputActionService;
-use amigo_runtime_bundles::amigo_particles_2d_plugin::Particle2dSceneService;
 use amigo_session::RuntimeSession;
 
 pub(crate) use amigo_render_api::RenderCompositionDiagnosticsService;
@@ -17,7 +16,7 @@ pub(crate) use amigo_render_wgpu::WgpuRenderFramePacket;
 pub(crate) use amigo_runtime_bundles::WgpuFrameCompositionBuilder;
 pub(crate) use amigo_runtime_bundles::{
     WgpuEditorOverlayOutput, extract_game_frame_packet, extract_live_host_overlay_packet,
-    render_game_frame_to_cache, update_ui_input_viewport_state,
+    particle_debug_snapshot, render_game_frame_to_cache, update_ui_input_viewport_state,
     update_wgpu_postfx_renderer_mode, update_wgpu_render_composition_diagnostics,
 };
 pub(crate) use amigo_runtime_bundles::WgpuFrameCompositionOptions;
@@ -43,7 +42,6 @@ pub(crate) fn build_render_frame_for_session(
     let runtime = session.runtime();
     let scene = required::<SceneService>(runtime)?;
     let assets = required::<AssetCatalog>(runtime)?;
-    let particles = required::<Particle2dSceneService>(runtime)?;
     let debug_overlay_service = required::<crate::debug_overlay::DebugOverlayService>(runtime)?;
 
     let surface_size = surface.size();
@@ -197,14 +195,9 @@ pub(crate) fn build_render_frame_for_session(
             active_actions,
         );
     }
-    debug_overlay_service.record_particle_snapshot(
-        particles.emitters().len(),
-        particles
-            .emitters()
-            .iter()
-            .filter(|emitter| particles.is_active(&emitter.entity_name))
-            .count(),
-    );
+    if let Some((emitters, active_emitters)) = particle_debug_snapshot(runtime) {
+        debug_overlay_service.record_particle_snapshot(emitters, active_emitters);
+    }
 
     let extracted_tilemaps = build_tilemap_scene_service_from_packet(&render_packet);
     let extracted_sprites = build_sprite_scene_service_from_packet(&render_packet);

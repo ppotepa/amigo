@@ -77,3 +77,13 @@ pub fn update_wgpu_postfx_renderer_mode(runtime: &Runtime, render_packet: &WgpuR
     };
     post_fx_service.set_renderer_mode(renderer_mode);
 }
+
+pub fn particle_debug_snapshot(runtime: &Runtime) -> Option<(usize, usize)> {
+    let particles = runtime.resolve::<amigo_particles_2d_plugin::Particle2dSceneService>()?;
+    let emitters = particles.emitters();
+    let active_emitters = emitters
+        .iter()
+        .filter(|emitter| particles.is_active(&emitter.entity_name))
+        .count();
+    Some((emitters.len(), active_emitters))
+}
