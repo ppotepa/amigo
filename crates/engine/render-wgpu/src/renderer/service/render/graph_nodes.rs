@@ -69,7 +69,9 @@ pub(super) fn execute_world_graph_node(
         renderer, request, target,
     )?;
     super::plate_relight::apply_plate_relight_after_world(renderer, request, target)?;
-    if !visible_beacon_layers.is_empty() && !request.camera_debug_view.wants_plate_relight_debug() {
+    if !visible_beacon_layers.is_empty()
+        && !amigo_relight_2d_plugin::is_plate_relight_render_debug_view(&request.camera_debug_view)
+    {
         let overlay_selection =
             OwnedWorldRenderSelection::include_layers(visible_beacon_layers, false, WorldPassLoad::Load);
         world::execute_world_to_offscreen(

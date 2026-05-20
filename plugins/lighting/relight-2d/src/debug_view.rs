@@ -31,3 +31,32 @@ pub fn relight_debug_view_descriptors() -> Vec<CameraDebugViewDescriptor> {
     })
     .collect()
 }
+
+pub fn is_plate_relight_debug_view(view: &CameraDebugViewId) -> bool {
+    view.as_str().starts_with("relight.plate.")
+}
+
+pub fn is_plate_relight_render_debug_view(view: &amigo_render_api::CameraDebugView2d) -> bool {
+    view.as_str().starts_with("relight.plate.")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn relight_debug_view_identifies_plate_debug_views() {
+        assert!(is_plate_relight_debug_view(&CameraDebugViewId::new(
+            "relight.plate.normal"
+        )));
+        assert!(!is_plate_relight_debug_view(
+            &CameraDebugViewId::final_output()
+        ));
+        assert!(is_plate_relight_render_debug_view(
+            &amigo_render_api::CameraDebugView2d::new("relight.plate.normal")
+        ));
+        assert!(!is_plate_relight_render_debug_view(
+            &amigo_render_api::CameraDebugView2d::final_output()
+        ));
+    }
+}

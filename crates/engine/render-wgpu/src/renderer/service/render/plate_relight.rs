@@ -672,7 +672,7 @@ fn light_list_summary(sources: &[WgpuPlateRelightSource<'_>]) -> String {
 }
 
 fn is_plate_relight_debug(request: &WgpuFrameRenderRequest<'_>) -> bool {
-    request.camera_debug_view.wants_plate_relight_debug()
+    amigo_relight_2d_plugin::is_plate_relight_render_debug_view(&request.camera_debug_view)
 }
 
 fn set_status(
@@ -692,7 +692,7 @@ fn set_status(
     let relight_sources =
         plate_relight_sources_from_frame(request.world_2d.light_sources, request.world_2d.beacons);
     let target_overwrite_hint =
-        if request.camera_debug_view.wants_plate_relight_debug() && (drawn || fallback_drawn) {
+        if is_plate_relight_debug(request) && (drawn || fallback_drawn) {
             "if_image_plain_check_post_world_overwrite"
         } else {
             "-"

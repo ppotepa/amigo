@@ -166,10 +166,6 @@ impl CameraDebugView2d {
         )
     }
 
-    pub fn wants_plate_relight_debug(&self) -> bool {
-        self.as_str().starts_with("relight.plate.")
-    }
-
     pub fn parse(value: &str) -> Self {
         Self(CameraDebugViewId::parse(value))
     }
@@ -735,8 +731,6 @@ mod tests {
             CameraDebugView2d::parse("camera_after_dof").as_str(),
             "camera.after_dof"
         );
-        assert!(CameraDebugView2d::new("relight.plate.normal").wants_plate_relight_debug());
-        assert!(!CameraDebugView2d::final_output().wants_plate_relight_debug());
     }
 
     #[test]
