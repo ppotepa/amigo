@@ -516,8 +516,10 @@ impl HostHandler for InteractiveRuntimeHostHandler {
             if let Some(surface) = &mut self.surface {
                 surface.resize(size);
             }
-            required::<amigo_runtime_bundles::amigo_ui::UiInputViewportState>(self.runtime())?.set(
-                Some(UiViewportSize::new(size.width as f32, size.height as f32)),
+            amigo_runtime_bundles::update_ui_input_viewport_state(
+                self.runtime(),
+                size.width as f32,
+                size.height as f32,
             );
             if let Some(input_state) = self.runtime().resolve::<InputState>() {
                 input_state.set_viewport_size(size.width as f32, size.height as f32);
@@ -549,8 +551,10 @@ impl HostHandler for InteractiveRuntimeHostHandler {
         self.renderer = Some(renderer);
         if let Some(surface) = &self.surface {
             let size = surface.size();
-            required::<amigo_runtime_bundles::amigo_ui::UiInputViewportState>(self.runtime())?.set(
-                Some(UiViewportSize::new(size.width as f32, size.height as f32)),
+            amigo_runtime_bundles::update_ui_input_viewport_state(
+                self.runtime(),
+                size.width as f32,
+                size.height as f32,
             );
             if let Some(input_state) = self.runtime().resolve::<InputState>() {
                 input_state.set_viewport_size(size.width as f32, size.height as f32);
