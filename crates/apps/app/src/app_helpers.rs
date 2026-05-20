@@ -1,6 +1,6 @@
 use super::*;
 use amigo_runtime_bundles::amigo_audio_api::{
-    AudioClip, AudioClipKey, AudioCommand, AudioPlaybackMode, AudioSceneService,
+    AudioClip, AudioClipKey, AudioPlaybackMode, AudioSceneService,
 };
 
 pub(crate) fn relative_path_within_root(
@@ -128,25 +128,6 @@ pub(crate) fn format_script_command(command: &ScriptCommand) -> String {
         command.name,
         command.arguments.join(", ")
     )
-}
-
-pub(crate) fn format_audio_command(command: &AudioCommand) -> String {
-    match command {
-        AudioCommand::PlayOnce { clip } => format!("audio.play({})", clip.as_str()),
-        AudioCommand::StartSource { source, clip } => {
-            format!("audio.start({}, {})", source.as_str(), clip.as_str())
-        }
-        AudioCommand::StopSource { source } => format!("audio.stop({})", source.as_str()),
-        AudioCommand::SetParam {
-            source,
-            param,
-            value,
-        } => format!("audio.set_param({}, {}, {})", source.as_str(), param, value),
-        AudioCommand::SetVolume { bus, value } => {
-            format!("audio.set_volume({}, {})", bus, value)
-        }
-        AudioCommand::SetMasterVolume { value } => format!("audio.set_master_volume({value})"),
-    }
 }
 
 pub(crate) fn format_script_event(event: &ScriptEvent) -> String {

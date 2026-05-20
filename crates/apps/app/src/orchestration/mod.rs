@@ -188,7 +188,7 @@ fn process_placeholder_bridges_with_scene_session(
         for command in audio_commands {
             summary
                 .processed_audio_commands
-                .push(crate::app_helpers::format_audio_command(&command));
+                .push(amigo_runtime_bundles::format_audio_command(&command));
             process_audio_command(
                 command,
                 audio_state_service.as_ref(),

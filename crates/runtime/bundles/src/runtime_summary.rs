@@ -83,7 +83,7 @@ pub fn runtime_bundle_plugin_report_label(plugin_name: &str) -> String {
     motion_runtime_plugin_report_label(plugin_name)
 }
 
-fn format_audio_command(command: &AudioCommand) -> String {
+pub fn format_audio_command(command: &AudioCommand) -> String {
     match command {
         AudioCommand::PlayOnce { clip } => format!("audio.play({})", clip.as_str()),
         AudioCommand::StartSource { source, clip } => {
