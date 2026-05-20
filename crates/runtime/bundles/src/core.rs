@@ -10,6 +10,8 @@ use amigo_scene::ScenePlugin;
 use amigo_session::RuntimeSession;
 use amigo_state::StatePlugin;
 
+pub use amigo_event_pipeline::{EventPipelineService, EventPipelineStep};
+
 pub struct CoreRuntimeBundle;
 
 impl PluginBundle for CoreRuntimeBundle {

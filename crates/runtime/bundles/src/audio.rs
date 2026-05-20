@@ -6,6 +6,12 @@ use amigo_core::AmigoResult;
 use amigo_runtime::{PluginBundle, RuntimeBuilder};
 use amigo_session::RuntimeSession;
 
+pub use amigo_audio_api::{
+    AudioClip, AudioClipKey, AudioCommand, AudioCommandQueue, AudioPlaybackMode,
+    AudioSceneService, AudioStateService,
+};
+pub use amigo_audio_output::{AudioOutputBackendService, AudioOutputStartStatus};
+
 pub struct AudioRuntimeBundle;
 
 impl PluginBundle for AudioRuntimeBundle {

@@ -3,7 +3,7 @@
 
 use super::*;
 use crate::runtime_context::RuntimeContext;
-use amigo_runtime_bundles::amigo_audio_api::{AudioCommandQueue, AudioStateService};
+use amigo_runtime_bundles::{AudioCommandQueue, AudioStateService};
 use amigo_session::RuntimeSession;
 
 mod audio_bridge;
@@ -225,7 +225,7 @@ fn process_placeholder_bridges_with_scene_session(
         }
 
         if made_progress {
-            amigo_runtime_bundles::amigo_ui::tick_ui_bindings(runtime)?;
+            amigo_runtime_bundles::tick_ui_bindings(runtime)?;
         }
 
         if !made_progress {

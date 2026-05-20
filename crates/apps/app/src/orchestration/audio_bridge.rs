@@ -1,5 +1,5 @@
 use super::*;
-use amigo_runtime_bundles::amigo_audio_api::{AudioCommand, AudioStateService};
+use amigo_runtime_bundles::{AudioCommand, AudioStateService};
 
 pub(crate) fn process_audio_command(
     command: AudioCommand,

@@ -16,6 +16,9 @@ use amigo_tilemap_2d_plugin::TileMap2dPlugin;
 use amigo_ui::UiPlugin;
 use amigo_vector_2d_plugin::Vector2dPlugin;
 
+pub use amigo_particles_2d_plugin::Particle2dSceneService;
+pub use amigo_ui::{UiInputService, UiStateService, tick_ui_bindings};
+
 pub struct TwoDRuntimeBundle;
 
 impl PluginBundle for TwoDRuntimeBundle {
