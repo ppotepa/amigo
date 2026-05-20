@@ -1,0 +1,357 @@
+    :root {
+      --bg: #f3f7fc;
+      --panel: rgba(255, 255, 255, 0.88);
+      --ink: #213042;
+      --muted: #738297;
+      --line: #d8e3ef;
+      --accent: #5a7ca8;
+      --skin: #d7a27a;
+      --skin-ear: var(--skin);
+      --nose-fill: var(--skin);
+      --skin-stroke: #6c4934;
+      --skin-stroke-soft: rgba(108, 73, 52, .46);
+      --skin-shadow: rgba(91, 58, 41, .26);
+      --skin-highlight: rgba(255, 246, 234, .22);
+      --ghost-center: rgba(49, 99, 255, 0.20);
+      --ghost-profile: rgba(255, 118, 43, 0.22);
+    }
+
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      min-height: 100%;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    body {
+      display: grid;
+      grid-template-columns: minmax(320px, 1fr) 392px;
+      gap: 18px;
+      padding: 18px;
+    }
+    main, aside {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      box-shadow: 0 24px 60px rgba(79, 110, 145, 0.10);
+      backdrop-filter: blur(18px);
+    }
+    main {
+      min-height: calc(100vh - 36px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      position: relative;
+    }
+    aside {
+      padding: 18px;
+      align-self: start;
+      max-height: calc(100vh - 36px);
+      overflow: auto;
+    }
+    h1 {
+      margin: 0 0 6px;
+      font-size: 18px;
+      letter-spacing: -0.02em;
+    }
+    p {
+      margin: 0 0 14px;
+      color: var(--muted);
+      line-height: 1.45;
+      font-size: 13px;
+    }
+
+    .stageWrap {
+      width: min(92vmin, 980px);
+      aspect-ratio: 1;
+      position: relative;
+      border-radius: 18px;
+      overflow: hidden;
+      background:
+        linear-gradient(to right, rgba(107, 133, 165, .08) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(107, 133, 165, .08) 1px, transparent 1px),
+        radial-gradient(circle at 50% 36%, #ffffff 0, #f7fbff 42%, #edf4fb 72%, #e0ebf7 100%);
+      background-size: 54px 54px, 54px 54px, 100% 100%;
+    }
+    svg#stage {
+      width: 100%;
+      height: 100%;
+      display: block;
+      touch-action: none;
+      cursor: ew-resize;
+    }
+    .axisLine {
+      stroke: rgba(0,0,0,.10);
+      stroke-width: 1.1;
+      vector-effect: non-scaling-stroke;
+      pointer-events: none;
+    }
+    .ghostPath {
+      fill: none;
+      stroke-width: 4;
+      stroke-linejoin: round;
+      stroke-linecap: round;
+      vector-effect: non-scaling-stroke;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 160ms ease;
+    }
+    .showSources .centerGhost { opacity: 1; stroke: var(--ghost-center); }
+    .showSources .profileGhost { opacity: 1; stroke: var(--ghost-profile); }
+
+    .surfaceBase {
+      fill: var(--skin);
+      stroke: transparent;
+      stroke-width: 0;
+      stroke-linejoin: round;
+      stroke-linecap: round;
+      vector-effect: non-scaling-stroke;
+      filter: url(#surfaceShadow);
+    }
+    .surfaceShade,
+    .surfaceLight {
+      stroke: none;
+      vector-effect: non-scaling-stroke;
+      pointer-events: none;
+      mix-blend-mode: multiply;
+    }
+    .surfaceLight { mix-blend-mode: screen; }
+
+    .masterSilhouetteUnion {
+      pointer-events: none;
+      filter: url(#unionOutlineFilter);
+    }
+    .masterSilhouetteUnion path {
+      fill: #000;
+      stroke: none;
+      vector-effect: non-scaling-stroke;
+    }
+    .masterSilhouettePath {
+      fill: #000;
+      stroke: none;
+      vector-effect: non-scaling-stroke;
+      pointer-events: none;
+      filter: url(#unionOutlineFilter);
+    }
+    .partOutline {
+      fill: none;
+      stroke: var(--skin-stroke-soft);
+      stroke-width: 1.3;
+      stroke-linejoin: round;
+      stroke-linecap: round;
+      vector-effect: non-scaling-stroke;
+      pointer-events: none;
+    }
+    .partOutline.strong {
+      stroke: var(--skin-stroke);
+      stroke-width: 1.65;
+    }
+    .detailContour {
+      fill: none;
+      stroke: rgba(72, 45, 32, .34);
+      stroke-width: 1.15;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      vector-effect: non-scaling-stroke;
+      pointer-events: none;
+    }
+
+    .svgNose {
+      fill: var(--skin);
+      stroke: transparent;
+      stroke-width: 0;
+      stroke-linejoin: round;
+      stroke-linecap: round;
+      vector-effect: non-scaling-stroke;
+      opacity: 1;
+      mix-blend-mode: normal;
+      filter: none;
+    }
+    .noseHighlight {
+      fill: none;
+      stroke: rgba(255, 246, 234, .24);
+      stroke-width: 1.8;
+      stroke-linecap: round;
+      vector-effect: non-scaling-stroke;
+      opacity: 0;
+    }
+    .nostril {
+      fill: rgba(51, 30, 22, .28);
+      opacity: 0;
+    }
+    .mouthLine {
+      fill: none;
+      stroke: rgba(111, 67, 48, .48);
+      stroke-width: 3.2;
+      stroke-linecap: round;
+      vector-effect: non-scaling-stroke;
+      opacity: 1;
+    }
+    .wirePath {
+      fill: none;
+      stroke: rgba(255,255,255,.86);
+      stroke-width: 1.2;
+      vector-effect: non-scaling-stroke;
+      pointer-events: none;
+      opacity: 0;
+    }
+    .showWire .wirePath { opacity: 1; }
+    .dot {
+      fill: #ffffff;
+      stroke: #111111;
+      stroke-width: 1.1;
+      vector-effect: non-scaling-stroke;
+      opacity: 0;
+      pointer-events: none;
+    }
+    .showDots .dot { opacity: .9; }
+
+    .hud {
+      position: absolute;
+      left: 18px;
+      top: 18px;
+      display: grid;
+      gap: 6px;
+      color: #111;
+      font-size: 12px;
+      pointer-events: none;
+    }
+    .hud div {
+      width: fit-content;
+      background: rgba(255,255,255,.82);
+      border: 1px solid rgba(132, 154, 183, .22);
+      backdrop-filter: blur(8px);
+      border-radius: 999px;
+      padding: 7px 10px;
+    }
+    .control {
+      border-top: 1px solid var(--line);
+      padding-top: 14px;
+      margin-top: 14px;
+    }
+    .row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 12px;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    label {
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.2;
+    }
+    output {
+      font-variant-numeric: tabular-nums;
+      font-size: 12px;
+      min-width: 72px;
+      text-align: right;
+    }
+    input[type="range"], select { width: 100%; accent-color: var(--accent); }
+    select {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: #ffffff;
+      padding: 9px 10px;
+      color: #25364a;
+      font: inherit;
+      font-size: 12px;
+    }
+    .switches {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+    }
+    .switches label,
+    .buttonGrid button {
+      border: 1px solid var(--line);
+      border-radius: 13px;
+      padding: 9px 10px;
+      color: #25364a;
+      background: rgba(255, 255, 255, 0.94);
+      font-size: 12px;
+    }
+    .switches label {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      cursor: pointer;
+    }
+    .exportPanel {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+    .exportPanel a,
+    .exportPanel button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 38px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 8px 10px;
+      color: #25364a;
+      background: rgba(255, 255, 255, 0.94);
+      font-size: 12px;
+      text-align: center;
+      text-decoration: none;
+    }
+    button { cursor: pointer; font: inherit; }
+    button:hover, .switches label:hover, .exportPanel a:hover { background: #f3f8fe; }
+    .buttonGrid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+    }
+    .buttonGrid button.active {
+      background: var(--accent);
+      color: white;
+      border-color: var(--accent);
+    }
+    .smallCode, .audit {
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: rgba(255, 255, 255, 0.78);
+      padding: 12px;
+      font-size: 12px;
+      line-height: 1.45;
+      color: #506177;
+      margin-top: 14px;
+    }
+    .smallCode b, .audit b { color: #213042; }
+    .audit table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 8px;
+      font-size: 11px;
+    }
+    .audit td {
+      border-top: 1px solid #e3dacd;
+      padding: 5px 0;
+      vertical-align: top;
+    }
+    .audit td:first-child {
+      color: #1f1712;
+      font-weight: 650;
+      padding-right: 8px;
+      white-space: nowrap;
+    }
+
+    #sourceHost {
+      position: absolute;
+      left: -9999px;
+      top: -9999px;
+      width: 0;
+      height: 0;
+      overflow: hidden;
+      opacity: 0;
+      pointer-events: none;
+    }
+    @media (max-width: 920px) {
+      body { grid-template-columns: 1fr; }
+      main { min-height: auto; }
+      aside { max-height: none; }
+    }

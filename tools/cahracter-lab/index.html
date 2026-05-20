@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Character Lab</title>
+  <link rel="stylesheet" href="./dist/styles.css" />
+</head>
+<body>
+  <main>
+    <div class="stageWrap">
+      <svg id="stage" viewBox="0 0 1080 1080" aria-label="Pełny rig SVG 2.5D z fusion i outline policy">
+        <defs>
+          <linearGradient id="shadowGradient" gradientUnits="userSpaceOnUse">
+            <stop id="shadowStop1" offset="0%" stop-color="rgba(104, 62, 39, .38)" />
+            <stop id="shadowStop2" offset="62%" stop-color="rgba(104, 62, 39, .11)" />
+            <stop id="shadowStop3" offset="100%" stop-color="rgba(104, 62, 39, 0)" />
+          </linearGradient>
+          <linearGradient id="lightGradient" gradientUnits="userSpaceOnUse">
+            <stop id="lightStop1" offset="0%" stop-color="rgba(255, 250, 242, .30)" />
+            <stop id="lightStop2" offset="58%" stop-color="rgba(255, 250, 242, .08)" />
+            <stop id="lightStop3" offset="100%" stop-color="rgba(255, 250, 242, 0)" />
+          </linearGradient>
+          <filter id="surfaceShadow" x="-20%" y="-20%" width="140%" height="140%">
+            <feDropShadow dx="0" dy="16" stdDeviation="18" flood-color="rgba(70,40,20,.16)" />
+          </filter>
+          <filter id="unionOutlineFilter" x="-18%" y="-18%" width="136%" height="136%" color-interpolation-filters="sRGB">
+            <feMorphology in="SourceAlpha" operator="dilate" radius="2.1" result="dilated" />
+            <feMorphology in="SourceAlpha" operator="erode" radius="0.2" result="eroded" />
+            <feComposite in="dilated" in2="eroded" operator="out" result="outline" />
+            <feFlood flood-color="#6c4934" flood-opacity="1" result="outlineColor" />
+            <feComposite in="outlineColor" in2="outline" operator="in" result="coloredOutline" />
+            <feMerge>
+              <feMergeNode in="coloredOutline" />
+            </feMerge>
+          </filter>
+        </defs>
+
+        <line class="axisLine" x1="540" y1="0" x2="540" y2="1080" />
+        <line class="axisLine" x1="0" y1="540" x2="1080" y2="540" />
+
+        <g id="sourceGuides"></g>
+        <g id="rigLayer"></g>
+        <g id="outlineLayer"></g>
+        <g id="debugLayer"></g>
+      </svg>
+      <div class="hud">
+        <div id="hudYaw">yaw: 0°</div>
+        <div id="hudBlend">blend: CENTER 100% → PROFILE 0%</div>
+        <div id="hudMode">zone: FRONT</div>
+        <div id="hudFusion">fusion: nose 0.00 / R 0.00 / L 0.00 / near —</div>
+        <div id="hudOutline">outline: ADAPTIVE</div>
+        <div id="hudOrder">order: earLeft → earRight → face → nose → mouth</div>
+      </div>
+    </div>
+  </main>
+
+  <aside>
+    <h1>Pełny rig SVG 2.5D — fusion + outline policy + ear orbit</h1>
+    <p>Ta wersja traktuje twarz, nos i uszy jako jeden materiał skóry. Uszy są teraz fizycznymi częściami earRight/earLeft z pełną orbitą 0–360°, a near/far jest liczone dynamicznie z głębokości.</p>
+
+    <div class="control">
+      <div class="row">
+        <label for="yaw">Obrót / yaw</label>
+        <output id="yawOut">0°</output>
+      </div>
+      <input id="yaw" type="range" min="0" max="360" step="1" value="0" />
+    </div>
+
+    <div class="control">
+      <div class="buttonGrid">
+        <button data-yaw="0">front</button>
+        <button data-yaw="90">left</button>
+        <button data-yaw="180">back</button>
+        <button data-yaw="270">right</button>
+      </div>
+    </div>
+
+    <div class="control">
+      <div class="row">
+        <label for="outlineMode">Tryb obrysu</label>
+        <output id="outlineOut">ADAPTIVE</output>
+      </div>
+      <select id="outlineMode">
+        <option value="FULL">FULL — wszystkie obrysy</option>
+        <option value="ADAPTIVE" selected>ADAPTIVE — domyślny</option>
+        <option value="SILHOUETTE_ONLY">SILHOUETTE_ONLY — tylko bryła</option>
+        <option value="PAINTERLY">PAINTERLY — minimalne linie</option>
+      </select>
+    </div>
+
+    <div class="control">
+      <div class="row">
+        <label for="samples">Punkty na kontur</label>
+        <output id="samplesOut">180</output>
+      </div>
+      <input id="samples" type="range" min="48" max="320" step="4" value="180" />
+    </div>
+
+    <div class="control">
+      <div class="row">
+        <label for="smooth">Wygładzenie ścieżki</label>
+        <output id="smoothOut">0.75</output>
+      </div>
+      <input id="smooth" type="range" min="0" max="1.25" step="0.05" value="0.75" />
+    </div>
+
+    <div class="control">
+      <div class="row">
+        <label for="depth">Pseudo-perspektywa 2.5D</label>
+        <output id="depthOut">0.18</output>
+      </div>
+      <input id="depth" type="range" min="0" max="0.45" step="0.01" value="0.18" />
+    </div>
+
+    <div class="control switches">
+      <label><input id="auto" type="checkbox" /> auto obrót</label>
+      <label><input id="sources" type="checkbox" checked /> źródła</label>
+      <label><input id="wire" type="checkbox" /> wire</label>
+      <label><input id="dots" type="checkbox" /> punkty</label>
+    </div>
+
+    <div class="control exportPanel">
+      <a href="./assets/source-rig.svg" download>source-rig.svg</a>
+      <button id="exportSvg" type="button">Eksportuj widok SVG</button>
+    </div>
+
+    <div class="audit">
+      <b>Co zostało zmienione</b>
+      <table>
+        <tr><td>Kolor</td><td>face, nose i ears używają tego samego bazowego materiału skóry</td></tr>
+        <tr><td>Obrys</td><td>outer silhouette jest osobnym kanałem renderingu, niezależnym od fill</td></tr>
+        <tr><td>Nos</td><td>separate → merging → fused; w fused nie działa jak naklejka</td></tr>
+        <tr><td>Uszy</td><td>earRight/earLeft mają pełną orbitę 0–360°, dynamiczny near/far, fusion states i osobno sterowane obrysy wewnętrzne</td></tr>
+        <tr><td>Usta</td><td>są surface detail, nie bryłą</td></tr>
+        <tr><td>Opacity</td><td>główne bryły nie są chowane przez opacity; tylko display/policy/shading</td></tr>
+      </table>
+    </div>
+
+    <div class="smallCode">
+      <b>Model:</b><br />
+      viewState = zone + profile + back + physical ear depth<br />
+      earRight/earLeft = front → profile → back-swapped → opposite profile → front<br />
+      policy = outlineMode + viewState<br />
+      render = skin mass + master silhouette + adaptive internal details<br /><br />
+      To jest MVP bez prawdziwego boolean union: wspólny obrys jest robiony filtrem SVG z alfy widocznych części.
+    </div>
+  </aside>
+
+  <div id="sourceHost" aria-hidden="true">
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   width="1080"
+   height="1080"
+   viewBox="0 0 1080 1080"
+   version="1.1"
+   id="svg1"
+   xml:space="preserve"
+   inkscape:version="1.4.3 (0d15f75, 2025-12-25)"
+   sodipodi:docname="face.svg"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg"><sodipodi:namedview
+     id="namedview1"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:document-units="px"
+     inkscape:zoom="1.5277778"
+     inkscape:cx="553.41818"
+     inkscape:cy="561.27273"
+     inkscape:window-width="1920"
+     inkscape:window-height="1027"
+     inkscape:window-x="1992"
+     inkscape:window-y="-8"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="layer6" /><defs
+     id="defs1" /><g
+     inkscape:label="CENTER"
+     inkscape:groupmode="layer"
+     id="CENTER"
+     style="display:inline;opacity:0.5"><path
+       style="display:inline;fill:#000000"
+       d="m 416.29091,412.36364 20.94545,151.85454 26.18182,37.96364 31.41818,23.56363 18.32728,10.47273 h 14.4 l 23.56363,-3.92727 56.29091,-52.36364 13.09091,-32.72727 18.32727,-163.63636 -22.25454,-53.67273 -74.61818,-35.34546 -34.03637,2.61819 -64.14545,31.41818 -24.87273,54.98182 z"
+       id="FACE" /><path
+       style="display:inline;fill:#000000"
+       d="m 631.63636,435.92727 11.78182,-14.4 5.89091,1.30909 5.23636,15.70909 -1.96363,28.14546 -7.2,22.90909 -12.43637,15.05455 -8.50909,-3.27273 z"
+       id="PRAWE"
+       inkscape:label="LEWE" /><path
+       style="display:inline;fill:#000000;stroke-width:1.08347"
+       d="m 423.71146,439.94545 -13.83083,-14.4 -6.91542,1.30909 -6.14703,15.70909 2.30513,28.14546 8.45217,22.90909 14.59922,15.05455 9.98893,-3.27273 z"
+       id="LEWE"
+       inkscape:label="PRAWE"><title
+         id="title1">PRAWE</title></path><path
+       style="display:inline;fill:#969696;fill-opacity:1"
+       d="m 502.6909,524.94546 c 0,0 16.97712,16.86481 21.6,15.70909 13.09091,-3.27273 22.25454,-18.32727 22.25454,-18.32727 L 524.2909,447.05455 Z"
+       id="NOSE"
+       sodipodi:nodetypes="csccc"
+       inkscape:label="NOSE"><title
+         id="title4">NOSE</title></path></g><g
+     inkscape:groupmode="layer"
+     id="LEFT_PROFILE"
+     inkscape:label="LEFT PROFILE"
+     style="display:inline;opacity:1"><path
+       style="display:inline;fill:#000000;stroke-width:1.08556"
+       d="m 590.16742,595.25711 c 0,0 -75.60656,45.83548 -98.87011,40.27967 -21.90914,-5.23235 -74.15259,-7.63925 -74.15259,-7.63925 l -13.81273,-12.50058 -0.72699,-22.22328 1.45397,-14.58401 -13.08574,-9.0282 7.99684,-14.58402 -7.99684,-10.41716 2.18095,-24.30669 13.08575,-68.75323 -6.54288,-30.55699 31.26041,-82.64277 c 0,0 89.32243,-42.69422 107.59396,-43.75206 23.99053,-1.38895 113.74828,24.52223 133.03845,36.80728 17.44767,11.11164 28.72566,57.50049 25.44452,79.17039 -19.2655,128.18669 -4.97069,132.88327 -106.86697,184.7309 z"
+       id="FACE_PROFILE"
+       sodipodi:nodetypes="cscccccccccccsssc"
+       inkscape:label="FACE PROFILE"><title
+         id="title2">FACE PROFILE</title></path><path
+       style="display:inline;opacity:0.5;fill:#969696;fill-opacity:1"
+       d="m 369.36364,501.63637 c 0,0 7.15893,16.21026 11.78181,15.05454 13.09091,-3.27273 34.69091,4.58182 34.69091,4.58182 L 417.8,435.52728 Z"
+       id="NOSE-PROFILE"
+       sodipodi:nodetypes="csccc"
+       inkscape:label="NOSE"><title
+         id="title4-1">NOSE</title></path><path
+       style="display:inline;opacity:1;fill:#000000"
+       d="m 547.76348,509.57972 c 0,0.92566 1.61992,16.19917 3.70267,18.0505 2.08275,1.85134 12.03367,6.24826 12.03367,6.24826 0,0 20.36468,-15.96776 24.7616,-26.1501 4.39692,-10.18234 12.95934,-26.38151 10.18233,-34.24968 -2.777,-7.86817 -9.7195,-20.82751 -15.96775,-22.21601 -6.24826,-1.3885 -15.27351,2.08275 -18.28193,5.09117 -3.00841,3.00842 -7.40533,10.41376 -9.02525,12.49651 -1.61992,2.08275 1.3885,17.35625 1.3885,17.35625 z"
+       id="EAR_LEFT"
+       inkscape:label="EAR LEFT"><title
+         id="title3">EAR LEFT</title></path></g><g
+     inkscape:groupmode="layer"
+     id="BACK"
+     inkscape:label="BACK"
+     style="opacity:1"><path
+       style="display:inline;fill:#969696;fill-opacity:1;stroke-width:1.09545"
+       d="m 471.92727,610.16727 -25.52728,-30.10909 -7.2,-18.06545 -7.85454,-41.23637 L 410.4,453.33819 c 0,0 12.43636,-91.89819 16.36363,-100.53819 3.92727,-8.64 56.94546,-47.25818 56.94546,-47.25818 0,0 20.29091,-7.06909 16.36363,-11.65091 -2.12987,-2.48484 68.07273,10.86545 68.07273,10.86545 0,0 49.74545,28.40727 55.63636,40.18909 5.89091,11.78182 13.74546,63.09819 13.74546,63.09819 l 1.96363,73.5709 -20.94545,83.25819 -30.10909,35.47636 -58.90909,39.14182 z"
+       id="path4"
+       sodipodi:nodetypes="cccccscscscccccc" /><path
+       style="fill:#969696;fill-opacity:1"
+       d="M 424.14546,430.03636 412.36364,424.8 l -7.2,13.74545 1.30909,43.85455 6.54546,21.6 11.12727,7.85454 5.89091,-6.54545 2.61818,-32.07273 z"
+       id="path5" /><path
+       style="display:inline;fill:#969696;fill-opacity:1"
+       d="m 634.25455,420.21818 15.70909,1.30909 8.50909,23.56364 -8.50909,34.69091 -17.01818,18.98181 -13.09091,3.27273 -5.89091,-3.92727 z"
+       id="path6" /></g></svg>
+
+  </div>
+
+  <script defer src="./dist/app.js"></script>
+</body>
+</html>
+
