@@ -1,13 +1,12 @@
 use super::*;
 use amigo_capabilities::{CapabilityRegistry, DEFAULT_CAPABILITY_VERSION, register_domain_plugin};
-use amigo_runtime_bundles::amigo_shutter_motion_plugin::motion_runtime_plugin_report_label;
 
 pub(crate) struct RuntimeDiagnosticsPlugin {
     script_backend: String,
 }
 
 fn diagnostics_plugin_label(plugin_name: &str) -> String {
-    motion_runtime_plugin_report_label(plugin_name)
+    amigo_runtime_bundles::runtime_bundle_plugin_report_label(plugin_name)
 }
 
 impl RuntimeDiagnosticsPlugin {
