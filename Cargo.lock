@@ -428,6 +428,8 @@ dependencies = [
  "amigo-capabilities",
  "amigo-core",
  "amigo-devtools",
+ "amigo-editor-api",
+ "amigo-editor-ingame",
  "amigo-plugin-api",
  "amigo-render-api",
  "amigo-runtime",
@@ -435,6 +437,7 @@ dependencies = [
  "amigo-session",
  "rhai",
  "serde",
+ "serde_yaml",
 ]
 
 [[package]]
@@ -498,7 +501,6 @@ version = "0.1.0"
 dependencies = [
  "amigo-2d-composition",
  "amigo-assets",
- "amigo-composite-plugin",
  "amigo-core",
  "amigo-devtools",
  "amigo-editor-api",

@@ -16,7 +16,6 @@ amigo-editor-authoring.workspace = true
 amigo-assets.workspace = true
 amigo-scene.workspace = true
 amigo-devtools.workspace = true
-amigo-composite-plugin.workspace = true
 amigo-scripting-api.workspace = true
 amigo-2d-composition.workspace = true
 amigo-ui.workspace = true
