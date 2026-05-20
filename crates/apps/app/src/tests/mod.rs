@@ -7,14 +7,9 @@ use amigo_assets::{AssetCatalog, AssetKey, AssetManifest, AssetSourceKind};
 use amigo_core::{AmigoError, AmigoResult, RuntimeDiagnostics};
 use amigo_input_api::{InputEvent, KeyCode};
 use amigo_render_wgpu::{UiOverlayNodeKind, UiViewportSize, build_ui_layout_tree};
-use amigo_runtime_bundles::amigo_sprite_2d_plugin::SpriteSceneService;
-use amigo_runtime_bundles::amigo_text_2d_plugin::Text2dSceneService;
-use amigo_runtime_bundles::amigo_tilemap_2d_plugin::{TileMap2dSceneService, TileVariantKind2d};
-use amigo_runtime_bundles::amigo_audio_api::{
-    AudioCommand, AudioCommandQueue, AudioSceneService, AudioStateService,
-};
-use amigo_runtime_bundles::amigo_audio_mixer::AudioMixerService;
-use amigo_runtime_bundles::amigo_ui::{
+use amigo_runtime_bundles::{
+    AudioCommand, AudioCommandQueue, AudioMixerService, AudioSceneService, AudioStateService,
+    SpriteSceneService, Text2dSceneService, TileMap2dSceneService, TileVariantKind2d,
     UiInputService, UiSceneService, UiStateService, UiThemeService,
 };
 use amigo_scene::{

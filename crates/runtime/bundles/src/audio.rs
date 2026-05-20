@@ -11,6 +11,7 @@ pub use amigo_audio_api::{
     AudioScriptCommandContext, AudioScriptCommandOutcome, AudioStateService,
     handle_audio_script_command,
 };
+pub use amigo_audio_mixer::AudioMixerService;
 pub use amigo_audio_output::{AudioOutputBackendService, AudioOutputStartStatus};
 
 pub struct AudioRuntimeBundle;

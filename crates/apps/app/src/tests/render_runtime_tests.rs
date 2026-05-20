@@ -351,13 +351,13 @@ fn handle_script_command_updates_layered_image_overrides() {
     let dev_console_state = DevConsoleState::default();
     let asset_catalog = AssetCatalog::default();
     let layered_images =
-        amigo_runtime_bundles::amigo_layered_image_2d_plugin::LayeredImageSceneService::default();
+        amigo_runtime_bundles::LayeredImageSceneService::default();
     let render_layers =
-        amigo_runtime_bundles::amigo_2d_composition::RenderLayer2dSceneService::default();
+        amigo_runtime_bundles::RenderLayer2dSceneService::default();
     let global_lights =
-        amigo_runtime_bundles::amigo_light_2d_plugin::GlobalLight2dSceneService::default();
+        amigo_runtime_bundles::GlobalLight2dSceneService::default();
     let light_groups =
-        amigo_runtime_bundles::amigo_light_2d_plugin::LightGroup2dSceneService::default();
+        amigo_runtime_bundles::LightGroup2dSceneService::default();
     let ui_state = UiStateService::default();
     let audio_command_queue = AudioCommandQueue::default();
     let audio_scene_service = AudioSceneService::default();
@@ -369,15 +369,15 @@ fn handle_script_command_updates_layered_image_overrides() {
         true,
     );
     layered_images.queue(
-        amigo_runtime_bundles::amigo_layered_image_2d_plugin::LayeredImageDrawCommand {
+        amigo_runtime_bundles::LayeredImageDrawCommand {
             entity_id: amigo_scene::SceneEntityId::new(1),
             entity_name: "test-layered-background".to_owned(),
-            image: amigo_runtime_bundles::amigo_layered_image_2d_plugin::LayeredImageInstance {
+            image: amigo_runtime_bundles::LayeredImageInstance {
                 asset: AssetKey::new("test-mod/layered-images/test-pack"),
                 size: amigo_math::Vec2::new(1280.0, 720.0),
                 base_opacity: 0.0,
                 viewport_fit:
-                    amigo_runtime_bundles::amigo_layered_image_2d_plugin::LayeredImageViewportFit2d::Fixed,
+                    amigo_runtime_bundles::LayeredImageViewportFit2d::Fixed,
                 layer_overrides: Vec::new(),
                 visual_maps: None,
             },
@@ -451,7 +451,7 @@ fn handle_script_command_updates_layered_image_overrides() {
     assert_eq!(override_.enabled, Some(false));
     assert_eq!(
         override_.blend_mode,
-        Some(amigo_runtime_bundles::amigo_layered_image_2d_plugin::LayeredImageBlendMode2d::Screen)
+        Some(amigo_runtime_bundles::LayeredImageBlendMode2d::Screen)
     );
 
     script_runtime::dispatch_script_command_with_layered_image_service(

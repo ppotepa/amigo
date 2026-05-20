@@ -4,6 +4,8 @@ use amigo_runtime::{PluginBundle, RuntimeBuilder};
 use amigo_scripting_rhai::RhaiScriptingPlugin;
 use amigo_session::RuntimeSession;
 
+pub use amigo_scripting_rhai::tick_script_components;
+
 pub struct ScriptingRuntimeBundle {
     pub modding_plugin: ModdingPlugin,
 }

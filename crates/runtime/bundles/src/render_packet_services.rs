@@ -1,19 +1,31 @@
 pub use amigo_2d_composition::{
     LightRoute2dSceneService, RenderLayer2dSceneService,
 };
-pub use amigo_3d_material::MaterialSceneService;
-pub use amigo_3d_mesh::MeshSceneService;
-pub use amigo_3d_text::Text3dSceneService;
-pub use amigo_composite_plugin::PostFx2dService;
-use amigo_focus_depth_plugin::DepthMap2dSceneService;
-pub use amigo_layered_image_2d_plugin::LayeredImageSceneService;
+pub use amigo_3d_material::{Material3d, MaterialDrawCommand, MaterialSceneService};
+pub use amigo_3d_mesh::{Mesh3d, MeshDrawCommand, MeshSceneService};
+pub use amigo_3d_text::{Text3d, Text3dDrawCommand, Text3dSceneService};
+pub use amigo_composite_plugin::{
+    Crt2d, DirtyBloom2d, FilmNoise2d, PostFx2d, PostFx2dService, PostFx2dStack, PostFxBlur2d,
+    PostFxLensDroplets2d, PostFxWetReflections2d, ScopedPostFx2dStack,
+};
+pub use amigo_focus_depth_plugin::DepthMap2dSceneService;
+pub use amigo_layered_image_2d_plugin::{
+    LayeredImageBlendMode2d, LayeredImageDrawCommand, LayeredImageInstance,
+    LayeredImageSceneService, LayeredImageViewportFit2d,
+};
 pub use amigo_light_2d_plugin::{
     GlobalLight2dSceneService, LightGroup2dSceneService, LightMap2dSceneService,
+    Material2dLightingMode,
 };
-pub use amigo_sprite_2d_plugin::{SpriteSceneService, SpriteSheet};
-pub use amigo_text_2d_plugin::Text2dSceneService;
-pub use amigo_tilemap_2d_plugin::TileMap2dSceneService;
-pub use amigo_vector_2d_plugin::VectorSceneService;
+pub use amigo_sprite_2d_plugin::{Sprite, SpriteDrawCommand, SpriteSceneService, SpriteSheet};
+pub use amigo_text_2d_plugin::{Text2d, Text2dDrawCommand, Text2dSceneService, Text2dStyle};
+pub use amigo_tilemap_2d_plugin::{
+    TileMap2d, TileMap2dDrawCommand, TileMap2dSceneService, TileVariantKind2d,
+};
+pub use amigo_vector_2d_plugin::{
+    VectorSceneService, VectorShape2d, VectorShape2dDrawCommand, VectorShapeKind2d,
+    VectorStyle2d, VectorViewportFit2d,
+};
 
 use amigo_render_wgpu::WgpuRenderFramePacket;
 use amigo_scene::Sprite2dSceneCommand;

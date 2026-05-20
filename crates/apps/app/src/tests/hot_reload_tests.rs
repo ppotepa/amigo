@@ -229,7 +229,7 @@ fn runtime_detects_sidescroller_scene_document_changes_through_hot_reload_servic
                 match (node.id.as_deref(), node.kind) {
                     (
                         Some("title"),
-                        amigo_runtime_bundles::amigo_ui::UiNodeKind::Text { content, .. },
+                        amigo_runtime_bundles::UiNodeKind::Text { content, .. },
                     ) => Some(content),
                     _ => None,
                 }
