@@ -18,7 +18,7 @@ pub(crate) use amigo_runtime_bundles::WgpuFrameCompositionBuilder;
 pub(crate) use amigo_runtime_bundles::{
     WgpuEditorOverlayOutput, extract_game_frame_packet, extract_live_host_overlay_packet,
     render_game_frame_to_cache, update_ui_input_viewport_state,
-    update_wgpu_render_composition_diagnostics,
+    update_wgpu_postfx_renderer_mode, update_wgpu_render_composition_diagnostics,
 };
 pub(crate) use amigo_runtime_bundles::WgpuFrameCompositionOptions;
 pub(crate) use amigo_runtime_bundles::{
@@ -217,17 +217,7 @@ pub(crate) fn build_render_frame_for_session(
     let extracted_text2d = build_text2d_scene_service_from_packet(&render_packet);
     let extracted_vectors = build_vector_scene_service_from_packet(&render_packet);
 
-    if let Ok(post_fx_service) =
-        required::<amigo_runtime_bundles::amigo_composite_plugin::PostFx2dService>(runtime)
-    {
-        let has_post_fx = !render_packet.post_fx_stacks().is_empty();
-        let renderer_mode = if has_post_fx {
-            "frame_graph_postfx"
-        } else {
-            "frame_graph"
-        };
-        post_fx_service.set_renderer_mode(renderer_mode);
-    }
+    update_wgpu_postfx_renderer_mode(runtime, &render_packet);
 
     let extracted_render_layer_commands = extracted_render_layers.commands();
     let extracted_light_route_commands = extracted_light_routes.commands();

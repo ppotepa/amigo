@@ -64,3 +64,16 @@ pub fn update_wgpu_render_composition_diagnostics(
         },
     );
 }
+
+pub fn update_wgpu_postfx_renderer_mode(runtime: &Runtime, render_packet: &WgpuRenderFramePacket) {
+    let Ok(post_fx_service) = runtime.required::<amigo_composite_plugin::PostFx2dService>() else {
+        return;
+    };
+
+    let renderer_mode = if render_packet.post_fx_stacks().is_empty() {
+        "frame_graph"
+    } else {
+        "frame_graph_postfx"
+    };
+    post_fx_service.set_renderer_mode(renderer_mode);
+}
