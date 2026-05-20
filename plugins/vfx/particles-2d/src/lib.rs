@@ -3,10 +3,12 @@
 
 pub mod api;
 mod dev_console;
+mod devtools_console;
 mod model;
 pub mod participation;
 mod plugin;
 mod render_extraction;
+mod reset;
 mod runtime;
 mod runtime_capabilities;
 pub mod scene;
@@ -16,9 +18,11 @@ mod service;
 mod systems;
 
 pub use dev_console::*;
+pub use devtools_console::*;
 pub use model::*;
 pub use plugin::*;
 pub use render_extraction::*;
+pub use reset::*;
 pub use runtime_capabilities::*;
 pub use scene_bridge::*;
 pub use scene_command::*;

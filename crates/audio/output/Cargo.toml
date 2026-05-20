@@ -13,5 +13,6 @@ amigo-audio-mixer.workspace = true
 amigo-core.workspace = true
 amigo-capabilities.workspace = true
 amigo-runtime.workspace = true
+amigo-scene.workspace = true
 amigo-session.workspace = true
 cpal.workspace = true

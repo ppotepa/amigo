@@ -13,6 +13,7 @@ mod plugin;
 /// Runtime contribution descriptors for UI-owned scene handlers and systems.
 mod runtime_capabilities;
 mod runtime_ui;
+mod reset;
 /// Adapters that hydrate scene-authored UI data into runtime state.
 mod scene_bridge;
 /// Scene command execution owned by the UI domain.
@@ -32,6 +33,7 @@ pub use model::{
     curve_points_from_values, default_curve_points, format_curve_points, normalize_curve_points,
 };
 pub use plugin::UiPlugin;
+pub use reset::*;
 pub use runtime_capabilities::*;
 pub use runtime_ui::{
     UiOverlayRenderExtractor, UiOverlayRenderOutput, dropdown_visible_option_count,

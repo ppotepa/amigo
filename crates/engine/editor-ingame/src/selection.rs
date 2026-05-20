@@ -1,9 +1,11 @@
 use amigo_editor_authoring::{AuthoringNode, AuthoringSceneGraph};
+use amigo_runtime::Runtime;
 
-use crate::bounds::{bounds_for_node, topmost_candidate_at};
+use crate::bounds::{bounds_for_node_with_registry, topmost_candidate_at_with_registry};
 use crate::state::{EditorSelection, IngameEditorState, SelectionSource};
 
 pub fn select_node_by_id(
+    runtime: &Runtime,
     state: &IngameEditorState,
     graph: &AuthoringSceneGraph,
     node_id: String,
@@ -15,7 +17,8 @@ pub fn select_node_by_id(
         state.set_status(format!("selection failed: node not found {node_id}"));
         return false;
     };
-    let bounds = bounds_for_node(graph, &node_id);
+    let registry = crate::component_registry::editor_component_registry(runtime);
+    let bounds = bounds_for_node_with_registry(graph, &registry, &node_id);
     state.select_scene_node(EditorSelection {
         node_id,
         source,
@@ -30,12 +33,15 @@ pub fn select_node_by_id(
 }
 
 pub fn select_viewport_target(
+    runtime: &Runtime,
     state: &IngameEditorState,
     graph: &AuthoringSceneGraph,
     logical_x: f32,
     logical_y: f32,
 ) -> bool {
-    let Some(candidate) = topmost_candidate_at(graph, logical_x, logical_y) else {
+    let registry = crate::component_registry::editor_component_registry(runtime);
+    let Some(candidate) = topmost_candidate_at_with_registry(graph, &registry, logical_x, logical_y)
+    else {
         state.clear_selection();
         state.set_status(format!(
             "viewport miss @ {logical_x:.1},{logical_y:.1}; picking uses logical fallback"

@@ -1,4 +1,7 @@
 use super::*;
+use amigo_runtime_bundles::amigo_audio_api::{
+    AudioClip, AudioClipKey, AudioCommand, AudioPlaybackMode, AudioSceneService,
+};
 
 pub(crate) fn relative_path_within_root(
     root_path: &Path,
@@ -54,18 +57,6 @@ pub(crate) fn validate_script_path(
     Ok(())
 }
 
-#[allow(dead_code)]
-pub(crate) fn parse_scene_vec2(width: &str, height: &str, label: &str) -> Result<Vec2, String> {
-    let width = width
-        .parse::<f32>()
-        .map_err(|error| format!("failed to parse {label} width `{width}` as f32: {error}"))?;
-    let height = height
-        .parse::<f32>()
-        .map_err(|error| format!("failed to parse {label} height `{height}` as f32: {error}"))?;
-
-    Ok(Vec2::new(width, height))
-}
-
 pub(crate) fn register_mod_asset_reference(
     asset_catalog: &AssetCatalog,
     source_mod: &str,
@@ -86,14 +77,6 @@ pub(crate) fn register_mod_asset_reference(
         asset_key.clone(),
         AssetLoadPriority::Interactive,
     ));
-}
-
-#[allow(dead_code)]
-pub(crate) fn descriptor_first_tileset_spritesheet_key(asset_key: &AssetKey) -> Option<AssetKey> {
-    let normalized = asset_key.as_str().replace('\\', "/");
-    let (mod_id, relative) = normalized.split_once('/')?;
-    let (sheet_path, _) = relative.split_once("/tilesets/")?;
-    Some(AssetKey::new(format!("{mod_id}/{sheet_path}")))
 }
 
 pub(crate) fn register_audio_clip_reference(

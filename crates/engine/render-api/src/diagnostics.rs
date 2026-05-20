@@ -17,6 +17,17 @@ pub struct RenderCompositionDiagnostics {
     pub warnings: Vec<String>,
 }
 
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct RenderCompositionDiagnosticsUpdate {
+    pub camera_capture_summary: Option<String>,
+    pub camera_focus_plan_summary: Option<String>,
+    pub light_sources_summary: Option<String>,
+    pub camera_optical_candidates_summary: Option<String>,
+    pub render_contributions_summary: Option<String>,
+    pub render_materials_summary: Option<String>,
+    pub visual_items_summary: Option<String>,
+}
+
 impl RenderCompositionDiagnostics {
     pub fn from_plan_and_graph(plan: &FrameCompositionPlan, graph: &FrameGraph) -> Self {
         let composition_summary = plan
@@ -189,75 +200,43 @@ impl RenderCompositionDiagnosticsService {
         camera_capture_summary: Option<String>,
         camera_focus_plan_summary: Option<String>,
     ) {
-        self.set_with_camera_capture_focus_and_contributions(
+        self.set_with_update(
             plan,
             graph,
-            camera_capture_summary,
-            camera_focus_plan_summary,
-            None,
-            None,
-            None,
-            None,
+            RenderCompositionDiagnosticsUpdate {
+                camera_capture_summary,
+                camera_focus_plan_summary,
+                ..Default::default()
+            },
         );
     }
 
-    pub fn set_with_camera_capture_focus_and_contributions(
+    pub fn set_with_update(
         &self,
         plan: &FrameCompositionPlan,
         graph: &FrameGraph,
-        camera_capture_summary: Option<String>,
-        camera_focus_plan_summary: Option<String>,
-        light_sources_summary: Option<String>,
-        render_contributions_summary: Option<String>,
-        render_materials_summary: Option<String>,
-        visual_items_summary: Option<String>,
-    ) {
-        self.set_with_camera_capture_focus_contributions_and_optical(
-            plan,
-            graph,
-            camera_capture_summary,
-            camera_focus_plan_summary,
-            light_sources_summary,
-            None,
-            render_contributions_summary,
-            render_materials_summary,
-            visual_items_summary,
-        );
-    }
-
-    #[allow(clippy::too_many_arguments)]
-    pub fn set_with_camera_capture_focus_contributions_and_optical(
-        &self,
-        plan: &FrameCompositionPlan,
-        graph: &FrameGraph,
-        camera_capture_summary: Option<String>,
-        camera_focus_plan_summary: Option<String>,
-        light_sources_summary: Option<String>,
-        camera_optical_candidates_summary: Option<String>,
-        render_contributions_summary: Option<String>,
-        render_materials_summary: Option<String>,
-        visual_items_summary: Option<String>,
+        update: RenderCompositionDiagnosticsUpdate,
     ) {
         let mut diagnostics = RenderCompositionDiagnostics::from_plan_and_graph(plan, graph);
-        if let Some(summary) = camera_capture_summary {
+        if let Some(summary) = update.camera_capture_summary {
             diagnostics.camera_capture_summary = summary;
         }
-        if let Some(summary) = camera_focus_plan_summary {
+        if let Some(summary) = update.camera_focus_plan_summary {
             diagnostics.camera_focus_plan_summary = summary;
         }
-        if let Some(summary) = light_sources_summary {
+        if let Some(summary) = update.light_sources_summary {
             diagnostics.light_sources_summary = summary;
         }
-        if let Some(summary) = camera_optical_candidates_summary {
+        if let Some(summary) = update.camera_optical_candidates_summary {
             diagnostics.camera_optical_candidates_summary = summary;
         }
-        if let Some(summary) = render_contributions_summary {
+        if let Some(summary) = update.render_contributions_summary {
             diagnostics.render_contributions_summary = summary;
         }
-        if let Some(summary) = render_materials_summary {
+        if let Some(summary) = update.render_materials_summary {
             diagnostics.render_materials_summary = summary;
         }
-        if let Some(summary) = visual_items_summary {
+        if let Some(summary) = update.visual_items_summary {
             diagnostics.visual_items_summary = summary;
         }
         *self
@@ -316,15 +295,13 @@ mod tests {
     #[test]
     fn render_diagnostics_service_stores_render_contributions_summary() {
         let service = RenderCompositionDiagnosticsService::default();
-        service.set_with_camera_capture_focus_and_contributions(
+        service.set_with_update(
             &FrameCompositionPlan::single_main_view(Vec::new()),
             &FrameGraph::default(),
-            None,
-            None,
-            None,
-            Some("render.contributions ok".to_owned()),
-            None,
-            None,
+            RenderCompositionDiagnosticsUpdate {
+                render_contributions_summary: Some("render.contributions ok".to_owned()),
+                ..Default::default()
+            },
         );
 
         assert_eq!(
@@ -336,15 +313,13 @@ mod tests {
     #[test]
     fn render_diagnostics_service_stores_render_materials_summary() {
         let service = RenderCompositionDiagnosticsService::default();
-        service.set_with_camera_capture_focus_and_contributions(
+        service.set_with_update(
             &FrameCompositionPlan::single_main_view(Vec::new()),
             &FrameGraph::default(),
-            None,
-            None,
-            None,
-            None,
-            Some("render.materials ok".to_owned()),
-            None,
+            RenderCompositionDiagnosticsUpdate {
+                render_materials_summary: Some("render.materials ok".to_owned()),
+                ..Default::default()
+            },
         );
 
         assert_eq!(

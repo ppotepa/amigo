@@ -2,7 +2,6 @@ use crate::DevConsoleCommandContext as ConsoleCommandContext;
 use crate::RuntimeConsoleCommandHandler as ConsoleCommandHandler;
 use crate::{ConsoleCommandDescriptor, ConsoleCommandResult, ParsedConsoleCommand};
 
-use amigo_camera_core_plugin::CameraFocusTarget2dService;
 use amigo_render_api::{RenderCompositionDiagnosticsService, RenderFrameStatsService};
 
 pub(crate) struct RenderConsoleCommandHandler;
@@ -286,11 +285,9 @@ impl ConsoleCommandHandler for RenderConsoleCommandHandler {
                 })
             }
             "camera.focus.targets" | "focus.targets" => {
-                let targets = match ctx.required::<CameraFocusTarget2dService>() {
-                    Ok(service) => service.summary(),
-                    Err(error) => return ConsoleCommandResult::error(error.to_string()),
-                };
-                ConsoleCommandResult::ok(targets)
+                ConsoleCommandResult::error(
+                    "camera.focus.targets is provided by the camera runtime plugin".to_owned(),
+                )
             }
             "render.contributions" | "contributions" | "camera.effects" => {
                 let diagnostics = match ctx.required::<RenderCompositionDiagnosticsService>() {

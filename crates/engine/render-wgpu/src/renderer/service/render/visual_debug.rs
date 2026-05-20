@@ -19,14 +19,14 @@ pub(super) fn try_execute_camera_debug_view(
         return Ok(false);
     }
 
-    match request.camera_debug_view {
-        amigo_render_api::CameraDebugView2d::LayerOpticalRoles => {
+    match request.camera_debug_view.as_str() {
+        "camera.layer_optical_roles" => {
             if !copy_layer_roles_target_or_fallback(renderer, target)? {
                 render_layer_roles_debug_source(renderer, request, target)?;
             }
             Ok(true)
         }
-        amigo_render_api::CameraDebugView2d::LayerMask => {
+        "camera.layer_mask" => {
             if !copy_visual_source_target_or_fallback(
                 renderer,
                 target,
@@ -36,7 +36,7 @@ pub(super) fn try_execute_camera_debug_view(
             }
             Ok(true)
         }
-        amigo_render_api::CameraDebugView2d::SceneNormals => {
+        "camera.scene_normal" => {
             render_visual_source_debug_view(
                 renderer,
                 request,
@@ -50,7 +50,7 @@ pub(super) fn try_execute_camera_debug_view(
             )?;
             Ok(true)
         }
-        amigo_render_api::CameraDebugView2d::SceneWetness => {
+        "camera.scene_wetness" => {
             render_visual_source_debug_view(
                 renderer,
                 request,
@@ -64,7 +64,7 @@ pub(super) fn try_execute_camera_debug_view(
             )?;
             Ok(true)
         }
-        amigo_render_api::CameraDebugView2d::SceneEmissive => {
+        "camera.scene_emissive" => {
             render_visual_source_debug_view(
                 renderer,
                 request,
@@ -78,7 +78,7 @@ pub(super) fn try_execute_camera_debug_view(
             )?;
             Ok(true)
         }
-        amigo_render_api::CameraDebugView2d::SceneHighlights => {
+        "camera.scene_highlight" => {
             render_visual_source_debug_view(
                 renderer,
                 request,
@@ -92,7 +92,7 @@ pub(super) fn try_execute_camera_debug_view(
             )?;
             Ok(true)
         }
-        amigo_render_api::CameraDebugView2d::SceneMotion => {
+        "camera.scene_motion" => {
             render_visual_source_debug_view(
                 renderer,
                 request,
@@ -333,7 +333,7 @@ fn camera_debug_feature_rank(feature: &str) -> Option<u8> {
 }
 
 pub(super) fn should_bypass_for_camera_debug_view(
-    debug_view: amigo_render_api::CameraDebugView2d,
+    debug_view: &amigo_render_api::CameraDebugView2d,
     feature_id: &str,
 ) -> bool {
     let Some(stop) = debug_view.stop_after_feature() else {

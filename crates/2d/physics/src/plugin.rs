@@ -18,6 +18,7 @@ impl RuntimePlugin for Physics2dPlugin {
 
     fn register(&self, registry: &mut ServiceRegistry) -> amigo_core::AmigoResult<()> {
         registry.register(Physics2dSceneService::default())?;
+        amigo_scene::register_scene_reset_handler(registry, crate::Physics2dSceneResetHandler)?;
         registry.register(Physics2dDomainInfo {
             crate_name: "amigo-2d-physics",
             capability: "physics_2d",

@@ -1,4 +1,5 @@
 use crate::composition::{RenderFeatureId, RenderPassInput, RenderPassOutput};
+use crate::{PostFx2dId, PostFxHost2dId, PostFxPipelineKind, PostFxScope2d};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct FrameResourceId(pub u32);
@@ -24,10 +25,10 @@ pub struct FrameGraphResource {
 pub enum FrameGraphNodeKind {
     World,
     PostFx {
-        host_id: amigo_composite_plugin::PostFxHost2dId,
-        effect_id: amigo_composite_plugin::PostFx2dId,
-        scope: amigo_composite_plugin::PostFxScope2d,
-        pipeline: amigo_composite_plugin::PostFxPipelineKind,
+        host_id: PostFxHost2dId,
+        effect_id: PostFx2dId,
+        scope: PostFxScope2d,
+        pipeline: PostFxPipelineKind,
         feature_id: RenderFeatureId,
     },
     GameUi,

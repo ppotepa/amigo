@@ -1,5 +1,5 @@
 use amigo_math::ColorRgba;
-use amigo_render_wgpu::{
+use amigo_overlay_api::{
     UiOverlayDocument, UiOverlayLayer, UiOverlayNode, UiOverlayNodeKind, UiOverlayStyle,
     UiOverlayViewport, UiOverlayViewportScaling, UiViewportSize,
 };
@@ -11,12 +11,6 @@ use crate::{DebugOverlayCorner, DebugOverlayLayoutMode, DebugOverlayPanel, Debug
 
 pub trait DebugOverlayRenderOutput {
     fn push_debug_overlay_document(&mut self, document: UiOverlayDocument);
-}
-
-impl DebugOverlayRenderOutput for amigo_render_wgpu::WgpuRenderFramePacket {
-    fn push_debug_overlay_document(&mut self, document: UiOverlayDocument) {
-        self.push_debug_overlay(document);
-    }
 }
 
 pub struct DebugOverlayRenderExtractor;

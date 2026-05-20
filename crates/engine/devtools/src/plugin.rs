@@ -26,6 +26,9 @@ impl RuntimePlugin for DevtoolsPlugin {
         if !registry.has::<crate::ConsoleCompletionState>() {
             registry.register(crate::ConsoleCompletionState::default())?;
         }
+        if !registry.has::<crate::ConsoleCompletionProviderRegistry>() {
+            registry.register(crate::ConsoleCompletionProviderRegistry::default())?;
+        }
 
         let script_handlers =
             registry.required::<amigo_scripting_api::RuntimeScriptCommandHandlerRegistry>()?;

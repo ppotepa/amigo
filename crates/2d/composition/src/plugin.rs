@@ -17,6 +17,7 @@ impl RuntimePlugin for Composition2dPlugin {
     fn register(&self, registry: &mut ServiceRegistry) -> AmigoResult<()> {
         registry.register(RenderLayer2dSceneService::default())?;
         registry.register(LightRoute2dSceneService::default())?;
+        amigo_scene::register_scene_reset_handler(registry, crate::Composition2dSceneResetHandler)?;
         register_domain_plugin(
             registry,
             COMPOSITION_2D_PLUGIN_LABEL,

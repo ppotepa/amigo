@@ -18,6 +18,14 @@ impl RuntimePlugin for SpritePlugin {
 
     fn register(&self, registry: &mut ServiceRegistry) -> amigo_core::AmigoResult<()> {
         registry.register(SpriteSceneService::default())?;
+        amigo_scene::register_scene_reset_handler(
+            registry,
+            super::reset::Sprite2dSceneResetHandler,
+        )?;
+        if let Some(metadata) = registry.resolve::<amigo_scene::ComponentMetadataProviderRegistry>()
+        {
+            metadata.register(crate::scene::Sprite2dComponentMetadataProvider);
+        }
         registry.register(SpriteDomainInfo {
             crate_name: "amigo-sprite-2d-plugin",
             capability: "rendering_2d",

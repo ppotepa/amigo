@@ -25,32 +25,6 @@ use amigo_render_api::RenderBackendInfo;
 use amigo_render_wgpu::UiLayoutNode as OverlayUiLayoutNode;
 use amigo_render_wgpu::{UiViewportSize, WgpuRenderBackend, WgpuSceneRenderer, WgpuSurfaceState};
 use amigo_runtime::{Runtime, RuntimePlugin, ServiceRegistry};
-use amigo_runtime_bundles::amigo_shutter_motion_plugin::Motion2dSceneService;
-use amigo_runtime_bundles::amigo_particles_2d_plugin::Particle2dSceneService;
-use amigo_runtime_bundles::amigo_2d_physics::Physics2dSceneService;
-use amigo_runtime_bundles::amigo_sprite_2d_plugin::{SpriteSceneService, SpriteSheet};
-use amigo_runtime_bundles::amigo_text_2d_plugin::Text2dSceneService;
-use amigo_runtime_bundles::amigo_tilemap_2d_plugin::TileMap2dSceneService;
-use amigo_runtime_bundles::amigo_vector_2d_plugin::VectorSceneService;
-use amigo_runtime_bundles::amigo_3d_material::MaterialSceneService;
-use amigo_runtime_bundles::amigo_3d_mesh::MeshSceneService;
-use amigo_runtime_bundles::amigo_3d_text::Text3dSceneService;
-use amigo_runtime_bundles::amigo_audio_api::{
-    AudioClip, AudioClipKey, AudioCommand, AudioCommandQueue, AudioPlaybackMode, AudioSceneService,
-    AudioStateService,
-};
-use amigo_runtime_bundles::amigo_audio_mixer::AudioMixerService;
-use amigo_runtime_bundles::amigo_audio_output::{
-    AudioOutputBackendService, AudioOutputStartStatus,
-};
-use amigo_runtime_bundles::amigo_behavior::BehaviorSceneService;
-use amigo_camera_core_plugin::{CameraFollow2dSceneService, Parallax2dSceneService};
-use amigo_runtime_bundles::amigo_event_pipeline::EventPipelineService;
-use amigo_runtime_bundles::amigo_input_actions::InputActionService;
-use amigo_runtime_bundles::amigo_ui::{
-    UiDocument as RuntimeUiDocument, UiInputService, UiModelBindingService, UiSceneService,
-    UiStateService, UiThemeService,
-};
 use amigo_scene::{
     EntityPoolSceneService, HydratedSceneState, LifetimeSceneService, SceneCommand,
     SceneCommandQueue, SceneHydrationPlan, SceneKey, SceneService, SceneTransitionPlan,

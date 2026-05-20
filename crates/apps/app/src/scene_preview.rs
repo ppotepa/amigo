@@ -330,7 +330,7 @@ impl ScenePreviewHost {
         );
         let frame_graph = crate::render_runtime::build_frame_graph_from_plan(
             &composition_plan,
-            crate::render_runtime::AppFrameGraphBuildInfo {
+            crate::render_runtime::FrameGraphBuildInfo {
                 width: offscreen.target.width,
                 height: offscreen.target.height,
             },
@@ -372,7 +372,7 @@ impl ScenePreviewHost {
             visual_source_flags_2d: Some(render_packet.visual_source_flags_2d()),
             camera_debug_view: render_packet
                 .camera_debug_view_2d()
-                .unwrap_or(amigo_render_api::CameraDebugView2d::FinalOutput),
+                .unwrap_or_else(amigo_render_api::CameraDebugView2d::final_output),
             emergency_overlay: emergency_overlay.as_slice(),
             composition_plan: &composition_plan,
             frame_graph: &frame_graph,
@@ -406,8 +406,6 @@ impl ScenePreviewHost {
             AmigoError::Message("scene preview runtime is not bootstrapped".to_owned())
         })
     }
-
-    #[allow(dead_code)]
     fn runtime_mut(&mut self) -> AmigoResult<&mut Runtime> {
         self.runtime.as_mut().ok_or_else(|| {
             AmigoError::Message("scene preview runtime is not bootstrapped".to_owned())

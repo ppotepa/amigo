@@ -9,3 +9,4 @@ authors.workspace = true
 [dependencies]
 amigo-core.workspace = true
 amigo-runtime.workspace = true
+amigo-scene.workspace = true

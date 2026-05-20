@@ -22,6 +22,7 @@ impl RuntimePlugin for Particle2dPlugin {
 
     fn register(&self, registry: &mut ServiceRegistry) -> amigo_core::AmigoResult<()> {
         registry.register(Particle2dSceneService::default())?;
+        amigo_scene::register_scene_reset_handler(registry, crate::Particle2dSceneResetHandler)?;
         registry.register(ParticlePreset2dService::default())?;
         if let (Some(control), Some(particles)) = (
             registry.resolve::<RuntimeControlService>(),
@@ -47,6 +48,15 @@ impl RuntimePlugin for Particle2dPlugin {
         amigo_scene::register_runtime_scene_command_handler(
             scene_handlers.as_ref(),
             crate::scene_command::Particles2dSceneCommandHandler,
+        );
+        if !registry.has::<amigo_devtools::RuntimeConsoleCommandRegistry>() {
+            registry.register(amigo_devtools::RuntimeConsoleCommandRegistry::default())?;
+        }
+        amigo_devtools::register_runtime_console_command_handler(
+            registry
+                .required::<amigo_devtools::RuntimeConsoleCommandRegistry>()?
+                .as_ref(),
+            crate::devtools_console::ParticlesConsoleCommandHandler,
         );
         registry.required::<SystemRegistry>()?.register_fn(
             SystemPhase::Update,

@@ -71,6 +71,10 @@ impl RuntimePlugin for Motion2dPlugin {
 
     fn register(&self, registry: &mut ServiceRegistry) -> amigo_core::AmigoResult<()> {
         registry.register(Motion2dSceneService::default())?;
+        amigo_scene::register_scene_reset_handler(
+            registry,
+            super::reset::Motion2dSceneResetHandler,
+        )?;
         registry.register(Motion2dDomainInfo::canonical())?;
         register_domain_plugin(
             registry,

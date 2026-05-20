@@ -1,7 +1,7 @@
 use std::sync::Mutex;
 
 use amigo_math::Vec2;
-use amigo_render_wgpu::UiViewportSize;
+use amigo_overlay_api::UiViewportSize;
 
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct UiInputSnapshot {

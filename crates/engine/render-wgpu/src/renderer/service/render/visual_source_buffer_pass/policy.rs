@@ -48,10 +48,7 @@ impl VisualSourceBufferResolutionPolicy {
 }
 
 fn layer_mask_policy(request: &WgpuFrameRenderRequest<'_>) -> VisualSourceBufferResolutionPolicy {
-    if matches!(
-        request.camera_debug_view,
-        amigo_render_api::CameraDebugView2d::LayerMask
-    ) {
+    if request.camera_debug_view.as_str() == "camera.layer_mask" {
         return VisualSourceBufferResolutionPolicy::Full;
     }
     if request
@@ -65,10 +62,7 @@ fn layer_mask_policy(request: &WgpuFrameRenderRequest<'_>) -> VisualSourceBuffer
 }
 
 fn layer_roles_policy(request: &WgpuFrameRenderRequest<'_>) -> VisualSourceBufferResolutionPolicy {
-    if matches!(
-        request.camera_debug_view,
-        amigo_render_api::CameraDebugView2d::LayerOpticalRoles
-    ) {
+    if request.camera_debug_view.as_str() == "camera.layer_optical_roles" {
         return VisualSourceBufferResolutionPolicy::Full;
     }
     if request
@@ -85,7 +79,7 @@ fn source_policy(
     request: &WgpuFrameRenderRequest<'_>,
     kind: amigo_render_api::VisualSourceKind2d,
 ) -> VisualSourceBufferResolutionPolicy {
-    let debug_wants = debug_view_wants_source(request.camera_debug_view, kind);
+    let debug_wants = debug_view_wants_source(&request.camera_debug_view, kind);
     let produced = request
         .camera_capture_input_2d
         .and_then(|input| input.source(kind))
@@ -125,25 +119,25 @@ fn source_policy(
 }
 
 fn debug_view_wants_source(
-    debug_view: amigo_render_api::CameraDebugView2d,
+    debug_view: &amigo_render_api::CameraDebugView2d,
     kind: amigo_render_api::VisualSourceKind2d,
 ) -> bool {
     matches!(
-        (debug_view, kind),
+        (debug_view.as_str(), kind),
         (
-            amigo_render_api::CameraDebugView2d::SceneNormals,
+            "camera.scene_normal",
             amigo_render_api::VisualSourceKind2d::SceneNormal
         ) | (
-            amigo_render_api::CameraDebugView2d::SceneWetness,
+            "camera.scene_wetness",
             amigo_render_api::VisualSourceKind2d::SceneWetness
         ) | (
-            amigo_render_api::CameraDebugView2d::SceneHighlights,
+            "camera.scene_highlight",
             amigo_render_api::VisualSourceKind2d::SceneHighlight
         ) | (
-            amigo_render_api::CameraDebugView2d::SceneEmissive,
+            "camera.scene_emissive",
             amigo_render_api::VisualSourceKind2d::SceneEmissive
         ) | (
-            amigo_render_api::CameraDebugView2d::SceneMotion,
+            "camera.scene_motion",
             amigo_render_api::VisualSourceKind2d::SceneMotion
         )
     )

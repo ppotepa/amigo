@@ -376,15 +376,6 @@ fn console_completion_context(
         .map(|scene| scene.entity_names())
         .unwrap_or_default();
 
-    let postfx_indices = runtime
-        .resolve::<amigo_composite_plugin::PostFx2dService>()
-        .map(|postfx| {
-            (0..postfx.frame_effect_count())
-                .map(|index| index.to_string())
-                .collect::<Vec<_>>()
-        })
-        .unwrap_or_default();
-
     let rhai_symbols = console
         .command_history()
         .into_iter()
@@ -404,23 +395,25 @@ fn console_completion_context(
         .unwrap_or_default();
     let runtime_control = runtime.resolve::<RuntimeControlService>();
 
-    ConsoleCompletionContext {
+    let postfx_kinds = runtime
+        .resolve::<crate::ConsoleCompletionProviderRegistry>()
+        .map(|providers| providers.postfx_kinds(runtime))
+        .unwrap_or_default();
+
+    let mut context = ConsoleCompletionContext {
         entity_names,
-        postfx_kinds: vec![
-            "blur".to_owned(),
-            "crt".to_owned(),
-            "dirty_bloom".to_owned(),
-            "rain_glass".to_owned(),
-            "lens_droplets".to_owned(),
-            "color_quantize".to_owned(),
-            "film_noise".to_owned(),
-            "shutter_blur".to_owned(),
-        ],
-        postfx_indices,
+        postfx_kinds,
+        postfx_indices: Vec::new(),
         render_layer_ids,
         rhai_symbols,
         runtime_control,
+    };
+
+    if let Some(providers) = runtime.resolve::<crate::ConsoleCompletionProviderRegistry>() {
+        providers.augment_context(runtime, &mut context);
     }
+
+    context
 }
 
 fn runtime_rhai_symbols(_runtime: &Runtime) -> Vec<ConsoleRhaiSymbol> {

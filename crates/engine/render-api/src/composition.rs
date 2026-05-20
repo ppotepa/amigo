@@ -1,9 +1,8 @@
 use std::fmt;
 
-use amigo_composite_plugin::{PostFx2dId, PostFxHost2dId, PostFxPipelineKind, PostFxScope2d};
-
 use crate::{
-    BlendMode, CameraBinding, ClearMode, CompositionLayer, DepthMode, RenderLayerId, RenderSpace,
+    BlendMode, CameraBinding, ClearMode, CompositionLayer, DepthMode, PostFx2dId, PostFxHost2dId,
+    PostFxPipelineKind, PostFxScope2d, RenderLayerId, RenderSpace,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]

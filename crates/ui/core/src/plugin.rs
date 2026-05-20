@@ -12,6 +12,7 @@ impl RuntimePlugin for UiPlugin {
 
     fn register(&self, registry: &mut ServiceRegistry) -> AmigoResult<()> {
         register_ui_services(registry)?;
+        amigo_scene::register_scene_reset_handler(registry, crate::UiSceneResetHandler)?;
         let scene_handlers =
             registry.required::<amigo_scene::RuntimeSceneCommandHandlerRegistry>()?;
         amigo_scene::register_runtime_scene_command_handler(

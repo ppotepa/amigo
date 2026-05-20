@@ -37,6 +37,35 @@ pub enum Renderable2dPayload {
     Particle(Particle2dDrawCommand),
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct Renderable2dPayloadKind(String);
+
+impl Renderable2dPayloadKind {
+    pub fn new(value: impl Into<String>) -> Self {
+        Self(value.into())
+    }
+
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+impl Renderable2dPayload {
+    pub fn kind_id(&self) -> Renderable2dPayloadKind {
+        match self {
+            Renderable2dPayload::TileMap(_) => Renderable2dPayloadKind::new("tilemap_2d"),
+            Renderable2dPayload::LayeredImage(_) => {
+                Renderable2dPayloadKind::new("layered_image_2d")
+            }
+            Renderable2dPayload::Vector(_) => Renderable2dPayloadKind::new("vector_2d"),
+            Renderable2dPayload::Beacon(_) => Renderable2dPayloadKind::new("beacon_light_2d"),
+            Renderable2dPayload::Sprite(_) => Renderable2dPayloadKind::new("sprite_2d"),
+            Renderable2dPayload::Text(_) => Renderable2dPayloadKind::new("text_2d"),
+            Renderable2dPayload::Particle(_) => Renderable2dPayloadKind::new("particle_2d"),
+        }
+    }
+}
+
 impl Renderable2dItem {
     pub fn render_layer(&self) -> &str {
         &self.common.render_layer
@@ -60,6 +89,10 @@ impl Renderable2dItem {
 
     pub fn payload_kind(&self) -> &'static str {
         self.common.kind.as_str()
+    }
+
+    pub fn payload_kind_id(&self) -> Renderable2dPayloadKind {
+        self.payload.kind_id()
     }
 
     pub fn uses_camera_pipeline(&self) -> bool {
@@ -499,7 +532,7 @@ impl WgpuRenderFramePacket {
     }
 
     pub fn camera_debug_view_2d(&self) -> Option<CameraDebugView2d> {
-        self.camera_debug_view_2d
+        self.camera_debug_view_2d.clone()
     }
 
     pub fn visual_source_flags_2d(&self) -> &WgpuVisualSourceFlags2d {

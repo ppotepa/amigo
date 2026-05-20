@@ -1,22 +1,16 @@
 use amigo_assets::AssetKey;
 use amigo_math::ColorRgba;
-use amigo_render_wgpu::{
+use amigo_overlay_api::{
     UiOverlayDocument, UiOverlayLayer, UiOverlayNode, UiOverlayNodeKind, UiOverlayStyle,
     UiOverlayViewport, UiOverlayViewportScaling, UiViewportSize,
 };
 use amigo_scripting_api::{DevConsoleInputSnapshot, DevConsoleOutputLine, DevConsoleState};
 
-use crate::ConsoleCompletionSnapshot;
 use crate::dev_console_theme::DevConsoleTheme;
+use crate::ConsoleCompletionSnapshot;
 
 pub trait DevConsoleOverlayRenderOutput {
     fn push_dev_console_overlay_document(&mut self, document: UiOverlayDocument);
-}
-
-impl DevConsoleOverlayRenderOutput for amigo_render_wgpu::WgpuRenderFramePacket {
-    fn push_dev_console_overlay_document(&mut self, document: UiOverlayDocument) {
-        self.push_debug_overlay(document);
-    }
 }
 
 pub struct DevConsoleOverlayRenderExtractor;
@@ -104,16 +98,20 @@ pub fn build_dev_console_overlay_with_theme(
                 let mut children = vec![
                     backdrop_node(viewport, theme),
                     console_panel_node(
-                        panel_left,
-                        panel_top,
-                        panel_width,
-                        panel_height,
-                        content_width,
-                        output,
-                        total_entries,
-                        visible_lines,
-                        scroll_offset,
-                        input,
+                        DevConsolePanelGeometry {
+                            left: panel_left,
+                            top: panel_top,
+                            width: panel_width,
+                            height: panel_height,
+                            content_width,
+                        },
+                        DevConsolePanelContent {
+                            output,
+                            total_entries,
+                            visible_lines,
+                            scroll_offset,
+                            input,
+                        },
                         theme,
                     ),
                 ];
@@ -164,20 +162,41 @@ fn backdrop_node(viewport: UiViewportSize, theme: &DevConsoleTheme) -> UiOverlay
     }
 }
 
-#[allow(clippy::too_many_arguments)]
-fn console_panel_node(
+struct DevConsolePanelGeometry {
     left: f32,
     top: f32,
     width: f32,
     height: f32,
     content_width: f32,
+}
+
+struct DevConsolePanelContent {
     output: Vec<DevConsoleOutputLine>,
     total_entries: usize,
     visible_lines: usize,
     scroll_offset: usize,
     input: DevConsoleInputSnapshot,
+}
+
+fn console_panel_node(
+    geometry: DevConsolePanelGeometry,
+    content: DevConsolePanelContent,
     theme: &DevConsoleTheme,
 ) -> UiOverlayNode {
+    let DevConsolePanelGeometry {
+        left,
+        top,
+        width,
+        height,
+        content_width,
+    } = geometry;
+    let DevConsolePanelContent {
+        output,
+        total_entries,
+        visible_lines,
+        scroll_offset,
+        input,
+    } = content;
     let layout = &theme.layout;
     let mut children = Vec::new();
     children.push(text_node(
@@ -229,12 +248,14 @@ fn console_panel_node(
     let input_top = height - layout.panel_padding * 2.0 - layout.input_height;
     children.extend(input_line_nodes(
         &input,
-        0.0,
-        input_top,
-        content_width,
-        layout.input_height,
-        theme.font.input_size,
-        theme.colors.input_text,
+        DevConsoleInputLineLayout {
+            left: 0.0,
+            top: input_top,
+            width: content_width,
+            height: layout.input_height,
+            font_size: theme.font.input_size,
+            color: theme.colors.input_text,
+        },
         theme,
     ));
 
@@ -268,17 +289,28 @@ struct DevConsoleInputLineView {
     selection_visible_chars: Option<(usize, usize)>,
 }
 
-#[allow(clippy::too_many_arguments)]
-fn input_line_nodes(
-    input: &DevConsoleInputSnapshot,
+struct DevConsoleInputLineLayout {
     left: f32,
     top: f32,
     width: f32,
     height: f32,
     font_size: f32,
     color: ColorRgba,
+}
+
+fn input_line_nodes(
+    input: &DevConsoleInputSnapshot,
+    layout: DevConsoleInputLineLayout,
     theme: &DevConsoleTheme,
 ) -> Vec<UiOverlayNode> {
+    let DevConsoleInputLineLayout {
+        left,
+        top,
+        width,
+        height,
+        font_size,
+        color,
+    } = layout;
     let view = input_line_view(input, width, font_size);
     let char_width = input_char_width(font_size);
     let prompt_width = input_text_width(DEV_CONSOLE_INPUT_PROMPT, font_size);
@@ -595,10 +627,10 @@ fn panel_node(
 
 #[cfg(test)]
 mod tests {
-    use amigo_render_wgpu::{UiViewportSize, build_ui_layout_tree};
+    use amigo_overlay_api::{build_ui_layout_tree, UiOverlayNodeKind, UiViewportSize};
     use amigo_scripting_api::DevConsoleState;
 
-    use super::{UiOverlayNode, build_dev_console_overlay, build_dev_console_overlay_with_theme};
+    use super::{build_dev_console_overlay, build_dev_console_overlay_with_theme, UiOverlayNode};
     use crate::dev_console_theme::DevConsoleTheme;
 
     #[test]
@@ -771,9 +803,7 @@ mod tests {
 
     fn contains_text(node: &UiOverlayNode, expected: &str) -> bool {
         match &node.kind {
-            amigo_render_wgpu::UiOverlayNodeKind::Text { content, .. } if content == expected => {
-                true
-            }
+            UiOverlayNodeKind::Text { content, .. } if content == expected => true,
             _ => node
                 .children
                 .iter()
@@ -783,7 +813,7 @@ mod tests {
 
     fn contains_wrapping_output_text_node(node: &UiOverlayNode) -> bool {
         match &node.kind {
-            amigo_render_wgpu::UiOverlayNodeKind::Text { .. }
+            UiOverlayNodeKind::Text { .. }
                 if node
                     .id
                     .as_deref()
@@ -798,9 +828,7 @@ mod tests {
 
     fn contains_non_wrapping_input_text_node(node: &UiOverlayNode) -> bool {
         match &node.kind {
-            amigo_render_wgpu::UiOverlayNodeKind::Text { .. }
-                if node.id.as_deref() == Some("dev-console-input") =>
-            {
+            UiOverlayNodeKind::Text { .. } if node.id.as_deref() == Some("dev-console-input") => {
                 !node.style.word_wrap
             }
             _ => node

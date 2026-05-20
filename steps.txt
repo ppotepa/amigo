@@ -1,0 +1,2876 @@
+AMIGO PLUGIN-FIRST MIGRATION — POZOSTAŁE KROKI
+Generated: 2026-05-19
+Scope: remaining steps after KROK 1–5.
+
+GLOBALNY METAPROMPT DLA AGENTA
+
+Tryb pracy:
+- Pracuj jak zdalny LLM-agent wykonujący precyzyjne operacje w repo.
+- Każdy krok zapisuj i wykonuj jako: ADD / MODIFY / MOVE / DELETE / VERIFY.
+- Każda operacja musi wskazywać ścieżkę pliku, symbol, moduł, enum, strukturę albo funkcję.
+- Nie używaj opisów typu “popraw to gdzieś”. Zawsze wskaż target.
+- Używaj `rg` tylko do lokalizacji symboli przed operacją, nie jako pretekstu do swobodnej eksploracji.
+- Po każdym milestone wykonuj komendy VERIFY.
+- Projekt może być nieuruchamialny w środku migracji.
+- Milestone końcowy musi przechodzić walidację.
+- Nie twórz legacy bridge.
+- Nie twórz deprecated wrappers.
+- Nie twórz re-exportów dla starych ścieżek.
+- Nie używaj nazw `*_v2`.
+- Nie utrzymuj starego API dla kompatybilności.
+- Nie migruj environment/atmosphere teraz. Environment może mieć scaffold, ale bez aktywnego wdrożenia domeny.
+- Nie dodawaj heurystyk renderera typu luma fallback, guess optical source, direct effect trigger.
+- Source plugin może deklarować contribution, ale nie może wykonywać efektu cudzej domeny.
+- Consumer plugin interpretuje własne contribution/candidate/targets.
+- Renderer wykonuje targety i passy, ale nie definiuje semantyki domen.
+- App składa pluginy, ale nie zawiera domenowej logiki.
+- Scene crate jest envelope/registry, a nie globalnym workiem komponentów.
+- Scripting host rejestruje binding providers, ale bindingi domenowe żyją w pluginach.
+- Diagnostics agreguje kanały, ale logika diagnostyczna należy do pluginów.
+
+GLOBALNE DO NOT
+
+DO NOT:
+- Nie dodawaj warstw przejściowych.
+- Nie dodawaj `legacy/`.
+- Nie dodawaj `compat/`.
+- Nie dodawaj `deprecated/`.
+- Nie dodawaj `old_`.
+- Nie dodawaj `new_`.
+- Nie dodawaj `v2`.
+- Nie dodawaj re-exportów po to, żeby stare importy nadal działały.
+- Nie przenoś kodu bez aktualizacji importów.
+- Nie kasuj starego pliku bez potwierdzenia, że nowe moduły przejęły jego symbole.
+- Nie przenoś environment/atmosphere poza scaffold.
+- Nie zmieniaj modów contentowych przed ustabilizowaniem plugin contracts.
+- Nie dodawaj efektów optycznych do light/sprite/material bez contribution contract.
+- Nie pozwól rendererowi zgadywać participation z jasności, luma, nazwy komponentu albo typu tekstury.
+
+GLOBALNE VERIFY PO KAŻDEJ WIĘKSZEJ FALI
+
+VERIFY:
+cargo check -p amigo-plugin-api
+cargo test -p amigo-plugin-api
+cargo check -p amigo-codemap-api
+cargo test -p amigo-codemap-api
+cargo check -p amigo-plugin-index
+cargo test -p amigo-plugin-index
+
+VERIFY po migracji domen:
+cargo check --workspace
+cargo test --workspace
+
+VERIFY architektury:
+rg "legacy|deprecated|_v2|old_|new_" crates plugins apps mods
+rg "luma_fallback|guess_optical|direct_lens_flare|should_produce_scene_highlight" crates plugins apps mods
+rg "pub use .*camera_optical|pub use .*lens_artifact|pub use .*legacy" crates plugins
+
+==============================================================================
+
+KROK 6 — ADD standard target catalog do `amigo-plugin-api`
+
+CEL:
+Dodać standardowe TargetId dla całego silnika: SceneColor, SceneAlpha, SceneDepth, SceneVelocity, SceneHighlight, SceneEmissive, SceneLighting, LightMap, CameraArtifactLayer, FinalComposite, DiagnosticsSnapshot. To staje się wspólnym językiem pluginów i codemap.
+
+OPERATION: MODIFY
+FILE: crates/core/plugin-api/src/target.rs
+TARGET: cały plik
+
+ACTION:
+- Zachowaj istniejące `TargetAccess`, `TargetRef`, `TargetManifest`.
+- Dodaj `StandardTarget`.
+- Dodaj `StandardTarget::id()`.
+- Dodaj helpery `scene_color()`, `scene_depth()`, itd.
+- Nie dodawaj renderer implementation.
+
+CODE:
+use crate::ids::TargetId;
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum TargetAccess {
+    Read,
+    Write,
+    ReadWrite,
+    Contribute,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum StandardTarget {
+    SceneColor,
+    SceneAlpha,
+    SceneDepth,
+    SceneNormal,
+    SceneVelocity,
+    SceneHighlight,
+    SceneEmissive,
+    SceneLighting,
+    LightMap,
+    CameraArtifactLayer,
+    FinalComposite,
+    DiagnosticsSnapshot,
+}
+
+impl StandardTarget {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            StandardTarget::SceneColor => "SceneColor",
+            StandardTarget::SceneAlpha => "SceneAlpha",
+            StandardTarget::SceneDepth => "SceneDepth",
+            StandardTarget::SceneNormal => "SceneNormal",
+            StandardTarget::SceneVelocity => "SceneVelocity",
+            StandardTarget::SceneHighlight => "SceneHighlight",
+            StandardTarget::SceneEmissive => "SceneEmissive",
+            StandardTarget::SceneLighting => "SceneLighting",
+            StandardTarget::LightMap => "LightMap",
+            StandardTarget::CameraArtifactLayer => "CameraArtifactLayer",
+            StandardTarget::FinalComposite => "FinalComposite",
+            StandardTarget::DiagnosticsSnapshot => "DiagnosticsSnapshot",
+        }
+    }
+
+    pub fn id(self) -> TargetId {
+        TargetId(self.as_str().to_string())
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct TargetRef {
+    pub id: TargetId,
+    pub access: TargetAccess,
+}
+
+impl TargetRef {
+    pub fn read(id: impl Into<String>) -> Self {
+        Self {
+            id: TargetId(id.into()),
+            access: TargetAccess::Read,
+        }
+    }
+
+    pub fn write(id: impl Into<String>) -> Self {
+        Self {
+            id: TargetId(id.into()),
+            access: TargetAccess::Write,
+        }
+    }
+
+    pub fn read_write(id: impl Into<String>) -> Self {
+        Self {
+            id: TargetId(id.into()),
+            access: TargetAccess::ReadWrite,
+        }
+    }
+
+    pub fn contribute(id: impl Into<String>) -> Self {
+        Self {
+            id: TargetId(id.into()),
+            access: TargetAccess::Contribute,
+        }
+    }
+
+    pub fn read_standard(target: StandardTarget) -> Self {
+        Self {
+            id: target.id(),
+            access: TargetAccess::Read,
+        }
+    }
+
+    pub fn write_standard(target: StandardTarget) -> Self {
+        Self {
+            id: target.id(),
+            access: TargetAccess::Write,
+        }
+    }
+
+    pub fn contribute_standard(target: StandardTarget) -> Self {
+        Self {
+            id: target.id(),
+            access: TargetAccess::Contribute,
+        }
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.id.0.trim().is_empty()
+    }
+}
+
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct TargetManifest {
+    pub reads: Vec<TargetId>,
+    pub writes: Vec<TargetId>,
+    pub contributes: Vec<TargetId>,
+}
+
+pub fn scene_color() -> TargetId {
+    StandardTarget::SceneColor.id()
+}
+
+pub fn scene_alpha() -> TargetId {
+    StandardTarget::SceneAlpha.id()
+}
+
+pub fn scene_depth() -> TargetId {
+    StandardTarget::SceneDepth.id()
+}
+
+pub fn scene_normal() -> TargetId {
+    StandardTarget::SceneNormal.id()
+}
+
+pub fn scene_velocity() -> TargetId {
+    StandardTarget::SceneVelocity.id()
+}
+
+pub fn scene_highlight() -> TargetId {
+    StandardTarget::SceneHighlight.id()
+}
+
+pub fn scene_emissive() -> TargetId {
+    StandardTarget::SceneEmissive.id()
+}
+
+pub fn scene_lighting() -> TargetId {
+    StandardTarget::SceneLighting.id()
+}
+
+pub fn light_map() -> TargetId {
+    StandardTarget::LightMap.id()
+}
+
+pub fn camera_artifact_layer() -> TargetId {
+    StandardTarget::CameraArtifactLayer.id()
+}
+
+pub fn final_composite() -> TargetId {
+    StandardTarget::FinalComposite.id()
+}
+
+pub fn diagnostics_snapshot() -> TargetId {
+    StandardTarget::DiagnosticsSnapshot.id()
+}
+
+OPERATION: ADD
+FILE: crates/core/plugin-api/tests/target_catalog_tests.rs
+
+CODE:
+use amigo_plugin_api::{
+    camera_artifact_layer, final_composite, scene_color, scene_depth,
+    scene_emissive, scene_highlight, StandardTarget, TargetRef,
+};
+
+#[test]
+fn standard_targets_have_stable_names() {
+    assert_eq!(StandardTarget::SceneColor.as_str(), "SceneColor");
+    assert_eq!(StandardTarget::SceneDepth.as_str(), "SceneDepth");
+    assert_eq!(StandardTarget::SceneHighlight.as_str(), "SceneHighlight");
+    assert_eq!(StandardTarget::SceneEmissive.as_str(), "SceneEmissive");
+    assert_eq!(StandardTarget::CameraArtifactLayer.as_str(), "CameraArtifactLayer");
+    assert_eq!(StandardTarget::FinalComposite.as_str(), "FinalComposite");
+}
+
+#[test]
+fn helpers_return_target_ids() {
+    assert_eq!(scene_color().0, "SceneColor");
+    assert_eq!(scene_depth().0, "SceneDepth");
+    assert_eq!(scene_highlight().0, "SceneHighlight");
+    assert_eq!(scene_emissive().0, "SceneEmissive");
+    assert_eq!(camera_artifact_layer().0, "CameraArtifactLayer");
+    assert_eq!(final_composite().0, "FinalComposite");
+}
+
+#[test]
+fn standard_target_refs_can_be_constructed() {
+    let read = TargetRef::read_standard(StandardTarget::SceneDepth);
+    let write = TargetRef::write_standard(StandardTarget::CameraArtifactLayer);
+    let contribute = TargetRef::contribute_standard(StandardTarget::SceneHighlight);
+
+    assert_eq!(read.id.0, "SceneDepth");
+    assert_eq!(write.id.0, "CameraArtifactLayer");
+    assert_eq!(contribute.id.0, "SceneHighlight");
+}
+
+VERIFY:
+cargo test -p amigo-plugin-api target_catalog_tests
+cargo check -p amigo-plugin-api
+
+DO NOT:
+- Nie dodawaj render graph.
+- Nie dodawaj wgpu buffers.
+- Nie zmieniaj render-api.
+- Nie migruj domen.
+
+ACCEPTANCE:
+- `StandardTarget` istnieje.
+- Helpery targetów istnieją.
+- Testy przechodzą.
+- Brak renderer implementation.
+
+==============================================================================
+
+KROK 7 — ADD standard capability/slot catalog do `amigo-plugin-api`
+
+CEL:
+Dodać stabilny katalog CapabilityId i SlotId dla wszystkich rodzin: camera, gfx, materials, lighting, vfx, postfx, devtools/editor/codemap. Nie podpinamy jeszcze runtime.
+
+OPERATION: ADD
+FILE: crates/core/plugin-api/src/catalog.rs
+
+CODE:
+use crate::ids::{CapabilityId, SlotId};
+
+pub mod capabilities {
+    use super::CapabilityId;
+
+    pub fn camera_frame_context_2d() -> CapabilityId {
+        CapabilityId("camera.frame_context.2d".to_string())
+    }
+
+    pub fn camera_optics_2d() -> CapabilityId {
+        CapabilityId("camera.optics.2d".to_string())
+    }
+
+    pub fn camera_focus_depth_2d() -> CapabilityId {
+        CapabilityId("camera.focus_depth.2d".to_string())
+    }
+
+    pub fn camera_shutter_motion_2d() -> CapabilityId {
+        CapabilityId("camera.shutter_motion.2d".to_string())
+    }
+
+    pub fn camera_film_look_2d() -> CapabilityId {
+        CapabilityId("camera.film_look.2d".to_string())
+    }
+
+    pub fn sprite_2d() -> CapabilityId {
+        CapabilityId("gfx.sprite.2d".to_string())
+    }
+
+    pub fn text_2d() -> CapabilityId {
+        CapabilityId("gfx.text.2d".to_string())
+    }
+
+    pub fn vector_2d() -> CapabilityId {
+        CapabilityId("gfx.vector.2d".to_string())
+    }
+
+    pub fn material_2d() -> CapabilityId {
+        CapabilityId("materials.material.2d".to_string())
+    }
+
+    pub fn light_2d() -> CapabilityId {
+        CapabilityId("lighting.light.2d".to_string())
+    }
+
+    pub fn light_group_2d() -> CapabilityId {
+        CapabilityId("lighting.light_group.2d".to_string())
+    }
+
+    pub fn particle_2d() -> CapabilityId {
+        CapabilityId("vfx.particle.2d".to_string())
+    }
+
+    pub fn bloom() -> CapabilityId {
+        CapabilityId("postfx.bloom".to_string())
+    }
+
+    pub fn color_grading() -> CapabilityId {
+        CapabilityId("postfx.color_grading".to_string())
+    }
+
+    pub fn codemap_index() -> CapabilityId {
+        CapabilityId("devtools.codemap.index".to_string())
+    }
+
+    pub fn diagnostics_provider() -> CapabilityId {
+        CapabilityId("devtools.diagnostics.provider".to_string())
+    }
+}
+
+pub mod slots {
+    use super::SlotId;
+
+    pub fn camera_frame_provider_2d() -> SlotId {
+        SlotId("camera.frame_provider.2d".to_string())
+    }
+
+    pub fn camera_focus_model_2d() -> SlotId {
+        SlotId("camera.focus_model.2d".to_string())
+    }
+
+    pub fn camera_optics_consumer_2d() -> SlotId {
+        SlotId("camera.optics.consumer.2d".to_string())
+    }
+
+    pub fn camera_shutter_model_2d() -> SlotId {
+        SlotId("camera.shutter_model.2d".to_string())
+    }
+
+    pub fn camera_film_model_2d() -> SlotId {
+        SlotId("camera.film_model.2d".to_string())
+    }
+
+    pub fn render_backend() -> SlotId {
+        SlotId("render.backend".to_string())
+    }
+
+    pub fn scene_component_hydrator() -> SlotId {
+        SlotId("scene.component_hydrator".to_string())
+    }
+
+    pub fn scripting_binding_provider() -> SlotId {
+        SlotId("scripting.binding_provider".to_string())
+    }
+
+    pub fn diagnostics_provider() -> SlotId {
+        SlotId("diagnostics.provider".to_string())
+    }
+
+    pub fn editor_panel() -> SlotId {
+        SlotId("editor.panel".to_string())
+    }
+
+    pub fn codemap_index_provider() -> SlotId {
+        SlotId("codemap.index_provider".to_string())
+    }
+}
+
+OPERATION: MODIFY
+FILE: crates/core/plugin-api/src/lib.rs
+TARGET: module declarations
+
+ACTION:
+- Add `pub mod catalog;`
+- Add `pub use catalog::*;`
+
+VERIFY:
+cargo check -p amigo-plugin-api
+
+DO NOT:
+- Nie dodawaj runtime bindingów slotów.
+- Nie dodawaj resolvera slotów.
+- Nie dodawaj registry.
+- Nie zmieniaj istniejących domen.
+
+ACCEPTANCE:
+- `amigo_plugin_api::catalog::capabilities::*` istnieje.
+- `amigo_plugin_api::catalog::slots::*` istnieje.
+- Crate kompiluje się.
+
+==============================================================================
+
+KROK 8 — ADD parser `plugin.toml` jako osobny crate `amigo-plugin-manifest`
+
+CEL:
+Dodać parser TOML dopiero po ustabilizowaniu typów. Parser ma zamieniać pliki manifestów na `PluginManifest`. Nadal bez runtime integration. Ten crate może używać `serde` i `toml`.
+
+OPERATION: ADD
+PATH: crates/core/plugin-manifest/
+
+CREATE:
+crates/core/plugin-manifest/Cargo.toml
+crates/core/plugin-manifest/src/lib.rs
+crates/core/plugin-manifest/src/raw.rs
+crates/core/plugin-manifest/src/parse.rs
+crates/core/plugin-manifest/src/error.rs
+crates/core/plugin-manifest/tests/parse_tests.rs
+
+OPERATION: ADD
+FILE: crates/core/plugin-manifest/Cargo.toml
+
+CODE:
+[package]
+name = "amigo-plugin-manifest"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+amigo-plugin-api = { path = "../plugin-api" }
+serde = { version = "1", features = ["derive"] }
+toml = "0.8"
+
+OPERATION: ADD
+FILE: crates/core/plugin-manifest/src/error.rs
+
+CODE:
+#[derive(Debug)]
+pub enum PluginManifestParseError {
+    Toml(toml::de::Error),
+    UnknownPluginKind(String),
+    UnknownRenderParticipation(String),
+}
+
+impl From<toml::de::Error> for PluginManifestParseError {
+    fn from(value: toml::de::Error) -> Self {
+        Self::Toml(value)
+    }
+}
+
+OPERATION: ADD
+FILE: crates/core/plugin-manifest/src/raw.rs
+
+CODE:
+use serde::Deserialize;
+
+#[derive(Debug, Deserialize)]
+pub struct RawPluginManifest {
+    pub id: String,
+    pub family: String,
+    pub kind: String,
+    #[serde(default)]
+    pub renderable: bool,
+    #[serde(default)]
+    pub render_participation: Option<String>,
+    #[serde(default)]
+    pub capabilities: RawCapabilities,
+    #[serde(default)]
+    pub slots: RawSlots,
+    #[serde(default)]
+    pub targets: RawTargets,
+    #[serde(default)]
+    pub contributions: RawContributions,
+    #[serde(default)]
+    pub diagnostics: RawDiagnostics,
+    #[serde(default)]
+    pub docs: RawDocs,
+    #[serde(default)]
+    pub tests: RawTests,
+}
+
+#[derive(Debug, Default, Deserialize)]
+pub struct RawCapabilities {
+    #[serde(default)]
+    pub provides: Vec<String>,
+    #[serde(default)]
+    pub requires: Vec<String>,
+}
+
+#[derive(Debug, Default, Deserialize)]
+pub struct RawSlots {
+    #[serde(default)]
+    pub implements: Vec<String>,
+    #[serde(default)]
+    pub requires: Vec<String>,
+    #[serde(default)]
+    pub replaces: Vec<String>,
+}
+
+#[derive(Debug, Default, Deserialize)]
+pub struct RawTargets {
+    #[serde(default)]
+    pub reads: Vec<String>,
+    #[serde(default)]
+    pub writes: Vec<String>,
+    #[serde(default)]
+    pub contributes: Vec<String>,
+}
+
+#[derive(Debug, Default, Deserialize)]
+pub struct RawContributions {
+    #[serde(default)]
+    pub emits: Vec<RawContribution>,
+    #[serde(default)]
+    pub consumes: Vec<RawContribution>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct RawContribution {
+    pub domain: String,
+    #[serde(rename = "type")]
+    pub contribution_type: String,
+    #[serde(default = "default_contribution_policy")]
+    pub policy: String,
+}
+
+fn default_contribution_policy() -> String {
+    "ExplicitOnly".to_string()
+}
+
+#[derive(Debug, Default, Deserialize)]
+pub struct RawDiagnostics {
+    #[serde(default)]
+    pub channels: Vec<String>,
+}
+
+#[derive(Debug, Default, Deserialize)]
+pub struct RawDocs {
+    pub pipeline: Option<String>,
+    pub contributions: Option<String>,
+    pub diagnostics: Option<String>,
+}
+
+#[derive(Debug, Default, Deserialize)]
+pub struct RawTests {
+    pub hydration: Option<String>,
+    pub participation: Option<String>,
+    pub candidate: Option<String>,
+    pub waterfall: Option<String>,
+    pub diagnostics: Option<String>,
+}
+
+OPERATION: ADD
+FILE: crates/core/plugin-manifest/src/parse.rs
+
+ACTION:
+- Implement parsing from &str only.
+- Do not read files.
+- Convert strings into IDs.
+- Capability strings may use either `name` or `name@version`.
+- If version is absent, default to 1.
+
+CODE:
+use amigo_plugin_api::{
+    CapabilityRef, ContributionContract, ContributionPolicy, DiagnosticChannelId,
+    DiagnosticChannelRef, DomainId, PluginId, PluginKind, PluginManifest,
+    RenderParticipation, SlotId, TargetId,
+};
+
+use crate::error::PluginManifestParseError;
+use crate::raw::{RawContribution, RawPluginManifest};
+
+pub fn parse_plugin_manifest_str(
+    input: &str,
+) -> Result<PluginManifest, PluginManifestParseError> {
+    let raw: RawPluginManifest = toml::from_str(input)?;
+
+    let kind = parse_kind(&raw.kind)?;
+    let render_participation = parse_render_participation(
+        raw.render_participation
+            .as_deref()
+            .unwrap_or("none"),
+    )?;
+
+    let mut manifest = PluginManifest::new(
+        raw.id.clone(),
+        raw.family.clone(),
+        kind,
+        raw.renderable,
+        render_participation,
+    );
+
+    for item in raw.capabilities.provides {
+        manifest.capabilities.provides.push(parse_capability(&item));
+    }
+
+    for item in raw.capabilities.requires {
+        manifest.capabilities.requires.push(parse_capability(&item));
+    }
+
+    for item in raw.slots.implements {
+        manifest.slots.implements.push(SlotId(item));
+    }
+
+    for item in raw.slots.requires {
+        manifest.slots.requires.push(SlotId(item));
+    }
+
+    for item in raw.slots.replaces {
+        manifest.slots.replaces.push(PluginId(item));
+    }
+
+    for item in raw.targets.reads {
+        manifest.targets.reads.push(TargetId(item));
+    }
+
+    for item in raw.targets.writes {
+        manifest.targets.writes.push(TargetId(item));
+    }
+
+    for item in raw.targets.contributes {
+        manifest.targets.contributes.push(TargetId(item));
+    }
+
+    for contribution in raw.contributions.emits {
+        manifest.contributions.emits.push(parse_contribution(contribution));
+    }
+
+    for contribution in raw.contributions.consumes {
+        manifest.contributions.consumes.push(parse_contribution(contribution));
+    }
+
+    for channel in raw.diagnostics.channels {
+        manifest.diagnostics.channels.push(DiagnosticChannelRef {
+            id: DiagnosticChannelId(channel),
+            owner: manifest.id.clone(),
+        });
+    }
+
+    manifest.docs.pipeline = raw.docs.pipeline;
+    manifest.docs.contributions = raw.docs.contributions;
+    manifest.docs.diagnostics = raw.docs.diagnostics;
+
+    manifest.tests.hydration = raw.tests.hydration;
+    manifest.tests.participation = raw.tests.participation;
+    manifest.tests.candidate = raw.tests.candidate;
+    manifest.tests.waterfall = raw.tests.waterfall;
+    manifest.tests.diagnostics = raw.tests.diagnostics;
+
+    Ok(manifest)
+}
+
+fn parse_kind(value: &str) -> Result<PluginKind, PluginManifestParseError> {
+    match value {
+        "renderable-source" => Ok(PluginKind::RenderableSource),
+        "semantic-source" => Ok(PluginKind::SemanticSource),
+        "target-consumer" => Ok(PluginKind::TargetConsumer),
+        "source-and-consumer" => Ok(PluginKind::SourceAndConsumer),
+        "bundle" => Ok(PluginKind::Bundle),
+        "adapter" => Ok(PluginKind::Adapter),
+        "tooling" => Ok(PluginKind::Tooling),
+        "noop" => Ok(PluginKind::Noop),
+        other => Err(PluginManifestParseError::UnknownPluginKind(other.to_string())),
+    }
+}
+
+fn parse_render_participation(
+    value: &str,
+) -> Result<RenderParticipation, PluginManifestParseError> {
+    match value {
+        "none" => Ok(RenderParticipation::None),
+        "source-renderer" => Ok(RenderParticipation::SourceRenderer),
+        "target-writer" => Ok(RenderParticipation::TargetWriter),
+        "target-consumer" => Ok(RenderParticipation::TargetConsumer),
+        "render-backend" => Ok(RenderParticipation::RenderBackend),
+        other => Err(PluginManifestParseError::UnknownRenderParticipation(other.to_string())),
+    }
+}
+
+fn parse_capability(value: &str) -> CapabilityRef {
+    let mut parts = value.split('@');
+    let id = parts.next().unwrap_or_default().to_string();
+    let version = parts
+        .next()
+        .and_then(|raw| raw.parse::<u32>().ok())
+        .unwrap_or(1);
+
+    CapabilityRef::new(id, version)
+}
+
+fn parse_contribution(raw: RawContribution) -> ContributionContract {
+    ContributionContract {
+        domain: DomainId(raw.domain),
+        contribution_type: raw.contribution_type,
+        policy: parse_policy(&raw.policy),
+    }
+}
+
+fn parse_policy(value: &str) -> ContributionPolicy {
+    match value {
+        "EnabledByDefault" => ContributionPolicy::EnabledByDefault,
+        "DisabledByDefault" => ContributionPolicy::DisabledByDefault,
+        "DerivedAtHydration" => ContributionPolicy::DerivedAtHydration,
+        "Forbidden" => ContributionPolicy::Forbidden,
+        _ => ContributionPolicy::ExplicitOnly,
+    }
+}
+
+OPERATION: ADD
+FILE: crates/core/plugin-manifest/src/lib.rs
+
+CODE:
+pub mod error;
+pub mod parse;
+pub mod raw;
+
+pub use error::*;
+pub use parse::*;
+pub use raw::*;
+
+OPERATION: ADD
+FILE: crates/core/plugin-manifest/tests/parse_tests.rs
+
+CODE:
+use amigo_plugin_api::validate_plugin_manifest;
+use amigo_plugin_manifest::parse_plugin_manifest_str;
+
+#[test]
+fn parses_valid_manifest() {
+    let manifest = parse_plugin_manifest_str(
+        r#"
+id = "amigo.camera.camera-optics"
+family = "camera"
+kind = "target-consumer"
+renderable = false
+render_participation = "target-consumer"
+
+[capabilities]
+provides = ["camera.optics.2d@1"]
+requires = ["camera.frame_context.2d@1"]
+
+[slots]
+implements = ["camera.optics.consumer.2d"]
+requires = []
+replaces = []
+
+[targets]
+reads = ["SceneHighlight", "SceneEmissive"]
+writes = ["CameraArtifactLayer"]
+contributes = []
+
+[contributions]
+emits = []
+consumes = [
+  { domain = "camera.optics", type = "CameraOpticsContribution2d", policy = "ExplicitOnly" }
+]
+
+[diagnostics]
+channels = ["camera.optical.candidates"]
+
+[docs]
+pipeline = "docs/pipeline.md"
+contributions = "docs/contributions.md"
+diagnostics = "docs/diagnostics.md"
+
+[tests]
+waterfall = "tests/waterfall_tests.rs"
+diagnostics = "tests/diagnostics_tests.rs"
+"#,
+    )
+    .unwrap();
+
+    assert_eq!(manifest.id.0, "amigo.camera.camera-optics");
+    assert_eq!(manifest.capabilities.provides.len(), 1);
+    assert_eq!(validate_plugin_manifest(&manifest), Ok(()));
+}
+
+OPERATION: MODIFY
+FILE: Cargo.toml
+TARGET: [workspace].members
+
+ACTION:
+Add:
+"crates/core/plugin-manifest",
+
+VERIFY:
+cargo test -p amigo-plugin-manifest
+cargo check -p amigo-plugin-manifest
+
+DO NOT:
+- Nie dodawaj file scanning.
+- Nie podpinaj do runtime.
+- Nie wczytuj z dysku.
+- Nie parsuj całego plugins/.
+- Nie migruj domen.
+
+ACCEPTANCE:
+- `parse_plugin_manifest_str` działa.
+- Parser jest osobnym crate.
+- Parser nie skanuje filesystemu.
+- Test przechodzi.
+
+==============================================================================
+
+KROK 9 — ADD filesystem plugin scanner jako osobny crate `amigo-plugin-loader`
+
+CEL:
+Dodać kontrolowane skanowanie katalogu `plugins/` i czytanie `plugin.toml`. To nadal nie jest runtime registry. To jest build/dev/codemap loader.
+
+OPERATION: ADD
+PATH: crates/core/plugin-loader/
+
+CREATE:
+crates/core/plugin-loader/Cargo.toml
+crates/core/plugin-loader/src/lib.rs
+crates/core/plugin-loader/src/load.rs
+crates/core/plugin-loader/src/error.rs
+crates/core/plugin-loader/tests/load_tests.rs
+
+OPERATION: ADD
+FILE: crates/core/plugin-loader/Cargo.toml
+
+CODE:
+[package]
+name = "amigo-plugin-loader"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+amigo-plugin-api = { path = "../plugin-api" }
+amigo-plugin-manifest = { path = "../plugin-manifest" }
+
+OPERATION: ADD
+FILE: crates/core/plugin-loader/src/error.rs
+
+CODE:
+use std::path::PathBuf;
+
+#[derive(Debug)]
+pub enum PluginLoadError {
+    Io { path: PathBuf, source: std::io::Error },
+    Parse { path: PathBuf, message: String },
+}
+
+OPERATION: ADD
+FILE: crates/core/plugin-loader/src/load.rs
+
+ACTION:
+- Use only std::fs.
+- Recursively scan exactly two levels: plugins/<family>/<plugin>/plugin.toml.
+- Do not scan arbitrary depth.
+- Do not touch runtime.
+- Return Vec<PluginManifest>.
+
+CODE:
+use std::fs;
+use std::path::{Path, PathBuf};
+
+use amigo_plugin_api::PluginManifest;
+use amigo_plugin_manifest::parse_plugin_manifest_str;
+
+use crate::error::PluginLoadError;
+
+pub fn load_plugin_manifests_from_plugins_dir(
+    plugins_dir: &Path,
+) -> Result<Vec<PluginManifest>, Vec<PluginLoadError>> {
+    let mut manifests = Vec::new();
+    let mut errors = Vec::new();
+
+    let families = match fs::read_dir(plugins_dir) {
+        Ok(entries) => entries,
+        Err(error) => {
+            return Err(vec![PluginLoadError::Io {
+                path: plugins_dir.to_path_buf(),
+                source: error,
+            }]);
+        }
+    };
+
+    for family in families.flatten() {
+        let family_path = family.path();
+
+        if !family_path.is_dir() {
+            continue;
+        }
+
+        let plugins = match fs::read_dir(&family_path) {
+            Ok(entries) => entries,
+            Err(error) => {
+                errors.push(PluginLoadError::Io {
+                    path: family_path,
+                    source: error,
+                });
+                continue;
+            }
+        };
+
+        for plugin in plugins.flatten() {
+            let plugin_path = plugin.path();
+
+            if !plugin_path.is_dir() {
+                continue;
+            }
+
+            let manifest_path = plugin_path.join("plugin.toml");
+
+            if !manifest_path.exists() {
+                continue;
+            }
+
+            match load_one(&manifest_path) {
+                Ok(manifest) => manifests.push(manifest),
+                Err(error) => errors.push(error),
+            }
+        }
+    }
+
+    if errors.is_empty() {
+        Ok(manifests)
+    } else {
+        Err(errors)
+    }
+}
+
+fn load_one(path: &Path) -> Result<PluginManifest, PluginLoadError> {
+    let content = fs::read_to_string(path).map_err(|source| PluginLoadError::Io {
+        path: path.to_path_buf(),
+        source,
+    })?;
+
+    parse_plugin_manifest_str(&content).map_err(|source| PluginLoadError::Parse {
+        path: PathBuf::from(path),
+        message: format!("{source:?}"),
+    })
+}
+
+OPERATION: ADD
+FILE: crates/core/plugin-loader/src/lib.rs
+
+CODE:
+pub mod error;
+pub mod load;
+
+pub use error::*;
+pub use load::*;
+
+OPERATION: ADD
+FILE: crates/core/plugin-loader/tests/load_tests.rs
+
+CODE:
+use std::fs;
+
+use amigo_plugin_loader::load_plugin_manifests_from_plugins_dir;
+
+#[test]
+fn loads_two_level_plugin_manifest() {
+    let root = std::env::temp_dir().join(format!(
+        "amigo-plugin-loader-test-{}",
+        std::process::id()
+    ));
+    let plugin_dir = root.join("camera").join("camera-optics");
+    fs::create_dir_all(&plugin_dir).unwrap();
+
+    fs::write(
+        plugin_dir.join("plugin.toml"),
+        r#"
+id = "amigo.camera.camera-optics"
+family = "camera"
+kind = "target-consumer"
+renderable = false
+render_participation = "target-consumer"
+
+[capabilities]
+provides = ["camera.optics.2d@1"]
+requires = []
+
+[slots]
+implements = ["camera.optics.consumer.2d"]
+requires = []
+replaces = []
+
+[targets]
+reads = ["SceneHighlight"]
+writes = ["CameraArtifactLayer"]
+contributes = []
+
+[contributions]
+emits = []
+consumes = []
+
+[diagnostics]
+channels = ["camera.optical.candidates"]
+
+[docs]
+pipeline = "docs/pipeline.md"
+
+[tests]
+waterfall = "tests/waterfall_tests.rs"
+"#,
+    )
+    .unwrap();
+
+    let manifests = load_plugin_manifests_from_plugins_dir(&root).unwrap();
+
+    assert_eq!(manifests.len(), 1);
+    assert_eq!(manifests[0].id.0, "amigo.camera.camera-optics");
+
+    let _ = fs::remove_dir_all(root);
+}
+
+OPERATION: MODIFY
+FILE: Cargo.toml
+ACTION:
+Add workspace member:
+"crates/core/plugin-loader",
+
+VERIFY:
+cargo test -p amigo-plugin-loader
+
+DO NOT:
+- Nie podpinaj loadera do runtime.
+- Nie skanuj poza `plugins/<family>/<plugin>/plugin.toml`.
+- Nie dodawaj walkdir.
+- Nie skanuj target/.
+- Nie migruj domen.
+
+ACCEPTANCE:
+- Loader wczytuje manifesty z dwupoziomowej struktury.
+- Test przechodzi.
+- Brak runtime dependency.
+
+==============================================================================
+
+KROK 10 — ADD first real empty plugin manifests dla rodzin bazowych
+
+CEL:
+Dodać manifesty dla pustych/placeholder pluginów tylko tam, gdzie będą najbliższe migracje. To tworzy widzialny index dla codemap. Nie przenosi jeszcze kodu domen.
+
+OPERATION: ADD
+PATHS:
+plugins/camera/camera-core/
+plugins/camera/camera-optics/
+plugins/camera/focus-depth/
+plugins/camera/shutter-motion/
+plugins/camera/film-look/
+plugins/gfx/sprite-2d/
+plugins/gfx/text-2d/
+plugins/gfx/vector-2d/
+plugins/materials/material-2d/
+plugins/lighting/light-2d/
+plugins/lighting/light-groups-2d/
+plugins/lighting/beacon-light-2d/
+plugins/vfx/particles-2d/
+plugins/postfx/bloom/
+plugins/devtools/codemap/
+
+ACTION:
+For each plugin:
+- Add plugin.toml.
+- Add README.md.
+- Add docs/pipeline.md.
+- Add tests/waterfall_tests.rs.
+- Add minimal src/lib.rs and src/plugin.rs placeholders if this plugin is intended as future crate.
+- Do not add Cargo.toml yet unless step explicitly says later.
+
+EXAMPLE FILE:
+plugins/camera/camera-optics/plugin.toml
+
+CODE:
+id = "amigo.camera.camera-optics"
+family = "camera"
+kind = "target-consumer"
+renderable = false
+render_participation = "target-consumer"
+
+[capabilities]
+provides = ["camera.optics.2d@1"]
+requires = ["camera.frame_context.2d@1"]
+
+[slots]
+implements = ["camera.optics.consumer.2d"]
+requires = ["camera.frame_provider.2d"]
+replaces = []
+
+[targets]
+reads = ["SceneHighlight", "SceneEmissive", "SceneDepth"]
+writes = ["CameraArtifactLayer"]
+contributes = []
+
+[contributions]
+emits = []
+consumes = [
+  { domain = "camera.optics", type = "CameraOpticsContribution2d", policy = "ExplicitOnly" }
+]
+
+[diagnostics]
+channels = [
+  "camera.optical.contributions",
+  "camera.optical.candidates",
+  "camera.optical.targets"
+]
+
+[docs]
+pipeline = "docs/pipeline.md"
+contributions = "docs/contributions.md"
+diagnostics = "docs/diagnostics.md"
+
+[tests]
+waterfall = "tests/waterfall_tests.rs"
+diagnostics = "tests/diagnostics_tests.rs"
+
+EXAMPLE FILE:
+plugins/gfx/sprite-2d/plugin.toml
+
+CODE:
+id = "amigo.gfx.sprite-2d"
+family = "gfx"
+kind = "renderable-source"
+renderable = true
+render_participation = "source-renderer"
+
+[capabilities]
+provides = ["gfx.sprite.2d@1"]
+requires = []
+
+[slots]
+implements = []
+requires = []
+replaces = []
+
+[targets]
+reads = []
+writes = ["SceneColor", "SceneAlpha"]
+contributes = ["SceneDepth", "SceneHighlight", "SceneVelocity"]
+
+[contributions]
+emits = [
+  { domain = "camera.optics", type = "CameraOpticsContribution2d", policy = "ExplicitOnly" },
+  { domain = "camera.focus_depth", type = "FocusDepthContribution2d", policy = "DerivedAtHydration" },
+  { domain = "camera.shutter_motion", type = "MotionShutterContribution2d", policy = "DisabledByDefault" }
+]
+consumes = []
+
+[diagnostics]
+channels = [
+  "sprite-2d.render",
+  "sprite-2d.contributions"
+]
+
+[docs]
+pipeline = "docs/pipeline.md"
+contributions = "docs/contributions.md"
+diagnostics = "docs/diagnostics.md"
+
+[tests]
+waterfall = "tests/waterfall_tests.rs"
+diagnostics = "tests/diagnostics_tests.rs"
+
+VERIFY:
+cargo test -p amigo-plugin-loader
+cargo test -p amigo-plugin-manifest
+cargo test -p amigo-plugin-index
+
+OPTIONAL VERIFY COMMAND:
+Create a temporary Rust test later in plugin-index to load actual repo plugins; do not add now if workspace paths are unstable.
+
+DO NOT:
+- Nie dodawaj Cargo.toml w pluginach.
+- Nie przenoś kodu.
+- Nie dodawaj runtime.
+- Nie migruj environment/atmosphere.
+- Nie deklaruj capabilities, których nie ma w planie.
+
+ACCEPTANCE:
+- `plugins/<family>/<plugin>/plugin.toml` istnieją dla pierwszych domen.
+- Manifesty parsują się przez loader.
+- Brak kodu domenowego przeniesionego.
+
+==============================================================================
+
+KROK 11 — ADD plugin architecture check command jako dev crate `amigo-plugin-check`
+
+CEL:
+Dodać narzędzie developerskie, które ładuje `plugins/`, waliduje manifesty, buduje `PluginIndex` i `CodeMapGraph`. To jeszcze nie jest runtime.
+
+OPERATION: ADD
+PATH: crates/tools/plugin-check/
+
+CREATE:
+crates/tools/plugin-check/Cargo.toml
+crates/tools/plugin-check/src/main.rs
+
+OPERATION: ADD
+FILE: crates/tools/plugin-check/Cargo.toml
+
+CODE:
+[package]
+name = "amigo-plugin-check"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+amigo-plugin-loader = { path = "../../core/plugin-loader" }
+amigo-plugin-index = { path = "../../core/plugin-index" }
+amigo-codemap-api = { path = "../../core/codemap-api" }
+
+OPERATION: ADD
+FILE: crates/tools/plugin-check/src/main.rs
+
+CODE:
+use std::path::PathBuf;
+
+use amigo_codemap_api::validate_codemap_graph;
+use amigo_plugin_index::{
+    build_codemap_graph_from_index, validate_plugin_index, PluginIndex,
+};
+use amigo_plugin_loader::load_plugin_manifests_from_plugins_dir;
+
+fn main() {
+    let plugins_dir = std::env::args()
+        .nth(1)
+        .map(PathBuf::from)
+        .unwrap_or_else(|| PathBuf::from("plugins"));
+
+    let manifests = match load_plugin_manifests_from_plugins_dir(&plugins_dir) {
+        Ok(manifests) => manifests,
+        Err(errors) => {
+            eprintln!("plugin load failed: {errors:#?}");
+            std::process::exit(1);
+        }
+    };
+
+    let index = PluginIndex::from_manifests(manifests);
+
+    if let Err(errors) = validate_plugin_index(&index) {
+        eprintln!("plugin index validation failed: {errors:#?}");
+        std::process::exit(1);
+    }
+
+    let graph = build_codemap_graph_from_index(&index);
+
+    if let Err(errors) = validate_codemap_graph(&graph) {
+        eprintln!("codemap graph validation failed: {errors:#?}");
+        std::process::exit(1);
+    }
+
+    println!("plugins: {}", index.len());
+    println!("nodes: {}", graph.nodes.len());
+    println!("edges: {}", graph.edges.len());
+}
+
+OPERATION: MODIFY
+FILE: Cargo.toml
+ACTION:
+Add workspace member:
+"crates/tools/plugin-check",
+
+VERIFY:
+cargo run -p amigo-plugin-check -- plugins
+
+DO NOT:
+- Nie podpinaj do app.
+- Nie dodawaj UI.
+- Nie skanuj crates/.
+- Nie mutuj plików.
+- Nie dodawaj runtime integration.
+
+ACCEPTANCE:
+- `cargo run -p amigo-plugin-check -- plugins` kończy się sukcesem.
+- Narzędzie raportuje liczby pluginów/nodów/edge’y.
+- Nie ma side effectów.
+
+==============================================================================
+
+KROK 12 — ADD generator canonical plugin skeleton
+
+CEL:
+Dodać narzędzie do generowania pustej struktury pluginu z `templates/plugin`. To przyspieszy wszystkie kolejne domeny i wymusi stałe drzewo.
+
+OPERATION: ADD
+PATH: crates/tools/plugin-new/
+
+CREATE:
+crates/tools/plugin-new/Cargo.toml
+crates/tools/plugin-new/src/main.rs
+
+OPERATION: ADD
+FILE: crates/tools/plugin-new/Cargo.toml
+
+CODE:
+[package]
+name = "amigo-plugin-new"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+
+OPERATION: ADD
+FILE: crates/tools/plugin-new/src/main.rs
+
+ACTION:
+- Arguments: family plugin-name kind renderable.
+- Copy templates/plugin into plugins/<family>/<plugin-name>.
+- Replace placeholders in plugin.toml.
+- Fail if target exists.
+- Use std::fs only.
+
+CODE:
+use std::fs;
+use std::path::{Path, PathBuf};
+
+fn main() {
+    let args: Vec<String> = std::env::args().collect();
+
+    if args.len() != 5 {
+        eprintln!("usage: amigo-plugin-new <family> <plugin-name> <kind> <renderable:true|false>");
+        std::process::exit(2);
+    }
+
+    let family = &args[1];
+    let plugin_name = &args[2];
+    let kind = &args[3];
+    let renderable = &args[4];
+
+    let source = PathBuf::from("templates/plugin");
+    let target = PathBuf::from("plugins").join(family).join(plugin_name);
+
+    if target.exists() {
+        eprintln!("target already exists: {}", target.display());
+        std::process::exit(1);
+    }
+
+    copy_dir(&source, &target).unwrap();
+
+    let manifest_path = target.join("plugin.toml");
+    let manifest = fs::read_to_string(&manifest_path).unwrap();
+    let manifest = manifest
+        .replace("amigo.family.plugin-name", &format!("amigo.{family}.{plugin_name}"))
+        .replace("family = \"family\"", &format!("family = \"{family}\""))
+        .replace("kind = \"noop\"", &format!("kind = \"{kind}\""))
+        .replace("renderable = false", &format!("renderable = {renderable}"));
+
+    fs::write(manifest_path, manifest).unwrap();
+
+    println!("{}", target.display());
+}
+
+fn copy_dir(source: &Path, target: &Path) -> std::io::Result<()> {
+    fs::create_dir_all(target)?;
+
+    for entry in fs::read_dir(source)? {
+        let entry = entry?;
+        let source_path = entry.path();
+        let target_path = target.join(entry.file_name());
+
+        if source_path.is_dir() {
+            copy_dir(&source_path, &target_path)?;
+        } else {
+            fs::copy(&source_path, &target_path)?;
+        }
+    }
+
+    Ok(())
+}
+
+OPERATION: MODIFY
+FILE: Cargo.toml
+ACTION:
+Add workspace member:
+"crates/tools/plugin-new",
+
+VERIFY:
+cargo check -p amigo-plugin-new
+
+DO NOT:
+- Nie generuj aktywnych pluginów teraz.
+- Nie nadpisuj istniejących folderów.
+- Nie dodawaj dependencies.
+- Nie dodawaj runtime integration.
+
+ACCEPTANCE:
+- Generator kompiluje się.
+- Generator nie jest uruchomiony na istniejących domenach bez potrzeby.
+
+==============================================================================
+
+KROK 13 — ADD audit rules skeleton dla plugin architecture
+
+CEL:
+Dodać plik konfiguracyjny reguł architektonicznych, który później podłączymy do obecnego audytu/codemap. Na tym kroku to może być dokument lub config w repo, bez runtime.
+
+OPERATION: ADD
+FILE: docs/architecture/plugins/audit-rules.md
+
+CONTENT:
+# Plugin Architecture Audit Rules
+
+## Required file rules
+
+- Every plugin must have `plugin.toml`.
+- Every plugin must have `README.md`.
+- Every plugin must have `docs/pipeline.md`.
+- Every plugin must have `tests/waterfall_tests.rs`.
+- Every plugin must have `src/plugin.rs`.
+- Every plugin must have `src/api/mod.rs`.
+- Every plugin must have `src/diagnostics/mod.rs`.
+
+## Forbidden pattern rules
+
+- No `legacy`.
+- No `deprecated`.
+- No `_v2`.
+- No `luma_fallback`.
+- No `guess_optical`.
+- No `direct_lens_flare`.
+- No renderer-side `should_produce_scene_highlight`.
+
+## Ownership rules
+
+- Source plugin cannot execute consumer effect.
+- Consumer plugin cannot import source internals.
+- Renderer cannot synthesize domain contribution.
+- App cannot import plugin internals outside composition.
+- Scene crate cannot own plugin descriptors.
+- Scripting host cannot own plugin-specific bindings.
+
+## Codemap rules
+
+- Every plugin manifest must index into CodeMapGraph.
+- Every diagnostic channel must map to owning plugin.
+- Every target write must map to owning plugin.
+- Every waterfall must have at least one test.
+
+VERIFY:
+rg "luma_fallback|guess_optical|direct_lens_flare|should_produce_scene_highlight" crates plugins
+cargo run -p amigo-plugin-check -- plugins
+
+DO NOT:
+- Nie próbuj jeszcze automatycznie egzekwować wszystkich reguł.
+- Nie zmieniaj istniejącego audit-build, jeśli jego struktura nie jest teraz celem.
+- Nie migruj domen.
+
+ACCEPTANCE:
+- Reguły są spisane.
+- plugin-check nadal działa.
+
+==============================================================================
+
+KROK 14 — ADD Camera family crate scaffolds
+
+CEL:
+Utworzyć finalne crate/folder scaffolds dla rodziny camera. Bez przenoszenia implementacji jeszcze.
+
+OPERATION: ADD
+PATHS:
+plugins/camera/camera-core/
+plugins/camera/camera-optics/
+plugins/camera/focus-depth/
+plugins/camera/shutter-motion/
+plugins/camera/film-look/
+plugins/camera/camera-profiles/
+
+ACTION:
+For each plugin:
+- Ensure canonical tree exists.
+- Add Cargo.toml only for these camera plugins.
+- Add src/lib.rs and module skeletons.
+- Add plugin.toml if missing.
+- Do not move old code yet.
+
+EXAMPLE FILE:
+plugins/camera/camera-core/Cargo.toml
+
+CODE:
+[package]
+name = "amigo-camera-core-plugin"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+amigo-plugin-api = { path = "../../../crates/core/plugin-api" }
+
+EXAMPLE FILE:
+plugins/camera/camera-core/src/lib.rs
+
+CODE:
+pub mod api;
+pub mod diagnostics;
+pub mod manifest;
+pub mod participation;
+pub mod plugin;
+pub mod runtime;
+pub mod scene;
+pub mod scripting;
+
+EXAMPLE FILE:
+plugins/camera/camera-core/src/plugin.rs
+
+CODE:
+use amigo_plugin_api::{
+    capabilities, slots, CapabilityRef, PluginKind, PluginManifest,
+    RenderParticipation,
+};
+
+pub fn plugin_manifest() -> PluginManifest {
+    let mut manifest = PluginManifest::new(
+        "amigo.camera.camera-core",
+        "camera",
+        PluginKind::SemanticSource,
+        false,
+        RenderParticipation::None,
+    );
+
+    manifest
+        .capabilities
+        .provides
+        .push(CapabilityRef::new(capabilities::camera_frame_context_2d().0, 1));
+
+    manifest
+        .slots
+        .implements
+        .push(slots::camera_frame_provider_2d());
+
+    manifest.docs.pipeline = Some("docs/pipeline.md".to_string());
+    manifest.tests.waterfall = Some("tests/waterfall_tests.rs".to_string());
+
+    manifest
+}
+
+OPERATION: MODIFY
+FILE: Cargo.toml
+ACTION:
+Add workspace members:
+"plugins/camera/camera-core",
+"plugins/camera/camera-optics",
+"plugins/camera/focus-depth",
+"plugins/camera/shutter-motion",
+"plugins/camera/film-look",
+"plugins/camera/camera-profiles",
+
+VERIFY:
+cargo check -p amigo-camera-core-plugin
+cargo check -p amigo-camera-optics-plugin
+cargo check -p amigo-focus-depth-plugin
+cargo check -p amigo-shutter-motion-plugin
+cargo check -p amigo-film-look-plugin
+cargo check -p amigo-camera-profiles-plugin
+
+DO NOT:
+- Nie przenoś jeszcze camera implementation.
+- Nie importuj starych camera crates.
+- Nie dodawaj re-exportów.
+- Nie twórz legacy aliases.
+- Nie zmieniaj render-wgpu.
+
+ACCEPTANCE:
+- Camera family crates istnieją i kompilują się jako puste/skeleton.
+- Manifest functions istnieją.
+- Brak starej implementacji przeniesionej.
+
+==============================================================================
+
+KROK 15 — MOVE camera-core contracts
+
+CEL:
+Przenieść stabilne kontrakty kamery do `plugins/camera/camera-core/src/api/`, bez optyki, focusu, shuttera, filmu. Camera core ma dostarczać minimalny `CameraFrameContext2d`.
+
+OPERATION: SEARCH
+COMMANDS:
+rg "struct Camera.*Context|CameraCaptureInput2d|CameraDepthMotion2d|focus_distance|camera_z_m|CameraProfile" crates plugins
+rg "CameraCaptureInput2d" crates
+rg "CameraDepthMotion2d" crates
+
+OPERATION: ADD
+FILE: plugins/camera/camera-core/src/api/frame_context.rs
+
+CODE:
+#[derive(Clone, Debug, PartialEq)]
+pub struct CameraFrameContext2d {
+    pub camera_id: String,
+    pub viewport_width: u32,
+    pub viewport_height: u32,
+    pub frame_index: u64,
+    pub delta_time_s: f32,
+}
+
+OPERATION: ADD
+FILE: plugins/camera/camera-core/src/api/capture.rs
+
+CODE:
+#[derive(Clone, Debug, PartialEq)]
+pub struct CameraCaptureInput2d {
+    pub exposure: f32,
+    pub sensor_gain: f32,
+    pub viewport_scale: f32,
+}
+
+impl Default for CameraCaptureInput2d {
+    fn default() -> Self {
+        Self {
+            exposure: 1.0,
+            sensor_gain: 1.0,
+            viewport_scale: 1.0,
+        }
+    }
+}
+
+OPERATION: ADD
+FILE: plugins/camera/camera-core/src/api/motion.rs
+
+CODE:
+#[derive(Clone, Debug, PartialEq)]
+pub struct CameraMotion2d {
+    pub dx: f32,
+    pub dy: f32,
+    pub dz: f32,
+    pub dolly_signal: f32,
+}
+
+impl Default for CameraMotion2d {
+    fn default() -> Self {
+        Self {
+            dx: 0.0,
+            dy: 0.0,
+            dz: 0.0,
+            dolly_signal: 0.0,
+        }
+    }
+}
+
+OPERATION: MODIFY
+FILE: plugins/camera/camera-core/src/api/mod.rs
+
+CODE:
+pub mod capture;
+pub mod frame_context;
+pub mod motion;
+
+pub use capture::*;
+pub use frame_context::*;
+pub use motion::*;
+
+OPERATION: MODIFY
+FILES:
+- Any files discovered by rg that currently define duplicate core camera contracts.
+ACTION:
+- MOVE only stable contract types into camera-core.
+- MODIFY imports to use `amigo_camera_core_plugin::api::*`.
+- DELETE old definitions after imports are updated.
+
+VERIFY:
+cargo check --workspace
+
+DO NOT:
+- Nie przenoś CameraOpticalResponse2d.
+- Nie przenoś focus-depth fields poza core.
+- Nie przenoś camera profiles jeszcze.
+- Nie zostawiaj re-exportu ze starej lokalizacji.
+- Nie twórz bridge.
+
+ACCEPTANCE:
+- `CameraFrameContext2d`, `CameraCaptureInput2d`, `CameraMotion2d` należą do camera-core.
+- Stare definicje usunięte.
+- Workspace kompiluje się lub błędy są tylko z kolejnych domen do migracji.
+
+==============================================================================
+
+KROK 16 — MOVE camera-optics API do pluginu
+
+CEL:
+Przenieść typy optyki kamery do `plugins/camera/camera-optics/src/api/`: response, coverage, candidate, targets, diagnostics_model.
+
+OPERATION: SEARCH
+COMMANDS:
+rg "CameraOpticalResponse2d|CameraOpticalCoverage2d|CameraOpticalCandidate2d|camera.optical" crates plugins
+rg "LightMapChannel|SceneHighlight|SceneEmissive|lens_artifact|LensArtifact" crates plugins
+
+OPERATION: MOVE
+FROM: crates/engine/render-api/src/camera_optical.rs
+TO SPLIT:
+plugins/camera/camera-optics/src/api/response.rs
+plugins/camera/camera-optics/src/api/coverage.rs
+plugins/camera/camera-optics/src/api/candidate.rs
+plugins/camera/camera-optics/src/api/targets.rs
+plugins/camera/camera-optics/src/api/diagnostics_model.rs
+
+ACTION:
+- Split structs/enums by semantic ownership.
+- Keep names:
+  - CameraOpticalResponse2d
+  - CameraOpticalCoverage2d
+  - CameraOpticalCandidate2d
+- Add candidate target/gain helpers:
+  - target_ids()
+  - highlight_gain()
+  - emissive_gain()
+  - is_active()
+  - unsupported_reason()
+- Implement `DomainCandidate` for `CameraOpticalCandidate2d`.
+
+OPERATION: MODIFY
+FILE: plugins/camera/camera-optics/src/api/mod.rs
+
+CODE:
+pub mod candidate;
+pub mod coverage;
+pub mod diagnostics_model;
+pub mod response;
+pub mod targets;
+
+pub use candidate::*;
+pub use coverage::*;
+pub use diagnostics_model::*;
+pub use response::*;
+pub use targets::*;
+
+OPERATION: DELETE
+FILE: crates/engine/render-api/src/camera_optical.rs
+
+ACTION:
+- Remove old module declaration from render-api lib/mod.
+- Update every import to new plugin path:
+  `amigo_camera_optics_plugin::api::*`.
+
+VERIFY:
+rg "camera_optical.rs|CameraOpticalResponse2d|CameraOpticalCoverage2d|CameraOpticalCandidate2d" crates plugins
+cargo check --workspace
+
+DO NOT:
+- Nie zostawiaj `pub use` starego path.
+- Nie twórz `lens_artifact`.
+- Nie twórz fallbacku z luma.
+- Nie przenoś runtime extraction jeszcze.
+- Nie dodawaj direct lens flare.
+
+ACCEPTANCE:
+- API camera-optics mieszka w pluginie.
+- Stary `camera_optical.rs` usunięty.
+- Importy aktualizowane.
+- Brak old re-export.
+
+==============================================================================
+
+KROK 17 — MOVE camera-optics scene/hydration/runtime
+
+CEL:
+Przenieść scene document extensions, commands, hydration, collect/extract i diagnostics camera-optics do pluginu.
+
+OPERATION: SEARCH
+COMMANDS:
+rg "camera_response|camera.optical|collect_camera_optical_candidates_2d|CameraOptical" crates plugins mods
+rg "LightGroup2dDocument|LightSource2dCommon|SceneCommand|Command" crates
+
+OPERATION: MOVE/MODIFY
+TARGET FILES:
+plugins/camera/camera-optics/src/scene/document.rs
+plugins/camera/camera-optics/src/scene/commands.rs
+plugins/camera/camera-optics/src/scene/hydration.rs
+plugins/camera/camera-optics/src/runtime/collect.rs
+plugins/camera/camera-optics/src/runtime/extract.rs
+plugins/camera/camera-optics/src/runtime/resolve.rs
+plugins/camera/camera-optics/src/diagnostics/format.rs
+plugins/camera/camera-optics/src/diagnostics/snapshot.rs
+
+ACTION:
+- Move `camera_response` scene ownership into camera-optics scene module.
+- Move `collect_camera_optical_candidates_2d` into runtime/collect.rs.
+- Move candidate status resolution into runtime/resolve.rs.
+- Move diagnostics string formatting into diagnostics/format.rs.
+- Ensure unsupported coverage returns CandidateStatus::Unsupported and no target write.
+- Ensure NotDeclared produces no candidate by default.
+
+OPERATION: MODIFY
+TARGETS:
+- Existing scene command/hydration registries.
+ACTION:
+- Register camera-optics hydration via plugin registration path.
+- Do not keep old scene-owned direct logic.
+
+VERIFY:
+rg "collect_camera_optical_candidates_2d" crates plugins
+rg "camera_response" crates plugins
+cargo check --workspace
+
+DO NOT:
+- Nie zostawiaj collect function w runtime/bundles.
+- Nie twórz re-exportu w old runtime path.
+- Nie pozwól scene crate posiadać camera-optics semantic logic.
+- Nie twórz fallback candidate dla NotDeclared.
+
+ACCEPTANCE:
+- Collect/extract camera-optics jest w pluginie.
+- Scene/hydration camera-optics jest w pluginie.
+- Diagnostics camera.optical.* są w pluginie.
+
+==============================================================================
+
+KROK 18 — MOVE camera-optics render-wgpu consumer
+
+CEL:
+Przenieść render side konsumpcję kandydatów camera-optics do `plugins/camera/camera-optics/src/render-wgpu/`.
+
+OPERATION: SEARCH
+COMMANDS:
+rg "append_camera_optical_candidate_buffers|CameraOpticalCoverage2d|SceneHighlight|SceneEmissive|LightMapChannel" crates/renderers crates plugins
+rg "should_produce_scene_highlight|luma_fallback|direct_lens_flare|append_lens_flare" crates plugins
+
+OPERATION: MOVE
+FROM LIKELY FILES:
+crates/renderers/wgpu/src/visual_source_buffer_pass/*
+crates/renderers/wgpu/src/world_2d/beacon.rs
+crates/renderers/wgpu/src/procedural_material.rs
+crates/renderers/wgpu/src/material_maps.rs
+
+TO:
+plugins/camera/camera-optics/src/render-wgpu/candidate_buffers.rs
+plugins/camera/camera-optics/src/render-wgpu/lightmap_channel.rs
+plugins/camera/camera-optics/src/render-wgpu/color_coverage.rs
+plugins/camera/camera-optics/src/render-wgpu/pass.rs
+plugins/camera/camera-optics/src/render-wgpu/targets.rs
+
+ACTION:
+- Move candidate buffer generation to camera-optics plugin.
+- Implement LightMapChannel consumption here.
+- Remove direct beacon lens flare rendering.
+- Remove luma fallback for SceneHighlight/SceneEmissive.
+- Renderer may call plugin pass hooks, but cannot decide optical semantics.
+
+OPERATION: MODIFY
+FILE: plugins/camera/camera-optics/src/render-wgpu/mod.rs
+
+CODE:
+pub mod candidate_buffers;
+pub mod color_coverage;
+pub mod lightmap_channel;
+pub mod pass;
+pub mod targets;
+
+OPERATION: DELETE/MODIFY
+FILES:
+- Old render-wgpu functions that guessed optical source.
+ACTION:
+- Delete or empty old heuristic functions.
+- Update render graph to call camera-optics pass.
+
+VERIFY:
+rg "luma_fallback|guess_optical|direct_lens_flare|should_produce_scene_highlight|append_lens_flare" crates plugins
+cargo check --workspace
+
+DO NOT:
+- Nie przenoś całego renderer backendu do pluginu.
+- Nie pozwól pluginowi alokować globalnego renderer state poza kontraktem.
+- Nie zostawiaj beacon lens flare direct path.
+- Nie twórz material-specific glare path poza contribution.
+
+ACCEPTANCE:
+- SceneHighlight/SceneEmissive powstają tylko z camera-optics candidates.
+- Renderer nie zgaduje optyczności.
+- Beacon nie rysuje lens flare sam.
+- LightMapChannel nie jest no-op.
+
+==============================================================================
+
+KROK 19 — MIGRATE focus-depth plugin
+
+CEL:
+Przenieść camera focus/depth logic do `plugins/camera/focus-depth`. Focus-depth obsługuje focus_distance_m, distance_m, blur_scale, effective layer distance, autofocus, DOF inputs.
+
+OPERATION: SEARCH
+COMMANDS:
+rg "focus_distance_m|distance_m|blur_scale|effective.*distance|DepthMode|Focus|DOF|bokeh" crates plugins mods
+rg "camera_z_m|focus_residual_m|CameraDepthMotion2d" crates plugins
+
+OPERATION: MOVE/MODIFY
+TARGET FILES:
+plugins/camera/focus-depth/src/api/response.rs
+plugins/camera/focus-depth/src/api/coverage.rs
+plugins/camera/focus-depth/src/api/candidate.rs
+plugins/camera/focus-depth/src/api/targets.rs
+plugins/camera/focus-depth/src/scene/document.rs
+plugins/camera/focus-depth/src/scene/hydration.rs
+plugins/camera/focus-depth/src/runtime/collect.rs
+plugins/camera/focus-depth/src/runtime/resolve.rs
+plugins/camera/focus-depth/src/render-wgpu/pass.rs
+plugins/camera/focus-depth/src/diagnostics/format.rs
+
+ACTION:
+- Define FocusDepthResponse2d.
+- Define FocusDepthCoverage2d.
+- Define FocusDepthCandidate2d.
+- Move focus/depth fields out of generic camera/render paths.
+- Targets:
+  - reads SceneDepth when applicable
+  - writes FocusField or contributes SceneDepth
+- Implement candidate statuses:
+  Active, Inactive, NotDeclared, Unsupported.
+- Scripting setters for focus_distance_m go to focus-depth/scripting.
+
+VERIFY:
+rg "focus_distance_m|distance_m|blur_scale" crates plugins
+cargo check --workspace
+
+DO NOT:
+- Nie mieszaj focus-depth z camera-optics.
+- Nie dodawaj blur heuristic w rendererze.
+- Nie zostawiaj globalnego scripting setter poza pluginem.
+- Nie migruj film-look w tym kroku.
+
+ACCEPTANCE:
+- Focus/depth ma własny plugin.
+- DOF/focus candidates są jawne.
+- Brak direct renderer-owned depth heuristics.
+
+==============================================================================
+
+KROK 20 — MIGRATE shutter-motion plugin
+
+CEL:
+Przenieść temporal exposure/shutter/motion smear logic do `plugins/camera/shutter-motion`.
+
+OPERATION: SEARCH
+COMMANDS:
+rg "shutter|exposure_time|motion_blur|temporal|accumulation|trail|long exposure|rain.*streak|velocity" crates plugins mods
+
+OPERATION: MOVE/MODIFY
+TARGET FILES:
+plugins/camera/shutter-motion/src/api/response.rs
+plugins/camera/shutter-motion/src/api/coverage.rs
+plugins/camera/shutter-motion/src/api/candidate.rs
+plugins/camera/shutter-motion/src/api/targets.rs
+plugins/camera/shutter-motion/src/scene/document.rs
+plugins/camera/shutter-motion/src/runtime/collect.rs
+plugins/camera/shutter-motion/src/runtime/resolve.rs
+plugins/camera/shutter-motion/src/render-wgpu/pass.rs
+plugins/camera/shutter-motion/src/scripting/bindings.rs
+plugins/camera/shutter-motion/src/diagnostics/format.rs
+
+ACTION:
+- Define MotionShutterContribution2d.
+- Define MotionShutterCandidate2d.
+- Target reads/writes:
+  - reads SceneVelocity
+  - may write TemporalExposure / FinalComposite contribution
+- Move shutter speed related scripting setters here.
+- Rain/particles/trails will later emit contributions to shutter-motion.
+
+VERIFY:
+rg "shutter|motion_blur|temporal|accumulation" crates plugins
+cargo check --workspace
+
+DO NOT:
+- Nie migruj particles teraz.
+- Nie dodawaj atmosphere.
+- Nie implementuj rain-specific behavior here.
+- Nie zostawiaj temporal effect in postfx as unowned heuristic.
+
+ACCEPTANCE:
+- Shutter/motion ma własny plugin.
+- Motion data is contribution/candidate-driven.
+- Renderer only executes pass.
+
+==============================================================================
+
+KROK 21 — MIGRATE film-look and camera-profiles
+
+CEL:
+Oddzielić film/sensor/presets/profiles od camera-core i optical effects.
+
+OPERATION: SEARCH
+COMMANDS:
+rg "Film|film|grain|halation|tone_curve|color_grading|sensor|CameraProfile|profiles.rs|preset" crates plugins mods
+
+OPERATION: MOVE/MODIFY
+TARGETS:
+plugins/camera/film-look/src/api/response.rs
+plugins/camera/film-look/src/api/profile.rs
+plugins/camera/film-look/src/scene/document.rs
+plugins/camera/film-look/src/runtime/resolve.rs
+plugins/camera/film-look/src/render-wgpu/pass.rs
+plugins/camera/film-look/src/diagnostics/format.rs
+plugins/camera/camera-profiles/src/api/profile.rs
+plugins/camera/camera-profiles/src/runtime/registry.rs
+
+ACTION:
+- Move camera presets/profiles out of monolithic camera files.
+- Film-look owns:
+  - grain
+  - tone curve
+  - halation
+  - sensor response
+  - film response
+- Camera-profiles owns named camera/lens/film preset documents.
+- Camera-core stays minimal.
+
+VERIFY:
+rg "profiles.rs|CameraProfile|film|grain|halation" crates plugins
+cargo check --workspace
+
+DO NOT:
+- Nie mieszaj film-look z camera-optics.
+- Nie wrzucaj profiles back into camera-core.
+- Nie rób color grading globalnie bez postfx ownership.
+
+ACCEPTANCE:
+- Camera-core is minimal.
+- Film-look owns film response.
+- Camera-profiles owns presets.
+
+==============================================================================
+
+KROK 22 — MIGRATE gfx/sprite-2d
+
+CEL:
+Przenieść Sprite2D jako pierwszy renderable-source plugin poza kamerą. To jest test patternu dla renderowalnych domen.
+
+OPERATION: SEARCH
+COMMANDS:
+rg "Sprite2D|Sprite2d|sprite_2d|sprite" crates plugins mods
+rg "SceneColor|SceneAlpha|Sprite" crates/renderers crates/engine crates/runtime
+
+OPERATION: MOVE/MODIFY
+TARGETS:
+plugins/gfx/sprite-2d/src/api/response.rs
+plugins/gfx/sprite-2d/src/api/coverage.rs
+plugins/gfx/sprite-2d/src/api/candidate.rs
+plugins/gfx/sprite-2d/src/api/targets.rs
+plugins/gfx/sprite-2d/src/scene/document.rs
+plugins/gfx/sprite-2d/src/scene/hydration.rs
+plugins/gfx/sprite-2d/src/participation/adapters/camera_optics.rs
+plugins/gfx/sprite-2d/src/participation/adapters/focus_depth.rs
+plugins/gfx/sprite-2d/src/participation/adapters/shutter_motion.rs
+plugins/gfx/sprite-2d/src/runtime/collect.rs
+plugins/gfx/sprite-2d/src/runtime/extract.rs
+plugins/gfx/sprite-2d/src/render-wgpu/pass.rs
+plugins/gfx/sprite-2d/src/diagnostics/format.rs
+
+ACTION:
+- Sprite owns SceneColor/SceneAlpha output.
+- Sprite emits contributions to camera-optics/focus-depth/shutter-motion only through adapters.
+- Sprite does not implement optical/focus/shutter effects.
+- Update imports/call-sites to plugin path.
+- Delete old sprite scene/render modules after move.
+
+VERIFY:
+rg "Sprite2D|sprite_2d|sprite" crates plugins
+cargo check --workspace
+
+DO NOT:
+- Nie dodawaj lens flare do sprite.
+- Nie dodawaj DOF logic do sprite renderer.
+- Nie zostawiaj sprite descriptors in scene crate.
+- Nie re-exportuj old path.
+
+ACCEPTANCE:
+- Sprite2D is renderable-source plugin.
+- Contributions are adapters.
+- Renderer consumes sprite pass without owning sprite semantics.
+
+==============================================================================
+
+KROK 23 — MIGRATE gfx/text-2d and vector-2d
+
+CEL:
+Przenieść Text2D i Vector2D do identycznych pluginów renderable-source.
+
+OPERATION: SEARCH
+COMMANDS:
+rg "Text2D|Text2d|text_2d|glyph|font|Vector2D|VectorShape|vector" crates plugins mods
+
+OPERATION: MOVE/MODIFY
+TARGETS:
+plugins/gfx/text-2d/src/*
+plugins/gfx/vector-2d/src/*
+
+ACTION:
+- Text2D owns text scene document, glyph coverage, render pass.
+- Vector2D owns vector shape scene document, vector coverage, render pass.
+- Both may emit camera-optics/focus-depth/shutter-motion contributions via adapters.
+- Move diagnostics channels:
+  - text-2d.render
+  - text-2d.contributions
+  - vector-2d.render
+  - vector-2d.contributions
+
+VERIFY:
+rg "Text2D|Text2d|Vector2D|VectorShape" crates plugins
+cargo check --workspace
+
+DO NOT:
+- Nie przenoś fonts/assets globalnie, jeśli nie są domenowe.
+- Nie dodawaj optical effect directly to text/vector.
+- Nie zostawiaj descriptors in scene crate.
+
+ACCEPTANCE:
+- Text and vector have plugin ownership.
+- Contribution adapters exist.
+- Old global modules removed.
+
+==============================================================================
+
+KROK 24 — MIGRATE gfx/layered-image-2d and tilemap-2d
+
+CEL:
+Przenieść wielowarstwowe obrazy/depth/layers oraz tilemap do pluginów renderable-source.
+
+OPERATION: SEARCH
+COMMANDS:
+rg "LayeredImage|layered_image|TileMap|tilemap|tile_map|Layer2D|depth.mode|distance_m" crates plugins mods
+
+OPERATION: MOVE/MODIFY
+TARGETS:
+plugins/gfx/layered-image-2d/src/*
+plugins/gfx/tilemap-2d/src/*
+
+ACTION:
+- LayeredImage owns layer documents and basic render output.
+- Focus-depth owns interpretation of distance/depth for DOF.
+- Tilemap owns tile documents/rendering.
+- Contributions via participation/adapters.
+- Remove global scene descriptors.
+
+VERIFY:
+rg "LayeredImage|TileMap|tilemap|depth.mode|distance_m" crates plugins
+cargo check --workspace
+
+DO NOT:
+- Nie wrzucaj focus-depth calculation into layered-image.
+- Nie dodawaj renderer fallback for depth.
+- Nie migruj environment.
+
+ACCEPTANCE:
+- Layered image and tilemap are plugin-owned.
+- Depth participation routes through focus-depth.
+
+==============================================================================
+
+KROK 25 — MIGRATE lighting/light-2d and light-groups-2d
+
+CEL:
+Przenieść światła i grupy świateł do lighting plugins. Światło nie robi lens flare. Światło emituje camera-optics contribution.
+
+OPERATION: SEARCH
+COMMANDS:
+rg "Light2D|Light2d|LightGroup2D|LightGroup2d|LightSource2d|light_group|lightmap|camera_response" crates plugins mods
+rg "lens_flare|append_lens_flare|beacon" crates plugins
+
+OPERATION: MOVE/MODIFY
+TARGETS:
+plugins/lighting/light-2d/src/*
+plugins/lighting/light-groups-2d/src/*
+plugins/lighting/lightmaps-2d/src/*
+
+ACTION:
+- Light2D owns light source document/output.
+- LightGroup2D owns group document and grouping semantics.
+- Lightmaps owns lightmap targets.
+- Camera-optics contribution adapter lives in lighting participation/adapters/camera_optics.rs.
+- Remove direct lens flare logic.
+- Light may write/contribute SceneLighting/LightMap.
+- Camera-optics reads SceneHighlight/SceneEmissive from candidates.
+
+VERIFY:
+rg "lens_flare|append_lens_flare|direct_lens" crates plugins
+rg "Light2D|LightGroup2D|LightSource2d" crates plugins
+cargo check --workspace
+
+DO NOT:
+- Nie pozwól Light2D wywoływać lens flare.
+- Nie pozwól rendererowi robić highlight z light luma.
+- Nie zostawiaj camera_response inside generic light code unless adapter-owned.
+- Nie re-export old paths.
+
+ACCEPTANCE:
+- Light/light-group/lightmap are plugin-owned.
+- Lens flare path exists only in camera-optics consumer.
+- Light emits contributions via adapter.
+
+==============================================================================
+
+KROK 26 — MIGRATE lighting/beacon-light-2d and relight-2d
+
+CEL:
+Rozdzielić beacon jako źródło od relight jako domeny interpretacji światła/sceny.
+
+OPERATION: SEARCH
+COMMANDS:
+rg "Beacon|beacon|Relight|relight|edge|shadow|occlusion|normal|light response" crates plugins mods
+
+OPERATION: MOVE/MODIFY
+TARGETS:
+plugins/lighting/beacon-light-2d/src/*
+plugins/lighting/relight-2d/src/*
+
+ACTION:
+- BeaconLight2D is source plugin.
+- Beacon emits contributions:
+  - camera-optics
+  - relight
+  - shutter-motion if animated
+- Relight consumes relight contributions and scene targets.
+- Edge/shadow/response logic belongs to relight, not beacon source.
+- Remove any direct beacon post-effect.
+
+VERIFY:
+rg "append_lens_flare|beacon.*flare|direct.*beacon" crates plugins
+rg "Relight|relight|Beacon|beacon" crates plugins
+cargo check --workspace
+
+DO NOT:
+- Nie pozwól beacon rysować efektu kamery.
+- Nie mieszaj relight z camera-optics.
+- Nie dodawaj edge detection heuristic in renderer.
+
+ACCEPTANCE:
+- Beacon is source.
+- Relight is consumer/domain.
+- Contributions connect them.
+
+==============================================================================
+
+KROK 27 — MIGRATE materials/material-2d, material-maps, procedural-materials
+
+CEL:
+Materiały mają być źródłem render output i contributions, ale nie wykonywać cudzych efektów.
+
+OPERATION: SEARCH
+COMMANDS:
+rg "Material2D|Material2d|Material2dCameraResponse|material_maps|procedural_material|CameraOpticalResponse" crates plugins mods
+
+OPERATION: MOVE/MODIFY
+TARGETS:
+plugins/materials/material-2d/src/*
+plugins/materials/material-maps/src/*
+plugins/materials/procedural-materials/src/*
+
+ACTION:
+- Material2D owns material document/response.
+- Material maps own map sampling metadata.
+- Procedural materials own procedural generation.
+- Camera optical material response is adapted into CameraOpticsContribution2d.
+- Remove old `Material2dCameraResponse` if it duplicates CameraOpticalResponse2d.
+- Material does not directly write SceneHighlight unless via declared contribution/candidate.
+
+VERIFY:
+rg "Material2dCameraResponse|procedural_material|material_maps|CameraOpticalResponse" crates plugins
+cargo check --workspace
+
+DO NOT:
+- Nie dodawaj glare in material plugin.
+- Nie zostawiaj material optical semantics in render-wgpu.
+- Nie keep old narrow type if replaced by domain contribution.
+- Nie re-export old modules.
+
+ACCEPTANCE:
+- Materials are plugin-owned.
+- Optical behavior goes through camera-optics contribution.
+- Render-wgpu does not own material semantics.
+
+==============================================================================
+
+KROK 28 — MIGRATE vfx/particles-2d and trails-2d
+
+CEL:
+Particles/trails jako renderable-source / source-and-consumer. Particles emit shutter-motion, camera-optics, lighting contributions as needed.
+
+OPERATION: SEARCH
+COMMANDS:
+rg "Particle|particle|Emitter|emitter|Trail|trail|streak|rain|snow" crates plugins mods
+
+OPERATION: MOVE/MODIFY
+TARGETS:
+plugins/vfx/particles-2d/src/*
+plugins/vfx/trails-2d/src/*
+
+ACTION:
+- Particles own emitter document, runtime simulation hooks, render output.
+- Trails own trail documents/output.
+- Long exposure belongs to shutter-motion.
+- Glow/flare belongs to camera-optics.
+- Wetness/atmosphere not migrated now.
+- If rain-specific logic exists, keep it as vfx particle behavior for now, not environment plugin.
+
+VERIFY:
+rg "Particle|Emitter|Trail|long exposure|streak" crates plugins
+cargo check --workspace
+
+DO NOT:
+- Nie migruj environment/atmosphere.
+- Nie implementuj rain atmosphere.
+- Nie wrzucaj shutter smear into particles.
+- Nie add direct optical flare in particle renderer.
+
+ACCEPTANCE:
+- Particles/trails are plugin-owned.
+- Motion/optical effects are contributions.
+- Shutter-motion owns exposure interpretation.
+
+==============================================================================
+
+KROK 29 — MIGRATE postfx/bloom, color-grading, scopes, composite
+
+CEL:
+PostFX są target-consumer plugins. Bloom nie zgaduje źródeł, tylko konsumuje standardowe targety.
+
+OPERATION: SEARCH
+COMMANDS:
+rg "Bloom|bloom|ColorGrading|color_grading|Scopes|scope|Composite|composite|FinalComposite|postfx" crates plugins mods
+
+OPERATION: MOVE/MODIFY
+TARGETS:
+plugins/postfx/bloom/src/*
+plugins/postfx/color-grading/src/*
+plugins/postfx/scopes/src/*
+plugins/postfx/composite/src/*
+plugins/postfx/debug-views/src/*
+
+ACTION:
+- Bloom reads SceneHighlight/SceneEmissive.
+- Color grading reads FinalComposite or SceneColor according to graph.
+- Scopes read final/debug targets.
+- Composite owns final composition order declarations.
+- Debug views are devtools/postfx target consumers.
+
+VERIFY:
+rg "Bloom|ColorGrading|Scopes|Composite|postfx" crates plugins
+cargo check --workspace
+
+DO NOT:
+- Nie pozwól bloom decydować, co jest highlight.
+- Nie pozwól scopes mutate rendering state.
+- Nie zostawiaj postfx central bag with all effects.
+- Nie migruj film-look into postfx if it belongs to camera.
+
+ACCEPTANCE:
+- Postfx domains are plugin-owned.
+- Postfx consumes declared targets.
+- No source guessing.
+
+==============================================================================
+
+KROK 30 — REFACTOR scene crate into envelope/registry only
+
+CEL:
+Usunąć domenową wiedzę z `crates/engine/scene`. Scene ma być generic registry + envelope + command bus. Pluginy posiadają swoje document/hydration/validation.
+
+OPERATION: SEARCH
+COMMANDS:
+rg "component_descriptors|ComponentDescriptor|Hydration|SceneCommand|Command|Sprite|Light|Camera|Material|Text|Vector" crates/engine/scene crates plugins
+
+OPERATION: MODIFY/MOVE
+TARGET:
+crates/engine/scene/src/*
+
+ACTION:
+- Keep generic types:
+  - SceneDocument envelope
+  - EntityId
+  - ComponentId
+  - ComponentRegistry
+  - CommandEnvelope
+  - HydrationRegistry
+  - ValidationResult
+- Move plugin-specific descriptors to plugin scene modules.
+- Delete giant component descriptor bags after migration.
+- Scene registry should accept plugin registrations.
+
+VERIFY:
+rg "Sprite|Light|CameraOptical|Material|Text|Vector|Particle" crates/engine/scene/src
+cargo check --workspace
+
+DO NOT:
+- Nie zostawiaj globalnego component_descriptors.rs owning all domains.
+- Nie dodawaj plugin-specific imports in scene core.
+- Nie twórz compat descriptor maps.
+- Nie re-export old descriptors.
+
+ACCEPTANCE:
+- scene crate has no domain-specific descriptors.
+- Plugins own their document/hydration.
+- Scene remains generic.
+
+==============================================================================
+
+KROK 31 — REFACTOR runtime/bundles into composition layer
+
+CEL:
+Runtime/bundles nie ma znać wszystkich extractorów domen. Ma składać pluginy i rejestry.
+
+OPERATION: SEARCH
+COMMANDS:
+rg "wgpu_render_extractors|PluginBundle|RuntimeBuilder|with_plugin|extract" crates/runtime crates plugins
+
+OPERATION: MODIFY/MOVE/DELETE
+TARGET:
+crates/runtime/bundles/src/*
+plugins/*/*/src/runtime/extract.rs
+plugins/*/*/src/plugin.rs
+
+ACTION:
+- Move extractor logic into owning plugins.
+- Runtime bundle references slots/capabilities, not concrete internals.
+- Add composition profiles if needed.
+- Delete old monolithic extractor modules after moves.
+
+VERIFY:
+rg "wgpu_render_extractors" crates plugins
+cargo check --workspace
+
+DO NOT:
+- Nie zostawiaj runtime-bundles as god crate.
+- Nie importuj plugin internals beyond public plugin APIs.
+- Nie twórz old extractor bridge.
+- Nie patchuj only camera; apply pattern to migrated domains.
+
+ACCEPTANCE:
+- Runtime extractors are plugin-owned.
+- Bundles compose plugins.
+- No monolithic extractor bag.
+
+==============================================================================
+
+KROK 32 — REFACTOR render-wgpu into backend executor
+
+CEL:
+Renderer przestaje definiować semantykę domen. Renderer wykonuje passy i targety rejestrowane przez pluginy.
+
+OPERATION: SEARCH
+COMMANDS:
+rg "should_produce|guess|fallback|SceneHighlight|SceneEmissive|Sprite|Light|Material|CameraOptical|Bloom" crates/renderers/wgpu plugins
+
+OPERATION: MODIFY/MOVE/DELETE
+TARGET:
+crates/renderers/wgpu/src/*
+plugins/*/*/src/render-wgpu/*
+
+ACTION:
+- Keep backend:
+  - device/queue/surface
+  - render graph execution
+  - target allocation
+  - pass scheduling
+  - GPU buffer utilities
+- Move domain pass construction to plugins.
+- Remove renderer-owned semantic conditions.
+- Renderer calls plugin pass descriptors/hooks through public contracts.
+
+VERIFY:
+rg "should_produce|guess_optical|luma_fallback|direct_lens_flare" crates/renderers/wgpu plugins
+cargo check --workspace
+
+DO NOT:
+- Nie przenoś wgpu backend internals into every plugin.
+- Nie zostawiaj domain-specific render code in backend.
+- Nie pozwól backend synthesize target writes.
+- Nie keep direct beacon lens flare.
+
+ACCEPTANCE:
+- render-wgpu is backend executor.
+- Plugin render modules own domain pass logic.
+- Forbidden heuristics absent.
+
+==============================================================================
+
+KROK 33 — REFACTOR scripting-rhai into binding host
+
+CEL:
+Globalne Rhai bindingi przenieść do pluginów. Scripting crate jest hostem i registry.
+
+OPERATION: SEARCH
+COMMANDS:
+rg "Rhai|rhai|set_.*camera|set_.*light|set_.*material|bindings|register_.*binding" crates plugins
+
+OPERATION: MODIFY/MOVE
+TARGETS:
+crates/engine/scripting-rhai/src/*
+plugins/*/*/src/scripting/*
+
+ACTION:
+- Move domain setters/getters into plugin scripting modules.
+- Scripting host exposes BindingRegistry.
+- Plugin registers binding provider.
+- Scripting does not bypass hydration/validation.
+- Remove global all-domain binding file.
+
+VERIFY:
+rg "set_.*camera|set_.*light|set_.*material|CameraOptical|focus_distance" crates/engine/scripting-rhai plugins
+cargo check --workspace
+
+DO NOT:
+- Nie zostawiaj globalnego worka setterów.
+- Nie pozwól script directly mutate renderer internals.
+- Nie twórz compatibility aliases.
+- Nie mix binding ownership.
+
+ACCEPTANCE:
+- Scripting host is generic.
+- Plugin-owned bindings exist.
+- Global domain-specific scripting removed.
+
+==============================================================================
+
+KROK 34 — REFACTOR diagnostics/devtools into plugin-owned diagnostics
+
+CEL:
+Każdy plugin ma diagnostics model/format/snapshot. Devtools agreguje kanały.
+
+OPERATION: SEARCH
+COMMANDS:
+rg "diagnostic|Diagnostics|camera.optical|candidate|devtools" crates/apps crates/engine crates/runtime plugins
+
+OPERATION: MODIFY/MOVE
+TARGETS:
+plugins/*/*/src/diagnostics/*
+crates/engine/devtools*/src/*
+apps/app/src/devtools/*
+
+ACTION:
+- Move domain diagnostics to owning plugin.
+- Diagnostics channels declared in plugin.toml.
+- Devtools viewer loads/aggregates channels.
+- Codemap maps channel to plugin owner.
+- App/devtools does not format domain-specific internals.
+
+VERIFY:
+rg "camera.optical|sprite-2d|light-2d|material-2d" apps crates/engine/devtools crates/runtime
+cargo check --workspace
+
+DO NOT:
+- Nie keep app-owned camera optics formatter.
+- Nie keep devtools-owned domain logic.
+- Nie remove diagnostics.
+- Nie hide Unsupported/NotDeclared statuses.
+
+ACCEPTANCE:
+- Diagnostics are plugin-owned.
+- Devtools aggregates.
+- Waterfall diagnostics available.
+
+==============================================================================
+
+KROK 35 — REFACTOR app composition
+
+CEL:
+App składa runtime z pluginów/slotów/capabilities. App nie importuje domenowych internali.
+
+OPERATION: SEARCH
+COMMANDS:
+rg "camera_optics|Sprite|Light|Material|Particle|RuntimeBuilder|PluginBundle|with_plugin" apps crates plugins
+
+OPERATION: MODIFY
+TARGETS:
+apps/app/src/*
+crates/runtime/*
+
+ACTION:
+- Replace direct domain imports with composition profile/bootstrap.
+- App may import:
+  - plugin registry
+  - composition profile
+  - runtime builder
+  - devtools shell
+- App must not import plugin internals:
+  - api types allowed only if in public contract
+  - no render-wgpu plugin internals
+  - no scene/hydration internals
+
+VERIFY:
+rg "plugins/.*/src|camera_optics::|light_sources_2d|component_descriptors" apps
+cargo check --workspace
+
+DO NOT:
+- Nie importuj domain internals in app.
+- Nie create app-level effect config logic.
+- Nie hardcode camera-optics in app except composition profile.
+- Nie bridge old runtime.
+
+ACCEPTANCE:
+- App is host/composition only.
+- Domain logic not in app.
+
+==============================================================================
+
+KROK 36 — ADD codemap plugin graph command
+
+CEL:
+Podłączyć plugin loader/index/codemap do istniejącego lub nowego narzędzia codemap, tak żeby można było nawigować po pluginach.
+
+OPERATION: SEARCH
+COMMANDS:
+rg "codemap|CodeMap|audit|graph" crates tools apps plugins
+
+OPERATION: MODIFY/ADD
+TARGET:
+Either existing codemap crate or new:
+crates/tools/codemap/src/*
+or
+crates/tools/plugin-check/src/main.rs
+
+ACTION:
+- Add command:
+  - list plugins
+  - show plugin <id>
+  - show targets
+  - show diagnostics
+  - show contributions
+  - export graph text/json later
+- Use plugin-loader + plugin-index + codemap-api.
+- Do not add LSP server yet.
+
+VERIFY:
+cargo run -p amigo-plugin-check -- plugins
+cargo check --workspace
+
+DO NOT:
+- Nie implementuj full LSP teraz.
+- Nie dodawaj editor protocol.
+- Nie scan crates for symbols yet unless it is an explicit command.
+- Nie mutate files.
+
+ACCEPTANCE:
+- Można zbudować i wyświetlić graph pluginów.
+- Codemap zna plugin manifests.
+
+==============================================================================
+
+KROK 37 — DELETE old domain modules after migration
+
+CEL:
+Po zakończonych MOVE dla danej domeny usunąć stare pliki i moduły.
+
+OPERATION: DELETE
+TARGETS:
+- Old camera optical file after KROK 16.
+- Old runtime extractor files after KROK 31.
+- Old renderer domain semantic files after KROK 32.
+- Old scripting binding bags after KROK 33.
+- Old diagnostics formatters after KROK 34.
+- Old scene descriptor bags after KROK 30.
+
+COMMANDS TO LOCATE:
+rg "camera_optical|lens_artifact|LensArtifact|component_descriptors|wgpu_render_extractors|light_sources_2d|procedural_material|material_maps" crates plugins apps
+
+ACTION:
+- Delete only when all imports are updated.
+- Remove mod declarations.
+- Remove Cargo references if any.
+- Run cargo check.
+
+VERIFY:
+rg "camera_optical|lens_artifact|LensArtifact|component_descriptors|wgpu_render_extractors" crates plugins apps
+cargo check --workspace
+
+DO NOT:
+- Nie zostawiaj empty modules.
+- Nie zostawiaj pub use aliases.
+- Nie zostawiaj deprecated notes as code.
+- Nie kasuj assets/mod content.
+
+ACCEPTANCE:
+- Old domain modules removed.
+- No old imports remain.
+- Workspace compiles.
+
+==============================================================================
+
+KROK 38 — UPDATE mods/rotten-club to new plugin manifests/contracts
+
+CEL:
+Dopasować content Rotten Club do nowej architektury. Dopiero po migracji pluginów.
+
+OPERATION: SEARCH
+COMMANDS:
+rg "camera_response|lens_artifact|light_groups|focus_distance|depth.mode|material|beacon|rain" mods/rotten-club plugins crates
+
+OPERATION: MODIFY
+TARGETS:
+mods/rotten-club/**/*.yml
+mods/rotten-club/**/*.yaml
+mods/rotten-club/**/*.ron
+mods/rotten-club/**/*.rhai
+mods/rotten-club/**/*.json
+
+ACTION:
+- Replace old camera optics config with `contributions.camera_optics`.
+- Replace direct lens flare settings with camera optics response/coverage.
+- Ensure LightGroup/Beacon/Material contributions are explicit.
+- Ensure focus/depth settings route to focus-depth.
+- Ensure shutter settings route to shutter-motion.
+- Do not add atmosphere.
+
+VERIFY:
+rg "lens_artifact|lens_flare|camera_response" mods/rotten-club
+rg "contributions:" mods/rotten-club
+cargo check --workspace
+
+DO NOT:
+- Nie portuj mod content before plugin contracts compile.
+- Nie implementuj effect fallback in content.
+- Nie add atmosphere.
+- Nie change assets unless required by schema.
+
+ACCEPTANCE:
+- Rotten Club uses explicit contributions.
+- No direct lens flare config.
+- Scene loads through new plugin model.
+
+==============================================================================
+
+KROK 39 — ADD full workspace architecture validation script
+
+CEL:
+Dodać jeden skrypt/komendę walidacyjną dla całej migracji.
+
+OPERATION: ADD
+FILE: scripts/verify-plugin-architecture.sh
+
+CODE:
+#!/usr/bin/env bash
+set -euo pipefail
+
+cargo test -p amigo-plugin-api
+cargo test -p amigo-codemap-api
+cargo test -p amigo-plugin-index
+cargo test -p amigo-plugin-manifest
+cargo test -p amigo-plugin-loader
+cargo run -p amigo-plugin-check -- plugins
+
+cargo check --workspace
+cargo test --workspace
+
+if rg "legacy|deprecated|_v2|old_|new_" crates plugins apps mods; then
+  echo "forbidden migration naming found"
+  exit 1
+fi
+
+if rg "luma_fallback|guess_optical|direct_lens_flare|should_produce_scene_highlight" crates plugins apps mods; then
+  echo "forbidden renderer/domain heuristic found"
+  exit 1
+fi
+
+if rg "pub use .*legacy|pub use .*camera_optical|pub use .*lens_artifact" crates plugins apps; then
+  echo "forbidden compatibility re-export found"
+  exit 1
+fi
+
+echo "plugin architecture verification passed"
+
+OPERATION: MODIFY
+COMMAND:
+chmod +x scripts/verify-plugin-architecture.sh
+
+VERIFY:
+./scripts/verify-plugin-architecture.sh
+
+DO NOT:
+- Nie ignoruj failing checks.
+- Nie dodawaj allowlist dla forbidden patterns bez decyzji architektonicznej.
+- Nie omijaj workspace tests.
+
+ACCEPTANCE:
+- Jeden skrypt waliduje całą migrację.
+- Skrypt failuje na forbidden patterns.
+
+==============================================================================
+
+KROK 40 — FINAL full cleanup and acceptance
+
+CEL:
+Zamknąć migrację plugin-first.
+
+OPERATION: VERIFY
+COMMANDS:
+find plugins -maxdepth 3 -name plugin.toml | sort
+cargo run -p amigo-plugin-check -- plugins
+cargo check --workspace
+cargo test --workspace
+./scripts/verify-plugin-architecture.sh
+
+OPERATION: VERIFY
+COMMANDS:
+rg "camera_optical.rs|lens_artifact|LensArtifact|component_descriptors|wgpu_render_extractors" crates plugins apps
+rg "luma_fallback|guess_optical|direct_lens_flare|should_produce_scene_highlight" crates plugins apps mods
+rg "legacy|deprecated|_v2|old_|new_" crates plugins apps mods
+
+EXPECTED:
+- First rg should return no legacy architecture paths or only unrelated docs if explicitly accepted.
+- Second rg returns no code hits.
+- Third rg returns no code hits. Documentation “DO NOT” sections may mention forbidden words; code must not.
+
+OPERATION: VERIFY
+CHECKLIST:
+- Every plugin has plugin.toml.
+- Every plugin has docs/pipeline.md.
+- Every plugin has tests/waterfall_tests.rs.
+- Every plugin has src/plugin.rs.
+- Every migrated domain has api/scene/runtime/render-wgpu/scripting/diagnostics.
+- Renderer backend has no domain semantics.
+- Scene crate has no plugin-specific descriptors.
+- Runtime bundles compose plugins rather than owning extractors.
+- Scripting is binding host.
+- Devtools aggregate plugin diagnostics.
+- App is composition host.
+- Mods use explicit contributions.
+- No atmosphere migration was performed.
+
+DO NOT:
+- Nie kończ migracji z failing cargo check.
+- Nie kończ z partial old modules.
+- Nie kończ z direct lens flare.
+- Nie kończ z renderer semantic guessing.
+- Nie kończ z stale plugin manifests.
+
+ACCEPTANCE:
+- Workspace builds.
+- Tests pass.
+- Plugin check passes.
+- Architecture verification script passes.
+- Codemap can navigate plugin graph.
+- Project tree is plugin-first.

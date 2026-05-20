@@ -9,6 +9,7 @@ amigo-composite-plugin.workspace = true
 amigo-assets.workspace = true
 amigo-capabilities.workspace = true
 amigo-core.workspace = true
+amigo-devtools.workspace = true
 amigo-editor-api.workspace = true
 amigo-math.workspace = true
 amigo-runtime.workspace = true

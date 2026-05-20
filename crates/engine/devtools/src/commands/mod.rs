@@ -5,10 +5,6 @@ mod clock;
 mod composition;
 mod core;
 mod debug;
-mod layered;
-mod lighting;
-mod particles;
-mod postfx;
 mod render;
 mod scene;
 mod scheduler;
@@ -26,19 +22,6 @@ pub fn register_builtin_console_commands(registry: &ConsoleCommandRegistry) {
         registry,
         composition::Composition2dConsoleCommandHandler,
     );
-    crate::register_runtime_console_command_handler(
-        registry,
-        layered::LayeredImageConsoleCommandHandler,
-    );
-    crate::register_runtime_console_command_handler(
-        registry,
-        lighting::Lighting2dConsoleCommandHandler,
-    );
-    crate::register_runtime_console_command_handler(
-        registry,
-        particles::ParticlesConsoleCommandHandler,
-    );
-    crate::register_runtime_console_command_handler(registry, postfx::PostFxConsoleCommandHandler);
     crate::register_runtime_console_command_handler(
         registry,
         scheduler::SchedulerConsoleCommandHandler,

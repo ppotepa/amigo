@@ -16,6 +16,14 @@ impl RuntimePlugin for Vector2dPlugin {
 
     fn register(&self, registry: &mut ServiceRegistry) -> amigo_core::AmigoResult<()> {
         registry.register(super::service::VectorSceneService::default())?;
+        amigo_scene::register_scene_reset_handler(
+            registry,
+            super::reset::Vector2dSceneResetHandler,
+        )?;
+        if let Some(metadata) = registry.resolve::<amigo_scene::ComponentMetadataProviderRegistry>()
+        {
+            metadata.register(crate::scene::Vector2dComponentMetadataProvider);
+        }
         registry.register(VectorDomainInfo {
             crate_name: "amigo-vector-2d-plugin",
             capability: "vector_2d",

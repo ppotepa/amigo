@@ -7,6 +7,8 @@ mod command_format;
 mod commands;
 /// Component metadata and editor-facing capability descriptors.
 mod component_metadata;
+/// Plugin-owned component metadata provider extension point.
+mod component_metadata_provider;
 /// Authored scene document structures and loading entry points.
 mod document;
 /// Service contracts that other engine domains expose to the scene layer.
@@ -31,6 +33,8 @@ mod plugin;
 mod plugin_registry;
 /// Commands for rendering-oriented domains.
 mod render_commands;
+/// Runtime scene reset handler registry.
+mod reset;
 /// Runtime contribution descriptors for scene-owned handlers and systems.
 mod runtime_capabilities;
 /// Scene-owned command handlers that are shared by app hosts and future editors.
@@ -53,6 +57,7 @@ mod ui_audio_commands;
 pub use command_format::*;
 pub use commands::{RuntimeSceneCommandHandler, *};
 pub use component_metadata::*;
+pub use component_metadata_provider::*;
 pub use document::*;
 pub use domain_services::*;
 pub use entity::*;
@@ -65,6 +70,7 @@ pub use particle_commands::*;
 pub use plugin::*;
 pub use plugin_registry::*;
 pub use render_commands::*;
+pub use reset::*;
 pub use runtime_capabilities::*;
 pub use scene_command::*;
 pub use script_command::*;

@@ -279,7 +279,7 @@ pub(super) fn apply_plate_relight_after_world(
         aux.depth_aux_map.size,
         depth_mode,
     );
-    uniforms.params4[1] = plate_relight_debug_mode(request.camera_debug_view);
+    uniforms.params4[1] = plate_relight_debug_mode(&request.camera_debug_view);
     if uniforms.canvas[3] <= 0.0 && uniforms.params4[1] <= 0.5 {
         set_status(
             renderer,
@@ -565,26 +565,26 @@ fn normalize_beacon_for_plate_relight(
     }
 }
 
-fn plate_relight_debug_mode(view: amigo_render_api::CameraDebugView2d) -> f32 {
-    match view {
-        amigo_render_api::CameraDebugView2d::PlateRelightAuxDepth => 1.0,
-        amigo_render_api::CameraDebugView2d::PlateRelightAuxHeight => 2.0,
-        amigo_render_api::CameraDebugView2d::PlateRelightAuxOccluder => 3.0,
-        amigo_render_api::CameraDebugView2d::PlateRelightAuxValid => 4.0,
-        amigo_render_api::CameraDebugView2d::PlateRelightSurfaceReflect => 5.0,
-        amigo_render_api::CameraDebugView2d::PlateRelightSurfaceRough => 6.0,
-        amigo_render_api::CameraDebugView2d::PlateRelightSurfaceGlass => 7.0,
-        amigo_render_api::CameraDebugView2d::PlateRelightSurfaceMask => 8.0,
-        amigo_render_api::CameraDebugView2d::PlateRelightEffectiveDepth => 9.0,
-        amigo_render_api::CameraDebugView2d::PlateRelightNormal => 10.0,
-        amigo_render_api::CameraDebugView2d::PlateRelightOcclusion => 11.0,
-        amigo_render_api::CameraDebugView2d::PlateRelightContribution => 12.0,
-        amigo_render_api::CameraDebugView2d::PlateRelightShadow => 13.0,
-        amigo_render_api::CameraDebugView2d::PlateRelightLightMask => 14.0,
-        amigo_render_api::CameraDebugView2d::PlateRelightNdl => 15.0,
-        amigo_render_api::CameraDebugView2d::PlateRelightSpecular => 16.0,
-        amigo_render_api::CameraDebugView2d::PlateRelightMaterialGate => 17.0,
-        amigo_render_api::CameraDebugView2d::PlateRelightLitRaw => 18.0,
+fn plate_relight_debug_mode(view: &amigo_render_api::CameraDebugView2d) -> f32 {
+    match view.as_str() {
+        "relight.plate.aux_depth" => 1.0,
+        "relight.plate.aux_height" => 2.0,
+        "relight.plate.aux_occluder" => 3.0,
+        "relight.plate.aux_valid" => 4.0,
+        "relight.plate.surface_reflect" => 5.0,
+        "relight.plate.surface_rough" => 6.0,
+        "relight.plate.surface_glass" => 7.0,
+        "relight.plate.surface_mask" => 8.0,
+        "relight.plate.effective_depth" => 9.0,
+        "relight.plate.normal" => 10.0,
+        "relight.plate.occlusion" => 11.0,
+        "relight.plate.contribution" => 12.0,
+        "relight.plate.shadow" => 13.0,
+        "relight.plate.light_mask" => 14.0,
+        "relight.plate.ndl" => 15.0,
+        "relight.plate.specular" => 16.0,
+        "relight.plate.material_gate" => 17.0,
+        "relight.plate.lit_raw" => 18.0,
         _ => 0.0,
     }
 }
@@ -702,7 +702,7 @@ fn set_status(
         if drawn { "drawn" } else { "skipped" },
         reason.as_str(),
         request.camera_debug_view.as_str(),
-        plate_relight_debug_mode(request.camera_debug_view),
+        plate_relight_debug_mode(&request.camera_debug_view),
         drawn,
         fallback_drawn,
         aux_count,
@@ -844,41 +844,55 @@ mod tests {
     #[test]
     fn plate_relight_debug_mode_maps_camera_debug_views() {
         assert_eq!(
-            plate_relight_debug_mode(amigo_render_api::CameraDebugView2d::FinalOutput),
+            plate_relight_debug_mode(&amigo_render_api::CameraDebugView2d::final_output()),
             0.0
         );
         assert_eq!(
-            plate_relight_debug_mode(amigo_render_api::CameraDebugView2d::PlateRelightAuxDepth),
+            plate_relight_debug_mode(&amigo_render_api::CameraDebugView2d::new(
+                "relight.plate.aux_depth"
+            )),
             1.0
         );
         assert_eq!(
-            plate_relight_debug_mode(amigo_render_api::CameraDebugView2d::PlateRelightSurfaceMask),
+            plate_relight_debug_mode(&amigo_render_api::CameraDebugView2d::new(
+                "relight.plate.surface_mask"
+            )),
             8.0
         );
         assert_eq!(
-            plate_relight_debug_mode(
-                amigo_render_api::CameraDebugView2d::PlateRelightEffectiveDepth
-            ),
+            plate_relight_debug_mode(&amigo_render_api::CameraDebugView2d::new(
+                "relight.plate.effective_depth"
+            )),
             9.0
         );
         assert_eq!(
-            plate_relight_debug_mode(amigo_render_api::CameraDebugView2d::PlateRelightNormal),
+            plate_relight_debug_mode(&amigo_render_api::CameraDebugView2d::new(
+                "relight.plate.normal"
+            )),
             10.0
         );
         assert_eq!(
-            plate_relight_debug_mode(amigo_render_api::CameraDebugView2d::PlateRelightContribution),
+            plate_relight_debug_mode(&amigo_render_api::CameraDebugView2d::new(
+                "relight.plate.contribution"
+            )),
             12.0
         );
         assert_eq!(
-            plate_relight_debug_mode(amigo_render_api::CameraDebugView2d::PlateRelightShadow),
+            plate_relight_debug_mode(&amigo_render_api::CameraDebugView2d::new(
+                "relight.plate.shadow"
+            )),
             13.0
         );
         assert_eq!(
-            plate_relight_debug_mode(amigo_render_api::CameraDebugView2d::PlateRelightLightMask),
+            plate_relight_debug_mode(&amigo_render_api::CameraDebugView2d::new(
+                "relight.plate.light_mask"
+            )),
             14.0
         );
         assert_eq!(
-            plate_relight_debug_mode(amigo_render_api::CameraDebugView2d::PlateRelightLitRaw),
+            plate_relight_debug_mode(&amigo_render_api::CameraDebugView2d::new(
+                "relight.plate.lit_raw"
+            )),
             18.0
         );
     }
@@ -988,26 +1002,27 @@ mod tests {
 
     #[test]
     fn plate_relight_sources_report_unsupported_light_kinds() {
-        let source = amigo_render_api::LightSource2dCommon::active(
-            "ambient".to_owned(),
-            "GlobalLight2D",
-            amigo_render_api::LightEmitterKind2d::GlobalLight,
-            Some("ambient".to_owned()),
-            None,
-            Some([1.0, 1.0, 1.0, 1.0]),
-            Some(1.0),
-            Some(1.0),
-            Some(1.0),
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            vec![amigo_render_api::LightContributionKind2d::RelightPlate],
-            "global_light_command",
-            None,
-        );
+        let source =
+            amigo_render_api::LightSource2dCommon::active(amigo_render_api::LightSource2dCommonParams {
+                owner: "ambient".to_owned(),
+                component_kind: "GlobalLight2D".to_owned(),
+                emitter_kind: amigo_render_api::LightEmitterKind2d::GlobalLight,
+                emitter_id: Some("ambient".to_owned()),
+                render_layer: None,
+                color_rgba: Some([1.0, 1.0, 1.0, 1.0]),
+                intensity: Some(1.0),
+                effective_intensity: Some(1.0),
+                response: Some(1.0),
+                camera_response: None,
+                bloom: None,
+                radius_px: None,
+                falloff: None,
+                distance_m: None,
+                z_depth: None,
+                contributions: vec![amigo_render_api::LightContributionKind2d::RelightPlate],
+                reason: "global_light_command".to_owned(),
+                position_px: None,
+            });
         let light_sources = [source];
         let sources = plate_relight_sources_from_frame(&light_sources, &[]);
 
@@ -1119,26 +1134,25 @@ mod tests {
         {
             contributions.push(amigo_render_api::LightContributionKind2d::CameraFxSource);
         }
-        amigo_render_api::LightSource2dCommon::active(
-            beacon.entity_name.clone(),
-            "BeaconLight2D",
-            amigo_render_api::LightEmitterKind2d::Beacon,
-            None,
-            Some(beacon.render_layer.clone()),
-            Some([beacon.color.r, beacon.color.g, beacon.color.b, beacon.color.a]),
-            Some(beacon.intensity),
-            Some(beacon.intensity * beacon.color.a),
-            Some(1.0),
-            None,
-            Some(beacon.bloom),
-            
-            Some(beacon.halo_radius_px.max(beacon.core_radius_px)),
-            None,
-            beacon.distance_m,
-            beacon.z_depth,
+        amigo_render_api::LightSource2dCommon::active(amigo_render_api::LightSource2dCommonParams {
+            owner: beacon.entity_name.clone(),
+            component_kind: "BeaconLight2D".to_owned(),
+            emitter_kind: amigo_render_api::LightEmitterKind2d::Beacon,
+            emitter_id: None,
+            render_layer: Some(beacon.render_layer.clone()),
+            color_rgba: Some([beacon.color.r, beacon.color.g, beacon.color.b, beacon.color.a]),
+            intensity: Some(beacon.intensity),
+            effective_intensity: Some(beacon.intensity * beacon.color.a),
+            response: Some(1.0),
+            camera_response: None,
+            bloom: Some(beacon.bloom),
+            radius_px: Some(beacon.halo_radius_px.max(beacon.core_radius_px)),
+            falloff: None,
+            distance_m: beacon.distance_m,
+            z_depth: beacon.z_depth,
             contributions,
-            "active_light_emitter",
-            Some([beacon.center.x, beacon.center.y]),
-        )
+            reason: "active_light_emitter".to_owned(),
+            position_px: Some([beacon.center.x, beacon.center.y]),
+        })
     }
 }

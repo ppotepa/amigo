@@ -1,4 +1,4 @@
-use amigo_camera_optics_plugin::api::CameraOpticalResponse2d;
+use amigo_camera::CameraOpticalResponse2d;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LightEmitterKind2d {
@@ -94,92 +94,58 @@ pub struct LightSource2dCommon {
     pub position_px: Option<[f32; 2]>,
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub struct LightSource2dCommonParams {
+    pub owner: String,
+    pub component_kind: String,
+    pub emitter_kind: LightEmitterKind2d,
+    pub emitter_id: Option<String>,
+    pub render_layer: Option<String>,
+    pub color_rgba: Option<[f32; 4]>,
+    pub intensity: Option<f32>,
+    pub effective_intensity: Option<f32>,
+    pub response: Option<f32>,
+    pub camera_response: Option<CameraOpticalResponse2d>,
+    pub bloom: Option<f32>,
+    pub radius_px: Option<f32>,
+    pub falloff: Option<f32>,
+    pub distance_m: Option<f32>,
+    pub z_depth: Option<f32>,
+    pub contributions: Vec<LightContributionKind2d>,
+    pub reason: String,
+    pub position_px: Option<[f32; 2]>,
+}
+
 impl LightSource2dCommon {
-    #[allow(clippy::too_many_arguments)]
-    pub fn active(
-        owner: impl Into<String>,
-        component_kind: impl Into<String>,
-        emitter_kind: LightEmitterKind2d,
-        emitter_id: Option<String>,
-        render_layer: Option<String>,
-        color_rgba: Option<[f32; 4]>,
-        intensity: Option<f32>,
-        effective_intensity: Option<f32>,
-        response: Option<f32>,
-        camera_response: Option<CameraOpticalResponse2d>,
-        bloom: Option<f32>,
-        radius_px: Option<f32>,
-        falloff: Option<f32>,
-        distance_m: Option<f32>,
-        z_depth: Option<f32>,
-        contributions: Vec<LightContributionKind2d>,
-        reason: impl Into<String>,
-        position_px: Option<[f32; 2]>,
-    ) -> Self {
-        Self {
-            owner: owner.into(),
-            component_kind: component_kind.into(),
-            emitter_kind,
-            emitter_id,
-            render_layer,
-            color_rgba,
-            intensity,
-            effective_intensity,
-            response,
-            camera_response,
-            bloom,
-            radius_px,
-            falloff,
-            distance_m,
-            z_depth,
-            contributions,
-            status: LightSourceStatus2d::Active,
-            reason: reason.into(),
-            position_px,
-        }
+    pub fn active(params: LightSource2dCommonParams) -> Self {
+        Self::from_params(LightSourceStatus2d::Active, params)
     }
 
-    #[allow(clippy::too_many_arguments)]
-    pub fn skipped(
-        owner: impl Into<String>,
-        component_kind: impl Into<String>,
-        emitter_kind: LightEmitterKind2d,
-        emitter_id: Option<String>,
-        render_layer: Option<String>,
-        color_rgba: Option<[f32; 4]>,
-        intensity: Option<f32>,
-        effective_intensity: Option<f32>,
-        response: Option<f32>,
-        camera_response: Option<CameraOpticalResponse2d>,
-        bloom: Option<f32>,
-        radius_px: Option<f32>,
-        falloff: Option<f32>,
-        distance_m: Option<f32>,
-        z_depth: Option<f32>,
-        contributions: Vec<LightContributionKind2d>,
-        reason: impl Into<String>,
-        position_px: Option<[f32; 2]>,
-    ) -> Self {
+    pub fn skipped(params: LightSource2dCommonParams) -> Self {
+        Self::from_params(LightSourceStatus2d::Skipped, params)
+    }
+
+    fn from_params(status: LightSourceStatus2d, params: LightSource2dCommonParams) -> Self {
         Self {
-            owner: owner.into(),
-            component_kind: component_kind.into(),
-            emitter_kind,
-            emitter_id,
-            render_layer,
-            color_rgba,
-            intensity,
-            effective_intensity,
-            response,
-            camera_response,
-            bloom,
-            radius_px,
-            falloff,
-            distance_m,
-            z_depth,
-            contributions,
-            status: LightSourceStatus2d::Skipped,
-            reason: reason.into(),
-            position_px,
+            owner: params.owner,
+            component_kind: params.component_kind,
+            emitter_kind: params.emitter_kind,
+            emitter_id: params.emitter_id,
+            render_layer: params.render_layer,
+            color_rgba: params.color_rgba,
+            intensity: params.intensity,
+            effective_intensity: params.effective_intensity,
+            response: params.response,
+            camera_response: params.camera_response,
+            bloom: params.bloom,
+            radius_px: params.radius_px,
+            falloff: params.falloff,
+            distance_m: params.distance_m,
+            z_depth: params.z_depth,
+            contributions: params.contributions,
+            status,
+            reason: params.reason,
+            position_px: params.position_px,
         }
     }
 }
@@ -201,6 +167,9 @@ mod tests {
             "emissive_material"
         );
         assert_eq!(LightEmitterKind2d::ParticleLight.as_str(), "particle_light");
-        assert_eq!(LightContributionKind2d::CameraFxSource.as_str(), "camera_fx_source");
+        assert_eq!(
+            LightContributionKind2d::CameraFxSource.as_str(),
+            "camera_fx_source"
+        );
     }
 }

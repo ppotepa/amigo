@@ -4,6 +4,8 @@
 use super::*;
 use crate::runtime_context::RuntimeContext;
 use crate::scene_runtime::current_loaded_scene_document_summary;
+use amigo_runtime_bundles::amigo_sprite_2d_plugin::{SpriteSceneService, SpriteSheet};
+use amigo_runtime_bundles::amigo_tilemap_2d_plugin::TileMap2dSceneService;
 
 pub(super) fn process_pending_asset_loads(runtime: &Runtime) -> AmigoResult<()> {
     let ctx = RuntimeContext::new(runtime);
@@ -128,8 +130,6 @@ fn sync_tile_ruleset_metadata(
     };
     tilemap_scene_service.sync_ruleset_for_asset(asset_key, &ruleset);
 }
-
-#[allow(dead_code)]
 pub(super) fn resolve_sprite_sheet_for_command(
     asset_catalog: &AssetCatalog,
     command: &Sprite2dSceneCommand,

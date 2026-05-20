@@ -1,7 +1,5 @@
 pub(crate) const RAIN_GLASS_OPTICAL_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
 pub(crate) const RAIN_GLASS_BLUR_PYRAMID_LEVELS: usize = 5;
-
-#[allow(dead_code)]
 pub(crate) struct RainGlassRenderTarget {
     pub texture: wgpu::Texture,
     pub view: wgpu::TextureView,

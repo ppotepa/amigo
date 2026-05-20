@@ -16,9 +16,8 @@ pub use composition::{WgpuFrameCompositionBuilder, WgpuFrameCompositionOptions};
 pub use context::WgpuRenderExtractorRegistry;
 pub use light_sources_2d::{collect_light_sources_2d, format_light_sources_2d};
 pub use visual_2d_items::{
-    RenderSpace2d, Renderable2dCommon, Renderable2dItem, Renderable2dKind,
-    Renderable2dPayload, render_contribution_decisions_summary,
-    supported_renderable_2d_component_kinds,
+    RenderSpace2d, Renderable2dCommon, Renderable2dItem, Renderable2dKind, Renderable2dPayload,
+    render_contribution_decisions_summary, supported_renderable_2d_component_kinds,
 };
 
 pub fn default_wgpu_render_extractor_registry() -> WgpuRenderExtractorRegistry {

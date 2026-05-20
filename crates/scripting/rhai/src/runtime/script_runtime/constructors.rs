@@ -198,7 +198,7 @@ impl RhaiScriptRuntime {
         )
     }
 
-    #[allow(clippy::too_many_arguments, dead_code)]
+    #[allow(clippy::too_many_arguments)]
     fn new_with_services_and_ui_theme_and_particle_presets(
         scene: Option<Arc<SceneService>>,
         sprite_scene: Option<Arc<SpriteSceneService>>,

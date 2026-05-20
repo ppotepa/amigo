@@ -2,6 +2,7 @@
 //! It collects named events and exposes dispatch state to runtime systems and scripts.
 
 mod runtime_capabilities;
+mod reset;
 mod scene_command;
 
 use std::sync::Mutex;
@@ -10,6 +11,7 @@ use amigo_core::AmigoResult;
 use amigo_runtime::{RuntimePlugin, ServiceRegistry};
 
 pub use runtime_capabilities::*;
+pub use reset::*;
 pub use scene_command::*;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -84,6 +86,7 @@ impl RuntimePlugin for EventPipelinePlugin {
 
     fn register(&self, registry: &mut ServiceRegistry) -> AmigoResult<()> {
         registry.register(EventPipelineService::default())?;
+        amigo_scene::register_scene_reset_handler(registry, EventPipelineSceneResetHandler)?;
         let scene_handlers =
             registry.required::<amigo_scene::RuntimeSceneCommandHandlerRegistry>()?;
         amigo_scene::register_runtime_scene_command_handler(

@@ -54,8 +54,15 @@ impl WgpuSceneRenderer {
         feature_id: amigo_render_api::RenderFeatureId,
         resources: &mut crate::renderer::graph::WgpuFrameResourceAllocator,
     ) -> AmigoResult<()> {
+        let post_fx = scoped_post_fx::PostFxGraphNodeContext {
+            host_id,
+            effect_id,
+            scope,
+            pipeline,
+            feature_id,
+        };
         graph_nodes::execute_post_fx_graph_node(
-            self, request, node, host_id, effect_id, scope, pipeline, feature_id, resources,
+            self, request, node, post_fx, resources,
         )
     }
 

@@ -1,7 +1,7 @@
 use super::style::{parse_color_rgba_hex, parse_optional_color_rgba_hex, ui_theme_from_component};
 use super::*;
-use amigo_camera_optics_plugin::scene::camera_optical_response_from_document;
-use amigo_composite_plugin::PostFxScope2d;
+use amigo_camera::camera_optical_response_from_document;
+use amigo_render_api::PostFxScope2d;
 use amigo_assets::AssetKey;
 use amigo_math::{ColorRgba, Curve1d};
 

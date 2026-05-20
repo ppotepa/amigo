@@ -1,0 +1,12 @@
+[package]
+name = "amigo-camera"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+amigo-core.workspace = true
+amigo-math.workspace = true
+amigo-plugin-api.workspace = true
+amigo-2d-spatial.workspace = true
+serde.workspace = true

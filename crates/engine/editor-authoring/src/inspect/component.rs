@@ -14,7 +14,10 @@ fn group_label(group: &str) -> &'static str {
     }
 }
 
-fn component_panel(node: &AuthoringNode) -> AuthoringPropertyPanel {
+fn component_panel(
+    node: &AuthoringNode,
+    registry: &ComponentRegistry,
+) -> AuthoringPropertyPanel {
     let component_type = node
         .semantic
         .component_type
@@ -22,7 +25,6 @@ fn component_panel(node: &AuthoringNode) -> AuthoringPropertyPanel {
         .or_else(|| string_field(&node.value, "type"))
         .unwrap_or_else(|| "Component".to_owned());
 
-    let registry = default_component_registry();
     let Some(descriptor) = registry.descriptor_by_type_name(&component_type) else {
         return semantic_status_panel(
             node,

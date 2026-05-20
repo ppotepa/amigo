@@ -1,5 +1,5 @@
 use amigo_editor_authoring::{AuthoringNode, AuthoringNodeKind, AuthoringSceneGraph};
-use amigo_scene::{BoundsPolicy, default_component_registry};
+use amigo_scene::{BoundsPolicy, ComponentRegistry, default_component_registry};
 use serde_yaml::Value;
 
 use crate::state::EditorRect;
@@ -13,8 +13,9 @@ pub trait BoundsProvider {
     ) -> Option<EditorRect>;
 }
 
-#[derive(Debug, Default)]
-pub struct DescriptorBoundsProvider;
+pub struct DescriptorBoundsProvider<'a> {
+    pub registry: &'a ComponentRegistry,
+}
 
 #[derive(Debug, Clone)]
 pub struct PickCandidate {
@@ -32,8 +33,19 @@ pub fn topmost_candidate_at(
     logical_x: f32,
     logical_y: f32,
 ) -> Option<PickCandidate> {
+    let registry = default_component_registry();
+    topmost_candidate_at_with_registry(graph, &registry, logical_x, logical_y)
+}
+
+pub fn topmost_candidate_at_with_registry(
+    graph: &AuthoringSceneGraph,
+    registry: &ComponentRegistry,
+    logical_x: f32,
+    logical_y: f32,
+) -> Option<PickCandidate> {
     let mut candidates = Vec::new();
-    collect_pick_candidates(graph, &DescriptorBoundsProvider, &mut candidates);
+    let provider = DescriptorBoundsProvider { registry };
+    collect_pick_candidates(graph, &provider, &mut candidates);
     candidates
         .into_iter()
         .filter(|candidate| candidate.bounds.contains(logical_x, logical_y))
@@ -53,17 +65,27 @@ pub fn collect_pick_candidates(
 }
 
 pub fn bounds_for_node(graph: &AuthoringSceneGraph, node_id: &str) -> Option<EditorRect> {
-    let provider = DescriptorBoundsProvider;
+    let registry = default_component_registry();
+    bounds_for_node_with_registry(graph, &registry, node_id)
+}
+
+pub fn bounds_for_node_with_registry(
+    graph: &AuthoringSceneGraph,
+    registry: &ComponentRegistry,
+    node_id: &str,
+) -> Option<EditorRect> {
+    let provider = DescriptorBoundsProvider { registry };
     find_node_by_id(&graph.nodes, node_id)
         .and_then(|node| bounds_for_authoring_node(node, graph, &provider))
 }
-
-#[allow(dead_code)]
 pub fn pick_candidate_for_node_id(
     graph: &AuthoringSceneGraph,
     node_id: &str,
 ) -> Option<PickCandidate> {
-    let provider = DescriptorBoundsProvider;
+    let registry = default_component_registry();
+    let provider = DescriptorBoundsProvider {
+        registry: &registry,
+    };
     let node = find_node_by_id(&graph.nodes, node_id)?;
     pick_candidate_for_node(node, graph, &provider)
 }
@@ -124,15 +146,14 @@ fn bounds_for_authoring_node(
     }
 }
 
-impl BoundsProvider for DescriptorBoundsProvider {
+impl BoundsProvider for DescriptorBoundsProvider<'_> {
     fn bounds_for_component(
         &self,
         node: &AuthoringNode,
         graph: &AuthoringSceneGraph,
         component_type: &str,
     ) -> Option<EditorRect> {
-        let registry = default_component_registry();
-        let descriptor = registry.descriptor_by_type_name(component_type)?;
+        let descriptor = self.registry.descriptor_by_type_name(component_type)?;
 
         match descriptor.bounds_policy {
             BoundsPolicy::ComponentBounds2D { field } => component_bounds_2d(node, graph, field),

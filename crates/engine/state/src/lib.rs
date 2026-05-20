@@ -10,6 +10,7 @@ include!("state/model.rs");
 include!("state/scene_service.rs");
 include!("state/session_service.rs");
 include!("state/timers.rs");
+include!("state/reset.rs");
 include!("state/plugin.rs");
 
 #[cfg(test)]

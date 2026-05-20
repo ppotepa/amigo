@@ -776,8 +776,6 @@ fn node_id(prefix: &str, raw: &str) -> String {
 
     format!("{prefix}:{sanitized}")
 }
-
-#[allow(dead_code)]
 fn _assert_postfx_document_helpers(effect: &PostFx2dDocument) -> (&str, &'static str) {
     (effect.id(), effect.type_name())
 }

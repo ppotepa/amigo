@@ -9,11 +9,13 @@ use amigo_math::ColorRgba;
 use amigo_runtime::{RuntimePlugin, ServiceRegistry};
 use amigo_scene::{Material3dSceneCommand, SceneEntityId, SceneService};
 mod editor_capability;
+mod reset;
 mod render_extraction;
 mod runtime_capabilities;
 mod scene_command;
 mod script_command;
 pub use editor_capability::*;
+pub use reset::*;
 pub use render_extraction::*;
 pub use runtime_capabilities::*;
 pub use scene_command::*;
@@ -86,6 +88,7 @@ impl RuntimePlugin for MaterialPlugin {
 
     fn register(&self, registry: &mut ServiceRegistry) -> amigo_core::AmigoResult<()> {
         registry.register(MaterialSceneService::default())?;
+        amigo_scene::register_scene_reset_handler(registry, MaterialSceneResetHandler)?;
         registry.register(MaterialDomainInfo {
             crate_name: "amigo-3d-material",
             capability: "materials_3d",

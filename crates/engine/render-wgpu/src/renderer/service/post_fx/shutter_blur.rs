@@ -16,7 +16,6 @@ pub(crate) struct ShutterBlurRuntime {
 }
 
 struct ShutterBlurHistory {
-    #[allow(dead_code)]
     texture: wgpu::Texture,
     view: wgpu::TextureView,
     width: u32,

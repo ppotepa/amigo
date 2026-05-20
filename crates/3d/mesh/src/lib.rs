@@ -9,11 +9,13 @@ use amigo_math::Transform3;
 use amigo_runtime::{RuntimePlugin, ServiceRegistry};
 use amigo_scene::{Mesh3dSceneCommand, SceneEntityId, SceneService};
 mod editor_capability;
+mod reset;
 mod render_extraction;
 mod runtime_capabilities;
 mod scene_command;
 mod script_command;
 pub use editor_capability::*;
+pub use reset::*;
 pub use render_extraction::*;
 pub use runtime_capabilities::*;
 pub use scene_command::*;
@@ -85,6 +87,7 @@ impl RuntimePlugin for MeshPlugin {
 
     fn register(&self, registry: &mut ServiceRegistry) -> amigo_core::AmigoResult<()> {
         registry.register(MeshSceneService::default())?;
+        amigo_scene::register_scene_reset_handler(registry, MeshSceneResetHandler)?;
         registry.register(MeshDomainInfo {
             crate_name: "amigo-3d-mesh",
             capability: "rendering_3d",

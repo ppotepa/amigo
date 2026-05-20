@@ -2,6 +2,7 @@ use amigo_core::AmigoResult;
 use amigo_runtime::{RuntimePlugin, ServiceRegistry};
 
 use crate::commands::IngameEditorConsoleCommandHandler;
+use crate::IngameEditorProviderRegistry;
 use crate::state::IngameEditorState;
 
 pub struct IngameEditorPlugin {
@@ -21,6 +22,9 @@ impl RuntimePlugin for IngameEditorPlugin {
 
     fn register(&self, registry: &mut ServiceRegistry) -> AmigoResult<()> {
         registry.register(IngameEditorState::new(self.enabled))?;
+        if !registry.has::<IngameEditorProviderRegistry>() {
+            registry.register(IngameEditorProviderRegistry::default())?;
+        }
 
         if let Some(console_registry) =
             registry.resolve::<amigo_devtools::RuntimeConsoleCommandRegistry>()

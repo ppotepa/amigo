@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use amigo_core::{AmigoError, AmigoResult};
 use amigo_math::ColorRgba;
-use amigo_render_wgpu::{
+use amigo_overlay_api::{
     UiLayoutNode, UiOverlayCurvePoint, UiOverlayDocument, UiOverlayLayer, UiOverlayNode,
     UiOverlayNodeKind, UiOverlayStyle, UiOverlayTab, UiOverlayTextGlow, UiOverlayTextOutline,
     UiOverlayTextShadow, UiOverlayViewport, UiOverlayViewportScaling, UiRect, build_ui_layout_tree,
@@ -33,12 +33,6 @@ pub struct ResolvedUiOverlayDocument {
 
 pub trait UiOverlayRenderOutput {
     fn push_ui_overlay_document(&mut self, document: UiOverlayDocument);
-}
-
-impl UiOverlayRenderOutput for amigo_render_wgpu::WgpuRenderFramePacket {
-    fn push_ui_overlay_document(&mut self, document: UiOverlayDocument) {
-        self.push_game_ui_overlay(document);
-    }
 }
 
 pub struct UiOverlayRenderExtractor;
@@ -326,7 +320,7 @@ pub fn process_ui_input(runtime: &Runtime) -> AmigoResult<()> {
             break;
         }
         if let UiOverlayNodeKind::TabView { tabs, .. } = &layout_node.node.kind {
-            if let Some(selected) = amigo_render_wgpu::tab_view_tab_from_mouse(
+            if let Some(selected) = amigo_overlay_api::tab_view_tab_from_mouse(
                 layout_node.rect,
                 &layout_node.node,
                 tabs,
@@ -716,8 +710,8 @@ fn resolve_style(
         word_wrap: merged.word_wrap,
         fit_to_width: merged.fit_to_width,
         text_anchor: match merged.align {
-            UiTextAlign::Start => amigo_render_wgpu::UiTextAnchor::TopLeft,
-            UiTextAlign::Center => amigo_render_wgpu::UiTextAnchor::Center,
+            UiTextAlign::Start => amigo_overlay_api::UiTextAnchor::TopLeft,
+            UiTextAlign::Center => amigo_overlay_api::UiTextAnchor::Center,
         },
         text_shadow: merged.text_shadow.map(|shadow| UiOverlayTextShadow {
             color: color_with_alpha_mul(shadow.color, opacity),

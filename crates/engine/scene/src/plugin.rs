@@ -18,6 +18,8 @@ impl RuntimePlugin for ScenePlugin {
         registry.register(ActivationSetSceneService::default())?;
         registry.register(SceneCommandQueue::default())?;
         registry.register(SceneEventQueue::default())?;
+        registry.register(SceneResetHandlerRegistry::default())?;
+        registry.register(ComponentMetadataProviderRegistry::default())?;
 
         let scene_handlers = registry.required::<RuntimeSceneCommandHandlerRegistry>()?;
         register_runtime_scene_command_handler(
@@ -27,10 +29,6 @@ impl RuntimePlugin for ScenePlugin {
         register_runtime_scene_command_handler(
             scene_handlers.as_ref(),
             SceneActivationRuntimeSceneCommandHandler,
-        );
-        register_runtime_scene_command_handler(
-            scene_handlers.as_ref(),
-            ScenePostFx2dRuntimeSceneCommandHandler,
         );
         let script_handlers =
             registry.required::<amigo_scripting_api::RuntimeScriptCommandHandlerRegistry>()?;

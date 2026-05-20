@@ -46,4 +46,3 @@ pub fn default_camera_2d_plugin_composition() -> RuntimePluginComposition {
         .require_slot("camera.frame_provider.2d")
         .require_slot("camera.optics.consumer.2d")
 }
-

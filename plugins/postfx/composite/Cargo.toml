@@ -10,7 +10,10 @@ authors.workspace = true
 amigo-plugin-api = { path = "../../../crates/core/plugin-api" }
 amigo-capabilities.workspace = true
 amigo-core.workspace = true
+amigo-devtools.workspace = true
+amigo-render-api.workspace = true
 amigo-runtime.workspace = true
+amigo-scene.workspace = true
 amigo-session.workspace = true
 serde.workspace = true
 rhai.workspace = true

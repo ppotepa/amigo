@@ -1,9 +1,9 @@
-use amigo_composite_plugin::{
+use amigo_render_api::{
     ColorQuantize2d, ColorRamp2d, Crt2d, DirtyBloom2d, Downscale2d, FilmNoise2d,
-    LensDroplets2dStage, PostFx2d, PostFx2dId, PostFx2dInstance, PostFxHost2dId,
-    PostFxLensDroplets2d, PostFxPipelineKind, PostFxScope2d, PostFxWetReflections2d, RainGlass2d,
-    RainGlassDebugView, RainGlassRaindropCompose, ScopedPostFx2dStack, ShutterBlur2d,
-    WetReflectionsDebugView,
+    LensDroplets2dCertificationReport, LensDroplets2dStage, PostFx2d, PostFx2dId,
+    PostFx2dInstance, PostFxHost2dId, PostFxLensDroplets2d, PostFxPipelineKind, PostFxScope2d,
+    PostFxWetReflections2d, RainGlass2d, RainGlassDebugView, RainGlassRaindropCompose,
+    ScopedPostFx2dStack, ShutterBlur2d, WetReflectionsDebugView,
 };
 
 use crate::{LensDroplets2dDocument, PostFx2dDocument, SceneDocumentError, SceneDocumentResult};
@@ -49,7 +49,7 @@ pub fn build_scoped_post_fx_stack(
     owner_kind: &str,
 ) -> SceneDocumentResult<(
     Option<ScopedPostFx2dStack>,
-    Vec<amigo_composite_plugin::LensDroplets2dCertificationReport>,
+    Vec<LensDroplets2dCertificationReport>,
 )> {
     if docs.is_empty() {
         return Ok((None, Vec::new()));
@@ -104,7 +104,7 @@ pub fn post_fx_from_document(
     owner_kind: &str,
 ) -> SceneDocumentResult<(
     PostFx2d,
-    Option<amigo_composite_plugin::LensDroplets2dCertificationReport>,
+    Option<LensDroplets2dCertificationReport>,
 )> {
     let output = match document {
         PostFx2dDocument::ColorQuantize(effect) => (

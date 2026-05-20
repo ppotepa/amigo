@@ -1,4 +1,4 @@
-use amigo_render_wgpu::UiViewportSize;
+use amigo_overlay_api::UiViewportSize;
 
 use crate::state::EditorRect;
 

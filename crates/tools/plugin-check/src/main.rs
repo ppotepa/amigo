@@ -8,6 +8,19 @@ use amigo_plugin_loader::load_plugin_manifests_from_plugins_dir;
 
 fn main() {
     let args = std::env::args().skip(1).collect::<Vec<_>>();
+    if args.first().is_some_and(|arg| arg == "validate") {
+        let roots = parse_validate_roots(&args[1..]);
+        if let Err(errors) = validate_plugin_tree(&roots) {
+            eprintln!("plugin tree validation failed:");
+            for error in errors {
+                eprintln!("- {error}");
+            }
+            std::process::exit(1);
+        }
+        println!("plugin tree validation passed");
+        return;
+    }
+
     let first_tail = args.get(1).cloned();
     let mut args = args.into_iter();
     let first = args.next().unwrap_or_else(|| "summary".to_owned());
@@ -78,6 +91,26 @@ fn main() {
             std::process::exit(2);
         }
     }
+}
+
+fn parse_validate_roots(args: &[String]) -> Vec<PathBuf> {
+    let mut roots = Vec::new();
+    let mut iter = args.iter();
+    while let Some(arg) = iter.next() {
+        match arg.as_str() {
+            "--workspace" => {}
+            "--plugins" => {
+                if let Some(path) = iter.next() {
+                    roots.push(PathBuf::from(path));
+                }
+            }
+            other => roots.push(PathBuf::from(other)),
+        }
+    }
+    if roots.is_empty() {
+        roots.push(PathBuf::from("plugins"));
+    }
+    roots
 }
 
 fn validate_plugin_tree(roots: &[PathBuf]) -> Result<(), Vec<String>> {
@@ -163,6 +196,7 @@ fn validate_plugin_dir(plugin_dir: &Path, ids: &mut BTreeSet<String>, errors: &m
 
     if manifest_path.exists() {
         validate_manifest_identity(plugin_dir, &manifest_path, ids, errors);
+        validate_manifest_referenced_files(plugin_dir, &manifest_path, errors);
     }
 
     if cargo_path.exists() {
@@ -228,6 +262,82 @@ fn validate_cargo_package_name(plugin_dir: &Path, cargo_path: &Path, errors: &mu
     if manifest_scalar(&content, "name").is_none() {
         errors.push(format!("{} missing package name", plugin_dir.display()));
     }
+}
+
+fn validate_manifest_referenced_files(
+    plugin_dir: &Path,
+    manifest_path: &Path,
+    errors: &mut Vec<String>,
+) {
+    let Ok(content) = fs::read_to_string(manifest_path) else {
+        errors.push(format!("{} is not readable", manifest_path.display()));
+        return;
+    };
+
+    for section in ["docs", "tests"] {
+        for (key, relative) in manifest_section_scalars(&content, section) {
+            if relative.trim().is_empty() {
+                errors.push(format!(
+                    "{} [{section}].{key} references an empty path",
+                    manifest_path.display()
+                ));
+                continue;
+            }
+
+            let relative_path = Path::new(relative);
+            if relative_path.is_absolute()
+                || relative_path
+                    .components()
+                    .any(|component| matches!(component, std::path::Component::ParentDir))
+            {
+                errors.push(format!(
+                    "{} [{section}].{key} must reference a plugin-relative file, got `{relative}`",
+                    manifest_path.display()
+                ));
+                continue;
+            }
+
+            let referenced = plugin_dir.join(relative_path);
+            if !referenced.is_file() {
+                errors.push(format!(
+                    "{} [{section}].{key} references missing file `{relative}`",
+                    manifest_path.display()
+                ));
+            }
+        }
+    }
+}
+
+fn manifest_section_scalars<'a>(content: &'a str, section: &str) -> Vec<(&'a str, &'a str)> {
+    let section_header = format!("[{section}]");
+    let mut in_section = false;
+    let mut scalars = Vec::new();
+
+    for line in content.lines().map(str::trim) {
+        if line.starts_with('[') && line.ends_with(']') {
+            in_section = line == section_header;
+            continue;
+        }
+
+        if !in_section || line.is_empty() || line.starts_with('#') {
+            continue;
+        }
+
+        let Some((key, value)) = line.split_once('=') else {
+            continue;
+        };
+        let key = key.trim();
+        let value = value.trim();
+        let Some(value) = value
+            .strip_prefix('"')
+            .and_then(|value| value.strip_suffix('"'))
+        else {
+            continue;
+        };
+        scalars.push((key, value));
+    }
+
+    scalars
 }
 
 fn manifest_scalar<'a>(content: &'a str, key: &str) -> Option<&'a str> {

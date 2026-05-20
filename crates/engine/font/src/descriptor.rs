@@ -171,8 +171,6 @@ fn normalize_path(path: PathBuf) -> PathBuf {
     }
     normalized
 }
-
-#[allow(dead_code)]
 fn is_font_source_extension(path: &Path) -> bool {
     path.extension()
         .and_then(|value| value.to_str())

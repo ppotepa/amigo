@@ -3,7 +3,7 @@
 
 use super::*;
 use amigo_runtime::EngineSchedulerMode;
-use amigo_runtime_control::{RuntimeControlService, build_scene_metadata};
+use amigo_runtime_control::{RuntimeControlService, build_scene_metadata_for_runtime};
 use amigo_scene::ActivationSetSceneService;
 use amigo_scene::{CompiledSceneDocument, SceneDocument, SceneStateValueDocument};
 use amigo_scene::{
@@ -105,7 +105,8 @@ pub(super) fn load_scene_document_for_mod(
         .map_err(|error| AmigoError::Message(error.to_string()))?;
     let transition_plan = amigo_scene::build_scene_transition_plan(root_mod, &document)
         .map_err(|error| AmigoError::Message(error.to_string()))?;
-    let mut runtime_control_metadata = build_scene_metadata(&document, &relative_document_path);
+    let mut runtime_control_metadata =
+        build_scene_metadata_for_runtime(runtime, &document, &relative_document_path);
     enrich_runtime_control_metadata_from_authoring(
         &mut runtime_control_metadata,
         root_mod,
@@ -775,61 +776,6 @@ pub(crate) fn apply_scene_command_for_session(
     apply_scene_command(session.runtime(), command)
 }
 
-// Internal migration seam: app-hosted scene cleanup remains in this module while
-// P0.1 exposes it through `RuntimeSession` lifecycle tracking.
-#[allow(dead_code)]
-pub(crate) fn clear_runtime_scene_content_for_session(session: &RuntimeSession) -> AmigoResult<()> {
-    session.mark_scene_clearing();
-
-    let result = clear_runtime_scene_content_with_runtime(session.runtime());
-    if let Err(error) = &result {
-        session
-            .scene_session_service()
-            .mark_error(format!("scene clear failed: {error}"));
-    }
-
-    result
-}
-
-#[allow(dead_code)]
-pub(crate) fn record_loaded_scene_document_for_runtime(
-    runtime: &Runtime,
-    loaded_scene_document: &LoadedSceneDocument,
-) {
-    if let Some(authoring) = runtime.resolve::<amigo_editor_authoring::AuthoringSceneGraphService>()
-    {
-        authoring.invalidate_scene(
-            &loaded_scene_document.summary.source_mod,
-            &loaded_scene_document.summary.scene_id,
-        );
-    }
-
-    let Some(scene_session_service) = runtime.resolve::<SceneSessionService>() else {
-        return;
-    };
-
-    scene_session_service.apply_loaded_document(scene_session_loaded_document_from_loaded(
-        loaded_scene_document,
-    ));
-}
-
-#[allow(dead_code)]
-pub(crate) fn record_scene_hydration_queued_for_runtime(runtime: &Runtime) {
-    if let Some(scene_session_service) = runtime.resolve::<SceneSessionService>() {
-        scene_session_service.mark_hydration_queued();
-    }
-}
-
-#[allow(dead_code)]
-pub(crate) fn record_scene_lifecycle_error_for_runtime(
-    runtime: &Runtime,
-    error: impl std::fmt::Display,
-) {
-    if let Some(scene_session_service) = runtime.resolve::<SceneSessionService>() {
-        scene_session_service.mark_error(error.to_string());
-    }
-}
-
 fn record_scene_command_result_for_runtime(
     runtime: &Runtime,
     command_label: &str,
@@ -908,48 +854,12 @@ pub(crate) fn apply_scene_command(runtime: &Runtime, command: SceneCommand) -> A
     Ok(())
 }
 
-pub(super) fn clear_runtime_scene_content(
-    hydrated_scene_state: &HydratedSceneState,
-    scene_service: &SceneService,
-    runtime_control_service: &RuntimeControlService,
-    dev_console_state: &DevConsoleState,
-    sprite_scene_service: &SpriteSceneService,
-    layered_image_scene_service: &amigo_runtime_bundles::amigo_layered_image_2d_plugin::LayeredImageSceneService,
-    render_layer2d_scene_service: &amigo_runtime_bundles::amigo_2d_composition::RenderLayer2dSceneService,
-    light_route2d_scene_service: &amigo_runtime_bundles::amigo_2d_composition::LightRoute2dSceneService,
-    global_light2d_scene_service: &amigo_runtime_bundles::amigo_light_2d_plugin::GlobalLight2dSceneService,
-    lightmap2d_scene_service: &amigo_runtime_bundles::amigo_light_2d_plugin::LightMap2dSceneService,
-    light_group2d_scene_service: &amigo_runtime_bundles::amigo_light_2d_plugin::LightGroup2dSceneService,
-    text_scene_service: &Text2dSceneService,
-    vector_scene_service: &VectorSceneService,
-    physics_scene_service: &Physics2dSceneService,
-    tilemap_scene_service: &TileMap2dSceneService,
-    motion_scene_service: &Motion2dSceneService,
-    particle2d_scene_service: &Particle2dSceneService,
-    input_action_service: &InputActionService,
-    behavior_scene_service: &BehaviorSceneService,
-    event_pipeline_service: &EventPipelineService,
-    script_component_service: &ScriptComponentService,
-    script_trace_service: &ScriptTraceService,
-    entity_pool_scene_service: &EntityPoolSceneService,
-    lifetime_scene_service: &LifetimeSceneService,
-    camera_follow_scene_service: &CameraFollow2dSceneService,
-    parallax_scene_service: &Parallax2dSceneService,
-    mesh_scene_service: &MeshSceneService,
-    text3d_scene_service: &Text3dSceneService,
-    material_scene_service: &MaterialSceneService,
-    ui_scene_service: &UiSceneService,
-    ui_state_service: &UiStateService,
-    ui_model_binding_service: &UiModelBindingService,
-    ui_theme_service: &UiThemeService,
-    audio_scene_service: &AudioSceneService,
-    audio_state_service: &AudioStateService,
-    audio_mixer_service: &AudioMixerService,
-    audio_output_service: &AudioOutputBackendService,
-    activation_set_scene_service: &ActivationSetSceneService,
-    state_service: &amigo_state::SceneStateService,
-    timer_service: &amigo_state::SceneTimerService,
-) {
+pub(super) fn clear_runtime_scene_content(runtime: &Runtime) -> AmigoResult<()> {
+    let hydrated_scene_state = required::<HydratedSceneState>(runtime)?;
+    let scene_service = required::<SceneService>(runtime)?;
+    let runtime_control_service = required::<RuntimeControlService>(runtime)?;
+    let dev_console_state = required::<DevConsoleState>(runtime)?;
+
     let previous = hydrated_scene_state.clear();
     runtime_control_service.clear_scene_metadata();
 
@@ -961,42 +871,11 @@ pub(super) fn clear_runtime_scene_content(
         ));
     }
 
-    sprite_scene_service.clear();
-    layered_image_scene_service.clear();
-    render_layer2d_scene_service.clear();
-    light_route2d_scene_service.clear();
-    global_light2d_scene_service.clear();
-    lightmap2d_scene_service.clear();
-    light_group2d_scene_service.clear();
-    text_scene_service.clear();
-    vector_scene_service.clear();
-    physics_scene_service.clear();
-    tilemap_scene_service.clear();
-    motion_scene_service.clear();
-    particle2d_scene_service.clear();
-    input_action_service.clear();
-    behavior_scene_service.clear();
-    event_pipeline_service.clear();
-    script_component_service.clear();
-    script_trace_service.clear();
-    entity_pool_scene_service.clear();
-    lifetime_scene_service.clear();
-    camera_follow_scene_service.clear();
-    parallax_scene_service.clear();
-    mesh_scene_service.clear();
-    text3d_scene_service.clear();
-    material_scene_service.clear();
-    ui_scene_service.clear();
-    ui_state_service.clear();
-    ui_model_binding_service.clear();
-    ui_theme_service.clear();
-    audio_scene_service.clear();
-    audio_state_service.clear();
-    audio_mixer_service.clear();
-    audio_output_service.clear_buffer();
-    activation_set_scene_service.clear();
-    state_service.clear_scene_defaults();
-    timer_service.reset_scene();
+    if let Some(reset_registry) = runtime.resolve::<amigo_scene::SceneResetHandlerRegistry>() {
+        reset_registry.reset_all(runtime)?;
+    }
+
+    Ok(())
 }
 
 pub(super) fn clear_runtime_scene_content_with_runtime(runtime: &Runtime) -> AmigoResult<()> {
@@ -1031,63 +910,7 @@ pub(super) fn clear_runtime_scene_content_with_runtime(runtime: &Runtime) -> Ami
             })?;
     }
 
-    clear_runtime_scene_content(
-        required::<HydratedSceneState>(runtime)?.as_ref(),
-        required::<SceneService>(runtime)?.as_ref(),
-        required::<RuntimeControlService>(runtime)?.as_ref(),
-        required::<DevConsoleState>(runtime)?.as_ref(),
-        required::<SpriteSceneService>(runtime)?.as_ref(),
-        required::<amigo_runtime_bundles::amigo_layered_image_2d_plugin::LayeredImageSceneService>(
-            runtime,
-        )?
-        .as_ref(),
-        required::<amigo_runtime_bundles::amigo_2d_composition::RenderLayer2dSceneService>(
-            runtime,
-        )?
-        .as_ref(),
-        required::<amigo_runtime_bundles::amigo_2d_composition::LightRoute2dSceneService>(runtime)?
-            .as_ref(),
-        required::<amigo_runtime_bundles::amigo_light_2d_plugin::GlobalLight2dSceneService>(runtime)?
-            .as_ref(),
-        required::<amigo_runtime_bundles::amigo_light_2d_plugin::LightMap2dSceneService>(runtime)?
-            .as_ref(),
-        required::<amigo_runtime_bundles::amigo_light_2d_plugin::LightGroup2dSceneService>(runtime)?
-            .as_ref(),
-        required::<Text2dSceneService>(runtime)?.as_ref(),
-        required::<VectorSceneService>(runtime)?.as_ref(),
-        required::<Physics2dSceneService>(runtime)?.as_ref(),
-        required::<TileMap2dSceneService>(runtime)?.as_ref(),
-        required::<Motion2dSceneService>(runtime)?.as_ref(),
-        required::<Particle2dSceneService>(runtime)?.as_ref(),
-        required::<InputActionService>(runtime)?.as_ref(),
-        required::<BehaviorSceneService>(runtime)?.as_ref(),
-        required::<EventPipelineService>(runtime)?.as_ref(),
-        required::<ScriptComponentService>(runtime)?.as_ref(),
-        required::<ScriptTraceService>(runtime)?.as_ref(),
-        required::<EntityPoolSceneService>(runtime)?.as_ref(),
-        required::<LifetimeSceneService>(runtime)?.as_ref(),
-        required::<CameraFollow2dSceneService>(runtime)?.as_ref(),
-        required::<Parallax2dSceneService>(runtime)?.as_ref(),
-        required::<MeshSceneService>(runtime)?.as_ref(),
-        required::<Text3dSceneService>(runtime)?.as_ref(),
-        required::<MaterialSceneService>(runtime)?.as_ref(),
-        required::<UiSceneService>(runtime)?.as_ref(),
-        required::<UiStateService>(runtime)?.as_ref(),
-        required::<UiModelBindingService>(runtime)?.as_ref(),
-        required::<UiThemeService>(runtime)?.as_ref(),
-        required::<AudioSceneService>(runtime)?.as_ref(),
-        required::<AudioStateService>(runtime)?.as_ref(),
-        required::<AudioMixerService>(runtime)?.as_ref(),
-        required::<AudioOutputBackendService>(runtime)?.as_ref(),
-        required::<ActivationSetSceneService>(runtime)?.as_ref(),
-        required::<amigo_state::SceneStateService>(runtime)?.as_ref(),
-        required::<amigo_state::SceneTimerService>(runtime)?.as_ref(),
-    );
-    let post_fx_service =
-        required::<amigo_runtime_bundles::amigo_composite_plugin::PostFx2dService>(runtime)?;
-    post_fx_service.clear_scoped_stacks();
-    post_fx_service.set_lens_certification_reports(Vec::new());
-    post_fx_service.set_renderer_mode("none");
+    clear_runtime_scene_content(runtime)?;
 
     if let Some(scene_session_service) = runtime.resolve::<SceneSessionService>() {
         scene_session_service.clear_scene_metadata();

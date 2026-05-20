@@ -9,12 +9,6 @@ pub(crate) struct RuntimeContext<'a> {
 }
 
 pub(crate) type SceneCommandContext<'a> = RuntimeContext<'a>;
-#[allow(dead_code)]
-pub(crate) type ScriptCommandContext<'a> = RuntimeContext<'a>;
-#[allow(dead_code)]
-pub(crate) type SystemContext<'a> = RuntimeContext<'a>;
-#[allow(dead_code)]
-pub(crate) type AssetContext<'a> = RuntimeContext<'a>;
 
 impl<'a> RuntimeContext<'a> {
     pub(crate) fn new(runtime: &'a Runtime) -> Self {

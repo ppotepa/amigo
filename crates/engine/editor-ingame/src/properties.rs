@@ -1,7 +1,8 @@
 use amigo_editor_authoring::{
     AuthoringPropertyEditor, AuthoringPropertyPanel, AuthoringPropertyValue,
-    build_property_panel_for_node,
+    build_property_panel_for_node, build_property_panel_for_node_with_registry,
 };
+use amigo_runtime::Runtime;
 
 use crate::state::EditorPropertyValue;
 
@@ -10,6 +11,23 @@ pub fn build_panel_with_overrides(
     override_for: impl Fn(&str) -> Option<EditorPropertyValue>,
 ) -> AuthoringPropertyPanel {
     let mut panel = build_property_panel_for_node(node);
+    for group in &mut panel.groups {
+        for property in &mut group.properties {
+            if let Some(value) = override_for(&property.id) {
+                property.value = display_value_from_override(value);
+            }
+        }
+    }
+    panel
+}
+
+pub fn build_panel_with_overrides_for_runtime(
+    runtime: &Runtime,
+    node: &amigo_editor_authoring::AuthoringNode,
+    override_for: impl Fn(&str) -> Option<EditorPropertyValue>,
+) -> AuthoringPropertyPanel {
+    let registry = crate::component_registry::editor_component_registry(runtime);
+    let mut panel = build_property_panel_for_node_with_registry(node, &registry);
     for group in &mut panel.groups {
         for property in &mut group.properties {
             if let Some(value) = override_for(&property.id) {

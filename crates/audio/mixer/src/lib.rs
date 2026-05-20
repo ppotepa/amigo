@@ -195,6 +195,21 @@ pub struct AudioMixerDomainInfo {
 
 pub struct AudioMixerPlugin;
 
+pub struct AudioMixerSceneResetHandler;
+
+impl amigo_scene::SceneResetHandler for AudioMixerSceneResetHandler {
+    fn name(&self) -> &'static str {
+        "audio_mixer"
+    }
+
+    fn reset_scene(&self, runtime: &amigo_runtime::Runtime) -> amigo_core::AmigoResult<()> {
+        if let Some(service) = runtime.resolve::<AudioMixerService>() {
+            service.clear();
+        }
+        Ok(())
+    }
+}
+
 impl RuntimePlugin for AudioMixerPlugin {
     fn name(&self) -> &'static str {
         "amigo-audio-mixer"
@@ -202,6 +217,7 @@ impl RuntimePlugin for AudioMixerPlugin {
 
     fn register(&self, registry: &mut ServiceRegistry) -> amigo_core::AmigoResult<()> {
         registry.register(AudioMixerService::default())?;
+        amigo_scene::register_scene_reset_handler(registry, AudioMixerSceneResetHandler)?;
         registry.register(AudioMixerDomainInfo {
             crate_name: "amigo-audio-mixer",
             capability: "audio_mix",

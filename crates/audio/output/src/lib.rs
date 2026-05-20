@@ -141,6 +141,7 @@ impl AudioOutputBackendService {
 }
 
 include!("output/worker.rs");
+include!("output/reset.rs");
 include!("output/plugin.rs");
 include!("output/systems.rs");
 

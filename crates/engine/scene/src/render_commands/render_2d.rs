@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use amigo_camera_optics_plugin::scene::CameraOpticalResponse2dSceneCommand;
+use amigo_camera::CameraOpticalResponse2dSceneCommand;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct DepthSpace2dSceneCommand {
@@ -561,7 +561,7 @@ pub struct Text2dSceneCommand {
     pub bounds: Vec2,
     pub style: Text2dStyleSceneCommand,
     pub render_contributions: RenderContributions2dSceneCommand,
-    pub post_fx_host_id: Option<amigo_composite_plugin::PostFxHost2dId>,
+    pub post_fx_host_id: Option<amigo_render_api::PostFxHost2dId>,
     pub z_index: f32,
     pub material: Option<Material2dSceneCommand>,
     pub transform: Transform2,

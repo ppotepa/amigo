@@ -9,11 +9,13 @@ use amigo_math::Transform3;
 use amigo_runtime::{RuntimePlugin, ServiceRegistry};
 use amigo_scene::{SceneEntityId, SceneService, Text3dSceneCommand};
 mod editor_capability;
+mod reset;
 mod render_extraction;
 mod runtime_capabilities;
 mod scene_command;
 mod script_command;
 pub use editor_capability::*;
+pub use reset::*;
 pub use render_extraction::*;
 pub use runtime_capabilities::*;
 pub use scene_command::*;
@@ -87,6 +89,7 @@ impl RuntimePlugin for Text3dPlugin {
 
     fn register(&self, registry: &mut ServiceRegistry) -> amigo_core::AmigoResult<()> {
         registry.register(Text3dSceneService::default())?;
+        amigo_scene::register_scene_reset_handler(registry, Text3dSceneResetHandler)?;
         registry.register(Text3dDomainInfo {
             crate_name: "amigo-3d-text",
             capability: "text_3d",

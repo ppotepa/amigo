@@ -11,6 +11,13 @@ pub trait ScenePluginDescriptorProvider {
     );
 }
 
+pub trait ScenePluginMetadataProvider: Send + Sync {
+    fn register_component_metadata(
+        &self,
+        registry: &mut crate::ComponentRegistry,
+    );
+}
+
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct ScenePluginDescriptorRegistry {
     descriptors:

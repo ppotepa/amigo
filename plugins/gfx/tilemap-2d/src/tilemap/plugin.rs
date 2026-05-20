@@ -18,6 +18,10 @@ impl RuntimePlugin for TileMap2dPlugin {
 
     fn register(&self, registry: &mut ServiceRegistry) -> amigo_core::AmigoResult<()> {
         registry.register(TileMap2dSceneService::default())?;
+        amigo_scene::register_scene_reset_handler(
+            registry,
+            super::reset::TileMap2dSceneResetHandler,
+        )?;
         registry.register(TileMap2dDomainInfo {
             crate_name: "amigo-tilemap-2d-plugin",
             capability: "tilemap_2d",

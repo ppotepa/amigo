@@ -222,15 +222,15 @@ mod camera_debug_view_tests {
     #[test]
     fn camera_after_dof_bypasses_later_camera_effects() {
         assert!(should_bypass_for_camera_debug_view(
-            amigo_render_api::CameraDebugView2d::CameraAfterDof,
+            &amigo_render_api::CameraDebugView2d::parse("camera_after_dof"),
             "film_emulsion"
         ));
         assert!(should_bypass_for_camera_debug_view(
-            amigo_render_api::CameraDebugView2d::CameraAfterDof,
+            &amigo_render_api::CameraDebugView2d::parse("camera_after_dof"),
             "color_ramp"
         ));
         assert!(!should_bypass_for_camera_debug_view(
-            amigo_render_api::CameraDebugView2d::CameraAfterDof,
+            &amigo_render_api::CameraDebugView2d::parse("camera_after_dof"),
             "focus_blur"
         ));
     }
@@ -238,15 +238,15 @@ mod camera_debug_view_tests {
     #[test]
     fn camera_after_optics_bypasses_dof_and_later_effects() {
         assert!(should_bypass_for_camera_debug_view(
-            amigo_render_api::CameraDebugView2d::CameraAfterOptics,
+            &amigo_render_api::CameraDebugView2d::parse("camera_after_optics"),
             "focus_blur"
         ));
         assert!(should_bypass_for_camera_debug_view(
-            amigo_render_api::CameraDebugView2d::CameraAfterOptics,
+            &amigo_render_api::CameraDebugView2d::parse("camera_after_optics"),
             "film_emulsion"
         ));
         assert!(!should_bypass_for_camera_debug_view(
-            amigo_render_api::CameraDebugView2d::CameraAfterOptics,
+            &amigo_render_api::CameraDebugView2d::parse("camera_after_optics"),
             "camera_optics"
         ));
     }

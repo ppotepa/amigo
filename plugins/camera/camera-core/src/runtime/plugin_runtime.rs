@@ -23,6 +23,10 @@ impl RuntimePlugin for CameraPlugin {
         registry.register(CameraFocusTarget2dService::default())?;
         registry.register(CameraFollow2dSceneService::default())?;
         registry.register(Parallax2dSceneService::default())?;
+        amigo_scene::register_scene_reset_handler(
+            registry,
+            crate::runtime::CameraCoreSceneResetHandler,
+        )?;
 
         if let (Some(control), Some(cameras), Some(assets)) = (
             registry.resolve::<RuntimeControlService>(),

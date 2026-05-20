@@ -1,5 +1,5 @@
 use amigo_math::ColorRgba;
-use amigo_render_wgpu::{UiOverlayNode, UiOverlayNodeKind, UiOverlayStyle};
+use amigo_overlay_api::{UiOverlayNode, UiOverlayNodeKind, UiOverlayStyle};
 
 use crate::DebugOverlayFrameSample;
 

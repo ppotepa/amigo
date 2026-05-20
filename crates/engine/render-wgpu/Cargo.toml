@@ -28,6 +28,7 @@ amigo-fx.workspace = true
 amigo-math.workspace = true
 amigo-runtime.workspace = true
 amigo-plugin-api.workspace = true
+amigo-overlay-api.workspace = true
 amigo-render-api.workspace = true
 amigo-camera-optics-plugin.workspace = true
 amigo-focus-depth-plugin.workspace = true

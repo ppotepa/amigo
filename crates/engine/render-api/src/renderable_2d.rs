@@ -77,8 +77,12 @@ mod tests {
 
     #[test]
     fn renderable_kind_has_stable_sort_priority() {
-        assert!(Renderable2dKind::Text.sort_priority() < Renderable2dKind::Particle.sort_priority());
-        assert!(Renderable2dKind::TileMap.sort_priority() < Renderable2dKind::Sprite.sort_priority());
+        assert!(
+            Renderable2dKind::Text.sort_priority() < Renderable2dKind::Particle.sort_priority()
+        );
+        assert!(
+            Renderable2dKind::TileMap.sort_priority() < Renderable2dKind::Sprite.sort_priority()
+        );
     }
 
     #[test]

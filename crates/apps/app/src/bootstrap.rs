@@ -1,4 +1,4 @@
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 use amigo_app_host_winit::WinitAppHost;
 use amigo_core::{AmigoResult, LaunchSelection};
@@ -30,16 +30,6 @@ use crate::{
     LoadedSceneDocument, RuntimeDiagnosticsPlugin, SummaryHostHandler,
 };
 
-// Internal migration seam. New host/session code should use the
-// session-aware bootstrap variants so lifecycle state remains visible through
-// `RuntimeSession`.
-#[allow(dead_code)]
-pub(crate) fn bootstrap_default(
-    mods_root: impl Into<PathBuf>,
-) -> AmigoResult<(Runtime, BootstrapSummary)> {
-    bootstrap_with_options(BootstrapOptions::new(mods_root))
-}
-
 pub fn bootstrap_session_default(
     mods_root: impl Into<PathBuf>,
 ) -> AmigoResult<RuntimeSessionBootstrap<BootstrapSummary>> {
@@ -49,6 +39,13 @@ pub fn bootstrap_session_default(
 pub(crate) fn bootstrap_with_options(
     options: BootstrapOptions,
 ) -> AmigoResult<(Runtime, BootstrapSummary)> {
+    let (session, summary) = bootstrap_runtime_session_with_options(options)?;
+    Ok((session.into_runtime(), summary))
+}
+
+fn bootstrap_runtime_session_with_options(
+    options: BootstrapOptions,
+) -> AmigoResult<(RuntimeSession, BootstrapSummary)> {
     // NOTE:
     // This function still contains the previous app-owned bootstrap implementation.
     // New host/editor-facing code should prefer `bootstrap_session_with_options`.
@@ -99,14 +96,13 @@ pub(crate) fn bootstrap_with_options(
         placeholder_bridge,
         loaded_scene_document,
     )?;
-    Ok((session.into_runtime(), summary))
+    Ok((session, summary))
 }
 
 pub fn bootstrap_session_with_options(
     options: BootstrapOptions,
 ) -> AmigoResult<RuntimeSessionBootstrap<BootstrapSummary>> {
-    let (runtime, summary) = bootstrap_with_options(options)?;
-    let mut session = RuntimeSession::from_runtime(runtime, RuntimeSessionProfile::Game);
+    let (mut session, summary) = bootstrap_runtime_session_with_options(options)?;
 
     amigo_runtime_bundles::register_full_runtime_capabilities(&mut session);
 
@@ -128,29 +124,6 @@ fn preload_runtime_font_assets(runtime: &Runtime) -> AmigoResult<()> {
         "runtime-default",
     );
     Ok(())
-}
-
-// Internal migration seam. New host/session code should use the
-// session-aware bootstrap variants so lifecycle state remains visible through
-// `RuntimeSession`.
-#[allow(dead_code)]
-pub(crate) fn run_default(mods_root: impl AsRef<Path>) -> AmigoResult<BootstrapSummary> {
-    let (_runtime, summary) = bootstrap_default(mods_root.as_ref().to_path_buf())?;
-    Ok(summary)
-}
-
-// Internal migration seam. New host/session code should use the
-// session-aware bootstrap variants so lifecycle state remains visible through
-// `RuntimeSession`.
-#[allow(dead_code)]
-pub(crate) fn run_with_options(options: BootstrapOptions) -> AmigoResult<BootstrapSummary> {
-    let (_runtime, summary) = bootstrap_with_options(options)?;
-    Ok(summary)
-}
-
-#[allow(dead_code)]
-pub(crate) fn run_hosted_once(mods_root: impl AsRef<Path>) -> AmigoResult<()> {
-    run_hosted_with_options(BootstrapOptions::new(mods_root.as_ref().to_path_buf()))
 }
 
 pub fn run_hosted_with_options(options: BootstrapOptions) -> AmigoResult<()> {

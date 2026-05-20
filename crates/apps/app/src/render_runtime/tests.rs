@@ -707,7 +707,7 @@ fn build_frame_graph_from_plan_tracks_composition_nodes() {
     let plan = WgpuFrameCompositionBuilder::build(&packet);
     let graph = build_frame_graph_from_plan(
         &plan,
-        AppFrameGraphBuildInfo {
+        FrameGraphBuildInfo {
             width: 1280,
             height: 720,
         },
@@ -762,7 +762,7 @@ fn composition_default_packet_uses_world_base_before_present() {
 
     let graph = build_frame_graph_from_plan(
         &plan,
-        AppFrameGraphBuildInfo {
+        FrameGraphBuildInfo {
             width: 1280,
             height: 720,
         },
@@ -832,7 +832,7 @@ fn graph_non_present_nodes_do_not_write_surface() {
     let plan = WgpuFrameCompositionBuilder::build(&packet);
     let graph = build_frame_graph_from_plan(
         &plan,
-        AppFrameGraphBuildInfo {
+        FrameGraphBuildInfo {
             width: 1280,
             height: 720,
         },
@@ -868,7 +868,7 @@ fn editor_frame_graph_renders_game_to_logical_target_and_presents_last() {
     );
     let graph = build_frame_graph_from_plan(
         &plan,
-        AppFrameGraphBuildInfo {
+        FrameGraphBuildInfo {
             width: 1280,
             height: 720,
         },

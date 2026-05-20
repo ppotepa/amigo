@@ -7,7 +7,6 @@ use amigo_runtime::Runtime;
 use crate::state::{EditorPropertyValue, IngameEditorState};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-#[allow(dead_code)]
 pub enum ApplyResult {
     Applied,
     MockApplied,

@@ -86,16 +86,19 @@ impl<'a> ScopedPostFxTarget<'a> {
     }
 }
 
-#[allow(clippy::too_many_arguments)]
+pub(super) struct PostFxGraphNodeContext<'a> {
+    pub(super) host_id: &'a amigo_composite_plugin::PostFxHost2dId,
+    pub(super) effect_id: &'a amigo_composite_plugin::PostFx2dId,
+    pub(super) scope: &'a amigo_composite_plugin::PostFxScope2d,
+    pub(super) pipeline: amigo_composite_plugin::PostFxPipelineKind,
+    pub(super) feature_id: amigo_render_api::RenderFeatureId,
+}
+
 pub(super) fn execute_post_fx_graph_node(
     renderer: &mut WgpuSceneRenderer,
     request: &mut WgpuFrameRenderRequest<'_>,
     node: &amigo_render_api::FrameGraphNode,
-    host_id: &amigo_composite_plugin::PostFxHost2dId,
-    effect_id: &amigo_composite_plugin::PostFx2dId,
-    scope: &amigo_composite_plugin::PostFxScope2d,
-    pipeline: amigo_composite_plugin::PostFxPipelineKind,
-    feature_id: amigo_render_api::RenderFeatureId,
+    post_fx: PostFxGraphNodeContext<'_>,
     resources: &mut crate::renderer::graph::WgpuFrameResourceAllocator,
 ) -> AmigoResult<()> {
     let read = graph_nodes::first_read(node, "post-fx")?;
@@ -110,7 +113,7 @@ pub(super) fn execute_post_fx_graph_node(
         amigo_core::AmigoError::Message("post-fx write target unavailable".into())
     })?;
 
-    if request.camera_debug_view == amigo_render_api::CameraDebugView2d::RawSceneColor {
+    if request.camera_debug_view.as_str() == "camera.raw_scene_color" {
         return renderer.copy_offscreen_to_offscreen(target, &source);
     }
 
@@ -118,22 +121,21 @@ pub(super) fn execute_post_fx_graph_node(
         return renderer.copy_offscreen_to_offscreen(target, &source);
     }
 
-    if matches!(pipeline, amigo_composite_plugin::PostFxPipelineKind::Unsupported) {
+    if matches!(
+        post_fx.pipeline,
+        amigo_composite_plugin::PostFxPipelineKind::Unsupported
+    ) {
         return renderer.copy_offscreen_to_offscreen(target, &source);
     }
 
-    if let Some(scoped_target) = ScopedPostFxTarget::from_scope(scope, pipeline) {
+    if let Some(scoped_target) = ScopedPostFxTarget::from_scope(post_fx.scope, post_fx.pipeline) {
         return execute_scoped_post_fx(
             renderer,
             request,
             target,
             &source,
             scoped_target,
-            host_id,
-            effect_id,
-            scope,
-            pipeline,
-            &feature_id,
+            &post_fx,
         );
     }
 
@@ -142,15 +144,14 @@ pub(super) fn execute_post_fx_graph_node(
     });
 
     if matches!(
-        request.camera_debug_view,
-        amigo_render_api::CameraDebugView2d::SceneDepth
-            | amigo_render_api::CameraDebugView2d::ComputedZDepth
+        request.camera_debug_view.as_str(),
+        "camera.scene_depth" | "camera.computed_z_depth"
     ) {
-        if feature_id.as_str() != "focus_blur" {
+        if post_fx.feature_id.as_str() != "focus_blur" {
             return renderer.copy_offscreen_to_offscreen(target, &source);
         }
         if let Some(mut effect) =
-            super::focus_blur_effect_for(request.post_fx_stacks, host_id, effect_id)
+            super::focus_blur_effect_for(request.post_fx_stacks, post_fx.host_id, post_fx.effect_id)
         {
             effect.debug_view = amigo_composite_plugin::FocusBlurDebugView2d::Depth;
             return crate::renderer::service::post_fx::focus_blur::execute_focus_blur(
@@ -160,8 +161,8 @@ pub(super) fn execute_post_fx_graph_node(
     }
 
     if super::visual_debug::should_bypass_for_camera_debug_view(
-        request.camera_debug_view,
-        feature_id.as_str(),
+        &request.camera_debug_view,
+        post_fx.feature_id.as_str(),
     ) {
         return renderer.copy_offscreen_to_offscreen(target, &source);
     }
@@ -172,9 +173,9 @@ pub(super) fn execute_post_fx_graph_node(
         target,
         &source,
         visual_sources.as_ref(),
-        host_id,
-        effect_id,
-        feature_id.as_str(),
+        post_fx.host_id,
+        post_fx.effect_id,
+        post_fx.feature_id.as_str(),
     )? {
         return Ok(());
     }
@@ -182,11 +183,11 @@ pub(super) fn execute_post_fx_graph_node(
     crate::renderer::service::post_fx::execute_screen_space_post_fx(
         renderer,
         request,
-        host_id,
-        effect_id,
-        scope,
-        pipeline,
-        &feature_id,
+        post_fx.host_id,
+        post_fx.effect_id,
+        post_fx.scope,
+        post_fx.pipeline,
+        &post_fx.feature_id,
         &source,
         target,
     )?;
@@ -195,8 +196,8 @@ pub(super) fn execute_post_fx_graph_node(
         request.post_fx_stacks,
         request.world_2d.render_layers,
         request.camera_capture_input_2d,
-        host_id,
-        effect_id,
+        post_fx.host_id,
+        post_fx.effect_id,
     ) else {
         return Ok(());
     };
@@ -231,7 +232,11 @@ pub(super) fn execute_post_fx_graph_node(
             crate::renderer::service::post_fx::focus_blur::execute_focus_blur_with_depth_source(
                 renderer,
                 request,
-                super::focus_blur_effect_for(request.post_fx_stacks, host_id, effect_id)
+                super::focus_blur_effect_for(
+                    request.post_fx_stacks,
+                    post_fx.host_id,
+                    post_fx.effect_id,
+                )
                     .expect("focus blur effect should exist for explicit layer plan"),
                 &z_depth_source.view,
                 highlight_view.as_ref(),
@@ -272,18 +277,13 @@ pub(super) fn execute_post_fx_graph_node(
     world::execute_world_to_offscreen(renderer, target, world_ctx, selection.borrowed(), &[])
 }
 
-#[allow(clippy::too_many_arguments)]
 fn execute_scoped_post_fx(
     renderer: &mut WgpuSceneRenderer,
     request: &mut WgpuFrameRenderRequest<'_>,
     target: &mut WgpuOffscreenTarget,
     source: &wgpu::TextureView,
     scoped_target: ScopedPostFxTarget<'_>,
-    host_id: &amigo_composite_plugin::PostFxHost2dId,
-    effect_id: &amigo_composite_plugin::PostFx2dId,
-    scope: &amigo_composite_plugin::PostFxScope2d,
-    pipeline: amigo_composite_plugin::PostFxPipelineKind,
-    feature_id: &amigo_render_api::RenderFeatureId,
+    post_fx: &PostFxGraphNodeContext<'_>,
 ) -> AmigoResult<()> {
     renderer.copy_offscreen_to_offscreen(target, source)?;
     let (source_label, result_label) = scoped_target.labels();
@@ -304,11 +304,11 @@ fn execute_scoped_post_fx(
     crate::renderer::service::post_fx::execute_screen_space_post_fx(
         renderer,
         request,
-        host_id,
-        effect_id,
-        scope,
-        pipeline,
-        feature_id,
+        post_fx.host_id,
+        post_fx.effect_id,
+        post_fx.scope,
+        post_fx.pipeline,
+        &post_fx.feature_id,
         &scoped_source.view,
         &mut scoped_result,
     )?;

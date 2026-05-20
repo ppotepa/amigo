@@ -1,6 +1,7 @@
 use std::collections::BTreeMap;
 
 use amigo_2d_spatial::{DepthCurve2d, DepthSpace2d, OpticalLayerRole2d};
+use amigo_camera::CameraDebugViewId;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct VisualSourceId(pub String);
@@ -118,211 +119,69 @@ impl VisualSourceRef2d {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum CameraDebugView2d {
-    FinalOutput,
-    RawSceneColor,
-    SceneDepth,
-    ComputedZDepth,
-    LayerOpticalRoles,
-    LayerMask,
-    SceneNormals,
-    SceneWetness,
-    SceneEmissive,
-    SceneHighlights,
-    SceneMotion,
-    CameraAfterExposure,
-    CameraAfterOptics,
-    CameraAfterDof,
-    CameraAfterLensSurface,
-    CameraAfterFilm,
-    CameraAfterLook,
-    PlateRelightAuxDepth,
-    PlateRelightAuxHeight,
-    PlateRelightAuxOccluder,
-    PlateRelightAuxValid,
-    PlateRelightSurfaceReflect,
-    PlateRelightSurfaceRough,
-    PlateRelightSurfaceGlass,
-    PlateRelightSurfaceMask,
-    PlateRelightEffectiveDepth,
-    PlateRelightNormal,
-    PlateRelightOcclusion,
-    PlateRelightContribution,
-    PlateRelightShadow,
-    PlateRelightLightMask,
-    PlateRelightNdl,
-    PlateRelightSpecular,
-    PlateRelightMaterialGate,
-    PlateRelightLitRaw,
-}
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct CameraDebugView2d(pub CameraDebugViewId);
 
 impl CameraDebugView2d {
-    pub fn stop_after_feature(self) -> Option<&'static str> {
-        match self {
-            Self::CameraAfterExposure => Some("camera_exposure"),
-            Self::CameraAfterOptics => Some("camera_optics"),
-            Self::CameraAfterDof => Some("focus_blur"),
-            Self::CameraAfterLensSurface => Some("rain_glass"),
-            Self::CameraAfterFilm => Some("film_emulsion"),
-            Self::CameraAfterLook => Some("color_ramp"),
+    pub fn new(value: impl Into<String>) -> Self {
+        Self(CameraDebugViewId::new(value))
+    }
+
+    pub fn final_output() -> Self {
+        Self(CameraDebugViewId::final_output())
+    }
+
+    pub fn raw_scene_color() -> Self {
+        Self(CameraDebugViewId::raw_scene_color())
+    }
+
+    pub fn scene_depth() -> Self {
+        Self(CameraDebugViewId::scene_depth())
+    }
+
+    pub fn stop_after_feature(&self) -> Option<&'static str> {
+        match self.as_str() {
+            "camera.after_exposure" => Some("camera_exposure"),
+            "camera.after_optics" => Some("camera_optics"),
+            "camera.after_dof" => Some("focus_blur"),
+            "camera.after_lens_surface" => Some("rain_glass"),
+            "camera.after_film" => Some("film_emulsion"),
+            "camera.after_look" => Some("color_ramp"),
             _ => None,
         }
     }
 
-    pub fn wants_visual_source_debug(self) -> bool {
+    pub fn wants_visual_source_debug(&self) -> bool {
         matches!(
-            self,
-            Self::SceneDepth
-                | Self::ComputedZDepth
-                | Self::LayerOpticalRoles
-                | Self::LayerMask
-                | Self::SceneNormals
-                | Self::SceneWetness
-                | Self::SceneEmissive
-                | Self::SceneHighlights
-                | Self::SceneMotion
+            self.as_str(),
+            "camera.scene_depth"
+                | "camera.computed_z_depth"
+                | "camera.layer_optical_roles"
+                | "camera.layer_mask"
+                | "camera.scene_normal"
+                | "camera.scene_wetness"
+                | "camera.scene_emissive"
+                | "camera.scene_highlight"
+                | "camera.scene_motion"
         )
     }
 
-    pub fn wants_plate_relight_debug(self) -> bool {
-        matches!(
-            self,
-            Self::PlateRelightAuxDepth
-                | Self::PlateRelightAuxHeight
-                | Self::PlateRelightAuxOccluder
-                | Self::PlateRelightAuxValid
-                | Self::PlateRelightSurfaceReflect
-                | Self::PlateRelightSurfaceRough
-                | Self::PlateRelightSurfaceGlass
-                | Self::PlateRelightSurfaceMask
-                | Self::PlateRelightEffectiveDepth
-                | Self::PlateRelightNormal
-                | Self::PlateRelightOcclusion
-                | Self::PlateRelightContribution
-                | Self::PlateRelightShadow
-                | Self::PlateRelightLightMask
-                | Self::PlateRelightNdl
-                | Self::PlateRelightSpecular
-                | Self::PlateRelightMaterialGate
-                | Self::PlateRelightLitRaw
-        )
+    pub fn wants_plate_relight_debug(&self) -> bool {
+        self.as_str().starts_with("relight.plate.")
     }
 
     pub fn parse(value: &str) -> Self {
-        match value.trim().to_ascii_lowercase().as_str() {
-            "raw_scene_color" | "raw" | "source" => Self::RawSceneColor,
-            "scene_depth" | "depth" => Self::SceneDepth,
-            "computed_z_depth" | "z_depth" | "computed_depth" => Self::ComputedZDepth,
-            "layer_optical_roles" | "roles" => Self::LayerOpticalRoles,
-            "layer_mask" | "mask" => Self::LayerMask,
-            "scene_normals" | "normals" => Self::SceneNormals,
-            "scene_wetness" | "wetness" => Self::SceneWetness,
-            "scene_emissive" | "emissive" => Self::SceneEmissive,
-            "scene_highlights" | "highlights" => Self::SceneHighlights,
-            "scene_motion" | "motion" => Self::SceneMotion,
-            "camera_after_exposure" | "after_exposure" => Self::CameraAfterExposure,
-            "camera_after_optics" | "after_optics" => Self::CameraAfterOptics,
-            "camera_after_dof" | "after_dof" | "dof" => Self::CameraAfterDof,
-            "camera_after_lens_surface" | "after_lens_surface" => Self::CameraAfterLensSurface,
-            "camera_after_film" | "after_film" => Self::CameraAfterFilm,
-            "camera_after_look" | "after_look" => Self::CameraAfterLook,
-            "plate_relight_aux_depth" | "plate_aux_depth" | "relight_aux_depth" => {
-                Self::PlateRelightAuxDepth
-            }
-            "plate_relight_aux_height" | "plate_aux_height" | "relight_aux_height" => {
-                Self::PlateRelightAuxHeight
-            }
-            "plate_relight_aux_occluder" | "plate_aux_occluder" | "relight_aux_occluder" => {
-                Self::PlateRelightAuxOccluder
-            }
-            "plate_relight_aux_valid" | "plate_aux_valid" | "relight_aux_valid" => {
-                Self::PlateRelightAuxValid
-            }
-            "plate_relight_surface_reflect"
-            | "plate_surface_reflect"
-            | "relight_surface_reflect" => Self::PlateRelightSurfaceReflect,
-            "plate_relight_surface_rough" | "plate_surface_rough" | "relight_surface_rough" => {
-                Self::PlateRelightSurfaceRough
-            }
-            "plate_relight_surface_glass" | "plate_surface_glass" | "relight_surface_glass" => {
-                Self::PlateRelightSurfaceGlass
-            }
-            "plate_relight_surface_mask" | "plate_surface_mask" | "relight_surface_mask" => {
-                Self::PlateRelightSurfaceMask
-            }
-            "plate_relight_effective_depth"
-            | "plate_effective_depth"
-            | "relight_effective_depth" => Self::PlateRelightEffectiveDepth,
-            "plate_relight_normal" | "plate_normal" | "relight_normal" => Self::PlateRelightNormal,
-            "plate_relight_occlusion" | "plate_occlusion" | "relight_occlusion" => {
-                Self::PlateRelightOcclusion
-            }
-            "plate_relight_contribution" | "plate_contribution" | "relight_contribution" => {
-                Self::PlateRelightContribution
-            }
-            "plate_relight_shadow" | "plate_shadow" | "relight_shadow" => Self::PlateRelightShadow,
-            "plate_relight_light_mask" | "plate_light_mask" | "relight_light_mask" => {
-                Self::PlateRelightLightMask
-            }
-            "plate_relight_ndl" | "plate_ndl" | "relight_ndl" => Self::PlateRelightNdl,
-            "plate_relight_specular" | "plate_specular" | "relight_specular" => {
-                Self::PlateRelightSpecular
-            }
-            "plate_relight_material_gate" | "plate_material_gate" | "relight_material_gate" => {
-                Self::PlateRelightMaterialGate
-            }
-            "plate_relight_lit_raw" | "plate_lit_raw" | "relight_lit_raw" => {
-                Self::PlateRelightLitRaw
-            }
-            _ => Self::FinalOutput,
-        }
+        Self(CameraDebugViewId::parse(value))
     }
 
-    pub fn as_str(self) -> &'static str {
-        match self {
-            Self::FinalOutput => "final_output",
-            Self::RawSceneColor => "raw_scene_color",
-            Self::SceneDepth => "scene_depth",
-            Self::ComputedZDepth => "computed_z_depth",
-            Self::LayerOpticalRoles => "layer_optical_roles",
-            Self::LayerMask => "layer_mask",
-            Self::SceneNormals => "scene_normals",
-            Self::SceneWetness => "scene_wetness",
-            Self::SceneEmissive => "scene_emissive",
-            Self::SceneHighlights => "scene_highlights",
-            Self::SceneMotion => "scene_motion",
-            Self::CameraAfterExposure => "camera_after_exposure",
-            Self::CameraAfterOptics => "camera_after_optics",
-            Self::CameraAfterDof => "camera_after_dof",
-            Self::CameraAfterLensSurface => "camera_after_lens_surface",
-            Self::CameraAfterFilm => "camera_after_film",
-            Self::CameraAfterLook => "camera_after_look",
-            Self::PlateRelightAuxDepth => "plate_relight_aux_depth",
-            Self::PlateRelightAuxHeight => "plate_relight_aux_height",
-            Self::PlateRelightAuxOccluder => "plate_relight_aux_occluder",
-            Self::PlateRelightAuxValid => "plate_relight_aux_valid",
-            Self::PlateRelightSurfaceReflect => "plate_relight_surface_reflect",
-            Self::PlateRelightSurfaceRough => "plate_relight_surface_rough",
-            Self::PlateRelightSurfaceGlass => "plate_relight_surface_glass",
-            Self::PlateRelightSurfaceMask => "plate_relight_surface_mask",
-            Self::PlateRelightEffectiveDepth => "plate_relight_effective_depth",
-            Self::PlateRelightNormal => "plate_relight_normal",
-            Self::PlateRelightOcclusion => "plate_relight_occlusion",
-            Self::PlateRelightContribution => "plate_relight_contribution",
-            Self::PlateRelightShadow => "plate_relight_shadow",
-            Self::PlateRelightLightMask => "plate_relight_light_mask",
-            Self::PlateRelightNdl => "plate_relight_ndl",
-            Self::PlateRelightSpecular => "plate_relight_specular",
-            Self::PlateRelightMaterialGate => "plate_relight_material_gate",
-            Self::PlateRelightLitRaw => "plate_relight_lit_raw",
-        }
+    pub fn as_str(&self) -> &str {
+        self.0.as_str()
     }
 }
 
 impl Default for CameraDebugView2d {
     fn default() -> Self {
-        Self::FinalOutput
+        Self::final_output()
     }
 }
 
@@ -862,67 +721,33 @@ mod tests {
     fn camera_debug_view_parses_snake_case_names() {
         assert_eq!(
             CameraDebugView2d::parse("computed_z_depth"),
-            CameraDebugView2d::ComputedZDepth
+            CameraDebugView2d::new("camera.computed_z_depth")
         );
         assert_eq!(
             CameraDebugView2d::parse("mask"),
-            CameraDebugView2d::LayerMask
+            CameraDebugView2d::new("camera.layer_mask")
         );
         assert_eq!(
             CameraDebugView2d::parse("emissive"),
-            CameraDebugView2d::SceneEmissive
+            CameraDebugView2d::new("camera.scene_emissive")
         );
         assert_eq!(
             CameraDebugView2d::parse("camera_after_dof").as_str(),
-            "camera_after_dof"
+            "camera.after_dof"
         );
-        assert_eq!(
-            CameraDebugView2d::parse("plate_relight_normal"),
-            CameraDebugView2d::PlateRelightNormal
-        );
-        assert_eq!(
-            CameraDebugView2d::parse("relight_surface_glass"),
-            CameraDebugView2d::PlateRelightSurfaceGlass
-        );
-        assert_eq!(
-            CameraDebugView2d::PlateRelightContribution.as_str(),
-            "plate_relight_contribution"
-        );
-        assert_eq!(
-            CameraDebugView2d::parse("plate_relight_shadow"),
-            CameraDebugView2d::PlateRelightShadow
-        );
-        assert_eq!(
-            CameraDebugView2d::PlateRelightShadow.as_str(),
-            "plate_relight_shadow"
-        );
-        assert_eq!(
-            CameraDebugView2d::parse("plate_relight_light_mask"),
-            CameraDebugView2d::PlateRelightLightMask
-        );
-        assert_eq!(
-            CameraDebugView2d::parse("relight_specular"),
-            CameraDebugView2d::PlateRelightSpecular
-        );
-        assert_eq!(
-            CameraDebugView2d::PlateRelightLitRaw.as_str(),
-            "plate_relight_lit_raw"
-        );
-        assert!(CameraDebugView2d::PlateRelightNormal.wants_plate_relight_debug());
-        assert!(CameraDebugView2d::PlateRelightShadow.wants_plate_relight_debug());
-        assert!(CameraDebugView2d::PlateRelightLightMask.wants_plate_relight_debug());
-        assert!(!CameraDebugView2d::FinalOutput.wants_plate_relight_debug());
+        assert!(CameraDebugView2d::new("relight.plate.normal").wants_plate_relight_debug());
+        assert!(!CameraDebugView2d::final_output().wants_plate_relight_debug());
     }
 
     #[test]
     fn camera_debug_view_helpers_expose_stop_and_visual_source_intent() {
         assert_eq!(
-            CameraDebugView2d::CameraAfterOptics.stop_after_feature(),
+            CameraDebugView2d::parse("camera_after_optics").stop_after_feature(),
             Some("camera_optics")
         );
-        assert!(CameraDebugView2d::SceneWetness.wants_visual_source_debug());
-        assert!(CameraDebugView2d::LayerMask.wants_visual_source_debug());
-        assert!(!CameraDebugView2d::FinalOutput.wants_visual_source_debug());
+        assert!(CameraDebugView2d::parse("scene_wetness").wants_visual_source_debug());
+        assert!(CameraDebugView2d::parse("layer_mask").wants_visual_source_debug());
+        assert!(!CameraDebugView2d::final_output().wants_visual_source_debug());
     }
 
     #[test]

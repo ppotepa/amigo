@@ -478,7 +478,7 @@ fn hydrate_component_core(
                     aberration_px: (*aberration_px).max(0.0),
                     bloom: (*bloom).max(0.0),
                     camera_response:
-                        amigo_camera_optics_plugin::scene::camera_optical_response_from_document(
+                        amigo_camera::camera_optical_response_from_document(
                             *camera_response,
                         ),
                     depth: depth.as_ref().map(|depth| {
@@ -821,7 +821,7 @@ fn material2d_scene_command(material: Option<Material2dDocument>) -> Option<Mate
             response: material.lighting.response,
         },
         camera_response:
-            amigo_camera_optics_plugin::scene::camera_optical_response_from_document(
+            amigo_camera::camera_optical_response_from_document(
                 material.camera_response,
             ),
     })

@@ -20,6 +20,7 @@ impl RuntimePlugin for AudioApiPlugin {
         registry.register(AudioCommandQueue::default())?;
         registry.register(AudioSceneService::default())?;
         registry.register(AudioStateService::default())?;
+        amigo_scene::register_scene_reset_handler(registry, crate::AudioSceneResetHandler)?;
         registry.register(AudioDomainInfo {
             crate_name: "amigo-audio-api",
             capability: "audio_api",

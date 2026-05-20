@@ -1,5 +1,9 @@
 use amigo_plugin_api::PluginSceneComponentDescriptor;
 
+mod metadata;
+
+pub use metadata::*;
+
 pub fn layered_image_2d_scene_descriptor() -> PluginSceneComponentDescriptor {
     PluginSceneComponentDescriptor::new(
         "amigo.gfx.layered-image-2d.LayeredImage2D",

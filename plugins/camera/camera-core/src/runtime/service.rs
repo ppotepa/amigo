@@ -180,7 +180,7 @@ impl CameraService {
             .lock()
             .expect("camera debug view mutex should not be poisoned")
             .get(camera_id)
-            .copied()
+            .cloned()
             .unwrap_or_default()
     }
 

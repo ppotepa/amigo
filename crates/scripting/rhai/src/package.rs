@@ -10,7 +10,6 @@ use crate::bindings::WorldApi;
 #[derive(Debug, Deserialize)]
 struct ScriptPackageManifest {
     id: String,
-    #[allow(dead_code)]
     version: String,
     #[serde(default)]
     exports: Vec<String>,

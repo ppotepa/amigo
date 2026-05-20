@@ -13,6 +13,7 @@ impl RuntimePlugin for AudioOutputPlugin {
 
     fn register(&self, registry: &mut ServiceRegistry) -> amigo_core::AmigoResult<()> {
         registry.register(AudioOutputBackendService::default())?;
+        amigo_scene::register_scene_reset_handler(registry, AudioOutputSceneResetHandler)?;
         registry
             .required::<amigo_runtime::SystemRegistry>()?
             .register_fn(

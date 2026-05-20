@@ -12,6 +12,10 @@ impl RuntimePlugin for Beacon2dPlugin {
 
     fn register(&self, registry: &mut ServiceRegistry) -> amigo_core::AmigoResult<()> {
         registry.register(crate::BeaconLight2dSceneService::default())?;
+        amigo_scene::register_scene_reset_handler(
+            registry,
+            crate::BeaconLight2dSceneResetHandler,
+        )?;
         if let (Some(control), Some(beacons)) = (
             registry.resolve::<RuntimeControlService>(),
             registry.resolve::<crate::BeaconLight2dSceneService>(),

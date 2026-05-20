@@ -2,14 +2,11 @@ use amigo_assets::AssetKey;
 use amigo_editor_authoring::{AuthoringTreeIcon, AuthoringTreeTag};
 
 #[derive(Debug, Clone, Copy, Default)]
-#[allow(dead_code)]
 pub struct EditorTheme;
 
 pub fn editor_icon_font() -> AssetKey {
     AssetKey::new("core/fonts/fontawesome-free-solid")
 }
-
-#[allow(dead_code)]
 pub fn icon_glyph(icon: AuthoringTreeIcon) -> &'static str {
     match icon {
         AuthoringTreeIcon::Entity | AuthoringTreeIcon::Scene => "\u{f007}",
@@ -31,8 +28,6 @@ pub fn icon_glyph(icon: AuthoringTreeIcon) -> &'static str {
         AuthoringTreeIcon::Mod => "\u{f085}",
     }
 }
-
-#[allow(dead_code)]
 pub fn icon_label(icon: AuthoringTreeIcon) -> &'static str {
     match icon {
         AuthoringTreeIcon::Mod => "Mod",
@@ -82,16 +77,12 @@ pub fn icon_ascii(icon: AuthoringTreeIcon) -> &'static str {
         AuthoringTreeIcon::Scalar => "[VAL]",
     }
 }
-
-#[allow(dead_code)]
 pub fn format_tags(tags: &[AuthoringTreeTag]) -> String {
     tags.iter()
         .map(|tag| format!("[{}]", tag.label))
         .collect::<Vec<_>>()
         .join(" ")
 }
-
-#[allow(dead_code)]
 pub fn format_compact_tags(tags: &[AuthoringTreeTag]) -> String {
     tags.iter()
         .map(|tag| format!("[{}]", tag.label))

@@ -1,7 +1,7 @@
 use amigo_core::AmigoResult;
 use amigo_editor_authoring::AuthoringSceneGraphService;
 use amigo_input_api::{InputEvent, InputModifiers, KeyCode, MouseButton};
-use amigo_render_wgpu::UiViewportSize;
+use amigo_overlay_api::UiViewportSize;
 use amigo_runtime::Runtime;
 use amigo_ui::UiInputViewportState;
 
@@ -128,6 +128,7 @@ pub fn handle_editor_input(
                         if let Some(service) = runtime.resolve::<AuthoringSceneGraphService>() {
                             if let Ok(graph) = service.graph_for_current_scene(runtime) {
                                 select_viewport_target(
+                                    runtime,
                                     state.as_ref(),
                                     &graph,
                                     logical_x,
@@ -202,6 +203,7 @@ fn handle_hit_target(
             if let Some(service) = runtime.resolve::<AuthoringSceneGraphService>() {
                 if let Ok(graph) = service.graph_for_current_scene(runtime) {
                     select_node_by_id(
+                        runtime,
                         state,
                         &graph,
                         node_id,

@@ -11,6 +11,7 @@ amigo-plugin-api = { path = "../../../crates/core/plugin-api" }
 amigo-camera-optics-plugin.workspace = true
 amigo-shutter-motion-plugin.workspace = true
 amigo-core.workspace = true
+amigo-devtools.workspace = true
 amigo-fx.workspace = true
 amigo-light-2d-plugin.workspace = true
 amigo-math.workspace = true

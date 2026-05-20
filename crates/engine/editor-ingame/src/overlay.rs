@@ -8,10 +8,10 @@ use amigo_editor_authoring::{
     scene_objects_projection,
 };
 use amigo_math::ColorRgba;
-use amigo_render_wgpu::{
+use amigo_overlay_api::{
     UiLayoutNode, UiOverlayDocument, UiOverlayLayer, UiOverlayNode, UiOverlayNodeKind,
     UiOverlayStyle, UiOverlayViewport, UiOverlayViewportScaling, UiRect, UiViewportSize,
-    WgpuRenderFramePacket, build_ui_layout_tree,
+    build_ui_layout_tree,
 };
 use amigo_runtime::Runtime;
 use amigo_ui::UiInputViewportState;
@@ -23,8 +23,8 @@ use crate::layout::{
     property_row_rect_for_panel,
 };
 use crate::properties::{
-    as_bool, as_number, build_panel_with_overrides, display_number_with_hints, display_text,
-    is_slider,
+    as_bool, as_number, build_panel_with_overrides_for_runtime, display_number_with_hints,
+    display_text, is_slider,
 };
 use crate::state::{
     EditorHitAction, EditorHitTarget, EditorOpenMode, EditorRect, EditorTreeMode,
@@ -38,7 +38,11 @@ const TREE_TWISTY_LEAF: &str = " ";
 const TREE_TWISTY_COLLAPSED: &str = "+";
 const TREE_TWISTY_EXPANDED: &str = "-";
 
-pub fn append_editor_overlay(runtime: &Runtime, packet: &mut WgpuRenderFramePacket) {
+pub trait EditorOverlayRenderOutput {
+    fn push_editor_overlay_document(&mut self, document: UiOverlayDocument);
+}
+
+pub fn append_editor_overlay(runtime: &Runtime, output: &mut impl EditorOverlayRenderOutput) {
     let Some(state) = runtime.resolve::<IngameEditorState>() else {
         return;
     };
@@ -82,6 +86,7 @@ pub fn append_editor_overlay(runtime: &Runtime, packet: &mut WgpuRenderFramePack
     let mut stats = OverlayStats::default();
     let document = match snapshot.open_mode {
         EditorOpenMode::Full => build_editor_document(
+            runtime,
             viewport,
             &graph,
             selected_node,
@@ -91,6 +96,7 @@ pub fn append_editor_overlay(runtime: &Runtime, packet: &mut WgpuRenderFramePack
             &mut stats,
         ),
         EditorOpenMode::InspectorDock => build_inspector_dock_document(
+            runtime,
             viewport,
             selected_node,
             &snapshot,
@@ -103,7 +109,7 @@ pub fn append_editor_overlay(runtime: &Runtime, packet: &mut WgpuRenderFramePack
 
     state.set_scroll_bounds(stats.tree_scroll_max, stats.properties_scroll_max);
     state.set_hit_targets(hit_targets);
-    packet.push_debug_overlay(document);
+    output.push_editor_overlay_document(document);
 }
 
 pub(crate) fn ensure_editor_icon_font_asset(runtime: &Runtime) {
@@ -127,6 +133,7 @@ pub(crate) fn ensure_editor_icon_font_asset(runtime: &Runtime) {
 }
 
 pub(crate) fn build_editor_document(
+    runtime: &Runtime,
     viewport: UiViewportSize,
     graph: &AuthoringSceneGraph,
     selected: Option<&AuthoringNode>,
@@ -151,6 +158,7 @@ pub(crate) fn build_editor_document(
         ),
         center_viewport_panel(layout, &snapshot),
         right_panel(
+            runtime,
             layout,
             graph,
             selected,
@@ -277,8 +285,6 @@ fn text(id: impl Into<String>, content: impl Into<String>, font_size: f32) -> Ui
         children: Vec::new(),
     }
 }
-
-#[allow(dead_code)]
 fn icon_text_node(id: impl Into<String>, icon: AuthoringTreeIcon, font_size: f32) -> UiOverlayNode {
     UiOverlayNode {
         id: Some(id.into()),
@@ -571,6 +577,7 @@ fn projected_row_matches_filter(row: &AuthoringTreeRow, filter: &str) -> bool {
 }
 
 fn right_panel(
+    runtime: &Runtime,
     layout: EditorLayout,
     _graph: &AuthoringSceneGraph,
     selected: Option<&AuthoringNode>,
@@ -580,6 +587,7 @@ fn right_panel(
     stats: &mut OverlayStats,
 ) -> UiOverlayNode {
     right_properties_panel(
+        runtime,
         layout,
         selected,
         state,
@@ -590,6 +598,7 @@ fn right_panel(
 }
 
 fn right_properties_panel(
+    runtime: &Runtime,
     layout: EditorLayout,
     selected: Option<&AuthoringNode>,
     state: &IngameEditorState,
@@ -598,6 +607,7 @@ fn right_properties_panel(
     stats: &mut OverlayStats,
 ) -> UiOverlayNode {
     right_properties_panel_for_panel(
+        runtime,
         "editor-properties",
         layout.right_panel,
         selected,
@@ -609,6 +619,7 @@ fn right_properties_panel(
 }
 
 fn right_properties_panel_for_panel(
+    runtime: &Runtime,
     id: &str,
     panel_layout: EditorPanelLayout,
     selected: Option<&AuthoringNode>,
@@ -630,7 +641,9 @@ fn right_properties_panel_for_panel(
     };
 
     let panel = filter_property_panel_for_view(
-        build_panel_with_overrides(selected, |property_id| state.override_value(property_id)),
+        build_panel_with_overrides_for_runtime(runtime, selected, |property_id| {
+            state.override_value(property_id)
+        }),
         InspectorViewMode::Primary,
     );
     node.children
@@ -821,6 +834,7 @@ fn push_property_row(
 }
 
 fn build_inspector_dock_document(
+    runtime: &Runtime,
     viewport: UiViewportSize,
     selected: Option<&AuthoringNode>,
     snapshot: &IngameEditorSnapshot,
@@ -846,6 +860,7 @@ fn build_inspector_dock_document(
                 ..UiOverlayStyle::default()
             },
             children: vec![right_properties_panel_for_panel(
+                runtime,
                 "editor-inspector-dock",
                 dock,
                 selected,
@@ -918,8 +933,6 @@ pub(crate) fn collect_render_stack(
 ) -> Vec<amigo_editor_authoring::RenderStackLayerRow> {
     amigo_editor_authoring::render_stack_projection(graph).layers
 }
-
-#[allow(dead_code)]
 fn node_or_descendant_matches_filter(node: &AuthoringNode, filter: &str) -> bool {
     node_matches_filter(node, filter)
         || node
@@ -927,8 +940,6 @@ fn node_or_descendant_matches_filter(node: &AuthoringNode, filter: &str) -> bool
             .iter()
             .any(|child| node_or_descendant_matches_filter(child, filter))
 }
-
-#[allow(dead_code)]
 pub(crate) fn is_tree_node_visible(
     graph: &AuthoringSceneGraph,
     node_id: &str,
@@ -939,8 +950,6 @@ pub(crate) fn is_tree_node_visible(
         is_tree_node_visible_inner(node, node_id, tree_filter.trim(), collapsed_node_ids)
     })
 }
-
-#[allow(dead_code)]
 fn is_tree_node_visible_inner(
     node: &AuthoringNode,
     node_id: &str,
@@ -961,8 +970,6 @@ fn is_tree_node_visible_inner(
         .iter()
         .any(|child| is_tree_node_visible_inner(child, node_id, tree_filter, collapsed_node_ids))
 }
-
-#[allow(dead_code)]
 fn node_matches_filter(node: &AuthoringNode, filter: &str) -> bool {
     let filter = filter.to_ascii_lowercase();
     let kind = format!("{:?}", node.kind).to_ascii_lowercase();

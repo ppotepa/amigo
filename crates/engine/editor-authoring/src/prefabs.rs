@@ -11,8 +11,6 @@ pub fn prefab_id(value: &Value) -> Option<String> {
 
     prefab.as_str().map(str::to_owned)
 }
-
-#[allow(dead_code)]
 pub fn has_prefab_overrides(value: &Value) -> bool {
     mapping_get(value, "prefab_overrides").is_some()
 }

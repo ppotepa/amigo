@@ -12,6 +12,7 @@ impl RuntimePlugin for StatePlugin {
         if !registry.has::<SceneTimerService>() {
             registry.register(SceneTimerService::default())?;
         }
+        amigo_scene::register_scene_reset_handler(registry, StateSceneResetHandler)?;
         if !registry.has::<SessionStateService>() {
             registry.register(SessionStateService::default())?;
         }

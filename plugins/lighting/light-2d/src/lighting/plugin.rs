@@ -18,6 +18,10 @@ impl RuntimePlugin for Lighting2dPlugin {
         registry.register(GlobalLight2dSceneService::default())?;
         registry.register(LightMap2dSceneService::default())?;
         registry.register(LightGroup2dSceneService::default())?;
+        amigo_scene::register_scene_reset_handler(
+            registry,
+            super::reset::Lighting2dSceneResetHandler,
+        )?;
         register_domain_plugin(
             registry,
             LIGHTING_2D_PLUGIN_LABEL,
@@ -36,6 +40,15 @@ impl RuntimePlugin for Lighting2dPlugin {
         amigo_scripting_api::register_runtime_script_command_handler(
             script_handlers.as_ref(),
             super::script_command::Lighting2dScriptCommandHandler,
+        );
+        if !registry.has::<amigo_devtools::RuntimeConsoleCommandRegistry>() {
+            registry.register(amigo_devtools::RuntimeConsoleCommandRegistry::default())?;
+        }
+        amigo_devtools::register_runtime_console_command_handler(
+            registry
+                .required::<amigo_devtools::RuntimeConsoleCommandRegistry>()?
+                .as_ref(),
+            super::dev_console::Lighting2dConsoleCommandHandler,
         );
         Ok(())
     }

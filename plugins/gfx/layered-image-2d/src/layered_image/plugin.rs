@@ -15,6 +15,14 @@ impl RuntimePlugin for LayeredImagePlugin {
 
     fn register(&self, registry: &mut ServiceRegistry) -> AmigoResult<()> {
         registry.register(LayeredImageSceneService::default())?;
+        amigo_scene::register_scene_reset_handler(
+            registry,
+            super::reset::LayeredImage2dSceneResetHandler,
+        )?;
+        if let Some(metadata) = registry.resolve::<amigo_scene::ComponentMetadataProviderRegistry>()
+        {
+            metadata.register(crate::scene::LayeredImage2dComponentMetadataProvider);
+        }
         if let (Some(control), Some(layered), Some(assets)) = (
             registry.resolve::<RuntimeControlService>(),
             registry.resolve::<LayeredImageSceneService>(),
@@ -42,6 +50,15 @@ impl RuntimePlugin for LayeredImagePlugin {
         amigo_scripting_api::register_runtime_script_command_handler(
             script_handlers.as_ref(),
             super::script_command::LayeredImage2dScriptCommandHandler,
+        );
+        if !registry.has::<amigo_devtools::RuntimeConsoleCommandRegistry>() {
+            registry.register(amigo_devtools::RuntimeConsoleCommandRegistry::default())?;
+        }
+        amigo_devtools::register_runtime_console_command_handler(
+            registry
+                .required::<amigo_devtools::RuntimeConsoleCommandRegistry>()?
+                .as_ref(),
+            super::dev_console::LayeredImageConsoleCommandHandler,
         );
         Ok(())
     }

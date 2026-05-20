@@ -122,9 +122,9 @@ fn test_graph(
     }
 }
 
-fn find_overlay_text<'a>(node: &'a amigo_render_wgpu::UiOverlayNode, id: &str) -> Option<&'a str> {
+fn find_overlay_text<'a>(node: &'a amigo_overlay_api::UiOverlayNode, id: &str) -> Option<&'a str> {
     if node.id.as_deref() == Some(id) {
-        if let amigo_render_wgpu::UiOverlayNodeKind::Text { content, .. } = &node.kind {
+        if let amigo_overlay_api::UiOverlayNodeKind::Text { content, .. } = &node.kind {
             return Some(content.as_str());
         }
     }
@@ -134,9 +134,9 @@ fn find_overlay_text<'a>(node: &'a amigo_render_wgpu::UiOverlayNode, id: &str) -
 }
 
 fn find_overlay_node<'a>(
-    node: &'a amigo_render_wgpu::UiOverlayNode,
+    node: &'a amigo_overlay_api::UiOverlayNode,
     id: &str,
-) -> Option<&'a amigo_render_wgpu::UiOverlayNode> {
+) -> Option<&'a amigo_overlay_api::UiOverlayNode> {
     if node.id.as_deref() == Some(id) {
         return Some(node);
     }
@@ -145,7 +145,7 @@ fn find_overlay_node<'a>(
         .find_map(|child| find_overlay_node(child, id))
 }
 
-fn collect_overlay_ids(node: &amigo_render_wgpu::UiOverlayNode, ids: &mut Vec<String>) {
+fn collect_overlay_ids(node: &amigo_overlay_api::UiOverlayNode, ids: &mut Vec<String>) {
     if let Some(id) = &node.id {
         ids.push(id.clone());
     }
@@ -340,7 +340,7 @@ base_opacity: 1.0
 #[test]
 fn editor_layout_places_three_main_panels() {
     let layout =
-        crate::layout::EditorLayout::new(amigo_render_wgpu::UiViewportSize::new(1280.0, 720.0));
+        crate::layout::EditorLayout::new(amigo_overlay_api::UiViewportSize::new(1280.0, 720.0));
     assert!(layout.left_panel.rect.width > 0.0);
     assert!(layout.center_panel.rect.width > 0.0);
     assert!(layout.right_panel.rect.width > 0.0);
@@ -351,7 +351,7 @@ fn editor_layout_places_three_main_panels() {
 #[test]
 fn editor_layout_fits_game_viewport_inside_center_panel() {
     let layout =
-        crate::layout::EditorLayout::new(amigo_render_wgpu::UiViewportSize::new(1920.0, 1080.0));
+        crate::layout::EditorLayout::new(amigo_overlay_api::UiViewportSize::new(1920.0, 1080.0));
     let game = layout.game_viewport_rect();
 
     assert!(game.x >= layout.center_panel.content_rect.x);
@@ -369,7 +369,7 @@ fn editor_layout_fits_game_viewport_inside_center_panel() {
 
 #[test]
 fn editor_layout_maps_screen_points_to_logical_game_viewport() {
-    let layout = layout::EditorLayout::new(amigo_render_wgpu::UiViewportSize::new(1920.0, 1080.0));
+    let layout = layout::EditorLayout::new(amigo_overlay_api::UiViewportSize::new(1920.0, 1080.0));
     let game = layout.game_viewport_layout();
     let center_x = game.rect.x + game.rect.width * 0.5;
     let center_y = game.rect.y + game.rect.height * 0.5;
@@ -419,7 +419,7 @@ fn editor_state_records_viewport_selection() {
 #[test]
 fn editor_layout_detects_tree_and_properties_panels() {
     let layout =
-        crate::layout::EditorLayout::new(amigo_render_wgpu::UiViewportSize::new(1280.0, 720.0));
+        crate::layout::EditorLayout::new(amigo_overlay_api::UiViewportSize::new(1280.0, 720.0));
     assert_eq!(
         layout.panel_for_point(
             layout.left_panel.rect.x + 4.0,
@@ -439,7 +439,7 @@ fn editor_layout_detects_tree_and_properties_panels() {
 #[test]
 fn editor_layout_row_rects_stay_inside_panel_content() {
     let layout =
-        crate::layout::EditorLayout::new(amigo_render_wgpu::UiViewportSize::new(1280.0, 720.0));
+        crate::layout::EditorLayout::new(amigo_overlay_api::UiViewportSize::new(1280.0, 720.0));
     let tree_row = layout.tree_row_rect(1, layout.left_panel.content_rect.y + 44.0);
     assert!(tree_row.x >= layout.left_panel.content_rect.x);
     assert!(tree_row.width <= layout.left_panel.content_rect.width);
@@ -680,7 +680,7 @@ fn editor_overlay_clean_mode_shows_scene_objects_title() {
     let mut hit_targets = Vec::new();
     let mut stats = crate::overlay::OverlayStats::default();
     let document = crate::overlay::build_editor_document(
-        amigo_render_wgpu::UiViewportSize::new(1280.0, 720.0),
+        amigo_overlay_api::UiViewportSize::new(1280.0, 720.0),
         &graph,
         None,
         "ok",
@@ -709,7 +709,7 @@ fn editor_overlay_tree_rows_use_ascii_icon_labels() {
     let mut hit_targets = Vec::new();
     let mut stats = crate::overlay::OverlayStats::default();
     let document = crate::overlay::build_editor_document(
-        amigo_render_wgpu::UiViewportSize::new(1280.0, 720.0),
+        amigo_overlay_api::UiViewportSize::new(1280.0, 720.0),
         &graph,
         None,
         "ok",
@@ -730,7 +730,7 @@ fn editor_overlay_render_stack_tab_shows_expected_titles() {
     let mut hit_targets = Vec::new();
     let mut stats = crate::overlay::OverlayStats::default();
     let document = crate::overlay::build_editor_document(
-        amigo_render_wgpu::UiViewportSize::new(1280.0, 720.0),
+        amigo_overlay_api::UiViewportSize::new(1280.0, 720.0),
         &graph,
         None,
         "ok",
@@ -759,7 +759,7 @@ fn editor_overlay_scalar_selection_explains_raw_debug_only() {
     let mut hit_targets = Vec::new();
     let mut stats = crate::overlay::OverlayStats::default();
     let document = crate::overlay::build_editor_document(
-        amigo_render_wgpu::UiViewportSize::new(1280.0, 720.0),
+        amigo_overlay_api::UiViewportSize::new(1280.0, 720.0),
         &graph,
         Some(&scalar),
         "ok",
@@ -827,35 +827,35 @@ fn tree_visibility_respects_collapse_but_filter_forces_matching_descendants_visi
 
 #[test]
 fn editor_hit_target_sync_drops_missing_overlay_nodes() {
-    let viewport = amigo_render_wgpu::UiViewportSize::new(320.0, 200.0);
-    let document = amigo_render_wgpu::UiOverlayDocument {
+    let viewport = amigo_overlay_api::UiViewportSize::new(320.0, 200.0);
+    let document = amigo_overlay_api::UiOverlayDocument {
         entity_name: "test-editor".to_owned(),
-        layer: amigo_render_wgpu::UiOverlayLayer::Debug,
-        viewport: Some(amigo_render_wgpu::UiOverlayViewport {
+        layer: amigo_overlay_api::UiOverlayLayer::Debug,
+        viewport: Some(amigo_overlay_api::UiOverlayViewport {
             width: viewport.width,
             height: viewport.height,
-            scaling: amigo_render_wgpu::UiOverlayViewportScaling::Expand,
+            scaling: amigo_overlay_api::UiOverlayViewportScaling::Expand,
         }),
-        root: amigo_render_wgpu::UiOverlayNode {
+        root: amigo_overlay_api::UiOverlayNode {
             id: Some("root".to_owned()),
-            kind: amigo_render_wgpu::UiOverlayNodeKind::Stack,
-            style: amigo_render_wgpu::UiOverlayStyle {
+            kind: amigo_overlay_api::UiOverlayNodeKind::Stack,
+            style: amigo_overlay_api::UiOverlayStyle {
                 width: Some(viewport.width),
                 height: Some(viewport.height),
-                ..amigo_render_wgpu::UiOverlayStyle::default()
+                ..amigo_overlay_api::UiOverlayStyle::default()
             },
-            children: vec![amigo_render_wgpu::UiOverlayNode {
+            children: vec![amigo_overlay_api::UiOverlayNode {
                 id: Some("existing-control".to_owned()),
-                kind: amigo_render_wgpu::UiOverlayNodeKind::Button {
+                kind: amigo_overlay_api::UiOverlayNodeKind::Button {
                     text: "ok".to_owned(),
                     font: None,
                 },
-                style: amigo_render_wgpu::UiOverlayStyle {
+                style: amigo_overlay_api::UiOverlayStyle {
                     left: Some(10.0),
                     top: Some(20.0),
                     width: Some(100.0),
                     height: Some(24.0),
-                    ..amigo_render_wgpu::UiOverlayStyle::default()
+                    ..amigo_overlay_api::UiOverlayStyle::default()
                 },
                 children: Vec::new(),
             }],

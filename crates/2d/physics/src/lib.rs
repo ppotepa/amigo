@@ -9,6 +9,7 @@ mod model;
 mod plugin;
 /// Registries that index active colliders, bodies, and triggers.
 mod registry;
+mod reset;
 mod runtime_capabilities;
 mod scene_command;
 /// Scene command adapters for registering physics content from scenes.
@@ -24,6 +25,7 @@ mod systems;
 pub use events::*;
 pub use model::*;
 pub use plugin::*;
+pub use reset::*;
 pub use runtime_capabilities::*;
 pub use scene_command::*;
 pub use scene_commands::*;

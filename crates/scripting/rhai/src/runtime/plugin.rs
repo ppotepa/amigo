@@ -56,6 +56,7 @@ impl RuntimePlugin for RhaiScriptingPlugin {
         if !registry.has::<ScriptTraceService>() {
             registry.register(ScriptTraceService::default())?;
         }
+        amigo_scene::register_scene_reset_handler(registry, RhaiScriptingSceneResetHandler)?;
 
         if !registry.has::<InspectRequestService>() {
             registry.register(InspectRequestService::default())?;

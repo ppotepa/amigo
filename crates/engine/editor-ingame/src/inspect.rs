@@ -1,7 +1,7 @@
 use amigo_editor_api::{InspectRequest, InspectRequestService, InspectSubject};
 use amigo_editor_authoring::{
     AuthoringNode, AuthoringNodeKind, AuthoringSceneGraph, AuthoringSceneGraphService,
-    build_property_panel_for_node,
+    build_property_panel_for_node_with_registry,
 };
 use amigo_runtime::Runtime;
 
@@ -56,22 +56,24 @@ pub(crate) fn resolve_inspect_request(
     let Ok(graph) = graph_service.graph_for_current_scene(runtime) else {
         return Err(InspectResolveError::NoGraph);
     };
-    resolve_subject(&graph, state, &request.subject, request.expression.clone())
+    resolve_subject(runtime, &graph, state, &request.subject, request.expression.clone())
 }
 
 pub(crate) fn resolve_subject(
+    runtime: &Runtime,
     graph: &AuthoringSceneGraph,
     state: &IngameEditorState,
     subject: &InspectSubject,
     expression: Option<String>,
 ) -> Result<ResolvedInspectTarget, InspectResolveError> {
     match subject {
-        InspectSubject::Selected => resolve_selected(graph, state, expression),
+        InspectSubject::Selected => resolve_selected(runtime, graph, state, expression),
         InspectSubject::AuthoringNode { node_id } => {
             let Some(node) = graph.find_node(node_id) else {
                 return Err(InspectResolveError::UnknownTarget(node_id.clone()));
             };
             resolved_from_node(
+                runtime,
                 node,
                 InspectTargetKind::AuthoringNode,
                 node.label.clone(),
@@ -79,11 +81,11 @@ pub(crate) fn resolve_subject(
                 expression,
             )
         }
-        InspectSubject::Entity { name } => resolve_entity(graph, name, expression),
+        InspectSubject::Entity { name } => resolve_entity(runtime, graph, name, expression),
         InspectSubject::PostFxFrameItem { index, label } => {
-            resolve_postfx_frame_item(graph, *index, label.clone(), expression)
+            resolve_postfx_frame_item(runtime, graph, *index, label.clone(), expression)
         }
-        InspectSubject::RenderLayer { id } => resolve_render_layer(graph, id, expression),
+        InspectSubject::RenderLayer { id } => resolve_render_layer(runtime, graph, id, expression),
     }
 }
 
@@ -101,8 +103,9 @@ fn all_nodes(graph: &AuthoringSceneGraph) -> Vec<&AuthoringNode> {
     out
 }
 
-fn node_has_editable_properties(node: &AuthoringNode) -> bool {
-    let panel = build_property_panel_for_node(node);
+fn node_has_editable_properties(runtime: &Runtime, node: &AuthoringNode) -> bool {
+    let registry = crate::component_registry::editor_component_registry(runtime);
+    let panel = build_property_panel_for_node_with_registry(node, &registry);
     panel.groups.iter().any(|group| {
         group.properties.iter().any(|property| {
             property.binding.is_some()
@@ -115,12 +118,15 @@ fn node_has_editable_properties(node: &AuthoringNode) -> bool {
     })
 }
 
-fn first_inspectable_descendant(node: &AuthoringNode) -> Option<&AuthoringNode> {
-    if node_has_editable_properties(node) {
+fn first_inspectable_descendant<'a>(
+    runtime: &Runtime,
+    node: &'a AuthoringNode,
+) -> Option<&'a AuthoringNode> {
+    if node_has_editable_properties(runtime, node) {
         return Some(node);
     }
     for child in &node.children {
-        if let Some(found) = first_inspectable_descendant(child) {
+        if let Some(found) = first_inspectable_descendant(runtime, child) {
             return Some(found);
         }
     }
@@ -128,6 +134,7 @@ fn first_inspectable_descendant(node: &AuthoringNode) -> Option<&AuthoringNode> 
 }
 
 fn resolve_selected(
+    runtime: &Runtime,
     graph: &AuthoringSceneGraph,
     state: &IngameEditorState,
     expression: Option<String>,
@@ -141,7 +148,7 @@ fn resolve_selected(
             selection.node_id.clone(),
         ));
     };
-    if !node_has_editable_properties(node) {
+    if !node_has_editable_properties(runtime, node) {
         return Err(InspectResolveError::NotInspectable {
             label: selection
                 .label
@@ -166,6 +173,7 @@ fn resolve_selected(
 }
 
 fn resolve_entity(
+    runtime: &Runtime,
     graph: &AuthoringSceneGraph,
     name: &str,
     expression: Option<String>,
@@ -198,13 +206,14 @@ fn resolve_entity(
             "entity({name})"
         )));
     };
-    let Some(inspect_node) = first_inspectable_descendant(entity_node) else {
+    let Some(inspect_node) = first_inspectable_descendant(runtime, entity_node) else {
         return Err(InspectResolveError::NotInspectable {
             label: entity_node.label.clone(),
             reason: "entity has no editable inspector properties".to_owned(),
         });
     };
     resolved_from_node(
+        runtime,
         inspect_node,
         InspectTargetKind::Entity,
         format!("Entity: {name}"),
@@ -214,6 +223,7 @@ fn resolve_entity(
 }
 
 fn resolve_postfx_frame_item(
+    runtime: &Runtime,
     graph: &AuthoringSceneGraph,
     index: usize,
     label: Option<String>,
@@ -228,13 +238,14 @@ fn resolve_postfx_frame_item(
             "postfx.item({index})"
         )));
     };
-    if !node_has_editable_properties(node) {
+    if !node_has_editable_properties(runtime, node) {
         return Err(InspectResolveError::NotInspectable {
             label: node.label.clone(),
             reason: "post-fx item has no editable live bindings".to_owned(),
         });
     }
     resolved_from_node(
+        runtime,
         node,
         InspectTargetKind::PostFxFrameItem,
         label.unwrap_or_else(|| node.label.clone()),
@@ -244,6 +255,7 @@ fn resolve_postfx_frame_item(
 }
 
 fn resolve_render_layer(
+    runtime: &Runtime,
     graph: &AuthoringSceneGraph,
     id: &str,
     expression: Option<String>,
@@ -268,13 +280,14 @@ fn resolve_render_layer(
             "render.layer({id})"
         )));
     };
-    if !node_has_editable_properties(node) {
+    if !node_has_editable_properties(runtime, node) {
         return Err(InspectResolveError::NotInspectable {
             label: node.label.clone(),
             reason: "render layer has no editable properties".to_owned(),
         });
     }
     resolved_from_node(
+        runtime,
         node,
         InspectTargetKind::RenderLayer,
         format!("Render Layer: {id}"),
@@ -284,13 +297,14 @@ fn resolve_render_layer(
 }
 
 fn resolved_from_node(
+    runtime: &Runtime,
     node: &AuthoringNode,
     kind: InspectTargetKind,
     label: String,
     subject: String,
     expression: Option<String>,
 ) -> Result<ResolvedInspectTarget, InspectResolveError> {
-    if !node_has_editable_properties(node) {
+    if !node_has_editable_properties(runtime, node) {
         return Err(InspectResolveError::NotInspectable {
             label: node.label.clone(),
             reason: "node has no editable inspector properties".to_owned(),
@@ -332,6 +346,7 @@ pub(crate) fn resolve_text_inspect_selector(
 
     if selector == "selected" {
         return resolve_subject(
+            runtime,
             &graph,
             state,
             &InspectSubject::Selected,
@@ -340,6 +355,7 @@ pub(crate) fn resolve_text_inspect_selector(
     }
     if let Some(name) = selector.strip_prefix("entity:") {
         return resolve_subject(
+            runtime,
             &graph,
             state,
             &InspectSubject::Entity {
@@ -353,6 +369,7 @@ pub(crate) fn resolve_text_inspect_selector(
         .or_else(|| selector.strip_prefix("render-layer:"))
     {
         return resolve_subject(
+            runtime,
             &graph,
             state,
             &InspectSubject::RenderLayer { id: id.to_owned() },
@@ -361,6 +378,7 @@ pub(crate) fn resolve_text_inspect_selector(
     }
     if let Some(node_id) = selector.strip_prefix("node:") {
         return resolve_subject(
+            runtime,
             &graph,
             state,
             &InspectSubject::AuthoringNode {
@@ -372,6 +390,7 @@ pub(crate) fn resolve_text_inspect_selector(
     if let Some(raw) = selector.strip_prefix("postfx:") {
         if let Ok(index) = raw.parse::<usize>() {
             return resolve_subject(
+                runtime,
                 &graph,
                 state,
                 &InspectSubject::PostFxFrameItem { index, label: None },

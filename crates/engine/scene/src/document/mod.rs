@@ -38,7 +38,7 @@ pub use compiler::*;
 pub use components::*;
 pub use core::*;
 pub use loader::*;
-pub use amigo_material_2d_plugin::scene::{
+pub use amigo_material_api::{
     Material2dDocument, Material2dLightingDocument, Material2dOpticalDocument,
     Material2dOpticalModeDocument,
 };

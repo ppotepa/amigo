@@ -15,8 +15,8 @@ use super::text2d::*;
 use super::ui::*;
 use super::visual2d::PostFx2dDocument;
 use super::visual2d::RenderDepth2dDocument;
-use amigo_camera_optics_plugin::scene::CameraOpticalResponse2dDocument;
-use amigo_material_2d_plugin::scene::Material2dDocument;
+use amigo_camera::CameraOpticalResponse2dDocument;
+use amigo_material_api::Material2dDocument;
 
 impl SceneEntityDocument {
     pub fn display_name(&self) -> String {

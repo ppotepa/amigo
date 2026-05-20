@@ -30,19 +30,17 @@ relevant engine/domain crate, not in `amigo-app`.
 - Render lifecycle goes through `build_render_frame_for_session` and updates `RenderSessionService` through `RuntimeSession`.
 - System phases go through `run_app_system_phase_for_session` and update `SchedulerSessionService`.
 - Script dispatch goes through `dispatch_script_command_for_session` and updates `ScriptSessionService`.
-- Remaining app-owned scene/script/systems/render helpers are explicit temporary migration seams (old adapters) until domain providers replace them.
+- Remaining app-owned scene/script/system helpers are explicit temporary migration seams until domain providers replace them.
 
 ## Migration seams still in app
 - `register_app_dev_console_command_provider`
 - `register_app_script_command_provider`
 - `register_app_scene_command_provider`
 - `register_app_system_provider`
-- `register_app_render_extractor_provider`
 - `register_app_diagnostics_provider` / `register_app_metadata_provider`
 - `scene_runtime::handlers::*` (wrapped through `App*` providers)
 - `script_runtime::handlers::*` (wrapped through `App*` providers)
 - `systems::*` (wrapped through `AppSystemsProvider`)
-- `render_runtime::*` (wrapped through `AppRenderExtractorProvider`)
 
 ## Dev console / debug boundary
 - `amigo-app` owns the console shell, overlay presentation, and host-facing controls.

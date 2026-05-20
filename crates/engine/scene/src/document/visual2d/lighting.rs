@@ -1,5 +1,5 @@
 use super::{default_one, default_white_color};
-use amigo_camera_optics_plugin::scene::CameraOpticalResponse2dDocument;
+use amigo_camera::CameraOpticalResponse2dDocument;
 use crate::RenderContributionsDocument;
 use serde::{Deserialize, Serialize};
 

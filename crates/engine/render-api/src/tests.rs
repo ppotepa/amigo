@@ -1,11 +1,11 @@
 mod tests {
 use super::{
     FrameCompositionPlan, FrameGraph, FrameGraphNodeKind, FrameResourceKind,
-    RenderCompositionDiagnostics, RenderFeatureId, PostFxPassPlan, RenderExtractor,
-    RenderExtractorRegistry, RenderFrameExtractor, RenderFrameExtractorRegistry, RenderFramePacket,
-    RenderPassInput, RenderPassOutput, RenderPassPlan, WorldPassPlan,
+    PostFx2dId, PostFxHost2dId, PostFxPassPlan, PostFxPipelineKind, PostFxScope2d,
+    RenderCompositionDiagnostics, RenderFeatureId, RenderExtractor, RenderExtractorRegistry,
+    RenderFrameExtractor, RenderFrameExtractorRegistry, RenderFramePacket, RenderPassInput,
+    RenderPassOutput, RenderPassPlan, WorldPassPlan,
 };
-use amigo_composite_plugin::{PostFx2dId, PostFxHost2dId, PostFxPipelineKind, PostFxScope2d};
 
 fn sample_post_fx_node() -> FrameGraphNodeKind {
     FrameGraphNodeKind::PostFx {

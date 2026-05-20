@@ -147,9 +147,7 @@ pub fn collect_render_contribution_decisions_2d(
     decisions
 }
 
-pub fn format_render_contribution_decisions(
-    decisions: &[RenderContributionDecision],
-) -> String {
+pub fn format_render_contribution_decisions(decisions: &[RenderContributionDecision]) -> String {
     let mut lines = Vec::new();
     lines.push("render.contributions:".to_owned());
 
@@ -205,19 +203,9 @@ fn push_renderable_role(
     };
 
     let decision = if active {
-        RenderContributionDecision::active(
-            owner,
-            component,
-            role,
-            reason,
-        )
+        RenderContributionDecision::active(owner, component, role, reason)
     } else {
-        RenderContributionDecision::skipped(
-            owner,
-            component,
-            role,
-            reason,
-        )
+        RenderContributionDecision::skipped(owner, component, role, reason)
     };
 
     decisions.push(decision);
@@ -282,31 +270,32 @@ mod tests {
                 },
                 z_index: 0.0,
                 material: None,
-                render_contributions: RenderContributionSet::from_pairs([
-                    (amigo_render_api::render_contribution_roles::MATERIAL_MASK, true),
-                ]),
+                render_contributions: RenderContributionSet::from_pairs([(
+                    amigo_render_api::render_contribution_roles::MATERIAL_MASK,
+                    true,
+                )]),
             }),
         };
-        let light_source = LightSource2dCommon::active(
-            "neon.mid",
-            "LightGroup2D",
-            LightEmitterKind2d::LightGroup,
-            Some("neon.mid:lightmap:neon-alley-lightmap:mid_neon".to_owned()),
-            None,
-            None,
-            Some(1.0),
-            Some(1.0),
-            Some(1.0),
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            vec![LightContributionKind2d::LightingEmit],
-            "light_group_lightmap_channel",
-            None,
-        );
+        let light_source = LightSource2dCommon::active(amigo_render_api::LightSource2dCommonParams {
+            owner: "neon.mid".to_owned(),
+            component_kind: "LightGroup2D".to_owned(),
+            emitter_kind: LightEmitterKind2d::LightGroup,
+            emitter_id: Some("neon.mid:lightmap:neon-alley-lightmap:mid_neon".to_owned()),
+            render_layer: None,
+            color_rgba: None,
+            intensity: Some(1.0),
+            effective_intensity: Some(1.0),
+            response: Some(1.0),
+            camera_response: None,
+            bloom: None,
+            radius_px: None,
+            falloff: None,
+            distance_m: None,
+            z_depth: None,
+            contributions: vec![LightContributionKind2d::LightingEmit],
+            reason: "light_group_lightmap_channel".to_owned(),
+            position_px: None,
+        });
 
         let summary = super::render_contribution_decisions_summary(&[renderable], &[light_source])
             .expect("summary should include renderable and light source decisions");

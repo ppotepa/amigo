@@ -83,21 +83,14 @@ pub(super) fn execute_world_graph_node(
     Ok(())
 }
 
-#[allow(clippy::too_many_arguments)]
 pub(super) fn execute_post_fx_graph_node(
     renderer: &mut WgpuSceneRenderer,
     request: &mut WgpuFrameRenderRequest<'_>,
     node: &amigo_render_api::FrameGraphNode,
-    host_id: &amigo_composite_plugin::PostFxHost2dId,
-    effect_id: &amigo_composite_plugin::PostFx2dId,
-    scope: &amigo_composite_plugin::PostFxScope2d,
-    pipeline: amigo_composite_plugin::PostFxPipelineKind,
-    feature_id: amigo_render_api::RenderFeatureId,
+    post_fx: scoped_post_fx::PostFxGraphNodeContext<'_>,
     resources: &mut crate::renderer::graph::WgpuFrameResourceAllocator,
 ) -> AmigoResult<()> {
-    scoped_post_fx::execute_post_fx_graph_node(
-        renderer, request, node, host_id, effect_id, scope, pipeline, feature_id, resources,
-    )
+    scoped_post_fx::execute_post_fx_graph_node(renderer, request, node, post_fx, resources)
 }
 
 pub(super) fn execute_game_ui_graph_node(

@@ -22,6 +22,7 @@ use amigo_scene::{
 };
 mod editor_capability;
 mod render_extraction;
+mod reset;
 mod runtime_capabilities;
 mod scene_command;
 mod script_command;
@@ -29,6 +30,7 @@ mod script_command;
 mod tests;
 pub use editor_capability::*;
 pub use render_extraction::*;
+pub use reset::*;
 pub use runtime_capabilities::*;
 pub use scene_command::*;
 pub use script_command::*;
@@ -169,6 +171,11 @@ impl RuntimePlugin for Text2dPlugin {
 
     fn register(&self, registry: &mut ServiceRegistry) -> amigo_core::AmigoResult<()> {
         registry.register(Text2dSceneService::default())?;
+        amigo_scene::register_scene_reset_handler(registry, Text2dSceneResetHandler)?;
+        if let Some(metadata) = registry.resolve::<amigo_scene::ComponentMetadataProviderRegistry>()
+        {
+            metadata.register(crate::scene::Text2dComponentMetadataProvider);
+        }
         registry.register(Text2dDomainInfo {
             crate_name: "amigo-text-2d-plugin",
             capability: "text_2d",

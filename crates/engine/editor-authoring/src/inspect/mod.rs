@@ -5,7 +5,7 @@ use amigo_editor_api::{
     AuthoringPropertyVisibility, AuthoringRuntimeBinding,
 };
 use amigo_scene::{
-    ComponentTypeDescriptor, EditorPropertyAccess, EditorPropertyDescriptor,
+    ComponentRegistry, ComponentTypeDescriptor, EditorPropertyAccess, EditorPropertyDescriptor,
     EditorPropertyEditorKind, EditorPropertyValueKind,
     EditorPropertyVisibility as ScenePropertyVisibility, default_component_registry,
 };
@@ -18,9 +18,17 @@ use crate::node_descriptors::{RENDER_LAYER_PROPERTIES, property_from_node_descri
 use crate::{AuthoringNode, AuthoringNodeKind};
 
 pub fn build_property_panel_for_node(node: &AuthoringNode) -> AuthoringPropertyPanel {
+    let registry = default_component_registry();
+    build_property_panel_for_node_with_registry(node, &registry)
+}
+
+pub fn build_property_panel_for_node_with_registry(
+    node: &AuthoringNode,
+    registry: &ComponentRegistry,
+) -> AuthoringPropertyPanel {
     match node.kind {
         AuthoringNodeKind::RenderLayer => render_layer_panel(node),
-        AuthoringNodeKind::Component => component_panel(node),
+        AuthoringNodeKind::Component => component_panel(node, registry),
         AuthoringNodeKind::PostFxItem => postfx_panel(node),
         AuthoringNodeKind::Entity => entity_panel(node),
         AuthoringNodeKind::PrefabRef => prefab_ref_panel(node),

@@ -13,7 +13,7 @@ use crate::selection::{select_node_by_id, select_viewport_target};
 use crate::state::{EditorPropertyValue, IngameEditorState, SelectionSource};
 use amigo_editor_authoring::{
     AuthoringNode, AuthoringPropertyEditor, AuthoringPropertyValue, AuthoringRuntimeBinding,
-    AuthoringSceneGraph, AuthoringSceneGraphService, build_property_panel_for_node,
+    AuthoringSceneGraph, AuthoringSceneGraphService, build_property_panel_for_node_with_registry,
 };
 
 pub struct IngameEditorConsoleCommandHandler;
@@ -299,6 +299,7 @@ impl RuntimeConsoleCommandHandler for IngameEditorConsoleCommandHandler {
                 match current_graph(ctx) {
                     Ok(graph) => {
                         if select_node_by_id(
+                            ctx.runtime,
                             state.as_ref(),
                             &graph,
                             node_id.clone(),
@@ -403,7 +404,7 @@ impl RuntimeConsoleCommandHandler for IngameEditorConsoleCommandHandler {
                     Err(error) => return ConsoleCommandResult::error(error),
                 };
                 match graph.find_node(&node_id) {
-                    Some(node) => ConsoleCommandResult::ok(format_inspection(node)),
+                    Some(node) => ConsoleCommandResult::ok(format_inspection(ctx.runtime, node)),
                     None => ConsoleCommandResult::error(format!("unknown node `{node_id}`")),
                 }
             }
@@ -417,7 +418,7 @@ impl RuntimeConsoleCommandHandler for IngameEditorConsoleCommandHandler {
                     Err(error) => return ConsoleCommandResult::error(error),
                 };
                 match graph.find_node(&node_id) {
-                    Some(node) => ConsoleCommandResult::ok(format_properties(node)),
+                    Some(node) => ConsoleCommandResult::ok(format_properties(ctx.runtime, node)),
                     None => ConsoleCommandResult::error(format!("unknown node `{node_id}`")),
                 }
             }
@@ -474,7 +475,7 @@ impl RuntimeConsoleCommandHandler for IngameEditorConsoleCommandHandler {
                     Ok(graph) => graph,
                     Err(error) => return ConsoleCommandResult::error(error),
                 };
-                if select_viewport_target(state.as_ref(), &graph, x, y) {
+                if select_viewport_target(ctx.runtime, state.as_ref(), &graph, x, y) {
                     ConsoleCommandResult::ok(format!("viewport hit selected at {x:.1},{y:.1}"))
                 } else {
                     ConsoleCommandResult::error("no viewport target found")
@@ -651,8 +652,9 @@ fn format_node_details(node: &AuthoringNode) -> String {
     node.summary().to_lines().join("\n")
 }
 
-fn format_inspection(node: &AuthoringNode) -> String {
-    let panel = build_property_panel_for_node(node);
+fn format_inspection(runtime: &amigo_runtime::Runtime, node: &AuthoringNode) -> String {
+    let registry = crate::component_registry::editor_component_registry(runtime);
+    let panel = build_property_panel_for_node_with_registry(node, &registry);
     let property_count: usize = panel
         .groups
         .iter()
@@ -681,8 +683,9 @@ fn format_inspection(node: &AuthoringNode) -> String {
     lines.join("\n")
 }
 
-fn format_properties(node: &AuthoringNode) -> String {
-    let panel = build_property_panel_for_node(node);
+fn format_properties(runtime: &amigo_runtime::Runtime, node: &AuthoringNode) -> String {
+    let registry = crate::component_registry::editor_component_registry(runtime);
+    let panel = build_property_panel_for_node_with_registry(node, &registry);
     let mut lines = vec![format!("properties for {}", node.id)];
     for group in panel.groups {
         lines.push(format!("[{}] {}", group.id, group.title));

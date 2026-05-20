@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use amigo_render_api::RenderFrameExtractor;
 use amigo_render_wgpu::WgpuRenderFramePacket;
 use amigo_runtime::Runtime;
@@ -19,10 +17,35 @@ pub fn register_host_overlay_render_extractors(registry: &mut WgpuRenderExtracto
     registry.register(WgpuDebugOverlayRenderExtractorBridge);
 }
 
-fn required<T: Send + Sync + 'static>(runtime: &Runtime) -> Arc<T> {
-    runtime
-        .required::<T>()
-        .expect("render extractor required service should be registered")
+fn optional<T: Send + Sync + 'static>(runtime: &Runtime) -> Option<std::sync::Arc<T>> {
+    runtime.resolve::<T>()
+}
+
+struct WgpuDebugOverlayOutput<'a>(&'a mut WgpuRenderFramePacket);
+
+struct WgpuUiOverlayOutput<'a>(&'a mut WgpuRenderFramePacket);
+
+impl amigo_ui::UiOverlayRenderOutput for WgpuUiOverlayOutput<'_> {
+    fn push_ui_overlay_document(&mut self, document: amigo_overlay_api::UiOverlayDocument) {
+        self.0.push_game_ui_overlay(document);
+    }
+}
+
+impl amigo_devtools::DebugOverlayRenderOutput for WgpuDebugOverlayOutput<'_> {
+    fn push_debug_overlay_document(&mut self, document: amigo_overlay_api::UiOverlayDocument) {
+        self.0.push_debug_overlay(document);
+    }
+}
+
+struct WgpuDevConsoleOverlayOutput<'a>(&'a mut WgpuRenderFramePacket);
+
+impl amigo_devtools::DevConsoleOverlayRenderOutput for WgpuDevConsoleOverlayOutput<'_> {
+    fn push_dev_console_overlay_document(
+        &mut self,
+        document: amigo_overlay_api::UiOverlayDocument,
+    ) {
+        self.0.push_debug_overlay(document);
+    }
 }
 
 pub struct WgpuHostOverlayRenderExtractorProvider;
@@ -103,14 +126,20 @@ impl RenderFrameExtractor<Runtime, WgpuRenderFramePacket> for WgpuUiOverlayRende
     }
 
     fn extract(&self, runtime: &Runtime, packet: &mut WgpuRenderFramePacket) {
-        let ui_scene_service = required::<amigo_ui::UiSceneService>(runtime);
-        let ui_state_service = required::<amigo_ui::UiStateService>(runtime);
-        let ui_theme_service = required::<amigo_ui::UiThemeService>(runtime);
+        let Some(ui_scene_service) = optional::<amigo_ui::UiSceneService>(runtime) else {
+            return;
+        };
+        let Some(ui_state_service) = optional::<amigo_ui::UiStateService>(runtime) else {
+            return;
+        };
+        let Some(ui_theme_service) = optional::<amigo_ui::UiThemeService>(runtime) else {
+            return;
+        };
         amigo_ui::UiOverlayRenderExtractor.extract(
             ui_scene_service.as_ref(),
             ui_state_service.as_ref(),
             ui_theme_service.as_ref(),
-            packet,
+            &mut WgpuUiOverlayOutput(packet),
         );
     }
 }
@@ -139,7 +168,7 @@ impl RenderFrameExtractor<Runtime, WgpuRenderFramePacket>
             dev_console_state.as_ref(),
             dev_console_completion.snapshot().as_ref(),
             ui_viewport_state.get(),
-            packet,
+            &mut WgpuDevConsoleOverlayOutput(packet),
         );
     }
 }
@@ -152,13 +181,18 @@ impl RenderFrameExtractor<Runtime, WgpuRenderFramePacket>
     }
 
     fn extract(&self, runtime: &Runtime, packet: &mut WgpuRenderFramePacket) {
-        let debug_overlay_service = required::<amigo_devtools::DebugOverlayService>(runtime);
-        let ui_viewport_state = required::<amigo_ui::UiInputViewportState>(runtime);
+        let Some(debug_overlay_service) = optional::<amigo_devtools::DebugOverlayService>(runtime)
+        else {
+            return;
+        };
+        let Some(ui_viewport_state) = optional::<amigo_ui::UiInputViewportState>(runtime) else {
+            return;
+        };
         let snapshot = debug_overlay_service.snapshot();
         amigo_devtools::DebugOverlayRenderExtractor.extract(
             &snapshot,
             ui_viewport_state.get(),
-            packet,
+            &mut WgpuDebugOverlayOutput(packet),
         );
     }
 }

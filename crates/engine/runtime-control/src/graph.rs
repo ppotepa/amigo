@@ -1,9 +1,10 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
 
+use amigo_runtime::Runtime;
 use amigo_scene::{
-    ComponentKind, EditorPropertyValueKind, SceneComponentDocument, SceneDocument,
-    SceneEntityDocument, default_component_registry,
+    ComponentKind, ComponentRegistry, EditorPropertyValueKind, SceneComponentDocument,
+    SceneDocument, SceneEntityDocument, component_registry_for_runtime, default_component_registry,
 };
 
 use crate::{ControlRange, ControlValueType, path::sanitize_console_segment};
@@ -53,8 +54,25 @@ pub fn build_scene_metadata(
     document: &SceneDocument,
     relative_document_path: &Path,
 ) -> RuntimeControlSceneMetadata {
-    let mut metadata = RuntimeControlSceneMetadata::default();
     let registry = default_component_registry();
+    build_scene_metadata_with_registry(document, relative_document_path, &registry)
+}
+
+pub fn build_scene_metadata_for_runtime(
+    runtime: &Runtime,
+    document: &SceneDocument,
+    relative_document_path: &Path,
+) -> RuntimeControlSceneMetadata {
+    let registry = component_registry_for_runtime(runtime);
+    build_scene_metadata_with_registry(document, relative_document_path, &registry)
+}
+
+pub fn build_scene_metadata_with_registry(
+    document: &SceneDocument,
+    relative_document_path: &Path,
+    registry: &ComponentRegistry,
+) -> RuntimeControlSceneMetadata {
+    let mut metadata = RuntimeControlSceneMetadata::default();
 
     for entity in &document.entities {
         let preferred_target = preferred_target_alias(entity);
@@ -85,7 +103,7 @@ pub fn build_scene_metadata(
                     source_pointer.clone().unwrap()
                 )),
                 properties: component_property_metadata(
-                    &registry,
+                    registry,
                     component,
                     format!("{}/components/{index}", source_pointer.clone().unwrap()),
                 ),
