@@ -2,8 +2,12 @@ use amigo_2d_composition::RenderDepthMode2d;
 use amigo_composite_plugin::{PostFx2d, PostFx2dService, RainGlass2d, RainGlassDebugView};
 use amigo_core::{AmigoError, AmigoResult};
 use amigo_editor_authoring::AuthoringRuntimeBinding;
+use amigo_editor_api::{
+    EditorRuntimeApplyOutcome, EditorRuntimeApplyRequest,
+};
 use amigo_runtime::Runtime;
 
+use crate::IngameEditorRuntimeApplyProviderRegistry;
 use crate::state::{EditorPropertyValue, IngameEditorState};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -74,7 +78,7 @@ pub fn apply_property_request(
             apply_layered_image_binding(runtime, target, request.next)
         }
         AuthoringRuntimeBinding::ParticleEmitterProperty { entity_name, field } => {
-            apply_particle_property(runtime, entity_name, field, request.next)
+            apply_particle_property(runtime, request.property_id, target, entity_name, field, request.next)
         }
         AuthoringRuntimeBinding::PostFxFrameEnabled { index } => {
             let Some(value) = as_bool_value(&request.next) else {
@@ -312,73 +316,38 @@ fn apply_mock_binding(
 
 fn apply_particle_property(
     runtime: &Runtime,
+    property_id: &str,
+    target: &AuthoringRuntimeBinding,
     entity_name: &str,
     field: &str,
     value: EditorPropertyValue,
 ) -> AmigoResult<ApplyResult> {
-    let service = runtime.required::<amigo_particles_2d_plugin::Particle2dSceneService>()?;
-    let attempted = apply_particle_property_to_service(&service, entity_name, field, value);
-    match attempted {
-        Some(true) => Ok(ApplyResult::Applied),
-        Some(false) => Err(AmigoError::Message(format!(
-            "unknown particle emitter `{entity_name}` or invalid particle field `{field}`"
-        ))),
-        None => Ok(ApplyResult::Unsupported),
+    let Some(registry) = runtime.resolve::<IngameEditorRuntimeApplyProviderRegistry>() else {
+        return Ok(ApplyResult::Unsupported);
+    };
+    let Some(value) = editor_property_value_to_yaml(value) else {
+        return Ok(ApplyResult::Unsupported);
+    };
+    let request = EditorRuntimeApplyRequest::RuntimeProperty {
+        property_id: property_id.to_owned(),
+        binding: target.clone(),
+        value,
+    };
+    match registry.apply_first(runtime, request)? {
+        Some(EditorRuntimeApplyOutcome::Applied(_)) => Ok(ApplyResult::Applied),
+        Some(EditorRuntimeApplyOutcome::Ignored) | None => Ok(ApplyResult::Unsupported),
     }
 }
 
-fn apply_particle_property_to_service(
-    service: &amigo_particles_2d_plugin::Particle2dSceneService,
-    entity_name: &str,
-    field: &str,
-    value: EditorPropertyValue,
-) -> Option<bool> {
-    match (field, value) {
-        ("active", EditorPropertyValue::Bool(value)) => {
-            Some(service.set_active(entity_name, value))
-        }
-        ("spawn_rate", EditorPropertyValue::Number(value)) => {
-            Some(service.set_spawn_rate(entity_name, value))
-        }
-        ("max_particles", EditorPropertyValue::Number(value)) => {
-            Some(service.set_max_particles(entity_name, value.round().max(0.0) as usize))
-        }
-        ("particle_lifetime", EditorPropertyValue::Number(value)) => {
-            Some(service.set_particle_lifetime(entity_name, value))
-        }
-        ("lifetime_jitter", EditorPropertyValue::Number(value)) => {
-            Some(service.set_lifetime_jitter(entity_name, value))
-        }
-        ("initial_speed", EditorPropertyValue::Number(value)) => {
-            Some(service.set_initial_speed(entity_name, value))
-        }
-        ("speed_jitter", EditorPropertyValue::Number(value)) => {
-            Some(service.set_speed_jitter(entity_name, value))
-        }
-        ("spread_degrees", EditorPropertyValue::Number(value)) => {
-            Some(service.set_spread_radians(entity_name, value.to_radians()))
-        }
-        ("local_direction_degrees", EditorPropertyValue::Number(value)) => {
-            Some(service.set_local_direction_radians(entity_name, value.to_radians()))
-        }
-        ("inherit_parent_velocity", EditorPropertyValue::Number(value)) => {
-            Some(service.set_inherit_parent_velocity(entity_name, value))
-        }
-        ("initial_size", EditorPropertyValue::Number(value)) => {
-            Some(service.set_initial_size(entity_name, value))
-        }
-        ("final_size", EditorPropertyValue::Number(value)) => {
-            Some(service.set_final_size(entity_name, value))
-        }
-        ("z_index", EditorPropertyValue::Number(value)) => {
-            Some(service.set_z_index(entity_name, value))
-        }
-        ("intensity", EditorPropertyValue::Number(value)) => {
-            Some(service.set_intensity(entity_name, value))
-        }
-        ("quality_scale", EditorPropertyValue::Number(value)) => {
-            Some(service.set_quality_scale(entity_name, value))
-        }
-        _ => None,
+fn editor_property_value_to_yaml(value: EditorPropertyValue) -> Option<serde_yaml::Value> {
+    match value {
+        EditorPropertyValue::Number(value) => serde_yaml::to_value(value).ok(),
+        EditorPropertyValue::Bool(value) => Some(serde_yaml::Value::Bool(value)),
+        EditorPropertyValue::Text(value)
+        | EditorPropertyValue::Enum(value)
+        | EditorPropertyValue::Color(value)
+        | EditorPropertyValue::AssetRef(value) => Some(serde_yaml::Value::String(value)),
+        EditorPropertyValue::Vec2(x, y) => serde_yaml::to_value([x, y]).ok(),
+        EditorPropertyValue::Vec3(x, y, z) => serde_yaml::to_value([x, y, z]).ok(),
     }
 }

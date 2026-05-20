@@ -507,7 +507,6 @@ dependencies = [
  "amigo-layered-image-2d-plugin",
  "amigo-math",
  "amigo-overlay-api",
- "amigo-particles-2d-plugin",
  "amigo-runtime",
  "amigo-scene",
  "amigo-scripting-api",
@@ -756,6 +755,8 @@ dependencies = [
  "amigo-capabilities",
  "amigo-core",
  "amigo-devtools",
+ "amigo-editor-api",
+ "amigo-editor-ingame",
  "amigo-fx",
  "amigo-light-2d-plugin",
  "amigo-math",
@@ -765,6 +766,7 @@ dependencies = [
  "amigo-scene",
  "amigo-session",
  "amigo-shutter-motion-plugin",
+ "serde_yaml",
 ]
 
 [[package]]

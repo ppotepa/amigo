@@ -20,7 +20,6 @@ amigo-composite-plugin.workspace = true
 amigo-scripting-api.workspace = true
 amigo-2d-composition.workspace = true
 amigo-layered-image-2d-plugin.workspace = true
-amigo-particles-2d-plugin.workspace = true
 amigo-ui.workspace = true
 amigo-ui-layout.workspace = true
 amigo-math.workspace = true

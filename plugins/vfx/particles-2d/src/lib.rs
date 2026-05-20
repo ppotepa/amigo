@@ -4,6 +4,7 @@
 pub mod api;
 mod dev_console;
 mod devtools_console;
+mod editor_provider;
 mod model;
 pub mod participation;
 mod plugin;
@@ -19,6 +20,7 @@ mod systems;
 
 pub use dev_console::*;
 pub use devtools_console::*;
+pub use editor_provider::*;
 pub use model::*;
 pub use plugin::*;
 pub use render_extraction::*;

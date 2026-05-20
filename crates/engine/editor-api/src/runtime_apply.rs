@@ -1,8 +1,15 @@
 use amigo_core::AmigoResult;
 use amigo_runtime::Runtime;
 
+use crate::AuthoringRuntimeBinding;
+
 #[derive(Debug, Clone)]
 pub enum EditorRuntimeApplyRequest {
+    RuntimeProperty {
+        property_id: String,
+        binding: AuthoringRuntimeBinding,
+        value: serde_yaml::Value,
+    },
     SetProperty {
         node_id: String,
         property_id: String,
