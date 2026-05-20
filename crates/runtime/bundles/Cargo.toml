@@ -21,6 +21,7 @@ amigo-event-pipeline.workspace = true
 amigo-overlay-api.workspace = true
 amigo-render-api.workspace = true
 amigo-window-winit.workspace = true
+amigo-input-api.workspace = true
 amigo-input-winit.workspace = true
 amigo-input-actions.workspace = true
 amigo-render-wgpu.workspace = true

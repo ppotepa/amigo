@@ -916,6 +916,7 @@ dependencies = [
  "amigo-focus-depth-plugin",
  "amigo-hot-reload",
  "amigo-input-actions",
+ "amigo-input-api",
  "amigo-input-winit",
  "amigo-layered-image-2d-plugin",
  "amigo-light-2d-plugin",

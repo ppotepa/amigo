@@ -2,9 +2,6 @@
 mod tests;
 
 use super::*;
-use amigo_runtime_bundles::amigo_audio_api::AudioStateService;
-use amigo_runtime_bundles::amigo_audio_output::AudioOutputBackendService;
-use amigo_runtime_bundles::amigo_input_actions::InputActionService;
 use amigo_session::RuntimeSession;
 
 pub(crate) use amigo_render_api::RenderCompositionDiagnosticsService;
@@ -16,8 +13,9 @@ pub(crate) use amigo_render_wgpu::WgpuRenderFramePacket;
 pub(crate) use amigo_runtime_bundles::WgpuFrameCompositionBuilder;
 pub(crate) use amigo_runtime_bundles::{
     WgpuEditorOverlayOutput, extract_game_frame_packet, extract_live_host_overlay_packet,
-    particle_debug_snapshot, render_game_frame_to_cache, update_ui_input_viewport_state,
-    update_wgpu_postfx_renderer_mode, update_wgpu_render_composition_diagnostics,
+    audio_debug_snapshot, input_debug_snapshot, particle_debug_snapshot, render_game_frame_to_cache,
+    update_ui_input_viewport_state, update_wgpu_postfx_renderer_mode,
+    update_wgpu_render_composition_diagnostics,
 };
 pub(crate) use amigo_runtime_bundles::WgpuFrameCompositionOptions;
 pub(crate) use amigo_runtime_bundles::{
@@ -133,66 +131,21 @@ pub(crate) fn build_render_frame_for_session(
     if let Ok(scheduling) = required::<amigo_session::RuntimeSchedulingService>(runtime) {
         debug_overlay_service.record_scheduling_stats(scheduling.stats());
     }
-    if let Ok(audio_output) = required::<AudioOutputBackendService>(runtime) {
-        let audio_snapshot = audio_output.snapshot();
-        let (master_volume, active_sources, pending_commands, bus_count) =
-            if let Ok(audio_state) = required::<AudioStateService>(runtime) {
-                (
-                    audio_state.master_volume(),
-                    audio_state.playing_sources().len(),
-                    audio_state.pending_runtime_commands().len(),
-                    audio_state.bus_volumes().len(),
-                )
-            } else {
-                (1.0, 0, 0, 0)
-            };
+    if let Some(audio) = audio_debug_snapshot(runtime) {
         debug_overlay_service.record_audio_snapshot(
-            audio_snapshot,
-            master_volume,
-            active_sources,
-            pending_commands,
-            bus_count,
+            audio.backend,
+            audio.master_volume,
+            audio.active_sources,
+            audio.pending_commands,
+            audio.bus_count,
         );
     }
-    if let Ok(input_state) = required::<InputState>(runtime) {
-        let pressed_keys = input_state
-            .pressed_keys()
-            .into_iter()
-            .map(|key| format!("{key:?}"))
-            .collect::<Vec<_>>();
-        let backend_name = runtime
-            .resolve::<InputServiceInfo>()
-            .map(|info| info.backend_name.to_owned());
-        let (active_map, active_actions) =
-            if let Ok(actions) = required::<InputActionService>(runtime) {
-                let active_map = actions.active_map_id();
-                let active_actions = active_map
-                    .as_deref()
-                    .and_then(|map_id| actions.map(map_id))
-                    .map(|map| {
-                        let mut names = map
-                            .actions
-                            .keys()
-                            .filter_map(|action| {
-                                let name = action.as_str();
-                                actions
-                                    .down(input_state.as_ref(), name)
-                                    .then(|| name.to_owned())
-                            })
-                            .collect::<Vec<_>>();
-                        names.sort();
-                        names
-                    })
-                    .unwrap_or_default();
-                (active_map, active_actions)
-            } else {
-                (None, Vec::new())
-            };
+    if let Some(input) = input_debug_snapshot(runtime) {
         debug_overlay_service.record_input_snapshot(
-            backend_name,
-            pressed_keys,
-            active_map,
-            active_actions,
+            input.backend_name,
+            input.pressed_keys,
+            input.active_map,
+            input.active_actions,
         );
     }
     if let Some((emitters, active_emitters)) = particle_debug_snapshot(runtime) {
