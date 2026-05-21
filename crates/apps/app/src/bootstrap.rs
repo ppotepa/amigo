@@ -36,6 +36,7 @@ pub fn bootstrap_session_default(
     bootstrap_session_with_options(BootstrapOptions::new(mods_root))
 }
 
+#[allow(dead_code)]
 pub(crate) fn bootstrap_with_options(
     options: BootstrapOptions,
 ) -> AmigoResult<(Runtime, BootstrapSummary)> {

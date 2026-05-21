@@ -1,8 +1,8 @@
 mod beacon;
 mod layered_image;
 mod particle;
-mod sprite;
 mod text;
+mod textured_quad;
 mod tilemap;
 mod vector;
 
@@ -10,7 +10,7 @@ use std::sync::OnceLock;
 
 use crate::WgpuRenderable2dAdapterRegistry;
 
-pub fn default_renderable_2d_adapter_registry() -> &'static WgpuRenderable2dAdapterRegistry {
+pub(crate) fn default_renderable_2d_adapter_registry() -> &'static WgpuRenderable2dAdapterRegistry {
     static REGISTRY: OnceLock<WgpuRenderable2dAdapterRegistry> = OnceLock::new();
 
     REGISTRY.get_or_init(|| {
@@ -19,7 +19,7 @@ pub fn default_renderable_2d_adapter_registry() -> &'static WgpuRenderable2dAdap
         registry.register(layered_image::LayeredImage2dRenderableAdapter);
         registry.register(vector::Vector2dRenderableAdapter);
         registry.register(beacon::Beacon2dRenderableAdapter);
-        registry.register(sprite::Sprite2dRenderableAdapter);
+        registry.register(textured_quad::TexturedQuad2dRenderableAdapter);
         registry.register(text::Text2dRenderableAdapter);
         registry.register(particle::Particle2dRenderableAdapter);
         registry

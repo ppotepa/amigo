@@ -12,7 +12,7 @@ pub struct WgpuBeacon2dRenderExtractorBridge;
 
 impl RenderFrameExtractor<Runtime, WgpuRenderFramePacket> for WgpuBeacon2dRenderExtractorBridge {
     fn name(&self) -> &'static str {
-        amigo_beacon_light_2d_plugin::Beacon2dRenderExtractor.name()
+        amigo_beacon_light_2d_plugin::render::Beacon2dRenderExtractor.name()
     }
 
     fn extract(&self, runtime: &Runtime, packet: &mut WgpuRenderFramePacket) {
@@ -21,8 +21,8 @@ impl RenderFrameExtractor<Runtime, WgpuRenderFramePacket> for WgpuBeacon2dRender
         else {
             return;
         };
-        amigo_beacon_light_2d_plugin::Beacon2dRenderExtractor.extract(
-            amigo_beacon_light_2d_plugin::Beacon2dRenderExtractionContext {
+        amigo_beacon_light_2d_plugin::render::Beacon2dRenderExtractor.extract(
+            amigo_beacon_light_2d_plugin::render::Beacon2dRenderExtractionContext {
                 beacon_scene_service: beacon_scene_service.as_ref(),
             },
             packet,

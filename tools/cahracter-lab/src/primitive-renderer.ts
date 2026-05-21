@@ -12,10 +12,26 @@ function createPrimitiveElement(primitive: RenderPrimitive): SVGElement {
   return createEl(primitive.kind as keyof SVGElementTagNameMap);
 }
 
+function ensureSilhouetteGroup(ui: UiRefs): SVGGElement {
+  let group = ui.outlineLayer.querySelector<SVGGElement>('[data-primitive-group="silhouette-union"]');
+  if (!group) {
+    group = createEl("g");
+    group.setAttribute("data-primitive-group", "silhouette-union");
+    group.setAttribute("class", "masterSilhouetteUnion");
+    ui.outlineLayer.appendChild(group);
+  }
+  return group;
+}
+
 function applyPrimitive(element: SVGElement, primitive: RenderPrimitive): void {
   element.setAttribute("data-primitive-id", primitive.id);
-  if (primitive.className) element.setAttribute("class", primitive.className);
-  else element.removeAttribute("class");
+  if (primitive.role === "silhouette") {
+    element.removeAttribute("class");
+  } else if (primitive.className) {
+    element.setAttribute("class", primitive.className);
+  } else {
+    element.removeAttribute("class");
+  }
 
   element.style.display = primitive.visible ? "inline" : "none";
   element.style.opacity = String(primitive.opacity ?? 1);
@@ -35,8 +51,11 @@ function applyPrimitive(element: SVGElement, primitive: RenderPrimitive): void {
 
 export class PrimitiveSvgRenderer {
   private readonly elements = new Map<string, SVGElement>();
+  private readonly silhouetteGroup: SVGGElement;
 
-  constructor(private readonly ui: UiRefs) {}
+  constructor(private readonly ui: UiRefs) {
+    this.silhouetteGroup = ensureSilhouetteGroup(ui);
+  }
 
   render(primitives: RenderPrimitive[]): void {
     const sorted = sortRenderPrimitives(primitives);
@@ -57,7 +76,11 @@ export class PrimitiveSvgRenderer {
         this.elements.set(primitive.id, element);
       }
       applyPrimitive(element, primitive);
-      layerFor(this.ui, primitive.layer).appendChild(element);
+      if (primitive.role === "silhouette") {
+        this.silhouetteGroup.appendChild(element);
+      } else {
+        layerFor(this.ui, primitive.layer).appendChild(element);
+      }
     }
   }
 }

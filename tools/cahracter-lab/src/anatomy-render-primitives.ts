@@ -7,7 +7,7 @@ export function generateAnatomyRenderPrimitives(
   policy: OutlinePolicy,
 ): RenderPrimitive[] {
   return [
-    ...generateBodyPartPrimitives(parts),
+    ...generateBodyPartPrimitives(parts, policy),
     ...generatePolicyOutlinePrimitives(parts, policy),
   ];
 }

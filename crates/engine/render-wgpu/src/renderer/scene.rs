@@ -141,6 +141,7 @@ pub(crate) fn render_layer_lookup(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use amigo_render_api::RenderSpace2d;
     use amigo_sprite_2d_plugin::{Sprite, SpriteDrawCommand};
     use amigo_text_2d_plugin::{Text2d, Text2dDrawCommand, Text2dStyle};
     use amigo_assets::AssetKey;
@@ -166,8 +167,8 @@ mod tests {
             material: None,
             render_contributions: amigo_render_api::RenderContributionSet::default(),
         };
-        Renderable2dItem {
-            common: amigo_render_api::Renderable2dCommon {
+        Renderable2dItem::new(
+            amigo_render_api::Renderable2dCommon {
                 owner_entity: command.entity_name.clone(),
                 component_kind: "Sprite2D".to_owned(),
                 render_space: RenderSpace2d::World,
@@ -175,8 +176,8 @@ mod tests {
                 z_index: command.z_index,
                 kind: amigo_render_api::Renderable2dKind::Sprite,
             },
-            payload: Renderable2dPayload::Sprite(command),
-        }
+            amigo_sprite_2d_plugin::render::sprite_draw_command_to_render_primitive(&command),
+        )
     }
 
     fn text_item(render_layer: &str, z_index: f32) -> Renderable2dItem {
@@ -196,8 +197,8 @@ mod tests {
             material: None,
             render_contributions: amigo_render_api::RenderContributionSet::default(),
         };
-        Renderable2dItem {
-            common: amigo_render_api::Renderable2dCommon {
+        Renderable2dItem::new(
+            amigo_render_api::Renderable2dCommon {
                 owner_entity: command.entity_name.clone(),
                 component_kind: "Text2D".to_owned(),
                 render_space: RenderSpace2d::World,
@@ -205,8 +206,8 @@ mod tests {
                 z_index: command.z_index,
                 kind: amigo_render_api::Renderable2dKind::Text,
             },
-            payload: Renderable2dPayload::Text(command),
-        }
+            amigo_text_2d_plugin::render::text_draw_command_to_render_primitive(&command),
+        )
     }
 
     #[test]

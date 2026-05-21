@@ -1,8 +1,7 @@
 use super::*;
-use amigo_camera_optics_plugin::api::{
-    CameraOpticalCandidate2d, CameraOpticalCoverage2d, CameraOpticalResponse2d,
-};
-use amigo_camera_optics_plugin::render_wgpu::CameraOpticalRenderTargetPlan;
+use amigo_camera::{CameraOpticalCandidate2d, CameraOpticalCoverage2d, CameraOpticalCandidateStatus2d, CameraOpticalResponse2d};
+use amigo_camera_optics_plugin::render::CameraOpticalRenderTargetPlan;
+use amigo_render_api::{RenderPrimitive2d, Renderable2dItem};
 
 pub(super) fn render_procedural_material_buffer(
     renderer: &mut WgpuSceneRenderer,
@@ -53,94 +52,82 @@ pub(super) fn append_procedural_material_buffers(
         return;
     }
 
-    for command in request.world_2d.tilemaps.commands() {
-        let transform = crate::renderer::scene::resolve_transform2(
-            request.scene,
-            &command.entity_name,
-            Transform2::default(),
-        );
-        util::append_visual_quad(
-            color_batches,
-            viewport,
-            camera,
-            transform,
-            util::tilemap_draw_size(&command.tilemap),
-            material_color_for_kind(kind, ColorRgba::new(0.08, 0.08, 0.09, 1.0)),
-        );
+    for item in request.world_2d.renderables {
+        append_renderable_material_proxy(color_batches, viewport, camera, kind, item);
     }
+}
 
-    for command in request.world_2d.vectors.commands() {
-        let transform = crate::renderer::world_2d::vector_viewport_fit_transform(
-            viewport,
-            crate::renderer::scene::resolve_transform2(
-                request.scene,
-                &command.entity_name,
-                command.transform,
-            ),
-            command.viewport_fit,
-            command.viewport_canvas_size,
-        );
-        let mut shape = command.shape.clone();
-        let source_color = shape.style.fill_color.unwrap_or(shape.style.stroke_color);
-        let color = material_color_for_kind(kind, source_color);
-        shape.style.stroke_color = color;
-        shape.style.fill_color = Some(color);
-        crate::renderer::world_2d::append_vector_shape_vertices(
-            color_batch_vertices(color_batches, ParticleBlendMode2d::Alpha),
-            viewport,
-            camera,
-            transform,
-            &shape,
-        );
-    }
-
-    for command in request.world_2d.text2d.commands() {
-        let transform = crate::renderer::scene::resolve_transform2(
-            request.scene,
-            &command.entity_name,
-            command.text.transform,
-        );
-        util::append_visual_quad(
-            color_batches,
-            viewport,
-            camera,
-            transform,
-            command.text.bounds,
-            material_color_for_kind(kind, command.text.style.color),
-        );
-    }
-
-    for command in request.world_2d.beacons {
-        util::append_visual_quad(
+fn append_renderable_material_proxy(
+    color_batches: &mut Vec<ColorBatch>,
+    viewport: &Viewport,
+    camera: Transform2,
+    kind: amigo_render_api::VisualSourceKind2d,
+    item: &Renderable2dItem,
+) {
+    match &item.primitive {
+        RenderPrimitive2d::TileMap(primitive) => util::append_visual_quad(
             color_batches,
             viewport,
             camera,
             Transform2 {
-                translation: command.center,
-                rotation_radians: command.rotation_radians,
+                translation: primitive.origin_offset,
+                ..Transform2::default()
+            },
+            util::tilemap_primitive_draw_size(primitive),
+            material_color_for_kind(kind, ColorRgba::new(0.08, 0.08, 0.09, 1.0)),
+        ),
+        RenderPrimitive2d::VectorShape(primitive) => {
+            let source_color = primitive
+                .style
+                .fill_color
+                .unwrap_or(primitive.style.stroke_color);
+            let color = material_color_for_kind(kind, source_color);
+            crate::renderer::world_2d::append_vector_primitive_vertices(
+                color_batch_vertices(color_batches, ParticleBlendMode2d::Alpha),
+                viewport,
+                camera,
+                primitive,
+                None,
+                Some(color),
+                Some(color),
+            );
+        }
+        RenderPrimitive2d::GlyphRun(primitive) => util::append_visual_quad(
+            color_batches,
+            viewport,
+            camera,
+            primitive.transform,
+            primitive.bounds,
+            material_color_for_kind(kind, primitive.color),
+        ),
+        RenderPrimitive2d::BeaconLight(primitive) => util::append_visual_quad(
+            color_batches,
+            viewport,
+            camera,
+            Transform2 {
+                translation: primitive.center,
+                rotation_radians: primitive.rotation_radians,
                 scale: Vec2::new(1.0, 1.0),
             },
             Vec2::new(
-                command.halo_radius_px.max(command.core_radius_px) * 2.0,
-                command.halo_radius_px.max(command.core_radius_px) * 2.0,
+                primitive.halo_radius_px.max(primitive.core_radius_px) * 2.0,
+                primitive.halo_radius_px.max(primitive.core_radius_px) * 2.0,
             ),
-            material_color_for_kind(kind, command.color),
-        );
-    }
-
-    for command in request.world_2d.particles {
-        util::append_visual_quad(
+            material_color_for_kind(kind, primitive.color),
+        ),
+        RenderPrimitive2d::Particle(primitive) => util::append_visual_quad(
             color_batches,
             viewport,
             camera,
             Transform2 {
-                translation: command.position,
-                rotation_radians: command.transform.rotation_radians,
-                scale: command.transform.scale,
+                translation: primitive.position,
+                rotation_radians: primitive.transform.rotation_radians,
+                scale: primitive.transform.scale,
             },
-            Vec2::new(command.size.max(1.0), command.size.max(1.0)),
-            material_color_for_kind(kind, command.color),
-        );
+            Vec2::new(primitive.size.max(1.0), primitive.size.max(1.0)),
+            material_color_for_kind(kind, primitive.color),
+        ),
+        _ => {}
     }
 }
 
@@ -170,31 +157,33 @@ pub(super) fn append_camera_optical_candidate_texture_buffers(
         .filter(|candidate| candidate.is_active())
     {
         let Some((source, channel)) =
-            amigo_camera_optics_plugin::render_wgpu::lightmap_channel_parts(&candidate.coverage)
+            amigo_camera_optics_plugin::render::lightmap_channel_parts(&candidate.coverage)
         else {
             continue;
         };
-        let lightmaps = request.world_2d.lightmaps.commands();
-        let Some(lightmap) = lightmaps.iter().find(|lightmap| &lightmap.id == source)
+        let Some(lightmap) = request
+            .world_2d
+            .lightmaps
+            .iter()
+            .find(|lightmap| &lightmap.source_id == source)
         else {
             continue;
         };
         let Some(channel) = lightmap.channels.iter().find(|entry| &entry.id == channel) else {
             continue;
         };
-        let layered_images = request.world_2d.layered_images.commands();
-        let Some(command) = layered_images
-            .iter()
-            .find(|command| command.entity_name == lightmap.source.entity_name)
+        let Some(layered) = request.world_2d.renderables.iter().find_map(|item| match &item.primitive {
+            RenderPrimitive2d::LayeredImage(layered)
+                if item.owner_entity() == lightmap.source.entity_name =>
+            {
+                Some(layered)
+            }
+            _ => None,
+        })
         else {
             continue;
         };
         let included_parts = channel.layers.iter().cloned().collect::<std::collections::BTreeSet<_>>();
-        let transform = crate::renderer::scene::resolve_transform2(
-            request.scene,
-            &command.entity_name,
-            command.transform,
-        );
         appended |= renderer.append_layered_image_texture_batches_filtered_tinted(
             texture_batches,
             &target.device,
@@ -202,8 +191,7 @@ pub(super) fn append_camera_optical_candidate_texture_buffers(
             request.assets,
             viewport,
             camera,
-            transform,
-            command,
+            layered,
             Some(&included_parts),
             None,
             false,
@@ -251,12 +239,16 @@ fn append_camera_optical_candidate_color_buffers(
             CameraOpticalCoverage2d::ParticleCoverage {
                 emitter_entity_name,
             } => {
-                for command in request
-                    .world_2d
-                    .particles
-                    .iter()
-                    .filter(|command| &command.emitter_entity_name == emitter_entity_name)
-                {
+                for renderable in request.world_2d.renderables.iter().filter(|item| {
+                    matches!(
+                        &item.primitive,
+                        RenderPrimitive2d::Particle(primitive)
+                            if &primitive.emitter_entity_name == emitter_entity_name
+                    )
+                }) {
+                    let RenderPrimitive2d::Particle(command) = &renderable.primitive else {
+                        continue;
+                    };
                     util::append_visual_quad(
                         color_batches,
                         viewport,
@@ -276,20 +268,20 @@ fn append_camera_optical_candidate_color_buffers(
                 entity_name,
                 render_layer,
             } => {
-                for command in request.world_2d.text2d.commands().iter().filter(|command| {
-                    &command.entity_name == entity_name && &command.render_layer == render_layer
+                for renderable in request.world_2d.renderables.iter().filter(|item| {
+                    item.owner_entity() == entity_name
+                        && item.render_layer() == render_layer
+                        && matches!(item.primitive, RenderPrimitive2d::GlyphRun(_))
                 }) {
-                    let transform = crate::renderer::scene::resolve_transform2(
-                        request.scene,
-                        &command.entity_name,
-                        command.text.transform,
-                    );
+                    let RenderPrimitive2d::GlyphRun(command) = &renderable.primitive else {
+                        continue;
+                    };
                     util::append_visual_quad(
                         color_batches,
                         viewport,
                         camera,
-                        transform,
-                        command.text.bounds,
+                        command.transform,
+                        command.bounds,
                         color,
                     );
                     appended = true;
@@ -299,20 +291,20 @@ fn append_camera_optical_candidate_color_buffers(
                 entity_name,
                 render_layer,
             } => {
-                for command in request.world_2d.sprites.commands().iter().filter(|command| {
-                    &command.entity_name == entity_name && &command.render_layer == render_layer
+                for renderable in request.world_2d.renderables.iter().filter(|item| {
+                    item.owner_entity() == entity_name
+                        && item.render_layer() == render_layer
+                        && matches!(item.primitive, RenderPrimitive2d::TexturedQuad(_))
                 }) {
-                    let transform = crate::renderer::scene::resolve_transform2(
-                        request.scene,
-                        &command.entity_name,
-                        command.transform,
-                    );
+                    let RenderPrimitive2d::TexturedQuad(command) = &renderable.primitive else {
+                        continue;
+                    };
                     util::append_visual_quad(
                         color_batches,
                         viewport,
                         camera,
-                        transform,
-                        command.sprite.size,
+                        command.transform,
+                        command.size,
                         color,
                     );
                     appended = true;
@@ -322,33 +314,27 @@ fn append_camera_optical_candidate_color_buffers(
                 entity_name,
                 render_layer,
             } => {
-                for command in request.world_2d.vectors.commands().iter().filter(|command| {
-                    &command.entity_name == entity_name && &command.render_layer == render_layer
+                for renderable in request.world_2d.renderables.iter().filter(|item| {
+                    item.owner_entity() == entity_name
+                        && item.render_layer() == render_layer
+                        && matches!(item.primitive, RenderPrimitive2d::VectorShape(_))
                 }) {
-                    let transform = crate::renderer::world_2d::vector_viewport_fit_transform(
-                        viewport,
-                        crate::renderer::scene::resolve_transform2(
-                            request.scene,
-                            &command.entity_name,
-                            command.transform,
-                        ),
-                        command.viewport_fit,
-                        command.viewport_canvas_size,
-                    );
-                    let mut shape = command.shape.clone();
-                    shape.style.stroke_color = color;
-                    shape.style.fill_color = Some(color);
-                    crate::renderer::world_2d::append_vector_shape_vertices(
+                    let RenderPrimitive2d::VectorShape(command) = &renderable.primitive else {
+                        continue;
+                    };
+                    crate::renderer::world_2d::append_vector_primitive_vertices(
                         color_batch_vertices(color_batches, ParticleBlendMode2d::Alpha),
                         viewport,
                         camera,
-                        transform,
-                        &shape,
+                        command,
+                        None,
+                        Some(color),
+                        Some(color),
                     );
                     appended = true;
                 }
             }
-            coverage if amigo_camera_optics_plugin::render_wgpu::coverage_uses_texture_path(coverage) => {
+            coverage if amigo_camera_optics_plugin::render::coverage_uses_texture_path(coverage) => {
                 // Texture-backed LightMapChannel candidates are handled by
                 // append_camera_optical_candidate_texture_buffers.
             }
@@ -371,7 +357,7 @@ fn optical_candidate_color_for_kind(
         return ColorRgba::new(0.0, 0.0, 0.0, candidate.color_rgba[3]);
     };
     let rgba =
-        amigo_camera_optics_plugin::render_wgpu::optical_candidate_color_rgba_for_target(
+        amigo_camera_optics_plugin::render::optical_candidate_color_rgba_for_target(
             candidate,
             &plan.target,
         );
@@ -381,17 +367,15 @@ fn optical_candidate_color_for_kind(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use amigo_camera_optics_plugin::api::CameraOpticalCandidateStatus2d;
-
     fn candidate(roles: &[&str]) -> CameraOpticalCandidate2d {
         let roles =
             amigo_render_api::RenderContributionSet::from_pairs(roles.iter().map(|role| (*role, true)));
         let mut target_ids = Vec::new();
         if roles.enabled_or(amigo_render_api::render_contribution_roles::CAMERA_FX_SOURCE, false) {
-            target_ids.push(amigo_camera_optics_plugin::render_wgpu::scene_highlight_target_id());
+            target_ids.push(amigo_camera_optics_plugin::render::scene_highlight_target_id());
         }
         if roles.enabled_or(amigo_render_api::render_contribution_roles::BLOOM_SOURCE, false) {
-            target_ids.push(amigo_camera_optics_plugin::render_wgpu::scene_emissive_target_id());
+            target_ids.push(amigo_camera_optics_plugin::render::scene_emissive_target_id());
         }
         CameraOpticalCandidate2d {
             owner: "neon.mid".to_owned(),
@@ -459,7 +443,7 @@ mod tests {
     fn lightmap_channel_candidate_resolves_source_and_channel() {
         let candidate = candidate(&[amigo_render_api::render_contribution_roles::CAMERA_FX_SOURCE]);
         let Some((source, channel)) =
-            amigo_camera_optics_plugin::render_wgpu::lightmap_channel_parts(&candidate.coverage)
+            amigo_camera_optics_plugin::render::lightmap_channel_parts(&candidate.coverage)
         else {
             panic!("expected lightmap channel coverage");
         };

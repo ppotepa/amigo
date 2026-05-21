@@ -37,6 +37,19 @@ pub(super) fn focus_blur_effect_for(
         })
 }
 
+pub(super) fn depth_debug_post_fx_for(
+    stacks: &[amigo_composite_plugin::ScopedPostFx2dStack],
+    host_id: &amigo_composite_plugin::PostFxHost2dId,
+    effect_id: &amigo_composite_plugin::PostFx2dId,
+) -> Option<amigo_composite_plugin::FocusBlur2d> {
+    let effect = focus_blur_effect_for(stacks, host_id, effect_id)?;
+    amigo_composite_plugin::PostFx2d::FocusBlur(effect.clone())
+        .render_descriptor()
+        .debug_policy
+        .supports_depth_debug_view
+        .then_some(effect)
+}
+
 pub(super) fn shutter_blur_effect_for(
     stacks: &[amigo_composite_plugin::ScopedPostFx2dStack],
     host_id: &amigo_composite_plugin::PostFxHost2dId,
@@ -52,7 +65,16 @@ pub(super) fn shutter_blur_effect_for(
         })
 }
 
-pub(super) fn focus_blur_layer_plan_for_effect(
+pub(super) fn motion_debug_post_fx_for(
+    stacks: &[amigo_composite_plugin::ScopedPostFx2dStack],
+    host_id: &amigo_composite_plugin::PostFxHost2dId,
+    effect_id: &amigo_composite_plugin::PostFx2dId,
+) -> Option<amigo_composite_plugin::ShutterBlur2d> {
+    let effect = shutter_blur_effect_for(stacks, host_id, effect_id)?;
+    effect.is_active().then_some(effect)
+}
+
+pub(super) fn replay_scoped_layers_plan_for_effect(
     stacks: &[amigo_composite_plugin::ScopedPostFx2dStack],
     render_layers: &[RenderLayer2dCommand],
     capture_input: Option<&amigo_render_api::CameraCaptureInput2d>,
@@ -60,11 +82,9 @@ pub(super) fn focus_blur_layer_plan_for_effect(
     effect_id: &amigo_composite_plugin::PostFx2dId,
 ) -> Option<FocusBlurLayerPlan> {
     let effect = focus_blur_effect_for(stacks, host_id, effect_id)?;
-    Some(build_focus_blur_layer_plan(
-        effect,
-        render_layers,
-        capture_input,
-    ))
+    (amigo_composite_plugin::PostFx2d::FocusBlur(effect.clone()).render_descriptor().output
+        == amigo_render_api::PostFxRenderOutput::ReplayScopedLayers)
+        .then(|| build_focus_blur_layer_plan(effect, render_layers, capture_input))
 }
 
 pub(super) fn focus_blur_layer_plan(

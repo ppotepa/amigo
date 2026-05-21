@@ -1,7 +1,7 @@
 use super::world_filters::WorldPassLoad;
 use super::world_selection::OwnedWorldRenderSelection;
 use super::*;
-use amigo_render_api::render_contribution_roles as roles;
+use amigo_render_api::RenderPrimitive2d;
 
 pub(super) fn first_read(
     node: &amigo_render_api::FrameGraphNode,
@@ -34,20 +34,21 @@ pub(super) fn execute_world_graph_node(
 
     let beacon_layers = request
         .world_2d
-        .beacons
+        .renderables
         .iter()
-        .map(|beacon| beacon.render_layer.clone())
+        .filter(|item| matches!(item.primitive, RenderPrimitive2d::BeaconLight(_)))
+        .map(|item| item.render_layer().to_owned())
         .collect::<std::collections::BTreeSet<_>>();
     let overlay_beacon_layers = request
         .world_2d
-        .beacons
+        .renderables
         .iter()
-        .filter(|beacon| {
-            beacon
-                .render_contributions
-                .enabled_or(roles::OVERLAY_VISIBLE, true)
+        .filter_map(|item| match &item.primitive {
+            RenderPrimitive2d::BeaconLight(beacon) if beacon.overlay_visible => {
+                Some(item.render_layer().to_owned())
+            }
+            _ => None,
         })
-        .map(|beacon| beacon.render_layer.clone())
         .collect::<std::collections::BTreeSet<_>>();
     let visible_beacon_layers = overlay_beacon_layers
         .iter()

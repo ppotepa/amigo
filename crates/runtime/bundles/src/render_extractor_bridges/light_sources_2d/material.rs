@@ -86,27 +86,22 @@ pub(super) fn collect_material_emissive_light_sources(
 }
 
 fn material_light_payload(item: &Renderable2dItem) -> Option<(Material2d, [f32; 4])> {
-    match &item.payload {
-        Renderable2dPayload::Text(command) => Some((
-            command.material?,
-            [
-                command.text.style.color.r,
-                command.text.style.color.g,
-                command.text.style.color.b,
-                command.text.style.color.a * command.text.style.opacity,
-            ],
-        )),
-        Renderable2dPayload::Sprite(command) => Some((command.material?, [1.0, 1.0, 1.0, 1.0])),
-        Renderable2dPayload::Vector(command) => Some((
-            command.material?,
-            color_rgba(
-                command
-                    .shape
-                    .style
-                    .fill_color
-                    .unwrap_or(command.shape.style.stroke_color),
-            ),
-        )),
-        _ => None,
-    }
+    let material = item.primitive.material_binding()?.material?;
+    let color = match &item.primitive {
+        amigo_render_api::RenderPrimitive2d::GlyphRun(command) => [
+            command.color.r,
+            command.color.g,
+            command.color.b,
+            command.color.a,
+        ],
+        amigo_render_api::RenderPrimitive2d::TexturedQuad(_) => [1.0, 1.0, 1.0, 1.0],
+        amigo_render_api::RenderPrimitive2d::VectorShape(command) => color_rgba(
+            command
+                .style
+                .fill_color
+                .unwrap_or(command.style.stroke_color),
+        ),
+        _ => return None,
+    };
+    Some((material, color))
 }

@@ -1,0 +1,32 @@
+# Plugin map
+
+| Doc | Path | Package | Plugin id | Family | Kind |
+|---|---|---|---|---|---|
+| [`camera-camera-core`](../plugins/camera-camera-core.md) | `plugins/camera/camera-core` | `amigo-camera-core-plugin` | `amigo.camera.camera-core` | camera | bundle |
+| [`camera-camera-optics`](../plugins/camera-camera-optics.md) | `plugins/camera/camera-optics` | `amigo-camera-optics-plugin` | `amigo.camera.camera-optics` | camera | target-consumer |
+| [`camera-camera-profiles`](../plugins/camera-camera-profiles.md) | `plugins/camera/camera-profiles` | `amigo-camera-profiles-plugin` | `amigo.camera.camera-profiles` | camera | bundle |
+| [`camera-film-look`](../plugins/camera-film-look.md) | `plugins/camera/film-look` | `amigo-film-look-plugin` | `amigo.camera.film-look` | camera | target-consumer |
+| [`camera-focus-depth`](../plugins/camera-focus-depth.md) | `plugins/camera/focus-depth` | `amigo-focus-depth-plugin` | `amigo.camera.focus-depth` | camera | target-consumer |
+| [`camera-shutter-motion`](../plugins/camera-shutter-motion.md) | `plugins/camera/shutter-motion` | `amigo-shutter-motion-plugin` | `amigo.camera.shutter-motion` | camera | target-consumer |
+| [`devtools-codemap`](../plugins/devtools-codemap.md) | `plugins/devtools/codemap` | `amigo-codemap-plugin` | `amigo.devtools.codemap` | devtools | tooling |
+| [`gameplay-behavior`](../plugins/gameplay-behavior.md) | `plugins/gameplay/behavior` | `amigo-behavior` | `(missing)` | gameplay | (missing) |
+| [`gfx-layered-image-2d`](../plugins/gfx-layered-image-2d.md) | `plugins/gfx/layered-image-2d` | `amigo-layered-image-2d-plugin` | `amigo.gfx.layered-image-2d` | gfx | renderable-source |
+| [`gfx-sprite-2d`](../plugins/gfx-sprite-2d.md) | `plugins/gfx/sprite-2d` | `amigo-sprite-2d-plugin` | `amigo.gfx.sprite-2d` | gfx | renderable-source |
+| [`gfx-text-2d`](../plugins/gfx-text-2d.md) | `plugins/gfx/text-2d` | `amigo-text-2d-plugin` | `amigo.gfx.text-2d` | gfx | renderable-source |
+| [`gfx-tilemap-2d`](../plugins/gfx-tilemap-2d.md) | `plugins/gfx/tilemap-2d` | `amigo-tilemap-2d-plugin` | `amigo.gfx.tilemap-2d` | gfx | renderable-source |
+| [`gfx-vector-2d`](../plugins/gfx-vector-2d.md) | `plugins/gfx/vector-2d` | `amigo-vector-2d-plugin` | `amigo.gfx.vector-2d` | gfx | renderable-source |
+| [`lighting-beacon-light-2d`](../plugins/lighting-beacon-light-2d.md) | `plugins/lighting/beacon-light-2d` | `amigo-beacon-light-2d-plugin` | `amigo.lighting.beacon-light-2d` | lighting | semantic-source |
+| [`lighting-light-2d`](../plugins/lighting-light-2d.md) | `plugins/lighting/light-2d` | `amigo-light-2d-plugin` | `amigo.lighting.light-2d` | lighting | semantic-source |
+| [`lighting-light-groups-2d`](../plugins/lighting-light-groups-2d.md) | `plugins/lighting/light-groups-2d` | `amigo-light-groups-2d-plugin` | `amigo.lighting.light-groups-2d` | lighting | semantic-source |
+| [`lighting-lightmaps-2d`](../plugins/lighting-lightmaps-2d.md) | `plugins/lighting/lightmaps-2d` | `amigo-lightmaps-2d-plugin` | `amigo.lighting.lightmaps-2d` | lighting | semantic-source |
+| [`lighting-relight-2d`](../plugins/lighting-relight-2d.md) | `plugins/lighting/relight-2d` | `amigo-relight-2d-plugin` | `amigo.lighting.relight-2d` | lighting | target-consumer |
+| [`materials-material-2d`](../plugins/materials-material-2d.md) | `plugins/materials/material-2d` | `amigo-material-2d-plugin` | `amigo.materials.material-2d` | materials | semantic-source |
+| [`materials-material-maps`](../plugins/materials-material-maps.md) | `plugins/materials/material-maps` | `amigo-material-maps-plugin` | `amigo.materials.material-maps` | materials | target-consumer |
+| [`materials-procedural-materials`](../plugins/materials-procedural-materials.md) | `plugins/materials/procedural-materials` | `amigo-procedural-materials-plugin` | `amigo.materials.procedural-materials` | materials | target-consumer |
+| [`postfx-bloom`](../plugins/postfx-bloom.md) | `plugins/postfx/bloom` | `amigo-bloom-plugin` | `amigo.postfx.bloom` | postfx | target-consumer |
+| [`postfx-color-grading`](../plugins/postfx-color-grading.md) | `plugins/postfx/color-grading` | `amigo-color-grading-plugin` | `amigo.postfx.color-grading` | postfx | target-consumer |
+| [`postfx-composite`](../plugins/postfx-composite.md) | `plugins/postfx/composite` | `amigo-composite-plugin` | `amigo.postfx.composite` | postfx | target-consumer |
+| [`postfx-debug-views`](../plugins/postfx-debug-views.md) | `plugins/postfx/debug-views` | `amigo-debug-views-plugin` | `amigo.postfx.debug-views` | postfx | tooling |
+| [`postfx-scopes`](../plugins/postfx-scopes.md) | `plugins/postfx/scopes` | `amigo-scopes-plugin` | `amigo.postfx.scopes` | postfx | tooling |
+| [`vfx-particles-2d`](../plugins/vfx-particles-2d.md) | `plugins/vfx/particles-2d` | `amigo-particles-2d-plugin` | `amigo.vfx.particles-2d` | vfx | renderable-source |
+| [`vfx-trails-2d`](../plugins/vfx-trails-2d.md) | `plugins/vfx/trails-2d` | `amigo-trails-2d-plugin` | `amigo.vfx.trails-2d` | vfx | renderable-source |

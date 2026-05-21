@@ -68,6 +68,27 @@ pub fn build_scene_hydration_plan(
     source_mod: &str,
     document: &SceneDocument,
 ) -> SceneDocumentResult<SceneHydrationPlan> {
+    build_scene_hydration_plan_with_component_hydrators(source_mod, document, None)
+}
+
+pub fn build_scene_hydration_plan_for_runtime(
+    runtime: &amigo_runtime::Runtime,
+    source_mod: &str,
+    document: &SceneDocument,
+) -> SceneDocumentResult<SceneHydrationPlan> {
+    let hydrators = runtime.resolve::<crate::ComponentHydratorRegistry>();
+    build_scene_hydration_plan_with_component_hydrators(
+        source_mod,
+        document,
+        hydrators.as_deref(),
+    )
+}
+
+pub fn build_scene_hydration_plan_with_component_hydrators(
+    source_mod: &str,
+    document: &SceneDocument,
+    hydrators: Option<&crate::ComponentHydratorRegistry>,
+) -> SceneDocumentResult<SceneHydrationPlan> {
     // Architectural stop-point:
     // Hydration still consumes SceneDocument directly for compatibility.
     // New object/reference semantics live in graph::SemanticSceneGraph.
@@ -104,6 +125,7 @@ pub fn build_scene_hydration_plan(
                 &entity_name,
                 component_index,
                 component,
+                hydrators,
                 &mut commands,
             )? {
                 continue;
@@ -427,6 +449,7 @@ fn component_post_fx_documents(component: &SceneComponentDocument) -> Option<&[P
         | SceneComponentDocument::VectorShape2d { post_fx, .. }
         | SceneComponentDocument::ParticleEmitter2d { post_fx, .. }
         | SceneComponentDocument::BeaconLight2d { post_fx, .. } => Some(post_fx.as_slice()),
+        SceneComponentDocument::Plugin { .. } => None,
         _ => None,
     }
 }
@@ -444,6 +467,7 @@ fn layered_image_part_post_fx_documents(
                 .map(|override_doc| (override_doc.id.as_str(), override_doc.post_fx.as_slice()))
                 .collect(),
         ),
+        SceneComponentDocument::Plugin { .. } => None,
         _ => None,
     }
 }

@@ -2266,46 +2266,6 @@ impl WgpuSceneRenderer {
                 ],
                 immediate_size: 0,
             });
-        let wet_reflections_pipeline = create_color_pipeline(
-            device,
-            &wet_reflections_shader,
-            &wet_reflections_pipeline_layout,
-            format,
-            "amigo-scene-wet-reflections-pipeline",
-            wgpu::BlendState {
-                color: wgpu::BlendComponent {
-                    src_factor: wgpu::BlendFactor::One,
-                    dst_factor: wgpu::BlendFactor::Zero,
-                    operation: wgpu::BlendOperation::Add,
-                },
-                alpha: wgpu::BlendComponent {
-                    src_factor: wgpu::BlendFactor::One,
-                    dst_factor: wgpu::BlendFactor::Zero,
-                    operation: wgpu::BlendOperation::Add,
-                },
-            },
-            &[TextureVertex::layout()],
-        );
-        let plate_relight_pipeline = create_color_pipeline(
-            device,
-            &plate_relight_shader,
-            &wet_reflections_pipeline_layout,
-            format,
-            "amigo-scene-plate-relight-pipeline",
-            wgpu::BlendState {
-                color: wgpu::BlendComponent {
-                    src_factor: wgpu::BlendFactor::One,
-                    dst_factor: wgpu::BlendFactor::Zero,
-                    operation: wgpu::BlendOperation::Add,
-                },
-                alpha: wgpu::BlendComponent {
-                    src_factor: wgpu::BlendFactor::One,
-                    dst_factor: wgpu::BlendFactor::Zero,
-                    operation: wgpu::BlendOperation::Add,
-                },
-            },
-            &[TextureVertex::layout()],
-        );
         let film_noise_shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("amigo-scene-film-noise-shader"),
             source: wgpu::ShaderSource::Wgsl(Cow::Borrowed(FILM_NOISE_SHADER)),
@@ -2330,68 +2290,133 @@ impl WgpuSceneRenderer {
             label: Some("amigo-scene-focus-blur-shader"),
             source: wgpu::ShaderSource::Wgsl(Cow::Borrowed(FOCUS_BLUR_SHADER)),
         });
+        let color_quantize_shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+            label: Some("amigo-scene-color-quantize-shader"),
+            source: wgpu::ShaderSource::Wgsl(Cow::Borrowed(COLOR_QUANTIZE_SHADER)),
+        });
+        let downscale_shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+            label: Some("amigo-scene-downscale-shader"),
+            source: wgpu::ShaderSource::Wgsl(Cow::Borrowed(DOWNSCALE_SHADER)),
+        });
+        let shutter_blur_shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+            label: Some("amigo-scene-shutter-blur-shader"),
+            source: wgpu::ShaderSource::Wgsl(Cow::Borrowed(SHUTTER_BLUR_SHADER)),
+        });
+        let dirty_bloom_shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+            label: Some("amigo-scene-dirty-bloom-shader"),
+            source: wgpu::ShaderSource::Wgsl(Cow::Borrowed(DIRTY_BLOOM_SHADER)),
+        });
+        let highlight_extract_shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+            label: Some("amigo-scene-highlight-extract-shader"),
+            source: wgpu::ShaderSource::Wgsl(Cow::Borrowed(HIGHLIGHT_EXTRACT_SHADER)),
+        });
+        let crt_shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+            label: Some("amigo-scene-crt-shader"),
+            source: wgpu::ShaderSource::Wgsl(Cow::Borrowed(CRT_SHADER)),
+        });
         let refractive_material_shader =
             device.create_shader_module(wgpu::ShaderModuleDescriptor {
                 label: Some("amigo-scene-refractive-material-shader"),
                 source: wgpu::ShaderSource::Wgsl(Cow::Borrowed(REFRACTIVE_MATERIAL_SHADER)),
             });
-        let camera_exposure_pipeline_layout =
+        let focus_blur_pipeline_layout =
             device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                label: Some("amigo-scene-camera-exposure-pipeline-layout"),
+                label: Some("amigo-scene-focus-blur-pipeline-layout"),
                 bind_group_layouts: &[
-                    Some(&texture_bind_group_layout),
+                    Some(&focus_blur_texture_bind_group_layout),
                     Some(&wet_reflections_uniform_bind_group_layout),
                 ],
                 immediate_size: 0,
             });
-        let camera_exposure_pipeline = create_color_pipeline(
-            device,
-            &camera_exposure_shader,
-            &camera_exposure_pipeline_layout,
-            format,
-            "amigo-scene-camera-exposure-pipeline",
-            wgpu::BlendState {
-                color: wgpu::BlendComponent {
-                    src_factor: wgpu::BlendFactor::One,
-                    dst_factor: wgpu::BlendFactor::Zero,
-                    operation: wgpu::BlendOperation::Add,
-                },
-                alpha: wgpu::BlendComponent {
-                    src_factor: wgpu::BlendFactor::One,
-                    dst_factor: wgpu::BlendFactor::Zero,
-                    operation: wgpu::BlendOperation::Add,
-                },
-            },
-            &[TextureVertex::layout()],
+        let mut post_fx_pipeline_registry =
+            crate::renderer::service::post_fx::pipelines::WgpuPostFxPipelineRegistry::default();
+        let post_fx_pipeline_ctx =
+            crate::renderer::service::post_fx::pipelines::WgpuPostFxPipelineCreateContext {
+                device,
+                format,
+                texture_bind_group_layout: &texture_bind_group_layout,
+                camera_visual_source_bind_group_layout: &camera_visual_source_bind_group_layout,
+                focus_blur_texture_bind_group_layout: &focus_blur_texture_bind_group_layout,
+                shutter_blur_texture_bind_group_layout: &shutter_blur_texture_bind_group_layout,
+                wet_reflections_texture_bind_group_layout: &wet_reflections_texture_bind_group_layout,
+                wet_reflections_uniform_bind_group_layout: &wet_reflections_uniform_bind_group_layout,
+                wet_reflections_pipeline_layout: &wet_reflections_pipeline_layout,
+                focus_blur_pipeline_layout: &focus_blur_pipeline_layout,
+                camera_exposure_shader: &camera_exposure_shader,
+                camera_optics_shader: &camera_optics_shader,
+                focus_blur_shader: &focus_blur_shader,
+                film_emulsion_shader: &film_emulsion_shader,
+                film_noise_shader: &film_noise_shader,
+                scan_output_shader: &scan_output_shader,
+                color_quantize_shader: &color_quantize_shader,
+                downscale_shader: &downscale_shader,
+                shutter_blur_shader: &shutter_blur_shader,
+                dirty_bloom_shader: &dirty_bloom_shader,
+                highlight_extract_shader: &highlight_extract_shader,
+                crt_shader: &crt_shader,
+                wet_reflections_shader: &wet_reflections_shader,
+                plate_relight_shader: &plate_relight_shader,
+                refractive_material_shader: &refractive_material_shader,
+            };
+        post_fx_pipeline_registry.register(
+            crate::renderer::service::post_fx::pipelines::CameraExposurePipelineProvider,
+            &post_fx_pipeline_ctx,
         );
-        let camera_optics_pipeline_layout =
-            device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                label: Some("amigo-scene-camera-optics-pipeline-layout"),
-                bind_group_layouts: &[
-                    Some(&camera_visual_source_bind_group_layout),
-                    Some(&wet_reflections_uniform_bind_group_layout),
-                ],
-                immediate_size: 0,
-            });
-        let camera_optics_pipeline = create_color_pipeline(
-            device,
-            &camera_optics_shader,
-            &camera_optics_pipeline_layout,
-            format,
-            "amigo-scene-camera-optics-pipeline",
-            wgpu::BlendState {
-                color: wgpu::BlendComponent {
-                    src_factor: wgpu::BlendFactor::One,
-                    dst_factor: wgpu::BlendFactor::Zero,
-                    operation: wgpu::BlendOperation::Add,
-                },
-                alpha: wgpu::BlendComponent {
-                    src_factor: wgpu::BlendFactor::One,
-                    dst_factor: wgpu::BlendFactor::Zero,
-                    operation: wgpu::BlendOperation::Add,
-                },
-            },
-            &[TextureVertex::layout()],
+        post_fx_pipeline_registry.register(
+            crate::renderer::service::post_fx::pipelines::CameraOpticsPipelineProvider,
+            &post_fx_pipeline_ctx,
+        );
+        post_fx_pipeline_registry.register(
+            crate::renderer::service::post_fx::pipelines::FocusBlurPipelineProvider,
+            &post_fx_pipeline_ctx,
+        );
+        post_fx_pipeline_registry.register(
+            crate::renderer::service::post_fx::pipelines::FilmEmulsionPipelineProvider,
+            &post_fx_pipeline_ctx,
+        );
+        post_fx_pipeline_registry.register(
+            crate::renderer::service::post_fx::pipelines::FilmNoisePipelineProvider,
+            &post_fx_pipeline_ctx,
+        );
+        post_fx_pipeline_registry.register(
+            crate::renderer::service::post_fx::pipelines::ScanOutputPipelineProvider,
+            &post_fx_pipeline_ctx,
+        );
+        post_fx_pipeline_registry.register(
+            crate::renderer::service::post_fx::pipelines::ColorQuantizePipelineProvider,
+            &post_fx_pipeline_ctx,
+        );
+        post_fx_pipeline_registry.register(
+            crate::renderer::service::post_fx::pipelines::DownscalePipelineProvider,
+            &post_fx_pipeline_ctx,
+        );
+        post_fx_pipeline_registry.register(
+            crate::renderer::service::post_fx::pipelines::ShutterBlurPipelineProvider,
+            &post_fx_pipeline_ctx,
+        );
+        post_fx_pipeline_registry.register(
+            crate::renderer::service::post_fx::pipelines::DirtyBloomPipelineProvider,
+            &post_fx_pipeline_ctx,
+        );
+        post_fx_pipeline_registry.register(
+            crate::renderer::service::post_fx::pipelines::HighlightExtractPipelineProvider,
+            &post_fx_pipeline_ctx,
+        );
+        post_fx_pipeline_registry.register(
+            crate::renderer::service::post_fx::pipelines::CrtPipelineProvider,
+            &post_fx_pipeline_ctx,
+        );
+        post_fx_pipeline_registry.register(
+            crate::renderer::service::post_fx::pipelines::WetReflectionsPipelineProvider,
+            &post_fx_pipeline_ctx,
+        );
+        post_fx_pipeline_registry.register(
+            crate::renderer::service::post_fx::pipelines::PlateRelightPipelineProvider,
+            &post_fx_pipeline_ctx,
+        );
+        post_fx_pipeline_registry.register(
+            crate::renderer::service::post_fx::pipelines::RefractiveMaterialPipelineProvider,
+            &post_fx_pipeline_ctx,
         );
         let focus_blur_pipeline_layout =
             device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
@@ -2402,331 +2427,7 @@ impl WgpuSceneRenderer {
                 ],
                 immediate_size: 0,
             });
-        let focus_blur_pipeline = create_color_pipeline(
-            device,
-            &focus_blur_shader,
-            &focus_blur_pipeline_layout,
-            format,
-            "amigo-scene-focus-blur-pipeline",
-            wgpu::BlendState {
-                color: wgpu::BlendComponent {
-                    src_factor: wgpu::BlendFactor::One,
-                    dst_factor: wgpu::BlendFactor::Zero,
-                    operation: wgpu::BlendOperation::Add,
-                },
-                alpha: wgpu::BlendComponent {
-                    src_factor: wgpu::BlendFactor::One,
-                    dst_factor: wgpu::BlendFactor::Zero,
-                    operation: wgpu::BlendOperation::Add,
-                },
-            },
-            &[TextureVertex::layout()],
-        );
-        let refractive_material_pipeline = create_color_pipeline(
-            device,
-            &refractive_material_shader,
-            &focus_blur_pipeline_layout,
-            format,
-            "amigo-scene-refractive-material-pipeline",
-            wgpu::BlendState {
-                color: wgpu::BlendComponent {
-                    src_factor: wgpu::BlendFactor::One,
-                    dst_factor: wgpu::BlendFactor::Zero,
-                    operation: wgpu::BlendOperation::Add,
-                },
-                alpha: wgpu::BlendComponent {
-                    src_factor: wgpu::BlendFactor::One,
-                    dst_factor: wgpu::BlendFactor::Zero,
-                    operation: wgpu::BlendOperation::Add,
-                },
-            },
-            &[TextureVertex::layout()],
-        );
-        let film_emulsion_pipeline_layout =
-            device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                label: Some("amigo-scene-film-emulsion-pipeline-layout"),
-                bind_group_layouts: &[
-                    Some(&camera_visual_source_bind_group_layout),
-                    Some(&wet_reflections_uniform_bind_group_layout),
-                ],
-                immediate_size: 0,
-            });
-        let film_emulsion_pipeline = create_color_pipeline(
-            device,
-            &film_emulsion_shader,
-            &film_emulsion_pipeline_layout,
-            format,
-            "amigo-scene-film-emulsion-pipeline",
-            wgpu::BlendState {
-                color: wgpu::BlendComponent {
-                    src_factor: wgpu::BlendFactor::One,
-                    dst_factor: wgpu::BlendFactor::Zero,
-                    operation: wgpu::BlendOperation::Add,
-                },
-                alpha: wgpu::BlendComponent {
-                    src_factor: wgpu::BlendFactor::One,
-                    dst_factor: wgpu::BlendFactor::Zero,
-                    operation: wgpu::BlendOperation::Add,
-                },
-            },
-            &[TextureVertex::layout()],
-        );
-        let film_noise_pipeline_layout =
-            device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                label: Some("amigo-scene-film-noise-pipeline-layout"),
-                bind_group_layouts: &[
-                    Some(&texture_bind_group_layout),
-                    Some(&wet_reflections_uniform_bind_group_layout),
-                ],
-                immediate_size: 0,
-            });
-        let film_noise_pipeline = create_color_pipeline(
-            device,
-            &film_noise_shader,
-            &film_noise_pipeline_layout,
-            format,
-            "amigo-scene-film-noise-pipeline",
-            wgpu::BlendState {
-                color: wgpu::BlendComponent {
-                    src_factor: wgpu::BlendFactor::One,
-                    dst_factor: wgpu::BlendFactor::Zero,
-                    operation: wgpu::BlendOperation::Add,
-                },
-                alpha: wgpu::BlendComponent {
-                    src_factor: wgpu::BlendFactor::One,
-                    dst_factor: wgpu::BlendFactor::Zero,
-                    operation: wgpu::BlendOperation::Add,
-                },
-            },
-            &[TextureVertex::layout()],
-        );
-        let scan_output_pipeline_layout =
-            device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                label: Some("amigo-scene-scan-output-pipeline-layout"),
-                bind_group_layouts: &[
-                    Some(&texture_bind_group_layout),
-                    Some(&wet_reflections_uniform_bind_group_layout),
-                ],
-                immediate_size: 0,
-            });
-        let scan_output_pipeline = create_color_pipeline(
-            device,
-            &scan_output_shader,
-            &scan_output_pipeline_layout,
-            format,
-            "amigo-scene-scan-output-pipeline",
-            wgpu::BlendState {
-                color: wgpu::BlendComponent {
-                    src_factor: wgpu::BlendFactor::One,
-                    dst_factor: wgpu::BlendFactor::Zero,
-                    operation: wgpu::BlendOperation::Add,
-                },
-                alpha: wgpu::BlendComponent {
-                    src_factor: wgpu::BlendFactor::One,
-                    dst_factor: wgpu::BlendFactor::Zero,
-                    operation: wgpu::BlendOperation::Add,
-                },
-            },
-            &[TextureVertex::layout()],
-        );
-        let color_quantize_shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("amigo-scene-color-quantize-shader"),
-            source: wgpu::ShaderSource::Wgsl(Cow::Borrowed(COLOR_QUANTIZE_SHADER)),
-        });
-        let color_quantize_pipeline_layout =
-            device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                label: Some("amigo-scene-color-quantize-pipeline-layout"),
-                bind_group_layouts: &[
-                    Some(&texture_bind_group_layout),
-                    Some(&wet_reflections_uniform_bind_group_layout),
-                    Some(&texture_bind_group_layout),
-                ],
-                immediate_size: 0,
-            });
-        let color_quantize_pipeline = create_color_pipeline(
-            device,
-            &color_quantize_shader,
-            &color_quantize_pipeline_layout,
-            format,
-            "amigo-scene-color-quantize-pipeline",
-            wgpu::BlendState {
-                color: wgpu::BlendComponent {
-                    src_factor: wgpu::BlendFactor::One,
-                    dst_factor: wgpu::BlendFactor::Zero,
-                    operation: wgpu::BlendOperation::Add,
-                },
-                alpha: wgpu::BlendComponent {
-                    src_factor: wgpu::BlendFactor::One,
-                    dst_factor: wgpu::BlendFactor::Zero,
-                    operation: wgpu::BlendOperation::Add,
-                },
-            },
-            &[TextureVertex::layout()],
-        );
-        let downscale_shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("amigo-scene-downscale-shader"),
-            source: wgpu::ShaderSource::Wgsl(Cow::Borrowed(DOWNSCALE_SHADER)),
-        });
-        let downscale_pipeline_layout =
-            device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                label: Some("amigo-scene-downscale-pipeline-layout"),
-                bind_group_layouts: &[
-                    Some(&texture_bind_group_layout),
-                    Some(&wet_reflections_uniform_bind_group_layout),
-                ],
-                immediate_size: 0,
-            });
-        let downscale_pipeline = create_color_pipeline(
-            device,
-            &downscale_shader,
-            &downscale_pipeline_layout,
-            format,
-            "amigo-scene-downscale-pipeline",
-            wgpu::BlendState {
-                color: wgpu::BlendComponent {
-                    src_factor: wgpu::BlendFactor::One,
-                    dst_factor: wgpu::BlendFactor::Zero,
-                    operation: wgpu::BlendOperation::Add,
-                },
-                alpha: wgpu::BlendComponent {
-                    src_factor: wgpu::BlendFactor::One,
-                    dst_factor: wgpu::BlendFactor::Zero,
-                    operation: wgpu::BlendOperation::Add,
-                },
-            },
-            &[TextureVertex::layout()],
-        );
-        let shutter_blur_shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("amigo-scene-shutter-blur-shader"),
-            source: wgpu::ShaderSource::Wgsl(Cow::Borrowed(SHUTTER_BLUR_SHADER)),
-        });
-        let shutter_blur_pipeline_layout =
-            device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                label: Some("amigo-scene-shutter-blur-pipeline-layout"),
-                bind_group_layouts: &[
-                    Some(&shutter_blur_texture_bind_group_layout),
-                    Some(&wet_reflections_uniform_bind_group_layout),
-                ],
-                immediate_size: 0,
-            });
-        let shutter_blur_pipeline = create_color_pipeline(
-            device,
-            &shutter_blur_shader,
-            &shutter_blur_pipeline_layout,
-            format,
-            "amigo-scene-shutter-blur-pipeline",
-            wgpu::BlendState {
-                color: wgpu::BlendComponent {
-                    src_factor: wgpu::BlendFactor::One,
-                    dst_factor: wgpu::BlendFactor::Zero,
-                    operation: wgpu::BlendOperation::Add,
-                },
-                alpha: wgpu::BlendComponent {
-                    src_factor: wgpu::BlendFactor::One,
-                    dst_factor: wgpu::BlendFactor::Zero,
-                    operation: wgpu::BlendOperation::Add,
-                },
-            },
-            &[TextureVertex::layout()],
-        );
-        let dirty_bloom_shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("amigo-scene-dirty-bloom-shader"),
-            source: wgpu::ShaderSource::Wgsl(Cow::Borrowed(DIRTY_BLOOM_SHADER)),
-        });
-        let dirty_bloom_pipeline_layout =
-            device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                label: Some("amigo-scene-dirty-bloom-pipeline-layout"),
-                bind_group_layouts: &[
-                    Some(&texture_bind_group_layout),
-                    Some(&wet_reflections_uniform_bind_group_layout),
-                ],
-                immediate_size: 0,
-            });
-        let dirty_bloom_pipeline = create_color_pipeline(
-            device,
-            &dirty_bloom_shader,
-            &dirty_bloom_pipeline_layout,
-            format,
-            "amigo-scene-dirty-bloom-pipeline",
-            wgpu::BlendState {
-                color: wgpu::BlendComponent {
-                    src_factor: wgpu::BlendFactor::One,
-                    dst_factor: wgpu::BlendFactor::Zero,
-                    operation: wgpu::BlendOperation::Add,
-                },
-                alpha: wgpu::BlendComponent {
-                    src_factor: wgpu::BlendFactor::One,
-                    dst_factor: wgpu::BlendFactor::Zero,
-                    operation: wgpu::BlendOperation::Add,
-                },
-            },
-            &[TextureVertex::layout()],
-        );
-        let highlight_extract_shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("amigo-scene-highlight-extract-shader"),
-            source: wgpu::ShaderSource::Wgsl(Cow::Borrowed(HIGHLIGHT_EXTRACT_SHADER)),
-        });
-        let highlight_extract_pipeline_layout =
-            device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                label: Some("amigo-scene-highlight-extract-pipeline-layout"),
-                bind_group_layouts: &[
-                    Some(&texture_bind_group_layout),
-                    Some(&wet_reflections_uniform_bind_group_layout),
-                ],
-                immediate_size: 0,
-            });
-        let highlight_extract_pipeline = create_color_pipeline(
-            device,
-            &highlight_extract_shader,
-            &highlight_extract_pipeline_layout,
-            format,
-            "amigo-scene-highlight-extract-pipeline",
-            wgpu::BlendState {
-                color: wgpu::BlendComponent {
-                    src_factor: wgpu::BlendFactor::One,
-                    dst_factor: wgpu::BlendFactor::Zero,
-                    operation: wgpu::BlendOperation::Add,
-                },
-                alpha: wgpu::BlendComponent {
-                    src_factor: wgpu::BlendFactor::One,
-                    dst_factor: wgpu::BlendFactor::Zero,
-                    operation: wgpu::BlendOperation::Add,
-                },
-            },
-            &[TextureVertex::layout()],
-        );
-        let crt_shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("amigo-scene-crt-shader"),
-            source: wgpu::ShaderSource::Wgsl(Cow::Borrowed(CRT_SHADER)),
-        });
-        let crt_pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("amigo-scene-crt-pipeline-layout"),
-            bind_group_layouts: &[
-                Some(&texture_bind_group_layout),
-                Some(&wet_reflections_uniform_bind_group_layout),
-            ],
-            immediate_size: 0,
-        });
-        let crt_pipeline = create_color_pipeline(
-            device,
-            &crt_shader,
-            &crt_pipeline_layout,
-            format,
-            "amigo-scene-crt-pipeline",
-            wgpu::BlendState {
-                color: wgpu::BlendComponent {
-                    src_factor: wgpu::BlendFactor::One,
-                    dst_factor: wgpu::BlendFactor::Zero,
-                    operation: wgpu::BlendOperation::Add,
-                },
-                alpha: wgpu::BlendComponent {
-                    src_factor: wgpu::BlendFactor::One,
-                    dst_factor: wgpu::BlendFactor::Zero,
-                    operation: wgpu::BlendOperation::Add,
-                },
-            },
-            &[TextureVertex::layout()],
-        );
+        let mut post_fx_pipelines = post_fx_pipeline_registry.into_pipelines();
 
         Self {
             color_alpha_pipeline,
@@ -2745,23 +2446,10 @@ impl WgpuSceneRenderer {
             shutter_blur_texture_bind_group_layout,
             wet_reflections_texture_bind_group_layout,
             wet_reflections_uniform_bind_group_layout,
-            wet_reflections_pipeline,
-            plate_relight_pipeline,
-            refractive_material_pipeline,
-            dirty_bloom_pipeline,
-            highlight_extract_pipeline,
-            color_quantize_pipeline,
-            downscale_pipeline,
-            camera_exposure_pipeline,
-            shutter_blur_pipeline,
+            post_fx_pipelines,
+            post_fx_executors: crate::renderer::service::post_fx::default_post_fx_executor_registry(),
             shutter_blur_runtimes: BTreeMap::new(),
             rain_glass_runtimes: BTreeMap::new(),
-            camera_optics_pipeline,
-            focus_blur_pipeline,
-            film_emulsion_pipeline,
-            film_noise_pipeline,
-            scan_output_pipeline,
-            crt_pipeline,
             texture_cache: BTreeMap::new(),
             lightmap_2d_image_cache: BTreeMap::new(),
             font_atlas_cache: BTreeMap::new(),

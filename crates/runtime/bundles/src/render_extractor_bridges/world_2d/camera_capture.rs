@@ -34,20 +34,17 @@ pub(super) fn update_camera_2d_capture(
     }
     packet.set_light_sources_2d(super::super::light_sources_2d::collect_light_sources_2d(
         packet.renderables_2d(),
-        packet.world_2d_beacons(),
-        packet.world_2d_global_lights(),
-        packet.world_2d_lightmaps(),
-        packet.world_2d_light_groups(),
-        packet.world_2d_particles(),
+        packet.render_contributions_2d(),
         None,
     ));
-    packet.set_camera_optical_candidates_2d(
+    let camera_optical_candidates =
         super::super::light_sources_2d::collect_camera_optical_candidates_from_light_sources_2d(
             packet.world_2d_light_sources(),
-        ),
-    );
+        );
     packet.set_camera_capture_input_2d(build_camera_capture_input(
+        runtime,
         packet,
+        camera_optical_candidates.as_slice(),
         depth_space,
         camera_motion,
     ));
@@ -108,7 +105,9 @@ fn is_produced(
 }
 
 pub(super) fn build_camera_capture_input(
+    runtime: &Runtime,
     packet: &WgpuRenderFramePacket,
+    camera_optical_candidates: &[amigo_camera_optics_plugin::api::CameraOpticalCandidate2d],
     depth_space: amigo_2d_spatial::DepthSpace2d,
     camera_motion: amigo_camera_core_plugin::api::CameraDepthMotion2d,
 ) -> amigo_render_api::CameraCaptureInput2d {
@@ -173,24 +172,24 @@ pub(super) fn build_camera_capture_input(
     if !packet.world_2d_render_layers().is_empty() {
         builder = builder.with_layer_mask("world.layer_mask");
     }
-    if targets_scene_highlight_buffer(packet) {
+    if targets_scene_highlight_buffer(runtime, camera_optical_candidates) {
         // Produced by authored visual maps or active CameraOpticalCandidate2d targets.
         // CameraOptics consumes this semantic buffer before camera post-fx.
         builder = builder.with_highlight_produced("world.highlight");
     }
-    if targets_scene_emissive_buffer(packet) {
+    if targets_scene_emissive_buffer(runtime, camera_optical_candidates) {
         // Produced by authored visual maps or active CameraOpticalCandidate2d targets.
         // CameraOptics consumes this semantic buffer before camera post-fx.
         builder = builder.with_emissive_produced("world.emissive");
     }
-    if should_produce_scene_normal(packet) {
+    if should_produce_scene_normal(runtime, packet) {
         // V1 limitation: produced by authored visual maps and wet-reflection asset fallback.
         // Final target: dedicated material pass writes this buffer before camera post-fx.
         builder = builder.with_normal_produced("world.normal");
     } else if let Some(normal) = wetness_normal_source(packet.post_fx_stacks()) {
         builder = builder.with_normal_asset(normal);
     }
-    if should_produce_scene_wetness(packet) {
+    if should_produce_scene_wetness(runtime, packet) {
         // V1 limitation: produced by authored visual maps and wet-reflection asset fallback.
         // Final target: dedicated material pass writes this buffer before camera post-fx.
         builder = builder.with_wetness_produced("world.wetness");
@@ -205,48 +204,51 @@ pub(super) fn build_camera_capture_input(
     builder.build()
 }
 
-fn targets_scene_highlight_buffer(packet: &WgpuRenderFramePacket) -> bool {
-    amigo_camera_optics_plugin::render_wgpu::targets_scene_highlight_buffer(
-        has_visual_map(packet, amigo_render_api::VisualSourceKind2d::SceneHighlight),
-        packet.camera_optical_candidates_2d(),
+fn targets_scene_highlight_buffer(
+    runtime: &Runtime,
+    camera_optical_candidates: &[amigo_camera_optics_plugin::api::CameraOpticalCandidate2d],
+) -> bool {
+    amigo_camera_optics_plugin::render::targets_scene_highlight_buffer(
+        has_visual_map(runtime, amigo_render_api::VisualSourceKind2d::SceneHighlight),
+        camera_optical_candidates,
     )
 }
 
-fn targets_scene_emissive_buffer(packet: &WgpuRenderFramePacket) -> bool {
-    amigo_camera_optics_plugin::render_wgpu::targets_scene_emissive_buffer(
-        has_visual_map(packet, amigo_render_api::VisualSourceKind2d::SceneEmissive),
-        packet.camera_optical_candidates_2d(),
+fn targets_scene_emissive_buffer(
+    runtime: &Runtime,
+    camera_optical_candidates: &[amigo_camera_optics_plugin::api::CameraOpticalCandidate2d],
+) -> bool {
+    amigo_camera_optics_plugin::render::targets_scene_emissive_buffer(
+        has_visual_map(runtime, amigo_render_api::VisualSourceKind2d::SceneEmissive),
+        camera_optical_candidates,
     )
 }
 
-fn should_produce_scene_normal(packet: &WgpuRenderFramePacket) -> bool {
-    has_visual_map(packet, amigo_render_api::VisualSourceKind2d::SceneNormal)
+fn should_produce_scene_normal(runtime: &Runtime, packet: &WgpuRenderFramePacket) -> bool {
+    has_visual_map(runtime, amigo_render_api::VisualSourceKind2d::SceneNormal)
         || wetness_normal_source(packet.post_fx_stacks()).is_some()
 }
 
-fn should_produce_scene_wetness(packet: &WgpuRenderFramePacket) -> bool {
-    has_visual_map(packet, amigo_render_api::VisualSourceKind2d::SceneWetness)
+fn should_produce_scene_wetness(runtime: &Runtime, packet: &WgpuRenderFramePacket) -> bool {
+    has_visual_map(runtime, amigo_render_api::VisualSourceKind2d::SceneWetness)
         || wetness_mask_source(packet.post_fx_stacks()).is_some()
 }
 
 fn has_visual_map(
-    packet: &WgpuRenderFramePacket,
+    runtime: &Runtime,
     kind: amigo_render_api::VisualSourceKind2d,
 ) -> bool {
-    first_visual_map(packet, kind).is_some()
-}
-
-fn first_visual_map(
-    packet: &WgpuRenderFramePacket,
-    kind: amigo_render_api::VisualSourceKind2d,
-) -> Option<&amigo_assets::AssetKey> {
-    packet
-        .world_2d_sprites()
+    runtime
+        .resolve::<amigo_sprite_2d_plugin::SpriteSceneService>()
+        .map(|service| service.commands())
+        .unwrap_or_default()
         .iter()
         .filter_map(|command| visual_map_for_kind(command.sprite.visual_maps.as_ref(), kind))
         .chain(
-            packet
-                .world_2d_layered_images()
+            runtime
+                .resolve::<amigo_layered_image_2d_plugin::LayeredImageSceneService>()
+                .map(|service| service.commands())
+                .unwrap_or_default()
                 .iter()
                 .filter_map(|command| {
                     visual_map_for_kind(command.image.visual_maps.as_ref(), kind).or_else(|| {
@@ -262,6 +264,7 @@ fn first_visual_map(
                 }),
         )
         .next()
+        .is_some()
 }
 
 fn visual_map_for_kind(

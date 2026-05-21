@@ -16,6 +16,11 @@ impl RuntimePlugin for Beacon2dPlugin {
             registry,
             crate::BeaconLight2dSceneResetHandler,
         )?;
+        if let Some(render_extractors) =
+            registry.resolve::<amigo_render_api::RuntimeRenderExtractorIdRegistry>()
+        {
+            crate::render::register_beacon_2d_render_extractor_id(render_extractors.as_ref());
+        }
         if let (Some(control), Some(beacons)) = (
             registry.resolve::<RuntimeControlService>(),
             registry.resolve::<crate::BeaconLight2dSceneService>(),

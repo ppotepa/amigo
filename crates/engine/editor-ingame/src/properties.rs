@@ -6,6 +6,7 @@ use amigo_runtime::Runtime;
 
 use crate::state::EditorPropertyValue;
 
+#[allow(dead_code)]
 pub fn build_panel_with_overrides(
     node: &amigo_editor_authoring::AuthoringNode,
     override_for: impl Fn(&str) -> Option<EditorPropertyValue>,

@@ -5,8 +5,22 @@ fn hydrate_component_core(
     entity_name: &String,
     component_index: usize,
     component: &SceneComponentDocument,
+    hydrators: Option<&crate::ComponentHydratorRegistry>,
     commands: &mut Vec<SceneCommand>,
 ) -> SceneDocumentResult<bool> {
+    if let Some(hydrators) = hydrators {
+        if hydrators.hydrate_first(crate::ComponentHydrationContext {
+            source_mod,
+            document,
+            entity,
+            entity_name,
+            component_index,
+            component,
+            commands,
+        })? {
+            return Ok(true);
+        }
+    }
     match component {
         SceneComponentDocument::Camera2d {
             id,

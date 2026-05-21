@@ -225,7 +225,9 @@ pub(crate) fn execute_wet_reflections(
             timestamp_writes: None,
             multiview_mask: None,
         });
-        pass.set_pipeline(&renderer.wet_reflections_pipeline);
+        pass.set_pipeline(renderer.post_fx_pipeline(
+            crate::renderer::service::POST_FX_EXECUTOR_WET_REFLECTIONS,
+        ));
         pass.set_bind_group(0, &texture_bind_group, &[]);
         pass.set_bind_group(1, &uniform_bind_group, &[]);
         pass.set_vertex_buffer(0, vertex_buffer.slice(..));

@@ -10,7 +10,6 @@ use amigo_session::{
 const DOMAIN_ID: &str = "amigo.2d.beacon";
 const SCENE_HANDLER_ID: &str = "beacon-2d";
 const SCENE_CONTRIBUTION_ID: &str = "beacon-2d.scene";
-const RENDER_EXTRACTOR_ID: &str = "beacon_2d.vfx";
 
 pub fn register_beacon2d_runtime_capabilities(
     session: &mut RuntimeSession,
@@ -63,7 +62,7 @@ fn render_descriptor() -> RuntimeCapabilityDescriptor {
     RuntimeCapabilityDescriptor {
         domain_id: RuntimeDomainId::new(DOMAIN_ID),
         kind: RuntimeCapabilityKind::RenderExtractor,
-        id: RENDER_EXTRACTOR_ID.to_owned(),
+        id: crate::render::BEACON_2D_EXTRACTOR_ID.to_owned(),
         label: "Beacon 2D Extractor".to_owned(),
         description: "2D beacon VFX render extraction".to_owned(),
         capabilities: vec!["beacon_2d".to_owned()],

@@ -24,6 +24,18 @@ impl RuntimePlugin for Vector2dPlugin {
         {
             metadata.register(crate::scene::Vector2dComponentMetadataProvider);
         }
+        if let Some(schemas) = registry.resolve::<amigo_scene::ComponentSchemaRegistry>() {
+            schemas.register_descriptor(crate::scene::vector_2d_scene_descriptor());
+            schemas.register_schema_provider(crate::scene::Vector2dSceneSchemaProvider);
+        }
+        if let Some(hydrators) = registry.resolve::<amigo_scene::ComponentHydratorRegistry>() {
+            hydrators.register(crate::scene::hydration::VectorShape2dComponentHydrator);
+        }
+        if let Some(render_extractors) =
+            registry.resolve::<amigo_render_api::RuntimeRenderExtractorIdRegistry>()
+        {
+            crate::render::register_vector_2d_render_extractor_id(render_extractors.as_ref());
+        }
         registry.register(VectorDomainInfo {
             crate_name: "amigo-vector-2d-plugin",
             capability: "vector_2d",
@@ -41,6 +53,14 @@ impl RuntimePlugin for Vector2dPlugin {
             scene_handlers.as_ref(),
             super::scene_command::Vector2dSceneCommandHandler,
         );
+        if let Some(plugin_scene_handlers) =
+            registry.resolve::<amigo_scene::PluginSceneCommandHandlerRegistry>()
+        {
+            plugin_scene_handlers.register(
+                "amigo.gfx.vector-2d.scene-command.VectorShape2D",
+                std::sync::Arc::new(super::scene_command::Vector2dSceneCommandHandler),
+            );
+        }
         Ok(())
     }
 }

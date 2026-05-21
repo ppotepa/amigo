@@ -18,6 +18,11 @@ impl RuntimePlugin for Composition2dPlugin {
         registry.register(RenderLayer2dSceneService::default())?;
         registry.register(LightRoute2dSceneService::default())?;
         amigo_scene::register_scene_reset_handler(registry, crate::Composition2dSceneResetHandler)?;
+        if let Some(render_extractors) =
+            registry.resolve::<amigo_render_api::RuntimeRenderExtractorIdRegistry>()
+        {
+            render_extractors.register("composition_2d");
+        }
         register_domain_plugin(
             registry,
             COMPOSITION_2D_PLUGIN_LABEL,

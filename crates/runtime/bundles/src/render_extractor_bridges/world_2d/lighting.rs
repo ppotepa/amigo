@@ -33,13 +33,29 @@ impl RenderFrameExtractor<Runtime, WgpuRenderFramePacket> for WgpuLighting2dRend
         else {
             return;
         };
-        amigo_light_2d_plugin::Lighting2dRenderExtractor.extract(
+        let commands = amigo_light_2d_plugin::extract_lighting2d_render_commands(
             amigo_light_2d_plugin::Lighting2dRenderExtractionContext {
                 global_light2d_scene_service: global_light2d_scene_service.as_ref(),
                 lightmap2d_scene_service: lightmap2d_scene_service.as_ref(),
                 light_group2d_scene_service: light_group2d_scene_service.as_ref(),
             },
-            packet,
         );
+        for command in &commands.global_lights {
+            packet.push_render_contribution_2d(
+                amigo_light_2d_plugin::global_light_command_to_render_contribution(command),
+            );
+        }
+        for contribution in
+            amigo_light_2d_plugin::lightmap_commands_to_render_contributions(&commands.lightmaps)
+        {
+            packet.push_render_contribution_2d(contribution);
+        }
+        for contribution in amigo_light_2d_plugin::light_group_commands_to_render_contributions(
+            &commands.light_groups,
+            &commands.global_lights,
+            &commands.lightmaps,
+        ) {
+            packet.push_render_contribution_2d(contribution);
+        }
     }
 }

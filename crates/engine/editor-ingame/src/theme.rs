@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use amigo_assets::AssetKey;
 use amigo_editor_authoring::{AuthoringTreeIcon, AuthoringTreeTag};
 

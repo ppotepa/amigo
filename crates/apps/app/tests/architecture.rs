@@ -228,7 +228,7 @@ fn runtime_bundles_render_bridges_do_not_use_app_owned_names() {
     let workspace = workspace_root();
 
     for relative in [
-        "crates/runtime/bundles/src/render_extractor_bridges/world_2d.rs",
+        "crates/runtime/bundles/src/render_extractor_bridges/world_2d/mod.rs",
         "crates/runtime/bundles/src/render_extractor_bridges/world_3d.rs",
         "crates/runtime/bundles/src/render_extractor_bridges/host_overlay.rs",
     ] {

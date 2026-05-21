@@ -1,4 +1,4 @@
-import { applyPseudoDepth, boundsOf, centroid, lerp, lerpPoints, pointsToPath, remapClamp, smoothstep } from "../math";
+import { applyPseudoDepth, boundsOf, centroid, interpolatePointKeyframes, lerp, pointsToPath, remapClamp, smoothstep } from "../math";
 import { buildEarRig, buildRig, computeEarPoints } from "../rig";
 import { type AppState, type BodyPart, type EarKey, type GeometryPayload, type ViewState } from "../types";
 import type { DetailGeometryResolver, MassGeometryResolver } from "./registry";
@@ -10,6 +10,19 @@ export const HEAD_DETAIL_GEOMETRY_STRATEGIES = [
   "head.nostril",
   "head.earInnerCurve",
 ] as const;
+
+function noseFacingScore(viewState: ViewState): number {
+  const profilePresence = smoothstep(remapClamp(viewState.profile, 0.18, 0.82));
+  const backFade = 1 - smoothstep(remapClamp(viewState.back, 0.12, 0.72));
+  return profilePresence * backFade;
+}
+
+function earInnerFacingScore(viewState: ViewState, isNear: boolean): number {
+  const profilePresence = smoothstep(remapClamp(viewState.profile, 0.1, 0.72));
+  const nearBias = isNear ? 1 : 0.35;
+  const backFade = 1 - smoothstep(remapClamp(viewState.back, 0.42, 0.72));
+  return profilePresence * nearBias * backFade;
+}
 
 function getFaceRig(state: AppState, side: 1 | -1) {
   const key = `${side}:${state.samples}`;
@@ -23,6 +36,20 @@ function getEarRig(state: AppState) {
   return state.earRigs.get(key)!;
 }
 
+function localYawForSide(yaw: number, side: 1 | -1): number {
+  return side > 0 ? yaw : (360 - yaw);
+}
+
+function interpolateRigPoints(pair: { source: { x: number; y: number }[]; quarter?: { x: number; y: number }[]; target: { x: number; y: number }[]; back?: { x: number; y: number }[] }, localYaw: number) {
+  const frames = [
+    { t: 0, points: pair.source },
+    { t: 45, points: pair.quarter ?? pair.target },
+    { t: 90, points: pair.target },
+    ...(pair.back ? [{ t: 180, points: pair.back }] : []),
+  ];
+  return interpolatePointKeyframes(frames, localYaw, pair.back ? 0.5 : 0.35);
+}
+
 export function evaluateHeadMassGeometry(
   part: BodyPart,
   state: AppState,
@@ -32,14 +59,13 @@ export function evaluateHeadMassGeometry(
 ): GeometryPayload | null {
   if (!part.geometry) return null;
   const t = viewState.t;
+  const localYaw = localYawForSide(yaw, viewState.side);
 
   switch (part.geometry.strategy) {
     case "head.faceMorph": {
       const pair = getFaceRig(state, viewState.side).find(item => item.key === "face");
       if (!pair?.back) return null;
-      const sideMorph = lerpPoints(pair.source, pair.target, t);
-      const backBlend = smoothstep(remapClamp(viewState.back, 0.22, 1.0));
-      const points = applyPseudoDepth(lerpPoints(sideMorph, pair.back, backBlend), yawRad, t, state.depth);
+      const points = applyPseudoDepth(interpolateRigPoints(pair, localYaw), yawRad, t, state.depth * 0.55);
       return {
         points,
         path: pointsToPath(points, state.smooth),
@@ -55,7 +81,7 @@ export function evaluateHeadMassGeometry(
     case "head.noseMorph": {
       const pair = getFaceRig(state, viewState.side).find(item => item.key === "nose");
       if (!pair) return null;
-      const points = applyPseudoDepth(lerpPoints(pair.source, pair.target, t), yawRad, t, state.depth);
+      const points = applyPseudoDepth(interpolateRigPoints(pair, Math.min(localYaw, 90)), yawRad, t, state.depth * 0.45);
       return {
         points,
         path: pointsToPath(points, state.smooth),
@@ -68,7 +94,7 @@ export function evaluateHeadMassGeometry(
       const earKey: EarKey = part.geometry.side === "left" ? "earLeft" : "earRight";
       const earState = viewState.ears.find(item => item.key === earKey);
       if (!earState) return null;
-      const points = applyPseudoDepth(computeEarPoints(getEarRig(state)[earKey], yaw), yawRad, t, state.depth);
+      const points = applyPseudoDepth(computeEarPoints(getEarRig(state)[earKey], yaw), yawRad, t, state.depth * 0.28);
       return {
         points,
         path: pointsToPath(points, state.smooth),
@@ -109,7 +135,7 @@ export function evaluateHeadDetailGeometry(
       return {
         path: `M ${(mouthX - mouthW).toFixed(2)} ${(mouthY - mouthTilt).toFixed(2)} Q ${mouthX.toFixed(2)} ${(mouthY + bounds.height * 0.018).toFixed(2)}, ${(mouthX + mouthW).toFixed(2)} ${(mouthY + mouthTilt).toFixed(2)}`,
         bounds,
-        visible: viewState.showMouth,
+        visible: viewState.showMouth && viewState.profile < 0.96,
       };
     }
     case "head.noseHighlight": {
@@ -119,11 +145,12 @@ export function evaluateHeadDetailGeometry(
       const center = centroid(nosePoints);
       const sign = viewState.side > 0 ? -1 : 1;
       const t = viewState.t;
+      const facing = noseFacingScore(viewState);
       return {
         path: `M ${(center.x - sign * bounds.width * 0.10).toFixed(2)} ${(bounds.minY + bounds.height * 0.20).toFixed(2)} Q ${(center.x - sign * bounds.width * 0.18).toFixed(2)} ${center.y.toFixed(2)}, ${(center.x - sign * bounds.width * 0.10).toFixed(2)} ${(bounds.minY + bounds.height * 0.84).toFixed(2)}`,
         bounds,
-        opacity: 0.08 + t * 0.18,
-        visible: viewState.showNose && outlineMode !== "SILHOUETTE_ONLY" && viewState.zone !== "BACK_PROXY" && viewState.profile > 0.5,
+        opacity: 0.05 + facing * 0.24 + t * 0.06,
+        visible: viewState.showNose && outlineMode !== "SILHOUETTE_ONLY" && viewState.zone !== "BACK_PROXY" && facing > 0.16,
       };
     }
     case "head.nostril": {
@@ -133,10 +160,11 @@ export function evaluateHeadDetailGeometry(
       const center = centroid(nosePoints);
       const sign = viewState.side > 0 ? -1 : 1;
       const t = viewState.t;
+      const facing = noseFacingScore(viewState);
       return {
         bounds,
-        opacity: 0.04 + t * 0.18,
-        visible: viewState.showNose && outlineMode !== "SILHOUETTE_ONLY" && viewState.zone !== "BACK_PROXY" && viewState.profile > 0.5,
+        opacity: 0.03 + facing * 0.18 + t * 0.05,
+        visible: viewState.showNose && outlineMode !== "SILHOUETTE_ONLY" && viewState.zone !== "BACK_PROXY" && facing > 0.2,
         meta: {
           cx: (center.x + sign * bounds.width * 0.17).toFixed(2),
           cy: (bounds.minY + bounds.height * 0.72).toFixed(2),
@@ -156,10 +184,11 @@ export function evaluateHeadDetailGeometry(
       const earState = viewState.ears.find(item => item.key === (part.geometry?.side === "right" ? "earRight" : "earLeft"));
       if (!earState) return null;
       const curve = bounds.width * (localSide > 0 ? -0.18 : 0.18) * (earState.depth >= 0 ? 1 : -1);
+      const facing = earInnerFacingScore(viewState, earState.isNear);
       return {
         path: `M ${cx.toFixed(2)} ${y1.toFixed(2)} C ${(cx + curve).toFixed(2)} ${(y1 + bounds.height * 0.18).toFixed(2)}, ${(cx - curve * 0.65).toFixed(2)} ${(y2 - bounds.height * 0.18).toFixed(2)}, ${cx.toFixed(2)} ${y2.toFixed(2)}`,
         bounds,
-        visible: outlineMode !== "SILHOUETTE_ONLY" && earState.isNear && viewState.profile < 0.68 && viewState.back < 0.58,
+        visible: outlineMode !== "SILHOUETTE_ONLY" && facing > 0.22,
       };
     }
     default:

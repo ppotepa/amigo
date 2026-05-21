@@ -21,7 +21,6 @@ use amigo_scene::{
     Text2dStyleSceneCommand,
 };
 mod editor_capability;
-mod render_extraction;
 mod reset;
 mod runtime_capabilities;
 mod scene_command;
@@ -29,7 +28,6 @@ mod script_command;
 #[cfg(test)]
 mod tests;
 pub use editor_capability::*;
-pub use render_extraction::*;
 pub use reset::*;
 pub use runtime_capabilities::*;
 pub use scene_command::*;
@@ -176,6 +174,18 @@ impl RuntimePlugin for Text2dPlugin {
         {
             metadata.register(crate::scene::Text2dComponentMetadataProvider);
         }
+        if let Some(schemas) = registry.resolve::<amigo_scene::ComponentSchemaRegistry>() {
+            schemas.register_descriptor(crate::scene::text_2d_scene_descriptor());
+            schemas.register_schema_provider(crate::scene::Text2dSceneSchemaProvider);
+        }
+        if let Some(hydrators) = registry.resolve::<amigo_scene::ComponentHydratorRegistry>() {
+            hydrators.register(crate::scene::hydration::Text2dComponentHydrator);
+        }
+        if let Some(render_extractors) =
+            registry.resolve::<amigo_render_api::RuntimeRenderExtractorIdRegistry>()
+        {
+            crate::render::register_text_2d_render_extractor_id(render_extractors.as_ref());
+        }
         registry.register(Text2dDomainInfo {
             crate_name: "amigo-text-2d-plugin",
             capability: "text_2d",
@@ -193,6 +203,14 @@ impl RuntimePlugin for Text2dPlugin {
             scene_handlers.as_ref(),
             self::scene_command::Text2dSceneCommandHandler,
         );
+        if let Some(plugin_scene_handlers) =
+            registry.resolve::<amigo_scene::PluginSceneCommandHandlerRegistry>()
+        {
+            plugin_scene_handlers.register(
+                "amigo.gfx.text-2d.scene-command.Text2D",
+                std::sync::Arc::new(self::scene_command::Text2dSceneCommandHandler),
+            );
+        }
         let script_handlers =
             registry.required::<amigo_scripting_api::RuntimeScriptCommandHandlerRegistry>()?;
         amigo_scripting_api::register_runtime_script_command_handler(

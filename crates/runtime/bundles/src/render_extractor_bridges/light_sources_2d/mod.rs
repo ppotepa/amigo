@@ -1,17 +1,16 @@
 use amigo_camera_optics_plugin::api::{
-    CameraOpticalCandidate2d, CameraOpticalEmitterKind2d, CameraOpticalResponse2d,
-    CameraOpticalSource2d, CameraOpticalSourceStatus2d,
+    CameraOpticalCandidate2d, CameraOpticalEmitterKind2d, CameraOpticalSource2d,
+    CameraOpticalSourceStatus2d,
 };
-use amigo_material_2d_plugin::Material2d;
+use amigo_material_api::Material2d;
 use amigo_render_api::{
     CameraCaptureInput2d, LightContributionKind2d, LightEmitterKind2d, LightSource2dCommon,
-    LightSource2dCommonParams, LightSourceStatus2d, RenderContributionSet,
+    LightSource2dCommonParams, LightSourceStatus2d, RenderContribution2d, RenderContributionSet,
     VisualSourceAvailability2d,
 };
 
-use crate::render_extractor_bridges::visual_2d_items::{Renderable2dItem, Renderable2dPayload};
+use crate::render_extractor_bridges::visual_2d_items::Renderable2dItem;
 
-const MAX_BEACON_LIGHT_SOURCES: usize = 32;
 const MAX_GLOBAL_LIGHT_SOURCES: usize = 16;
 const MAX_LIGHTMAP_SOURCES: usize = 16;
 const MAX_LIGHT_GROUP_SOURCES: usize = 16;
@@ -74,40 +73,191 @@ macro_rules! skipped_light_source {
     };
 }
 
-mod beacon;
 mod camera_optical;
 mod format;
-mod global;
-mod light_group;
-mod lightmap;
 mod material;
-mod particles;
 mod roles;
 #[cfg(test)]
 mod tests;
 
 pub use format::format_light_sources_2d;
-pub(crate) use camera_optical::collect_camera_optical_candidates_from_light_sources_2d;
+pub use camera_optical::collect_camera_optical_candidates_from_light_sources_2d;
 
 use roles::{color_rgba, light_source_roles, visual_source_availability_label};
 
 pub fn collect_light_sources_2d(
     renderables: &[Renderable2dItem],
-    beacons: &[amigo_beacon_light_2d_plugin::BeaconLight2dDrawCommand],
-    global_lights: &[amigo_light_2d_plugin::GlobalLight2dCommand],
-    lightmaps: &[amigo_light_2d_plugin::LightMap2dSourceCommand],
-    light_groups: &[amigo_light_2d_plugin::LightGroup2dCommand],
-    particles: &[amigo_particles_2d_plugin::Particle2dDrawCommand],
+    contributions_2d: &[RenderContribution2d],
     camera_capture_input: Option<&CameraCaptureInput2d>,
 ) -> Vec<LightSource2dCommon> {
     let mut sources = Vec::new();
     material::collect_material_emissive_light_sources(renderables, &mut sources);
-    beacon::collect_beacon_light_sources(beacons, &mut sources);
-    global::collect_global_light_sources(global_lights, &mut sources);
-    lightmap::collect_lightmap_sources(lightmaps, &mut sources);
-    light_group::collect_light_group_sources(light_groups, global_lights, lightmaps, &mut sources);
-    particles::collect_particle_light_sources(particles, &mut sources);
+    collect_contribution_light_sources(contributions_2d, &mut sources);
     camera_optical::collect_camera_capture_visual_sources(camera_capture_input, &mut sources);
 
     sources
+}
+
+fn collect_contribution_light_sources(
+    contributions_2d: &[RenderContribution2d],
+    sources: &mut Vec<LightSource2dCommon>,
+) {
+    for contribution in contributions_2d {
+        if let Some(source) = contribution.as_light_source_2d() {
+            sources.push(source.clone());
+        }
+        if let Some(lightmap) = contribution.as_lightmap_2d() {
+            collect_lightmap_contribution_sources(lightmap, sources);
+        }
+        if let Some(group) = contribution.as_light_group_2d() {
+            collect_light_group_contribution_sources(group, sources);
+        }
+    }
+}
+
+fn collect_lightmap_contribution_sources(
+    lightmap: &amigo_render_api::RenderLightMap2dSource,
+    sources: &mut Vec<LightSource2dCommon>,
+) {
+    if lightmap.channels.is_empty() {
+        sources.push(skipped_light_source!(
+            lightmap.owner_entity.clone(),
+            "LightMap2D",
+            LightEmitterKind2d::LightMapSource,
+            Some(lightmap.source_id.clone()),
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            vec![LightContributionKind2d::LightingEmit],
+            "lightmap_source_without_channels",
+            None,
+        ));
+        return;
+    }
+
+    for channel in &lightmap.channels {
+        let layers = if channel.layers.is_empty() {
+            "none".to_owned()
+        } else {
+            channel.layers.join(",")
+        };
+        sources.push(active_light_source!(
+            lightmap.owner_entity.clone(),
+            "LightMap2D",
+            LightEmitterKind2d::LightMapChannel,
+            Some(format!("{}:{}", lightmap.source_id, channel.id)),
+            None,
+            None,
+            Some(1.0),
+            Some(1.0),
+            Some(1.0),
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            vec![LightContributionKind2d::LightingEmit],
+            format!(
+                "lightmap_channel source={} channel={} layers={layers}",
+                lightmap.source_id, channel.id
+            ),
+            None,
+        ));
+    }
+}
+
+fn collect_light_group_contribution_sources(
+    group: &amigo_render_api::RenderLightGroup2d,
+    sources: &mut Vec<LightSource2dCommon>,
+) {
+    if group.sources.is_empty() {
+        sources.push(skipped_light_source!(
+            group.id.clone(),
+            "LightGroup2D",
+            LightEmitterKind2d::LightGroup,
+            Some(group.id.clone()),
+            None,
+            Some(group.color_rgba),
+            Some(group.intensity),
+            Some(0.0),
+            Some(1.0),
+            Some(group.camera_response),
+            None,
+            None,
+            None,
+            None,
+            None,
+            light_group_contribution_roles(group),
+            "light_group_without_sources",
+            None,
+        ));
+        return;
+    }
+
+    for source in &group.sources {
+        let emitter_id = match &source.kind {
+            amigo_render_api::RenderLightGroupSourceKind2d::GlobalLight { id } => {
+                Some(format!("{}:global:{}", group.id, id))
+            }
+            amigo_render_api::RenderLightGroupSourceKind2d::LightMapChannel {
+                source,
+                channel,
+            } => Some(format!("{}:lightmap:{}:{}", group.id, source, channel)),
+        };
+        let effective_intensity = group.intensity * source.response.max(0.0);
+        sources.push(active_light_source!(
+            group.id.clone(),
+            "LightGroup2D",
+            LightEmitterKind2d::LightGroup,
+            emitter_id,
+            None,
+            Some(group.color_rgba),
+            Some(group.intensity),
+            Some(effective_intensity),
+            Some(source.response.max(0.0)),
+            Some(group.camera_response),
+            None,
+            None,
+            None,
+            None,
+            None,
+            light_group_contribution_roles(group),
+            "light_group_contribution",
+            None,
+        ));
+    }
+}
+
+fn light_group_contribution_roles(
+    group: &amigo_render_api::RenderLightGroup2d,
+) -> Vec<LightContributionKind2d> {
+    let mut contributions = Vec::new();
+    if group
+        .contributions
+        .enabled_or(amigo_render_api::render_contribution_roles::LIGHTING_EMIT, true)
+    {
+        contributions.push(LightContributionKind2d::LightingEmit);
+    }
+    if group
+        .contributions
+        .enabled_or(amigo_render_api::render_contribution_roles::BLOOM_SOURCE, false)
+    {
+        contributions.push(LightContributionKind2d::BloomSource);
+    }
+    if group
+        .contributions
+        .enabled_or(amigo_render_api::render_contribution_roles::CAMERA_FX_SOURCE, false)
+    {
+        contributions.push(LightContributionKind2d::CameraFxSource);
+    }
+    contributions
 }

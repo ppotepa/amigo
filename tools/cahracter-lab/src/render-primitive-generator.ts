@@ -3,6 +3,7 @@ import { type PrimitiveOutputSpec, type RenderPrimitive } from "./render-primiti
 
 export type OutlinePrimitiveSpec = {
   sourcePartId: string;
+  visible?: boolean;
   drawContour?: boolean;
   contourClassName?: string;
   contourZIndex?: number;
@@ -26,13 +27,29 @@ function primitiveAttrsFromGeometry(geometry: GeometryPayload, spec: PrimitiveOu
   return attrs;
 }
 
-export function generateBodyPartPrimitives(parts: EvaluatedBodyPart[]): RenderPrimitive[] {
+function fallbackOutlinePolicy(): OutlinePartPolicy {
+  return {
+    drawBody: true,
+    drawContour: false,
+    drawInner: false,
+    drawSilhouette: false,
+  };
+}
+
+function resolveBodyVisibility(part: EvaluatedBodyPart, role: RenderPrimitive["role"], decision: OutlinePartPolicy): boolean {
+  if (role === "detail") return decision.drawBody || decision.drawInner;
+  if (role === "fill" || role === "shade" || role === "light" || role === "wire") return decision.drawBody;
+  return true;
+}
+
+export function generateBodyPartPrimitives(parts: EvaluatedBodyPart[], policy?: OutlinePolicy): RenderPrimitive[] {
   const out: RenderPrimitive[] = [];
 
   for (const part of parts) {
     const geometry = part.geometry;
     const outputs = part.source.render?.outputs ?? [];
     if (!geometry || outputs.length === 0) continue;
+    const decision = policy?.parts[part.id] ?? fallbackOutlinePolicy();
 
     for (const [index, spec] of outputs.entries()) {
       if (spec.kind === "path" && !geometry.path) continue;
@@ -52,7 +69,7 @@ export function generateBodyPartPrimitives(parts: EvaluatedBodyPart[]): RenderPr
         pass: spec.pass ?? part.renderPass,
         zIndex: (part.source.render?.zIndex ?? 0) + (spec.zIndexOffset ?? 0),
         depth: part.depth,
-        visible: part.visible && geometry.visible !== false,
+        visible: part.visible && geometry.visible !== false && resolveBodyVisibility(part, spec.role, decision),
         className: spec.className,
         path: geometry.path,
         attrs: primitiveAttrsFromGeometry(geometry, spec),
@@ -89,7 +106,7 @@ export function generateOutlinePrimitives(parts: EvaluatedBodyPart[], specs: Out
       pass: "outline",
       zIndex: spec.contourZIndex ?? 100,
       depth: 0,
-      visible: Boolean(spec.drawContour),
+      visible: Boolean(spec.visible) && Boolean(spec.drawContour),
       className: spec.contourClassName ?? "partOutline",
       path,
       opacity: 1,
@@ -104,7 +121,7 @@ export function generateOutlinePrimitives(parts: EvaluatedBodyPart[], specs: Out
       pass: "outline",
       zIndex: spec.silhouetteZIndex ?? 90,
       depth: 0,
-      visible: Boolean(spec.drawSilhouette),
+      visible: Boolean(spec.visible) && Boolean(spec.drawSilhouette),
       className: spec.silhouetteClassName ?? "masterSilhouettePath",
       path,
       opacity: 1,
@@ -112,15 +129,6 @@ export function generateOutlinePrimitives(parts: EvaluatedBodyPart[], specs: Out
   }
 
   return out;
-}
-
-function fallbackOutlinePolicy(): OutlinePartPolicy {
-  return {
-    drawBody: true,
-    drawContour: false,
-    drawInner: false,
-    drawSilhouette: false,
-  };
 }
 
 export function generatePolicyOutlinePrimitives(
@@ -137,6 +145,7 @@ export function generatePolicyOutlinePrimitives(
 
       return {
         sourcePartId: part.id,
+        visible: part.visible && part.geometry?.visible !== false,
         drawContour: override?.drawContour ?? decision.drawContour,
         contourClassName: outline.contourClassName,
         contourZIndex: outline.contourZIndex,

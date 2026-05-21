@@ -62,7 +62,7 @@ pub(super) fn collect_camera_capture_visual_sources(
     }
 }
 
-pub(crate) fn collect_camera_optical_candidates_from_light_sources_2d(
+pub fn collect_camera_optical_candidates_from_light_sources_2d(
     light_sources: &[LightSource2dCommon],
 ) -> Vec<CameraOpticalCandidate2d> {
     let sources = light_sources

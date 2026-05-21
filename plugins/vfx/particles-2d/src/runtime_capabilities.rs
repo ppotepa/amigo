@@ -11,7 +11,6 @@ use amigo_session::{
 const DOMAIN_ID: &str = "amigo.2d.particles";
 const SCENE_HANDLER_ID: &str = "particles-2d";
 const SCENE_CONTRIBUTION_ID: &str = "particles-2d.scene";
-const RENDER_EXTRACTOR_ID: &str = "resolved_particle_2d";
 const SYSTEM_ID: &str = "particles_2d";
 const SYSTEM_PHASE: &str = "update";
 
@@ -126,7 +125,7 @@ fn render_descriptor() -> RuntimeCapabilityDescriptor {
     RuntimeCapabilityDescriptor {
         domain_id: RuntimeDomainId::new(DOMAIN_ID),
         kind: RuntimeCapabilityKind::RenderExtractor,
-        id: RENDER_EXTRACTOR_ID.to_string(),
+        id: crate::render::PARTICLE_2D_EXTRACTOR_ID.to_string(),
         label: "Particle 2D Extractor".to_string(),
         description: "2D particles render extractor".to_string(),
         capabilities: vec!["particles_2d".to_string()],

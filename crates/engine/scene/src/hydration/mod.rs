@@ -16,7 +16,11 @@ mod style;
 mod ui;
 
 pub use common::{entity_selector_from_document, scene_key_from_document};
-pub use plan::{SceneHydrationPlan, build_scene_hydration_plan};
+pub use plan::{
+    SceneHydrationPlan, build_scene_hydration_plan, build_scene_hydration_plan_for_runtime,
+    build_scene_hydration_plan_with_component_hydrators,
+};
+pub use post_fx::component_post_fx_host_id;
 
 use common::*;
 use events::*;

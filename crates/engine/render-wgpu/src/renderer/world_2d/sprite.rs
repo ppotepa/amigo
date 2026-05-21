@@ -1,15 +1,17 @@
+use amigo_render_api::TexturedQuad2dPrimitive;
+
 use crate::renderer::*;
 
-pub(crate) fn append_sprite_vertices(
+pub(crate) fn append_textured_quad_debug_vertices(
     vertices: &mut Vec<ColorVertex>,
     viewport: &Viewport,
     camera: Transform2,
-    transform: Transform2,
-    sprite: &Sprite,
+    quad: &TexturedQuad2dPrimitive,
     color: ColorRgba,
 ) {
-    let asset_key = sprite.texture.as_str();
-    let size = sprite.size;
+    let asset_key = quad.texture.as_str();
+    let size = quad.size;
+    let transform = quad.transform;
     let half = Vec2::new(size.x * 0.5, size.y * 0.5);
     let points = [
         transform_point_2d(Vec2::new(-half.x, -half.y), transform),
@@ -23,22 +25,29 @@ pub(crate) fn append_sprite_vertices(
         ndc_from_world_2d(points[1], camera, viewport),
         ndc_from_world_2d(points[2], camera, viewport),
         ndc_from_world_2d(points[3], camera, viewport),
-        if sprite.sheet.is_some() {
+        if quad.sheet.is_some() {
             modulate_color(color, 0.18)
         } else {
             color
         },
     );
 
-    if let Some(sheet) = sprite.sheet {
+    if let Some(sheet) = quad.sheet {
         append_sprite_sheet_overlay(
             vertices,
             viewport,
             camera,
             transform,
             size,
-            sheet,
-            sprite.frame_index,
+            SpriteSheet {
+                columns: sheet.columns,
+                rows: sheet.rows,
+                frame_count: sheet.frame_count,
+                frame_size: sheet.frame_size,
+                fps: 0.0,
+                looping: true,
+            },
+            quad.frame_index,
             color,
         );
     } else if asset_key.contains("square") || asset_key.contains("sprite") {

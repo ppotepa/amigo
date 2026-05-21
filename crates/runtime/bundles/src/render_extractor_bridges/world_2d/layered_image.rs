@@ -29,12 +29,17 @@ impl RenderFrameExtractor<Runtime, WgpuRenderFramePacket>
         else {
             return;
         };
-        amigo_layered_image_2d_plugin::LayeredImage2dRenderExtractor.extract(
+        for command in amigo_layered_image_2d_plugin::extract_layered_image2d_render_commands(
             amigo_layered_image_2d_plugin::LayeredImage2dRenderExtractionContext {
                 scene_service: scene_service.as_ref(),
                 layered_image_scene_service: layered_image_scene_service.as_ref(),
             },
-            packet,
-        );
+        ) {
+            packet.push_renderable_2d(
+                amigo_layered_image_2d_plugin::render::layered_image_draw_command_to_renderable_2d(
+                    &command,
+                ),
+            );
+        }
     }
 }

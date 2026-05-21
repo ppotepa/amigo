@@ -157,7 +157,9 @@ pub(crate) fn execute_color_ramp(
             timestamp_writes: None,
             multiview_mask: None,
         });
-        pass.set_pipeline(&renderer.color_quantize_pipeline);
+        pass.set_pipeline(renderer.post_fx_pipeline(
+            crate::renderer::service::POST_FX_EXECUTOR_COLOR_QUANTIZE,
+        ));
         pass.set_bind_group(0, &texture_bind_group, &[]);
         pass.set_bind_group(1, &uniform_bind_group, &[]);
         pass.set_bind_group(2, &palette_bind_group, &[]);

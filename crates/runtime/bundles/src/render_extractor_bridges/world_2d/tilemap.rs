@@ -27,12 +27,15 @@ impl RenderFrameExtractor<Runtime, WgpuRenderFramePacket> for WgpuTileMap2dRende
         else {
             return;
         };
-        amigo_tilemap_2d_plugin::TileMap2dRenderExtractor.extract(
+        for command in amigo_tilemap_2d_plugin::extract_tilemap2d_render_commands(
             amigo_tilemap_2d_plugin::TileMap2dRenderExtractionContext {
                 scene_service: scene_service.as_ref(),
                 tilemap_scene_service: tilemap_scene_service.as_ref(),
             },
-            packet,
-        );
+        ) {
+            packet.push_renderable_2d(
+                amigo_tilemap_2d_plugin::render::tilemap_draw_command_to_renderable_2d(&command),
+            );
+        }
     }
 }

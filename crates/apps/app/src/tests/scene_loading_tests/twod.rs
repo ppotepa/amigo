@@ -325,7 +325,7 @@ fn playground_2d_scene_selection_rehydrates_document_content() {
         bridge
             .processed_scene_commands
             .iter()
-            .any(|command| command.starts_with("scene.2d.text("))
+            .any(|command| command.starts_with("scene.plugin.text("))
     );
 }
 
@@ -443,7 +443,7 @@ fn playground_2d_sprite_scene_populates_2d_domain_and_assets() {
         summary
             .processed_scene_commands
             .iter()
-            .any(|command| command.starts_with("scene.2d.sprite("))
+            .any(|command| command.starts_with("scene.plugin.sprite("))
     );
     assert!(
         summary
@@ -498,7 +498,7 @@ fn playground_2d_text_scene_populates_2d_text_domain_and_assets() {
         summary
             .processed_scene_commands
             .iter()
-            .any(|command| command.starts_with("scene.2d.text("))
+            .any(|command| command.starts_with("scene.plugin.text("))
     );
     assert!(
         summary

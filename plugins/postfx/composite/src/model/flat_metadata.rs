@@ -37,7 +37,13 @@ pub fn cached_image_post_fx_stack_from_flat_metadata(
     let effects = stack
         .effects
         .into_iter()
-        .filter(|effect| effect.is_cached_image_compatible())
+        .filter(|effect| {
+            matches!(
+                effect.render_descriptor().cached_image_policy,
+                PostFxCachedImagePolicy::RasterEffect
+                    | PostFxCachedImagePolicy::RasterEffectWithBoundsExpansion
+            )
+        })
         .collect::<Vec<_>>();
 
     if effects.is_empty() {

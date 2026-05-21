@@ -319,17 +319,8 @@ fn copy_layer_roles_target_or_fallback(
 }
 
 fn camera_debug_feature_rank(feature: &str) -> Option<u8> {
-    match feature {
-        "camera_exposure" => Some(10),
-        "shutter_blur" => Some(20),
-        "camera_optics" => Some(30),
-        "focus_blur" => Some(40),
-        "rain_glass" => Some(50),
-        "film_emulsion" => Some(60),
-        "color_ramp" => Some(70),
-        "scan_output" => Some(80),
-        _ => None,
-    }
+    amigo_render_api::PostFxRenderDescriptor::for_kind(feature)
+        .and_then(|descriptor| descriptor.debug_policy.camera_debug_rank)
 }
 
 pub(super) fn should_bypass_for_camera_debug_view(

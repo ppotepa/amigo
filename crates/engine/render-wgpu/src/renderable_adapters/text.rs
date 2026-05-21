@@ -1,9 +1,162 @@
-use crate::{Renderable2dPayloadKind, WgpuRenderable2dAdapter};
+use amigo_math::Vec2;
+use amigo_render_api::{GlyphRun2dBlendMode, RenderPrimitive2d, RenderPrimitive2dKind};
+
+use crate::{
+    WgpuRenderable2dAdapter, WgpuRenderable2dAdapterContext,
+};
+use crate::renderer::collect_material_candidate_2d;
 
 pub struct Text2dRenderableAdapter;
 
 impl WgpuRenderable2dAdapter for Text2dRenderableAdapter {
-    fn kind(&self) -> Renderable2dPayloadKind {
-        Renderable2dPayloadKind::new("text_2d")
+    fn kind(&self) -> RenderPrimitive2dKind {
+        RenderPrimitive2dKind::GlyphRun
     }
+
+    fn append_batches(
+        &self,
+        ctx: &mut WgpuRenderable2dAdapterContext<'_>,
+        item: &crate::Renderable2dItem,
+    ) -> bool {
+        let RenderPrimitive2d::GlyphRun(command) = &item.primitive else {
+            return false;
+        };
+        if command.color.a <= 0.001 {
+            return true;
+        }
+
+        if let Some(glow) = command.glow {
+            let passes = glow.passes.max(1);
+            let step = glow.radius.max(0.0) / passes as f32;
+            for pass in 1..=passes {
+                let radius = pass as f32 * step;
+                let alpha = glow.intensity.max(0.0) / pass as f32;
+                for (dx, dy) in text2d_effect_offsets(radius) {
+                    let glow_transform = translated_transform2(ctx.transform, Vec2::new(dx, dy));
+                    let color = color_with_alpha_mul(glow.color, alpha);
+                    let _ = ctx.renderer.append_text2d_ttf_font_texture_batch(
+                        ctx.texture_batches,
+                        ctx.device,
+                        ctx.queue,
+                        ctx.assets,
+                        ctx.viewport,
+                        ctx.layer_camera,
+                        &command.font,
+                        &command.text,
+                        glow_transform,
+                        command.bounds,
+                        command.font_size,
+                        color,
+                    );
+                }
+            }
+        }
+
+        if let Some(outline) = command.outline {
+            let width = outline.width.max(0.0);
+            if width > 0.0 {
+                for (dx, dy) in text2d_effect_offsets(width) {
+                    let outline_transform =
+                        translated_transform2(ctx.transform, Vec2::new(dx, dy));
+                    let _ = ctx.renderer.append_text2d_ttf_font_texture_batch(
+                        ctx.texture_batches,
+                        ctx.device,
+                        ctx.queue,
+                        ctx.assets,
+                        ctx.viewport,
+                        ctx.layer_camera,
+                        &command.font,
+                        &command.text,
+                        outline_transform,
+                        command.bounds,
+                        command.font_size,
+                        outline.color,
+                    );
+                }
+            }
+        }
+
+        if let Some(shadow) = command.shadow {
+            let shadow_transform = translated_transform2(ctx.transform, shadow.offset);
+            let _ = ctx.renderer.append_text2d_ttf_font_texture_batch(
+                ctx.texture_batches,
+                ctx.device,
+                ctx.queue,
+                ctx.assets,
+                ctx.viewport,
+                ctx.layer_camera,
+                &command.font,
+                &command.text,
+                shadow_transform,
+                command.bounds,
+                command.font_size,
+                shadow.color,
+            );
+        }
+
+        let _blend = match command.blend {
+            GlyphRun2dBlendMode::Alpha => GlyphRun2dBlendMode::Alpha,
+            GlyphRun2dBlendMode::Additive => GlyphRun2dBlendMode::Additive,
+            GlyphRun2dBlendMode::Multiply => GlyphRun2dBlendMode::Multiply,
+            GlyphRun2dBlendMode::Screen => GlyphRun2dBlendMode::Screen,
+        };
+
+        let _ = ctx.renderer.append_text2d_ttf_font_texture_batch(
+            ctx.texture_batches,
+            ctx.device,
+            ctx.queue,
+            ctx.assets,
+            ctx.viewport,
+            ctx.layer_camera,
+            &command.font,
+            &command.text,
+            ctx.transform,
+            command.bounds,
+            command.font_size,
+            command.color,
+        );
+        collect_material_candidate_2d(
+            item,
+            ctx.layer_camera,
+            ctx.layer_opacity,
+            ctx.material_candidates,
+            ctx.material_decisions,
+        );
+        true
+    }
+}
+
+fn translated_transform2(transform: amigo_math::Transform2, offset: Vec2) -> amigo_math::Transform2 {
+    amigo_math::Transform2 {
+        translation: Vec2::new(
+            transform.translation.x + offset.x,
+            transform.translation.y + offset.y,
+        ),
+        ..transform
+    }
+}
+
+fn color_with_alpha_mul(color: amigo_math::ColorRgba, alpha_mul: f32) -> amigo_math::ColorRgba {
+    let mut color = color;
+    color.a = (color.a * alpha_mul).clamp(0.0, 1.0);
+    color
+}
+
+fn text2d_effect_offsets(radius: f32) -> Vec<(f32, f32)> {
+    let radius = radius.max(0.0);
+    if radius <= 0.001 {
+        return vec![(0.0, 0.0)];
+    }
+
+    let diagonal = radius * 0.70710677;
+    vec![
+        (-radius, 0.0),
+        (radius, 0.0),
+        (0.0, -radius),
+        (0.0, radius),
+        (-diagonal, -diagonal),
+        (-diagonal, diagonal),
+        (diagonal, -diagonal),
+        (diagonal, diagonal),
+    ]
 }

@@ -1,22 +1,27 @@
 use crate::renderer::*;
+use amigo_render_api::{
+    LightEmitterKind2d, LightSource2dCommon,
+    LightReceiver2dBindingPrimitive, LightReceiverDarkPolicy2dPrimitive,
+    LightSampleStrategy2dPrimitive, Particle2dPrimitive,
+    ParticleMaterialLightingMode2dPrimitive, RenderLightMap2dSource, RenderLightMap2dSourceKind,
+    RenderPrimitive2d,
+};
 
 impl WgpuSceneRenderer {
     pub(crate) fn lightmap_2d_samplers(
         &mut self,
         assets: &AssetCatalog,
-        scene: &SceneService,
         viewport: &Viewport,
-        layered_image_commands: &[LayeredImageDrawCommand],
-        sources: &[LightMap2dSourceCommand],
+        renderables: &[Renderable2dItem],
+        sources: &[RenderLightMap2dSource],
     ) -> Vec<LightMap2dSampler> {
         sources
             .iter()
             .filter_map(|source| {
                 self.lightmap_2d_sampler_from_source(
                     assets,
-                    scene,
                     viewport,
-                    layered_image_commands,
+                    renderables,
                     source,
                 )
             })
@@ -26,17 +31,15 @@ impl WgpuSceneRenderer {
     fn lightmap_2d_sampler_from_source(
         &mut self,
         assets: &AssetCatalog,
-        scene: &SceneService,
         viewport: &Viewport,
-        layered_image_commands: &[LayeredImageDrawCommand],
-        source: &LightMap2dSourceCommand,
+        renderables: &[Renderable2dItem],
+        source: &RenderLightMap2dSource,
     ) -> Option<LightMap2dSampler> {
         match source.source.kind {
-            LightMap2dSourceKind::LayeredImage2d => self.lightmap_2d_sampler_from_layered_image(
+            RenderLightMap2dSourceKind::LayeredImage2d => self.lightmap_2d_sampler_from_layered_image(
                 assets,
-                scene,
                 viewport,
-                layered_image_commands,
+                renderables,
                 source,
             ),
         }
@@ -45,25 +48,28 @@ impl WgpuSceneRenderer {
     fn lightmap_2d_sampler_from_layered_image(
         &mut self,
         assets: &AssetCatalog,
-        scene: &SceneService,
         viewport: &Viewport,
-        layered_image_commands: &[LayeredImageDrawCommand],
-        source: &LightMap2dSourceCommand,
+        renderables: &[Renderable2dItem],
+        source: &RenderLightMap2dSource,
     ) -> Option<LightMap2dSampler> {
-        let command = layered_image_commands
-            .iter()
-            .find(|command| command.entity_name == source.source.entity_name)?;
-        let prepared = assets.prepared_asset(&command.image.asset)?;
+        let item = renderables.iter().find(|item| {
+            item.owner_entity() == source.source.entity_name
+                && matches!(item.primitive, RenderPrimitive2d::LayeredImage(_))
+        })?;
+        let RenderPrimitive2d::LayeredImage(command) = &item.primitive else {
+            return None;
+        };
+        let prepared = assets.prepared_asset(&command.asset)?;
         let base_dir = prepared.resolved_path.parent()?.to_path_buf();
-        let mut asset = assets.layered_image_asset(&command.image.asset)?;
-        apply_layer_overrides(&mut asset, &command.image.layer_overrides);
-        let transform = resolve_transform2(scene, &command.entity_name, command.transform);
+        let mut asset = assets.layered_image_asset(&command.asset)?;
+        Self::apply_primitive_layer_overrides(&mut asset, &command.layer_overrides);
+        let transform = command.transform;
 
         let size = lightmap_2d_render_size(
             viewport,
-            command.image.size,
+            command.size,
             asset.canvas_size,
-            command.image.viewport_fit,
+            Self::primitive_layered_image_viewport_fit(command.viewport_fit),
         );
         let mut layer_lookup = BTreeMap::new();
 
@@ -98,11 +104,67 @@ impl WgpuSceneRenderer {
             .collect::<BTreeMap<_, _>>();
 
         (!channels.is_empty()).then_some(LightMap2dSampler {
-            id: source.id.clone(),
+            id: source.source_id.clone(),
             transform,
             size,
             channels,
         })
+    }
+
+    fn primitive_layered_image_viewport_fit(
+        fit: amigo_render_api::LayeredImageViewportFit2dPrimitive,
+    ) -> amigo_layered_image_2d_plugin::LayeredImageViewportFit2d {
+        match fit {
+            amigo_render_api::LayeredImageViewportFit2dPrimitive::Fixed => {
+                amigo_layered_image_2d_plugin::LayeredImageViewportFit2d::Fixed
+            }
+            amigo_render_api::LayeredImageViewportFit2dPrimitive::Stretch => {
+                amigo_layered_image_2d_plugin::LayeredImageViewportFit2d::Stretch
+            }
+            amigo_render_api::LayeredImageViewportFit2dPrimitive::Contain => {
+                amigo_layered_image_2d_plugin::LayeredImageViewportFit2d::Contain
+            }
+            amigo_render_api::LayeredImageViewportFit2dPrimitive::Cover => {
+                amigo_layered_image_2d_plugin::LayeredImageViewportFit2d::Cover
+            }
+        }
+    }
+
+    fn apply_primitive_layer_overrides(
+        asset: &mut amigo_layered_image_2d_plugin::LayeredImageAsset,
+        overrides: &[amigo_render_api::LayeredImageLayerOverride2dPrimitive],
+    ) {
+        for override_entry in overrides {
+            let Some(layer) = asset.layers.iter_mut().find(|layer| layer.id == override_entry.id)
+            else {
+                continue;
+            };
+            if let Some(opacity) = override_entry.opacity {
+                layer.opacity = opacity;
+            }
+            if let Some(enabled) = override_entry.enabled {
+                layer.enabled = enabled;
+            }
+            if let Some(blend_mode) = override_entry.blend_mode {
+                layer.blend_mode = match blend_mode {
+                    amigo_render_api::LayeredImageBlendMode2dPrimitive::Alpha => {
+                        amigo_layered_image_2d_plugin::LayeredImageBlendMode2d::Alpha
+                    }
+                    amigo_render_api::LayeredImageBlendMode2dPrimitive::Additive => {
+                        amigo_layered_image_2d_plugin::LayeredImageBlendMode2d::Additive
+                    }
+                    amigo_render_api::LayeredImageBlendMode2dPrimitive::Screen => {
+                        amigo_layered_image_2d_plugin::LayeredImageBlendMode2d::Screen
+                    }
+                    amigo_render_api::LayeredImageBlendMode2dPrimitive::Multiply => {
+                        amigo_layered_image_2d_plugin::LayeredImageBlendMode2d::Multiply
+                    }
+                    amigo_render_api::LayeredImageBlendMode2dPrimitive::Lighten => {
+                        amigo_layered_image_2d_plugin::LayeredImageBlendMode2d::Lighten
+                    }
+                };
+            }
+        }
     }
 
     fn ensure_lightmap_2d_image_from_path(
@@ -159,11 +221,10 @@ impl WgpuSceneRenderer {
 }
 
 pub(crate) fn lit_particle_color(
-    particle: &Particle2dDrawCommand,
+    particle: &Particle2dPrimitive,
     lights: &[ParticleRenderLight],
     lightmaps: &[LightMap2dSampler],
-    global_lights: &[GlobalLight2dCommand],
-    light_groups: &[LightGroup2dCommand],
+    light_sources: &[LightSource2dCommon],
     light_routes: &[LightRoute2dCommand],
 ) -> ColorRgba {
     if !particle.material.receives_light {
@@ -171,17 +232,17 @@ pub(crate) fn lit_particle_color(
     }
 
     match particle.material.lighting_mode {
-        amigo_light_2d_plugin::Material2dLightingMode::Unlit => particle.color,
-        amigo_light_2d_plugin::Material2dLightingMode::DynamicLights => {
+        ParticleMaterialLightingMode2dPrimitive::Unlit => particle.color,
+        ParticleMaterialLightingMode2dPrimitive::DynamicLights => {
             dynamic_lit_particle_color(particle, lights)
         }
-        amigo_light_2d_plugin::Material2dLightingMode::LightMapSampled => particle
+        ParticleMaterialLightingMode2dPrimitive::LightMapSampled => particle
             .material
             .light_receiver
             .as_ref()
-            .map(|binding| lightmapped_particle_color(particle, binding, lightmaps, global_lights))
+            .map(|binding| lightmapped_particle_color(particle, binding, lightmaps, light_sources))
             .unwrap_or(particle.color),
-        amigo_light_2d_plugin::Material2dLightingMode::LightGroupSampled => particle
+        ParticleMaterialLightingMode2dPrimitive::LightGroupSampled => particle
             .material
             .light_receiver
             .as_ref()
@@ -190,8 +251,7 @@ pub(crate) fn lit_particle_color(
                     particle,
                     binding,
                     lightmaps,
-                    global_lights,
-                    light_groups,
+                    light_sources,
                     light_routes,
                 )
             })
@@ -200,7 +260,7 @@ pub(crate) fn lit_particle_color(
 }
 
 fn dynamic_lit_particle_color(
-    particle: &Particle2dDrawCommand,
+    particle: &Particle2dPrimitive,
     lights: &[ParticleRenderLight],
 ) -> ColorRgba {
     if particle.material.light_response <= 0.0 {
@@ -232,11 +292,10 @@ fn dynamic_lit_particle_color(
 }
 
 fn light_group_particle_color(
-    particle: &Particle2dDrawCommand,
-    binding: &LightReceiver2dBinding,
+    particle: &Particle2dPrimitive,
+    binding: &LightReceiver2dBindingPrimitive,
     lightmaps: &[LightMap2dSampler],
-    global_lights: &[GlobalLight2dCommand],
-    light_groups: &[LightGroup2dCommand],
+    light_sources: &[LightSource2dCommon],
     light_routes: &[LightRoute2dCommand],
 ) -> ColorRgba {
     let allowed_groups =
@@ -247,50 +306,84 @@ fn light_group_particle_color(
     let mut sampled_any_position = false;
 
     for group_id in allowed_groups {
-        let Some(group) = light_groups.iter().find(|group| group.id == group_id) else {
-            continue;
-        };
-        let group_scale = group.intensity.max(0.0);
-        if group_scale <= 0.0 {
-            continue;
-        }
-        for source in &group.sources {
-            let source_scale = group_scale * source.response.max(0.0);
-            if source_scale <= 0.0 {
-                continue;
-            }
-            match &source.kind {
-                amigo_light_2d_plugin::LightGroup2dSourceKind::LightMapChannel { source, channel } => {
+        for source in light_sources.iter().filter(|source| {
+            source.emitter_kind == LightEmitterKind2d::LightGroup && source.owner == group_id
+        }) {
+            let tint = source
+                .color_rgba
+                .map(|[r, g, b, a]| ColorRgba::new(r, g, b, a))
+                .unwrap_or(ColorRgba::WHITE);
+            match parse_light_group_source_ref(group_id, source.emitter_id.as_deref()) {
+                Some(LightGroupSourceRef::LightMapChannel { source: lightmap_id, channel }) => {
+                    let source_scale = source.effective_intensity.unwrap_or_default().max(0.0);
+                    if source_scale <= 0.0 {
+                        continue;
+                    }
                     let any = sample_lightmap_channel_into(
                         particle,
                         binding,
                         lightmaps,
-                        source,
+                        lightmap_id,
                         channel,
                         source_scale,
-                        group.color,
+                        tint,
                         &mut r,
                         &mut g,
                         &mut b,
                     );
                     sampled_any_position = sampled_any_position || any;
                 }
-                amigo_light_2d_plugin::LightGroup2dSourceKind::GlobalLight { id } => {
-                    sample_global_light_into(
-                        global_lights,
-                        id,
-                        source_scale,
-                        group.color,
-                        &mut r,
-                        &mut g,
-                        &mut b,
-                    );
+                Some(LightGroupSourceRef::GlobalLight { .. }) => {
+                    let scale = source.effective_intensity.unwrap_or_default().max(0.0);
+                    if scale <= 0.0 {
+                        continue;
+                    }
+                    let [sr, sg, sb, _] = source.color_rgba.unwrap_or([0.0, 0.0, 0.0, 0.0]);
+                    r = r.max((sr * scale).clamp(0.0, 1.0));
+                    g = g.max((sg * scale).clamp(0.0, 1.0));
+                    b = b.max((sb * scale).clamp(0.0, 1.0));
+                }
+                None => {
+                    let scale = source.effective_intensity.unwrap_or_default().max(0.0);
+                    if scale <= 0.0 {
+                        continue;
+                    }
+                    let [sr, sg, sb, _] = source.color_rgba.unwrap_or([0.0, 0.0, 0.0, 0.0]);
+                    r = r.max((sr * scale).clamp(0.0, 1.0));
+                    g = g.max((sg * scale).clamp(0.0, 1.0));
+                    b = b.max((sb * scale).clamp(0.0, 1.0));
                 }
             }
         }
     }
 
     finish_lightmapped_particle_color(particle, binding, sampled_any_position, r, g, b)
+}
+
+enum LightGroupSourceRef<'a> {
+    GlobalLight {
+        id: &'a str,
+    },
+    LightMapChannel {
+        source: &'a str,
+        channel: &'a str,
+    },
+}
+
+fn parse_light_group_source_ref<'a>(
+    group_id: &str,
+    emitter_id: Option<&'a str>,
+) -> Option<LightGroupSourceRef<'a>> {
+    let emitter_id = emitter_id?;
+    let global_prefix = format!("{group_id}:global:");
+    if let Some(id) = emitter_id.strip_prefix(&global_prefix) {
+        return Some(LightGroupSourceRef::GlobalLight { id });
+    }
+
+    let lightmap_prefix = format!("{group_id}:lightmap:");
+    let remainder = emitter_id.strip_prefix(&lightmap_prefix)?;
+    let (source, channel) = remainder.split_once(':')?;
+    Some(LightGroupSourceRef::LightMapChannel { source, channel })
 }
 
 fn permitted_receiver_groups<'a>(
@@ -313,10 +406,10 @@ fn permitted_receiver_groups<'a>(
 }
 
 fn lightmapped_particle_color(
-    particle: &Particle2dDrawCommand,
-    binding: &LightReceiver2dBinding,
+    particle: &Particle2dPrimitive,
+    binding: &LightReceiver2dBindingPrimitive,
     lightmaps: &[LightMap2dSampler],
-    global_lights: &[GlobalLight2dCommand],
+    light_sources: &[LightSource2dCommon],
 ) -> ColorRgba {
     let mut r: f32 = 0.0;
     let mut g: f32 = 0.0;
@@ -336,7 +429,7 @@ fn lightmapped_particle_color(
 
     for response in &binding.global_lights {
         sample_global_light_into(
-            global_lights,
+            light_sources,
             &response.id,
             response.response.max(0.0),
             ColorRgba::WHITE,
@@ -350,8 +443,8 @@ fn lightmapped_particle_color(
 }
 
 fn sample_lightmap_channel_into(
-    particle: &Particle2dDrawCommand,
-    binding: &LightReceiver2dBinding,
+    particle: &Particle2dPrimitive,
+    binding: &LightReceiver2dBindingPrimitive,
     lightmaps: &[LightMap2dSampler],
     source: &str,
     channel: &str,
@@ -386,7 +479,7 @@ fn sample_lightmap_channel_into(
 }
 
 fn sample_global_light_into(
-    global_lights: &[GlobalLight2dCommand],
+    light_sources: &[LightSource2dCommon],
     id: &str,
     response: f32,
     tint: ColorRgba,
@@ -394,21 +487,25 @@ fn sample_global_light_into(
     g: &mut f32,
     b: &mut f32,
 ) {
-    let Some(light) = global_lights.iter().find(|light| light.id == id) else {
+    let Some(light) = light_sources.iter().find(|light| {
+        light.emitter_kind == LightEmitterKind2d::GlobalLight
+            && light.emitter_id.as_deref() == Some(id)
+    }) else {
         return;
     };
-    let scale = light.intensity.max(0.0) * response.max(0.0);
+    let scale = light.intensity.unwrap_or_default().max(0.0) * response.max(0.0);
     if scale <= 0.0 {
         return;
     }
-    *r = r.max((light.color.r * tint.r * scale).clamp(0.0, 1.0));
-    *g = g.max((light.color.g * tint.g * scale).clamp(0.0, 1.0));
-    *b = b.max((light.color.b * tint.b * scale).clamp(0.0, 1.0));
+    let [lr, lg, lb, _] = light.color_rgba.unwrap_or([0.0, 0.0, 0.0, 0.0]);
+    *r = r.max((lr * tint.r * scale).clamp(0.0, 1.0));
+    *g = g.max((lg * tint.g * scale).clamp(0.0, 1.0));
+    *b = b.max((lb * tint.b * scale).clamp(0.0, 1.0));
 }
 
 fn finish_lightmapped_particle_color(
-    particle: &Particle2dDrawCommand,
-    binding: &LightReceiver2dBinding,
+    particle: &Particle2dPrimitive,
+    binding: &LightReceiver2dBindingPrimitive,
     sampled_any_position: bool,
     r: f32,
     g: f32,
@@ -417,11 +514,11 @@ fn finish_lightmapped_particle_color(
     let intensity = r.max(g).max(b);
     if intensity <= 0.002 {
         return match binding.dark_policy {
-            LightReceiverDarkPolicy2d::Transparent => {
+            LightReceiverDarkPolicy2dPrimitive::Transparent => {
                 ColorRgba::new(0.0, 0.0, 0.0, particle.color.a)
             }
-            LightReceiverDarkPolicy2d::BaseColor => particle.color,
-            LightReceiverDarkPolicy2d::ShadowTint => ColorRgba::new(
+            LightReceiverDarkPolicy2dPrimitive::BaseColor => particle.color,
+            LightReceiverDarkPolicy2dPrimitive::ShadowTint => ColorRgba::new(
                 particle.color.r * 0.18,
                 particle.color.g * 0.18,
                 particle.color.b * 0.18,
@@ -558,11 +655,11 @@ impl LightMap2dImageData {
 }
 
 fn for_each_particle_light_sample_position(
-    particle: &Particle2dDrawCommand,
-    binding: &LightReceiver2dBinding,
+    particle: &Particle2dPrimitive,
+    binding: &LightReceiver2dBindingPrimitive,
     mut f: impl FnMut(Vec2),
 ) {
-    if binding.sample_strategy == LightSampleStrategy2d::Point {
+    if binding.sample_strategy == LightSampleStrategy2dPrimitive::Point {
         f(particle.position);
         return;
     }
@@ -592,8 +689,8 @@ fn for_each_particle_light_sample_position(
     }
 }
 
-fn particle_light_sample_length(particle: &Particle2dDrawCommand) -> f32 {
-    let ParticleShape2d::Line { length } = particle.shape else {
+fn particle_light_sample_length(particle: &Particle2dPrimitive) -> f32 {
+    let amigo_render_api::ParticleShape2dPrimitive::Line { length } = particle.shape else {
         return particle.size.max(1.0);
     };
     let Some(stretch) = particle.motion_stretch else {
@@ -636,9 +733,11 @@ mod tests {
         LightReceiver2dBinding, LightReceiverDarkPolicy2d, LightReceiverGlobalLight2d,
         LightSampleStrategy2d, Material2dLightingMode,
     };
+    use amigo_particles_2d_plugin::ParticleShape2d;
+    use amigo_render_api::{LightContributionKind2d, LightSource2dCommonParams};
 
-    fn particle_with_binding(binding: LightReceiver2dBinding) -> Particle2dDrawCommand {
-        Particle2dDrawCommand {
+    fn particle_with_binding(binding: LightReceiver2dBinding) -> Particle2dPrimitive {
+        let command = amigo_particles_2d_plugin::Particle2dDrawCommand {
             emitter_entity_name: "rain".to_owned(),
             previous_position: Vec2::ZERO,
             position: Vec2::ZERO,
@@ -660,6 +759,10 @@ mod tests {
             light: None,
             light_position: None,
             transform: Transform2::default(),
+        };
+        match amigo_particles_2d_plugin::render::particle_draw_command_to_render_primitive(&command) {
+            RenderPrimitive2d::Particle(primitive) => primitive,
+            _ => unreachable!("particle draw command should map to particle primitive"),
         }
     }
 
@@ -706,6 +809,22 @@ mod tests {
         }
     }
 
+    fn lightmap_command(channel: &str) -> amigo_light_2d_plugin::LightMap2dSourceCommand {
+        amigo_light_2d_plugin::LightMap2dSourceCommand {
+            source_mod: "test-mod".to_owned(),
+            entity_name: "test-lightmap".to_owned(),
+            id: "test-lightmap".to_owned(),
+            source: amigo_light_2d_plugin::LightMap2dSourceRef {
+                kind: amigo_light_2d_plugin::LightMap2dSourceKind::LayeredImage2d,
+                entity_name: "test-lightmap".to_owned(),
+            },
+            channels: vec![amigo_light_2d_plugin::LightMap2dChannel {
+                id: channel.to_owned(),
+                layers: vec!["default".to_owned()],
+            }],
+        }
+    }
+
     fn light_group(id: &str, channel: &str) -> LightGroup2dCommand {
         LightGroup2dCommand {
             source_mod: "test-mod".to_owned(),
@@ -725,11 +844,22 @@ mod tests {
         }
     }
 
-    fn light_group_particle(groups: Vec<String>) -> Particle2dDrawCommand {
+    fn light_group_sources(group: &LightGroup2dCommand, channel: &str) -> Vec<LightSource2dCommon> {
+        amigo_light_2d_plugin::light_group_commands_to_render_contributions(
+            std::slice::from_ref(group),
+            &[],
+            &[lightmap_command(channel)],
+        )
+        .into_iter()
+        .filter_map(|contribution| contribution.as_light_source_2d().cloned())
+        .collect()
+    }
+
+    fn light_group_particle(groups: Vec<String>) -> Particle2dPrimitive {
         let mut receiver = binding("near");
         receiver.groups = groups;
         let mut particle = particle_with_binding(receiver);
-        particle.material.lighting_mode = Material2dLightingMode::LightGroupSampled;
+        particle.material.lighting_mode = ParticleMaterialLightingMode2dPrimitive::LightGroupSampled;
         particle
     }
 
@@ -741,13 +871,11 @@ mod tests {
             &[sampler()],
             &[],
             &[],
-            &[],
         );
         let far = lit_particle_color(
             &particle_with_binding(binding("far")),
             &[],
             &[sampler()],
-            &[],
             &[],
             &[],
         );
@@ -764,7 +892,6 @@ mod tests {
             &[],
             &[],
             &[],
-            &[],
         );
 
         assert_eq!(color, ColorRgba::new(0.0, 0.0, 0.0, 0.25));
@@ -775,7 +902,7 @@ mod tests {
         let mut binding = binding("near");
         binding.dark_policy = LightReceiverDarkPolicy2d::BaseColor;
 
-        let color = lit_particle_color(&particle_with_binding(binding), &[], &[], &[], &[], &[]);
+        let color = lit_particle_color(&particle_with_binding(binding), &[], &[], &[], &[]);
 
         assert_eq!(color, ColorRgba::new(1.0, 1.0, 1.0, 0.25));
     }
@@ -785,7 +912,7 @@ mod tests {
         let mut binding = binding("near");
         binding.dark_policy = LightReceiverDarkPolicy2d::ShadowTint;
 
-        let color = lit_particle_color(&particle_with_binding(binding), &[], &[], &[], &[], &[]);
+        let color = lit_particle_color(&particle_with_binding(binding), &[], &[], &[], &[]);
 
         assert_eq!(color, ColorRgba::new(0.18, 0.18, 0.18, 0.25));
     }
@@ -795,7 +922,7 @@ mod tests {
         let mut particle = particle_with_binding(binding("near"));
         particle.material.receives_light = false;
 
-        let color = lit_particle_color(&particle, &[], &[], &[], &[], &[]);
+        let color = lit_particle_color(&particle, &[], &[], &[], &[]);
 
         assert_eq!(color, ColorRgba::new(1.0, 1.0, 1.0, 0.25));
     }
@@ -811,14 +938,26 @@ mod tests {
             &particle_with_binding(binding),
             &[],
             &[],
-            &[GlobalLight2dCommand {
-                source_mod: "test-mod".to_owned(),
-                entity_name: "storm-controller".to_owned(),
-                id: "lightning".to_owned(),
-                color: ColorRgba::new(0.5, 0.75, 1.0, 1.0),
-                intensity: 1.0,
-            }],
-            &[],
+            &[LightSource2dCommon::active(LightSource2dCommonParams {
+                owner: "storm-controller".to_owned(),
+                component_kind: "GlobalLight2D".to_owned(),
+                emitter_kind: LightEmitterKind2d::GlobalLight,
+                emitter_id: Some("lightning".to_owned()),
+                render_layer: None,
+                color_rgba: Some([0.5, 0.75, 1.0, 1.0]),
+                intensity: Some(1.0),
+                effective_intensity: Some(1.0),
+                response: Some(1.0),
+                camera_response: None,
+                bloom: None,
+                radius_px: None,
+                falloff: None,
+                distance_m: None,
+                z_depth: None,
+                contributions: vec![LightContributionKind2d::LightingEmit],
+                reason: "test_global_light".to_owned(),
+                position_px: None,
+            })],
             &[],
         );
 
@@ -828,12 +967,12 @@ mod tests {
 
     #[test]
     fn light_group_sampled_particle_uses_matching_lightmap_channel() {
+        let group = light_group("bar", "near");
         let color = lit_particle_color(
             &light_group_particle(vec!["bar".to_owned()]),
             &[],
             &[sampler()],
-            &[],
-            &[light_group("bar", "near")],
+            &light_group_sources(&group, "near"),
             &[],
         );
 
@@ -842,12 +981,12 @@ mod tests {
 
     #[test]
     fn light_route_blocks_unlisted_group() {
+        let group = light_group("bar", "near");
         let color = lit_particle_color(
             &light_group_particle(vec!["bar".to_owned()]),
             &[],
             &[sampler()],
-            &[],
-            &[light_group("bar", "near")],
+            &light_group_sources(&group, "near"),
             &[LightRoute2dCommand {
                 source_mod: "test-mod".to_owned(),
                 receiver_layer: "default".to_owned(),

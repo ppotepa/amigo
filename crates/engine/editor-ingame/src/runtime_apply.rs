@@ -13,8 +13,10 @@ use crate::state::{EditorPropertyValue, IngameEditorState};
 pub enum ApplyResult {
     Applied,
     MockApplied,
+    #[allow(dead_code)]
     Readonly,
     Unsupported,
+    #[allow(dead_code)]
     Failed(String),
 }
 
@@ -79,10 +81,10 @@ pub fn apply_property_request(
         AuthoringRuntimeBinding::ParticleEmitterProperty { entity_name, field } => {
             apply_particle_property(runtime, request.property_id, target, entity_name, field, request.next)
         }
-        AuthoringRuntimeBinding::PostFxFrameEnabled { index } => {
+        AuthoringRuntimeBinding::PostFxFrameEnabled { .. } => {
             apply_runtime_property_provider(runtime, request.property_id, target, request.next)
         }
-        AuthoringRuntimeBinding::PostFxFrameField { index, field } => {
+        AuthoringRuntimeBinding::PostFxFrameField { .. } => {
             apply_runtime_property_provider(runtime, request.property_id, target, request.next)
         }
         AuthoringRuntimeBinding::PostFxMock { .. } | AuthoringRuntimeBinding::Mock { .. } => {
@@ -201,8 +203,8 @@ fn apply_particle_property(
     runtime: &Runtime,
     property_id: &str,
     target: &AuthoringRuntimeBinding,
-    entity_name: &str,
-    field: &str,
+    _entity_name: &str,
+    _field: &str,
     value: EditorPropertyValue,
 ) -> AmigoResult<ApplyResult> {
     apply_runtime_property_provider(runtime, property_id, target, value)

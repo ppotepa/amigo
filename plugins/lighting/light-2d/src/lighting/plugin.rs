@@ -22,6 +22,11 @@ impl RuntimePlugin for Lighting2dPlugin {
             registry,
             super::reset::Lighting2dSceneResetHandler,
         )?;
+        if let Some(render_extractors) =
+            registry.resolve::<amigo_render_api::RuntimeRenderExtractorIdRegistry>()
+        {
+            render_extractors.register("lighting_2d");
+        }
         register_domain_plugin(
             registry,
             LIGHTING_2D_PLUGIN_LABEL,

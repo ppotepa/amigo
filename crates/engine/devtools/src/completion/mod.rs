@@ -1,4 +1,4 @@
-use crate::{ConsoleArgKind, ConsoleArgSpec, ConsoleCommandDescriptor, ConsoleCommandSchema};
+use crate::{ConsoleCommandDescriptor, ConsoleCommandSchema};
 
 mod commands;
 mod model;
@@ -16,12 +16,9 @@ pub use provider::{ConsoleCompletionProvider, ConsoleCompletionProviderRegistry}
 pub use rhai::collect_console_rhai_symbols_from_source;
 pub use state::ConsoleCompletionState;
 
-use rhai::{
-    complete_quoted_entity_name, complete_rhai_property, complete_rhai_symbol,
-    rhai_symbol_suggestions,
-};
+use rhai::{complete_rhai_property, complete_rhai_symbol};
 use resources::{
-    complete_runtime_context, complete_runtime_control_path, inspect_target_suggestions,
+    complete_runtime_context, complete_runtime_control_path,
 };
 use commands::{
     complete_argument, complete_command_segment, complete_initial_token, complete_typed_argument,
@@ -171,27 +168,25 @@ fn clamp_to_char_boundary(input: &str, mut index: usize) -> usize {
     index
 }
 
-
-
-
-
 fn complete_values(
     input: &str,
     cursor_index: usize,
-    start: usize,
-    end: usize,
-    prefix: &str,
+    replacement_start: usize,
+    replacement_end: usize,
+    token: &str,
     values: &[String],
     kind: ConsoleCompletionKind,
     detail: &str,
-    trailing_space: bool,
+    append_space: bool,
 ) -> Option<ConsoleCompletionSnapshot> {
-    let mut suggestions = values
+    let token = token.to_ascii_lowercase();
+    let suggestions = values
         .iter()
-        .filter(|value| value.starts_with(prefix))
+        .filter(|value| value.to_ascii_lowercase().starts_with(&token))
+        .take(MAX_COMPLETION_SUGGESTIONS)
         .map(|value| ConsoleCompletionSuggestion {
             label: value.clone(),
-            insert_text: if trailing_space {
+            insert_text: if append_space {
                 format!("{value} ")
             } else {
                 value.clone()
@@ -200,10 +195,6 @@ fn complete_values(
             kind,
         })
         .collect::<Vec<_>>();
-
-    suggestions.sort_by(|a, b| a.label.cmp(&b.label));
-    suggestions.dedup_by(|a, b| a.label == b.label);
-    suggestions.truncate(MAX_COMPLETION_SUGGESTIONS);
     if suggestions.is_empty() {
         return None;
     }
@@ -211,12 +202,13 @@ fn complete_values(
     Some(ConsoleCompletionSnapshot {
         input: input.to_owned(),
         cursor_index,
-        replacement_start: start,
-        replacement_end: end,
+        replacement_start,
+        replacement_end,
         suggestions,
         selected_index: 0,
     })
 }
+
 
 fn sort_and_limit_suggestions(suggestions: &mut Vec<ConsoleCompletionSuggestion>) {
     suggestions.sort_by(|a, b| {

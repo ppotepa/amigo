@@ -13,6 +13,11 @@ impl RuntimePlugin for DepthMap2dPlugin {
 
     fn register(&self, registry: &mut ServiceRegistry) -> AmigoResult<()> {
         registry.register(DepthMap2dSceneService::default())?;
+        if let Some(render_extractors) =
+            registry.resolve::<amigo_render_api::RuntimeRenderExtractorIdRegistry>()
+        {
+            crate::render::register_depth_map_2d_render_extractor_id(render_extractors.as_ref());
+        }
         register_domain_plugin(
             registry,
             "amigo-focus-depth-plugin",

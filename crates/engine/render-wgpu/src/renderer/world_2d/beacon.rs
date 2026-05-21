@@ -1,13 +1,11 @@
-use amigo_beacon_light_2d_plugin::BeaconLight2dDrawCommand;
-use amigo_scene::LayeredImageViewportFit2dSceneCommand;
-
 use crate::renderer::*;
+use amigo_render_api::{BeaconLight2dPrimitive, LayeredImageViewportFit2dPrimitive};
 
-pub(crate) fn append_beacon_vfx_vertices(
+pub(crate) fn append_beacon_vfx_primitive_vertices(
     vertices: &mut Vec<ColorVertex>,
     viewport: &Viewport,
     camera: Transform2,
-    command: &BeaconLight2dDrawCommand,
+    command: &BeaconLight2dPrimitive,
 ) {
     let fitted = fit_beacon_to_viewport(command, viewport);
     let distance_factor = optical_distance_factor(command.distance_m);
@@ -74,7 +72,7 @@ struct FittedBeacon {
     scale: f32,
 }
 
-fn fit_beacon_to_viewport(command: &BeaconLight2dDrawCommand, viewport: &Viewport) -> FittedBeacon {
+fn fit_beacon_to_viewport(command: &BeaconLight2dPrimitive, viewport: &Viewport) -> FittedBeacon {
     let Some(canvas_size) = command.viewport_canvas_size else {
         return FittedBeacon {
             center: command.center,
@@ -92,15 +90,15 @@ fn fit_beacon_to_viewport(command: &BeaconLight2dDrawCommand, viewport: &Viewpor
     let scale_x = viewport_size.x / canvas_size.x;
     let scale_y = viewport_size.y / canvas_size.y;
     let scale = match command.viewport_fit {
-        LayeredImageViewportFit2dSceneCommand::Fixed => {
+        LayeredImageViewportFit2dPrimitive::Fixed => {
             return FittedBeacon {
                 center: command.center,
                 scale: 1.0,
             };
         }
-        LayeredImageViewportFit2dSceneCommand::Stretch => (scale_x.abs() + scale_y.abs()) * 0.5,
-        LayeredImageViewportFit2dSceneCommand::Contain => scale_x.min(scale_y),
-        LayeredImageViewportFit2dSceneCommand::Cover => scale_x.max(scale_y),
+        LayeredImageViewportFit2dPrimitive::Stretch => (scale_x.abs() + scale_y.abs()) * 0.5,
+        LayeredImageViewportFit2dPrimitive::Contain => scale_x.min(scale_y),
+        LayeredImageViewportFit2dPrimitive::Cover => scale_x.max(scale_y),
     };
 
     FittedBeacon {
@@ -114,7 +112,7 @@ fn append_beam(
     viewport: &Viewport,
     camera: Transform2,
     fitted: &FittedBeacon,
-    command: &BeaconLight2dDrawCommand,
+    command: &BeaconLight2dPrimitive,
     energy: f32,
     pulse: f32,
 ) {
@@ -234,7 +232,7 @@ fn append_core(
     viewport: &Viewport,
     camera: Transform2,
     center: Vec2,
-    command: &BeaconLight2dDrawCommand,
+    command: &BeaconLight2dPrimitive,
     scale: f32,
     energy: f32,
 ) {

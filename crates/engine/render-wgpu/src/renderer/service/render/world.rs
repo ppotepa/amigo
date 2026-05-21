@@ -1,24 +1,21 @@
-use super::material_candidates::{collect_material_candidate_2d, WgpuMaterialCandidate2d};
+use super::material_candidates::WgpuMaterialCandidate2d;
 use super::world_filters::WorldPassLoad;
 use super::*;
-use amigo_text_2d_plugin::Text2dDrawCommand;
-use amigo_material_2d_plugin::MaterialCandidateDecision2d;
+use amigo_render_api::{LightSource2dCommon, RenderLightMap2dSource};
+use amigo_material_api::MaterialCandidateDecision2d;
 
 #[derive(Clone, Copy)]
 pub(super) struct WorldRenderContext<'a> {
     pub scene: &'a SceneService,
     pub assets: &'a AssetCatalog,
     pub renderables: &'a [Renderable2dItem],
-    pub layered_images: &'a amigo_layered_image_2d_plugin::LayeredImageSceneService,
-    pub global_lights: &'a GlobalLight2dSceneService,
-    pub lightmaps: &'a LightMap2dSceneService,
+    pub light_sources: &'a [LightSource2dCommon],
+    pub lightmaps: &'a [RenderLightMap2dSource],
     pub meshes: &'a [MeshDrawCommand],
     pub materials: &'a [MaterialDrawCommand],
     pub text3d: Option<&'a [Text3dDrawCommand]>,
     pub render_layers: &'a [RenderLayer2dCommand],
     pub light_routes: &'a [LightRoute2dCommand],
-    pub light_groups: &'a [LightGroup2dCommand],
-    pub particles: &'a [Particle2dDrawCommand],
     pub active_camera_2d_entity: Option<&'a str>,
 }
 
@@ -28,139 +25,108 @@ impl<'a> WorldRenderContext<'a> {
             scene: request.scene,
             assets: request.assets,
             renderables: request.world_2d.renderables,
-            layered_images: request.world_2d.layered_images,
-            global_lights: request.world_2d.global_lights,
+            light_sources: request.world_2d.light_sources,
             lightmaps: request.world_2d.lightmaps,
             meshes: request.world_3d.meshes,
             materials: request.world_3d.materials,
             text3d: request.world_3d.text3d,
             render_layers: request.world_2d.render_layers,
             light_routes: request.world_2d.light_routes,
-            light_groups: request.world_2d.light_groups,
-            particles: request.world_2d.particles,
             active_camera_2d_entity: request.active_camera_2d_entity,
         }
     }
 }
 
 #[allow(clippy::too_many_arguments)]
-pub(super) fn append_text2d_draw_command(
-    renderer: &mut WgpuSceneRenderer,
-    texture_batches: &mut Vec<TextureBatch>,
-    color_batches: &mut Vec<ColorBatch>,
-    device: &wgpu::Device,
-    queue: &wgpu::Queue,
-    assets: &AssetCatalog,
-    viewport: &Viewport,
-    camera2d: Transform2,
-    scene: &SceneService,
-    command: &Text2dDrawCommand,
+fn renderable_adapter_context<'a>(
+    renderer: &'a mut WgpuSceneRenderer,
+    texture_batches: &'a mut Vec<TextureBatch>,
+    color_batches: &'a mut Vec<ColorBatch>,
+    target: &'a WgpuOffscreenTarget,
+    assets: &'a AssetCatalog,
+    viewport: &'a Viewport,
+    layer_camera: Transform2,
     layer_opacity: f32,
-) {
-    let transform = resolve_transform2(scene, &command.entity_name, command.text.transform);
-    let mut style = command.text.style;
-    style.color.a = (style.color.a * style.opacity * layer_opacity).clamp(0.0, 1.0);
-    if style.color.a <= 0.001 {
-        return;
-    }
-
-    if let Some(glow) = style.glow {
-        let passes = glow.passes.max(1);
-        let step = glow.radius.max(0.0) / passes as f32;
-        for pass in 1..=passes {
-            let radius = pass as f32 * step;
-            let alpha = glow.intensity.max(0.0) / pass as f32;
-            for (dx, dy) in super::util::text2d_effect_offsets(radius) {
-                let glow_transform =
-                    super::util::translated_transform2(transform, Vec2::new(dx, dy));
-                let color = super::util::color_with_alpha_mul(glow.color, alpha);
-                let _ = renderer.append_text2d_ttf_font_texture_batch(
-                    texture_batches,
-                    device,
-                    queue,
-                    assets,
-                    viewport,
-                    camera2d,
-                    &command.text.font,
-                    &command.text.content,
-                    glow_transform,
-                    command.text.bounds,
-                    style.font_size,
-                    color,
-                );
-            }
-        }
-    }
-
-    if let Some(outline) = style.outline {
-        let width = outline.width.max(0.0);
-        if width > 0.0 {
-            for (dx, dy) in super::util::text2d_effect_offsets(width) {
-                let outline_transform =
-                    super::util::translated_transform2(transform, Vec2::new(dx, dy));
-                let _ = renderer.append_text2d_ttf_font_texture_batch(
-                    texture_batches,
-                    device,
-                    queue,
-                    assets,
-                    viewport,
-                    camera2d,
-                    &command.text.font,
-                    &command.text.content,
-                    outline_transform,
-                    command.text.bounds,
-                    style.font_size,
-                    outline.color,
-                );
-            }
-        }
-    }
-
-    if let Some(shadow) = style.shadow {
-        let shadow_transform = super::util::translated_transform2(transform, shadow.offset);
-        let _ = renderer.append_text2d_ttf_font_texture_batch(
-            texture_batches,
-            device,
-            queue,
-            assets,
-            viewport,
-            camera2d,
-            &command.text.font,
-            &command.text.content,
-            shadow_transform,
-            command.text.bounds,
-            style.font_size,
-            shadow.color,
-        );
-    }
-
-    if renderer.append_text2d_ttf_font_texture_batch(
+    transform: Transform2,
+    material_candidates: &'a mut Vec<WgpuMaterialCandidate2d>,
+    material_decisions: &'a mut Vec<MaterialCandidateDecision2d>,
+    included_layered_image_parts: Option<&'a BTreeSet<String>>,
+    excluded_layered_image_parts: Option<&'a BTreeSet<String>>,
+    include_base_layered_image: bool,
+    particle_lights: &'a [ParticleRenderLight],
+    lightmap_samplers: &'a [LightMap2dSampler],
+    light_sources: &'a [LightSource2dCommon],
+    light_routes: &'a [LightRoute2dCommand],
+) -> crate::WgpuRenderable2dAdapterContext<'a> {
+    crate::WgpuRenderable2dAdapterContext {
+        renderer,
         texture_batches,
-        device,
-        queue,
+        color_batches,
+        device: &target.device,
+        queue: &target.queue,
         assets,
         viewport,
-        camera2d,
-        &command.text.font,
-        &command.text.content,
+        layer_camera,
+        layer_opacity,
         transform,
-        command.text.bounds,
-        style.font_size,
-        style.color,
-    ) {
-        return;
+        material_candidates,
+        material_decisions,
+        included_layered_image_parts,
+        excluded_layered_image_parts,
+        include_base_layered_image,
+        particle_lights,
+        lightmap_samplers,
+        light_sources,
+        light_routes,
     }
+}
 
-    let vertices = color_batch_vertices(color_batches, ParticleBlendMode2d::Alpha);
-    append_text_2d_vertices(
-        vertices,
+#[allow(clippy::too_many_arguments)]
+fn render_renderable_2d_item(
+    renderer: &mut WgpuSceneRenderer,
+    target: &WgpuOffscreenTarget,
+    ctx: WorldRenderContext<'_>,
+    selection: &WorldRenderSelection<'_>,
+    viewport: &Viewport,
+    render_layer_lookup: &BTreeMap<String, RenderLayer2dCommand>,
+    renderable_adapters: &crate::WgpuRenderable2dAdapterRegistry,
+    item: &Renderable2dItem,
+    layer_camera: Transform2,
+    texture_batches: &mut Vec<TextureBatch>,
+    color_batches: &mut Vec<ColorBatch>,
+    particle_lights: &[ParticleRenderLight],
+    lightmap_samplers: &[LightMap2dSampler],
+    light_sources: &[LightSource2dCommon],
+    material_candidates: &mut Vec<WgpuMaterialCandidate2d>,
+    material_decisions: &mut Vec<MaterialCandidateDecision2d>,
+) {
+    let layer_opacity = render_layer_opacity(item.render_layer(), render_layer_lookup);
+    let included_parts = selection
+        .layered_image_part_filter
+        .included_parts(item.owner_entity());
+    let mut adapter_ctx = renderable_adapter_context(
+        renderer,
+        texture_batches,
+        color_batches,
+        target,
+        ctx.assets,
         viewport,
-        camera2d,
-        &command.text.content,
-        transform,
-        command.text.bounds,
-        style.color,
+        layer_camera,
+        layer_opacity,
+        item.primitive.transform(),
+        material_candidates,
+        material_decisions,
+        included_parts,
+        selection
+            .layered_image_part_filter
+            .excluded_parts(item.owner_entity()),
+        included_parts.is_none(),
+        particle_lights,
+        lightmap_samplers,
+        light_sources,
+        ctx.light_routes,
     );
+    let _ = renderable_adapters.append_batches(&mut adapter_ctx, item);
 }
 
 fn camera2d_for_render_layer(
@@ -199,17 +165,13 @@ pub(super) fn execute_world_to_offscreen(
     let mut texture_batches = Vec::new();
     let mut ui_texture_batches = Vec::new();
     let camera2d = resolve_camera2d_transform(ctx.scene, ctx.active_camera_2d_entity);
-    let particle_lights = particle_render_lights(ctx.particles);
-    let layered_image_commands = ctx.layered_images.commands();
-    let global_light_commands = ctx.global_lights.commands();
-    let lightmap_sources = ctx.lightmaps.commands();
+    let particle_lights = particle_render_lights_from_renderables(ctx.renderables);
     let render_layer_lookup = render_layer_lookup(ctx.render_layers);
     let lightmap_samplers = renderer.lightmap_2d_samplers(
         ctx.assets,
-        ctx.scene,
         &viewport,
-        &layered_image_commands,
-        &lightmap_sources,
+        ctx.renderables,
+        ctx.lightmaps,
     );
     let mut world2d_items = ctx.renderables.to_vec();
     world2d_items.retain(|item| {
@@ -217,7 +179,7 @@ pub(super) fn execute_world_to_offscreen(
             && selection.object_filter.allows(item.owner_entity())
     });
     let renderable_adapters = crate::default_renderable_2d_adapter_registry();
-    world2d_items.retain(|item| renderable_adapters.supports_kind(&item.payload_kind_id()));
+    world2d_items.retain(|item| renderable_adapters.supports_kind(item.primitive_kind()));
     world2d_items.sort_by_key(|item| world2d_sort_key(item, &render_layer_lookup));
     let mut material_candidates: Vec<WgpuMaterialCandidate2d> = Vec::new();
     let mut material_decisions: Vec<MaterialCandidateDecision2d> = Vec::new();
@@ -225,200 +187,24 @@ pub(super) fn execute_world_to_offscreen(
     for item in world2d_items {
         let layer_camera =
             camera2d_for_render_layer(camera2d, item.render_layer(), &render_layer_lookup);
-        match &item.payload {
-            Renderable2dPayload::TileMap(command) => {
-                let transform =
-                    resolve_transform2(ctx.scene, &command.entity_name, Transform2::default());
-                if !renderer.append_tilemap_texture_batch(
-                    &mut texture_batches,
-                    &target.device,
-                    &target.queue,
-                    ctx.assets,
-                    &viewport,
-                    layer_camera,
-                    transform,
-                    &command.tilemap,
-                ) {
-                    let vertices =
-                        color_batch_vertices(&mut color_batches, ParticleBlendMode2d::Alpha);
-                    append_tilemap_fallback_vertices(
-                        vertices,
-                        &viewport,
-                        layer_camera,
-                        transform,
-                        &command.tilemap,
-                    );
-                }
-            }
-            Renderable2dPayload::Sprite(command) => {
-                let layer_opacity =
-                    render_layer_opacity(&command.render_layer, &render_layer_lookup);
-                let transform =
-                    resolve_transform2(ctx.scene, &command.entity_name, command.transform);
-                if command.render_contributions.enabled_or(
-                    amigo_render_api::render_contribution_roles::WORLD_COLOR,
-                    true,
-                ) {
-                    if !renderer.append_sprite_texture_batch(
-                        &mut texture_batches,
-                        &target.device,
-                        &target.queue,
-                        ctx.assets,
-                        &viewport,
-                        layer_camera,
-                        transform,
-                        &command.sprite,
-                    ) {
-                        let vertices =
-                            color_batch_vertices(&mut color_batches, ParticleBlendMode2d::Alpha);
-                        append_sprite_vertices(
-                            vertices,
-                            &viewport,
-                            layer_camera,
-                            transform,
-                            &command.sprite,
-                            sprite_color(command.sprite.texture.as_str()),
-                        );
-                    }
-                }
-
-                collect_material_candidate_2d(
-                    &item,
-                    layer_camera,
-                    layer_opacity,
-                    &mut material_candidates,
-                    &mut material_decisions,
-                );
-            }
-            Renderable2dPayload::LayeredImage(command) => {
-                let transform =
-                    resolve_transform2(ctx.scene, &command.entity_name, command.transform);
-                renderer.append_layered_image_texture_batches_filtered(
-                    &mut texture_batches,
-                    &target.device,
-                    &target.queue,
-                    ctx.assets,
-                    &viewport,
-                    layer_camera,
-                    transform,
-                    command,
-                    selection
-                        .layered_image_part_filter
-                        .included_parts(&command.entity_name),
-                    selection
-                        .layered_image_part_filter
-                        .excluded_parts(&command.entity_name),
-                    selection
-                        .layered_image_part_filter
-                        .included_parts(&command.entity_name)
-                        .is_none(),
-                );
-                let layer_opacity = render_layer_opacity(&command.render_layer, &render_layer_lookup);
-                collect_material_candidate_2d(
-                    &item,
-                    layer_camera,
-                    layer_opacity,
-                    &mut material_candidates,
-                    &mut material_decisions,
-                );
-            }
-            Renderable2dPayload::Vector(command) => {
-                let layer_opacity =
-                    render_layer_opacity(&command.render_layer, &render_layer_lookup);
-                let transform = vector_viewport_fit_transform(
-                    &viewport,
-                    resolve_transform2(ctx.scene, &command.entity_name, command.transform),
-                    command.viewport_fit,
-                    command.viewport_canvas_size,
-                );
-                if command.render_contributions.enabled_or(
-                    amigo_render_api::render_contribution_roles::WORLD_COLOR,
-                    true,
-                ) {
-                    let vertices =
-                        color_batch_vertices(&mut color_batches, ParticleBlendMode2d::Alpha);
-                    append_vector_shape_vertices(
-                        vertices,
-                        &viewport,
-                        layer_camera,
-                        transform,
-                        &command.shape,
-                    );
-                }
-
-                collect_material_candidate_2d(
-                    &item,
-                    layer_camera,
-                    layer_opacity,
-                    &mut material_candidates,
-                    &mut material_decisions,
-                );
-            }
-            Renderable2dPayload::Beacon(command) => {
-                let vertices =
-                    color_batch_vertices(&mut color_batches, ParticleBlendMode2d::Additive);
-                append_beacon_vfx_vertices(vertices, &viewport, layer_camera, command);
-            }
-            Renderable2dPayload::Particle(command) => {
-                if command
-                    .light
-                    .is_some_and(|light| light.glow && light.mode == ParticleLightMode2d::Particle)
-                {
-                    let vertices =
-                        color_batch_vertices(&mut color_batches, ParticleBlendMode2d::Additive);
-                    append_particle_light_vertices(vertices, &viewport, layer_camera, &command);
-                }
-                let vertices = color_batch_vertices(&mut color_batches, command.blend_mode);
-                append_particle_vertices(
-                    vertices,
-                    &viewport,
-                    layer_camera,
-                    &command,
-                    &particle_lights,
-                    &lightmap_samplers,
-                    &global_light_commands,
-                    ctx.light_groups,
-                    ctx.light_routes,
-                );
-                let layer_opacity = render_layer_opacity(&command.render_layer, &render_layer_lookup);
-                collect_material_candidate_2d(
-                    &item,
-                    layer_camera,
-                    layer_opacity,
-                    &mut material_candidates,
-                    &mut material_decisions,
-                );
-            }
-            Renderable2dPayload::Text(command) => {
-                let layer_opacity =
-                    render_layer_opacity(&command.render_layer, &render_layer_lookup);
-                if command.render_contributions.enabled_or(
-                    amigo_render_api::render_contribution_roles::WORLD_COLOR,
-                    true,
-                ) {
-                    append_text2d_draw_command(
-                        renderer,
-                        &mut texture_batches,
-                        &mut color_batches,
-                        &target.device,
-                        &target.queue,
-                        ctx.assets,
-                        &viewport,
-                        layer_camera,
-                        ctx.scene,
-                        &command,
-                        layer_opacity,
-                    );
-                }
-                collect_material_candidate_2d(
-                    &item,
-                    layer_camera,
-                    layer_opacity,
-                    &mut material_candidates,
-                    &mut material_decisions,
-                );
-            }
-        }
+        render_renderable_2d_item(
+            renderer,
+            target,
+            ctx,
+            &selection,
+            &viewport,
+            &render_layer_lookup,
+            renderable_adapters,
+            &item,
+            layer_camera,
+            &mut texture_batches,
+            &mut color_batches,
+            &particle_lights,
+            &lightmap_samplers,
+            ctx.light_sources,
+            &mut material_candidates,
+            &mut material_decisions,
+        );
     }
 
     let camera = resolve_camera_transform(ctx.scene);
@@ -582,49 +368,45 @@ fn render_layer_opacity(
 pub(super) fn execute_layered_image_parts_to_offscreen(
     renderer: &mut WgpuSceneRenderer,
     target: &mut WgpuOffscreenTarget,
-    scene: &SceneService,
+    renderables: &[Renderable2dItem],
     assets: &AssetCatalog,
-    layered_images: &amigo_layered_image_2d_plugin::LayeredImageSceneService,
     render_layers: &[RenderLayer2dCommand],
-    active_camera_2d_entity: Option<&str>,
     part_targets: &BTreeMap<String, BTreeSet<String>>,
     pass_load: WorldPassLoad,
 ) -> AmigoResult<()> {
     let viewport = Viewport::from_offscreen(target);
-    let camera2d = resolve_camera2d_transform(scene, active_camera_2d_entity);
     let render_layer_lookup = render_layer_lookup(render_layers);
     let mut texture_batches = Vec::new();
 
-    let mut commands = layered_images
-        .commands()
-        .into_iter()
-        .filter(|command| part_targets.contains_key(&command.entity_name))
+    let mut items = renderables
+        .iter()
+        .filter_map(|item| {
+            item.primitive
+                .layered_image()
+                .filter(|_| part_targets.contains_key(item.owner_entity()))
+                .map(|layered| (item, layered))
+        })
         .collect::<Vec<_>>();
-    commands.sort_by_key(|command| {
+    items.sort_by_key(|(item, _)| {
         let layer_order = render_layer_lookup
-            .get(&command.render_layer)
+            .get(item.render_layer())
             .map(|layer| layer.order)
             .unwrap_or(0.0);
-        (
-            (layer_order * 1000.0).round() as i32,
-            (command.z_index * 1000.0).round() as i32,
-        )
+        ((layer_order * 1000.0).round() as i32, (item.z_index() * 1000.0).round() as i32)
     });
 
-    for command in commands {
-        let Some(parts) = part_targets.get(&command.entity_name) else {
+    for (item, layered) in items {
+        let Some(parts) = part_targets.get(item.owner_entity()) else {
             continue;
         };
-        let transform = resolve_transform2(scene, &command.entity_name, command.transform);
-        renderer.append_layered_image_texture_batches_filtered(
+        renderer.append_layered_image_primitive_texture_batches_filtered(
             &mut texture_batches,
             &target.device,
             &target.queue,
             assets,
             &viewport,
-            camera2d,
-            transform,
-            &command,
+            Transform2::default(),
+            layered,
             Some(parts),
             None,
             false,

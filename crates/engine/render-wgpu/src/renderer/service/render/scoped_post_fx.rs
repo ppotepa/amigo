@@ -147,11 +147,18 @@ pub(super) fn execute_post_fx_graph_node(
         request.camera_debug_view.as_str(),
         "camera.scene_depth" | "camera.computed_z_depth"
     ) {
-        if post_fx.feature_id.as_str() != "focus_blur" {
+        let supports_depth_debug = amigo_render_api::PostFxRenderDescriptor::for_kind(
+            post_fx.feature_id.as_str(),
+        )
+        .is_some_and(|descriptor| descriptor.debug_policy.supports_depth_debug_view);
+        if !supports_depth_debug {
             return renderer.copy_offscreen_to_offscreen(target, &source);
         }
-        if let Some(mut effect) =
-            super::focus_blur_effect_for(request.post_fx_stacks, post_fx.host_id, post_fx.effect_id)
+        if let Some(mut effect) = super::depth_debug_post_fx_for(
+            request.post_fx_stacks,
+            post_fx.host_id,
+            post_fx.effect_id,
+        )
         {
             effect.debug_view = amigo_composite_plugin::FocusBlurDebugView2d::Depth;
             return crate::renderer::service::post_fx::focus_blur::execute_focus_blur(
@@ -192,7 +199,17 @@ pub(super) fn execute_post_fx_graph_node(
         target,
     )?;
 
-    let Some(plan) = super::focus_blur_layer_plan_for_effect(
+    let replays_scoped_layers = amigo_render_api::PostFxRenderDescriptor::for_kind(
+        post_fx.feature_id.as_str(),
+    )
+    .is_some_and(|descriptor| {
+        descriptor.output == amigo_render_api::PostFxRenderOutput::ReplayScopedLayers
+    });
+    if !replays_scoped_layers {
+        return Ok(());
+    }
+
+    let Some(plan) = super::replay_scoped_layers_plan_for_effect(
         request.post_fx_stacks,
         request.world_2d.render_layers,
         request.camera_capture_input_2d,
@@ -384,11 +401,9 @@ fn render_scoped_source(
             world::execute_layered_image_parts_to_offscreen(
                 renderer,
                 target,
-                world_ctx.scene,
+                world_ctx.renderables,
                 world_ctx.assets,
-                world_ctx.layered_images,
                 world_ctx.render_layers,
-                world_ctx.active_camera_2d_entity,
                 &part_targets,
                 WorldPassLoad::ClearTransparent,
             )

@@ -33,6 +33,13 @@ impl RuntimePlugin for LayeredImagePlugin {
         {
             metadata.register(crate::scene::LayeredImage2dComponentMetadataProvider);
         }
+        if let Some(render_extractors) =
+            registry.resolve::<amigo_render_api::RuntimeRenderExtractorIdRegistry>()
+        {
+            crate::render::register_layered_image_2d_render_extractor_id(
+                render_extractors.as_ref(),
+            );
+        }
         if let (Some(control), Some(layered), Some(assets)) = (
             registry.resolve::<RuntimeControlService>(),
             registry.resolve::<LayeredImageSceneService>(),

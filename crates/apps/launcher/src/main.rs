@@ -75,7 +75,8 @@ fn launch_in_process(
     let diagnostics = ensure_profile_launchable(config, profile)?;
     emit_profile_warnings(&diagnostics);
 
-    let mut options = BootstrapOptions::new(&config.mods_root)
+    let mods_root = config.resolved_mods_root();
+    let mut options = BootstrapOptions::new(&mods_root)
         .with_dev_mode(profile.cargo_profile == CargoProfile::Dev);
     if mode == LaunchMode::Editor {
         options = options.with_editor_mode(true).with_dev_mode(true);
@@ -259,7 +260,7 @@ fn launch_external_binary(
         LaunchMode::Headless => {}
     }
 
-    command.args(["--mods-root", &config.mods_root]);
+    command.args(["--mods-root", &config.resolved_mods_root().display().to_string()]);
     command.arg(format!("--mod={}", profile.root_mod_or_core()));
 
     if let Some(startup_scene) = profile.startup_scene.as_deref() {

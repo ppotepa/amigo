@@ -1,21 +1,13 @@
 use amigo_2d_composition::{LightRoute2dCommand, RenderLayer2dCommand};
-use amigo_layered_image_2d_plugin::LayeredImageSceneService;
-use amigo_light_2d_plugin::{GlobalLight2dSceneService, LightGroup2dCommand, LightMap2dSceneService};
-use amigo_beacon_light_2d_plugin::BeaconLight2dDrawCommand;
-use amigo_particles_2d_plugin::Particle2dDrawCommand;
+use amigo_camera::CameraOpticalCandidate2d;
 use amigo_composite_plugin::ScopedPostFx2dStack;
-use amigo_sprite_2d_plugin::SpriteSceneService;
-use amigo_text_2d_plugin::Text2dSceneService;
-use amigo_tilemap_2d_plugin::TileMap2dSceneService;
-use amigo_vector_2d_plugin::VectorSceneService;
 use amigo_3d_material::MaterialDrawCommand;
 use amigo_3d_mesh::MeshDrawCommand;
 use amigo_3d_text::Text3dDrawCommand;
 use amigo_assets::AssetCatalog;
-use amigo_camera_optics_plugin::api::CameraOpticalCandidate2d;
 use amigo_render_api::{
     CameraCaptureInput2d, CameraDebugView2d, FrameCompositionPlan, FrameGraph,
-    LightSource2dCommon,
+    LightSource2dCommon, RenderDepthAuxMap2d, RenderDepthMap2d, RenderLightMap2dSource,
 };
 use amigo_scene::SceneService;
 
@@ -128,21 +120,13 @@ pub struct WgpuFrameRenderRequest<'a> {
 
 pub struct WgpuWorld2dRenderInput<'a> {
     pub renderables: &'a [Renderable2dItem],
-    pub tilemaps: &'a TileMap2dSceneService,
-    pub sprites: &'a SpriteSceneService,
-    pub layered_images: &'a LayeredImageSceneService,
-    pub depth_maps: &'a amigo_focus_depth_plugin::DepthMap2dSceneService,
-    pub global_lights: &'a GlobalLight2dSceneService,
-    pub lightmaps: &'a LightMap2dSceneService,
-    pub text2d: &'a Text2dSceneService,
-    pub vectors: &'a VectorSceneService,
-    pub beacons: &'a [BeaconLight2dDrawCommand],
+    pub depth_maps: &'a [RenderDepthMap2d],
+    pub depth_aux_maps: &'a [RenderDepthAuxMap2d],
+    pub lightmaps: &'a [RenderLightMap2dSource],
     pub light_sources: &'a [LightSource2dCommon],
     pub camera_optical_candidates: &'a [CameraOpticalCandidate2d],
     pub render_layers: &'a [RenderLayer2dCommand],
     pub light_routes: &'a [LightRoute2dCommand],
-    pub light_groups: &'a [LightGroup2dCommand],
-    pub particles: &'a [Particle2dDrawCommand],
 }
 
 pub struct WgpuWorld3dRenderInput<'a> {

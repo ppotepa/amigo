@@ -24,6 +24,11 @@ impl RuntimePlugin for Particle2dPlugin {
         registry.register(Particle2dSceneService::default())?;
         amigo_scene::register_scene_reset_handler(registry, crate::Particle2dSceneResetHandler)?;
         registry.register(ParticlePreset2dService::default())?;
+        if let Some(render_extractors) =
+            registry.resolve::<amigo_render_api::RuntimeRenderExtractorIdRegistry>()
+        {
+            crate::render::register_particle_2d_render_extractor_id(render_extractors.as_ref());
+        }
         if !registry.has::<amigo_editor_ingame::IngameEditorRuntimeApplyProviderRegistry>() {
             registry.register(
                 amigo_editor_ingame::IngameEditorRuntimeApplyProviderRegistry::default(),

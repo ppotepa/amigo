@@ -9,6 +9,10 @@ mod commands;
 mod component_metadata;
 /// Plugin-owned component metadata provider extension point.
 mod component_metadata_provider;
+/// Plugin-owned component hydration extension point.
+mod component_hydrator_registry;
+/// Plugin-owned component schema descriptor registry.
+mod component_schema_registry;
 /// Authored scene document structures and loading entry points.
 mod document;
 /// Service contracts that other engine domains expose to the scene layer.
@@ -27,10 +31,14 @@ mod metadata_traits;
 mod motion_commands;
 /// Commands for the particle domain.
 mod particle_commands;
+/// Plugin-owned scene command envelopes.
+mod plugin_command;
 /// Runtime plugin wiring for the scene crate.
 mod plugin;
 /// Plugin-owned scene component descriptor registry contracts.
 mod plugin_registry;
+/// Registry for plugin-owned scene command handlers.
+mod scene_command_registry;
 /// Commands for rendering-oriented domains.
 mod render_commands;
 /// Runtime scene reset handler registry.
@@ -57,6 +65,8 @@ mod ui_audio_commands;
 pub use command_format::*;
 pub use commands::{RuntimeSceneCommandHandler, *};
 pub use component_metadata::*;
+pub use component_hydrator_registry::*;
+pub use component_schema_registry::*;
 pub use component_metadata_provider::*;
 pub use document::*;
 pub use domain_services::*;
@@ -67,8 +77,10 @@ pub use hydration::*;
 pub use metadata_traits::*;
 pub use motion_commands::*;
 pub use particle_commands::*;
+pub use plugin_command::*;
 pub use plugin::*;
 pub use plugin_registry::*;
+pub use scene_command_registry::*;
 pub use render_commands::*;
 pub use reset::*;
 pub use runtime_capabilities::*;

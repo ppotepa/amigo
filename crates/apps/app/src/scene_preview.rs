@@ -9,12 +9,12 @@ use amigo_render_wgpu::{
 use amigo_runtime::Runtime;
 use amigo_runtime::{SystemPhase, SystemRegistry};
 use amigo_runtime_bundles::{
-    GlobalLight2dSceneService, LayeredImageSceneService, LightGroup2dSceneService,
-    LightMap2dSceneService, LightRoute2dSceneService, MaterialSceneService, MeshSceneService,
-    Particle2dSceneService, PostFx2dService, RenderLayer2dSceneService, SpriteSceneService,
-    Text2dSceneService, Text3dSceneService, TileMap2dSceneService, UiInputService,
-    UiInputViewportState, UiSceneService, UiStateService, UiThemeService, VectorSceneService,
+    LightGroup2dSceneService, LightMap2dSceneService, LightRoute2dSceneService,
+    MaterialSceneService, MeshSceneService,
+    PostFx2dService, RenderLayer2dSceneService, Text3dSceneService, UiInputService,
+    UiInputViewportState, UiSceneService, UiStateService, UiThemeService,
 };
+use amigo_render_api::RenderContribution2d;
 use amigo_scene::SceneService;
 
 use crate::{BootstrapOptions, BootstrapSummary, bootstrap_session_with_options};
@@ -248,17 +248,12 @@ impl ScenePreviewHost {
         let runtime = self.runtime()?;
         let scene = crate::runtime_context::required::<SceneService>(runtime)?;
         let assets = crate::runtime_context::required::<AssetCatalog>(runtime)?;
-        let _ = crate::runtime_context::required::<TileMap2dSceneService>(runtime)?;
-        let _ = crate::runtime_context::required::<SpriteSceneService>(runtime)?;
-        let _ = crate::runtime_context::required::<LayeredImageSceneService>(runtime)?;
-        let _ = crate::runtime_context::required::<RenderLayer2dSceneService>(runtime)?;
-        let _ = crate::runtime_context::required::<LightRoute2dSceneService>(runtime)?;
-        let _ = crate::runtime_context::required::<GlobalLight2dSceneService>(runtime)?;
+        let render_layers =
+            crate::runtime_context::required::<RenderLayer2dSceneService>(runtime)?;
+        let light_routes =
+            crate::runtime_context::required::<LightRoute2dSceneService>(runtime)?;
         let _ = crate::runtime_context::required::<LightMap2dSceneService>(runtime)?;
         let _ = crate::runtime_context::required::<LightGroup2dSceneService>(runtime)?;
-        let _ = crate::runtime_context::required::<Text2dSceneService>(runtime)?;
-        let _ = crate::runtime_context::required::<VectorSceneService>(runtime)?;
-        let _ = crate::runtime_context::required::<Particle2dSceneService>(runtime)?;
         let _ = crate::runtime_context::required::<MeshSceneService>(runtime)?;
         let _ = crate::runtime_context::required::<Text3dSceneService>(runtime)?;
         let _ = crate::runtime_context::required::<MaterialSceneService>(runtime)?;
@@ -272,28 +267,10 @@ impl ScenePreviewHost {
         let _ =
             crate::runtime_context::required::<crate::debug_overlay::DebugOverlayService>(runtime)?;
         let _ = crate::runtime_context::required::<UiInputViewportState>(runtime)?;
-        let render_packet =
-            amigo_runtime_bundles::default_wgpu_render_extractor_registry().extract_all(runtime);
-        let extracted_tilemaps =
-            crate::render_runtime::build_tilemap_scene_service_from_packet(&render_packet);
-        let extracted_sprites =
-            crate::render_runtime::build_sprite_scene_service_from_packet(&render_packet);
-        let extracted_layered_images =
-            crate::render_runtime::build_layered_image_scene_service_from_packet(&render_packet);
-        let extracted_depth_maps =
-            crate::render_runtime::build_depth_map2d_scene_service_from_packet(&render_packet);
-        let extracted_render_layers =
-            crate::render_runtime::build_render_layer2d_scene_service_from_packet(&render_packet);
-        let extracted_light_routes =
-            crate::render_runtime::build_light_route2d_scene_service_from_packet(&render_packet);
-        let extracted_global_lights =
-            crate::render_runtime::build_global_light2d_scene_service_from_packet(&render_packet);
-        let extracted_lightmaps =
-            crate::render_runtime::build_lightmap2d_scene_service_from_packet(&render_packet);
-        let extracted_text2d =
-            crate::render_runtime::build_text2d_scene_service_from_packet(&render_packet);
-        let extracted_vectors =
-            crate::render_runtime::build_vector_scene_service_from_packet(&render_packet);
+        let render_packet = amigo_runtime_bundles::default_wgpu_render_extractor_registry_for_runtime(
+            runtime,
+        )
+        .extract_all(runtime);
         let emergency_overlay = crate::render_runtime::emergency_overlay_lines(runtime);
 
         let offscreen = self.offscreen.as_mut().ok_or_else(|| {
@@ -314,29 +291,43 @@ impl ScenePreviewHost {
                 height: offscreen.target.height,
             },
         );
-        let extracted_render_layer_commands = extracted_render_layers.commands();
-        let extracted_light_route_commands = extracted_light_routes.commands();
+        let extracted_render_layer_commands = render_layers.commands();
+        let extracted_light_route_commands = light_routes.commands();
+        let render_lightmaps_2d = render_packet
+            .render_contributions_2d()
+            .iter()
+            .filter_map(RenderContribution2d::as_lightmap_2d)
+            .cloned()
+            .collect::<Vec<_>>();
+        let render_depth_maps_2d = render_packet
+            .render_contributions_2d()
+            .iter()
+            .filter_map(RenderContribution2d::as_depth_map_2d)
+            .cloned()
+            .collect::<Vec<_>>();
+        let render_depth_aux_maps_2d = render_packet
+            .render_contributions_2d()
+            .iter()
+            .filter_map(RenderContribution2d::as_depth_aux_map_2d)
+            .cloned()
+            .collect::<Vec<_>>();
+        let camera_optical_candidates =
+            amigo_runtime_bundles::render_extractor_bridges::collect_camera_optical_candidates_from_light_sources_2d(
+                render_packet.world_2d_light_sources(),
+            );
         let render_request = amigo_render_wgpu::WgpuFrameRenderRequest {
             target: amigo_render_wgpu::WgpuFrameRenderTarget::Offscreen(&mut offscreen.target),
             scene: scene.as_ref(),
             assets: assets.as_ref(),
             world_2d: amigo_render_wgpu::WgpuWorld2dRenderInput {
                 renderables: render_packet.renderables_2d(),
-                tilemaps: &extracted_tilemaps,
-                sprites: &extracted_sprites,
-                layered_images: &extracted_layered_images,
-                depth_maps: &extracted_depth_maps,
-                global_lights: &extracted_global_lights,
-                lightmaps: &extracted_lightmaps,
-                text2d: &extracted_text2d,
-                vectors: &extracted_vectors,
-                beacons: render_packet.world_2d_beacons(),
+                depth_maps: render_depth_maps_2d.as_slice(),
+                depth_aux_maps: render_depth_aux_maps_2d.as_slice(),
+                lightmaps: render_lightmaps_2d.as_slice(),
                 light_sources: render_packet.world_2d_light_sources(),
-                camera_optical_candidates: render_packet.camera_optical_candidates_2d(),
+                camera_optical_candidates: camera_optical_candidates.as_slice(),
                 render_layers: extracted_render_layer_commands.as_slice(),
                 light_routes: extracted_light_route_commands.as_slice(),
-                light_groups: render_packet.world_2d_light_groups(),
-                particles: render_packet.world_2d_particles(),
             },
             world_3d: amigo_render_wgpu::WgpuWorld3dRenderInput {
                 meshes: render_packet.world_3d_meshes(),
@@ -385,6 +376,7 @@ impl ScenePreviewHost {
             AmigoError::Message("scene preview runtime is not bootstrapped".to_owned())
         })
     }
+    #[allow(dead_code)]
     fn runtime_mut(&mut self) -> AmigoResult<&mut Runtime> {
         self.runtime.as_mut().ok_or_else(|| {
             AmigoError::Message("scene preview runtime is not bootstrapped".to_owned())

@@ -1,9 +1,10 @@
-use super::material_candidates::{MaterialCoveragePayload2d, WgpuMaterialCandidate2d};
+use super::material_candidates::WgpuMaterialCandidate2d;
 use super::offscreen_ops::{append_fullscreen_texture_vertices, compatible_offscreen_target};
 use super::*;
-use amigo_material_2d_plugin::{
+use amigo_material_api::{
     Material2d, MaterialCandidateDecision2d, MaterialCandidateStatus2d,
 };
+use amigo_render_api::RenderPrimitive2d;
 use wgpu::util::DeviceExt;
 
 #[repr(C)]
@@ -25,7 +26,7 @@ pub(super) fn execute_refractive_material_2d(
     target: &mut WgpuOffscreenTarget,
     assets: &AssetCatalog,
     viewport: &Viewport,
-    scene: &SceneService,
+    _scene: &SceneService,
     candidates: &[WgpuMaterialCandidate2d],
     decisions: &[MaterialCandidateDecision2d],
 ) -> AmigoResult<()> {
@@ -52,17 +53,9 @@ pub(super) fn execute_refractive_material_2d(
     let mut mask_sources = Vec::new();
 
     for candidate in &active_candidates {
-        match &candidate.payload {
-            MaterialCoveragePayload2d::Text(text_command) => {
-                let transform = resolve_transform2(
-                    scene,
-                    &text_command.entity_name,
-                    text_command.text.transform,
-                );
-                let alpha = (text_command.text.style.color.a
-                    * text_command.text.style.opacity
-                    * candidate.common.layer_opacity)
-                    .clamp(0.0, 1.0);
+        match &candidate.source.primitive {
+            RenderPrimitive2d::GlyphRun(glyph) => {
+                let alpha = (glyph.color.a * candidate.common.layer_opacity).clamp(0.0, 1.0);
                 if !renderer.append_text2d_ttf_font_texture_batch(
                     &mut mask_batches,
                     &mask_target.device,
@@ -70,11 +63,11 @@ pub(super) fn execute_refractive_material_2d(
                     assets,
                     viewport,
                     candidate.camera,
-                    &text_command.text.font,
-                    &text_command.text.content,
-                    transform,
-                    text_command.text.bounds,
-                    text_command.text.style.font_size,
+                    &glyph.font,
+                    &glyph.text,
+                    glyph.transform,
+                    glyph.bounds,
+                    glyph.font_size,
                     ColorRgba::new(1.0, 1.0, 1.0, alpha),
                 ) {
                     let vertices =
@@ -83,9 +76,9 @@ pub(super) fn execute_refractive_material_2d(
                         vertices,
                         viewport,
                         candidate.camera,
-                        &text_command.text.content,
-                        transform,
-                        text_command.text.bounds,
+                        &glyph.text,
+                        glyph.transform,
+                        glyph.bounds,
                         ColorRgba::new(1.0, 1.0, 1.0, alpha),
                     );
                     fallback_masks += 1;
@@ -94,46 +87,33 @@ pub(super) fn execute_refractive_material_2d(
                     mask_sources.push("ttf_font");
                 }
             }
-            MaterialCoveragePayload2d::Sprite(sprite_command) => {
-                let transform = resolve_transform2(
-                    scene,
-                    &sprite_command.entity_name,
-                    sprite_command.transform,
-                );
-                let _ = renderer.append_sprite_texture_batch(
+            RenderPrimitive2d::TexturedQuad(quad) => {
+                let _ = renderer.append_textured_quad_texture_batch(
                     &mut mask_batches,
                     &mask_target.device,
                     &mask_target.queue,
                     assets,
                     viewport,
                     candidate.camera,
-                    transform,
-                    &sprite_command.sprite,
+                    quad,
                 );
                 mask_sources.push("texture_alpha");
             }
-            MaterialCoveragePayload2d::Vector(vector_command) => {
-                let transform = vector_viewport_fit_transform(
-                    viewport,
-                    resolve_transform2(
-                        scene,
-                        &vector_command.entity_name,
-                        vector_command.transform,
-                    ),
-                    vector_command.viewport_fit,
-                    vector_command.viewport_canvas_size,
-                );
+            RenderPrimitive2d::VectorShape(vector) => {
                 let vertices =
                     color_batch_vertices(&mut mask_color_batches, ParticleBlendMode2d::Alpha);
-                append_vector_shape_vertices(
+                append_vector_primitive_vertices(
                     vertices,
                     viewport,
                     candidate.camera,
-                    transform,
-                    &vector_command.shape,
+                    vector,
+                    None,
+                    None,
+                    None,
                 );
                 mask_sources.push("vector_coverage");
             }
+            _ => {}
         }
     }
 
@@ -240,7 +220,9 @@ pub(super) fn execute_refractive_material_2d(
             timestamp_writes: None,
             multiview_mask: None,
         });
-        pass.set_pipeline(&renderer.refractive_material_pipeline);
+        pass.set_pipeline(renderer.post_fx_pipeline(
+            crate::renderer::service::POST_FX_AUX_REFRACTIVE_MATERIAL,
+        ));
         pass.set_bind_group(0, &texture_bind_group, &[]);
         pass.set_bind_group(1, &uniform_bind_group, &[]);
         pass.set_vertex_buffer(0, vertex_buffer.slice(..));
@@ -448,7 +430,7 @@ mod tests {
     use amigo_assets::AssetKey;
     use amigo_camera_optics_plugin::api::CameraOpticalResponse2d;
     use amigo_math::Transform2;
-    use amigo_material_2d_plugin::{
+    use amigo_material_api::{
         Material2dOptical, Material2dOpticalMode, MaterialCandidate2dCommon,
         MaterialCoverageKind2d,
     };
@@ -621,6 +603,23 @@ mod tests {
         render_layer: &str,
         coverage_kind: MaterialCoverageKind2d,
     ) -> WgpuMaterialCandidate2d {
+        let primitive = RenderPrimitive2d::GlyphRun(amigo_render_api::GlyphRun2dPrimitive {
+            font: AssetKey::new("test/font"),
+            text: owner.to_owned(),
+            bounds: amigo_math::Vec2::new(100.0, 40.0),
+            transform: Transform2::default(),
+            color: ColorRgba::WHITE,
+            font_size: None,
+            blend: amigo_render_api::GlyphRun2dBlendMode::Alpha,
+            shadow: None,
+            outline: None,
+            glow: None,
+            material: amigo_render_api::RenderMaterialBinding2d::new(
+                Some(refractive_material()),
+                amigo_render_api::RenderContributionSet::default(),
+                coverage_kind,
+            ),
+        });
         WgpuMaterialCandidate2d {
             common: MaterialCandidate2dCommon {
                 owner: owner.to_owned(),
@@ -632,22 +631,12 @@ mod tests {
                 material: refractive_material(),
                 coverage_kind,
             },
-            payload: MaterialCoveragePayload2d::Text(amigo_text_2d_plugin::Text2dDrawCommand {
-                entity_id: SceneEntityId::new(1),
-                entity_name: owner.to_owned(),
-                render_layer: render_layer.to_owned(),
-                text: amigo_text_2d_plugin::Text2d {
-                    content: owner.to_owned(),
-                    font: AssetKey::new("test/font"),
-                    bounds: amigo_math::Vec2::new(100.0, 40.0),
-                    transform: Transform2::default(),
-                    style: amigo_text_2d_plugin::Text2dStyle::default(),
-                    post_fx_host_id: None,
-                },
-                z_index: 40.0,
-                material: Some(refractive_material()),
-                render_contributions: amigo_render_api::RenderContributionSet::default(),
-            }),
+            source: super::material_candidates::MaterialCandidateSource2d {
+                owner_entity: owner.to_owned(),
+                component_kind: component_kind.to_owned(),
+                primitive_kind: primitive.kind(),
+                primitive,
+            },
             camera: Transform2::default(),
         }
     }

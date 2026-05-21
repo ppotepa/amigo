@@ -4,17 +4,28 @@ use amigo_beacon_light_2d_plugin::Beacon2dPlugin;
 use amigo_composite_plugin::PostFx2dPlugin;
 use amigo_core::AmigoResult;
 use amigo_focus_depth_plugin::{DepthMap2dPlugin, FocusTargets2dRuntimePlugin};
-use amigo_layered_image_2d_plugin::LayeredImagePlugin;
+use amigo_layered_image_2d_plugin::{
+    render::LAYERED_IMAGE_2D_EXTRACTOR_ID, LayeredImagePlugin,
+};
 use amigo_light_2d_plugin::Lighting2dPlugin;
 use amigo_particles_2d_plugin::Particle2dPlugin;
-use amigo_runtime::{PluginBundle, RuntimeBuilder};
+use amigo_runtime::{PluginBundle, RuntimeBuilder, RuntimePlugin, ServiceRegistry};
 use amigo_session::RuntimeSession;
 use amigo_shutter_motion_plugin::MOTION_2D_PLUGIN;
-use amigo_sprite_2d_plugin::SpritePlugin;
-use amigo_text_2d_plugin::Text2dPlugin;
-use amigo_tilemap_2d_plugin::TileMap2dPlugin;
+use amigo_sprite_2d_plugin::{render::SPRITE_2D_EXTRACTOR_ID, SpritePlugin};
+use amigo_text_2d_plugin::{render::TEXT_2D_EXTRACTOR_ID, Text2dPlugin};
+use amigo_tilemap_2d_plugin::{render::TILEMAP_2D_EXTRACTOR_ID, TileMap2dPlugin};
 use amigo_ui::UiPlugin;
-use amigo_vector_2d_plugin::Vector2dPlugin;
+use amigo_vector_2d_plugin::{render::VECTOR_2D_EXTRACTOR_ID, Vector2dPlugin};
+
+use crate::render_extractor_bridges;
+use crate::render_extractor_registry::WgpuRenderExtractorBridgeRegistry;
+
+const DEPTH_MAP_2D_EXTRACTOR_ID: &str = "depth_map_2d";
+const BEACON_2D_EXTRACTOR_ID: &str = "beacon_2d";
+const LIGHTING_2D_EXTRACTOR_ID: &str = "lighting_2d";
+const COMPOSITION_2D_EXTRACTOR_ID: &str = "composition_2d";
+const PARTICLES_2D_EXTRACTOR_ID: &str = "particles_2d";
 
 pub use amigo_shutter_motion_plugin::CANONICAL_MOTION_2D_RUNTIME_REPORT_LABEL;
 pub use amigo_particles_2d_plugin::{
@@ -38,6 +49,8 @@ pub use amigo_layered_image_2d_plugin::{
 
 pub struct TwoDRuntimeBundle;
 
+struct WgpuTwoDRenderExtractorBridgePlugin;
+
 impl PluginBundle for TwoDRuntimeBundle {
     fn name(&self) -> &'static str {
         "amigo-2d-bundle"
@@ -59,7 +72,61 @@ impl PluginBundle for TwoDRuntimeBundle {
             .with_plugin(Physics2dPlugin)?
             .with_plugin(TileMap2dPlugin)?
             .with_plugin(MOTION_2D_PLUGIN)?
-            .with_plugin(FocusTargets2dRuntimePlugin)
+            .with_plugin(FocusTargets2dRuntimePlugin)?
+            .with_plugin(WgpuTwoDRenderExtractorBridgePlugin)
+    }
+}
+
+impl RuntimePlugin for WgpuTwoDRenderExtractorBridgePlugin {
+    fn name(&self) -> &'static str {
+        "amigo-wgpu-2d-render-extractor-bridges"
+    }
+
+    fn register(&self, registry: &mut ServiceRegistry) -> AmigoResult<()> {
+        let bridges = registry.required::<WgpuRenderExtractorBridgeRegistry>()?;
+
+        bridges.register(
+            SPRITE_2D_EXTRACTOR_ID,
+            render_extractor_bridges::register_world_2d_plugin_sprite_extractor,
+        );
+        bridges.register(
+            TEXT_2D_EXTRACTOR_ID,
+            render_extractor_bridges::register_world_2d_plugin_text_extractor,
+        );
+        bridges.register(
+            VECTOR_2D_EXTRACTOR_ID,
+            render_extractor_bridges::register_world_2d_plugin_vector_extractor,
+        );
+        bridges.register(
+            LAYERED_IMAGE_2D_EXTRACTOR_ID,
+            render_extractor_bridges::register_world_2d_plugin_layered_image_extractor,
+        );
+        bridges.register(
+            TILEMAP_2D_EXTRACTOR_ID,
+            render_extractor_bridges::register_world_2d_plugin_tilemap_extractor,
+        );
+        bridges.register(
+            DEPTH_MAP_2D_EXTRACTOR_ID,
+            render_extractor_bridges::register_world_2d_plugin_depth_map_extractor,
+        );
+        bridges.register(
+            BEACON_2D_EXTRACTOR_ID,
+            render_extractor_bridges::register_world_2d_plugin_beacon_extractor,
+        );
+        bridges.register(
+            LIGHTING_2D_EXTRACTOR_ID,
+            render_extractor_bridges::register_world_2d_plugin_lighting_extractor,
+        );
+        bridges.register(
+            COMPOSITION_2D_EXTRACTOR_ID,
+            render_extractor_bridges::register_world_2d_plugin_composition_extractor,
+        );
+        bridges.register(
+            PARTICLES_2D_EXTRACTOR_ID,
+            render_extractor_bridges::register_world_2d_plugin_particles_extractor,
+        );
+
+        Ok(())
     }
 }
 

@@ -15,7 +15,7 @@ pub struct WgpuText2dRenderExtractorBridge;
 
 impl RenderFrameExtractor<Runtime, WgpuRenderFramePacket> for WgpuText2dRenderExtractorBridge {
     fn name(&self) -> &'static str {
-        amigo_text_2d_plugin::Text2dRenderExtractor.name()
+        amigo_text_2d_plugin::render::Text2dRenderExtractor.name()
     }
 
     fn extract(&self, runtime: &Runtime, packet: &mut WgpuRenderFramePacket) {
@@ -27,12 +27,15 @@ impl RenderFrameExtractor<Runtime, WgpuRenderFramePacket> for WgpuText2dRenderEx
         else {
             return;
         };
-        amigo_text_2d_plugin::Text2dRenderExtractor.extract(
-            amigo_text_2d_plugin::Text2dRenderExtractionContext {
+        for command in amigo_text_2d_plugin::render::extract_text2d_render_commands(
+            amigo_text_2d_plugin::render::Text2dRenderExtractionContext {
                 scene_service: scene_service.as_ref(),
                 text_scene_service: text_scene_service.as_ref(),
             },
-            packet,
-        );
+        ) {
+            packet.push_renderable_2d(
+                amigo_text_2d_plugin::render::text_draw_command_to_renderable_2d(&command),
+            );
+        }
     }
 }

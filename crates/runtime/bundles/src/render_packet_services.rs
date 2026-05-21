@@ -2,13 +2,14 @@ pub use amigo_2d_composition::{
     LightRoute2dSceneService, RenderLayer2dSceneService,
 };
 pub use amigo_3d_material::{Material3d, MaterialDrawCommand, MaterialSceneService};
+pub use amigo_material_api::MaterialCoverageKind2d;
 pub use amigo_3d_mesh::{Mesh3d, MeshDrawCommand, MeshSceneService};
 pub use amigo_3d_text::{Text3d, Text3dDrawCommand, Text3dSceneService};
 pub use amigo_composite_plugin::{
     Crt2d, DirtyBloom2d, FilmNoise2d, PostFx2d, PostFx2dService, PostFx2dStack, PostFxBlur2d,
     PostFxLensDroplets2d, PostFxWetReflections2d, ScopedPostFx2dStack,
 };
-pub use amigo_focus_depth_plugin::DepthMap2dSceneService;
+pub use amigo_beacon_light_2d_plugin::BeaconLight2dSceneService;
 pub use amigo_layered_image_2d_plugin::{
     LayeredImageBlendMode2d, LayeredImageDrawCommand, LayeredImageInstance,
     LayeredImageSceneService, LayeredImageViewportFit2d,
@@ -49,39 +50,6 @@ pub fn resolve_sprite_sheet_for_command(
     amigo_sprite_2d_plugin::resolve_sprite_sheet_for_command(asset_catalog, command)
 }
 
-pub fn build_sprite_scene_service_from_packet(
-    packet: &WgpuRenderFramePacket,
-) -> SpriteSceneService {
-    let service = SpriteSceneService::default();
-    for command in packet.world_2d_sprites() {
-        service.queue(command.clone());
-    }
-    service
-}
-
-pub fn build_layered_image_scene_service_from_packet(
-    packet: &WgpuRenderFramePacket,
-) -> LayeredImageSceneService {
-    let service = LayeredImageSceneService::default();
-    for command in packet.world_2d_layered_images() {
-        service.queue(command.clone());
-    }
-    service
-}
-
-pub fn build_depth_map2d_scene_service_from_packet(
-    packet: &WgpuRenderFramePacket,
-) -> DepthMap2dSceneService {
-    let service = DepthMap2dSceneService::default();
-    for command in packet.world_2d_depth_maps() {
-        service.queue(command.clone());
-    }
-    for command in packet.world_2d_depth_aux_maps() {
-        service.queue_aux(command.clone());
-    }
-    service
-}
-
 pub fn build_render_layer2d_scene_service_from_packet(
     packet: &WgpuRenderFramePacket,
 ) -> RenderLayer2dSceneService {
@@ -97,56 +65,6 @@ pub fn build_light_route2d_scene_service_from_packet(
 ) -> LightRoute2dSceneService {
     let service = LightRoute2dSceneService::default();
     for command in packet.world_2d_light_routes() {
-        service.queue(command.clone());
-    }
-    service
-}
-
-pub fn build_global_light2d_scene_service_from_packet(
-    packet: &WgpuRenderFramePacket,
-) -> GlobalLight2dSceneService {
-    let service = GlobalLight2dSceneService::default();
-    for command in packet.world_2d_global_lights() {
-        service.queue(command.clone());
-    }
-    service
-}
-
-pub fn build_lightmap2d_scene_service_from_packet(
-    packet: &WgpuRenderFramePacket,
-) -> LightMap2dSceneService {
-    let service = LightMap2dSceneService::default();
-    for command in packet.world_2d_lightmaps() {
-        service.queue(command.clone());
-    }
-    service
-}
-
-pub fn build_tilemap_scene_service_from_packet(
-    packet: &WgpuRenderFramePacket,
-) -> TileMap2dSceneService {
-    let service = TileMap2dSceneService::default();
-    for command in packet.world_2d_tilemaps() {
-        service.queue(command.clone());
-    }
-    service
-}
-
-pub fn build_vector_scene_service_from_packet(
-    packet: &WgpuRenderFramePacket,
-) -> VectorSceneService {
-    let service = VectorSceneService::default();
-    for command in packet.world_2d_vectors() {
-        service.queue(command.clone());
-    }
-    service
-}
-
-pub fn build_text2d_scene_service_from_packet(
-    packet: &WgpuRenderFramePacket,
-) -> Text2dSceneService {
-    let service = Text2dSceneService::default();
-    for command in packet.world_2d_text() {
         service.queue(command.clone());
     }
     service

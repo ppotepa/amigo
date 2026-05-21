@@ -1,10 +1,10 @@
 use std::collections::BTreeMap;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 use amigo_core::{AmigoError, AmigoResult};
 use amigo_modding::{ModCatalog, requested_mods_for_root};
 
-use crate::config::{CargoProfile, LauncherConfig, LauncherProfile};
+use crate::config::{CargoProfile, LauncherConfig, LauncherProfile, launcher_workspace_root};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DiagnosticSeverity {
@@ -68,7 +68,7 @@ pub fn diagnose_profile(config: &LauncherConfig, profile: &LauncherProfile) -> P
         resolved_mod_ids: Vec::new(),
         diagnostics: Vec::new(),
     };
-    let mods_root = Path::new(&config.mods_root);
+    let mods_root = config.resolved_mods_root();
 
     if !mods_root.exists() {
         report.diagnostics.push(LauncherDiagnostic {
@@ -78,7 +78,7 @@ pub fn diagnose_profile(config: &LauncherConfig, profile: &LauncherProfile) -> P
         return report;
     }
 
-    match ModCatalog::discover_selected(mods_root, &requested_mods_for_root(&root_mod)) {
+    match ModCatalog::discover_selected(&mods_root, &requested_mods_for_root(&root_mod)) {
         Ok(catalog) => {
             report.resolved_mod_ids = catalog
                 .mod_ids()
@@ -186,15 +186,6 @@ fn release_app_binary_path() -> PathBuf {
         .join("target")
         .join("release")
         .join(app_binary_name())
-}
-
-fn launcher_workspace_root() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .parent()
-        .and_then(|path| path.parent())
-        .and_then(|path| path.parent())
-        .expect("workspace root should exist")
-        .to_path_buf()
 }
 
 fn app_binary_name() -> &'static str {

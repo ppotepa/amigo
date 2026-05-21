@@ -359,15 +359,20 @@ fn app_render_extractor_registry_collects_vector_and_ui_data() {
     let packet =
         amigo_runtime_bundles::default_wgpu_render_extractor_registry().extract_all(&runtime);
 
-    assert_eq!(packet.world_2d_tilemaps().len(), 1);
-    assert_eq!(packet.world_2d_tilemaps()[0].entity_name, "arena");
-    assert_eq!(packet.world_2d_sprites().len(), 1);
-    assert_eq!(packet.world_2d_sprites()[0].entity_name, "player");
-    assert_eq!(packet.world_2d_text().len(), 1);
-    assert_eq!(packet.world_2d_text()[0].entity_name, "label");
-    assert_eq!(packet.world_2d_vectors().len(), 1);
-    assert_eq!(packet.world_2d_vectors()[0].entity_name, "ship");
-    assert_eq!(packet.world_2d_particles().len(), 1);
+    assert_eq!(packet.renderable_2d_count_by_component_kind("TileMap2D"), 1);
+    assert_eq!(packet.renderable_2d_count_by_component_kind("Sprite2D"), 1);
+    assert_eq!(packet.renderable_2d_count_by_component_kind("Text2D"), 1);
+    assert_eq!(packet.renderable_2d_count_by_component_kind("VectorShape2D"), 1);
+    assert_eq!(packet.renderable_2d_count_by_component_kind("ParticleEmitter2D"), 1);
+    let renderable_entities = packet
+        .renderables_2d()
+        .iter()
+        .map(|item| item.owner_entity())
+        .collect::<Vec<_>>();
+    assert!(renderable_entities.contains(&"arena"));
+    assert!(renderable_entities.contains(&"player"));
+    assert!(renderable_entities.contains(&"label"));
+    assert!(renderable_entities.contains(&"ship"));
     assert_eq!(packet.world_3d_meshes().len(), 1);
     assert_eq!(packet.world_3d_meshes()[0].entity_name, "probe-mesh");
     assert_eq!(packet.world_3d_materials().len(), 1);
@@ -583,25 +588,28 @@ fn composition_places_post_fx_before_game_and_debug_ui() {
 #[test]
 fn composition_plan_inserts_post_fx_between_world_and_ui() {
     let mut packet = WgpuRenderFramePacket::default();
-    packet.push_world_2d_sprite(SpriteDrawCommand {
-        entity_id: SceneEntityId::new(77),
-        entity_name: "marker".to_owned(),
-        sprite: Sprite {
-            texture: AssetKey::new("debug/marker"),
-            size: Vec2::new(16.0, 16.0),
-            sheet: None,
-            sheet_is_explicit: false,
-            animation_override: None,
-            frame_index: 0,
-            frame_elapsed: 0.0,
-            visual_maps: None,
-        },
-        transform: Transform2::default(),
-        render_layer: "default".to_owned(),
-        z_index: 0.0,
-        material: None,
-        render_contributions: amigo_render_api::RenderContributionSet::default(),
-    });
+    packet.push_renderable_2d(amigo_render_api::Renderable2dItem::new(
+        amigo_render_api::Renderable2dCommon::world(
+            "marker",
+            "Sprite2D",
+            "default",
+            0.0,
+            amigo_render_api::Renderable2dKind::Sprite,
+        ),
+        amigo_render_api::RenderPrimitive2d::TexturedQuad(
+            amigo_render_api::TexturedQuad2dPrimitive {
+                texture: AssetKey::new("debug/marker"),
+                size: Vec2::new(16.0, 16.0),
+                transform: Transform2::default(),
+                visual_maps: None,
+                sheet: None,
+                frame_index: 0,
+                material: amigo_render_api::RenderMaterialBinding2d::none(
+                    amigo_runtime_bundles::MaterialCoverageKind2d::TextureAlpha,
+                ),
+            },
+        ),
+    ));
     packet.set_post_fx_stacks(vec![
         amigo_runtime_bundles::ScopedPostFx2dStack::from_frame_stack(
             amigo_runtime_bundles::PostFx2dStack::single(
@@ -885,123 +893,149 @@ fn editor_frame_graph_renders_game_to_logical_target_and_presents_last() {
 #[test]
 fn rebuilds_vector_scene_service_from_packet() {
     let mut packet = WgpuRenderFramePacket::default();
-    packet.push_world_2d_vector(VectorShape2dDrawCommand {
-        entity_id: SceneEntityId::new(9),
-        entity_name: "asteroid".to_owned(),
-        shape: VectorShape2d {
-            kind: VectorShapeKind2d::Polygon {
-                points: vec![
-                    Vec2::new(-8.0, 0.0),
-                    Vec2::new(0.0, 8.0),
-                    Vec2::new(8.0, 0.0),
-                ],
+    packet.push_renderable_2d(amigo_render_api::Renderable2dItem::new(
+        amigo_render_api::Renderable2dCommon::world(
+            "asteroid",
+            "VectorShape2D",
+            "default",
+            1.0,
+            amigo_render_api::Renderable2dKind::Vector,
+        ),
+        amigo_render_api::RenderPrimitive2d::VectorShape(
+            amigo_render_api::VectorShape2dPrimitive {
+                shape: amigo_render_api::VectorShape2dKindPrimitive::Polygon {
+                    points: vec![
+                        Vec2::new(-8.0, 0.0),
+                        Vec2::new(0.0, 8.0),
+                        Vec2::new(8.0, 0.0),
+                    ],
+                },
+                style: amigo_render_api::VectorShape2dStylePrimitive {
+                    stroke_color: ColorRgba::WHITE,
+                    stroke_width: 1.0,
+                    fill_color: None,
+                },
+                transform: Transform2::default(),
+                viewport_fit: amigo_render_api::VectorShape2dViewportFit::Fixed,
+                viewport_canvas_size: None,
+                material: amigo_render_api::RenderMaterialBinding2d::none(
+                    amigo_runtime_bundles::MaterialCoverageKind2d::VectorCoverage,
+                ),
             },
-            style: VectorStyle2d::default(),
-        },
-        render_layer: "default".to_owned(),
-        z_index: 1.0,
-        transform: Transform2::default(),
-        viewport_fit: amigo_runtime_bundles::VectorViewportFit2d::Fixed,
-        viewport_canvas_size: None,
-        material: None,
-        render_contributions: amigo_render_api::RenderContributionSet::default(),
-    });
+        ),
+    ));
 
-    let rebuilt = build_vector_scene_service_from_packet(&packet);
-
-    assert_eq!(rebuilt.commands().len(), 1);
-    assert_eq!(rebuilt.commands()[0].entity_name, "asteroid");
+    assert_eq!(packet.renderables_2d().len(), 1);
+    assert_eq!(packet.renderables_2d()[0].owner_entity(), "asteroid");
 }
 
 #[test]
 fn rebuilds_sprite_scene_service_from_packet() {
     let mut packet = WgpuRenderFramePacket::default();
-    packet.push_world_2d_sprite(SpriteDrawCommand {
-        entity_id: SceneEntityId::new(3),
-        entity_name: "coin".to_owned(),
-        sprite: Sprite {
-            texture: AssetKey::new("playground-sidescroller/spritesheets/coin"),
-            size: Vec2::new(16.0, 16.0),
-            sheet: Some(SpriteSheet {
-                columns: 4,
-                rows: 1,
-                frame_count: 4,
-                frame_size: Vec2::new(16.0, 16.0),
-                fps: 8.0,
-                looping: true,
-            }),
-            sheet_is_explicit: false,
-            animation_override: None,
-            frame_index: 1,
-            frame_elapsed: 0.0,
-            visual_maps: None,
-        },
-        render_layer: "default".to_owned(),
-        z_index: 0.0,
-        transform: Transform2::default(),
-        material: None,
-        render_contributions: amigo_render_api::RenderContributionSet::default(),
-    });
+    packet.push_renderable_2d(amigo_render_api::Renderable2dItem::new(
+        amigo_render_api::Renderable2dCommon::world(
+            "coin",
+            "Sprite2D",
+            "default",
+            0.0,
+            amigo_render_api::Renderable2dKind::Sprite,
+        ),
+        amigo_render_api::RenderPrimitive2d::TexturedQuad(
+            amigo_render_api::TexturedQuad2dPrimitive {
+                texture: AssetKey::new("playground-sidescroller/spritesheets/coin"),
+                size: Vec2::new(16.0, 16.0),
+                transform: Transform2::default(),
+                visual_maps: None,
+                sheet: Some(amigo_render_api::TexturedQuad2dSheet {
+                    columns: 4,
+                    rows: 1,
+                    frame_count: 4,
+                    frame_size: Vec2::new(16.0, 16.0),
+                }),
+                frame_index: 1,
+                material: amigo_render_api::RenderMaterialBinding2d::none(
+                    amigo_runtime_bundles::MaterialCoverageKind2d::TextureAlpha,
+                ),
+            },
+        ),
+    ));
 
-    let rebuilt = build_sprite_scene_service_from_packet(&packet);
-
-    assert_eq!(rebuilt.commands().len(), 1);
-    assert_eq!(rebuilt.commands()[0].entity_name, "coin");
-    assert_eq!(rebuilt.commands()[0].sprite.frame_index, 1);
+    assert_eq!(packet.renderables_2d().len(), 1);
+    assert_eq!(packet.renderables_2d()[0].owner_entity(), "coin");
+    match &packet.renderables_2d()[0].primitive {
+        amigo_render_api::RenderPrimitive2d::TexturedQuad(quad) => assert_eq!(quad.frame_index, 1),
+        other => panic!("expected textured quad, got {other:?}"),
+    }
 }
 
 #[test]
 fn rebuilds_text2d_scene_service_from_packet() {
     let mut packet = WgpuRenderFramePacket::default();
-    packet.push_world_2d_text(Text2dDrawCommand {
-        entity_id: SceneEntityId::new(4),
-        entity_name: "caption".to_owned(),
-        text: Text2d {
-            content: "Vector Demo".to_owned(),
+    packet.push_renderable_2d(amigo_render_api::Renderable2dItem::new(
+        amigo_render_api::Renderable2dCommon::world(
+            "caption",
+            "Text2D",
+            "default",
+            0.0,
+            amigo_render_api::Renderable2dKind::Text,
+        ),
+        amigo_render_api::RenderPrimitive2d::GlyphRun(amigo_render_api::GlyphRun2dPrimitive {
             font: AssetKey::new("playground-2d/fonts/debug-ui"),
+            text: "Vector Demo".to_owned(),
             bounds: Vec2::new(240.0, 48.0),
             transform: Transform2::default(),
-            style: amigo_runtime_bundles::Text2dStyle::default(),
-            post_fx_host_id: None,
-        },
-        render_layer: "default".to_owned(),
-        z_index: 0.0,
-        material: None,
-        render_contributions: amigo_render_api::RenderContributionSet::default(),
-    });
+            color: ColorRgba::WHITE,
+            font_size: None,
+            blend: amigo_render_api::GlyphRun2dBlendMode::Alpha,
+            shadow: None,
+            outline: None,
+            glow: None,
+            material: amigo_render_api::RenderMaterialBinding2d::none(
+                amigo_runtime_bundles::MaterialCoverageKind2d::Glyphs,
+            ),
+        }),
+    ));
 
-    let rebuilt = build_text2d_scene_service_from_packet(&packet);
-
-    assert_eq!(rebuilt.commands().len(), 1);
-    assert_eq!(rebuilt.commands()[0].entity_name, "caption");
-    assert_eq!(rebuilt.commands()[0].text.content, "Vector Demo");
+    assert_eq!(packet.renderables_2d().len(), 1);
+    assert_eq!(packet.renderables_2d()[0].owner_entity(), "caption");
+    match &packet.renderables_2d()[0].primitive {
+        amigo_render_api::RenderPrimitive2d::GlyphRun(text) => {
+            assert_eq!(text.text, "Vector Demo")
+        }
+        other => panic!("expected glyph run, got {other:?}"),
+    }
 }
 
 #[test]
 fn rebuilds_tilemap_scene_service_from_packet() {
     let mut packet = WgpuRenderFramePacket::default();
-    packet.push_world_2d_tilemap(TileMap2dDrawCommand {
-        entity_id: SceneEntityId::new(12),
-        entity_name: "tilemap".to_owned(),
-        tilemap: TileMap2d {
+    packet.push_renderable_2d(amigo_render_api::Renderable2dItem::new(
+        amigo_render_api::Renderable2dCommon::world(
+            "tilemap",
+            "TileMap2D",
+            "default",
+            0.0,
+            amigo_render_api::Renderable2dKind::TileMap,
+        ),
+        amigo_render_api::RenderPrimitive2d::TileMap(amigo_render_api::TileMap2dPrimitive {
             tileset: AssetKey::new(
                 "playground-sidescroller/spritesheets/platformer/tilesets/platform/base",
             ),
-            ruleset: None,
             tile_size: Vec2::new(16.0, 16.0),
             grid: vec!["....".to_owned(), ".##.".to_owned()],
             origin_offset: Vec2::new(0.0, 0.0),
             resolved: None,
-        },
-        render_layer: "default".to_owned(),
-        z_index: 0.0,
-    });
+        }),
+    ));
 
-    let rebuilt = build_tilemap_scene_service_from_packet(&packet);
-
-    assert_eq!(rebuilt.commands().len(), 1);
-    assert_eq!(rebuilt.commands()[0].entity_name, "tilemap");
-    assert_eq!(rebuilt.commands()[0].tilemap.grid.len(), 2);
+    assert_eq!(packet.renderables_2d().len(), 1);
+    assert_eq!(packet.renderables_2d()[0].owner_entity(), "tilemap");
+    match &packet.renderables_2d()[0].primitive {
+        amigo_render_api::RenderPrimitive2d::TileMap(tilemap) => {
+            assert_eq!(tilemap.grid.len(), 2)
+        }
+        other => panic!("expected tilemap primitive, got {other:?}"),
+    }
 }
 
 #[test]
@@ -1104,7 +1138,7 @@ fn render_runtime_uses_only_frame_graph_render_flow() {
     let source = include_str!("../render_runtime.rs");
 
     for required in [
-        "amigo_runtime_bundles::default_wgpu_render_extractor_registry().extract_all",
+        "amigo_runtime_bundles::default_wgpu_render_extractor_registry_for_runtime(runtime)",
         "WgpuFrameCompositionBuilder::build(&render_packet)",
         "build_frame_graph_from_plan(",
         "renderer.render_frame_request(render_request)?",

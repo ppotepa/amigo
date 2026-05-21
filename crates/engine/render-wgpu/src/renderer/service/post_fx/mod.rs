@@ -6,10 +6,13 @@ mod crt;
 pub(crate) mod dirty_bloom;
 mod downscale;
 mod emboss_edges;
+mod executor;
+mod executor_registry;
 mod film_emulsion;
 mod film_noise;
 pub(crate) mod focus_blur;
 mod lens_droplets;
+pub(crate) mod pipelines;
 pub(crate) mod rain_glass;
 mod registry;
 pub(crate) mod runtime_key;
@@ -20,6 +23,9 @@ pub(crate) mod wet_reflections;
 use amigo_composite_plugin::{PostFx2d, PostFxEmbossMode2d};
 use image::RgbaImage;
 
+pub(crate) use executor::{WgpuPostFxExecutionContext, WgpuPostFxExecutor};
+pub(crate) use executor_registry::WgpuPostFxExecutorRegistry;
+pub(crate) use registry::default_post_fx_executor_registry;
 pub(crate) use registry::execute_screen_space_post_fx;
 
 pub(crate) fn apply_cached_image_post_fx_rgba(source: RgbaImage, effect: PostFx2d) -> RgbaImage {

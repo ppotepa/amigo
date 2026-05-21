@@ -28,7 +28,7 @@
             <feMorphology in="SourceAlpha" operator="dilate" radius="2.1" result="dilated" />
             <feMorphology in="SourceAlpha" operator="erode" radius="0.2" result="eroded" />
             <feComposite in="dilated" in2="eroded" operator="out" result="outline" />
-            <feFlood flood-color="#6c4934" flood-opacity="1" result="outlineColor" />
+            <feFlood flood-color="#4f6278" flood-opacity="1" result="outlineColor" />
             <feComposite in="outlineColor" in2="outline" operator="in" result="coloredOutline" />
             <feMerge>
               <feMergeNode in="coloredOutline" />
@@ -52,6 +52,17 @@
         <div id="hudOutline">outline: ADAPTIVE</div>
         <div id="hudOrder">order: earLeft → earRight → face → nose → mouth</div>
       </div>
+      <div class="yawGizmo" aria-label="Presety obrotu">
+        <div class="yawGizmoOrbit" aria-hidden="true"></div>
+        <div class="yawGizmoCore" aria-hidden="true">
+          <span class="yawGizmoDot"></span>
+          <span class="yawGizmoText">yaw</span>
+        </div>
+        <button class="yawGizmoButton yawGizmoFront" data-yaw="0" type="button" aria-label="Widok front">F</button>
+        <button class="yawGizmoButton yawGizmoLeft" data-yaw="90" type="button" aria-label="Lewy profil">L</button>
+        <button class="yawGizmoButton yawGizmoBack" data-yaw="180" type="button" aria-label="Widok tył">B</button>
+        <button class="yawGizmoButton yawGizmoRight" data-yaw="270" type="button" aria-label="Prawy profil">R</button>
+      </div>
     </div>
   </main>
 
@@ -65,15 +76,6 @@
         <output id="yawOut">0°</output>
       </div>
       <input id="yaw" type="range" min="0" max="360" step="1" value="0" />
-    </div>
-
-    <div class="control">
-      <div class="buttonGrid">
-        <button data-yaw="0">front</button>
-        <button data-yaw="90">left</button>
-        <button data-yaw="180">back</button>
-        <button data-yaw="270">right</button>
-      </div>
     </div>
 
     <div class="control">
@@ -115,7 +117,7 @@
 
     <div class="control switches">
       <label><input id="auto" type="checkbox" /> auto obrót</label>
-      <label><input id="sources" type="checkbox" checked /> źródła</label>
+      <label><input id="sources" type="checkbox" /> źródła</label>
       <label><input id="wire" type="checkbox" /> wire</label>
       <label><input id="dots" type="checkbox" /> punkty</label>
     </div>
@@ -123,6 +125,7 @@
     <div class="control exportPanel">
       <a href="./assets/source-rig.svg" download>source-rig.svg</a>
       <button id="exportSvg" type="button">Eksportuj widok SVG</button>
+      <a href="./index-realism.html">Wariant realism</a>
     </div>
 
     <div class="audit">
@@ -148,98 +151,29 @@
   </aside>
 
   <div id="sourceHost" aria-hidden="true">
-<?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<!-- Created with Inkscape (http://www.inkscape.org/) -->
-
-<svg
-   width="1080"
-   height="1080"
-   viewBox="0 0 1080 1080"
-   version="1.1"
-   id="svg1"
-   xml:space="preserve"
-   inkscape:version="1.4.3 (0d15f75, 2025-12-25)"
-   sodipodi:docname="face.svg"
-   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
-   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
-   xmlns="http://www.w3.org/2000/svg"
-   xmlns:svg="http://www.w3.org/2000/svg"><sodipodi:namedview
-     id="namedview1"
-     pagecolor="#ffffff"
-     bordercolor="#000000"
-     borderopacity="0.25"
-     inkscape:showpageshadow="2"
-     inkscape:pageopacity="0.0"
-     inkscape:pagecheckerboard="0"
-     inkscape:deskcolor="#d1d1d1"
-     inkscape:document-units="px"
-     inkscape:zoom="1.5277778"
-     inkscape:cx="553.41818"
-     inkscape:cy="561.27273"
-     inkscape:window-width="1920"
-     inkscape:window-height="1027"
-     inkscape:window-x="1992"
-     inkscape:window-y="-8"
-     inkscape:window-maximized="1"
-     inkscape:current-layer="layer6" /><defs
-     id="defs1" /><g
-     inkscape:label="CENTER"
-     inkscape:groupmode="layer"
-     id="CENTER"
-     style="display:inline;opacity:0.5"><path
-       style="display:inline;fill:#000000"
-       d="m 416.29091,412.36364 20.94545,151.85454 26.18182,37.96364 31.41818,23.56363 18.32728,10.47273 h 14.4 l 23.56363,-3.92727 56.29091,-52.36364 13.09091,-32.72727 18.32727,-163.63636 -22.25454,-53.67273 -74.61818,-35.34546 -34.03637,2.61819 -64.14545,31.41818 -24.87273,54.98182 z"
-       id="FACE" /><path
-       style="display:inline;fill:#000000"
-       d="m 631.63636,435.92727 11.78182,-14.4 5.89091,1.30909 5.23636,15.70909 -1.96363,28.14546 -7.2,22.90909 -12.43637,15.05455 -8.50909,-3.27273 z"
-       id="PRAWE"
-       inkscape:label="LEWE" /><path
-       style="display:inline;fill:#000000;stroke-width:1.08347"
-       d="m 423.71146,439.94545 -13.83083,-14.4 -6.91542,1.30909 -6.14703,15.70909 2.30513,28.14546 8.45217,22.90909 14.59922,15.05455 9.98893,-3.27273 z"
-       id="LEWE"
-       inkscape:label="PRAWE"><title
-         id="title1">PRAWE</title></path><path
-       style="display:inline;fill:#969696;fill-opacity:1"
-       d="m 502.6909,524.94546 c 0,0 16.97712,16.86481 21.6,15.70909 13.09091,-3.27273 22.25454,-18.32727 22.25454,-18.32727 L 524.2909,447.05455 Z"
-       id="NOSE"
-       sodipodi:nodetypes="csccc"
-       inkscape:label="NOSE"><title
-         id="title4">NOSE</title></path></g><g
-     inkscape:groupmode="layer"
-     id="LEFT_PROFILE"
-     inkscape:label="LEFT PROFILE"
-     style="display:inline;opacity:1"><path
-       style="display:inline;fill:#000000;stroke-width:1.08556"
-       d="m 590.16742,595.25711 c 0,0 -75.60656,45.83548 -98.87011,40.27967 -21.90914,-5.23235 -74.15259,-7.63925 -74.15259,-7.63925 l -13.81273,-12.50058 -0.72699,-22.22328 1.45397,-14.58401 -13.08574,-9.0282 7.99684,-14.58402 -7.99684,-10.41716 2.18095,-24.30669 13.08575,-68.75323 -6.54288,-30.55699 31.26041,-82.64277 c 0,0 89.32243,-42.69422 107.59396,-43.75206 23.99053,-1.38895 113.74828,24.52223 133.03845,36.80728 17.44767,11.11164 28.72566,57.50049 25.44452,79.17039 -19.2655,128.18669 -4.97069,132.88327 -106.86697,184.7309 z"
-       id="FACE_PROFILE"
-       sodipodi:nodetypes="cscccccccccccsssc"
-       inkscape:label="FACE PROFILE"><title
-         id="title2">FACE PROFILE</title></path><path
-       style="display:inline;opacity:0.5;fill:#969696;fill-opacity:1"
-       d="m 369.36364,501.63637 c 0,0 7.15893,16.21026 11.78181,15.05454 13.09091,-3.27273 34.69091,4.58182 34.69091,4.58182 L 417.8,435.52728 Z"
-       id="NOSE-PROFILE"
-       sodipodi:nodetypes="csccc"
-       inkscape:label="NOSE"><title
-         id="title4-1">NOSE</title></path><path
-       style="display:inline;opacity:1;fill:#000000"
-       d="m 547.76348,509.57972 c 0,0.92566 1.61992,16.19917 3.70267,18.0505 2.08275,1.85134 12.03367,6.24826 12.03367,6.24826 0,0 20.36468,-15.96776 24.7616,-26.1501 4.39692,-10.18234 12.95934,-26.38151 10.18233,-34.24968 -2.777,-7.86817 -9.7195,-20.82751 -15.96775,-22.21601 -6.24826,-1.3885 -15.27351,2.08275 -18.28193,5.09117 -3.00841,3.00842 -7.40533,10.41376 -9.02525,12.49651 -1.61992,2.08275 1.3885,17.35625 1.3885,17.35625 z"
-       id="EAR_LEFT"
-       inkscape:label="EAR LEFT"><title
-         id="title3">EAR LEFT</title></path></g><g
-     inkscape:groupmode="layer"
-     id="BACK"
-     inkscape:label="BACK"
-     style="opacity:1"><path
-       style="display:inline;fill:#969696;fill-opacity:1;stroke-width:1.09545"
-       d="m 471.92727,610.16727 -25.52728,-30.10909 -7.2,-18.06545 -7.85454,-41.23637 L 410.4,453.33819 c 0,0 12.43636,-91.89819 16.36363,-100.53819 3.92727,-8.64 56.94546,-47.25818 56.94546,-47.25818 0,0 20.29091,-7.06909 16.36363,-11.65091 -2.12987,-2.48484 68.07273,10.86545 68.07273,10.86545 0,0 49.74545,28.40727 55.63636,40.18909 5.89091,11.78182 13.74546,63.09819 13.74546,63.09819 l 1.96363,73.5709 -20.94545,83.25819 -30.10909,35.47636 -58.90909,39.14182 z"
-       id="path4"
-       sodipodi:nodetypes="cccccscscscccccc" /><path
-       style="fill:#969696;fill-opacity:1"
-       d="M 424.14546,430.03636 412.36364,424.8 l -7.2,13.74545 1.30909,43.85455 6.54546,21.6 11.12727,7.85454 5.89091,-6.54545 2.61818,-32.07273 z"
-       id="path5" /><path
-       style="display:inline;fill:#969696;fill-opacity:1"
-       d="m 634.25455,420.21818 15.70909,1.30909 8.50909,23.56364 -8.50909,34.69091 -17.01818,18.98181 -13.09091,3.27273 -5.89091,-3.92727 z"
-       id="path6" /></g></svg>
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1080" viewBox="0 0 1080 1080">
+  <g id="CENTER" transform="scale(3)">
+    <path id="FACE" fill="#000000" d="M0 27L2.07 44.64L5.13 61.56L7.56 67.59L12.78 71.1L23.94 75.06L26.28 75.06L33.84 74.61L44.73 70.02L47.43 67.77L51.66 53.64L55.08 26.01L51.66 13.32L41.13 2.7L30.33 0.09L26.64 0L20.97 0.9L13.41 2.88L4.05 12.33L2.34 15.12L0.63 22.68C0.63 22.68 0.42 24.12 0 27Z" transform="translate(153.540000000002, 131.130000000002)"/>
+    <path id="NOSE" fill="#969696" d="M0.0736364 11.97C1.15364 12.57 2.02364 12.84 2.68364 12.78C3.34364 12.72 4.12364 12.42 5.02364 11.88L4.48364 0C4.96364 2.82 5.44364 4.83 5.92364 6.03C6.64364 7.83 8.71364 10.08 8.80364 11.25C8.86364 12.03 7.30364 13.2 4.12364 14.76L0.523636 13.41C0.0436364 13.05 -0.106364 12.57 0.0736364 11.97Z" transform="translate(176.596363636366, 168.300000000002)"/>
+    <path id="PRAWE" fill="#000000" d="M2.82 0.42L5.16 0L7.2 1.26L8.22 4.86L6.84 9.36L5.82 13.74L5.82 15.18L4.44 16.8L3.78 19.32L1.56 20.46L0 20.04C0 20.04 0.94 13.5 2.82 0.42Z" transform="translate(205.2, 165.72)"/>
+    <path id="LEWE" fill="#000000" d="M4.98545 0.72L3.84545 0L1.56545 0.78C0.565455 2.26 0.0454545 3.24 0.00545455 3.72C-0.0345455 4.2 0.145455 5.48 0.545455 7.56L2.16545 12.54L2.40545 15.06L3.30545 16.32L4.56545 19.08L6.24545 20.16L7.98545 19.56C7.98545 19.56 6.98545 13.28 4.98545 0.72Z" transform="translate(148.554545454545, 165.6)"/>
+  </g>
+  <g id="ANGLE" transform="scale(3)">
+    <path id="ANGLE_FACE" fill="#000000" d="M65.7509 29.5452L61.5509 20.5452L57.9509 11.0652C55.7109 7.1452 53.5509 4.8652 51.4709 4.2252C48.3509 3.2652 37.0709 -0.334797 34.6709 0.0252034C32.2709 0.385203 15.4709 2.6652 9.35094 8.1852C3.23094 13.7052 0.950943 24.3852 0.110943 28.1052C-0.449057 30.5852 1.11094 36.9052 4.79094 47.0652C12.3909 51.7052 16.7109 54.8252 17.7509 56.4252C19.3109 58.8252 22.5509 65.9052 25.1909 67.4652C27.8309 69.0252 35.8709 72.1452 40.0709 72.5052C44.2709 72.8652 51.7109 75.6252 53.9909 75.5052C56.2709 75.3852 61.0709 75.3852 61.0709 73.4652C61.0709 71.5452 61.4309 65.4252 61.6709 63.2652C61.9109 61.1052 62.8709 54.1452 63.5909 52.1052C64.3109 50.0652 65.7509 44.7852 65.1509 42.5052C64.5509 40.2252 62.6309 38.4252 62.9909 36.0252C63.3509 33.6252 64.1909 34.9452 65.7509 29.5452Z" transform="translate(146.649056603774, 130.774796563375)"/>
+    <path id="ANGLE_NOSE" fill="#969696" d="M6.36 0L5.76 2.52L11.4 13.74L12.66 16.8L11.1 19.32L7.92 18.24L1.92 18.96L0 17.88L0.48 15.96L2.88 14.28L4.2 0.12C4.2 0.12 4.92 0.08 6.36 0Z" transform="translate(198.12, 162.36)"/>
+    <path id="ANGLE_EAR" fill="#000000" d="M12.0202 4.31135C11.2202 1.59135 10.0202 0.191345 8.42018 0.111345C6.02018 -0.0086547 3.62018 -0.368655 2.30018 1.43135C0.980178 3.23135 -0.459822 2.87135 0.140178 5.63135C0.740178 8.39135 1.82018 12.5913 3.62018 14.1513C5.42018 15.7113 8.90018 16.1913 10.5802 17.5113C12.2602 18.8313 12.7402 20.8713 14.1802 19.7913C15.6202 18.7113 15.9802 15.3513 14.7802 14.3913C13.9802 13.7513 13.5802 12.7513 13.5802 11.3913" transform="translate(149.259821881516, 165.248654695408)"/>
+  </g>
+  <g id="LEFT_PROFILE">
+    <path id="FACE_PROFILE" fill="#000000" d="M72.54 46.8321C74.76 39.4521 75.81 34.0821 75.69 30.7221C75.51 25.6821 74.16 17.2221 68.85 12.0921C63.54 6.96214 57.33 2.01214 50.22 1.02214C43.11 0.0321353 33.39 -1.58786 25.74 3.81214C20.64 7.41214 16.65 10.3221 13.77 12.5421L7.65 27.7521L7.83 30.9021C8.67 32.1621 8.94 33.3321 8.64 34.4121C8.34 35.4921 5.52 39.5121 0.18 46.4721L0 49.2621L5.22 52.3221C5.22 54.1221 5.13 55.3821 4.95 56.1021C4.68 57.1821 4.77 57.9471 5.13 58.3971C5.37 58.6971 5.62 59.0471 5.88 59.4471C5.11 60.0971 4.815 60.5871 4.995 60.9171C5.265 61.4121 7.515 63.2571 7.56 64.4721C7.605 65.6871 7.065 66.4971 6.66 67.0821C6.255 67.6671 5.265 68.6571 5.535 69.6471C5.805 70.6371 6.18 73.5921 7.62 74.3721C9.06 75.1521 15.12 75.6321 16.98 76.1121C18.22 76.4321 21.72 77.1321 27.48 78.2121L36.18 75.8721C42.9 60.2721 47.72 52.1521 50.64 51.5121C55.02 50.5521 55.08 50.5521 72.54 46.8321Z" transform="translate(419.040000000006, 380.603594200302)"/>
+    <path id="EAR_LEFT" fill="#000000" d="M0.1875 15.3C-0.1125 16.77 -0.0525 17.835 0.3675 18.495C0.9975 19.485 2.0775 20.34 3.1125 20.565C4.1475 20.79 5.8575 20.385 6.8025 19.17C7.7475 17.955 10.1775 16.56 11.2125 14.76C12.2475 12.96 14.6325 10.71 14.4975 8.1C14.3625 5.49 14.9475 5.67 13.9125 3.915C13.2225 2.745 12.0675 1.44 10.4475 0C7.4475 0.54 5.6775 1.17 5.1375 1.89C4.3275 2.97 3.8325 5.535 3.7875 6.885C3.7425 8.235 4.8225 9.765 5.4075 10.8C5.9925 11.835 6.6225 12.33 6.6675 13.005C6.6975 13.455 6.6675 13.74 6.5775 13.86L6.6225 13.77" transform="translate(532.957500000009, 482.760000000006)"/>
+    <path id="NOSE-PROFILE" fill="#969696" d="m 369.36364,501.63637 c 0,0 7.15893,16.21026 11.78181,15.05454 13.09091,-3.27273 34.69091,4.58182 34.69091,4.58182 L 417.8,435.52728 Z"/>
+  </g>
+  <g id="BACK" transform="scale(3)">
+    <path id="BACK_RIGHT_EAR" fill="#000000" d="M4.08 0.36L7.2 0C9.36 1.2 10.41 3.11 10.17 4.47C9.93 5.83 8.76 8.96 6.84 15.12C6.28 18.8 4.55 19.9875 2.82 20.19C1.09 20.3925 1.44 20.2 0 19.32C0 19.32 2.26 12.82 4.08 0.36Z" transform="translate(203.4, 166.08)"/>
+    <path id="BACK_LEFT_EAR" fill="#000000" d="M5.64571 0.157895C4.60571 -0.242105 3.04571 0.117895 0.965714 1.23789C-0.0742855 2.91789 -0.274286 4.39789 0.365714 5.67789C1.00571 6.95789 1.80571 10.5179 2.76571 16.3579C4.84571 19.3179 6.32571 20.6779 7.20571 20.4379C8.08571 20.1979 8.68571 19.3179 9.00571 17.7979C9.00571 17.7979 7.88571 11.9179 5.64571 0.157895Z" transform="translate(147.714285509427, 166.042105435195)"/>
+    <path id="BACK_FACE" fill="#000000" d="M27.48 0C18.92 1.92 14.12 3.16 13.08 3.72C11.52 4.56 4.32 12.36 3.24 14.16C2.16 15.96 0 28.2 0 29.52C0 30.84 3 46.2 3.24 47.64C3.4 48.6 3.88 52.6 4.68 59.64C10.28 64.2 14.28 67 16.68 68.04C19.08 69.08 22.76 69.88 27.72 70.44C37.72 68.04 43.4 66.04 44.76 64.44C45.5099 63.5577 48.2123 62.4807 49.6787 57.5638C52.2012 49.1056 55.0923 32.8818 55.32 31.44C55.68 29.16 54.72 18.6 52.8 15C50.88 11.4 46.68 6.96 44.4 5.4C42.12 3.84 40.32 1.92 27.48 0Z" transform="translate(153, 131.64)"/>
+  </g>
+</svg>
 
   </div>
 

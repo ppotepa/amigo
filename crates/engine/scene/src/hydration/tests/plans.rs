@@ -11,6 +11,32 @@ use crate::{
     load_scene_document_from_str,
 };
 
+fn sprite_command(
+    command: &SceneCommand,
+) -> Option<&crate::Sprite2dSceneCommand> {
+    match command {
+        SceneCommand::QueueSprite2d { command } => Some(command),
+        SceneCommand::Plugin { command } => command.sprite_2d_command(),
+        _ => None,
+    }
+}
+
+fn text_command(command: &SceneCommand) -> Option<&crate::Text2dSceneCommand> {
+    match command {
+        SceneCommand::QueueText2d { command } => Some(command),
+        SceneCommand::Plugin { command } => command.text_2d_command(),
+        _ => None,
+    }
+}
+
+fn vector_command(command: &SceneCommand) -> Option<&crate::VectorShape2dSceneCommand> {
+    match command {
+        SceneCommand::QueueVectorShape2d { command } => Some(command),
+        SceneCommand::Plugin { command } => command.vector_shape_2d_command(),
+        _ => None,
+    }
+}
+
 #[test]
 fn builds_hydration_plan_for_2d_scene_document() {
     let document = load_scene_document_from_str(
@@ -71,17 +97,17 @@ entities:
     assert!(!camera_command
         .render_contributions
         .enabled_or("camera.scan_output", true));
-    assert!(plan.commands.iter().any(|command| matches!(
-        command,
-        SceneCommand::QueueSprite2d { command }
-            if command.entity_name == "playground-2d-sprite"
+    assert!(plan.commands.iter().any(|command| {
+        sprite_command(command).is_some_and(|command| {
+            command.entity_name == "playground-2d-sprite"
                 && command.size == Vec2::new(128.0, 128.0)
                 && command.transform == Transform2 {
                     translation: Vec2::new(12.0, -4.0),
                     rotation_radians: 0.5,
                     scale: Vec2::new(2.0, 3.0),
                 }
-    )));
+        })
+    }));
 }
 
 #[test]
@@ -113,16 +139,16 @@ entities:
 
     let plan = build_scene_hydration_plan("rotten-club", &document).expect("plan should build");
 
-    assert!(plan.commands.iter().any(|command| matches!(
-        command,
-        SceneCommand::QueueText2d { command }
-            if command.entity_name == "title"
+    assert!(plan.commands.iter().any(|command| {
+        text_command(command).is_some_and(|command| {
+            command.entity_name == "title"
                 && command.material.as_ref().is_some_and(|material|
                     material.optical.mode == Material2dOpticalModeSceneCommand::Refractive
                         && (material.optical.transmission - 0.58).abs() < f32::EPSILON
                         && material.lighting.receives_light
                 )
-    )));
+        })
+    }));
 }
 
 #[test]
@@ -154,10 +180,9 @@ entities:
 
     let plan = build_scene_hydration_plan("test-mod", &document).expect("plan should build");
 
-    assert!(plan.commands.iter().any(|command| matches!(
-        command,
-        SceneCommand::QueueSprite2d { command }
-            if command.entity_name == "poster"
+    assert!(plan.commands.iter().any(|command| {
+        sprite_command(command).is_some_and(|command| {
+            command.entity_name == "poster"
                 && command.material.as_ref().is_some_and(|material|
                     material.optical.mode == Material2dOpticalModeSceneCommand::Refractive
                         && (material.optical.transmission - 0.45).abs() < f32::EPSILON
@@ -167,7 +192,8 @@ entities:
                 && command.render_contributions.enabled_or("material.mask", false)
                 && command.render_contributions.enabled_or("optics.refract", false)
                 && !command.render_contributions.enabled_or("transmission.source", true)
-    )));
+        })
+    }));
 }
 
 #[test]
@@ -200,10 +226,9 @@ entities:
 
     let plan = build_scene_hydration_plan("test-mod", &document).expect("plan should build");
 
-    assert!(plan.commands.iter().any(|command| matches!(
-        command,
-        SceneCommand::QueueVectorShape2d { command }
-            if command.entity_name == "vector-glass"
+    assert!(plan.commands.iter().any(|command| {
+        vector_command(command).is_some_and(|command| {
+            command.entity_name == "vector-glass"
                 && command.material.as_ref().is_some_and(|material|
                     material.optical.mode == Material2dOpticalModeSceneCommand::Refractive
                     && (material.optical.transmission - 0.35).abs() < f32::EPSILON
@@ -213,7 +238,8 @@ entities:
                 && command.render_contributions.enabled_or("material.mask", false)
                 && command.render_contributions.enabled_or("optics.refract", false)
                 && !command.render_contributions.enabled_or("transmission.source", true)
-    )));
+        })
+    }));
 }
 
 #[test]
@@ -513,17 +539,15 @@ fn builds_hydration_plan_for_playground_2d_main_scene() {
 
     let plan = build_scene_hydration_plan("playground-2d", &document).expect("plan should build");
 
-    assert!(plan.commands.iter().any(|command| matches!(
-        command,
-        SceneCommand::QueueSprite2d { command }
-            if command.entity_name == "playground-2d-spritesheet"
+    assert!(plan.commands.iter().any(|command| {
+        sprite_command(command).is_some_and(|command| {
+            command.entity_name == "playground-2d-spritesheet"
                 && command.sheet.as_ref().map(|sheet| sheet.frame_count) == Some(8)
-    )));
-    assert!(plan.commands.iter().any(|command| matches!(
-        command,
-        SceneCommand::QueueText2d { command }
-            if command.entity_name == "playground-2d-hello"
-    )));
+        })
+    }));
+    assert!(plan.commands.iter().any(|command| {
+        text_command(command).is_some_and(|command| command.entity_name == "playground-2d-hello")
+    }));
 }
 
 #[test]
@@ -576,11 +600,10 @@ fn builds_hydration_plan_for_playground_2d_screen_space_preview() {
     let plan = build_scene_hydration_plan("playground-2d", &document)
         .expect("screen-space preview plan should build");
 
-    assert!(plan.commands.iter().any(|command| matches!(
-        command,
-        SceneCommand::QueueSprite2d { command }
-            if command.entity_name == "playground-2d-ui-preview-square"
-    )));
+    assert!(plan.commands.iter().any(|command| {
+        sprite_command(command)
+            .is_some_and(|command| command.entity_name == "playground-2d-ui-preview-square")
+    }));
     assert!(plan.commands.iter().any(|command| matches!(
         command,
         SceneCommand::QueueUi { command }

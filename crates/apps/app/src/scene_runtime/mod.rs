@@ -4,7 +4,6 @@
 use super::*;
 use amigo_runtime::EngineSchedulerMode;
 use amigo_runtime_control::{RuntimeControlService, build_scene_metadata_for_runtime};
-use amigo_scene::ActivationSetSceneService;
 use amigo_scene::{CompiledSceneDocument, SceneDocument, SceneStateValueDocument};
 use amigo_scene::{
     SceneFrameClockDocument, SceneFramePresentationDocument, SceneSchedulingDocument,
@@ -83,10 +82,12 @@ pub(super) fn load_scene_document_for_mod(
     }
     let relative_document_path =
         crate::app_helpers::relative_path_within_root(&discovered_mod.root_path, &document_path)?;
-    let compiled = amigo_scene::compile_scene_document_from_path(
+    let component_schemas = runtime.resolve::<amigo_scene::ComponentSchemaRegistry>();
+    let compiled = amigo_scene::compile_scene_document_from_path_with_component_schemas(
         &document_path,
         &discovered_mod.root_path,
         root_mod,
+        component_schemas.as_deref(),
     )
     .map_err(|error| AmigoError::Message(error.to_string()))?;
     apply_compiled_scene_scheduling(runtime, &discovered_mod.root_path, scene_id, &compiled)?;
@@ -101,8 +102,9 @@ pub(super) fn load_scene_document_for_mod(
     }
     apply_scene_state_defaults(runtime, &document);
 
-    let hydration_plan = amigo_scene::build_scene_hydration_plan(root_mod, &document)
-        .map_err(|error| AmigoError::Message(error.to_string()))?;
+    let hydration_plan =
+        amigo_scene::build_scene_hydration_plan_for_runtime(runtime, root_mod, &document)
+            .map_err(|error| AmigoError::Message(error.to_string()))?;
     let transition_plan = amigo_scene::build_scene_transition_plan(root_mod, &document)
         .map_err(|error| AmigoError::Message(error.to_string()))?;
     let mut runtime_control_metadata =
@@ -519,6 +521,25 @@ fn register_scene_command_asset_references(
     command: &SceneCommand,
 ) {
     match command {
+        SceneCommand::Plugin { command } => {
+            if let Some(command) = command.sprite_2d_command() {
+                crate::app_helpers::register_mod_asset_reference(
+                    asset_catalog,
+                    &command.source_mod,
+                    &command.texture,
+                    "spritesheets",
+                    "sprite-sheet-2d",
+                );
+            } else if let Some(command) = command.text_2d_command() {
+                crate::app_helpers::register_mod_asset_reference(
+                    asset_catalog,
+                    &command.source_mod,
+                    &command.font,
+                    "fonts",
+                    "font-2d",
+                );
+            }
+        }
         SceneCommand::QueueSprite2d { command } => {
             crate::app_helpers::register_mod_asset_reference(
                 asset_catalog,
@@ -830,6 +851,16 @@ pub(crate) fn apply_scene_command(runtime: &Runtime, command: SceneCommand) -> A
         }
     }
     let command_label = amigo_scene::format_scene_command(&command);
+    if matches!(&command, SceneCommand::Plugin { .. }) {
+        let plugin_registry = runtime.required::<amigo_scene::PluginSceneCommandHandlerRegistry>()?;
+        let result = plugin_registry
+            .dispatch(runtime, command.clone())
+            .map(|handled| handled.unwrap_or(()));
+        record_scene_command_result_for_runtime(runtime, &command_label, &result);
+        result?;
+        return Ok(());
+    }
+
     let registry = runtime.required::<amigo_scene::RuntimeSceneCommandHandlerRegistry>()?;
     let result = amigo_runtime::HandlerDispatcher::new(registry)
         .dispatch_first(|handler| {

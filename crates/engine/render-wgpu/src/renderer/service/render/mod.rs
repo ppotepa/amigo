@@ -22,7 +22,8 @@ mod world_selection;
 use self::emergency_overlay::emergency_overlay_lines;
 #[cfg(test)]
 use self::focus_depth_plan::build_focus_blur_layer_plan;
-use self::focus_depth_plan::{focus_blur_effect_for, focus_blur_layer_plan_for_effect};
+use self::focus_depth_plan::{depth_debug_post_fx_for, focus_blur_effect_for, replay_scoped_layers_plan_for_effect};
+pub(crate) use self::material_candidates::{collect_material_candidate_2d, WgpuMaterialCandidate2d};
 use self::world::WorldRenderContext;
 use self::world_selection::{WorldPassLoadExt, WorldRenderSelection, base_world_selection};
 

@@ -1,6 +1,6 @@
 use std::collections::BTreeSet;
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use amigo_core::{AmigoError, AmigoResult};
 use serde::{Deserialize, Serialize};
@@ -156,6 +156,15 @@ impl LauncherConfig {
         Ok(())
     }
 
+    pub fn resolved_mods_root(&self) -> PathBuf {
+        let mods_root = PathBuf::from(&self.mods_root);
+        if mods_root.is_absolute() {
+            mods_root
+        } else {
+            launcher_workspace_root().join(mods_root)
+        }
+    }
+
     pub fn active_profile(&self) -> AmigoResult<&LauncherProfile> {
         self.profile_by_id(&self.active_profile).ok_or_else(|| {
             AmigoError::Message(format!(
@@ -221,6 +230,15 @@ impl LauncherConfig {
             }
         }
     }
+}
+
+pub fn launcher_workspace_root() -> PathBuf {
+    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .and_then(|path| path.parent())
+        .and_then(|path| path.parent())
+        .expect("workspace root should exist")
+        .to_path_buf()
 }
 
 #[derive(Debug, Clone, Deserialize)]

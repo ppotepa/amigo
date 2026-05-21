@@ -1,3 +1,5 @@
+use amigo_render_api::TileMap2dPrimitive;
+
 use crate::renderer::*;
 
 pub(crate) fn append_textured_sprite_vertices(
@@ -58,7 +60,7 @@ pub(crate) fn append_textured_tilemap_vertices(
     viewport: &Viewport,
     camera: Transform2,
     transform: Transform2,
-    tilemap: &TileMap2d,
+    tilemap: &TileMap2dPrimitive,
     texture_size: Vec2,
     tileset: &TileSetRenderInfo,
 ) {
@@ -105,12 +107,12 @@ pub(crate) fn append_textured_tilemap_vertices(
     }
 }
 
-pub(crate) fn append_tilemap_fallback_vertices(
+pub(crate) fn append_tilemap_primitive_fallback_vertices(
     vertices: &mut Vec<ColorVertex>,
     viewport: &Viewport,
     camera: Transform2,
     transform: Transform2,
-    tilemap: &TileMap2d,
+    tilemap: &TileMap2dPrimitive,
 ) {
     let row_count = tilemap.grid.len();
     for (row_index, row) in tilemap.grid.iter().enumerate() {

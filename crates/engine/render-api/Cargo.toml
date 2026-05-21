@@ -7,9 +7,12 @@ license.workspace = true
 authors.workspace = true
 
 [dependencies]
+amigo-assets.workspace = true
 amigo-core.workspace = true
 amigo-session.workspace = true
 amigo-2d-spatial.workspace = true
+amigo-material-api.workspace = true
 amigo-camera.workspace = true
+amigo-math.workspace = true
 amigo-plugin-api = { path = "../../core/plugin-api" }
 serde.workspace = true

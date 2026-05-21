@@ -10,7 +10,8 @@ pub use amigo_render_api::{
     FocusBlurDebugView2d, FocusTarget2d, LensDroplets2dCertificationIssue,
     LensDroplets2dCertificationReport, LensDroplets2dCertificationSeverity,
     LensDroplets2dStage, PostFx2d, PostFx2dCacheKey, PostFx2dStack, PostFxBlur2d,
-    PostFxEmbossEdges2d, PostFxEmbossMode2d, PostFxLensDroplets2d, PostFxWetReflections2d,
-    RainGlass2d, RainGlassDebugView, RainGlassPatch, RainGlassRaindropCompose, ScanOutput2d,
-    ShutterBlur2d, WetReflectionsDebugView,
+    PostFxCachedImagePolicy, PostFxDebugPolicy, PostFxEmbossEdges2d, PostFxEmbossMode2d,
+    PostFxLensDroplets2d, PostFxRenderDescriptor, PostFxRenderInput, PostFxRenderOutput,
+    PostFxWetReflections2d, RainGlass2d, RainGlassDebugView, RainGlassPatch,
+    RainGlassRaindropCompose, ScanOutput2d, ShutterBlur2d, WetReflectionsDebugView,
 };

@@ -1,13 +1,40 @@
+use std::any::Any;
+use std::sync::Arc;
+
 use amigo_assets::AssetKey;
 use amigo_core::{AmigoError, AmigoResult};
 use amigo_scene::{
-    format_scene_command, SceneCommand, SceneEvent, SceneEventQueue, SceneService,
-    Text2dSceneCommand,
+    PluginSceneCommand, PluginSceneCommandPayload, SceneCommand, SceneEvent, SceneEventQueue,
+    SceneService, Text2dSceneCommand, format_scene_command,
 };
 
 use crate::{queue_text2d_scene_command, Text2dSceneService};
 
 pub struct Text2dSceneCommandHandler;
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct Text2dPluginCommandPayload(pub Text2dSceneCommand);
+
+impl PluginSceneCommandPayload for Text2dPluginCommandPayload {
+    fn command_type(&self) -> &'static str {
+        "amigo.gfx.text-2d.scene-command.Text2D"
+    }
+
+    fn command_as_any(&self) -> &dyn Any {
+        &self.0
+    }
+
+    fn eq_payload(&self, other: &dyn PluginSceneCommandPayload) -> bool {
+        other
+            .command_as_any()
+            .downcast_ref::<Text2dSceneCommand>()
+            .is_some_and(|command| command == &self.0)
+    }
+}
+
+pub fn text_plugin_scene_command(command: Text2dSceneCommand) -> PluginSceneCommand {
+    PluginSceneCommand::new(Arc::new(Text2dPluginCommandPayload(command)))
+}
 
 pub struct TextSceneCommandContext<'a> {
     pub scene_service: &'a SceneService,
@@ -24,6 +51,11 @@ pub struct TextSceneCommandOutcome {
 
 pub fn can_handle_text_scene_command(command: &SceneCommand) -> bool {
     matches!(command, SceneCommand::QueueText2d { .. })
+        || matches!(
+            command,
+            SceneCommand::Plugin { command }
+                if command.command_type == "amigo.gfx.text-2d.scene-command.Text2D"
+        )
 }
 
 pub fn handle_text_scene_command(
@@ -32,6 +64,15 @@ pub fn handle_text_scene_command(
 ) -> AmigoResult<TextSceneCommandOutcome> {
     match command {
         SceneCommand::QueueText2d { command } => Ok(handle_queue_text_scene_command(ctx, command)),
+        SceneCommand::Plugin { command } => {
+            let Some(command) = command.text_2d_command().cloned() else {
+                return Err(AmigoError::Message(format!(
+                "text-2d cannot handle command {}",
+                format_scene_command(&SceneCommand::Plugin { command })
+                )));
+            };
+            Ok(handle_queue_text_scene_command(ctx, command))
+        }
         _ => Err(AmigoError::Message(format!(
             "text-2d cannot handle command {}",
             format_scene_command(&command)

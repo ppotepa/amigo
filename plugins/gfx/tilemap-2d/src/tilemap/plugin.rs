@@ -22,6 +22,11 @@ impl RuntimePlugin for TileMap2dPlugin {
             registry,
             super::reset::TileMap2dSceneResetHandler,
         )?;
+        if let Some(render_extractors) =
+            registry.resolve::<amigo_render_api::RuntimeRenderExtractorIdRegistry>()
+        {
+            crate::render::register_tilemap_2d_render_extractor_id(render_extractors.as_ref());
+        }
         registry.register(TileMap2dDomainInfo {
             crate_name: "amigo-tilemap-2d-plugin",
             capability: "tilemap_2d",

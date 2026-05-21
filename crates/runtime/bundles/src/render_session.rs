@@ -6,19 +6,15 @@ use amigo_core::{AmigoError, AmigoResult};
 use amigo_runtime::Runtime;
 use amigo_session::RuntimeSession;
 use amigo_render_api::{
-    FrameGraphBuildInfo, RenderCompositionDiagnosticsService, RenderFrameStats,
+    FrameGraphBuildInfo, RenderCompositionDiagnosticsService, RenderContribution2d, RenderFrameStats,
     RenderFrameStatsService, build_frame_graph_from_plan,
 };
-use amigo_render_wgpu::{WgpuOffscreenTarget, WgpuSceneRenderer};
+use amigo_render_wgpu::WgpuSceneRenderer;
 use amigo_scene::SceneService;
 
 use crate::{
-    WgpuFrameCompositionBuilder, build_depth_map2d_scene_service_from_packet,
-    build_global_light2d_scene_service_from_packet, build_layered_image_scene_service_from_packet,
-    build_light_route2d_scene_service_from_packet, build_lightmap2d_scene_service_from_packet,
-    build_render_layer2d_scene_service_from_packet, build_sprite_scene_service_from_packet,
-    build_text2d_scene_service_from_packet, build_tilemap_scene_service_from_packet,
-    build_vector_scene_service_from_packet, update_wgpu_render_composition_diagnostics,
+    LightRoute2dSceneService, RenderLayer2dSceneService, WgpuFrameCompositionBuilder,
+    update_wgpu_render_composition_diagnostics,
 };
 use crate::amigo_particles_2d_plugin::Particle2dSceneService;
 use crate::amigo_composite_plugin::PostFx2dService;
@@ -59,8 +55,10 @@ pub fn extract_game_frame_packet(
     include_game_ui: bool,
 ) -> AmigoResult<amigo_render_wgpu::WgpuRenderFramePacket> {
     session.begin_render_frame_extract();
-    let mut render_packet = crate::default_wgpu_render_extractor_registry()
-        .extract_all(session.runtime());
+    let mut render_packet = crate::default_wgpu_render_extractor_registry_for_runtime(
+        session.runtime(),
+    )
+    .extract_all(session.runtime());
     render_packet.clear_debug_overlay();
     if !include_game_ui {
         render_packet.clear_game_ui_overlay();
@@ -72,8 +70,10 @@ pub fn extract_game_frame_packet(
 pub fn extract_live_host_overlay_packet(
     session: &RuntimeSession,
 ) -> AmigoResult<amigo_render_wgpu::WgpuRenderFramePacket> {
-    let mut render_packet = crate::default_wgpu_render_extractor_registry()
-        .extract_all(session.runtime());
+    let mut render_packet = crate::default_wgpu_render_extractor_registry_for_runtime(
+        session.runtime(),
+    )
+    .extract_all(session.runtime());
     render_packet.clear_world_content();
     render_packet.clear_game_ui_overlay();
     amigo_editor_ingame::append_editor_overlay(
@@ -92,6 +92,8 @@ pub fn render_game_frame_to_cache(
     let runtime = session.runtime();
     let scene = required::<SceneService>(runtime)?;
     let assets = required::<AssetCatalog>(runtime)?;
+    let render_layers = required::<RenderLayer2dSceneService>(runtime)?;
+    let light_routes = required::<LightRoute2dSceneService>(runtime)?;
     let particles = required::<Particle2dSceneService>(runtime)?;
     let debug_overlay_service = required::<amigo_devtools::DebugOverlayService>(runtime)?;
 
@@ -132,18 +134,20 @@ pub fn render_game_frame_to_cache(
             frame_index: previous.frame_index + 1,
             window_width: target.width,
             window_height: target.height,
-            world_2d_tilemaps: render_packet.world_2d_tilemaps().len(),
-            world_2d_sprites: render_packet.world_2d_sprites().len(),
-            world_2d_layered_images: render_packet.world_2d_layered_images().len(),
+            world_2d_tilemaps: render_packet.renderable_2d_count_by_component_kind("TileMap2D"),
+            world_2d_sprites: render_packet.renderable_2d_count_by_component_kind("Sprite2D"),
+            world_2d_layered_images: render_packet
+                .renderable_2d_count_by_component_kind("LayeredImage2D"),
             world_2d_render_layers: render_packet.world_2d_render_layers().len(),
             world_2d_light_routes: render_packet.world_2d_light_routes().len(),
-            world_2d_global_lights: render_packet.world_2d_global_lights().len(),
-            world_2d_lightmaps: render_packet.world_2d_lightmaps().len(),
-            world_2d_light_groups: render_packet.world_2d_light_groups().len(),
-            world_2d_vectors: render_packet.world_2d_vectors().len(),
-            world_2d_beacons: render_packet.world_2d_beacons().len(),
-            world_2d_text: render_packet.world_2d_text().len(),
-            world_2d_particles: render_packet.world_2d_particles().len(),
+            world_2d_global_lights: render_packet.light_source_2d_contribution_count(),
+            world_2d_lightmaps: render_packet.lightmap_2d_contribution_count(),
+            world_2d_light_groups: render_packet.light_group_2d_contribution_count(),
+            world_2d_vectors: render_packet.renderable_2d_count_by_component_kind("VectorShape2D"),
+            world_2d_beacons: render_packet.renderable_2d_count_by_component_kind("BeaconLight2D"),
+            world_2d_text: render_packet.renderable_2d_count_by_component_kind("Text2D"),
+            world_2d_particles: render_packet
+                .renderable_2d_count_by_component_kind("ParticleEmitter2D"),
             world_3d_meshes: render_packet.world_3d_meshes().len(),
             world_3d_materials: render_packet.world_3d_materials().len(),
             world_3d_text: render_packet.world_3d_text().len(),
@@ -175,17 +179,6 @@ pub fn render_game_frame_to_cache(
             .count(),
     );
 
-    let extracted_tilemaps = build_tilemap_scene_service_from_packet(&render_packet);
-    let extracted_sprites = build_sprite_scene_service_from_packet(&render_packet);
-    let extracted_layered_images = build_layered_image_scene_service_from_packet(&render_packet);
-    let extracted_depth_maps = build_depth_map2d_scene_service_from_packet(&render_packet);
-    let extracted_render_layers = build_render_layer2d_scene_service_from_packet(&render_packet);
-    let extracted_light_routes = build_light_route2d_scene_service_from_packet(&render_packet);
-    let extracted_global_lights = build_global_light2d_scene_service_from_packet(&render_packet);
-    let extracted_lightmaps = build_lightmap2d_scene_service_from_packet(&render_packet);
-    let extracted_text2d = build_text2d_scene_service_from_packet(&render_packet);
-    let extracted_vectors = build_vector_scene_service_from_packet(&render_packet);
-
     if let Ok(post_fx_service) =
         required::<PostFx2dService>(runtime)
     {
@@ -198,29 +191,43 @@ pub fn render_game_frame_to_cache(
         post_fx_service.set_renderer_mode(renderer_mode);
     }
 
-    let extracted_render_layer_commands = extracted_render_layers.commands();
-    let extracted_light_route_commands = extracted_light_routes.commands();
+    let extracted_render_layer_commands = render_layers.commands();
+    let extracted_light_route_commands = light_routes.commands();
+    let render_lightmaps_2d = render_packet
+        .render_contributions_2d()
+        .iter()
+        .filter_map(RenderContribution2d::as_lightmap_2d)
+        .cloned()
+        .collect::<Vec<_>>();
+    let render_depth_maps_2d = render_packet
+        .render_contributions_2d()
+        .iter()
+        .filter_map(RenderContribution2d::as_depth_map_2d)
+        .cloned()
+        .collect::<Vec<_>>();
+    let render_depth_aux_maps_2d = render_packet
+        .render_contributions_2d()
+        .iter()
+        .filter_map(RenderContribution2d::as_depth_aux_map_2d)
+        .cloned()
+        .collect::<Vec<_>>();
+    let camera_optical_candidates =
+        crate::render_extractor_bridges::collect_camera_optical_candidates_from_light_sources_2d(
+            render_packet.world_2d_light_sources(),
+        );
     let render_request = amigo_render_wgpu::WgpuFrameRenderRequest {
         target: amigo_render_wgpu::WgpuFrameRenderTarget::Offscreen(target),
         scene: scene.as_ref(),
         assets: assets.as_ref(),
         world_2d: amigo_render_wgpu::WgpuWorld2dRenderInput {
             renderables: render_packet.renderables_2d(),
-            tilemaps: &extracted_tilemaps,
-            sprites: &extracted_sprites,
-            layered_images: &extracted_layered_images,
-            depth_maps: &extracted_depth_maps,
-            global_lights: &extracted_global_lights,
-            lightmaps: &extracted_lightmaps,
-            text2d: &extracted_text2d,
-            vectors: &extracted_vectors,
-            beacons: render_packet.world_2d_beacons(),
+            depth_maps: render_depth_maps_2d.as_slice(),
+            depth_aux_maps: render_depth_aux_maps_2d.as_slice(),
+            lightmaps: render_lightmaps_2d.as_slice(),
             light_sources: render_packet.world_2d_light_sources(),
-            camera_optical_candidates: render_packet.camera_optical_candidates_2d(),
+            camera_optical_candidates: camera_optical_candidates.as_slice(),
             render_layers: extracted_render_layer_commands.as_slice(),
             light_routes: extracted_light_route_commands.as_slice(),
-            light_groups: render_packet.world_2d_light_groups(),
-            particles: render_packet.world_2d_particles(),
         },
         world_3d: amigo_render_wgpu::WgpuWorld3dRenderInput {
             meshes: render_packet.world_3d_meshes(),
@@ -317,8 +324,8 @@ pub fn render_visual_items_summary(
                 item.z_index()
             ));
             lines.push(format!(
-                "payload={} camera_pipeline={} base_z_depth={:.3} effective_z_depth={:.3} effective_distance_m={} z_depth={:.3} blur_scale={:.2} camera_motion_scale={:.2}",
-                item.payload_kind(),
+                "primitive={} camera_pipeline={} base_z_depth={:.3} effective_z_depth={:.3} effective_distance_m={} z_depth={:.3} blur_scale={:.2} camera_motion_scale={:.2}",
+                item.primitive_kind().as_str(),
                 item.uses_camera_pipeline(),
                 layer.base_z_depth,
                 layer.effective_z_depth,
@@ -342,8 +349,8 @@ pub fn render_visual_items_summary(
                 item.z_index()
             ));
             lines.push(format!(
-                "payload={} camera_pipeline={} z_depth=? blur_scale=? camera_motion_scale=?",
-                item.payload_kind(),
+                "primitive={} camera_pipeline={} z_depth=? blur_scale=? camera_motion_scale=?",
+                item.primitive_kind().as_str(),
                 item.uses_camera_pipeline()
             ));
         }

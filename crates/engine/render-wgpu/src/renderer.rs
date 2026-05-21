@@ -9,26 +9,13 @@ use std::time::SystemTime;
 
 use amigo_2d_composition::{LightRoute2dCommand, RenderLayer2dCommand};
 use amigo_layered_image_2d_plugin::{
-    LayeredImageAssetSource, LayeredImageBlendMode2d, LayeredImageDrawCommand,
-    apply_layer_overrides,
+    LayeredImageAssetSource, LayeredImageBlendMode2d,
 };
-use amigo_light_2d_plugin::{
-    GlobalLight2dCommand, GlobalLight2dSceneService, LightGroup2dCommand, LightMap2dSceneService,
-    LightMap2dSourceCommand, LightMap2dSourceKind, LightReceiver2dBinding,
-    LightReceiverDarkPolicy2d, LightSampleStrategy2d,
-};
-use amigo_beacon_light_2d_plugin::BeaconLight2dDrawCommand;
 use amigo_particles_2d_plugin::{
-    Particle2dDrawCommand, ParticleBlendMode2d, ParticleLightMode2d, ParticleLineAnchor2d,
-    ParticleShape2d,
+    ParticleBlendMode2d, ParticleLineAnchor2d,
 };
 use amigo_composite_plugin::{PostFx2d, PostFx2dCacheKey};
-use amigo_sprite_2d_plugin::{Sprite, SpriteSceneService, SpriteSheet};
-use amigo_text_2d_plugin::Text2dSceneService;
-use amigo_tilemap_2d_plugin::{TileMap2d, TileMap2dSceneService};
-use amigo_vector_2d_plugin::{
-    VectorSceneService, VectorShape2d, VectorShapeKind2d, VectorStyle2d, VectorViewportFit2d,
-};
+pub(crate) use amigo_sprite_2d_plugin::SpriteSheet;
 use amigo_3d_material::MaterialDrawCommand;
 use amigo_3d_mesh::MeshDrawCommand;
 use amigo_3d_text::Text3dDrawCommand;
@@ -42,8 +29,7 @@ use wgpu::util::DeviceExt;
 use crate::ui_overlay::{
     UiDrawPrimitive, UiOverlayDocument, UiViewportSize, build_ui_overlay_primitives,
 };
-use crate::frame_packet::{Renderable2dItem, Renderable2dPayload};
-use crate::RenderSpace2d;
+use crate::Renderable2dItem;
 use crate::{WgpuOffscreenTarget, WgpuSurfaceState};
 
 const COLOR_SHADER: &str = r#"
@@ -330,14 +316,24 @@ mod world_3d;
 use assets::*;
 use buffers::*;
 use glyphs::*;
-use lightmap2d::*;
 use math::*;
-use particles::*;
 use pipelines::*;
 use scene::*;
 use text::*;
 use world_2d::*;
 use world_3d::*;
+
+pub(crate) use particles::color_batch_vertices;
+pub(crate) use particles::append_particle_light_primitive_vertices;
+pub(crate) use particles::append_particle_primitive_vertices;
+pub(crate) use particles::particle_blend_mode;
+pub(crate) use particles::particle_render_lights_from_renderables;
+pub(crate) use math::sprite_color;
+pub(crate) use service::{collect_material_candidate_2d, WgpuMaterialCandidate2d};
+pub(crate) use world_2d::append_textured_quad_debug_vertices;
+pub(crate) use world_2d::append_tilemap_primitive_fallback_vertices;
+pub(crate) use world_2d::append_beacon_vfx_primitive_vertices;
+pub(crate) use world_2d::append_vector_primitive_vertices;
 
 pub use service::{
     WgpuEmergencyOverlayLevel, WgpuEmergencyOverlayLine, WgpuFrameRenderRequest,

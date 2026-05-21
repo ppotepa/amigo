@@ -1,11 +1,9 @@
-use amigo_focus_depth_plugin::{DepthMap2dDrawCommand, DepthMapViewportFit2d};
-use amigo_layered_image_2d_plugin::LayeredImageSceneService;
-use amigo_particles_2d_plugin::Particle2dDrawCommand;
 use amigo_composite_plugin::{FocusBlur2d, FocusTarget2d};
-use amigo_sprite_2d_plugin::SpriteSceneService;
-use amigo_text_2d_plugin::Text2dSceneService;
 use amigo_core::AmigoResult;
 use amigo_math::{ColorRgba, Transform2, Vec2};
+use amigo_render_api::{
+    RenderDepthMap2d, RenderDepthMapViewportFit2d, RenderPrimitive2d, Renderable2dItem,
+};
 use amigo_scene::SceneService;
 use wgpu::util::DeviceExt;
 
@@ -83,7 +81,7 @@ pub(crate) fn execute_focus_blur_with_depth_source(
             };
             (
                 depth_view,
-                effect.invert_depth ^ !depth_command.depth_map.white_is_near,
+                effect.invert_depth ^ !depth_command.white_is_near,
                 [0.0, 0.5, 1.0, 0.0],
             )
         }
@@ -212,7 +210,9 @@ pub(crate) fn execute_focus_blur_with_depth_source(
             timestamp_writes: None,
             multiview_mask: None,
         });
-        pass.set_pipeline(&renderer.focus_blur_pipeline);
+        pass.set_pipeline(renderer.post_fx_pipeline(
+            crate::renderer::service::POST_FX_EXECUTOR_FOCUS_BLUR,
+        ));
         pass.set_bind_group(0, &texture_bind_group, &[]);
         pass.set_bind_group(1, &uniform_bind_group, &[]);
         pass.set_vertex_buffer(0, vertex_buffer.slice(..));
@@ -223,10 +223,10 @@ pub(crate) fn execute_focus_blur_with_depth_source(
     Ok(())
 }
 
-fn resolve_depth_map_command(
-    request: &WgpuFrameRenderRequest<'_>,
+fn resolve_depth_map_command<'a>(
+    request: &'a WgpuFrameRenderRequest<'_>,
     effect: &FocusBlur2d,
-) -> Option<DepthMap2dDrawCommand> {
+) -> Option<&'a RenderDepthMap2d> {
     let depth_map = effect.depth_map.as_deref()?.trim();
     if depth_map.is_empty() {
         return None;
@@ -235,12 +235,11 @@ fn resolve_depth_map_command(
     request
         .world_2d
         .depth_maps
-        .commands()
         .into_iter()
         .find(|command| {
-            command.depth_map.id == depth_map
-                || command.entity_name == depth_map
-                || command.depth_map.asset.as_str() == depth_map
+            command.id == depth_map
+                || command.owner_entity == depth_map
+                || command.asset.as_str() == depth_map
         })
 }
 
@@ -248,17 +247,17 @@ fn render_depth_map_texture(
     renderer: &mut WgpuSceneRenderer,
     request: &WgpuFrameRenderRequest<'_>,
     output: &WgpuOffscreenTarget,
-    command: &DepthMap2dDrawCommand,
+    command: &RenderDepthMap2d,
 ) -> Option<(wgpu::Texture, wgpu::TextureView)> {
     let device = &output.device;
     let queue = &output.queue;
-    let prepared = request.assets.prepared_asset(&command.depth_map.asset)?;
+    let prepared = request.assets.prepared_asset(&command.asset)?;
     let image_path = resolve_image_path(&prepared)?;
     let (source_bind_group, source_size) = {
         let texture = renderer.ensure_data_texture_from_path(
             device,
             queue,
-            format!("depth-map-data:{}", command.depth_map.asset.as_str()),
+            format!("depth-map-data:{}", command.asset.as_str()),
             image_path,
             true,
             false,
@@ -285,7 +284,7 @@ fn render_depth_map_texture(
     let camera = resolve_camera2d_transform(request.scene, request.active_camera_2d_entity);
     let transform = request
         .scene
-        .transform_of(&command.entity_name)
+        .transform_of(&command.owner_entity)
         .map(|value| Transform2 {
             translation: Vec2::new(value.translation.x, value.translation.y),
             rotation_radians: value.rotation_euler.z,
@@ -294,9 +293,9 @@ fn render_depth_map_texture(
         .unwrap_or(command.transform);
     let size = depth_map_render_size(
         &viewport,
-        command.depth_map.size,
+        command.size,
         source_size,
-        command.depth_map.viewport_fit,
+        command.viewport_fit,
     );
     let mut vertices = Vec::with_capacity(6);
     append_tinted_textured_sprite_vertices(
@@ -318,7 +317,7 @@ fn render_depth_map_texture(
         contents: bytes_of_slice(&vertices),
         usage: wgpu::BufferUsages::VERTEX,
     });
-    let clear = if command.depth_map.white_is_near {
+    let clear = if command.white_is_near {
         0.0
     } else {
         1.0
@@ -362,7 +361,7 @@ fn depth_map_render_size(
     viewport: &Viewport,
     fixed_size: Vec2,
     source_size: Vec2,
-    fit: DepthMapViewportFit2d,
+    fit: RenderDepthMapViewportFit2d,
 ) -> Vec2 {
     let viewport_size = viewport.size();
     let source_size = if source_size.x > 0.0 && source_size.y > 0.0 {
@@ -376,10 +375,14 @@ fn depth_map_render_size(
         source_size
     };
     match fit {
-        DepthMapViewportFit2d::Fixed => fixed_size,
-        DepthMapViewportFit2d::Stretch => viewport_size,
-        DepthMapViewportFit2d::Contain => scaled_to_viewport(source_size, viewport_size, f32::min),
-        DepthMapViewportFit2d::Cover => scaled_to_viewport(source_size, viewport_size, f32::max),
+        RenderDepthMapViewportFit2d::Fixed => fixed_size,
+        RenderDepthMapViewportFit2d::Stretch => viewport_size,
+        RenderDepthMapViewportFit2d::Contain => {
+            scaled_to_viewport(source_size, viewport_size, f32::min)
+        }
+        RenderDepthMapViewportFit2d::Cover => {
+            scaled_to_viewport(source_size, viewport_size, f32::max)
+        }
     }
 }
 
@@ -455,35 +458,8 @@ fn resolve_focus_depth_for_target(
 
 fn average_render_layer_uv(request: &WgpuFrameRenderRequest<'_>, layer: &str) -> Option<Vec2> {
     let mut samples = Vec::new();
-    sample_layered_image_positions(
-        request.world_2d.layered_images,
-        layer,
-        request.scene,
-        request.active_camera_2d_entity,
-        request.target.width() as f32,
-        request.target.height() as f32,
-        &mut samples,
-    );
-    sample_layer_positions(
-        request.world_2d.sprites,
-        layer,
-        request.scene,
-        request.active_camera_2d_entity,
-        request.target.width() as f32,
-        request.target.height() as f32,
-        &mut samples,
-    );
-    sample_text_positions(
-        request.world_2d.text2d,
-        layer,
-        request.scene,
-        request.active_camera_2d_entity,
-        request.target.width() as f32,
-        request.target.height() as f32,
-        &mut samples,
-    );
-    sample_particle_positions(
-        request.world_2d.particles,
+    sample_renderable_positions(
+        request.world_2d.renderables,
         layer,
         request.scene,
         request.active_camera_2d_entity,
@@ -501,8 +477,8 @@ fn average_render_layer_uv(request: &WgpuFrameRenderRequest<'_>, layer: &str) ->
     Some(Vec2::new(sum.x / count, sum.y / count))
 }
 
-fn sample_layered_image_positions(
-    layered_images: &LayeredImageSceneService,
+fn sample_renderable_positions(
+    renderables: &[Renderable2dItem],
     layer: &str,
     scene: &SceneService,
     active_camera_2d_entity: Option<&str>,
@@ -510,112 +486,20 @@ fn sample_layered_image_positions(
     height: f32,
     out: &mut Vec<Vec2>,
 ) {
-    for command in layered_images
-        .commands()
-        .into_iter()
-        .filter(|command| command.render_layer == layer)
-    {
-        let transform = scene
-            .transform_of(&command.entity_name)
-            .map(|value| Transform2 {
-                translation: Vec2::new(value.translation.x, value.translation.y),
-                rotation_radians: value.rotation_euler.z,
-                scale: Vec2::new(value.scale.x, value.scale.y),
-            })
-            .unwrap_or(command.transform);
+    for renderable in renderables.iter().filter(|item| item.render_layer() == layer) {
+        let world = match &renderable.primitive {
+            RenderPrimitive2d::TexturedQuad(primitive) => primitive.transform.translation,
+            RenderPrimitive2d::GlyphRun(primitive) => primitive.transform.translation,
+            RenderPrimitive2d::LayeredImage(primitive) => primitive.transform.translation,
+            RenderPrimitive2d::Particle(primitive) => primitive.position,
+            _ => continue,
+        };
         out.push(world_to_uv(
             scene,
             active_camera_2d_entity,
             width,
             height,
-            transform.translation,
-        ));
-    }
-}
-
-fn sample_layer_positions(
-    sprites: &SpriteSceneService,
-    layer: &str,
-    scene: &SceneService,
-    active_camera_2d_entity: Option<&str>,
-    width: f32,
-    height: f32,
-    out: &mut Vec<Vec2>,
-) {
-    for command in sprites
-        .commands()
-        .into_iter()
-        .filter(|command| command.render_layer == layer)
-    {
-        let transform = scene
-            .transform_of(&command.entity_name)
-            .map(|value| Transform2 {
-                translation: Vec2::new(value.translation.x, value.translation.y),
-                rotation_radians: value.rotation_euler.z,
-                scale: Vec2::new(value.scale.x, value.scale.y),
-            })
-            .unwrap_or(command.transform);
-        out.push(world_to_uv(
-            scene,
-            active_camera_2d_entity,
-            width,
-            height,
-            transform.translation,
-        ));
-    }
-}
-
-fn sample_text_positions(
-    text: &Text2dSceneService,
-    layer: &str,
-    scene: &SceneService,
-    active_camera_2d_entity: Option<&str>,
-    width: f32,
-    height: f32,
-    out: &mut Vec<Vec2>,
-) {
-    for command in text
-        .commands()
-        .into_iter()
-        .filter(|command| command.render_layer == layer)
-    {
-        let transform = scene
-            .transform_of(&command.entity_name)
-            .map(|value| Transform2 {
-                translation: Vec2::new(value.translation.x, value.translation.y),
-                rotation_radians: value.rotation_euler.z,
-                scale: Vec2::new(value.scale.x, value.scale.y),
-            })
-            .unwrap_or(command.text.transform);
-        out.push(world_to_uv(
-            scene,
-            active_camera_2d_entity,
-            width,
-            height,
-            transform.translation,
-        ));
-    }
-}
-
-fn sample_particle_positions(
-    particles: &[Particle2dDrawCommand],
-    layer: &str,
-    scene: &SceneService,
-    active_camera_2d_entity: Option<&str>,
-    width: f32,
-    height: f32,
-    out: &mut Vec<Vec2>,
-) {
-    for command in particles
-        .iter()
-        .filter(|command| command.render_layer == layer)
-    {
-        out.push(world_to_uv(
-            scene,
-            active_camera_2d_entity,
-            width,
-            height,
-            command.position,
+            world,
         ));
     }
 }

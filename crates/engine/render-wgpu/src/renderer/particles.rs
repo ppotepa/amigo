@@ -1,4 +1,11 @@
 use crate::renderer::*;
+use amigo_render_api::{
+    LightSource2dCommon,
+    Particle2dPrimitive, ParticleBlendMode2dPrimitive, ParticleLightMode2dPrimitive,
+    ParticleLineAnchor2dPrimitive, ParticleShape2dPrimitive, RenderPrimitive2d, Renderable2dItem,
+    VectorShape2dKindPrimitive, VectorShape2dPrimitive, VectorShape2dStylePrimitive,
+    VectorShape2dViewportFit,
+};
 
 fn with_alpha_scale(color: ColorRgba, scale: f32) -> ColorRgba {
     ColorRgba::new(
@@ -46,45 +53,57 @@ pub(crate) fn color_batch_vertices(
         .vertices
 }
 
-pub(crate) fn append_particle_vertices(
+pub(crate) fn particle_blend_mode(mode: ParticleBlendMode2dPrimitive) -> ParticleBlendMode2d {
+    match mode {
+        ParticleBlendMode2dPrimitive::Alpha => ParticleBlendMode2d::Alpha,
+        ParticleBlendMode2dPrimitive::Additive => ParticleBlendMode2d::Additive,
+        ParticleBlendMode2dPrimitive::Multiply => ParticleBlendMode2d::Multiply,
+        ParticleBlendMode2dPrimitive::Screen => ParticleBlendMode2d::Screen,
+    }
+}
+
+pub(crate) fn append_particle_primitive_vertices(
     vertices: &mut Vec<ColorVertex>,
     viewport: &Viewport,
     camera: Transform2,
-    particle: &Particle2dDrawCommand,
+    particle: &Particle2dPrimitive,
     lights: &[ParticleRenderLight],
     lightmaps: &[LightMap2dSampler],
-    global_lights: &[GlobalLight2dCommand],
-    light_groups: &[LightGroup2dCommand],
+    light_sources: &[LightSource2dCommon],
     light_routes: &[LightRoute2dCommand],
 ) {
     let size = particle.size.max(0.0);
     if size <= f32::EPSILON || particle.color.a <= 0.0 {
         return;
     }
-    let particle_color = lit_particle_color(
-        particle,
-        lights,
-        lightmaps,
-        global_lights,
-        light_groups,
-        light_routes,
-    );
+    let _ = (lights, lightmaps, light_sources, light_routes);
+    let particle_color = particle.color;
     let shape = match particle.shape {
-        ParticleShape2d::Circle { segments } => VectorShape2d {
-            kind: VectorShapeKind2d::Circle {
+        ParticleShape2dPrimitive::Circle { segments } => VectorShape2dPrimitive {
+            shape: VectorShape2dKindPrimitive::Circle {
                 radius: size * 0.5,
                 segments: segments.max(3),
             },
-            style: VectorStyle2d {
+            style: VectorShape2dStylePrimitive {
                 stroke_color: particle_color,
                 stroke_width: 0.0,
                 fill_color: Some(particle_color),
             },
+            transform: Transform2 {
+                translation: particle.position,
+                rotation_radians: particle.transform.rotation_radians,
+                scale: particle.transform.scale,
+            },
+            viewport_fit: VectorShape2dViewportFit::Fixed,
+            viewport_canvas_size: None,
+            material: amigo_render_api::RenderMaterialBinding2d::none(
+                amigo_material_api::MaterialCoverageKind2d::VectorCoverage,
+            ),
         },
-        ParticleShape2d::Quad => {
+        ParticleShape2dPrimitive::Quad => {
             let half = size * 0.5;
-            VectorShape2d {
-                kind: VectorShapeKind2d::Polygon {
+            VectorShape2dPrimitive {
+                shape: VectorShape2dKindPrimitive::Polygon {
                     points: vec![
                         Vec2::new(-half, -half),
                         Vec2::new(half, -half),
@@ -92,14 +111,24 @@ pub(crate) fn append_particle_vertices(
                         Vec2::new(-half, half),
                     ],
                 },
-                style: VectorStyle2d {
+                style: VectorShape2dStylePrimitive {
                     stroke_color: particle_color,
                     stroke_width: 0.0,
                     fill_color: Some(particle_color),
                 },
+                transform: Transform2 {
+                    translation: particle.position,
+                    rotation_radians: particle.transform.rotation_radians,
+                    scale: particle.transform.scale,
+                },
+                viewport_fit: VectorShape2dViewportFit::Fixed,
+                viewport_canvas_size: None,
+                material: amigo_render_api::RenderMaterialBinding2d::none(
+                    amigo_material_api::MaterialCoverageKind2d::VectorCoverage,
+                ),
             }
         }
-        ParticleShape2d::Line { length } => {
+        ParticleShape2dPrimitive::Line { length } => {
             let mut line_length = length;
             let mut rotation_radians = particle.transform.rotation_radians;
             let mut tail_alpha = 1.0;
@@ -139,32 +168,33 @@ pub(crate) fn append_particle_vertices(
                 rotation_radians,
                 line_length,
                 size.max(1.0),
-                particle.line_anchor,
+                particle_line_anchor(particle.line_anchor),
                 tail_color,
                 head_color,
             );
         }
     };
-    append_vector_shape_vertices(
+    append_vector_primitive_vertices(
         vertices,
         viewport,
         camera,
-        Transform2 {
-            translation: particle.position,
-            rotation_radians: particle.transform.rotation_radians,
-            scale: particle.transform.scale,
-        },
         &shape,
+        None,
+        None,
+        None,
     );
 }
 
-pub(crate) fn particle_render_lights(
-    particles: &[Particle2dDrawCommand],
+pub(crate) fn particle_render_lights_from_renderables(
+    renderables: &[Renderable2dItem],
 ) -> Vec<ParticleRenderLight> {
     let mut lights = Vec::new();
     let mut source_lights = BTreeMap::<String, ParticleRenderLight>::new();
 
-    for particle in particles {
+    for renderable in renderables {
+        let RenderPrimitive2d::Particle(particle) = &renderable.primitive else {
+            continue;
+        };
         let Some(light) = particle.light else {
             continue;
         };
@@ -175,7 +205,7 @@ pub(crate) fn particle_render_lights(
         }
 
         match light.mode {
-            ParticleLightMode2d::Particle => {
+            ParticleLightMode2dPrimitive::Particle => {
                 lights.push(ParticleRenderLight {
                     position: particle.position,
                     color: particle.color,
@@ -183,7 +213,7 @@ pub(crate) fn particle_render_lights(
                     intensity,
                 });
             }
-            ParticleLightMode2d::Source => {
+            ParticleLightMode2dPrimitive::Source => {
                 let Some(position) = particle.light_position else {
                     continue;
                 };
@@ -208,11 +238,11 @@ pub(crate) fn particle_render_lights(
     lights
 }
 
-pub(crate) fn append_particle_light_vertices(
+pub(crate) fn append_particle_light_primitive_vertices(
     vertices: &mut Vec<ColorVertex>,
     viewport: &Viewport,
     camera: Transform2,
-    particle: &Particle2dDrawCommand,
+    particle: &Particle2dPrimitive,
 ) {
     let Some(light) = particle.light else {
         return;
@@ -225,29 +255,45 @@ pub(crate) fn append_particle_light_vertices(
 
     let alpha = (particle.color.a * intensity).clamp(0.0, 1.0);
     let glow_color = ColorRgba::new(particle.color.r, particle.color.g, particle.color.b, alpha);
-    let shape = VectorShape2d {
-        kind: VectorShapeKind2d::Circle {
+    let shape = VectorShape2dPrimitive {
+        shape: VectorShape2dKindPrimitive::Circle {
             radius,
             segments: 16,
         },
-        style: VectorStyle2d {
+        style: VectorShape2dStylePrimitive {
             stroke_color: glow_color,
             stroke_width: 0.0,
             fill_color: Some(glow_color),
         },
-    };
-
-    append_vector_shape_vertices(
-        vertices,
-        viewport,
-        camera,
-        Transform2 {
+        transform: Transform2 {
             translation: particle.position,
             rotation_radians: 0.0,
             scale: Vec2::new(1.0, 1.0),
         },
+        viewport_fit: VectorShape2dViewportFit::Fixed,
+        viewport_canvas_size: None,
+        material: amigo_render_api::RenderMaterialBinding2d::none(
+            amigo_material_api::MaterialCoverageKind2d::VectorCoverage,
+        ),
+    };
+
+    append_vector_primitive_vertices(
+        vertices,
+        viewport,
+        camera,
         &shape,
+        None,
+        None,
+        None,
     );
+}
+
+fn particle_line_anchor(anchor: ParticleLineAnchor2dPrimitive) -> ParticleLineAnchor2d {
+    match anchor {
+        ParticleLineAnchor2dPrimitive::Center => ParticleLineAnchor2d::Center,
+        ParticleLineAnchor2dPrimitive::Start => ParticleLineAnchor2d::Start,
+        ParticleLineAnchor2dPrimitive::End => ParticleLineAnchor2d::End,
+    }
 }
 
 fn line_points_for_anchor(length: f32, anchor: ParticleLineAnchor2d) -> (Vec2, Vec2) {

@@ -15,14 +15,13 @@ mod ui_overlay;
 pub use backend::WgpuRenderBackend;
 pub use backend::WgpuRenderPlugin;
 pub use backend::{WgpuHeadlessContext, WgpuOffscreenTarget, WgpuSurfaceState};
-pub use amigo_render_api::RenderSpace2d;
+pub use amigo_render_api::{RenderSpace2d, Renderable2dItem};
 pub use frame_packet::{
-    Renderable2dItem, Renderable2dPayload, Renderable2dPayloadKind, WgpuRenderFramePacket,
-    WgpuVisualSourceFlags2d, supported_renderable_2d_component_kinds,
+    WgpuRenderFramePacket, WgpuVisualSourceFlags2d, supported_renderable_2d_component_kinds,
 };
 pub use plugin_pass::*;
-pub use renderable_adapter::*;
-pub use renderable_adapters::*;
+pub(crate) use renderable_adapter::*;
+pub(crate) use renderable_adapters::*;
 pub use renderer::{
     WgpuEmergencyOverlayLevel, WgpuEmergencyOverlayLine, WgpuFrameRenderRequest,
     WgpuFrameRenderTarget, WgpuGameViewportPlacement, WgpuSceneRenderer, WgpuSurfaceRect,

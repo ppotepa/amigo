@@ -25,6 +25,50 @@ export function lerpPoints(a: Point[], b: Point[], t: number): Point[] {
   return a.map((point, index) => pointLerp(point, b[index], t));
 }
 
+export type PointKeyframe = {
+  t: number;
+  points: Point[];
+};
+
+function keyframeTangent(frames: PointKeyframe[], frameIndex: number, pointIndex: number): Point {
+  const previous = frames[Math.max(0, frameIndex - 1)];
+  const next = frames[Math.min(frames.length - 1, frameIndex + 1)];
+  const dt = next.t - previous.t || 1;
+  return {
+    x: (next.points[pointIndex].x - previous.points[pointIndex].x) / dt,
+    y: (next.points[pointIndex].y - previous.points[pointIndex].y) / dt,
+  };
+}
+
+export function interpolatePointKeyframes(frames: PointKeyframe[], value: number, curve = 0.55): Point[] {
+  if (!frames.length) return [];
+  if (value <= frames[0].t) return frames[0].points;
+  if (value >= frames[frames.length - 1].t) return frames[frames.length - 1].points;
+
+  const segmentIndex = Math.max(0, frames.findIndex((frame, index) => index > 0 && value <= frame.t) - 1);
+  const a = frames[segmentIndex];
+  const b = frames[segmentIndex + 1];
+  const dt = b.t - a.t || 1;
+  const u = clamp((value - a.t) / dt, 0, 1);
+  const u2 = u * u;
+  const u3 = u2 * u;
+  const h00 = 2 * u3 - 3 * u2 + 1;
+  const h10 = u3 - 2 * u2 + u;
+  const h01 = -2 * u3 + 3 * u2;
+  const h11 = u3 - u2;
+
+  return a.points.map((point, index) => {
+    const next = b.points[index];
+    const tangentA = keyframeTangent(frames, segmentIndex, index);
+    const tangentB = keyframeTangent(frames, segmentIndex + 1, index);
+    const hermite = {
+      x: h00 * point.x + h10 * dt * tangentA.x + h01 * next.x + h11 * dt * tangentB.x,
+      y: h00 * point.y + h10 * dt * tangentA.y + h01 * next.y + h11 * dt * tangentB.y,
+    };
+    return pointLerp(pointLerp(point, next, u), hermite, curve);
+  });
+}
+
 export function distanceSq(a: Point, b: Point): number {
   const dx = a.x - b.x;
   const dy = a.y - b.y;
@@ -108,11 +152,11 @@ export function pointsToPath(points: Point[], smoothAmount: number): string {
 export function applyPseudoDepth(points: Point[], yawRad: number, t: number, depth: number): Point[] {
   if (depth <= 0) return points;
   const side = Math.sign(Math.sin(yawRad)) || 1;
-  const squeeze = 1 - depth * 0.16 * t;
-  const parallax = side * depth * 22 * t;
-  const verticalLift = -depth * 7 * t * Math.cos(yawRad);
+  const squeeze = 1 - depth * 0.09 * t;
+  const parallax = side * depth * 13 * t;
+  const verticalLift = -depth * 3.5 * t * Math.cos(yawRad);
   return points.map(point => ({
     x: PIVOT_X + (point.x - PIVOT_X) * squeeze + parallax,
-    y: PIVOT_Y + (point.y - PIVOT_Y) * (1 + depth * 0.025 * t) + verticalLift,
+    y: PIVOT_Y + (point.y - PIVOT_Y) * (1 + depth * 0.012 * t) + verticalLift,
   }));
 }

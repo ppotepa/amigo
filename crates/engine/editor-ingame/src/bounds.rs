@@ -28,6 +28,7 @@ pub struct PickCandidate {
     pub order: f32,
 }
 
+#[allow(dead_code)]
 pub fn topmost_candidate_at(
     graph: &AuthoringSceneGraph,
     logical_x: f32,
@@ -64,6 +65,7 @@ pub fn collect_pick_candidates(
     collect_pick_candidates_in_nodes(&graph.nodes, graph, provider, out);
 }
 
+#[allow(dead_code)]
 pub fn bounds_for_node(graph: &AuthoringSceneGraph, node_id: &str) -> Option<EditorRect> {
     let registry = default_component_registry();
     bounds_for_node_with_registry(graph, &registry, node_id)
@@ -78,6 +80,7 @@ pub fn bounds_for_node_with_registry(
     find_node_by_id(&graph.nodes, node_id)
         .and_then(|node| bounds_for_authoring_node(node, graph, &provider))
 }
+#[allow(dead_code)]
 pub fn pick_candidate_for_node_id(
     graph: &AuthoringSceneGraph,
     node_id: &str,

@@ -118,6 +118,7 @@ pub fn component_2d_traits(component: &SceneComponentDocument) -> Vec<MetadataTr
         SceneComponentDocument::ScriptComponent { .. } => {
             vec![Component2D, Scriptable, RuntimeControllable, Patchable]
         }
+        SceneComponentDocument::Plugin { .. } => vec![Component2D],
         _ => vec![Component2D],
     }
 }

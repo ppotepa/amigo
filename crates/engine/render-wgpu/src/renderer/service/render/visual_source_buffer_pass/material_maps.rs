@@ -1,5 +1,6 @@
 use super::policy::{VisualSourceBufferPolicySet, VisualSourceBufferResolutionPolicy};
 use super::*;
+use amigo_render_api::RenderPrimitive2d;
 
 pub(super) fn produce_material_map_buffers(
     renderer: &mut WgpuSceneRenderer,
@@ -158,71 +159,56 @@ fn render_per_draw_visual_map_buffer(
     let mut texture_batches = Vec::new();
     let mut color_batches = Vec::new();
 
-    for command in request.world_2d.sprites.commands() {
-        let Some(asset) = visual_map_for_kind(command.sprite.visual_maps.as_ref(), kind) else {
-            continue;
-        };
-        let transform = crate::renderer::scene::resolve_transform2(
-            request.scene,
-            &command.entity_name,
-            command.transform,
-        );
-        let sprite = amigo_sprite_2d_plugin::Sprite {
-            texture: asset.clone(),
-            size: command.sprite.size,
-            sheet: None,
-            sheet_is_explicit: false,
-            animation_override: None,
-            visual_maps: None,
-            frame_index: command.sprite.frame_index,
-            frame_elapsed: command.sprite.frame_elapsed,
-        };
-        renderer.append_sprite_texture_batch(
-            &mut texture_batches,
-            &target.device,
-            &target.queue,
-            request.assets,
-            &viewport,
-            camera,
-            transform,
-            &sprite,
-        );
-    }
-
-    for command in request.world_2d.layered_images.commands() {
-        let transform = crate::renderer::scene::resolve_transform2(
-            request.scene,
-            &command.entity_name,
-            command.transform,
-        );
-        if let Some(asset) = visual_map_for_kind(command.image.visual_maps.as_ref(), kind) {
-            append_visual_map_sprite_batch(
-                renderer,
-                &mut texture_batches,
-                target,
-                request,
-                &viewport,
-                camera,
-                transform,
-                asset,
-                command.image.size,
-            );
-        }
-        for override_ in &command.image.layer_overrides {
-            let Some(asset) = visual_map_for_kind(override_.visual_maps.as_ref(), kind) else {
-                continue;
-            };
-            append_visual_map_sprite_batch(
-                renderer,
-                &mut texture_batches,
-                target,
-                request,
-                &viewport,
-                camera,
-                transform,
-                asset,
-                command.image.size,
-            );
+    for item in request.world_2d.renderables {
+        match &item.primitive {
+            RenderPrimitive2d::TexturedQuad(primitive) => {
+                let Some(asset) = visual_map_for_kind(primitive.visual_maps.as_ref(), kind) else {
+                    continue;
+                };
+                append_visual_map_sprite_batch(
+                    renderer,
+                    &mut texture_batches,
+                    target,
+                    request,
+                    &viewport,
+                    camera,
+                    primitive.transform,
+                    asset,
+                    primitive.size,
+                );
+            }
+            RenderPrimitive2d::LayeredImage(primitive) => {
+                if let Some(asset) = visual_map_for_kind(primitive.visual_maps.as_ref(), kind) {
+                    append_visual_map_sprite_batch(
+                        renderer,
+                        &mut texture_batches,
+                        target,
+                        request,
+                        &viewport,
+                        camera,
+                        primitive.transform,
+                        asset,
+                        primitive.size,
+                    );
+                }
+                for override_ in &primitive.layer_overrides {
+                    let Some(asset) = visual_map_for_kind(override_.visual_maps.as_ref(), kind) else {
+                        continue;
+                    };
+                    append_visual_map_sprite_batch(
+                        renderer,
+                        &mut texture_batches,
+                        target,
+                        request,
+                        &viewport,
+                        camera,
+                        primitive.transform,
+                        asset,
+                        primitive.size,
+                    );
+                }
+            }
+            _ => {}
         }
     }
 
@@ -273,30 +259,29 @@ fn append_visual_map_sprite_batch(
     asset: &amigo_assets::AssetKey,
     size: Vec2,
 ) {
-    let sprite = amigo_sprite_2d_plugin::Sprite {
-        texture: asset.clone(),
-        size,
-        sheet: None,
-        sheet_is_explicit: false,
-        animation_override: None,
-        visual_maps: None,
-        frame_index: 0,
-        frame_elapsed: 0.0,
-    };
-    renderer.append_sprite_texture_batch(
+    renderer.append_textured_quad_texture_batch(
         texture_batches,
         &target.device,
         &target.queue,
         request.assets,
         viewport,
         camera,
-        transform,
-        &sprite,
+        &amigo_render_api::TexturedQuad2dPrimitive {
+            texture: asset.clone(),
+            size,
+            transform,
+            visual_maps: None,
+            sheet: None,
+            frame_index: 0,
+            material: amigo_render_api::RenderMaterialBinding2d::none(
+                amigo_material_api::MaterialCoverageKind2d::TextureAlpha,
+            ),
+        },
     );
 }
 
 fn visual_map_for_kind(
-    maps: Option<&amigo_scene::VisualMaps2dSceneCommand>,
+    maps: Option<&amigo_render_api::VisualMaps2dPrimitive>,
     kind: amigo_render_api::VisualSourceKind2d,
 ) -> Option<&amigo_assets::AssetKey> {
     let maps = maps?;

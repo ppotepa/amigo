@@ -237,6 +237,7 @@ fn primary_render_layer(entity: &SceneEntityDocument) -> Option<String> {
             SceneComponentDocument::BeaconLight2d { render_layer, .. } => {
                 Some(render_layer.clone())
             }
+            SceneComponentDocument::Plugin { .. } => None,
             _ => None,
         })
 }

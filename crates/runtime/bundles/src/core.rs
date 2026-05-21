@@ -24,6 +24,8 @@ impl PluginBundle for CoreRuntimeBundle {
             .with_plugin(SystemRegistryPlugin)?
             .with_plugin(SceneCommandRegistryPlugin)?
             .with_plugin(ScriptCommandRegistryPlugin)?
+            .with_plugin(RenderExtractorIdRegistryPlugin)?
+            .with_plugin(WgpuRenderExtractorBridgeRegistryPlugin)?
             .with_plugin(AssetsPlugin)?
             .with_plugin(HotReloadPlugin)?
             .with_plugin(NotifyFileWatchPlugin)?
@@ -40,6 +42,10 @@ struct ScriptCommandRegistryPlugin;
 struct SceneCommandRegistryPlugin;
 
 struct SystemRegistryPlugin;
+
+struct RenderExtractorIdRegistryPlugin;
+
+struct WgpuRenderExtractorBridgeRegistryPlugin;
 
 impl RuntimePlugin for SystemRegistryPlugin {
     fn name(&self) -> &'static str {
@@ -70,6 +76,28 @@ impl RuntimePlugin for ScriptCommandRegistryPlugin {
 
     fn register(&self, registry: &mut ServiceRegistry) -> AmigoResult<()> {
         registry.register(amigo_scripting_api::RuntimeScriptCommandHandlerRegistry::new())?;
+        Ok(())
+    }
+}
+
+impl RuntimePlugin for RenderExtractorIdRegistryPlugin {
+    fn name(&self) -> &'static str {
+        "amigo-render-extractor-id-registry"
+    }
+
+    fn register(&self, registry: &mut ServiceRegistry) -> AmigoResult<()> {
+        registry.register(amigo_render_api::RuntimeRenderExtractorIdRegistry::default())?;
+        Ok(())
+    }
+}
+
+impl RuntimePlugin for WgpuRenderExtractorBridgeRegistryPlugin {
+    fn name(&self) -> &'static str {
+        "amigo-wgpu-render-extractor-bridge-registry"
+    }
+
+    fn register(&self, registry: &mut ServiceRegistry) -> AmigoResult<()> {
+        registry.register(crate::render_extractor_registry::WgpuRenderExtractorBridgeRegistry::default())?;
         Ok(())
     }
 }

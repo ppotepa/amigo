@@ -3,6 +3,8 @@ pub mod document;
 pub mod hydration;
 mod metadata;
 
+pub use metadata::Sprite2dComponentMetadataProvider;
+
 pub use descriptors::*;
 pub use document::*;
 pub use hydration::*;

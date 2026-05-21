@@ -1,11 +1,8 @@
-use amigo_runtime_control::split_console_prefix;
-
 use crate::{ConsoleArgKind, ConsoleArgSpec, ConsoleCommandDescriptor, ConsoleCommandSchema};
 
 use super::{
     ConsoleCompletionContext, ConsoleCompletionKind, ConsoleCompletionSnapshot,
-    ConsoleCompletionSuggestion, MAX_COMPLETION_SUGGESTIONS, complete_values,
-    sort_and_limit_suggestions,
+    ConsoleCompletionSuggestion, MAX_COMPLETION_SUGGESTIONS, sort_and_limit_suggestions,
 };
 use super::resources::inspect_target_suggestions;
 use super::rhai::rhai_symbol_suggestions;

@@ -81,11 +81,15 @@ impl PostFx2d {
     }
 
     pub fn is_cached_image_compatible(&self) -> bool {
-        matches!(self, Self::Blur(_) | Self::EmbossEdges(_))
+        matches!(
+            self.render_descriptor().cached_image_policy,
+            PostFxCachedImagePolicy::RasterEffect
+                | PostFxCachedImagePolicy::RasterEffectWithBoundsExpansion
+        )
     }
 
     pub fn is_frame_graph_compatible(&self) -> bool {
-        !self.is_cached_image_compatible()
+        self.render_descriptor().frame_graph_compatible
     }
 
     pub fn normalized(self) -> Self {

@@ -1,3 +1,5 @@
+use crate::{RenderPrimitive2d, RenderPrimitive2dKind};
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RenderSpace2d {
     World,
@@ -59,8 +61,65 @@ pub struct Renderable2dCommon {
 }
 
 impl Renderable2dCommon {
+    pub fn world(
+        owner_entity: impl Into<String>,
+        component_kind: impl Into<String>,
+        render_layer: impl Into<String>,
+        z_index: f32,
+        kind: Renderable2dKind,
+    ) -> Self {
+        Self {
+            owner_entity: owner_entity.into(),
+            component_kind: component_kind.into(),
+            render_space: RenderSpace2d::World,
+            render_layer: render_layer.into(),
+            z_index,
+            kind,
+        }
+    }
+
     pub fn uses_camera_pipeline(&self) -> bool {
         self.render_space.uses_camera_pipeline()
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct Renderable2dItem {
+    pub common: Renderable2dCommon,
+    pub primitive: RenderPrimitive2d,
+}
+
+impl Renderable2dItem {
+    pub fn new(common: Renderable2dCommon, primitive: RenderPrimitive2d) -> Self {
+        Self { common, primitive }
+    }
+
+    pub fn render_layer(&self) -> &str {
+        &self.common.render_layer
+    }
+
+    pub fn z_index(&self) -> f32 {
+        self.common.z_index
+    }
+
+    pub fn owner_entity(&self) -> &str {
+        &self.common.owner_entity
+    }
+
+    pub fn component_kind(&self) -> &str {
+        &self.common.component_kind
+    }
+
+    pub fn render_space(&self) -> RenderSpace2d {
+        self.common.render_space
+    }
+
+    pub fn primitive_kind(&self) -> RenderPrimitive2dKind {
+        self.primitive.kind()
+    }
+
+    pub fn uses_camera_pipeline(&self) -> bool {
+        self.common.uses_camera_pipeline()
     }
 }
 

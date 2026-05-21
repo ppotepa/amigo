@@ -22,3 +22,4 @@ TypeScript SVG rig lab bundled to a classic browser script.
 ## Notes
 
 Open `index.html` after a build if you want `file://` usage. Use `Eksportuj widok SVG` to download the current generated frame.
+Open `index-realism.html` if you want to preview the alternate, more proportional rig variant without replacing the base one.

@@ -63,3 +63,29 @@ test("generateAnatomyRenderPrimitives emits body and outline primitives from pol
   assert.equal(earOutline?.visible, false);
   assert.equal(earSilhouette?.visible, true);
 });
+
+test("generateAnatomyRenderPrimitives hides body fill and outlines when policy or part visibility disables them", () => {
+  const hiddenEar = {
+    ...makeMassPart("earRight", 6),
+    visible: false,
+  };
+  const nose = makeMassPart("nose", 10);
+  const policy: OutlinePolicy = {
+    drawMasterSilhouette: true,
+    parts: {
+      earRight: { drawBody: true, drawContour: true, drawInner: false, drawSilhouette: true },
+      nose: { drawBody: false, drawContour: false, drawInner: false, drawSilhouette: true },
+    },
+  };
+
+  const primitives = generateAnatomyRenderPrimitives([hiddenEar, nose], policy);
+  const hiddenEarFill = primitives.find(item => item.id === "earRight:fill:0");
+  const hiddenEarSilhouette = primitives.find(item => item.id === "silhouette:earRight");
+  const hiddenNoseFill = primitives.find(item => item.id === "nose:fill:0");
+  const visibleNoseSilhouette = primitives.find(item => item.id === "silhouette:nose");
+
+  assert.equal(hiddenEarFill?.visible, false);
+  assert.equal(hiddenEarSilhouette?.visible, false);
+  assert.equal(hiddenNoseFill?.visible, false);
+  assert.equal(visibleNoseSilhouette?.visible, true);
+});

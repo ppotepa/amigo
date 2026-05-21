@@ -43,12 +43,15 @@ function makeViewState(overrides: Partial<ViewState> = {}): ViewState {
   };
 }
 
-test("silhouette-only policy keeps body silhouettes and hides nose body", () => {
+test("silhouette-only policy keeps one silhouette set for visible masses and hides inner details", () => {
   const policy = computeOutlinePolicy(makeViewState(), OUTLINE_MODES.SILHOUETTE_ONLY);
 
   assert.equal(policy.parts.face.drawContour, false);
-  assert.equal(policy.parts.nose.drawBody, false);
-  assert.equal(policy.parts.nose.drawSilhouette, false);
+  assert.equal(policy.parts.nose.drawBody, true);
+  assert.equal(policy.parts.nose.drawSilhouette, true);
+  assert.equal(policy.parts.earRight.drawContour, false);
+  assert.equal(policy.parts.noseHighlight.drawBody, false);
+  assert.equal(policy.parts.earRightInner.drawBody, false);
 });
 
 test("full policy preserves contour on face and visible nose", () => {
@@ -58,4 +61,35 @@ test("full policy preserves contour on face and visible nose", () => {
   assert.equal(policy.parts.face.drawSilhouette, true);
   assert.equal(policy.parts.nose.drawBody, true);
   assert.equal(policy.parts.nose.drawContour, true);
+});
+
+test("adaptive policy keeps nose body visible while suppressing contour and detail by facing", () => {
+  const fusedBody = computeOutlinePolicy(makeViewState({ noseFusion: 0.94 }), OUTLINE_MODES.ADAPTIVE);
+  const hiddenDetail = computeOutlinePolicy(makeViewState({ profile: 0.12, zone: "FRONT" }), OUTLINE_MODES.ADAPTIVE);
+  const visibleDetail = computeOutlinePolicy(makeViewState({ profile: 0.5, zone: "THREE_QUARTER" }), OUTLINE_MODES.ADAPTIVE);
+  const rearTransition = computeOutlinePolicy(
+    makeViewState({ back: 0.6, zone: "REAR_TRANSITION", showNose: false, noseMode: "HIDDEN" }),
+    OUTLINE_MODES.ADAPTIVE,
+  );
+
+  assert.equal(fusedBody.parts.nose.drawBody, true);
+  assert.equal(fusedBody.parts.nose.drawContour, false);
+  assert.equal(hiddenDetail.parts.noseHighlight.drawBody, false);
+  assert.equal(visibleDetail.parts.noseHighlight.drawBody, true);
+  assert.equal(visibleDetail.parts.nostril.drawBody, true);
+  assert.equal(rearTransition.parts.nose.drawBody, false);
+  assert.equal(rearTransition.parts.nose.drawContour, false);
+});
+
+test("painterly policy keeps nose mass while limiting strong nose detail", () => {
+  const fusedBody = computeOutlinePolicy(makeViewState({ noseFusion: 0.5 }), OUTLINE_MODES.PAINTERLY);
+  const weakDetail = computeOutlinePolicy(makeViewState({ profile: 0.45 }), OUTLINE_MODES.PAINTERLY);
+  const strongDetail = computeOutlinePolicy(makeViewState({ profile: 0.7 }), OUTLINE_MODES.PAINTERLY);
+  const profileMouth = computeOutlinePolicy(makeViewState({ profile: 0.9, zone: "PROFILE", showMouth: false }), OUTLINE_MODES.PAINTERLY);
+
+  assert.equal(fusedBody.parts.nose.drawBody, true);
+  assert.equal(fusedBody.parts.nose.drawContour, false);
+  assert.equal(weakDetail.parts.noseHighlight.drawBody, false);
+  assert.equal(strongDetail.parts.noseHighlight.drawBody, true);
+  assert.equal(profileMouth.parts.mouth.drawBody, false);
 });

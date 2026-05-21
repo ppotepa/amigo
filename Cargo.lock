@@ -82,6 +82,7 @@ dependencies = [
  "amigo-2d-spatial",
  "amigo-capabilities",
  "amigo-core",
+ "amigo-render-api",
  "amigo-runtime",
  "amigo-scene",
  "amigo-scripting-api",
@@ -660,6 +661,7 @@ dependencies = [
  "amigo-editor-ingame",
  "amigo-math",
  "amigo-plugin-api",
+ "amigo-render-api",
  "amigo-runtime",
  "amigo-runtime-control",
  "amigo-scene",
@@ -764,6 +766,7 @@ dependencies = [
  "amigo-light-2d-plugin",
  "amigo-math",
  "amigo-plugin-api",
+ "amigo-render-api",
  "amigo-runtime",
  "amigo-runtime-control",
  "amigo-scene",
@@ -835,8 +838,11 @@ name = "amigo-render-api"
 version = "0.1.0"
 dependencies = [
  "amigo-2d-spatial",
+ "amigo-assets",
  "amigo-camera",
  "amigo-core",
+ "amigo-material-api",
+ "amigo-math",
  "amigo-plugin-api",
  "amigo-session",
  "serde",
@@ -853,6 +859,7 @@ dependencies = [
  "amigo-3d-text",
  "amigo-assets",
  "amigo-beacon-light-2d-plugin",
+ "amigo-camera",
  "amigo-camera-optics-plugin",
  "amigo-composite-plugin",
  "amigo-core",
@@ -862,6 +869,7 @@ dependencies = [
  "amigo-layered-image-2d-plugin",
  "amigo-light-2d-plugin",
  "amigo-material-2d-plugin",
+ "amigo-material-api",
  "amigo-math",
  "amigo-overlay-api",
  "amigo-particles-2d-plugin",
@@ -921,6 +929,7 @@ dependencies = [
  "amigo-layered-image-2d-plugin",
  "amigo-light-2d-plugin",
  "amigo-material-2d-plugin",
+ "amigo-material-api",
  "amigo-math",
  "amigo-modding",
  "amigo-overlay-api",
@@ -1057,11 +1066,13 @@ name = "amigo-sprite-2d-plugin"
 version = "0.1.0"
 dependencies = [
  "amigo-assets",
+ "amigo-camera",
  "amigo-camera-optics-plugin",
  "amigo-capabilities",
  "amigo-core",
  "amigo-editor-api",
  "amigo-material-2d-plugin",
+ "amigo-material-api",
  "amigo-math",
  "amigo-plugin-api",
  "amigo-render-api",
@@ -1069,6 +1080,8 @@ dependencies = [
  "amigo-scene",
  "amigo-scripting-api",
  "amigo-session",
+ "serde",
+ "serde_yaml",
 ]
 
 [[package]]
@@ -1096,12 +1109,14 @@ name = "amigo-text-2d-plugin"
 version = "0.1.0"
 dependencies = [
  "amigo-assets",
+ "amigo-camera",
  "amigo-camera-optics-plugin",
  "amigo-capabilities",
  "amigo-composite-plugin",
  "amigo-core",
  "amigo-editor-api",
  "amigo-material-2d-plugin",
+ "amigo-material-api",
  "amigo-math",
  "amigo-plugin-api",
  "amigo-render-api",
@@ -1109,6 +1124,8 @@ dependencies = [
  "amigo-scene",
  "amigo-scripting-api",
  "amigo-session",
+ "serde",
+ "serde_yaml",
 ]
 
 [[package]]
@@ -1122,6 +1139,7 @@ dependencies = [
  "amigo-editor-api",
  "amigo-math",
  "amigo-plugin-api",
+ "amigo-render-api",
  "amigo-runtime",
  "amigo-scene",
  "amigo-session",
@@ -1182,17 +1200,21 @@ dependencies = [
 name = "amigo-vector-2d-plugin"
 version = "0.1.0"
 dependencies = [
+ "amigo-camera",
  "amigo-camera-optics-plugin",
  "amigo-capabilities",
  "amigo-core",
  "amigo-editor-api",
  "amigo-material-2d-plugin",
+ "amigo-material-api",
  "amigo-math",
  "amigo-plugin-api",
  "amigo-render-api",
  "amigo-runtime",
  "amigo-scene",
  "amigo-session",
+ "serde",
+ "serde_yaml",
 ]
 
 [[package]]

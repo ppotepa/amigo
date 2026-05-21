@@ -116,13 +116,18 @@ entities:
                 if command.entity_name == "playground-sidescroller-coin"
                     && command.event.as_deref() == Some("coin.collected")
         )));
-        assert!(plan.commands.iter().any(|command| matches!(
-            command,
-            SceneCommand::QueueSprite2d { command }
-                if command.entity_name == "playground-sidescroller-coin"
+        assert!(plan.commands.iter().any(|command| {
+            let command = match command {
+                SceneCommand::QueueSprite2d { command } => Some(command),
+                SceneCommand::Plugin { command } => command.sprite_2d_command(),
+                _ => None,
+            };
+            command.is_some_and(|command| {
+                command.entity_name == "playground-sidescroller-coin"
                     && command.animation.as_ref().and_then(|animation| animation.fps) == Some(10.0)
                     && command.animation.as_ref().and_then(|animation| animation.looping) == Some(true)
-        )));
+            })
+        }));
     }
 
 

@@ -2,11 +2,9 @@ use std::collections::BTreeMap;
 
 use super::{
     ConsoleCompletionContext, ConsoleCompletionKind, ConsoleCompletionSnapshot,
-    ConsoleCompletionSuggestion, ConsoleRhaiSymbol, ConsoleRhaiValueKind, complete_values,
-    active_token, sort_and_limit_suggestions,
+    ConsoleCompletionSuggestion, ConsoleRhaiSymbol, ConsoleRhaiValueKind, active_token,
+    complete_values, sort_and_limit_suggestions,
 };
-
-const MAX_COMPLETION_SUGGESTIONS: usize = super::MAX_COMPLETION_SUGGESTIONS;
 
 pub(super) fn complete_rhai_symbol(
     input: &str,

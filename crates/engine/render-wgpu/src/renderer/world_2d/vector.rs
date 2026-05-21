@@ -1,13 +1,21 @@
+use amigo_render_api::{
+    VectorShape2dKindPrimitive, VectorShape2dPrimitive, VectorShape2dViewportFit,
+};
+
 use crate::renderer::*;
 
-pub(crate) fn append_vector_shape_vertices(
+pub(crate) fn append_vector_primitive_vertices(
     vertices: &mut Vec<ColorVertex>,
     viewport: &Viewport,
     camera: Transform2,
-    transform: Transform2,
-    shape: &VectorShape2d,
+    primitive: &VectorShape2dPrimitive,
+    override_transform: Option<Transform2>,
+    override_fill: Option<ColorRgba>,
+    override_stroke: Option<ColorRgba>,
 ) {
-    let local_points = vector_shape_points(shape);
+    let transform = override_transform
+        .unwrap_or_else(|| vector_primitive_viewport_fit_transform(viewport, primitive));
+    let local_points = vector_shape_points(primitive);
     if local_points.is_empty() {
         return;
     }
@@ -16,59 +24,62 @@ pub(crate) fn append_vector_shape_vertices(
         .into_iter()
         .map(|point| transform_point_2d(point, transform))
         .collect::<Vec<_>>();
-    let (closed, can_fill) = match &shape.kind {
-        VectorShapeKind2d::Polyline { closed, .. } => (*closed, *closed),
-        VectorShapeKind2d::Polygon { .. } | VectorShapeKind2d::Circle { .. } => (true, true),
+    let (closed, can_fill) = match &primitive.shape {
+        VectorShape2dKindPrimitive::Polyline { closed, .. } => (*closed, *closed),
+        VectorShape2dKindPrimitive::Polygon { .. } | VectorShape2dKindPrimitive::Circle { .. } => {
+            (true, true)
+        }
     };
+    let fill_color = override_fill.or(primitive.style.fill_color);
+    let stroke_color = override_stroke.unwrap_or(primitive.style.stroke_color);
 
     if can_fill {
-        if let Some(fill_color) = shape.style.fill_color {
+        if let Some(fill_color) = fill_color {
             append_filled_polygon_vertices(vertices, viewport, camera, &world_points, fill_color);
         }
     }
 
-    if shape.style.stroke_width > 0.0 {
+    if primitive.style.stroke_width > 0.0 {
         append_polyline_stroke_vertices(
             vertices,
             viewport,
             camera,
             &world_points,
             closed,
-            shape.style.stroke_width,
-            shape.style.stroke_color,
+            primitive.style.stroke_width,
+            stroke_color,
         );
     }
 }
 
-pub(crate) fn vector_viewport_fit_transform(
+pub(crate) fn vector_primitive_viewport_fit_transform(
     viewport: &Viewport,
-    mut transform: Transform2,
-    fit: VectorViewportFit2d,
-    canvas_size: Option<Vec2>,
+    primitive: &VectorShape2dPrimitive,
 ) -> Transform2 {
-    let Some(canvas_size) = canvas_size else {
-        return transform;
+    let Some(canvas_size) = primitive.viewport_canvas_size else {
+        return primitive.transform;
     };
     if canvas_size.x <= 0.0 || canvas_size.y <= 0.0 {
-        return transform;
+        return primitive.transform;
     }
 
     let viewport_size = viewport.size();
     let scale_x = viewport_size.x / canvas_size.x;
     let scale_y = viewport_size.y / canvas_size.y;
-    let scale = match fit {
-        VectorViewportFit2d::Fixed => return transform,
-        VectorViewportFit2d::Stretch => Vec2::new(scale_x, scale_y),
-        VectorViewportFit2d::Contain => {
+    let scale = match primitive.viewport_fit {
+        VectorShape2dViewportFit::Fixed => return primitive.transform,
+        VectorShape2dViewportFit::Stretch => Vec2::new(scale_x, scale_y),
+        VectorShape2dViewportFit::Contain => {
             let scale = scale_x.min(scale_y);
             Vec2::new(scale, scale)
         }
-        VectorViewportFit2d::Cover => {
+        VectorShape2dViewportFit::Cover => {
             let scale = scale_x.max(scale_y);
             Vec2::new(scale, scale)
         }
     };
 
+    let mut transform = primitive.transform;
     transform.translation.x *= scale.x;
     transform.translation.y *= scale.y;
     transform.scale.x *= scale.x;
@@ -76,12 +87,13 @@ pub(crate) fn vector_viewport_fit_transform(
     transform
 }
 
-fn vector_shape_points(shape: &VectorShape2d) -> Vec<Vec2> {
-    match &shape.kind {
-        VectorShapeKind2d::Polyline { points, .. } | VectorShapeKind2d::Polygon { points } => {
+fn vector_shape_points(shape: &VectorShape2dPrimitive) -> Vec<Vec2> {
+    match &shape.shape {
+        VectorShape2dKindPrimitive::Polyline { points, .. }
+        | VectorShape2dKindPrimitive::Polygon { points } => {
             points.clone()
         }
-        VectorShapeKind2d::Circle { radius, segments } => {
+        VectorShape2dKindPrimitive::Circle { radius, segments } => {
             let segment_count = (*segments).max(3) as usize;
             let mut points = Vec::with_capacity(segment_count);
             for index in 0..segment_count {
@@ -105,13 +117,24 @@ mod tests {
             scale: Vec2::new(2.0, 3.0),
             ..Default::default()
         };
-
-        let fitted = vector_viewport_fit_transform(
-            &viewport,
+        let primitive = VectorShape2dPrimitive {
+            shape: VectorShape2dKindPrimitive::Polygon {
+                points: vec![Vec2::new(0.0, 0.0), Vec2::new(1.0, 0.0), Vec2::new(0.0, 1.0)],
+            },
+            style: amigo_render_api::VectorShape2dStylePrimitive {
+                stroke_color: ColorRgba::WHITE,
+                stroke_width: 1.0,
+                fill_color: None,
+            },
             transform,
-            VectorViewportFit2d::Cover,
-            Some(Vec2::new(1280.0, 720.0)),
-        );
+            viewport_fit: VectorShape2dViewportFit::Cover,
+            viewport_canvas_size: Some(Vec2::new(1280.0, 720.0)),
+            material: amigo_render_api::RenderMaterialBinding2d::none(
+                amigo_material_api::MaterialCoverageKind2d::VectorCoverage,
+            ),
+        };
+
+        let fitted = vector_primitive_viewport_fit_transform(&viewport, &primitive);
 
         assert_eq!(fitted.translation, Vec2::new(150.0, -75.0));
         assert_eq!(fitted.scale, Vec2::new(3.0, 4.5));
@@ -125,13 +148,24 @@ mod tests {
             scale: Vec2::new(2.0, 3.0),
             ..Default::default()
         };
-
-        let fitted = vector_viewport_fit_transform(
-            &viewport,
+        let primitive = VectorShape2dPrimitive {
+            shape: VectorShape2dKindPrimitive::Polygon {
+                points: vec![Vec2::new(0.0, 0.0), Vec2::new(1.0, 0.0), Vec2::new(0.0, 1.0)],
+            },
+            style: amigo_render_api::VectorShape2dStylePrimitive {
+                stroke_color: ColorRgba::WHITE,
+                stroke_width: 1.0,
+                fill_color: None,
+            },
             transform,
-            VectorViewportFit2d::Fixed,
-            Some(Vec2::new(1280.0, 720.0)),
-        );
+            viewport_fit: VectorShape2dViewportFit::Fixed,
+            viewport_canvas_size: Some(Vec2::new(1280.0, 720.0)),
+            material: amigo_render_api::RenderMaterialBinding2d::none(
+                amigo_material_api::MaterialCoverageKind2d::VectorCoverage,
+            ),
+        };
+
+        let fitted = vector_primitive_viewport_fit_transform(&viewport, &primitive);
 
         assert_eq!(fitted, transform);
     }

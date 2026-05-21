@@ -36,6 +36,10 @@ pub fn update_wgpu_render_composition_diagnostics(
     let Ok(render_diagnostics) = runtime.required::<RenderCompositionDiagnosticsService>() else {
         return;
     };
+    let camera_optical_candidates =
+        crate::render_extractor_bridges::collect_camera_optical_candidates_from_light_sources_2d(
+            render_packet.world_2d_light_sources(),
+        );
 
     render_diagnostics.set_with_update(
         composition_plan,
@@ -55,7 +59,7 @@ pub fn update_wgpu_render_composition_diagnostics(
             )),
             camera_optical_candidates_summary: Some(
                 amigo_camera_optics_plugin::diagnostics::format_camera_optical_candidates_2d(
-                    render_packet.camera_optical_candidates_2d(),
+                    camera_optical_candidates.as_slice(),
                 ),
             ),
             render_contributions_summary: render_camera_contributions_summary(

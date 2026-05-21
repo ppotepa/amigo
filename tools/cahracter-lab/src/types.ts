@@ -46,6 +46,7 @@ export type Contour = {
 export type MorphPair = {
   key: "face" | "nose";
   source: Point[];
+  quarter?: Point[];
   target: Point[];
   back?: Point[];
 };
@@ -54,8 +55,10 @@ export type EarRig = {
   key: EarKey;
   localSide: 1 | -1;
   front: Point[];
+  quarterLeft: Point[];
   profileLeft: Point[];
   back: Point[];
+  quarterRight: Point[];
   profileRight: Point[];
 };
 

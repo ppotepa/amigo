@@ -1,2018 +1,473 @@
-Poniżej pełny, zaktualizowany `AGENTS.md` pod obecną architekturę `mc44k`.
-
-````md
 # AGENTS.md
 
-This file defines how Codex CLI agents must work in the Amigo repository.
+This file defines how coding agents must work in the Amigo repository.
 
-The goal is not only to make changes, but to make changes with the smallest practical amount of token usage, file reading, command execution, and architectural disruption.
+Amigo is a fresh Rust engine project. Do not preserve legacy paths after a migration is complete. Prefer clean final names over compatibility shims, `v2` modules, duplicate paths, or fallback behavior that hides architecture problems.
 
-Amigo is a fresh project. Do not preserve legacy paths after migration. Evolve systems in place. Prefer clean final names over compatibility shims.
+## Prime directive
 
-Current architecture direction:
+Use targeted navigation first. Do not scan the repository blindly.
 
-```text
-apps/app                 = thin host
-domains                  = own their runtime capabilities
-runtime/bundles          = compose domain/runtime bundles
-engine/devtools          = owns dev console, debug overlay, diagnostics, debug commands
-engine/render-api        = owns render contracts
-engine/camera            = owns shared camera contracts/services
-engine/editor-api        = placeholder editor contracts only
-engine/editor-session    = placeholder editor session only
-````
-
-Do not build a full editor now. Do not create `apps/editor`. Do not move domain execution back into `apps/app`.
-
----
-
-# Prime Directive
-
-Use `amigo-codemap` first.
-
-Do not scan the repository blindly. Do not read whole files when a symbol slice is enough. Do not run broad build/test commands when a targeted crate check is enough.
-
-Every non-trivial task should follow this shape:
-
-```text
-understand scope
-  -> use codemap to locate exact files/symbols
-  -> inspect only relevant slices
-  -> apply a small manual patch or validated raw ops
-  -> verify only touched crates
-  -> report concise result
-```
-
-Prefer the shortest codemap command that answers the question.
-
-Use codemap for targeted navigation:
-
-```text
-brief
-changes --compact
-change-plan
-open-set --why
-trace
-symbols
-slice
-range-for-symbol
-verify-plan --changed
-fallout
-```
-
-Do not open concat snapshots during normal work.
-
----
-
-# Current Architectural Goal
-
-The active goal is no longer to “save” the architecture.
-
-The runtime-only refactor is already advanced. The goal now is:
-
-```text
-close remaining seams
-prevent app-centric regression
-keep editor work as placeholder API only
-stabilize naming and boundaries
-```
-
-The most important remaining seams are:
-
-```text
-apps/app/src/bootstrap.rs
-apps/app/src/render_runtime.rs
-apps/app/src/scene_runtime/mod.rs
-```
-
-Treat these as migration seams, not as places to add new domain behavior.
-
----
-
-# Hard Prohibitions
-
-Do not use these by default:
-
-```text
-Get-Content <large file>
-cat <large file>
-type <large file>
-rg across the entire repo as first discovery
-fd/find across the entire repo as first discovery
-opening concat-output.txt
-reading generated snapshots
-cargo check --workspace
-cargo test --workspace
-full git diff
-manual file-by-file browsing
-large rewrite without codemap plan
-large patch based on broad import blocks
-creating new app-side domain wiring
-creating apps/editor
-```
-
-Forbidden unless explicitly requested:
-
-```text
-workspace-wide test/check
-broad formatting of unrelated files
-mass renames
-compatibility layers
-v2 systems
-parallel duplicate systems
-leaving legacy paths after migration
-adding domain crates directly to apps/app
-building real editor UI
-adding egui/imgui/winit/wgpu dependencies to editor-api or editor-session
-```
-
-Do not solve architecture issues by moving behavior into `apps/app`.
-
----
-
-# Required Start Sequence
-
-Start every non-trivial task with:
+Preferred discovery order:
 
 ```powershell
+git status --short
 cargo build -p amigo-codemap
 Copy-Item target\debug\amigo-codemap.exe target\debug\amigo-codemap-stable.exe
 $cm = "target\debug\amigo-codemap-stable.exe"
-
 & $cm brief
 & $cm changes --compact --hide-generated --limit 20
+& $cm change-plan "<task>" --limit 20
+& $cm open-set "<symbols / paths / topic>" --why --limit 20
 ```
 
-Then use a task-specific plan:
+If `amigo-codemap` is unavailable, use narrowly scoped `rg` commands and report that fallback explicitly. Never start with broad file-by-file browsing.
 
-```powershell
-& $cm change-plan "<task summary>" --limit 20
-& $cm open-set "<target architecture or feature area>" --why --limit 12
-```
+Do not open generated concat snapshots during normal repository work. A concat snapshot is only an external review artifact, not a source file.
 
-Examples:
-
-```powershell
-& $cm change-plan "close app bootstrap seam move host registrations behind runtime bundles" --limit 20
-& $cm open-set "bootstrap runtime bundles register_full_runtime_capabilities devtools plugin" --why --limit 12
-```
-
-```powershell
-& $cm change-plan "verify render composition layers and WGPU frame composition builder" --limit 20
-& $cm open-set "WgpuFrameCompositionBuilder FrameCompositionPlan CompositionLayer RenderSpace" --why --limit 12
-```
-
----
-
-# Token-Saving Discovery Rules
-
-## First use `trace`
-
-Use `trace` for exact symbols, strings, commands, feature names, type names, and function names.
-
-Good:
-
-```powershell
-& $cm trace "register_full_runtime_capabilities" --limit 20
-& $cm trace "WgpuFrameCompositionBuilder" --limit 20
-& $cm trace "CompositionLayer" --limit 20
-& $cm trace "RenderSpace" --limit 20
-& $cm trace "CameraBinding::main" --limit 20
-& $cm trace "InspectorSchema::placeholder" --limit 20
-```
-
-Use multiple focused traces instead of one broad search.
-
-Bad:
-
-```powershell
-rg render
-```
-
-Good:
-
-```powershell
-& $cm trace "FrameCompositionPlan" --limit 20
-& $cm trace "WgpuFrameCompositionBuilder" --limit 20
-& $cm trace "DebugOverlay" --limit 20
-```
-
-## Then use `open-set --why`
-
-Use `open-set --why` to get the smallest useful workset.
-
-```powershell
-& $cm open-set "runtime bundles WGPU render extractor bridges composition layers" --why --limit 12
-```
-
-The `--why` output tells why each file matters. Do not open unrelated files.
-
-## Then use `symbols`
-
-Use `symbols` before reading a file.
-
-```powershell
-& $cm symbols --file crates/runtime/bundles/src/wgpu_render_extractors/composition.rs --metadata --limit 80
-```
-
-## Then use `slice --symbol`
-
-Read only the symbol you need.
-
-```powershell
-& $cm slice crates/runtime/bundles/src/wgpu_render_extractors/composition.rs --symbol WgpuFrameCompositionBuilder
-& $cm slice crates/engine/render-api/src/composition.rs --symbol FrameCompositionPlan
-& $cm slice crates/engine/camera/src/lib.rs --symbol CameraBinding
-```
-
-## Use `range-for-symbol` only when necessary
-
-Use it for exact range boundaries before deletion or targeted replacement.
-
-```powershell
-& $cm range-for-symbol crates/runtime/bundles/src/wgpu_render_extractors/composition.rs WgpuFrameCompositionBuilder
-```
-
-Do not manually guess line ranges when codemap can provide them.
-
----
-
-# Cost Tiers
-
-Prefer lower-cost operations.
-
-## Tier 0: Always allowed
+## Current architecture
 
 ```text
-codemap brief
-codemap changes --compact
-codemap trace
-codemap open-set --why
-codemap symbols
-codemap slice --symbol
-codemap range-for-symbol
-codemap verify-plan --changed
-codemap fallout
+apps/app                 = thin runtime host and bootstrap only
+crates/runtime/bundles   = runtime composition and backend bridges
+crates/engine/runtime    = plugin/system runtime contracts
+crates/engine/session    = frame/session scheduling services
+crates/engine/scene      = scene documents, hydration, metadata, commands
+crates/engine/render-api = renderer-facing contracts and frame graph models
+crates/engine/render-wgpu= WGPU backend implementation
+crates/engine/camera     = shared camera contracts/services
+crates/engine/devtools   = dev console, debug overlay, diagnostics commands
+crates/engine/editor-api = editor contracts only
+crates/engine/editor-session = editor session contracts only
+crates/engine/editor-authoring = authoring graph/cache services
+crates/engine/editor-ingame   = runtime in-game editor overlay/mockup
+plugins/<family>/<plugin>     = domain-owned plugin implementations
+mods/                         = content, scenes, scripts, authored data
 ```
 
-## Tier 1: Allowed after scoped discovery
+No standalone `apps/editor` should be created unless a task explicitly changes the editor strategy.
+
+## General project direction
+
+Amigo is still evolving quickly. Prefer clean final boundaries over preserving intermediate migration shapes.
+
+Default direction for architectural work:
 
 ```text
-cargo check -p touched_crate
-cargo test -p touched_crate exact_test_name
-codemap impact
-codemap anchors --write
-codemap anchor-check
+authored data / scene model
+  -> domain-owned services and extractors
+  -> neutral engine contracts
+  -> backend execution
+  -> diagnostics
 ```
 
-## Tier 2: Use only with clear need
+Core rule:
 
 ```text
-small targeted rg in one file or one directory
-reading a short file fully
-cargo test -p crate without exact test name
+plugins/domains describe intent
+engine contracts describe shared data and boundaries
+backends execute contracts
+apps/app hosts and composes
 ```
 
-## Tier 3: Avoid unless explicitly requested
+The renderer should execute declared contracts. It should not guess domain intent from object existence, names, debug strings, or accidental side effects.
+
+## Hard prohibitions
+
+Do not add by default:
+
+```text
+legacy_* modules
+v2 modules
+parallel replacement systems
+compatibility shims
+fallbacks that silently hide missing contributions
+renderer-side domain guessing
+app-side domain wiring
+new dependencies in apps/app for domain behavior
+standalone apps/editor
+workspace-wide rewrites
+large formatting-only diffs
+```
+
+Do not run by default:
 
 ```text
 cargo check --workspace
 cargo test --workspace
-full repo search
-full file dumps
-global format
-broad diff
+full repo formatting
+broad find/cat/Get-Content scans
 ```
 
----
+Use workspace-wide commands only when the task explicitly requires them or targeted validation cannot prove safety.
 
-# Raw Ops Protocol
+## Operation protocol
 
-Prefer small manual patches when that is clearer.
-
-If using raw ops, use the current raw ops commands:
-
-```powershell
-$ops = @'
-ACTION: ...
-FILE: ...
-CONTENT:
-...
-END
-'@
-
-$ops | & $cm ops-raw-check --yaml
-$ops | & $cm ops-raw-apply --yaml
-```
-
-Do not use the old workflow:
+Every implementation instruction should be expressed as one of these operations:
 
 ```text
-ops-preview --raw
-ops-check --raw
-ops-apply --raw
-ops-summary --raw
+READ    inspect a precise file, symbol, or small range
+ADD     create a new file or symbol
+MODIFY  change an existing file or symbol
+DELETE  remove obsolete code after replacement is complete
+MOVE    move/rename code without behavior change
 ```
 
-Do not use:
+For each operation include:
 
 ```text
---strict without expected_hash
-large FIND blocks based on imports
-large whitespace-sensitive replacements
-ops-skeleton --out plan.yml
-ops-check --from plan.yml
-ops-apply --from plan.yml
-content_from
-content_root
-.amigo/ops/*
+- exact path
+- exact symbol or line range when available
+- intent
+- patch or code snippet when practical
+- validation command
+- what not to change
 ```
 
-Raw ops should be small and locator-friendly.
+Prefer small manual patches over broad generated rewrites.
 
-Good FIND blocks:
+## File reading rules
+
+Use this order:
+
+1. `amigo-codemap change-plan` for task scope.
+2. `amigo-codemap open-set --why` for candidate files.
+3. `amigo-codemap symbols` or `rg -n "SymbolName" <narrow-path>`.
+4. `amigo-codemap slice` or a narrow line range.
+5. Full file read only if the file is small or the symbol context is insufficient.
+
+Avoid opening large files such as renderer init, metadata registries, generated docs, or snapshots unless the task requires a specific range.
+
+## Cost control rules
+
+Optimize for the smallest practical amount of:
 
 ```text
-single function name
-single struct name
-single exact field line
-short stable code snippet
+LLM tokens
+file reads
+command output
+crate rebuilds
+cross-crate verification
+architectural churn
 ```
 
-Bad FIND blocks:
+Use this execution order by default:
 
 ```text
-large import group
-entire module body
-long formatted blocks
-generated text
-```
-
----
-
-# Verification Rules
-
-After any patch:
-
-```powershell
-& $cm verify-plan --changed
-```
-
-Then run only checks for touched crates.
-
-Examples:
-
-```powershell
-cargo check -p amigo-runtime-bundles 2>&1 | & $cm fallout --limit 80
-cargo check -p amigo-render-api 2>&1 | & $cm fallout --limit 80
-cargo check -p amigo-camera 2>&1 | & $cm fallout --limit 80
-cargo check -p amigo-editor-api 2>&1 | & $cm fallout --limit 80
-cargo check -p amigo-editor-session 2>&1 | & $cm fallout --limit 80
-cargo check -p amigo-devtools 2>&1 | & $cm fallout --limit 80
-cargo check -p amigo-app 2>&1 | & $cm fallout --limit 80
-```
-
-Targeted test example:
-
-```powershell
-cargo test -p amigo-app architecture 2>&1 | & $cm fallout --limit 80
-```
-
-Do not paste full compiler output. Always pipe through `fallout`.
-
-Do not claim workspace tests passed unless they were actually run.
-
----
-
-# When a Command Fails
-
-Do not immediately broaden the search.
-
-Use this sequence:
-
-```text
-1. Read the error.
-2. Use fallout summary.
-3. Trace the missing symbol/type.
-4. Slice the exact failing symbol.
-5. Patch the exact issue.
-6. Re-run only the failed crate check/test.
-```
-
-Example:
-
-```powershell
-cargo check -p amigo-runtime-bundles 2>&1 | & $cm fallout --limit 80
-& $cm trace "missing_symbol_name" --limit 20
-& $cm open-set "missing_symbol_name usage" --why --limit 8
-```
-
-Stop if the failure is unrelated or would require a broad refactor.
-
----
-
-# Required Report Style
-
-Final response must be concise and factual:
-
-```text
-Changed:
-- file/symbol
-- file/symbol
-
-Verified:
-- command
-- command
-
-Notes:
-- skipped verification and why
-- remaining follow-up
-```
-
-Do not claim success without verification.
-
-Do not say workspace checks passed unless they were actually run.
-
----
-
-# Architecture Rules
-
-## App Is a Thin Host
-
-`crates/apps/app` owns only true host responsibilities:
-
-```text
-window/event loop
-host startup
-platform surface orchestration
-top-level RuntimeSession launch
-temporary migration seams
-```
-
-`apps/app` must not own reusable engine/domain behavior.
-
-Do not add new domain-specific systems, handlers, render extractors, editor contracts, or debug command implementations to `apps/app`.
-
-Current allowed seams in `apps/app` are transitional:
-
-```text
-bootstrap.rs
-render_runtime.rs
-scene_runtime/mod.rs
-```
-
-When touching these files, prefer reducing app responsibility over adding more.
-
-## Domains Own Runtime Capabilities
-
-Domains should register their own runtime capabilities.
-
-Good:
-
-```text
-2d domain registers 2D scene/runtime/script/render capabilities
-3d domain registers 3D scene/runtime/script/render capabilities
-audio domain registers audio runtime capabilities
-ui domain registers UI runtime capabilities
-devtools registers debug/dev capabilities
-camera registers camera services/contracts
-```
-
-Bad:
-
-```text
-apps/app manually knows every domain capability
-apps/app registers domain handlers directly
-apps/app owns domain execution wiring
-apps/app adds a new domain-specific runtime plugin
-```
-
-## runtime/bundles Composes, It Does Not Become an App
-
-`crates/runtime/bundles` may compose sets of capabilities.
-
-It may own bridge code that combines runtime domains for a backend, for example WGPU extraction bridges.
-
-It must not become a second app.
-
-Allowed names:
-
-```text
-CoreRuntimeBundle
-TwoDRuntimeBundle
-ThreeDRuntimeBundle
-AudioRuntimeBundle
-PlatformRuntimeBundle
-DevtoolsRuntimeBundle
-FullRuntimeBundle
-WgpuSprite2dRenderExtractorBridge
-WgpuMesh3dRenderExtractorBridge
-WgpuFrameCompositionBuilder
-```
-
-Forbidden names in bundles:
-
-```text
-App*RenderExtractor
-AppFrameCompositionBuilder
-AppRuntime*
-AppScene*
-```
-
-Use `App*` only when the type truly belongs to the host application.
-
-## Devtools Owns Debug Runtime Behavior
-
-`engine/devtools` owns:
-
-```text
-dev console model/registry
-debug overlay model/service
-diagnostics commands
-debug script commands
-debug runtime plugin/capabilities
-```
-
-`apps/app` should not own dev console or debug overlay implementation.
-
-At most, app may contain a temporary re-export or host integration seam.
-
-## Render Contracts Live in render-api
-
-Shared render contracts belong in `engine/render-api`.
-
-Examples:
-
-```text
-RenderSpace
-CompositionLayer
-FrameCompositionPlan
-RenderViewPlan
-RenderPassPlan
-```
-
-Do not define reusable render contracts in `apps/app`.
-
-## Camera Contracts Live in engine/camera
-
-Shared camera behavior belongs in `engine/camera`.
-
-Expected helpers:
-
-```text
-CameraBinding::main()
-CameraBinding::none()
-CameraService::camera_by_binding(...)
-```
-
-World layers should use `CameraBinding::main()` when appropriate.
-
-Do not invent app-local camera binding concepts.
-
-## Editor API Is Placeholder Only
-
-`engine/editor-api` is only a placeholder contract crate for future editor capabilities.
-
-Allowed:
-
-```text
-ComponentTypeId
-InspectorSchema
-PropertyDescriptor
-ValidationProvider
-GizmoProvider
-AssetPickerProvider
-EditorCapabilityDescriptor
-minimal helper constructors
-```
-
-Expected helpers:
-
-```text
-ComponentTypeId::new
-InspectorSchema::placeholder
-InspectorSchema::with_field
-PropertyDescriptor::text
-PropertyDescriptor::number
-PropertyDescriptor::asset
-PropertyDescriptor::bool
-PropertyDescriptor::vec2
-PropertyDescriptor::vec3
-```
-
-Forbidden:
-
-```text
-egui
-imgui
-winit
-wgpu
-real editor UI
-viewport UI
-asset browser UI
-undo/redo workflow implementation
-apps/app dependency
-```
-
-## Editor Session Is Placeholder Only
-
-`engine/editor-session` may define placeholder editor session state.
-
-Allowed:
-
-```text
-EditorSession
-selection state
-document/session placeholder state
-capability registry placeholder
-comments explaining that this is not a full editor app
-```
-
-Forbidden:
-
-```text
-real editor application
-egui/imgui UI
-winit event loop
-wgpu renderer
-asset browser
-viewport implementation
-dependency on apps/app
-```
-
-Do not create `apps/editor`.
-
-## Editor Capabilities in Domains Are Minimal
-
-Domains may expose `editor_capability.rs` files.
-
-These must remain minimal placeholders.
-
-Allowed:
-
-```text
-stable id
-component_type
-minimal InspectorSchema
-simple PropertyDescriptor fields
-no real editor implementation
-```
-
-Expected domain placeholders include, as relevant:
-
-```text
-Sprite2D
-Text2D
-Mesh3D
-Audio
-UI
-Camera
-Devtools
-```
-
-Forbidden:
-
-```text
-real inspector UI
-real viewport gizmo implementation
-asset browser implementation
-undo/redo workflow
-UI framework dependency
-```
-
----
-
-# Render Composition Rules
-
-Final render composition should be layered and explicit.
-
-Expected concepts:
-
-```text
-RenderSpace
-CompositionLayer
-FrameCompositionPlan.layers
-FrameCompositionPlan::default_legacy_layers
-FrameCompositionPlan::sorted_layers
-FrameCompositionPlan::layers_for_space
-WgpuFrameCompositionBuilder
-```
-
-Expected layer ordering:
-
-```text
-World3D
-World2D
-Ui
-DebugOverlay
-```
-
-Debug overlay must render after game/world/UI effects.
-
-World layers may use camera binding. Debug overlay should not accidentally be affected by world post-fx.
-
-Do not reintroduce final-state names like:
-
-```text
-AppFrameCompositionBuilder
-AppRenderExtractorProvider
-App*RenderExtractor
-LegacyComposite
-SplitPassExperimental
-render.mode legacy/split
-```
-
-If legacy names appear only in documentation, update the documentation.
-
----
-
-# Bootstrap Rules
-
-`apps/app/src/bootstrap.rs` should move toward thin host startup.
-
-Good direction:
-
-```text
-parse host options
-construct RuntimeSession
-call runtime/bundles helper
-call devtools helper where needed
-start host event loop
-```
-
-Bad direction:
-
-```text
-manually register every domain capability
-manually register dev console runtime behavior
-manually own scene/script/system domain plugins
-add more domain crates to app Cargo.toml
-```
-
-If touching bootstrap, prefer moving registration behind:
-
-```text
-runtime/bundles helper
-engine/devtools helper
-engine/session helper
-```
-
-Do not add new domain wiring directly to bootstrap.
-
----
-
-# Scene Runtime Rules
-
-`apps/app/src/scene_runtime/mod.rs` is a migration seam.
-
-It may temporarily orchestrate loading/hydration, but new reusable scene behavior should move toward engine/session/domain crates.
-
-Do not add new domain-specific scene handlers to app.
-
-Scene command handlers should live with owning domains or runtime capability crates.
-
----
-
-# Script Runtime Rules
-
-Script commands should be registered by owning domains or devtools.
-
-Do not reintroduce app-side script command handler directories.
-
-Debug script commands belong in `engine/devtools`.
-
----
-
-# Runtime Bundles Rules
-
-Use bundles to compose capability sets.
-
-Good:
-
-```text
-register_core_runtime_capabilities
-register_2d_runtime_capabilities
-register_3d_runtime_capabilities
-register_audio_runtime_capabilities
-register_platform_runtime_capabilities
-register_devtools_runtime_capabilities
-register_full_runtime_capabilities
-```
-
-Bad:
-
-```text
-apps/app registers each domain manually
-runtime/bundles defines App* types
-runtime/bundles owns host window loop
-runtime/bundles becomes an application shell
-```
-
-WGPU bridge code may exist in bundles if it is clearly named as backend bridge code:
-
-```text
-Wgpu*RenderExtractorBridge
-WgpuFrameCompositionBuilder
-```
-
----
-
-# Architecture Tests
-
-Keep and extend architecture tests when closing seams.
-
-Expected app architecture tests should protect against:
-
-```text
-app-side scene handler directories
-app-side script handler directories
-app-side domain systems
-direct domain dependencies in apps/app
-App*RenderExtractor names in runtime/bundles
-AppFrameCompositionBuilder name
-UI framework dependencies in editor-api
-UI framework dependencies in editor-session
-apps/app dependency in editor-api/editor-session
-missing RenderSpace/CompositionLayer usage in composition
-editor_capability.rs without minimal InspectorSchema helpers
-```
-
-Do not weaken architecture tests to make a patch pass.
-
-If a test fails because architecture changed intentionally, update the test to protect the new boundary, not to remove protection.
-
----
-
-# Documentation Rules
-
-Keep documentation aligned with current names.
-
-Important architecture docs:
-
-```text
-docs/architecture/runtime-refactor-status.md
-docs/architecture/runtime-bundles.md
-docs/architecture/render-composition.md
-docs/architecture/editor-api-placeholder.md
-```
-
-Do not leave stale references to:
-
-```text
-AppFrameCompositionBuilder
-AppRenderExtractorProvider
-App*RenderExtractor
-apps/app owned dev console
-apps/app owned debug overlay
-apps/editor
-full editor UI
-```
-
-When renaming architecture concepts, update docs in the same patch if the docs are directly affected.
-
----
-
-# No v2 Systems
-
-Do not create:
-
-```text
-RenderPipelineV2
-SceneCompilerV2
-EditorTargetV2
-ParticleSystemV2
-NewRenderer
-LegacyRenderer
-```
-
-Evolve existing systems in place.
-
-Temporary migration names must be removed before finalizing the task.
-
----
-
-# Cleanup-As-We-Go
-
-Compatibility paths are allowed only during a migration step.
-
-After migration, delete:
-
-```text
-legacy entrypoints
-old wrappers
-fallback branches
-temporary compatibility helpers
-dead_code allowances
-migration comments that no longer apply
-```
-
-Fresh project rule: no permanent legacy.
-
-A refactor is complete only when:
-
-```text
-new path is used by all call-sites
-old path is deleted
-compatibility helper is deleted
-temporary flags are deleted
-diagnostics exist where relevant
-tests/checks pass
-names match final architecture
-no v2/legacy/experimental remains as final state
-```
-
----
-
-# Engine / App / Domain / Editor / Mod Boundaries
-
-## Engine owns
-
-```text
-runtime data contracts
-service registries
-scene compilation contracts
-scene validation contracts
-render contracts
-camera contracts
-diagnostics/certification contracts
-asset reference semantics
-editor-facing metadata contracts
-```
-
-## Domains own
-
-```text
-domain components
-domain runtime capabilities
-domain scene command handlers
-domain script command handlers
-domain systems
-domain render extraction capabilities
-minimal editor capability descriptors
-```
-
-## Runtime bundles own
-
-```text
-composition of domain capability sets
-backend bridge composition
-full runtime capability registration helper
-```
-
-## Devtools owns
-
-```text
-dev console
-debug overlay
-diagnostics commands
-debug script commands
-debug runtime capabilities
-```
-
-## App owns
-
-```text
-host startup
-window/event loop
-surface orchestration
-top-level runtime launch
-temporary migration seams only
-```
-
-## Editor API owns
-
-```text
-future editor contracts
-placeholder descriptors
-inspector schema descriptors
-provider traits
-```
-
-## Editor session owns
-
-```text
-placeholder editor session state
-selection/document placeholder state
-future editor coordination contracts
-```
-
-## Mods own
-
-```text
-authoring YAML
-scene-local assets
-mod-level reusable assets
-scripts
-content-specific values
-```
-
-Editor must not duplicate engine validation. It should consume engine metadata and diagnostics.
-
----
-
-# Code Smells to Avoid
-
-Avoid these patterns:
-
-```text
-app-level glue knowing specific domain internals
-apps/app adding direct dependencies to 2d/3d/audio/ui domains
-runtime/bundles defining App* types
-renderer core containing feature-specific if/else branches
-new v2 systems next to old systems
-compatibility paths left after migration
-huge functions with unrelated responsibilities
-DTO duplication across engine/app/editor
-YAML shape that cannot map to editor targets
-runtime feature with no diagnostics
-per-frame allocations in hot paths
-thread spawn/join inside frame loop
-debug overlay affected by game post-fx
-engine contracts hidden inside app crate
-manual parsing in editor that differs from engine parser
-stringly typed target refs without validation
-large public functions used as alternate pipelines
-```
-
-Specific architecture smells:
-
-```text
-DevConsoleRuntimePlugin owned by apps/app
-debug_overlay implementation owned by apps/app
-App*RenderExtractor inside runtime/bundles
-AppFrameCompositionBuilder inside runtime/bundles
-editor-api depends on UI frameworks
-editor-session depends on winit/wgpu/apps/app
-domains registered manually in bootstrap
-```
-
----
-
-# Change Granularity Rules
-
-A good patch changes one conceptual layer.
-
-Good sequence:
-
-```text
-1. data/contract model
-2. registration helper
-3. runtime use
-4. diagnostics/tests
-5. cleanup stale names/docs
-```
-
-Bad patch:
-
-```text
-adds editor API
-adds renderer bridge
-renames bundles
-moves devtools
-changes mod content
-updates bootstrap
-removes legacy
-all at once
-```
-
-Keep phases small enough that each can be checked independently.
-
----
-
-# Feature Implementation Shape
-
-A complete runtime feature should normally include:
-
-```text
-1. Authoring/runtime model
-2. Domain-owned capability registration
-3. Validation/certification if relevant
-4. Diagnostics/console visibility if runtime behavior is opaque
-5. Tests
-6. Editor-readable metadata placeholder if relevant
-7. Cleanup of replaced paths
-```
-
-A placeholder editor capability should normally include only:
-
-```text
-stable id
-component type id
-minimal inspector schema
-simple property descriptors
-no UI
-no editor workflow
-```
-
----
-
-# Diagnostics-First Rule
-
-Do not add hard-to-debug runtime behavior without diagnostics.
-
-Examples:
-
-```text
-new scheduler behavior -> scheduler.stats / scheduler.overrides
-new post-fx -> postfx.cert / postfx.stats
-new render path -> render.plan / render.graph
-new particle optimization -> particles.stats / debug.particles
-new input feature -> debug.input
-new bundle registration -> architecture test or diagnostic visibility
-```
-
-Diagnostics may be simple, but must exist before the feature becomes opaque.
-
----
-
-# Performance Rules
-
-Avoid:
-
-```text
-per-frame allocation in hot paths
-thread spawn per frame
-immediate worker spawn + join pretending to be async
-cloning large buffers per particle
-string clones per draw command
-offscreen render target when no post-fx needs it
-rebuilding GPU pipelines per frame
-reading world data from worker without snapshot/command model
+1. locate exact symbols
+2. read only the minimum context
+3. patch one conceptual seam
+4. run one cheapest relevant check
+5. escalate verification only if the previous step passes
 ```
 
 Prefer:
 
 ```text
-persistent worker pools
-double buffers for async visual data
-frame-local transient resource allocator
-prepared render batches
-cached pipelines
-small immutable snapshots
-command/result buffers
-diagnostic counters
-```
-
-Render-specific:
-
-```text
-No post-fx:
-  render world directly to surface.
-
-With post-fx:
-  render world to transient texture.
-  post-fx samples texture.
-  game UI after post-fx.
-  debug overlay last.
-```
-
----
-
-# Scene / Mod Authoring Rules
-
-Use scope-based authoring.
-
-```text
-mod-level folder = reusable for the whole mod
-scene-level folder = local to that scene
-```
-
-Good:
-
-```text
-mods/rotten-club/ui/themes/rotten-noir.yml
-mods/rotten-club/scenes/main-menu/ui/bindings.yml
-mods/rotten-club/scenes/main-menu/visual/lens.yml
-```
-
-Avoid generic `parts/`.
-
-Use domain folders:
-
-```text
-visual/
-entities/
-ui/
-input/
-events/
-state/
-audio/
-timelines/
-scripts/
-```
-
-Scene manifest should compose domains:
-
-```yaml
-use:
-  visual:
-    - ./visual/render.yml
-    - ./visual/lens.yml
-  ui:
-    - ./ui/mount.yml
-```
-
----
-
-# Scheduler / Jobs Rules
-
-Workers must not mutate world directly.
-
-Good pattern:
-
-```text
-main thread:
-  owns world mutation
-  collects input
-  applies command/results
-  submits GPU work
-
-workers:
-  receive snapshots
-  compute results
-  return typed output
+trace / narrow rg over broad search
+small range reads over full-file reads
+owner-crate cargo check over downstream checks
+targeted test filters over full package tests
+one precise follow-up patch over speculative rewrites
 ```
 
 Avoid:
 
 ```text
-spawn thread and immediately join every frame
-worker directly locking live render state while renderer waits
-jobs without stats
-scheduler config that silently fails to match targets
+running app-level checks before lower layers are green
+rerunning the same broad command before reading the first failure
+mixing live-path and test/support-path searches in one wide query
+open-set for a seam that is already well understood
+checking multiple downstream crates before the owner crate passes
 ```
 
-Required diagnostics:
+When searching for "remaining references", separate results into:
 
 ```text
-scheduler.stats
-scheduler.overrides
-worker_jobs_submitted
-worker_jobs_completed
-worker_waited_this_frame
-job_in_flight
-reused_previous_frame
+live runtime/backend path
+tests/support path
+diagnostics/stats path
 ```
 
----
+Do not treat those as one problem class.
 
-# Dev Console / Debug Overlay Rules
+## Layer rules
 
-Console/debug behavior belongs in `engine/devtools` unless it is explicitly mod-specific.
+### apps/app
 
-Each public command should usually live in its own focused module.
-
-Command descriptors must be accurate because completion uses them.
-
-Use categories:
+Allowed:
 
 ```text
-debug
-render
-postfx
-scheduler
-particles
-audio
-input
-scene
-camera
-editor
+host startup
+window/platform bootstrap
+runtime preset selection
+top-level app lifecycle
+render frame submission seam
 ```
 
-Completion/hinting must use registry descriptors, not hardcoded command lists.
-
-Debug overlay must render after all game effects.
-
----
-
-# Module and File Granularity
-
-Prefer cohesive files.
-
-Good:
+Forbidden:
 
 ```text
-runtime/bundles/src/wgpu_render_extractors/composition.rs
-runtime/bundles/src/wgpu_render_extractors/sprite2d.rs
-engine/render-api/src/composition.rs
-engine/camera/src/lib.rs
-engine/devtools/src/console.rs
-engine/devtools/src/debug_overlay.rs
-engine/editor-api/src/inspector.rs
-engine/editor-session/src/lib.rs
+domain extraction logic
+scene component behavior
+camera optical policy
+lighting/material/VFX semantics
+plugin-specific scripting bindings
 ```
 
-Bad:
+### crates/runtime/bundles
+
+Allowed:
 
 ```text
-one 2000-line render.rs owning graph, resources, post-fx, UI, debug, and diagnostics
-misc.rs
-utils.rs with domain logic
-manager.rs without clear responsibility
-apps/app owning reusable engine contracts
+compose runtime bundles
+register plugins
+connect backend bridge modules
+assemble default presets
+adapt domain extractors into backend packets
 ```
 
-Create a new file when:
+Forbidden:
 
 ```text
-the concept has a stable name
-it will be reused
-it has tests or diagnostics
-it reduces a monolithic file
-it clarifies an architecture boundary
+owning domain semantics
+duplicating domain extraction logic
+becoming a second app layer
+adding app-specific names to generic runtime paths
 ```
 
-Do not create a new file for one tiny helper unless it clarifies a boundary.
+### crates/engine/render-api
 
----
-
-# Naming Rules
-
-Avoid:
+Allowed:
 
 ```text
-new
-old
-v2
-legacy
-manager
-stuff
-helper
-misc
-temp
-experimental
-App* for non-app types
+render contracts
+frame graph models
+camera capture inputs
+render target/contribution/candidate models
+post-fx document/model contracts
+renderer-facing diagnostics models
 ```
 
-Use domain language:
+Forbidden:
 
 ```text
-FrameCompositionPlan
-CompositionLayer
-RenderSpace
-WgpuFrameCompositionBuilder
-WgpuSprite2dRenderExtractorBridge
-CameraBinding
-CameraService
-InspectorSchema
-PropertyDescriptor
-EditorCapabilityDescriptor
-DebugOverlayService
-ConsoleCommandRegistry
+WGPU implementation details
+domain-specific execution heuristics
+app bootstrap knowledge
 ```
 
-Temporary migration names must be removed during cleanup.
+### crates/engine/render-wgpu
 
----
-
-# Preferred Task Templates
-
-## Template: Close Bootstrap Seam
+Allowed:
 
 ```text
-1. change-plan/open-set for bootstrap + runtime bundles
-2. trace current app-owned registrations
-3. slice register_app_host_platform_plugins or equivalent symbol
-4. identify registrations that belong in runtime/bundles or devtools
-5. move behind existing helper or add focused helper
-6. verify touched crates
-7. update architecture tests/docs if boundary changed
+WGPU pipelines
+backend resources
+render passes
+texture/buffer management
+implementation of render-api contracts
 ```
 
-## Template: Close Render Composition Seam
+Forbidden:
 
 ```text
-1. trace FrameCompositionPlan / CompositionLayer / RenderSpace
-2. slice WgpuFrameCompositionBuilder
-3. ensure layers are explicit and sorted
-4. ensure debug overlay is last
-5. ensure no App* render bridge names remain
-6. run targeted checks/tests
+authoring semantics
+scene/domain policy decisions
+new renderer guesses based on component names
+silent fallbacks for missing plugin contributions
 ```
 
-## Template: Add Domain Runtime Capability
+### crates/engine/scene
+
+Allowed:
 
 ```text
-1. trace existing capability registration for that domain
-2. slice owner registration symbol
-3. add capability in domain or bundle helper, not apps/app
-4. expose through runtime/bundles if it belongs in a bundle
-5. verify domain crate and affected bundle/app crate
+scene document model
+hydration
+scene commands
+component metadata provider contracts
+validation
 ```
 
-## Template: Add Editor Placeholder Capability
+Forbidden:
 
 ```text
-1. trace existing editor_capability.rs in similar domain
-2. slice minimal descriptor function
-3. add stable id and component_type
-4. add minimal InspectorSchema fields
-5. do not add UI/framework/workflow
-6. verify domain crate and editor-api if touched
+renderer execution policy
+WGPU-specific fields
+plugin-specific runtime systems when provider registration is available
 ```
 
-## Template: Remove Legacy Name
+### plugins
+
+A plugin owns its domain waterfall:
 
 ```text
-1. trace legacy name exactly
-2. verify no required call-sites remain
-3. replace with final architecture name
-4. update docs/tests if they mention the stale name
-5. trace again
-6. check touched crates
+source/document
+  -> roles / capabilities
+  -> contribution
+  -> response
+  -> coverage
+  -> candidate
+  -> target
+  -> consumer
+  -> diagnostics
+  -> tests
 ```
 
-## Template: Fix Compile Error
+A plugin should not execute another plugin's effect directly. It should declare contributions, candidates, targets, and diagnostics through contracts.
+
+### mods
+
+Mods own authored content only:
 
 ```text
-1. run targeted cargo check through fallout
-2. trace exact missing symbol/type
-3. slice owner symbol
-4. patch exact issue
-5. rerun same check
+scenes
+scripts
+assets
+profiles
+routes
 ```
 
----
+Mods must not define engine behavior through renderer hacks.
 
-# Common Codemap Recipes
+## PostFX and camera optics rules
 
-## Find runtime bundle registration
+PostFX is the current high-risk area.
+
+Do not introduce:
+
+```text
+PostFx2dV2
+new central renderer switches without an audit note
+new hardcoded camera debug ordering without a descriptor plan
+new effect-specific WgpuSceneRenderer fields without checking for registry migration
+new visual-source heuristics based only on object existence
+```
+
+Preferred direction:
+
+```text
+PostFxRenderDescriptor
+PostFxRenderInput
+PostFxRenderOutput
+PostFxDebugPolicy
+PostFxCachedImagePolicy
+WgpuPostFxPipelineRegistry
+coverage/render adapter registry
+```
+
+Camera optics should flow through explicit contracts:
+
+```text
+CameraOpticalResponse2d
+CameraOpticalCoverage2d
+CameraOpticalCandidate2d
+CameraOpticalRenderTargetPlan
+SceneHighlight
+SceneEmissive
+```
+
+Do not make bloom/lens artifacts depend on implicit guesses such as "a lightmap exists". Use declared contribution roles and camera response metadata.
+
+## Documentation rules
+
+Keep documentation short, canonical, and UTF-8 clean.
+
+`AGENTS.md` is for agent behavior only. It must not contain pasted chat introductions, outer markdown fences, broken encoding, or old snapshot names.
+
+`PROJECT.md`, if present, is the canonical project-state overview.
+
+`README.md` is the human entrypoint.
+
+`docs/architecture/**` contains architectural source-of-truth documents.
+
+`arch.md` or pasted long plans are not canonical unless explicitly promoted and cleaned.
+
+For plugin docs, avoid one-line placeholders when a plugin is touched. A touched plugin should have meaningful docs for:
+
+```text
+README.md
+docs/pipeline.md
+docs/contributions.md
+docs/diagnostics.md
+tests/waterfall_tests.rs
+```
+
+Do not update unrelated plugin docs just to make the tree look complete.
+
+## Validation rules
+
+Always start and end with:
 
 ```powershell
-& $cm trace "register_full_runtime_capabilities" --limit 20
-& $cm trace "RuntimeBundle" --limit 20
-& $cm open-set "runtime bundles capability registration" --why --limit 12
+git status --short
 ```
 
-## Work on WGPU render extraction bridges
+For code changes, run the smallest relevant command:
 
 ```powershell
-& $cm trace "WgpuFrameCompositionBuilder" --limit 20
-& $cm trace "WgpuSprite2dRenderExtractorBridge" --limit 20
-& $cm trace "WgpuMesh3dRenderExtractorBridge" --limit 20
-& $cm open-set "WGPU render extractor bridges runtime bundles" --why --limit 12
+cargo check -p <crate>
+cargo test -p <crate> <test-filter>
 ```
 
-## Work on render composition contracts
+Default verification ladder:
+
+```text
+1. targeted rg invariant check
+2. cargo check -p owner-crate
+3. cargo check -p first downstream crate only if needed
+4. cargo check -p app only if app files or shared request/packet types changed
+5. cargo test only when behavior changed or a touched test suite is the real owner
+```
+
+Do not jump to a more expensive tier before the cheaper tier is green.
+
+For docs-only changes:
 
 ```powershell
-& $cm trace "FrameCompositionPlan" --limit 20
-& $cm trace "CompositionLayer" --limit 20
-& $cm trace "RenderSpace" --limit 20
-& $cm open-set "render-api composition layers render spaces" --why --limit 12
+git diff --check
 ```
 
-## Work on camera contracts
+For architecture-sensitive changes, also run targeted search checks, for example:
 
 ```powershell
-& $cm trace "CameraBinding" --limit 20
-& $cm trace "camera_by_binding" --limit 20
-& $cm open-set "engine camera binding camera service" --why --limit 12
+rg -n "legacy|v2|compat|fallback" crates plugins docs
+rg -n "apps/app" crates/runtime crates/engine plugins
 ```
 
-## Work on editor API placeholder
+Use these checks narrowly and interpret results. Do not report raw logs unless needed.
 
-```powershell
-& $cm trace "InspectorSchema" --limit 20
-& $cm trace "PropertyDescriptor" --limit 20
-& $cm trace "ComponentTypeId" --limit 20
-& $cm open-set "editor-api placeholder inspector schema property descriptors" --why --limit 12
-```
-
-## Work on editor capabilities in domains
-
-```powershell
-& $cm trace "editor_capability" --limit 20
-& $cm trace "InspectorSchema::placeholder" --limit 20
-& $cm open-set "domain editor_capability minimal inspector schema" --why --limit 12
-```
-
-## Work on devtools
-
-```powershell
-& $cm trace "ConsoleCommandRegistry" --limit 20
-& $cm trace "DebugOverlay" --limit 20
-& $cm trace "DevtoolsRuntimeBundle" --limit 20
-& $cm open-set "engine devtools console debug overlay diagnostics commands" --why --limit 12
-```
-
-## Check stale App names
-
-Prefer codemap trace first:
-
-```powershell
-& $cm trace "AppFrameCompositionBuilder" --limit 20
-& $cm trace "AppRenderExtractor" --limit 20
-```
-
-If needed, use a targeted search only in docs or a known directory:
-
-```powershell
-rg "AppFrameCompositionBuilder|AppRenderExtractor" docs AGENTS.md crates/apps/app/README.md
-```
-
-Do not start with repo-wide `rg`.
-
----
-
-# Anchor Policy
-
-Use codemap anchors for important architecture points.
-
-Add/update anchors when touching:
+When a command fails:
 
 ```text
-runtime bundle registration
-frame composition builder
-render-api composition contracts
-camera service/binding
-devtools registry
-editor-api placeholder contracts
-editor-session placeholder boundary
-app bootstrap seam
-app render_runtime seam
+1. read the first real error
+2. inspect only the first failing file/symbol
+3. patch that issue
+4. rerun the same cheapest relevant command
+5. only then broaden validation if needed
 ```
 
-After anchor changes:
+Do not respond to a local compile error by immediately running broader checks.
 
-```powershell
-& $cm anchors --write
-& $cm anchor-check
-```
+## Reporting format
 
-Do not tag every file. Anchor important navigation points only.
-
----
-
-# Final Response Checklist
-
-Before reporting done:
-
-```text
-Did I use codemap-first?
-Did I avoid broad scans?
-Did I edit only targeted files?
-Did I avoid adding domains to apps/app?
-Did I avoid building apps/editor?
-Did I keep editor-api/editor-session UI-free?
-Did I avoid old raw ops --raw workflow?
-Did I run ops-raw-check --yaml if raw ops were used?
-Did I run verify-plan --changed?
-Did I run only touched crate checks/tests?
-Did I remove stale App* names introduced or affected by the task?
-Did I avoid claiming unrun verification?
-```
-
-Final response format:
-
-```text
-Changed:
-- file/symbol
-- file/symbol
-
-Verified:
-- command
-- command
-
-Notes:
-- skipped checks and why
-- remaining follow-up
-```
-
----
-
-# Stop Conditions
-
-Stop and report when:
-
-```text
-requested phase is complete
-a required symbol cannot be found after trace/open-set
-a change would require broad unrelated refactor
-checks reveal unrelated pre-existing errors
-task scope would expand beyond pasted plan
-a requested change would violate app/domain/editor boundaries
-```
-
-Do not broaden the task without instruction.
-
----
-
-# Summary
-
-Use codemap to spend precision instead of tokens.
-
-For Amigo refactors, do not solve domain-owned runtime logic by labeling it `app.host`.
-
-The correct Amigo workflow is:
-
-```text
-targeted discovery
-small patch
-current raw ops protocol if needed
-minimal verify
-cleanup stale names
-concise report
-```
-
-The correct Amigo architecture direction is:
-
-```text
-apps/app as thin host
-domains own runtime capabilities
-runtime/bundles composes capabilities
-engine/devtools owns debug/dev runtime behavior
-engine/render-api owns composition contracts
-engine/camera owns camera contracts
-editor-api/editor-session remain placeholders
-no v2 systems
-no permanent legacy
-diagnostics-first
-clean final names
-```
-
-```
-```
-
----
-
-# Base Amigo Metaprompt For Execution Agents
-
-This section defines the default task contract for an execution agent working in Amigo. It is used when a task provides concrete paths, symbols, symptoms, and acceptance checks.
-
-## Role
-
-You are an execution agent / Codex CLI agent working in the Amigo repository.
-
-You must:
-
-```text
-make precise patches from supplied paths, symbols, and symptoms
-develop existing contracts in place
-clean up after the patch
-drive the task to working behavior
-```
-
-You must not:
-
-```text
-perform open-ended repository exploration
-guess architecture
-build V2 systems beside existing systems
-leave partial implementations, stubs, dead branches, parallel systems, or TODOs as substitutes for runtime behavior
-```
-
-## Prime Goal
-
-Deliver a complete, focused implementation with the smallest sensible change set.
-
-Every change must have:
-
-```text
-a clear runtime reason
-a clear target file
-a clear acceptance criterion
-```
-
-## Work Style
-
-Use tokens and tools sparingly.
-
-Do not broadly scan the repository when the task gives exact files and symbols. Open the exact paths first, read only the relevant ranges, and use precise symbol searches only when needed.
-
-Good searches:
-
-```text
-struct name
-function name
-enum name
-YAML field name
-devtools command name
-profile/preset name
-```
-
-Bad searches:
-
-```text
-renderer
-postfx
-camera
-fix
-TODO
-all
-scene
-```
-
-Do not open generated concat snapshots first when concrete files are provided.
-
-## Execution Order
-
-For each task:
-
-```text
-1. Read Cel.
-2. Read Objaw.
-3. Read Znane miejsca.
-4. Open only indicated files.
-5. Find indicated symbols in those files.
-6. Decide the minimal patch.
-7. Change files one by one.
-8. After each change, check type/call/config impact.
-9. Add required tests or diagnostics.
-10. Run exactly requested checks.
-11. If a check cannot run, report why and what was verified statically.
-12. Finish with a per-file report.
-```
-
-Line numbers are only starting points. Symbols, functions, structs, enums, YAML sections, and config names are the source of truth.
-
-## Per-File Patch Contract
-
-For every changed file, know and report:
-
-```text
-path
-symbol / function / YAML section / Rhai section
-what changed
-what did not change
-why the change is needed
-how to verify it
-```
-
-If adding a file, define:
-
-```text
-path
-responsibility
-public symbols
-imports/callers
-what the file must not do
-how to verify it is connected
-```
-
-## Architecture Rules
-
-Amigo boundaries must stay intact:
-
-```text
-apps/app is glue only
-engine-level contracts live in engine crates
-runtime, render, camera, scene, editor, and devtools stay separated
-YAML is authoring/source/raw debug, not final runtime UI
-hosted ingame editor is the direction; do not create a separate editor app
-```
-
-Do not:
-
-```text
-move responsibility into app when it belongs to engine/render/camera/scene/devtools
-add temporary mocks where real runtime bindings exist
-replace existing systems with V2 suffix systems
-use global state to bypass existing services
-```
-
-## Implementation Rules
-
-Implement vertical slices from data to runtime:
-
-```text
-YAML -> document -> hydration -> runtime model -> extraction -> renderer
-runtime control -> live apply
-post-fx -> composition plan and real execution
-diagnostics -> values that close the symptom
-scene/preset changes -> runtime effect and verification path
-```
-
-Do not stop at schema-only changes for runtime behavior. Do not stop at renderer-only changes if config cannot activate the behavior.
-
-## Cleanup Rules
-
-Cleanup is part of the task.
-
-Remove:
-
-```text
-dead fields
-old workarounds made obsolete by the patch
-duplicates
-unused imports
-obvious warnings in touched files
-parallel behavior paths
-```
-
-Do not leave commented-out code blocks or TODOs instead of working behavior.
-
-## Test Rules
-
-Run only the checks requested by the task or touched-crate checks required by this AGENTS.md.
-
-Do not run workspace-wide checks unless explicitly requested. Do not claim runtime behavior works unless runtime was actually run.
-
-If cargo or dependencies are unavailable, report:
-
-```text
-the exact failure
-the static verification performed instead
-which acceptance criteria remain unverified
-```
-
-## Task Instruction Shape
-
-A good task should include:
-
-```text
-Cel
-Objaw
-Znane miejsca
-Zakres
-Zakazy
-Plan operacji
-Modyfikacje per plik
-Addycje per plik
-Akceptacja
-Weryfikacja
-Raport końcowy
-```
-
-Short task template:
-
-```text
-Zrób:
-  concrete effect
-
-Teraz:
-  concrete runtime symptom
-
-Podejrzane pliki/symbole:
-  path — symbol
-  path — section
-  path — function
-
-Nie ruszaj:
-  prohibitions
-
-Sukces gdy:
-  concrete runtime effect
-  concrete diagnostics
-  concrete checks
-```
-
-Full task template:
-
-```text
-Cel:
-...
-
-Objaw:
-...
-
-Znane miejsca:
-...
-
-Zakres:
-...
-
-Zakazy:
-...
-
-Plan operacji:
-1. ...
-2. ...
-3. ...
-
-Modyfikacje per plik:
-1. path:
-   symbol:
-   zmień:
-   nie zmieniaj:
-   sprawdź:
-
-Addycje per plik:
-1. path:
-   odpowiedzialność:
-   publiczne symbole:
-   importy:
-   sprawdź:
-
-Akceptacja:
-...
-
-Weryfikacja:
-...
-
-Raport końcowy:
-...
-```
-
-## YAML Rules
-
-YAML is authoring source.
-
-Do not reorder whole YAML files for one field. Do not remove comments or ordering without need. Do not use runtime-control commits as manual source editing if they destroy formatting, unless the task requires it.
-
-If adding a YAML field, ensure schema/hydration/runtime read it.
-
-## Rhai Rules
-
-Do not move engine logic into Rhai.
-
-Rhai should control existing runtime controls, not patch architecture. If adding script API, add it in the proper engine/devtools/runtime-control layer following existing patterns.
-
-## Renderer Rules
-
-Do not refactor the whole renderer for one effect.
-
-Use existing:
-
-```text
-plans
-stacks
-scopes
-services
-frame graph
-scoped post-fx pipeline
-```
-
-If debugging:
-
-```text
-FocusBlur -> focus_distance_m, computed_z_depth, depth_space, layer mode, distance_m, z_depth, blur_scale, overlay redraw
-RainGlass -> post-fx order, optical maps, debug views, preset, texture resources
-visual sources -> Produced vs DerivedDebug vs MissingFallback
-```
-
-Do not confuse visual maps with a layer mode or focus distance bug.
-
-## Camera Rules
-
-Camera owns:
-
-```text
-exposure
-lens
-film
-look
-aperture/focus
-lens surface
-```
-
-Do not add another global post-fx config when it belongs to Camera2D.
-
-For focus bugs, check first:
-
-```text
-focus_distance_m
-focus_depth / computed_z_depth
-depth_space
-render layer mode
-distance_m
-blur_scale
-overlay vs distance
-camera_after_dof
-computed_z_depth debug
-```
-
-## Editor Rules
-
-The editor is a semantic scene editor, not a YAML viewer.
-
-Left panel shows clean Scene Objects. Inspector shows properties from metadata/descriptor and real runtime bindings. Raw YAML Debug is separate diagnostics.
-
-Do not add noisy tags to the tree. Do not show empty mock controls as normal UI. Viewport/tree selection is shared. Inspector is empty when nothing is selected.
-
-## Error Reporting
-
-If a file is missing, report the requested path and nearest found equivalent.
-
-If a symbol has a different name, report old and new names.
-
-If a check fails, report the first real error, not the full log.
-
-If a decision is outside scope, take the safe minimal path and report the limitation.
-
-Do not stop for small naming drift if it can be resolved precisely.
-
-## Final Report Format
-
-Keep final reports short.
-
-Use:
+Final reports must be concise and factual:
 
 ```text
 Wykonane:
-path — change
-path — change
+- MODIFY path/to/file.rs - short change
+- ADD path/to/new_file.rs - short change
 
 Weryfikacja:
-command — result
-command — result
+- cargo check -p crate-name - pass/fail
+- cargo test -p crate-name filter - pass/fail
 
-Zadanie zostanie ukończone, gdy:
-condition — spełniony / niespełniony
-condition — spełniony / niespełniony
+Ryzyka / poza zakresem:
+- item - reason
 
-Poza zakresem:
-item — reason
+Następny krok:
+- one concrete next action
 ```
 
-Do not say “should work” as success. Do not call partial work complete. Do not broaden point tasks. Do not hide runtime bugs by disabling effects unless the task is diagnostic isolation.
+Never call partial work complete. Do not say "should work" as validation. Report the first real error when validation fails.

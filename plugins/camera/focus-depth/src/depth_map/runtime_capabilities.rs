@@ -10,7 +10,6 @@ use amigo_session::{
 const DOMAIN_ID: &str = "amigo.2d.depth-map";
 const SCENE_HANDLER_ID: &str = "depth-map-2d";
 const SCENE_CONTRIBUTION_ID: &str = "depth-map-2d.scene";
-const RENDER_EXTRACTOR_ID: &str = "resolved_depth_map_2d";
 
 pub fn register_depth_map_runtime_capabilities(
     session: &mut RuntimeSession,
@@ -69,7 +68,7 @@ fn render_descriptor() -> RuntimeCapabilityDescriptor {
     RuntimeCapabilityDescriptor {
         domain_id: RuntimeDomainId::new(DOMAIN_ID),
         kind: RuntimeCapabilityKind::RenderExtractor,
-        id: RENDER_EXTRACTOR_ID.to_string(),
+        id: crate::render::DEPTH_MAP_2D_EXTRACTOR_ID.to_string(),
         label: "Depth Map 2D Extractor".to_string(),
         description: "2D depth map render extractor for camera depth of field".to_string(),
         capabilities: vec!["rendering_2d".to_string(), "camera_2d".to_string()],

@@ -3,11 +3,7 @@ use amigo_render_api::{
     RenderContributionSet, RenderContributionStatus, render_contribution_roles as roles,
 };
 
-// Renderable2dCommon lives in render-api because it is backend-neutral.
-// Renderable2dPayload stays in render-wgpu while WgpuRenderFramePacket owns
-// backend draw payloads. Extractors use this module as their stable adapter API.
-pub use amigo_render_api::{RenderSpace2d, Renderable2dCommon, Renderable2dKind};
-pub use amigo_render_wgpu::{Renderable2dItem, Renderable2dPayload};
+pub use amigo_render_api::{RenderSpace2d, Renderable2dCommon, Renderable2dItem, Renderable2dKind};
 
 pub fn supported_renderable_2d_component_kinds() -> &'static [&'static str] {
     amigo_render_wgpu::supported_renderable_2d_component_kinds()
@@ -39,10 +35,8 @@ pub fn collect_render_contribution_decisions_2d(
             roles::WORLD_COLOR,
             true,
         );
-        match &item.payload {
-            Renderable2dPayload::Text(_)
-            | Renderable2dPayload::Sprite(_)
-            | Renderable2dPayload::Vector(_) => {
+        match item.component_kind() {
+            "Text2D" | "Sprite2D" | "VectorShape2D" => {
                 push_renderable_role(
                     &mut decisions,
                     &item.common.owner_entity,
@@ -76,7 +70,7 @@ pub fn collect_render_contribution_decisions_2d(
                     false,
                 );
             }
-            Renderable2dPayload::Beacon(_) => {
+            "BeaconLight2D" => {
                 push_renderable_role(
                     &mut decisions,
                     &item.common.owner_entity,
@@ -176,13 +170,7 @@ pub fn format_render_contribution_decisions(decisions: &[RenderContributionDecis
 }
 
 fn renderable_contributions(item: &Renderable2dItem) -> Option<&RenderContributionSet> {
-    match &item.payload {
-        Renderable2dPayload::Text(command) => Some(&command.render_contributions),
-        Renderable2dPayload::Sprite(command) => Some(&command.render_contributions),
-        Renderable2dPayload::Vector(command) => Some(&command.render_contributions),
-        Renderable2dPayload::Beacon(command) => Some(&command.render_contributions),
-        _ => None,
-    }
+    item.primitive.material_binding().map(|binding| &binding.contributions)
 }
 
 fn push_renderable_role(
@@ -224,13 +212,13 @@ fn light_contribution_role(contribution: LightContributionKind2d) -> &'static st
 #[cfg(test)]
 mod tests {
     use amigo_assets::AssetKey;
-    use amigo_core::TypedId;
-    use amigo_math::{Transform2, Vec2};
+    use amigo_math::{ColorRgba, Transform2, Vec2};
     use amigo_render_api::{
-        LightContributionKind2d, LightEmitterKind2d, LightSource2dCommon, RenderContributionSet,
-        RenderSpace2d, Renderable2dCommon, Renderable2dKind,
+        GlyphRun2dBlendMode, GlyphRun2dPrimitive, LightContributionKind2d, LightEmitterKind2d,
+        LightSource2dCommon, RenderContributionSet, RenderMaterialBinding2d, RenderPrimitive2d,
+        RenderSpace2d, Renderable2dCommon, Renderable2dItem, Renderable2dKind,
     };
-    use amigo_render_wgpu::{Renderable2dItem, Renderable2dPayload};
+    use amigo_material_api::MaterialCoverageKind2d;
 
     #[test]
     fn every_builtin_renderable_2d_component_has_visual_item_adapter() {
@@ -247,8 +235,8 @@ mod tests {
 
     #[test]
     fn render_contributions_summary_includes_renderables_and_light_sources() {
-        let renderable = Renderable2dItem {
-            common: Renderable2dCommon {
+        let renderable = Renderable2dItem::new(
+            Renderable2dCommon {
                 owner_entity: "title".to_owned(),
                 component_kind: "Text2D".to_owned(),
                 render_space: RenderSpace2d::World,
@@ -256,26 +244,27 @@ mod tests {
                 z_index: 0.0,
                 kind: Renderable2dKind::Text,
             },
-            payload: Renderable2dPayload::Text(amigo_text_2d_plugin::Text2dDrawCommand {
-                entity_id: TypedId::new(1),
-                entity_name: "title".to_owned(),
-                render_layer: "title.depth2d".to_owned(),
-                text: amigo_text_2d_plugin::Text2d {
-                    content: "ROTTEN CLUB".to_owned(),
-                    font: AssetKey::new("test/font"),
-                    bounds: Vec2::new(128.0, 32.0),
-                    transform: Transform2::default(),
-                    style: amigo_text_2d_plugin::Text2dStyle::default(),
-                    post_fx_host_id: None,
-                },
-                z_index: 0.0,
-                material: None,
-                render_contributions: RenderContributionSet::from_pairs([(
-                    amigo_render_api::render_contribution_roles::MATERIAL_MASK,
-                    true,
-                )]),
+            RenderPrimitive2d::GlyphRun(GlyphRun2dPrimitive {
+                font: AssetKey::new("test/font"),
+                text: "ROTTEN CLUB".to_owned(),
+                bounds: Vec2::new(128.0, 32.0),
+                transform: Transform2::default(),
+                color: ColorRgba::WHITE,
+                font_size: None,
+                blend: GlyphRun2dBlendMode::Alpha,
+                shadow: None,
+                outline: None,
+                glow: None,
+                material: RenderMaterialBinding2d::new(
+                    None,
+                    RenderContributionSet::from_pairs([(
+                        amigo_render_api::render_contribution_roles::MATERIAL_MASK,
+                        true,
+                    )]),
+                    MaterialCoverageKind2d::Glyphs,
+                ),
             }),
-        };
+        );
         let light_source = LightSource2dCommon::active(amigo_render_api::LightSource2dCommonParams {
             owner: "neon.mid".to_owned(),
             component_kind: "LightGroup2D".to_owned(),

@@ -292,5 +292,101 @@ fn sample_post_fx_node() -> FrameGraphNodeKind {
             diagnostics.warnings
         );
     }
+
+    #[test]
+    fn camera_optics_render_descriptor_declares_visual_source_inputs() {
+        let descriptor = super::PostFx2d::CameraOptics(super::CameraOptics2d::default())
+            .render_descriptor();
+
+        assert_eq!(descriptor.feature_id, "camera_optics");
+        assert_eq!(descriptor.executor_id, "screen_space.camera_optics");
+        assert_eq!(
+            descriptor.required_inputs,
+            &[
+                super::PostFxRenderInput::SourceColor,
+                super::PostFxRenderInput::SceneNormal,
+                super::PostFxRenderInput::SceneWetness,
+                super::PostFxRenderInput::SceneHighlight,
+                super::PostFxRenderInput::SceneEmissive,
+            ]
+        );
+        assert_eq!(
+            descriptor.output,
+            super::PostFxRenderOutput::CompositeVisualSourceResponse
+        );
+        assert_eq!(descriptor.debug_policy.camera_debug_rank, Some(30));
+    }
+
+    #[test]
+    fn focus_blur_render_descriptor_marks_depth_debug_and_layer_replay() {
+        let descriptor = super::PostFx2d::FocusBlur(super::FocusBlur2d::default()).render_descriptor();
+
+        assert_eq!(descriptor.feature_id, "focus_blur");
+        assert_eq!(
+            descriptor.required_inputs,
+            &[
+                super::PostFxRenderInput::SourceColor,
+                super::PostFxRenderInput::FrameRequest,
+            ]
+        );
+        assert_eq!(descriptor.output, super::PostFxRenderOutput::ReplayScopedLayers);
+        assert!(descriptor.debug_policy.supports_depth_debug_view);
+        assert_eq!(descriptor.debug_policy.camera_debug_rank, Some(40));
+    }
+
+    #[test]
+    fn cached_image_policy_distinguishes_blur_emboss_and_passthrough_effects() {
+        let blur = super::PostFx2d::Blur(super::PostFxBlur2d::default()).render_descriptor();
+        let emboss =
+            super::PostFx2d::EmbossEdges(super::PostFxEmbossEdges2d::default()).render_descriptor();
+        let rain_glass =
+            super::PostFx2d::RainGlass(super::RainGlass2d::default()).render_descriptor();
+
+        assert_eq!(
+            blur.cached_image_policy,
+            super::PostFxCachedImagePolicy::RasterEffectWithBoundsExpansion
+        );
+        assert_eq!(
+            emboss.cached_image_policy,
+            super::PostFxCachedImagePolicy::RasterEffect
+        );
+        assert_eq!(
+            rain_glass.cached_image_policy,
+            super::PostFxCachedImagePolicy::PassthroughCopy
+        );
+    }
+
+    #[test]
+    fn render_descriptor_lookup_by_kind_matches_effect_descriptor() {
+        let from_effect =
+            super::PostFx2d::ShutterBlur(super::ShutterBlur2d::default()).render_descriptor();
+        let from_kind = super::PostFxRenderDescriptor::for_kind("shutter_blur")
+            .expect("known effect kind should resolve");
+
+        assert_eq!(from_effect, from_kind);
+        assert_eq!(
+            from_kind.required_inputs,
+            &[
+                super::PostFxRenderInput::SourceColor,
+                super::PostFxRenderInput::HostEffectIdentity,
+            ]
+        );
+        assert_eq!(from_kind.debug_policy.camera_debug_rank, Some(20));
+    }
+
+    #[test]
+    fn compatibility_helpers_follow_render_descriptor_policy() {
+        let blur = super::PostFx2d::Blur(super::PostFxBlur2d::default());
+        let emboss = super::PostFx2d::EmbossEdges(super::PostFxEmbossEdges2d::default());
+        let camera_optics = super::PostFx2d::CameraOptics(super::CameraOptics2d::default());
+
+        assert!(blur.is_cached_image_compatible());
+        assert!(emboss.is_cached_image_compatible());
+        assert!(!camera_optics.is_cached_image_compatible());
+
+        assert!(!blur.is_frame_graph_compatible());
+        assert!(!emboss.is_frame_graph_compatible());
+        assert!(camera_optics.is_frame_graph_compatible());
+    }
 }
 

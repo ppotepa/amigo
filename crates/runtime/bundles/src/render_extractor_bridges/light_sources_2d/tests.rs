@@ -2,7 +2,11 @@ mod tests {
     use amigo_camera_optics_plugin::api::{
         CameraOpticalCandidateStatus2d, CameraOpticalResponse2d,
     };
-    use amigo_render_api::{VisualSourceKind2d, VisualSourceOrigin2d, VisualSourceRef2d};
+    use amigo_render_api::{
+        LightContributionKind2d, LightEmitterKind2d, LightSource2dCommon,
+        LightSource2dCommonParams, RenderContribution2d, VisualSourceKind2d,
+        VisualSourceOrigin2d, VisualSourceRef2d,
+    };
 
     use super::super::{
         collect_camera_optical_candidates_from_light_sources_2d, collect_light_sources_2d,
@@ -12,10 +16,6 @@ mod tests {
     #[test]
     fn light_sources_summary_reports_emissive_visual_source() {
         let sources = collect_light_sources_2d(
-            &[],
-            &[],
-            &[],
-            &[],
             &[],
             &[],
             Some(&amigo_render_api::CameraCaptureInput2d {
@@ -58,7 +58,9 @@ mod tests {
             }],
         };
 
-        let sources = collect_light_sources_2d(&[], &[], &[], &[lightmap], &[], &[], None);
+        let contributions =
+            amigo_light_2d_plugin::lightmap_commands_to_render_contributions(&[lightmap]);
+        let sources = collect_light_sources_2d(&[], &contributions, None);
         assert_eq!(sources.len(), 1);
         assert_eq!(
             sources[0].emitter_kind,
@@ -70,13 +72,28 @@ mod tests {
 
     #[test]
     fn light_sources_resolves_light_group_effective_intensity() {
-        let global = amigo_light_2d_plugin::GlobalLight2dCommand {
-            source_mod: "test".to_owned(),
-            entity_name: "sky-light".to_owned(),
-            id: "sky".to_owned(),
-            color: amigo_math::ColorRgba::new(1.0, 0.9, 0.8, 1.0),
-            intensity: 0.5,
-        };
+        let global = RenderContribution2d::light_source_2d(LightSource2dCommon::active(
+            LightSource2dCommonParams {
+                owner: "sky-light".to_owned(),
+                component_kind: "GlobalLight2D".to_owned(),
+                emitter_kind: LightEmitterKind2d::GlobalLight,
+                emitter_id: Some("sky".to_owned()),
+                render_layer: None,
+                color_rgba: Some([1.0, 0.9, 0.8, 1.0]),
+                intensity: Some(0.5),
+                effective_intensity: Some(0.5),
+                response: Some(1.0),
+                camera_response: None,
+                bloom: None,
+                radius_px: None,
+                falloff: None,
+                distance_m: None,
+                z_depth: None,
+                contributions: vec![LightContributionKind2d::LightingEmit],
+                reason: "test_global_light".to_owned(),
+                position_px: None,
+            },
+        ));
         let group = amigo_light_2d_plugin::LightGroup2dCommand {
             source_mod: "test".to_owned(),
             id: "street-neon".to_owned(),
@@ -93,7 +110,20 @@ mod tests {
             }],
         };
 
-        let sources = collect_light_sources_2d(&[], &[], &[global], &[], &[group], &[], None);
+        let mut contributions = vec![global];
+        let global_command = amigo_light_2d_plugin::GlobalLight2dCommand {
+            source_mod: "test".to_owned(),
+            entity_name: "sky-light".to_owned(),
+            id: "sky".to_owned(),
+            color: amigo_math::ColorRgba::new(1.0, 0.9, 0.8, 1.0),
+            intensity: 0.5,
+        };
+        contributions.extend(amigo_light_2d_plugin::light_group_commands_to_render_contributions(
+            std::slice::from_ref(&group),
+            &[global_command],
+            &[],
+        ));
+        let sources = collect_light_sources_2d(&[], &contributions, None);
         let group_source = sources
             .iter()
             .find(|source| source.emitter_kind == amigo_render_api::LightEmitterKind2d::LightGroup)
@@ -153,8 +183,14 @@ mod tests {
             }],
         };
 
-        let light_sources =
-            collect_light_sources_2d(&[], &[], &[], &[lightmap], &[group], &[], None);
+        let mut contributions =
+            amigo_light_2d_plugin::lightmap_commands_to_render_contributions(std::slice::from_ref(&lightmap));
+        contributions.extend(amigo_light_2d_plugin::light_group_commands_to_render_contributions(
+            std::slice::from_ref(&group),
+            &[],
+            std::slice::from_ref(&lightmap),
+        ));
+        let light_sources = collect_light_sources_2d(&[], &contributions, None);
         let candidates = collect_camera_optical_candidates_from_light_sources_2d(&light_sources);
         let summary = amigo_camera_optics_plugin::diagnostics::format_camera_optical_candidates_2d(
             &candidates,
@@ -229,26 +265,17 @@ mod tests {
 
     #[test]
     fn camera_optical_candidates_report_beacon_hotspot_coverage() {
-        let beacon = amigo_beacon_light_2d_plugin::BeaconLight2dDrawCommand {
-            entity_name: "beacon-a".to_owned(),
-            render_layer: "foreground.lights".to_owned(),
-            z_index: 0.0,
-            center: amigo_math::Vec2::new(42.0, 84.0),
-            color: amigo_math::ColorRgba::new(1.0, 0.2, 0.1, 1.0),
-            intensity: 1.0,
-            pulse: 1.0,
-            core_radius_px: 8.0,
-            halo_radius_px: 42.0,
-            glow_strength: 0.6,
-            rotation_radians: 0.0,
-            beam_enabled: false,
-            beam_length_px: 0.0,
-            beam_width_degrees: 0.0,
-            beam_strength: 0.0,
-            aberration_px: 4.0,
-
-            bloom: 0.5,
-            camera_response: CameraOpticalResponse2d {
+        let beacon_source = LightSource2dCommon::active(LightSource2dCommonParams {
+            owner: "beacon-a".to_owned(),
+            component_kind: "BeaconLight2D".to_owned(),
+            emitter_kind: LightEmitterKind2d::Beacon,
+            emitter_id: None,
+            render_layer: Some("foreground.lights".to_owned()),
+            color_rgba: Some([1.0, 0.2, 0.1, 1.0]),
+            intensity: Some(1.0),
+            effective_intensity: Some(1.0),
+            response: Some(1.0),
+            camera_response: Some(CameraOpticalResponse2d {
                 enabled: true,
                 intensity: 0.8,
                 bloom: 0.5,
@@ -259,24 +286,25 @@ mod tests {
                 dirt_response: 0.4,
                 halation: 0.5 * 0.35,
                 threshold: 0.0,
-            },
+            }),
+            bloom: Some(0.5),
+            radius_px: Some(42.0),
+            falloff: None,
             distance_m: Some(2.0),
             z_depth: Some(0.75),
-            render_contributions: amigo_render_api::RenderContributionSet::from_pairs([
-                (
-                    amigo_render_api::render_contribution_roles::BLOOM_SOURCE,
-                    true,
-                ),
-                (
-                    amigo_render_api::render_contribution_roles::CAMERA_FX_SOURCE,
-                    true,
-                ),
-            ]),
-            viewport_fit: amigo_scene::LayeredImageViewportFit2dSceneCommand::Fixed,
-            viewport_canvas_size: None,
-        };
+            contributions: vec![
+                LightContributionKind2d::BloomSource,
+                LightContributionKind2d::CameraFxSource,
+            ],
+            reason: "active_light_emitter".to_owned(),
+            position_px: Some([42.0, 84.0]),
+        });
 
-        let light_sources = collect_light_sources_2d(&[], &[beacon], &[], &[], &[], &[], None);
+        let light_sources = collect_light_sources_2d(
+            &[],
+            &[RenderContribution2d::LightSource2d(beacon_source)],
+            None,
+        );
         let candidates = collect_camera_optical_candidates_from_light_sources_2d(&light_sources);
         let summary = amigo_camera_optics_plugin::diagnostics::format_camera_optical_candidates_2d(
             &candidates,

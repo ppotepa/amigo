@@ -1,10 +1,40 @@
+use std::any::Any;
+use std::sync::Arc;
+
 use amigo_assets::{AssetCatalog, AssetKey};
 use amigo_core::{AmigoError, AmigoResult};
-use amigo_scene::{SceneCommand, SceneEvent, SceneEventQueue, SceneService, format_scene_command};
+use amigo_scene::{
+    PluginSceneCommand, PluginSceneCommandPayload, SceneCommand, SceneEvent, SceneEventQueue,
+    SceneService, Sprite2dSceneCommand, format_scene_command,
+};
 
 use super::{SpriteSceneService, queue_sprite_scene_command, resolve_sprite_sheet_for_command};
 
 pub struct Sprite2dSceneCommandHandler;
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct Sprite2dPluginCommandPayload(pub Sprite2dSceneCommand);
+
+impl PluginSceneCommandPayload for Sprite2dPluginCommandPayload {
+    fn command_type(&self) -> &'static str {
+        "amigo.gfx.sprite-2d.scene-command.Sprite2D"
+    }
+
+    fn command_as_any(&self) -> &dyn Any {
+        &self.0
+    }
+
+    fn eq_payload(&self, other: &dyn PluginSceneCommandPayload) -> bool {
+        other
+            .command_as_any()
+            .downcast_ref::<Sprite2dSceneCommand>()
+            .is_some_and(|command| command == &self.0)
+    }
+}
+
+pub fn sprite_plugin_scene_command(command: Sprite2dSceneCommand) -> PluginSceneCommand {
+    PluginSceneCommand::new(Arc::new(Sprite2dPluginCommandPayload(command)))
+}
 
 pub struct SpriteSceneCommandContext<'a> {
     pub scene_service: &'a SceneService,
@@ -22,6 +52,11 @@ pub struct SpriteSceneCommandOutcome {
 
 pub fn can_handle_sprite_scene_command(command: &SceneCommand) -> bool {
     matches!(command, SceneCommand::QueueSprite2d { .. })
+        || matches!(
+            command,
+            SceneCommand::Plugin { command }
+                if command.command_type == "amigo.gfx.sprite-2d.scene-command.Sprite2D"
+        )
 }
 
 pub fn handle_sprite_scene_command(
@@ -30,6 +65,33 @@ pub fn handle_sprite_scene_command(
 ) -> AmigoResult<SpriteSceneCommandOutcome> {
     match command {
         SceneCommand::QueueSprite2d { command } => {
+            let resolved_sheet = resolve_sprite_sheet_for_command(ctx.asset_catalog, &command);
+            let entity = queue_sprite_scene_command(
+                ctx.scene_service,
+                ctx.sprite_scene_service,
+                &command,
+                resolved_sheet,
+            );
+
+            ctx.scene_event_queue.publish(SceneEvent::SpriteQueued {
+                entity_id: entity.raw(),
+                entity_name: command.entity_name.clone(),
+                texture: command.texture.clone(),
+            });
+
+            Ok(SpriteSceneCommandOutcome {
+                entity_name: command.entity_name,
+                source_mod: command.source_mod,
+                texture: command.texture,
+            })
+        }
+        SceneCommand::Plugin { command } => {
+            let Some(command) = command.sprite_2d_command().cloned() else {
+                return Err(AmigoError::Message(
+                    "sprite-2d plugin command payload mismatch".to_owned(),
+                ));
+            };
+
             let resolved_sheet = resolve_sprite_sheet_for_command(ctx.asset_catalog, &command);
             let entity = queue_sprite_scene_command(
                 ctx.scene_service,

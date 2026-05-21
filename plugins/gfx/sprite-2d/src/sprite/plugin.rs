@@ -26,6 +26,18 @@ impl RuntimePlugin for SpritePlugin {
         {
             metadata.register(crate::scene::Sprite2dComponentMetadataProvider);
         }
+        if let Some(schemas) = registry.resolve::<amigo_scene::ComponentSchemaRegistry>() {
+            schemas.register_provider(&crate::scene::descriptors::Sprite2dSceneDescriptorProvider);
+            schemas.register_schema_provider(crate::scene::Sprite2dSceneSchemaProvider);
+        }
+        if let Some(hydrators) = registry.resolve::<amigo_scene::ComponentHydratorRegistry>() {
+            hydrators.register(crate::scene::hydration::Sprite2dComponentHydrator);
+        }
+        if let Some(render_extractors) =
+            registry.resolve::<amigo_render_api::RuntimeRenderExtractorIdRegistry>()
+        {
+            crate::render::register_sprite_2d_render_extractor_id(render_extractors.as_ref());
+        }
         registry.register(SpriteDomainInfo {
             crate_name: "amigo-sprite-2d-plugin",
             capability: "rendering_2d",
@@ -43,6 +55,14 @@ impl RuntimePlugin for SpritePlugin {
             scene_handlers.as_ref(),
             super::scene_command::Sprite2dSceneCommandHandler,
         );
+        if let Some(plugin_scene_handlers) =
+            registry.resolve::<amigo_scene::PluginSceneCommandHandlerRegistry>()
+        {
+            plugin_scene_handlers.register(
+                "amigo.gfx.sprite-2d.scene-command.Sprite2D",
+                std::sync::Arc::new(super::scene_command::Sprite2dSceneCommandHandler),
+            );
+        }
         let script_handlers =
             registry.required::<amigo_scripting_api::RuntimeScriptCommandHandlerRegistry>()?;
         amigo_scripting_api::register_runtime_script_command_handler(

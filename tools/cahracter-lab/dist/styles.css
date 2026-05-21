@@ -8,10 +8,11 @@
       --skin: #d7a27a;
       --skin-ear: var(--skin);
       --nose-fill: var(--skin);
-      --skin-stroke: #6c4934;
-      --skin-stroke-soft: rgba(108, 73, 52, .46);
+      --skin-stroke: #5f534a;
+      --skin-stroke-soft: rgba(95, 83, 74, .42);
       --skin-shadow: rgba(91, 58, 41, .26);
       --skin-highlight: rgba(255, 246, 234, .22);
+      --silhouette-stroke: #4f6278;
       --ghost-center: rgba(49, 99, 255, 0.20);
       --ghost-profile: rgba(255, 118, 43, 0.22);
     }
@@ -127,6 +128,7 @@
       fill: #000;
       stroke: none;
       vector-effect: non-scaling-stroke;
+      opacity: .98;
     }
     .masterSilhouettePath {
       fill: #000;
@@ -226,6 +228,94 @@
       border-radius: 999px;
       padding: 7px 10px;
     }
+    .yawGizmo {
+      position: absolute;
+      left: 18px;
+      bottom: 18px;
+      width: 132px;
+      height: 132px;
+      pointer-events: none;
+      z-index: 2;
+    }
+    .yawGizmoOrbit,
+    .yawGizmoCore {
+      position: absolute;
+      inset: 50%;
+      transform: translate(-50%, -50%);
+      border-radius: 999px;
+      pointer-events: none;
+    }
+    .yawGizmoOrbit {
+      width: 102px;
+      height: 102px;
+      border: 1px solid rgba(90, 124, 168, .22);
+      background:
+        radial-gradient(circle at 50% 50%, rgba(255,255,255,.54) 0, rgba(255,255,255,.18) 56%, rgba(255,255,255,0) 76%),
+        conic-gradient(from 0deg, rgba(90, 124, 168, .11), rgba(90, 124, 168, .02), rgba(90, 124, 168, .11));
+      box-shadow:
+        inset 0 1px 0 rgba(255,255,255,.74),
+        0 14px 34px rgba(75, 104, 138, .12);
+      backdrop-filter: blur(10px);
+    }
+    .yawGizmoCore {
+      width: 52px;
+      height: 52px;
+      border: 1px solid rgba(90, 124, 168, .20);
+      background: rgba(255,255,255,.88);
+      box-shadow: 0 10px 22px rgba(75, 104, 138, .14);
+      display: grid;
+      place-items: center;
+      gap: 3px;
+      padding-top: 6px;
+    }
+    .yawGizmoDot {
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: var(--accent);
+      box-shadow: 0 0 0 4px rgba(90, 124, 168, .12);
+    }
+    .yawGizmoText {
+      font-size: 10px;
+      color: #5e6f85;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      font-weight: 700;
+    }
+    .yawGizmoButton {
+      position: absolute;
+      width: 34px;
+      height: 34px;
+      border: 1px solid rgba(90, 124, 168, .20);
+      border-radius: 999px;
+      background: rgba(255,255,255,.92);
+      color: #5a6d84;
+      box-shadow: 0 8px 18px rgba(75, 104, 138, .12);
+      font-size: 12px;
+      font-weight: 700;
+      pointer-events: auto;
+      transition:
+        transform 140ms ease,
+        background 140ms ease,
+        border-color 140ms ease,
+        color 140ms ease,
+        box-shadow 140ms ease;
+    }
+    .yawGizmoButton:hover {
+      background: #ffffff;
+      border-color: rgba(90, 124, 168, .34);
+      transform: scale(1.06);
+    }
+    .yawGizmoButton.active {
+      background: var(--accent);
+      color: #ffffff;
+      border-color: var(--accent);
+      box-shadow: 0 10px 22px rgba(90, 124, 168, .30);
+    }
+    .yawGizmoFront { left: 49px; top: 0; }
+    .yawGizmoLeft { left: 0; top: 49px; }
+    .yawGizmoBack { left: 49px; bottom: 0; }
+    .yawGizmoRight { right: 0; top: 49px; }
     .control {
       border-top: 1px solid var(--line);
       padding-top: 14px;
@@ -264,8 +354,7 @@
       grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 8px;
     }
-    .switches label,
-    .buttonGrid button {
+    .switches label {
       border: 1px solid var(--line);
       border-radius: 13px;
       padding: 9px 10px;
@@ -281,7 +370,7 @@
     }
     .exportPanel {
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 8px;
     }
     .exportPanel a,
@@ -301,16 +390,6 @@
     }
     button { cursor: pointer; font: inherit; }
     button:hover, .switches label:hover, .exportPanel a:hover { background: #f3f8fe; }
-    .buttonGrid {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 8px;
-    }
-    .buttonGrid button.active {
-      background: var(--accent);
-      color: white;
-      border-color: var(--accent);
-    }
     .smallCode, .audit {
       border: 1px solid var(--line);
       border-radius: 14px;
@@ -354,4 +433,10 @@
       body { grid-template-columns: 1fr; }
       main { min-height: auto; }
       aside { max-height: none; }
+      .yawGizmo {
+        left: 14px;
+        bottom: 14px;
+        transform: scale(.92);
+        transform-origin: left bottom;
+      }
     }

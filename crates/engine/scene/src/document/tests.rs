@@ -2,13 +2,16 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicUsize, Ordering};
 
+use serde_yaml::Value;
+
 use super::{
     Camera2dModeDocument, CameraFocus2dDocument, Material2dOpticalModeDocument,
     RenderDepthMode2dDocument, SceneComponentDocument, SceneEntitySelectorDocument,
     SceneEntitySelectorKindDocument, compile_scene_document_from_path, load_scene_document_from_path,
-    load_scene_document_from_str,
+    load_scene_document_from_str, load_scene_document_from_str_with_component_schemas,
 };
 use crate::SceneDocumentError;
+use crate::{ComponentSchemaRegistry, ScenePluginComponentDescriptor};
 
 static TEST_DIR_COUNTER: AtomicUsize = AtomicUsize::new(0);
 
@@ -200,6 +203,70 @@ entities:
         document.entities[1].components[0],
         SceneComponentDocument::Sprite2d { .. }
     ));
+}
+
+#[test]
+fn scene_document_parses_unknown_component_as_plugin_envelope() {
+    let document = load_scene_document_from_str(
+        r#"
+version: 1
+scene:
+  id: plugin-envelope
+entities:
+  - id: plugin-entity
+    components:
+      - type: amigo.gfx.sprite-2d.Sprite2D
+        texture: plugin/sprite
+        size: { x: 64.0, y: 64.0 }
+"#,
+    )
+    .expect("scene document should parse");
+
+    match &document.entities[0].components[0] {
+        SceneComponentDocument::Plugin {
+            component_type,
+            payload,
+        } => {
+            assert_eq!(component_type, "amigo.gfx.sprite-2d.Sprite2D");
+            let mapping = payload.as_mapping().expect("plugin payload should be a mapping");
+            assert!(mapping.contains_key(Value::String("texture".to_owned())));
+            assert!(mapping.contains_key(Value::String("size".to_owned())));
+        }
+        other => panic!("expected plugin envelope, got {other:?}"),
+    }
+}
+
+#[test]
+fn scene_document_uses_registered_component_schema_for_sprite2d_runtime_path() {
+    let mut component_schemas = ComponentSchemaRegistry::default();
+    component_schemas.register_descriptor(ScenePluginComponentDescriptor::new(
+        "amigo.gfx.sprite-2d.Sprite2D",
+        "gfx",
+        "Sprite2D",
+    ));
+
+    let document = load_scene_document_from_str_with_component_schemas(
+        r#"
+version: 1
+scene:
+  id: plugin-schema-sprite
+entities:
+  - id: sprite
+    components:
+      - type: Sprite2D
+        texture: plugin/sprite
+        size: { x: 64.0, y: 64.0 }
+"#,
+        Some(&component_schemas),
+    )
+    .expect("scene document should parse");
+
+    match &document.entities[0].components[0] {
+        SceneComponentDocument::Plugin { component_type, .. } => {
+            assert_eq!(component_type, "amigo.gfx.sprite-2d.Sprite2D");
+        }
+        other => panic!("expected plugin envelope, got {other:?}"),
+    }
 }
 
 #[test]

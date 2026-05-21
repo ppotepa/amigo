@@ -1,5 +1,6 @@
 use super::policy::VisualSourceBufferPolicySet;
 use super::*;
+use amigo_render_api::{RenderPrimitive2d, Renderable2dItem};
 
 // V1 SceneMotionBuffer.
 // This estimates screen-space motion from previous per-draw transform positions.
@@ -59,7 +60,7 @@ fn render_shutter_motion_fallback(
         );
     }
     if feature_id == "shutter_blur" {
-        if let Some(effect) = super::super::focus_depth_plan::shutter_blur_effect_for(
+        if let Some(effect) = super::super::focus_depth_plan::motion_debug_post_fx_for(
             request.post_fx_stacks,
             host_id,
             effect_id,
@@ -107,207 +108,16 @@ fn render_per_draw_motion_buffer(
     let mut color_batches = Vec::new();
     let target_size = (target.width, target.height);
 
-    for command in request.world_2d.tilemaps.commands() {
-        let transform = crate::renderer::scene::resolve_transform2(
-            request.scene,
-            &command.entity_name,
-            Transform2::default(),
-        );
-        let key = format!("tilemap:{}", command.entity_name);
-        current_positions.insert(key.clone(), transform.translation);
-        util::append_visual_quad(
+    for (index, item) in request.world_2d.renderables.iter().enumerate() {
+        append_renderable_motion(
+            renderer,
+            &mut current_positions,
             &mut color_batches,
             &viewport,
             camera,
-            transform,
-            util::tilemap_draw_size(&command.tilemap),
-            motion_vector_color(
-                renderer
-                    .visual_source_previous_positions_2d
-                    .get(&key)
-                    .copied(),
-                transform.translation,
-                target_size,
-            ),
-        );
-    }
-
-    for command in request.world_2d.sprites.commands() {
-        let transform = crate::renderer::scene::resolve_transform2(
-            request.scene,
-            &command.entity_name,
-            command.transform,
-        );
-        let key = format!("sprite:{}", command.entity_name);
-        current_positions.insert(key.clone(), transform.translation);
-        let color = motion_vector_color(
-            renderer
-                .visual_source_previous_positions_2d
-                .get(&key)
-                .copied(),
-            transform.translation,
             target_size,
-        );
-        let sprite = amigo_sprite_2d_plugin::Sprite {
-            texture: command.sprite.texture.clone(),
-            size: command.sprite.size,
-            sheet: None,
-            sheet_is_explicit: false,
-            animation_override: None,
-            visual_maps: None,
-            frame_index: command.sprite.frame_index,
-            frame_elapsed: command.sprite.frame_elapsed,
-        };
-        crate::renderer::world_2d::append_sprite_vertices(
-            color_batch_vertices(&mut color_batches, ParticleBlendMode2d::Alpha),
-            &viewport,
-            camera,
-            transform,
-            &sprite,
-            color,
-        );
-    }
-
-    for command in request.world_2d.layered_images.commands() {
-        let transform = crate::renderer::scene::resolve_transform2(
-            request.scene,
-            &command.entity_name,
-            command.transform,
-        );
-        let key = format!("layered_image:{}", command.entity_name);
-        current_positions.insert(key.clone(), transform.translation);
-        let color = motion_vector_color(
-            renderer
-                .visual_source_previous_positions_2d
-                .get(&key)
-                .copied(),
-            transform.translation,
-            target_size,
-        );
-        let sprite = amigo_sprite_2d_plugin::Sprite {
-            texture: command.image.asset.clone(),
-            size: command.image.size,
-            sheet: None,
-            sheet_is_explicit: false,
-            animation_override: None,
-            visual_maps: None,
-            frame_index: 0,
-            frame_elapsed: 0.0,
-        };
-        crate::renderer::world_2d::append_sprite_vertices(
-            color_batch_vertices(&mut color_batches, ParticleBlendMode2d::Alpha),
-            &viewport,
-            camera,
-            transform,
-            &sprite,
-            color,
-        );
-    }
-
-    for command in request.world_2d.vectors.commands() {
-        let transform = crate::renderer::world_2d::vector_viewport_fit_transform(
-            &viewport,
-            crate::renderer::scene::resolve_transform2(
-                request.scene,
-                &command.entity_name,
-                command.transform,
-            ),
-            command.viewport_fit,
-            command.viewport_canvas_size,
-        );
-        let key = format!("vector:{}", command.entity_name);
-        current_positions.insert(key.clone(), transform.translation);
-        let color = motion_vector_color(
-            renderer
-                .visual_source_previous_positions_2d
-                .get(&key)
-                .copied(),
-            transform.translation,
-            target_size,
-        );
-        let mut shape = command.shape.clone();
-        shape.style.stroke_color = color;
-        shape.style.fill_color = Some(color);
-        crate::renderer::world_2d::append_vector_shape_vertices(
-            color_batch_vertices(&mut color_batches, ParticleBlendMode2d::Alpha),
-            &viewport,
-            camera,
-            transform,
-            &shape,
-        );
-    }
-
-    for command in request.world_2d.text2d.commands() {
-        let transform = crate::renderer::scene::resolve_transform2(
-            request.scene,
-            &command.entity_name,
-            command.text.transform,
-        );
-        let key = format!("text2d:{}", command.entity_name);
-        current_positions.insert(key.clone(), transform.translation);
-        util::append_visual_quad(
-            &mut color_batches,
-            &viewport,
-            camera,
-            transform,
-            command.text.bounds,
-            motion_vector_color(
-                renderer
-                    .visual_source_previous_positions_2d
-                    .get(&key)
-                    .copied(),
-                transform.translation,
-                target_size,
-            ),
-        );
-    }
-
-    for command in request.world_2d.beacons {
-        let key = format!("beacon:{}", command.entity_name);
-        current_positions.insert(key.clone(), command.center);
-        let color = motion_vector_color(
-            renderer
-                .visual_source_previous_positions_2d
-                .get(&key)
-                .copied(),
-            command.center,
-            target_size,
-        );
-        util::append_visual_quad(
-            &mut color_batches,
-            &viewport,
-            camera,
-            Transform2 {
-                translation: command.center,
-                rotation_radians: command.rotation_radians,
-                scale: Vec2::new(1.0, 1.0),
-            },
-            Vec2::new(
-                command.halo_radius_px.max(command.core_radius_px) * 2.0,
-                command.halo_radius_px.max(command.core_radius_px) * 2.0,
-            ),
-            color,
-        );
-    }
-
-    for (index, command) in request.world_2d.particles.iter().enumerate() {
-        let key = format!("particle:{}:{index}", command.emitter_entity_name);
-        current_positions.insert(key, command.position);
-        util::append_visual_quad(
-            &mut color_batches,
-            &viewport,
-            camera,
-            Transform2 {
-                translation: command.position,
-                rotation_radians: command.transform.rotation_radians,
-                scale: command.transform.scale,
-            },
-            Vec2::new(command.size.max(1.0), command.size.max(1.0)),
-            motion_vector_color(
-                Some(command.previous_position),
-                command.position,
-                target_size,
-            ),
+            item,
+            index,
         );
     }
 
@@ -329,6 +139,147 @@ fn render_per_draw_motion_buffer(
         &[],
     )?;
     Ok(true)
+}
+
+fn append_renderable_motion(
+    renderer: &WgpuSceneRenderer,
+    current_positions: &mut std::collections::BTreeMap<String, Vec2>,
+    color_batches: &mut Vec<ColorBatch>,
+    viewport: &Viewport,
+    camera: Transform2,
+    target_size: (u32, u32),
+    item: &Renderable2dItem,
+    index: usize,
+) {
+    match &item.primitive {
+        RenderPrimitive2d::TileMap(primitive) => {
+            let transform = Transform2 {
+                translation: primitive.origin_offset,
+                ..Transform2::default()
+            };
+            let key = format!("tilemap:{}", item.owner_entity());
+            current_positions.insert(key.clone(), transform.translation);
+            util::append_visual_quad(
+                color_batches,
+                viewport,
+                camera,
+                transform,
+                util::tilemap_primitive_draw_size(primitive),
+                motion_vector_color(
+                    renderer.visual_source_previous_positions_2d.get(&key).copied(),
+                    transform.translation,
+                    target_size,
+                ),
+            );
+        }
+        RenderPrimitive2d::TexturedQuad(primitive) => {
+            let key = format!("quad:{}:{}", item.component_kind(), item.owner_entity());
+            current_positions.insert(key.clone(), primitive.transform.translation);
+            util::append_visual_quad(
+                color_batches,
+                viewport,
+                camera,
+                primitive.transform,
+                primitive.size,
+                motion_vector_color(
+                    renderer.visual_source_previous_positions_2d.get(&key).copied(),
+                    primitive.transform.translation,
+                    target_size,
+                ),
+            );
+        }
+        RenderPrimitive2d::LayeredImage(primitive) => {
+            let key = format!("layered_image:{}", item.owner_entity());
+            current_positions.insert(key.clone(), primitive.transform.translation);
+            util::append_visual_quad(
+                color_batches,
+                viewport,
+                camera,
+                primitive.transform,
+                primitive.size,
+                motion_vector_color(
+                    renderer.visual_source_previous_positions_2d.get(&key).copied(),
+                    primitive.transform.translation,
+                    target_size,
+                ),
+            );
+        }
+        RenderPrimitive2d::GlyphRun(primitive) => {
+            let key = format!("text2d:{}", item.owner_entity());
+            current_positions.insert(key.clone(), primitive.transform.translation);
+            util::append_visual_quad(
+                color_batches,
+                viewport,
+                camera,
+                primitive.transform,
+                primitive.bounds,
+                motion_vector_color(
+                    renderer.visual_source_previous_positions_2d.get(&key).copied(),
+                    primitive.transform.translation,
+                    target_size,
+                ),
+            );
+        }
+        RenderPrimitive2d::VectorShape(primitive) => {
+            let transform =
+                crate::renderer::world_2d::vector_primitive_viewport_fit_transform(viewport, primitive);
+            let key = format!("vector:{}", item.owner_entity());
+            current_positions.insert(key.clone(), transform.translation);
+            let color = motion_vector_color(
+                renderer.visual_source_previous_positions_2d.get(&key).copied(),
+                transform.translation,
+                target_size,
+            );
+            crate::renderer::world_2d::append_vector_primitive_vertices(
+                color_batch_vertices(color_batches, ParticleBlendMode2d::Alpha),
+                viewport,
+                camera,
+                primitive,
+                Some(transform),
+                Some(color),
+                Some(color),
+            );
+        }
+        RenderPrimitive2d::BeaconLight(primitive) => {
+            let key = format!("beacon:{}", item.owner_entity());
+            current_positions.insert(key.clone(), primitive.center);
+            util::append_visual_quad(
+                color_batches,
+                viewport,
+                camera,
+                Transform2 {
+                    translation: primitive.center,
+                    rotation_radians: primitive.rotation_radians,
+                    scale: Vec2::new(1.0, 1.0),
+                },
+                Vec2::new(
+                    primitive.halo_radius_px.max(primitive.core_radius_px) * 2.0,
+                    primitive.halo_radius_px.max(primitive.core_radius_px) * 2.0,
+                ),
+                motion_vector_color(
+                    renderer.visual_source_previous_positions_2d.get(&key).copied(),
+                    primitive.center,
+                    target_size,
+                ),
+            );
+        }
+        RenderPrimitive2d::Particle(primitive) => {
+            let key = format!("particle:{}:{index}", primitive.emitter_entity_name);
+            current_positions.insert(key, primitive.position);
+            util::append_visual_quad(
+                color_batches,
+                viewport,
+                camera,
+                Transform2 {
+                    translation: primitive.position,
+                    rotation_radians: primitive.transform.rotation_radians,
+                    scale: primitive.transform.scale,
+                },
+                Vec2::new(primitive.size.max(1.0), primitive.size.max(1.0)),
+                motion_vector_color(Some(primitive.previous_position), primitive.position, target_size),
+            );
+        }
+    }
 }
 
 fn motion_vector_color(

@@ -3,7 +3,7 @@ use crate::renderer::*;
 use std::collections::BTreeSet;
 
 impl WgpuSceneRenderer {
-    pub(crate) fn append_sprite_texture_batch(
+    pub(crate) fn append_textured_quad_texture_batch(
         &mut self,
         batches: &mut Vec<TextureBatch>,
         device: &wgpu::Device,
@@ -11,26 +11,26 @@ impl WgpuSceneRenderer {
         assets: &AssetCatalog,
         viewport: &Viewport,
         camera: Transform2,
-        transform: Transform2,
-        sprite: &Sprite,
+        quad: &amigo_render_api::TexturedQuad2dPrimitive,
     ) -> bool {
-        let Some(prepared) = assets.prepared_asset(&sprite.texture) else {
+        let Some(prepared) = assets.prepared_asset(&quad.texture) else {
             return false;
         };
         let Some(texture) = self.ensure_texture(device, queue, &prepared) else {
             return false;
         };
-        let sheet = sprite
-            .sheet
-            .or_else(|| infer_sprite_sheet_from_asset(&prepared));
-        let uv = sprite_uv_rect(texture.dimensions(), sheet, sprite.frame_index);
+        let uv = textured_quad_uv_rect(
+            texture.dimensions(),
+            quad.sheet.as_ref(),
+            quad.frame_index,
+        );
         let mut vertices = Vec::with_capacity(6);
         append_textured_sprite_vertices(
             &mut vertices,
             viewport,
             camera,
-            transform,
-            sprite.size,
+            quad.transform,
+            quad.size,
             uv,
         );
         batches.push(TextureBatch {
@@ -68,7 +68,7 @@ impl WgpuSceneRenderer {
         }
     }
 
-    pub(crate) fn append_tilemap_texture_batch(
+    pub(crate) fn append_tilemap_primitive_texture_batch(
         &mut self,
         batches: &mut Vec<TextureBatch>,
         device: &wgpu::Device,
@@ -77,7 +77,7 @@ impl WgpuSceneRenderer {
         viewport: &Viewport,
         camera: Transform2,
         transform: Transform2,
-        tilemap: &TileMap2d,
+        tilemap: &amigo_render_api::TileMap2dPrimitive,
     ) -> bool {
         let Some(prepared) = assets.prepared_asset(&tilemap.tileset) else {
             return false;
@@ -116,7 +116,7 @@ impl WgpuSceneRenderer {
     }
 
     #[allow(clippy::too_many_arguments)]
-    pub(crate) fn append_layered_image_texture_batches_filtered(
+    pub(crate) fn append_layered_image_primitive_texture_batches_filtered(
         &mut self,
         batches: &mut Vec<TextureBatch>,
         device: &wgpu::Device,
@@ -124,8 +124,7 @@ impl WgpuSceneRenderer {
         assets: &AssetCatalog,
         viewport: &Viewport,
         camera: Transform2,
-        transform: Transform2,
-        command: &LayeredImageDrawCommand,
+        command: &amigo_render_api::LayeredImage2dPrimitive,
         included_parts: Option<&BTreeSet<String>>,
         excluded_parts: Option<&BTreeSet<String>>,
         include_base_image: bool,
@@ -137,7 +136,6 @@ impl WgpuSceneRenderer {
             assets,
             viewport,
             camera,
-            transform,
             command,
             included_parts,
             excluded_parts,
@@ -155,14 +153,13 @@ impl WgpuSceneRenderer {
         assets: &AssetCatalog,
         viewport: &Viewport,
         camera: Transform2,
-        transform: Transform2,
-        command: &LayeredImageDrawCommand,
+        command: &amigo_render_api::LayeredImage2dPrimitive,
         included_parts: Option<&BTreeSet<String>>,
         excluded_parts: Option<&BTreeSet<String>>,
         include_base_image: bool,
         tint: ColorRgba,
     ) -> bool {
-        let Some(prepared) = assets.prepared_asset(&command.image.asset) else {
+        let Some(prepared) = assets.prepared_asset(&command.asset) else {
             return false;
         };
         let Some(base_dir) = prepared
@@ -172,16 +169,16 @@ impl WgpuSceneRenderer {
         else {
             return false;
         };
-        let Some(mut asset) = assets.layered_image_asset(&command.image.asset) else {
+        let Some(mut asset) = assets.layered_image_asset(&command.asset) else {
             return false;
         };
-        apply_layer_overrides(&mut asset, &command.image.layer_overrides);
+        apply_primitive_layer_overrides(&mut asset, &command.layer_overrides);
 
         let size = layered_image_render_size(
             viewport,
-            command.image.size,
+            command.size,
             asset.canvas_size,
-            command.image.viewport_fit,
+            primitive_layered_image_viewport_fit(command.viewport_fit),
         );
         let mut appended = false;
         if include_base_image {
@@ -191,11 +188,11 @@ impl WgpuSceneRenderer {
                 queue,
                 viewport,
                 camera,
-                transform,
+                command.transform,
                 size,
                 base_dir.join(&asset.base_image),
                 TextureBlendMode::Alpha,
-                command.image.base_opacity,
+                command.base_opacity,
                 None,
                 tint,
             );
@@ -231,7 +228,7 @@ impl WgpuSceneRenderer {
                 queue,
                 viewport,
                 camera,
-                transform,
+                command.transform,
                 layered_image_layer_render_size(size, layer.post_fx.as_ref()),
                 base_dir.join(&layer.image),
                 texture_blend_from_layer(layer.blend_mode),
@@ -302,37 +299,16 @@ impl WgpuSceneRenderer {
     ) -> Option<&CachedTextureResource> {
         match post_fx.and_then(post_fx_effect) {
             Some(effect) => {
-                let cache_key = match effect {
-                    PostFx2d::Blur(blur) => {
-                        PostFx2dCacheKey::blur(format!("file:{}", image_path.display()), blur)
+                let source_id = format!("file:{}", image_path.display());
+                let cache_key = match effect.render_descriptor().cached_image_policy {
+                    amigo_render_api::PostFxCachedImagePolicy::RasterEffect
+                    | amigo_render_api::PostFxCachedImagePolicy::RasterEffectWithBoundsExpansion => {
+                        cached_image_post_fx_cache_key(&effect, &source_id)?
                     }
-                    PostFx2d::EmbossEdges(emboss) => PostFx2dCacheKey::embossed_edges(
-                        format!("file:{}", image_path.display()),
-                        emboss,
-                    ),
-                    PostFx2d::ColorQuantize(_)
-                    | PostFx2d::CameraExposure(_)
-                    | PostFx2d::CameraOptics(_)
-                    | PostFx2d::ColorRamp(_)
-                    | PostFx2d::Crt(_)
-                    | PostFx2d::Downscale(_)
-                    | PostFx2d::DirtyBloom(_)
-                    | PostFx2d::FilmEmulsion(_)
-                    | PostFx2d::FilmNoise(_)
-                    | PostFx2d::FocusBlur(_)
-                    | PostFx2d::RainGlass(_)
-                    | PostFx2d::ScanOutput(_)
-                    | PostFx2d::ShutterBlur(_)
-                    | PostFx2d::LensDroplets(_) => {
-                        let cache_key = format!("file:{}", image_path.display());
+                    amigo_render_api::PostFxCachedImagePolicy::PassthroughCopy
+                    | amigo_render_api::PostFxCachedImagePolicy::Unsupported => {
                         return self.ensure_texture_from_path(
-                            device, queue, cache_key, image_path, true, false,
-                        );
-                    }
-                    PostFx2d::WetReflections(_) => {
-                        let cache_key = format!("file:{}", image_path.display());
-                        return self.ensure_texture_from_path(
-                            device, queue, cache_key, image_path, true, false,
+                            device, queue, source_id, image_path, true, false,
                         );
                     }
                 };
@@ -638,6 +614,98 @@ impl WgpuSceneRenderer {
     }
 }
 
+pub(crate) fn primitive_layered_image_viewport_fit(
+    fit: amigo_render_api::LayeredImageViewportFit2dPrimitive,
+) -> amigo_layered_image_2d_plugin::LayeredImageViewportFit2d {
+    match fit {
+        amigo_render_api::LayeredImageViewportFit2dPrimitive::Fixed => {
+            amigo_layered_image_2d_plugin::LayeredImageViewportFit2d::Fixed
+        }
+        amigo_render_api::LayeredImageViewportFit2dPrimitive::Stretch => {
+            amigo_layered_image_2d_plugin::LayeredImageViewportFit2d::Stretch
+        }
+        amigo_render_api::LayeredImageViewportFit2dPrimitive::Contain => {
+            amigo_layered_image_2d_plugin::LayeredImageViewportFit2d::Contain
+        }
+        amigo_render_api::LayeredImageViewportFit2dPrimitive::Cover => {
+            amigo_layered_image_2d_plugin::LayeredImageViewportFit2d::Cover
+        }
+    }
+}
+
+pub(crate) fn apply_primitive_layer_overrides(
+    asset: &mut amigo_layered_image_2d_plugin::LayeredImageAsset,
+    overrides: &[amigo_render_api::LayeredImageLayerOverride2dPrimitive],
+) {
+    for override_entry in overrides {
+        let Some(layer) = asset.layers.iter_mut().find(|layer| layer.id == override_entry.id) else {
+            continue;
+        };
+        if let Some(opacity) = override_entry.opacity {
+            layer.opacity = opacity;
+        }
+        if let Some(enabled) = override_entry.enabled {
+            layer.enabled = enabled;
+        }
+        if let Some(blend_mode) = override_entry.blend_mode {
+            layer.blend_mode = match blend_mode {
+                amigo_render_api::LayeredImageBlendMode2dPrimitive::Alpha => {
+                    amigo_layered_image_2d_plugin::LayeredImageBlendMode2d::Alpha
+                }
+                amigo_render_api::LayeredImageBlendMode2dPrimitive::Additive => {
+                    amigo_layered_image_2d_plugin::LayeredImageBlendMode2d::Additive
+                }
+                amigo_render_api::LayeredImageBlendMode2dPrimitive::Screen => {
+                    amigo_layered_image_2d_plugin::LayeredImageBlendMode2d::Screen
+                }
+                amigo_render_api::LayeredImageBlendMode2dPrimitive::Multiply => {
+                    amigo_layered_image_2d_plugin::LayeredImageBlendMode2d::Multiply
+                }
+                amigo_render_api::LayeredImageBlendMode2dPrimitive::Lighten => {
+                    amigo_layered_image_2d_plugin::LayeredImageBlendMode2d::Lighten
+                }
+            };
+        }
+    }
+}
+
+fn textured_quad_uv_rect(
+    texture_size: Vec2,
+    sheet: Option<&amigo_render_api::TexturedQuad2dSheet>,
+    frame_index: u32,
+) -> TextureUvRect {
+    let Some(sheet) = sheet else {
+        return TextureUvRect {
+            u0: 0.0,
+            v0: 0.0,
+            u1: 1.0,
+            v1: 1.0,
+        };
+    };
+
+    let columns = sheet.columns.max(1);
+    let rows = sheet.rows.max(1);
+    let frame_count = sheet.frame_count.max(1).min(columns.saturating_mul(rows));
+    let frame = frame_index.min(frame_count.saturating_sub(1));
+    let column = frame % columns;
+    let row = frame / columns;
+    let frame_width = if sheet.frame_size.x > 0.0 {
+        sheet.frame_size.x
+    } else {
+        texture_size.x / columns as f32
+    };
+    let frame_height = if sheet.frame_size.y > 0.0 {
+        sheet.frame_size.y
+    } else {
+        texture_size.y / rows as f32
+    };
+    let u0 = (column as f32 * frame_width) / texture_size.x.max(1.0);
+    let v0 = (row as f32 * frame_height) / texture_size.y.max(1.0);
+    let u1 = ((column as f32 + 1.0) * frame_width) / texture_size.x.max(1.0);
+    let v1 = ((row as f32 + 1.0) * frame_height) / texture_size.y.max(1.0);
+    TextureUvRect { u0, v0, u1, v1 }
+}
+
 fn apply_alpha_from_ink(rgba: &mut image::RgbaImage) {
     for pixel in rgba.pixels_mut() {
         let [r, g, b, a] = pixel.0;
@@ -656,7 +724,15 @@ fn layered_image_layer_render_size(
     size: Vec2,
     post_fx: Option<&amigo_composite_plugin::PostFx2dStack>,
 ) -> Vec2 {
-    let Some(PostFx2d::Blur(blur)) = post_fx.and_then(post_fx_effect) else {
+    let Some(effect) = post_fx.and_then(post_fx_effect) else {
+        return size;
+    };
+    if effect.render_descriptor().cached_image_policy
+        != amigo_render_api::PostFxCachedImagePolicy::RasterEffectWithBoundsExpansion
+    {
+        return size;
+    }
+    let PostFx2d::Blur(blur) = effect else {
         return size;
     };
     let blur = blur.normalized();
@@ -666,6 +742,17 @@ fn layered_image_layer_render_size(
 
 fn post_fx_effect(stack: &amigo_composite_plugin::PostFx2dStack) -> Option<PostFx2d> {
     stack.effects.first().cloned()
+}
+
+fn cached_image_post_fx_cache_key(effect: &PostFx2d, source_id: &str) -> Option<PostFx2dCacheKey> {
+    match effect {
+        PostFx2d::Blur(blur) => Some(PostFx2dCacheKey::blur(source_id.to_owned(), blur.clone())),
+        PostFx2d::EmbossEdges(emboss) => Some(PostFx2dCacheKey::embossed_edges(
+            source_id.to_owned(),
+            emboss.clone(),
+        )),
+        _ => None,
+    }
 }
 
 fn texture_color_for_opacity(blend_mode: TextureBlendMode, opacity: f32) -> ColorRgba {

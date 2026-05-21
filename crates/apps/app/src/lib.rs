@@ -18,22 +18,19 @@ use amigo_core::{AmigoError, AmigoResult, LaunchSelection, RuntimeDiagnostics};
 use amigo_file_watch_api::FileWatchService;
 use amigo_hot_reload::{AssetWatch, HotReloadService, HotReloadWatchKind, SceneDocumentWatch};
 use amigo_input_api::{InputEvent, InputServiceInfo, InputState, KeyCode};
-use amigo_math::Vec2;
 use amigo_modding::{ModCatalog, ModScriptMode};
 use amigo_render_api::RenderBackendInfo;
 #[cfg(test)]
 use amigo_render_wgpu::UiLayoutNode as OverlayUiLayoutNode;
-use amigo_render_wgpu::{UiViewportSize, WgpuRenderBackend, WgpuSceneRenderer, WgpuSurfaceState};
+use amigo_render_wgpu::{WgpuRenderBackend, WgpuSceneRenderer, WgpuSurfaceState};
 use amigo_runtime::{Runtime, RuntimePlugin, ServiceRegistry};
 use amigo_scene::{
-    EntityPoolSceneService, HydratedSceneState, LifetimeSceneService, SceneCommand,
-    SceneCommandQueue, SceneHydrationPlan, SceneKey, SceneService, SceneTransitionPlan,
-    SceneTransitionService, Sprite2dSceneCommand,
+    HydratedSceneState, SceneCommand, SceneCommandQueue, SceneHydrationPlan, SceneKey,
+    SceneService, SceneTransitionPlan, SceneTransitionService, Sprite2dSceneCommand,
 };
 use amigo_scripting_api::{
     DevConsoleQueue, DevConsoleState, ScriptCommand, ScriptCommandQueue, ScriptComponentService,
     ScriptEvent, ScriptEventQueue, ScriptLifecycleState, ScriptRuntimeInfo, ScriptRuntimeService,
-    ScriptTraceService,
 };
 use amigo_window_api::{WindowDescriptor, WindowEvent, WindowServiceInfo, WindowSurfaceHandles};
 

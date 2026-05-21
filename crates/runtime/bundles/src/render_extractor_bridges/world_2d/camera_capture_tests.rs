@@ -4,8 +4,13 @@ use amigo_camera_optics_plugin::api::{
     CameraOpticalResponse2d,
 };
 use amigo_render_wgpu::WgpuRenderFramePacket;
+use amigo_runtime::RuntimeBuilder;
 
 use super::camera_capture::build_camera_capture_input;
+
+fn test_runtime() -> amigo_runtime::Runtime {
+    RuntimeBuilder::default().build()
+}
 
 fn optical_candidate_with_roles(
     roles: &[&str],
@@ -45,8 +50,11 @@ fn camera_capture_input_includes_scene_color_depth_and_layers() {
         optical_role: amigo_2d_spatial::OpticalLayerRole2d::WorldSurface,
     });
 
+    let runtime = test_runtime();
     let input = build_camera_capture_input(
+        &runtime,
         &packet,
+        &[],
         amigo_2d_spatial::DepthSpace2d::default(),
         amigo_camera_core_plugin::api::CameraDepthMotion2d::default(),
     );
@@ -95,8 +103,11 @@ fn camera_capture_input_applies_camera_z_to_distance_layers() {
     });
     let depth_space = amigo_2d_spatial::DepthSpace2d::default();
 
+    let runtime = test_runtime();
     let input = build_camera_capture_input(
+        &runtime,
         &packet,
+        &[],
         depth_space,
         amigo_camera_core_plugin::api::CameraDepthMotion2d {
             camera_z_m: 2.0,
@@ -127,8 +138,11 @@ fn camera_capture_input_does_not_set_highlight_for_lightmaps_without_candidates(
         channels: Vec::new(),
     });
 
+    let runtime = test_runtime();
     let input = build_camera_capture_input(
+        &runtime,
         &packet,
+        &[],
         amigo_2d_spatial::DepthSpace2d::default(),
         amigo_camera_core_plugin::api::CameraDepthMotion2d::default(),
     );
@@ -139,8 +153,8 @@ fn camera_capture_input_does_not_set_highlight_for_lightmaps_without_candidates(
 
 #[test]
 fn camera_capture_input_sets_highlight_from_active_optical_candidate() {
-    let mut packet = WgpuRenderFramePacket::default();
-    packet.set_camera_optical_candidates_2d(vec![optical_candidate_with_roles(
+    let packet = WgpuRenderFramePacket::default();
+    let candidates = vec![optical_candidate_with_roles(
         &[
             amigo_render_api::render_contribution_roles::CAMERA_FX_SOURCE,
             amigo_render_api::render_contribution_roles::BLOOM_SOURCE,
@@ -156,10 +170,13 @@ fn camera_capture_input_sets_highlight_from_active_optical_candidate() {
             glare: 0.6,
             ..Default::default()
         },
-    )]);
+    )];
 
+    let runtime = test_runtime();
     let input = build_camera_capture_input(
+        &runtime,
         &packet,
+        candidates.as_slice(),
         amigo_2d_spatial::DepthSpace2d::default(),
         amigo_camera_core_plugin::api::CameraDepthMotion2d::default(),
     );
@@ -176,8 +193,8 @@ fn camera_capture_input_sets_highlight_from_active_optical_candidate() {
 
 #[test]
 fn camera_capture_input_ignores_unsupported_optical_candidate() {
-    let mut packet = WgpuRenderFramePacket::default();
-    packet.set_camera_optical_candidates_2d(vec![optical_candidate_with_roles(
+    let packet = WgpuRenderFramePacket::default();
+    let candidates = vec![optical_candidate_with_roles(
         &[
             amigo_render_api::render_contribution_roles::CAMERA_FX_SOURCE,
             amigo_render_api::render_contribution_roles::BLOOM_SOURCE,
@@ -192,10 +209,13 @@ fn camera_capture_input_ignores_unsupported_optical_candidate() {
             glare: 1.0,
             ..Default::default()
         },
-    )]);
+    )];
 
+    let runtime = test_runtime();
     let input = build_camera_capture_input(
+        &runtime,
         &packet,
+        candidates.as_slice(),
         amigo_2d_spatial::DepthSpace2d::default(),
         amigo_camera_core_plugin::api::CameraDepthMotion2d::default(),
     );
@@ -211,8 +231,8 @@ fn camera_capture_input_uses_role_aware_candidate_targets() {
         radius_px: 16.0,
     };
 
-    let mut bloom_packet = WgpuRenderFramePacket::default();
-    bloom_packet.set_camera_optical_candidates_2d(vec![optical_candidate_with_roles(
+    let bloom_packet = WgpuRenderFramePacket::default();
+    let bloom_candidates = vec![optical_candidate_with_roles(
         &[amigo_render_api::render_contribution_roles::BLOOM_SOURCE],
         coverage.clone(),
         CameraOpticalResponse2d {
@@ -220,9 +240,12 @@ fn camera_capture_input_uses_role_aware_candidate_targets() {
             bloom: 1.0,
             ..Default::default()
         },
-    )]);
+    )];
+    let runtime = test_runtime();
     let bloom_input = build_camera_capture_input(
+        &runtime,
         &bloom_packet,
+        bloom_candidates.as_slice(),
         amigo_2d_spatial::DepthSpace2d::default(),
         amigo_camera_core_plugin::api::CameraDepthMotion2d::default(),
     );
@@ -232,8 +255,8 @@ fn camera_capture_input_uses_role_aware_candidate_targets() {
         Some(amigo_render_api::VisualSourceKind2d::SceneEmissive)
     );
 
-    let mut camera_fx_packet = WgpuRenderFramePacket::default();
-    camera_fx_packet.set_camera_optical_candidates_2d(vec![optical_candidate_with_roles(
+    let camera_fx_packet = WgpuRenderFramePacket::default();
+    let camera_fx_candidates = vec![optical_candidate_with_roles(
         &[amigo_render_api::render_contribution_roles::CAMERA_FX_SOURCE],
         coverage,
         CameraOpticalResponse2d {
@@ -241,9 +264,11 @@ fn camera_capture_input_uses_role_aware_candidate_targets() {
             glare: 1.0,
             ..Default::default()
         },
-    )]);
+    )];
     let camera_fx_input = build_camera_capture_input(
+        &runtime,
         &camera_fx_packet,
+        camera_fx_candidates.as_slice(),
         amigo_2d_spatial::DepthSpace2d::default(),
         amigo_camera_core_plugin::api::CameraDepthMotion2d::default(),
     );
@@ -273,8 +298,11 @@ fn camera_capture_input_sets_wetness_from_active_wet_reflections_mask() {
         )],
     )]);
 
+    let runtime = test_runtime();
     let input = build_camera_capture_input(
+        &runtime,
         &packet,
+        &[],
         amigo_2d_spatial::DepthSpace2d::default(),
         amigo_camera_core_plugin::api::CameraDepthMotion2d::default(),
     );
@@ -315,8 +343,11 @@ fn camera_capture_input_sets_normal_from_wet_reflections_noise_normal() {
         )],
     )]);
 
+    let runtime = test_runtime();
     let input = build_camera_capture_input(
+        &runtime,
         &packet,
+        &[],
         amigo_2d_spatial::DepthSpace2d::default(),
         amigo_camera_core_plugin::api::CameraDepthMotion2d::default(),
     );
@@ -352,8 +383,11 @@ fn camera_capture_input_sets_motion_from_active_shutter_blur() {
         )],
     )]);
 
+    let runtime = test_runtime();
     let input = build_camera_capture_input(
+        &runtime,
         &packet,
+        &[],
         amigo_2d_spatial::DepthSpace2d::default(),
         CameraDepthMotion2d::default(),
     );

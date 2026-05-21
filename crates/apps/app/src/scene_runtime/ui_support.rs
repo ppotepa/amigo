@@ -20,6 +20,7 @@ pub(super) fn register_ui_font_asset_references(
         );
     }
 }
+#[allow(dead_code)]
 pub(super) fn convert_scene_ui_document(document: &SceneUiDocument) -> RuntimeUiDocument {
     scene_ui_document_to_runtime_document(document)
 }

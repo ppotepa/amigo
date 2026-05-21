@@ -1,6 +1,7 @@
 use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
+use serde_yaml::Value;
 
 use crate::ComponentKind;
 
@@ -555,9 +556,62 @@ pub enum SceneComponentDocument {
         active: Option<String>,
         themes: Vec<SceneUiThemeComponentDocument>,
     },
+    Plugin {
+        component_type: String,
+        payload: Value,
+    },
 }
 
 impl SceneComponentDocument {
+    pub fn is_builtin_type(kind: &str) -> bool {
+        matches!(
+            kind,
+            "Camera2D"
+                | "Camera3D"
+                | "Light3D"
+                | "Sprite2D"
+                | "LayeredImage2D"
+                | "DepthMap2D"
+                | "DepthAuxMap2D"
+                | "GlobalLight2D"
+                | "LightMap2DSource"
+                | "TileMap2D"
+                | "Text2D"
+                | "VectorShape2D"
+                | "BeaconLight2D"
+                | "EntityPool"
+                | "Lifetime"
+                | "ProjectileEmitter2D"
+                | "InputActionMap"
+                | "Behavior"
+                | "EventPipeline"
+                | "UiModelBindings"
+                | "ScriptComponent"
+                | "ParticleEmitter2D"
+                | "Velocity2D"
+                | "Bounds2D"
+                | "FreeflightMotion2D"
+                | "KinematicBody2D"
+                | "AabbCollider2D"
+                | "StaticCollider2D"
+                | "CircleCollider2D"
+                | "Trigger2D"
+                | "MotionController2D"
+                | "CameraFollow2D"
+                | "Parallax2D"
+                | "TileMapMarker2D"
+                | "Mesh3D"
+                | "Material3D"
+                | "Text3D"
+                | "UiDocument"
+                | "UiThemeSet"
+        )
+    }
+
+    pub fn is_rejected_legacy_type(kind: &str) -> bool {
+        matches!(kind, "PlatformerController2D")
+    }
+
     pub fn component_kind(&self) -> ComponentKind {
         match self {
             Self::Camera2d { .. } => ComponentKind::Camera2D,
@@ -599,10 +653,13 @@ impl SceneComponentDocument {
             Self::Text3d { .. } => ComponentKind::Text3D,
             Self::UiDocument { .. } => ComponentKind::UiDocument,
             Self::UiThemeSet { .. } => ComponentKind::UiThemeSet,
+            Self::Plugin { component_type, .. } => {
+                panic!("plugin scene component `{component_type}` has no core ComponentKind")
+            }
         }
     }
 
-    pub fn kind(&self) -> &'static str {
+    pub fn kind(&self) -> &str {
         match self {
             Self::Camera2d { .. } => "Camera2D",
             Self::Camera3d => "Camera3D",
@@ -643,6 +700,7 @@ impl SceneComponentDocument {
             Self::Text3d { .. } => "Text3D",
             Self::UiDocument { .. } => "UiDocument",
             Self::UiThemeSet { .. } => "UiThemeSet",
+            Self::Plugin { component_type, .. } => component_type.as_str(),
         }
     }
 }

@@ -13,6 +13,7 @@ amigo-devtools.workspace = true
 amigo-editor-api.workspace = true
 amigo-editor-ingame.workspace = true
 amigo-math.workspace = true
+amigo-render-api.workspace = true
 amigo-runtime.workspace = true
 amigo-runtime-control.workspace = true
 amigo-scene.workspace = true

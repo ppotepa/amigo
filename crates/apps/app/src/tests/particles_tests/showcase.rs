@@ -338,7 +338,7 @@ fn particles_showcase_hydrates_emitters() {
     let packet =
         amigo_runtime_bundles::default_wgpu_render_extractor_registry().extract_all(&runtime);
     assert!(
-        !packet.world_2d_particles().is_empty(),
+        packet.renderable_2d_count_by_component_kind("ParticleEmitter2D") > 0,
         "render extraction should include generated particles"
     );
 }

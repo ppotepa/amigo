@@ -5,8 +5,9 @@ use serde_yaml::{Mapping, Value};
 
 use super::{
     SceneDocument, SceneFrameClockDocument, SceneFramePresentationDocument, SceneSchedulingDocument,
+    parse_scene_document_value,
 };
-use crate::{SceneDocumentError, SceneDocumentResult};
+use crate::{ComponentSchemaRegistry, SceneDocumentError, SceneDocumentResult};
 
 #[derive(Debug)]
 pub struct CompiledSceneDocument {
@@ -37,6 +38,15 @@ pub fn compile_scene_document_from_path(
     scene_path: impl AsRef<Path>,
     mod_root: impl AsRef<Path>,
     mod_id: &str,
+) -> SceneDocumentResult<CompiledSceneDocument> {
+    compile_scene_document_from_path_with_component_schemas(scene_path, mod_root, mod_id, None)
+}
+
+pub fn compile_scene_document_from_path_with_component_schemas(
+    scene_path: impl AsRef<Path>,
+    mod_root: impl AsRef<Path>,
+    mod_id: &str,
+    component_schemas: Option<&ComponentSchemaRegistry>,
 ) -> SceneDocumentResult<CompiledSceneDocument> {
     let scene_path = scene_path.as_ref();
     let mod_root = mod_root.as_ref();
@@ -80,7 +90,7 @@ pub fn compile_scene_document_from_path(
     expand_authoring_refs(&mut value, scene_path, mod_root, &mut dependencies)?;
     validate_compiled_value(&value)?;
 
-    let document = serde_yaml::from_value::<SceneDocument>(value.clone()).map_err(|source| {
+    let document = parse_scene_document_value(value.clone(), component_schemas).map_err(|source| {
         SceneDocumentError::Parse {
             path: Some(scene_path.to_path_buf()),
             source,

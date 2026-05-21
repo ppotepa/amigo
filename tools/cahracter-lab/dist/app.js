@@ -212,12 +212,26 @@
     }
     return attrs;
   }
-  function generateBodyPartPrimitives(parts) {
+  function fallbackOutlinePolicy() {
+    return {
+      drawBody: true,
+      drawContour: false,
+      drawInner: false,
+      drawSilhouette: false
+    };
+  }
+  function resolveBodyVisibility(part, role, decision) {
+    if (role === "detail") return decision.drawBody || decision.drawInner;
+    if (role === "fill" || role === "shade" || role === "light" || role === "wire") return decision.drawBody;
+    return true;
+  }
+  function generateBodyPartPrimitives(parts, policy) {
     const out = [];
     for (const part of parts) {
       const geometry = part.geometry;
       const outputs = part.source.render?.outputs ?? [];
       if (!geometry || outputs.length === 0) continue;
+      const decision = policy?.parts[part.id] ?? fallbackOutlinePolicy();
       for (const [index, spec] of outputs.entries()) {
         if (spec.kind === "path" && !geometry.path) continue;
         if (spec.kind === "ellipse" && !geometry.meta) continue;
@@ -232,7 +246,7 @@
           pass: spec.pass ?? part.renderPass,
           zIndex: (part.source.render?.zIndex ?? 0) + (spec.zIndexOffset ?? 0),
           depth: part.depth,
-          visible: part.visible && geometry.visible !== false,
+          visible: part.visible && geometry.visible !== false && resolveBodyVisibility(part, spec.role, decision),
           className: spec.className,
           path: geometry.path,
           attrs: primitiveAttrsFromGeometry(geometry, spec),
@@ -264,7 +278,7 @@
         pass: "outline",
         zIndex: spec.contourZIndex ?? 100,
         depth: 0,
-        visible: Boolean(spec.drawContour),
+        visible: Boolean(spec.visible) && Boolean(spec.drawContour),
         className: spec.contourClassName ?? "partOutline",
         path,
         opacity: 1
@@ -278,21 +292,13 @@
         pass: "outline",
         zIndex: spec.silhouetteZIndex ?? 90,
         depth: 0,
-        visible: Boolean(spec.drawSilhouette),
+        visible: Boolean(spec.visible) && Boolean(spec.drawSilhouette),
         className: spec.silhouetteClassName ?? "masterSilhouettePath",
         path,
         opacity: 1
       });
     }
     return out;
-  }
-  function fallbackOutlinePolicy() {
-    return {
-      drawBody: true,
-      drawContour: false,
-      drawInner: false,
-      drawSilhouette: false
-    };
   }
   function generatePolicyOutlinePrimitives(parts, policy, overrideVisibility) {
     const specs = parts.filter((part) => Boolean(part.source.render?.outline)).map((part) => {
@@ -301,6 +307,7 @@
       const override = overrideVisibility?.(part, decision, policy);
       return {
         sourcePartId: part.id,
+        visible: part.visible && part.geometry?.visible !== false,
         drawContour: override?.drawContour ?? decision.drawContour,
         contourClassName: outline.contourClassName,
         contourZIndex: outline.contourZIndex,
@@ -315,7 +322,7 @@
   // src/anatomy-render-primitives.ts
   function generateAnatomyRenderPrimitives(parts, policy) {
     return [
-      ...generateBodyPartPrimitives(parts),
+      ...generateBodyPartPrimitives(parts, policy),
       ...generatePolicyOutlinePrimitives(parts, policy)
     ];
   }
@@ -404,6 +411,41 @@
   function lerpPoints(a, b, t) {
     return a.map((point, index) => pointLerp(point, b[index], t));
   }
+  function keyframeTangent(frames, frameIndex, pointIndex) {
+    const previous = frames[Math.max(0, frameIndex - 1)];
+    const next = frames[Math.min(frames.length - 1, frameIndex + 1)];
+    const dt = next.t - previous.t || 1;
+    return {
+      x: (next.points[pointIndex].x - previous.points[pointIndex].x) / dt,
+      y: (next.points[pointIndex].y - previous.points[pointIndex].y) / dt
+    };
+  }
+  function interpolatePointKeyframes(frames, value, curve = 0.55) {
+    if (!frames.length) return [];
+    if (value <= frames[0].t) return frames[0].points;
+    if (value >= frames[frames.length - 1].t) return frames[frames.length - 1].points;
+    const segmentIndex = Math.max(0, frames.findIndex((frame, index) => index > 0 && value <= frame.t) - 1);
+    const a = frames[segmentIndex];
+    const b = frames[segmentIndex + 1];
+    const dt = b.t - a.t || 1;
+    const u = clamp((value - a.t) / dt, 0, 1);
+    const u2 = u * u;
+    const u3 = u2 * u;
+    const h00 = 2 * u3 - 3 * u2 + 1;
+    const h10 = u3 - 2 * u2 + u;
+    const h01 = -2 * u3 + 3 * u2;
+    const h11 = u3 - u2;
+    return a.points.map((point, index) => {
+      const next = b.points[index];
+      const tangentA = keyframeTangent(frames, segmentIndex, index);
+      const tangentB = keyframeTangent(frames, segmentIndex + 1, index);
+      const hermite = {
+        x: h00 * point.x + h10 * dt * tangentA.x + h01 * next.x + h11 * dt * tangentB.x,
+        y: h00 * point.y + h10 * dt * tangentA.y + h01 * next.y + h11 * dt * tangentB.y
+      };
+      return pointLerp(pointLerp(point, next, u), hermite, curve);
+    });
+  }
   function distanceSq(a, b) {
     const dx = a.x - b.x;
     const dy = a.y - b.y;
@@ -477,12 +519,12 @@
   function applyPseudoDepth(points, yawRad, t, depth) {
     if (depth <= 0) return points;
     const side = Math.sign(Math.sin(yawRad)) || 1;
-    const squeeze = 1 - depth * 0.16 * t;
-    const parallax = side * depth * 22 * t;
-    const verticalLift = -depth * 7 * t * Math.cos(yawRad);
+    const squeeze = 1 - depth * 0.09 * t;
+    const parallax = side * depth * 13 * t;
+    const verticalLift = -depth * 3.5 * t * Math.cos(yawRad);
     return points.map((point) => ({
       x: PIVOT_X + (point.x - PIVOT_X) * squeeze + parallax,
-      y: PIVOT_Y + (point.y - PIVOT_Y) * (1 + depth * 0.025 * t) + verticalLift
+      y: PIVOT_Y + (point.y - PIVOT_Y) * (1 + depth * 0.012 * t) + verticalLift
     }));
   }
 
@@ -613,12 +655,15 @@ ${new XMLSerializer().serializeToString(clone)}
     centerRightEar: "#CENTER #PRAWE",
     centerLeftEar: "#CENTER #LEWE",
     centerNose: "#CENTER #NOSE",
+    angleFace: "#ANGLE #ANGLE_FACE",
+    angleNose: "#ANGLE #ANGLE_NOSE",
+    angleEar: "#ANGLE #ANGLE_EAR",
     profileFace: "#LEFT_PROFILE #FACE_PROFILE",
     profileNose: "#LEFT_PROFILE #NOSE-PROFILE",
     profileEar: "#LEFT_PROFILE #EAR_LEFT",
-    backFace: "#BACK path:nth-of-type(1)",
-    backLeftEar: "#BACK path:nth-of-type(2)",
-    backRightEar: "#BACK path:nth-of-type(3)"
+    backFace: "#BACK #BACK_FACE",
+    backLeftEar: "#BACK #BACK_LEFT_EAR",
+    backRightEar: "#BACK #BACK_RIGHT_EAR"
   };
   var EAR_DEFS = {
     earRight: { localSide: 1, frontSelector: SOURCE.centerRightEar, backSelector: SOURCE.backLeftEar, label: "right" },
@@ -626,10 +671,16 @@ ${new XMLSerializer().serializeToString(clone)}
   };
   function samplePath(path, count, mirrored = false) {
     const total = path.getTotalLength();
+    const matrix = path.getCTM();
     let points = [];
     for (let i = 0; i < count; i++) {
       const point = path.getPointAtLength(i / count * total);
-      points.push({ x: point.x, y: point.y });
+      if (matrix) {
+        const worldPoint = new DOMPoint(point.x, point.y).matrixTransform(matrix);
+        points.push({ x: worldPoint.x, y: worldPoint.y });
+      } else {
+        points.push({ x: point.x, y: point.y });
+      }
     }
     if (mirrored) points = mirrorPoints(points);
     return { id: path.id || "path", length: total, points, center: centroid(points), area: signedArea(points) };
@@ -655,28 +706,81 @@ ${new XMLSerializer().serializeToString(clone)}
     const oriented = best?.reversed ? reversePoints(targetPoints) : targetPoints;
     return rotatePoints(oriented, best?.offset ?? 0);
   }
+  function extremeIndex(points, axis) {
+    let bestIndex = 0;
+    for (let i = 1; i < points.length; i++) {
+      const point = points[i];
+      const best = points[bestIndex];
+      const better = axis === "top" ? point.y < best.y : axis === "bottom" ? point.y > best.y : axis === "left" ? point.x < best.x : point.x > best.x;
+      if (better) bestIndex = i;
+    }
+    return bestIndex;
+  }
+  function alignByAnchor(sourcePoints, targetPoints, anchor) {
+    const base = alignTargetToSource(sourcePoints, targetPoints);
+    const sourceIndex = extremeIndex(sourcePoints, anchor);
+    const targetIndex = extremeIndex(base, anchor);
+    return rotatePoints(base, ((sourceIndex - targetIndex) % base.length + base.length) % base.length);
+  }
+  function fitContourToReference(reference, candidate, fitX, fitY, anchor = "center") {
+    const referenceBounds = boundsOf(reference);
+    const candidateBounds = boundsOf(candidate);
+    const referenceCenter = centroid(reference);
+    const candidateCenter = centroid(candidate);
+    const targetScaleX = candidateBounds.width > 0 ? referenceBounds.width / candidateBounds.width : 1;
+    const targetScaleY = candidateBounds.height > 0 ? referenceBounds.height / candidateBounds.height : 1;
+    const scaleX = 1 + (targetScaleX - 1) * fitX;
+    const scaleY = 1 + (targetScaleY - 1) * fitY;
+    const scaled = candidate.map((point) => ({
+      x: candidateCenter.x + (point.x - candidateCenter.x) * scaleX,
+      y: candidateCenter.y + (point.y - candidateCenter.y) * scaleY
+    }));
+    const scaledBounds = boundsOf(scaled);
+    const scaledCenter = centroid(scaled);
+    const dx = referenceCenter.x - scaledCenter.x;
+    const dy = anchor === "bottom" ? referenceBounds.maxY - scaledBounds.maxY : referenceCenter.y - scaledCenter.y;
+    return scaled.map((point) => ({ x: point.x + dx, y: point.y + dy }));
+  }
+  function deriveProfileNoseTarget(centerNose, quarterNose, rawProfileNose) {
+    const alignedQuarter = alignByAnchor(centerNose, quarterNose, "top");
+    const alignedProfile = alignByAnchor(centerNose, rawProfileNose, "top");
+    const fittedProfile = fitContourToReference(alignedQuarter, alignedProfile, 0.45, 0.72);
+    return lerpPoints(alignedQuarter, fittedProfile, 0.72);
+  }
+  function stabilizeHeadTarget(reference, candidate, widthFit) {
+    return fitContourToReference(reference, candidate, widthFit, 0.92, "bottom");
+  }
+  function stabilizeEarTarget(reference, candidate) {
+    return fitContourToReference(reference, candidate, 0.78, 0.86, "center");
+  }
   function buildRig(side, samples) {
     const mirrored = side < 0;
     const centerFace = sampleSelector(SOURCE.centerFace, samples, false);
+    const angleFace = sampleSelector(SOURCE.angleFace, samples, mirrored);
     const profileFace = sampleSelector(SOURCE.profileFace, samples, mirrored);
     const backFace = sampleSelector(SOURCE.backFace, samples, false);
     const centerNose = sampleSelector(SOURCE.centerNose, samples, false);
+    const angleNose = sampleSelector(SOURCE.angleNose, samples, mirrored);
     const targetNose = sampleSelector(SOURCE.profileNose, samples, mirrored);
     return [
       {
         key: "face",
         source: centerFace.points,
-        target: alignTargetToSource(centerFace.points, profileFace.points),
-        back: alignTargetToSource(centerFace.points, backFace.points)
+        quarter: stabilizeHeadTarget(centerFace.points, alignByAnchor(centerFace.points, angleFace.points, "bottom"), 0.45),
+        target: stabilizeHeadTarget(centerFace.points, alignByAnchor(centerFace.points, profileFace.points, "bottom"), 0.3),
+        back: stabilizeHeadTarget(centerFace.points, alignByAnchor(centerFace.points, backFace.points, "bottom"), 0.68)
       },
       {
         key: "nose",
         source: centerNose.points,
-        target: alignTargetToSource(centerNose.points, targetNose.points)
+        quarter: alignByAnchor(centerNose.points, angleNose.points, "top"),
+        target: deriveProfileNoseTarget(centerNose.points, angleNose.points, targetNose.points)
       }
     ];
   }
   function buildEarRig(samples) {
+    const angleLeft = sampleSelector(SOURCE.angleEar, samples, false);
+    const angleRight = sampleSelector(SOURCE.angleEar, samples, true);
     const profileLeft = sampleSelector(SOURCE.profileEar, samples, false);
     const profileRight = sampleSelector(SOURCE.profileEar, samples, true);
     const rig = {};
@@ -687,9 +791,11 @@ ${new XMLSerializer().serializeToString(clone)}
         key,
         localSide: def.localSide,
         front: front.points,
-        profileLeft: alignTargetToSource(front.points, profileLeft.points),
-        back: alignTargetToSource(front.points, back.points),
-        profileRight: alignTargetToSource(front.points, profileRight.points)
+        quarterLeft: stabilizeEarTarget(front.points, alignByAnchor(front.points, angleLeft.points, "top")),
+        profileLeft: stabilizeEarTarget(front.points, alignByAnchor(front.points, profileLeft.points, "top")),
+        back: stabilizeEarTarget(front.points, alignByAnchor(front.points, back.points, "top")),
+        quarterRight: stabilizeEarTarget(front.points, alignByAnchor(front.points, angleRight.points, "top")),
+        profileRight: stabilizeEarTarget(front.points, alignByAnchor(front.points, profileRight.points, "top"))
       };
     }
     return rig;
@@ -720,27 +826,19 @@ ${new XMLSerializer().serializeToString(clone)}
   }
   function computeEarPoints(earRig, yawDeg) {
     const deg = (yawDeg % 360 + 360) % 360;
-    let a;
-    let b;
-    let t;
-    if (deg <= 90) {
-      a = earRig.front;
-      b = earRig.profileLeft;
-      t = smoothstep(deg / 90);
-    } else if (deg <= 180) {
-      a = earRig.profileLeft;
-      b = earRig.back;
-      t = smoothstep((deg - 90) / 90);
-    } else if (deg <= 270) {
-      a = earRig.back;
-      b = earRig.profileRight;
-      t = smoothstep((deg - 180) / 90);
-    } else {
-      a = earRig.profileRight;
-      b = earRig.front;
-      t = smoothstep((deg - 270) / 90);
-    }
-    return lerpPoints(a, b, t);
+    return interpolatePointKeyframes(
+      [
+        { t: 0, points: earRig.front },
+        { t: 45, points: earRig.quarterLeft },
+        { t: 90, points: earRig.profileLeft },
+        { t: 180, points: earRig.back },
+        { t: 270, points: earRig.profileRight },
+        { t: 315, points: earRig.quarterRight },
+        { t: 360, points: earRig.front }
+      ],
+      deg,
+      0.42
+    );
   }
   function computeRigViewState(yawRad, yawDeg) {
     const s = Math.sin(yawRad);
@@ -762,8 +860,10 @@ ${new XMLSerializer().serializeToString(clone)}
     const depthSorted = [...ears].sort((a, b) => a.depth - b.depth || a.localSide - b.localSide);
     const farEar = depthSorted[0];
     const nearEar = depthSorted[1];
+    const showNose = zone !== "BACK_PROXY" && !(zone === "REAR_TRANSITION" && back >= 0.68);
+    const showMouth = zone === "FRONT" || zone === "THREE_QUARTER";
     let noseMode;
-    if (zone === "BACK_PROXY") noseMode = "HIDDEN";
+    if (!showNose) noseMode = "HIDDEN";
     else if (noseFusion < 0.22) noseMode = "SEPARATE";
     else if (noseFusion < 0.82) noseMode = "MERGING";
     else noseMode = "FUSED";
@@ -781,8 +881,8 @@ ${new XMLSerializer().serializeToString(clone)}
       earLeft,
       nearEar,
       farEar,
-      showNose: zone !== "BACK_PROXY",
-      showMouth: zone !== "BACK_PROXY"
+      showNose,
+      showMouth
     };
   }
 
@@ -794,6 +894,17 @@ ${new XMLSerializer().serializeToString(clone)}
     "head.nostril",
     "head.earInnerCurve"
   ];
+  function noseFacingScore(viewState) {
+    const profilePresence = smoothstep(remapClamp(viewState.profile, 0.18, 0.82));
+    const backFade = 1 - smoothstep(remapClamp(viewState.back, 0.12, 0.72));
+    return profilePresence * backFade;
+  }
+  function earInnerFacingScore(viewState, isNear) {
+    const profilePresence = smoothstep(remapClamp(viewState.profile, 0.1, 0.72));
+    const nearBias = isNear ? 1 : 0.35;
+    const backFade = 1 - smoothstep(remapClamp(viewState.back, 0.42, 0.72));
+    return profilePresence * nearBias * backFade;
+  }
   function getFaceRig(state, side) {
     const key = `${side}:${state.samples}`;
     if (!state.rigs.has(key)) state.rigs.set(key, buildRig(side, state.samples));
@@ -804,16 +915,27 @@ ${new XMLSerializer().serializeToString(clone)}
     if (!state.earRigs.has(key)) state.earRigs.set(key, buildEarRig(state.samples));
     return state.earRigs.get(key);
   }
+  function localYawForSide(yaw, side) {
+    return side > 0 ? yaw : 360 - yaw;
+  }
+  function interpolateRigPoints(pair, localYaw) {
+    const frames = [
+      { t: 0, points: pair.source },
+      { t: 45, points: pair.quarter ?? pair.target },
+      { t: 90, points: pair.target },
+      ...pair.back ? [{ t: 180, points: pair.back }] : []
+    ];
+    return interpolatePointKeyframes(frames, localYaw, pair.back ? 0.5 : 0.35);
+  }
   function evaluateHeadMassGeometry(part, state, viewState, yaw, yawRad) {
     if (!part.geometry) return null;
     const t = viewState.t;
+    const localYaw = localYawForSide(yaw, viewState.side);
     switch (part.geometry.strategy) {
       case "head.faceMorph": {
         const pair = getFaceRig(state, viewState.side).find((item) => item.key === "face");
         if (!pair?.back) return null;
-        const sideMorph = lerpPoints(pair.source, pair.target, t);
-        const backBlend = smoothstep(remapClamp(viewState.back, 0.22, 1));
-        const points = applyPseudoDepth(lerpPoints(sideMorph, pair.back, backBlend), yawRad, t, state.depth);
+        const points = applyPseudoDepth(interpolateRigPoints(pair, localYaw), yawRad, t, state.depth * 0.55);
         return {
           points,
           path: pointsToPath(points, state.smooth),
@@ -829,7 +951,7 @@ ${new XMLSerializer().serializeToString(clone)}
       case "head.noseMorph": {
         const pair = getFaceRig(state, viewState.side).find((item) => item.key === "nose");
         if (!pair) return null;
-        const points = applyPseudoDepth(lerpPoints(pair.source, pair.target, t), yawRad, t, state.depth);
+        const points = applyPseudoDepth(interpolateRigPoints(pair, Math.min(localYaw, 90)), yawRad, t, state.depth * 0.45);
         return {
           points,
           path: pointsToPath(points, state.smooth),
@@ -842,7 +964,7 @@ ${new XMLSerializer().serializeToString(clone)}
         const earKey = part.geometry.side === "left" ? "earLeft" : "earRight";
         const earState = viewState.ears.find((item) => item.key === earKey);
         if (!earState) return null;
-        const points = applyPseudoDepth(computeEarPoints(getEarRig(state)[earKey], yaw), yawRad, t, state.depth);
+        const points = applyPseudoDepth(computeEarPoints(getEarRig(state)[earKey], yaw), yawRad, t, state.depth * 0.28);
         return {
           points,
           path: pointsToPath(points, state.smooth),
@@ -876,7 +998,7 @@ ${new XMLSerializer().serializeToString(clone)}
         return {
           path: `M ${(mouthX - mouthW).toFixed(2)} ${(mouthY - mouthTilt).toFixed(2)} Q ${mouthX.toFixed(2)} ${(mouthY + bounds.height * 0.018).toFixed(2)}, ${(mouthX + mouthW).toFixed(2)} ${(mouthY + mouthTilt).toFixed(2)}`,
           bounds,
-          visible: viewState.showMouth
+          visible: viewState.showMouth && viewState.profile < 0.96
         };
       }
       case "head.noseHighlight": {
@@ -886,11 +1008,12 @@ ${new XMLSerializer().serializeToString(clone)}
         const center = centroid(nosePoints);
         const sign = viewState.side > 0 ? -1 : 1;
         const t = viewState.t;
+        const facing = noseFacingScore(viewState);
         return {
           path: `M ${(center.x - sign * bounds.width * 0.1).toFixed(2)} ${(bounds.minY + bounds.height * 0.2).toFixed(2)} Q ${(center.x - sign * bounds.width * 0.18).toFixed(2)} ${center.y.toFixed(2)}, ${(center.x - sign * bounds.width * 0.1).toFixed(2)} ${(bounds.minY + bounds.height * 0.84).toFixed(2)}`,
           bounds,
-          opacity: 0.08 + t * 0.18,
-          visible: viewState.showNose && outlineMode !== "SILHOUETTE_ONLY" && viewState.zone !== "BACK_PROXY" && viewState.profile > 0.5
+          opacity: 0.05 + facing * 0.24 + t * 0.06,
+          visible: viewState.showNose && outlineMode !== "SILHOUETTE_ONLY" && viewState.zone !== "BACK_PROXY" && facing > 0.16
         };
       }
       case "head.nostril": {
@@ -900,10 +1023,11 @@ ${new XMLSerializer().serializeToString(clone)}
         const center = centroid(nosePoints);
         const sign = viewState.side > 0 ? -1 : 1;
         const t = viewState.t;
+        const facing = noseFacingScore(viewState);
         return {
           bounds,
-          opacity: 0.04 + t * 0.18,
-          visible: viewState.showNose && outlineMode !== "SILHOUETTE_ONLY" && viewState.zone !== "BACK_PROXY" && viewState.profile > 0.5,
+          opacity: 0.03 + facing * 0.18 + t * 0.05,
+          visible: viewState.showNose && outlineMode !== "SILHOUETTE_ONLY" && viewState.zone !== "BACK_PROXY" && facing > 0.2,
           meta: {
             cx: (center.x + sign * bounds.width * 0.17).toFixed(2),
             cy: (bounds.minY + bounds.height * 0.72).toFixed(2),
@@ -923,10 +1047,11 @@ ${new XMLSerializer().serializeToString(clone)}
         const earState = viewState.ears.find((item) => item.key === (part.geometry?.side === "right" ? "earRight" : "earLeft"));
         if (!earState) return null;
         const curve = bounds.width * (localSide > 0 ? -0.18 : 0.18) * (earState.depth >= 0 ? 1 : -1);
+        const facing = earInnerFacingScore(viewState, earState.isNear);
         return {
           path: `M ${cx.toFixed(2)} ${y1.toFixed(2)} C ${(cx + curve).toFixed(2)} ${(y1 + bounds.height * 0.18).toFixed(2)}, ${(cx - curve * 0.65).toFixed(2)} ${(y2 - bounds.height * 0.18).toFixed(2)}, ${cx.toFixed(2)} ${y2.toFixed(2)}`,
           bounds,
-          visible: outlineMode !== "SILHOUETTE_ONLY" && earState.isNear && viewState.profile < 0.68 && viewState.back < 0.58
+          visible: outlineMode !== "SILHOUETTE_ONLY" && facing > 0.22
         };
       }
       default:
@@ -977,6 +1102,11 @@ ${new XMLSerializer().serializeToString(clone)}
   }
 
   // src/head-debug.ts
+  function matrixToAttr(path) {
+    const matrix = path.getCTM();
+    if (!matrix) return null;
+    return `matrix(${matrix.a} ${matrix.b} ${matrix.c} ${matrix.d} ${matrix.e} ${matrix.f})`;
+  }
   function renderHeadSources(ui, side, backT = 0) {
     ui.sourceGuides.innerHTML = "";
     const centerSelectors = ["#CENTER #FACE", "#CENTER #NOSE", side > 0 ? "#CENTER #PRAWE" : "#CENTER #LEWE"];
@@ -984,13 +1114,23 @@ ${new XMLSerializer().serializeToString(clone)}
     for (const selector of centerSelectors) {
       const path = document.querySelector(selector);
       if (!path) continue;
-      ui.sourceGuides.appendChild(createEl("path", { class: "ghostPath centerGhost", d: path.getAttribute("d") ?? "" }));
+      const ghost = createEl("path", { class: "ghostPath centerGhost", d: path.getAttribute("d") ?? "" });
+      const transform = matrixToAttr(path);
+      if (transform) ghost.setAttribute("transform", transform);
+      ui.sourceGuides.appendChild(ghost);
     }
     for (const selector of profileSelectors) {
       const path = document.querySelector(selector);
       if (!path) continue;
       const ghost = createEl("path", { class: "ghostPath profileGhost", d: path.getAttribute("d") ?? "" });
-      if (side < 0) ghost.setAttribute("transform", "translate(1080,0) scale(-1,1)");
+      const transform = matrixToAttr(path);
+      if (transform && side < 0) {
+        ghost.setAttribute("transform", `translate(1080,0) scale(-1,1) ${transform}`);
+      } else if (transform) {
+        ghost.setAttribute("transform", transform);
+      } else if (side < 0) {
+        ghost.setAttribute("transform", "translate(1080,0) scale(-1,1)");
+      }
       ui.sourceGuides.appendChild(ghost);
     }
     ui.sourceGuides.style.opacity = String(1 - smoothstep(remapClamp(backT, 0.45, 1)) * 0.58);
@@ -1032,10 +1172,25 @@ ${new XMLSerializer().serializeToString(clone)}
   function createPrimitiveElement(primitive) {
     return createEl(primitive.kind);
   }
+  function ensureSilhouetteGroup(ui) {
+    let group = ui.outlineLayer.querySelector('[data-primitive-group="silhouette-union"]');
+    if (!group) {
+      group = createEl("g");
+      group.setAttribute("data-primitive-group", "silhouette-union");
+      group.setAttribute("class", "masterSilhouetteUnion");
+      ui.outlineLayer.appendChild(group);
+    }
+    return group;
+  }
   function applyPrimitive(element, primitive) {
     element.setAttribute("data-primitive-id", primitive.id);
-    if (primitive.className) element.setAttribute("class", primitive.className);
-    else element.removeAttribute("class");
+    if (primitive.role === "silhouette") {
+      element.removeAttribute("class");
+    } else if (primitive.className) {
+      element.setAttribute("class", primitive.className);
+    } else {
+      element.removeAttribute("class");
+    }
     element.style.display = primitive.visible ? "inline" : "none";
     element.style.opacity = String(primitive.opacity ?? 1);
     if (primitive.kind === "path" && primitive.path) {
@@ -1053,6 +1208,7 @@ ${new XMLSerializer().serializeToString(clone)}
     constructor(ui) {
       this.ui = ui;
       this.elements = /* @__PURE__ */ new Map();
+      this.silhouetteGroup = ensureSilhouetteGroup(ui);
     }
     render(primitives) {
       const sorted = sortRenderPrimitives(primitives);
@@ -1071,7 +1227,11 @@ ${new XMLSerializer().serializeToString(clone)}
           this.elements.set(primitive.id, element);
         }
         applyPrimitive(element, primitive);
-        layerFor(this.ui, primitive.layer).appendChild(element);
+        if (primitive.role === "silhouette") {
+          this.silhouetteGroup.appendChild(element);
+        } else {
+          layerFor(this.ui, primitive.layer).appendChild(element);
+        }
       }
     }
   };
@@ -1087,9 +1247,16 @@ ${new XMLSerializer().serializeToString(clone)}
 
   // src/policies/layer.ts
   function computeRenderPassPolicy(part, depth) {
-    if (part.renderPass) return part.renderPass;
+    if (part.renderPass && part.type !== "mass") return part.renderPass;
     if (part.type === "detail") return "detail";
     if (part.type === "contour") return "outline";
+    if (part.type === "mass") {
+      if (depth < -18) return "farMass";
+      if (depth > 18) return "nearMass";
+      if (part.renderPass === "farMass" || part.renderPass === "nearMass") return part.renderPass;
+      return "midMass";
+    }
+    if (part.renderPass) return part.renderPass;
     if (part.type === "group") return "midMass";
     if (depth < -12) return "farMass";
     if (depth > 12) return "nearMass";
@@ -1106,6 +1273,8 @@ ${new XMLSerializer().serializeToString(clone)}
     return [...parts].filter((part) => part.visible && part.type !== "group").sort((a, b) => {
       const passDiff = order[a.renderPass] - order[b.renderPass];
       if (passDiff !== 0) return passDiff;
+      const zDiff = (a.source.render?.zIndex ?? 0) - (b.source.render?.zIndex ?? 0);
+      if (zDiff !== 0) return zDiff;
       return a.depth - b.depth;
     });
   }
@@ -1114,13 +1283,13 @@ ${new XMLSerializer().serializeToString(clone)}
   function computeVisibilityPolicy(part, ctx) {
     switch (part.visibilityMode ?? "always") {
       case "front-only":
-        return ctx.back < 0.1 && ctx.side < 0.3;
+        return ctx.back < 0.06 && ctx.side < 0.22;
       case "front-profile":
-        return ctx.back < 0.45;
+        return ctx.back < 0.38;
       case "front-side":
-        return ctx.back < 0.62;
+        return ctx.back < 0.5;
       case "not-back":
-        return ctx.back < 0.82;
+        return ctx.back < 0.62;
       default:
         return true;
     }
@@ -1220,7 +1389,19 @@ ${new XMLSerializer().serializeToString(clone)}
       ...overrides
     };
   }
+  function noseFacingScore2(viewState) {
+    const profilePresence = smoothstep(remapClamp(viewState.profile, 0.18, 0.82));
+    const backFade = 1 - smoothstep(remapClamp(viewState.back, 0.12, 0.72));
+    return profilePresence * backFade;
+  }
   function computeOutlinePolicy(viewState, mode) {
+    const showFace = true;
+    const showNose = viewState.showNose;
+    const showMouth = viewState.showMouth;
+    const showEarInner = viewState.zone !== "REAR_TRANSITION" && viewState.zone !== "BACK_PROXY" && viewState.profile < 0.72;
+    const showNoseDetail = viewState.zone === "FRONT" || viewState.zone === "THREE_QUARTER" || viewState.zone === "PROFILE" && viewState.back < 0.08;
+    const showNoseDetailStrong = showNoseDetail && noseFacingScore2(viewState) > 0.5;
+    const adaptiveNoseDetail = showNoseDetail && noseFacingScore2(viewState) > 0.12;
     const earPolicies = {
       earRight: computeEarPolicy(viewState.earRight, viewState, mode),
       earLeft: computeEarPolicy(viewState.earLeft, viewState, mode)
@@ -1229,11 +1410,15 @@ ${new XMLSerializer().serializeToString(clone)}
       return {
         drawMasterSilhouette: true,
         parts: {
-          face: partPolicy({ drawContour: true, drawSilhouette: true }),
-          nose: partPolicy({ drawBody: viewState.showNose, drawContour: viewState.showNose, drawSilhouette: viewState.showNose }),
+          face: partPolicy({ drawBody: showFace, drawContour: true, drawSilhouette: true }),
+          nose: partPolicy({ drawBody: showNose, drawContour: showNose, drawSilhouette: showNose }),
           earRight: earPolicies.earRight,
           earLeft: earPolicies.earLeft,
-          mouth: partPolicy({ drawBody: viewState.showMouth })
+          mouth: partPolicy({ drawBody: showMouth, drawContour: false }),
+          noseHighlight: partPolicy({ drawBody: showNose }),
+          nostril: partPolicy({ drawBody: showNose }),
+          earRightInner: partPolicy({ drawBody: earPolicies.earRight.drawInner && showEarInner }),
+          earLeftInner: partPolicy({ drawBody: earPolicies.earLeft.drawInner && showEarInner })
         }
       };
     }
@@ -1241,11 +1426,15 @@ ${new XMLSerializer().serializeToString(clone)}
       return {
         drawMasterSilhouette: true,
         parts: {
-          face: partPolicy({ drawSilhouette: true }),
-          nose: partPolicy({ drawBody: false, drawSilhouette: false }),
-          earRight: earPolicies.earRight,
-          earLeft: earPolicies.earLeft,
-          mouth: partPolicy({ drawBody: false })
+          face: partPolicy({ drawBody: showFace, drawSilhouette: true }),
+          nose: partPolicy({ drawBody: showNose, drawSilhouette: showNose }),
+          earRight: partPolicy({ drawBody: earPolicies.earRight.drawBody, drawSilhouette: earPolicies.earRight.drawSilhouette }),
+          earLeft: partPolicy({ drawBody: earPolicies.earLeft.drawBody, drawSilhouette: earPolicies.earLeft.drawSilhouette }),
+          mouth: partPolicy({ drawBody: false }),
+          noseHighlight: partPolicy({ drawBody: false }),
+          nostril: partPolicy({ drawBody: false }),
+          earRightInner: partPolicy({ drawBody: false }),
+          earLeftInner: partPolicy({ drawBody: false })
         }
       };
     }
@@ -1253,30 +1442,38 @@ ${new XMLSerializer().serializeToString(clone)}
       return {
         drawMasterSilhouette: true,
         parts: {
-          face: partPolicy({ drawSilhouette: true }),
+          face: partPolicy({ drawBody: showFace, drawSilhouette: true }),
           nose: partPolicy({
-            drawBody: viewState.showNose,
-            drawContour: viewState.showNose && viewState.noseFusion < 0.15,
-            drawSilhouette: viewState.showNose
+            drawBody: showNose,
+            drawContour: showNose && viewState.noseFusion < 0.18 && viewState.zone !== "PROFILE",
+            drawSilhouette: showNose
           }),
           earRight: earPolicies.earRight,
           earLeft: earPolicies.earLeft,
-          mouth: partPolicy({ drawBody: viewState.zone !== "BACK_PROXY" && viewState.profile < 0.9 })
+          mouth: partPolicy({ drawBody: showMouth && viewState.profile < 0.82 }),
+          noseHighlight: partPolicy({ drawBody: showNoseDetailStrong }),
+          nostril: partPolicy({ drawBody: showNoseDetailStrong }),
+          earRightInner: partPolicy({ drawBody: false }),
+          earLeftInner: partPolicy({ drawBody: false })
         }
       };
     }
     return {
       drawMasterSilhouette: true,
       parts: {
-        face: partPolicy({ drawSilhouette: true }),
+        face: partPolicy({ drawBody: showFace, drawSilhouette: true }),
         nose: partPolicy({
-          drawBody: viewState.showNose,
-          drawContour: viewState.showNose && viewState.noseFusion < 0.55,
-          drawSilhouette: viewState.showNose
+          drawBody: showNose,
+          drawContour: showNose && viewState.noseFusion < 0.55 && viewState.zone !== "REAR_TRANSITION",
+          drawSilhouette: showNose
         }),
         earRight: earPolicies.earRight,
         earLeft: earPolicies.earLeft,
-        mouth: partPolicy({ drawBody: viewState.zone !== "BACK_PROXY" })
+        mouth: partPolicy({ drawBody: showMouth }),
+        noseHighlight: partPolicy({ drawBody: adaptiveNoseDetail }),
+        nostril: partPolicy({ drawBody: adaptiveNoseDetail }),
+        earRightInner: partPolicy({ drawBody: earPolicies.earRight.drawInner && showEarInner }),
+        earLeftInner: partPolicy({ drawBody: earPolicies.earLeft.drawInner && showEarInner })
       }
     };
   }

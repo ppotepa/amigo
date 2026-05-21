@@ -15,7 +15,7 @@ pub struct WgpuVector2dRenderExtractorBridge;
 
 impl RenderFrameExtractor<Runtime, WgpuRenderFramePacket> for WgpuVector2dRenderExtractorBridge {
     fn name(&self) -> &'static str {
-        amigo_vector_2d_plugin::Vector2dRenderExtractor.name()
+        amigo_vector_2d_plugin::render::Vector2dRenderExtractor.name()
     }
 
     fn extract(&self, runtime: &Runtime, packet: &mut WgpuRenderFramePacket) {
@@ -27,12 +27,15 @@ impl RenderFrameExtractor<Runtime, WgpuRenderFramePacket> for WgpuVector2dRender
         else {
             return;
         };
-        amigo_vector_2d_plugin::Vector2dRenderExtractor.extract(
-            amigo_vector_2d_plugin::Vector2dRenderExtractionContext {
+        for command in amigo_vector_2d_plugin::render::extract_vector2d_render_commands(
+            amigo_vector_2d_plugin::render::Vector2dRenderExtractionContext {
                 scene_service: scene_service.as_ref(),
                 vector_scene_service: vector_scene_service.as_ref(),
             },
-            packet,
-        );
+        ) {
+            packet.push_renderable_2d(
+                amigo_vector_2d_plugin::render::vector_draw_command_to_renderable_2d(&command),
+            );
+        }
     }
 }

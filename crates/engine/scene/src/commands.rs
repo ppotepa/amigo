@@ -21,6 +21,9 @@ pub enum SceneCommand {
     SelectScene {
         scene: SceneKey,
     },
+    Plugin {
+        command: PluginSceneCommand,
+    },
     ReloadActiveScene,
     ClearEntities,
     QueueSprite2d {
@@ -165,6 +168,17 @@ pub enum SceneCommand {
 }
 
 impl SceneCommand {
+    pub fn plugin(command: PluginSceneCommand) -> Self {
+        Self::Plugin { command }
+    }
+
+    pub fn plugin_command(&self) -> Option<&PluginSceneCommand> {
+        match self {
+            Self::Plugin { command } => Some(command),
+            _ => None,
+        }
+    }
+
     pub fn queue_motion_controller(command: MotionController2dSceneCommand) -> Self {
         Self::QueueMotionController2d { command }
     }

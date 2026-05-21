@@ -5,6 +5,8 @@
 mod behavior;
 /// Camera-authored document fragments.
 mod camera;
+/// Generic component envelope used by plugin-owned scene components.
+mod component_envelope;
 /// Scope/domain scene authoring compiler.
 mod compiler;
 /// Component schemas shared by authored scene entities.
