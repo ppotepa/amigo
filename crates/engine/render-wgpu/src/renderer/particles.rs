@@ -192,7 +192,7 @@ pub(crate) fn particle_render_lights_from_renderables(
     let mut source_lights = BTreeMap::<String, ParticleRenderLight>::new();
 
     for renderable in renderables {
-        let RenderPrimitive2d::Particle(particle) = &renderable.primitive else {
+        let RenderPrimitive2d::ParticleBatch(particle) = &renderable.primitive else {
             continue;
         };
         let Some(light) = particle.light else {

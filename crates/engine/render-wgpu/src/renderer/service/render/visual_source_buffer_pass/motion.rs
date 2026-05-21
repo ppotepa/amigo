@@ -152,7 +152,7 @@ fn append_renderable_motion(
     index: usize,
 ) {
     match &item.primitive {
-        RenderPrimitive2d::TileMap(primitive) => {
+        RenderPrimitive2d::TileBatch(primitive) => {
             let transform = Transform2 {
                 translation: primitive.origin_offset,
                 ..Transform2::default()
@@ -188,7 +188,7 @@ fn append_renderable_motion(
                 ),
             );
         }
-        RenderPrimitive2d::LayeredImage(primitive) => {
+        RenderPrimitive2d::LayeredTexturedQuads(primitive) => {
             let key = format!("layered_image:{}", item.owner_entity());
             current_positions.insert(key.clone(), primitive.transform.translation);
             util::append_visual_quad(
@@ -220,7 +220,7 @@ fn append_renderable_motion(
                 ),
             );
         }
-        RenderPrimitive2d::VectorShape(primitive) => {
+        RenderPrimitive2d::VectorMesh(primitive) => {
             let transform =
                 crate::renderer::world_2d::vector_primitive_viewport_fit_transform(viewport, primitive);
             let key = format!("vector:{}", item.owner_entity());
@@ -240,7 +240,7 @@ fn append_renderable_motion(
                 Some(color),
             );
         }
-        RenderPrimitive2d::BeaconLight(primitive) => {
+        RenderPrimitive2d::RadialLightVisual(primitive) => {
             let key = format!("beacon:{}", item.owner_entity());
             current_positions.insert(key.clone(), primitive.center);
             util::append_visual_quad(
@@ -263,7 +263,7 @@ fn append_renderable_motion(
                 ),
             );
         }
-        RenderPrimitive2d::Particle(primitive) => {
+        RenderPrimitive2d::ParticleBatch(primitive) => {
             let key = format!("particle:{}:{index}", primitive.emitter_entity_name);
             current_positions.insert(key, primitive.position);
             util::append_visual_quad(

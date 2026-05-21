@@ -5,11 +5,11 @@ use crate::{
 };
 use crate::renderer::collect_material_candidate_2d;
 
-pub struct Vector2dRenderableAdapter;
+pub struct VectorMesh2dRenderableAdapter;
 
-impl WgpuRenderable2dAdapter for Vector2dRenderableAdapter {
+impl WgpuRenderable2dAdapter for VectorMesh2dRenderableAdapter {
     fn kind(&self) -> RenderPrimitive2dKind {
-        RenderPrimitive2dKind::VectorShape
+        RenderPrimitive2dKind::VectorMesh
     }
 
     fn append_batches(
@@ -17,7 +17,7 @@ impl WgpuRenderable2dAdapter for Vector2dRenderableAdapter {
         ctx: &mut WgpuRenderable2dAdapterContext<'_>,
         item: &crate::Renderable2dItem,
     ) -> bool {
-        let RenderPrimitive2d::VectorShape(command) = &item.primitive else {
+        let RenderPrimitive2d::VectorMesh(command) = &item.primitive else {
             return false;
         };
 

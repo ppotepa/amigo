@@ -8,7 +8,7 @@ use crate::tilemap::TileMap2dDrawCommand;
 pub fn tilemap_draw_command_to_render_primitive(
     command: &TileMap2dDrawCommand,
 ) -> RenderPrimitive2d {
-    RenderPrimitive2d::TileMap(TileMap2dPrimitive {
+    RenderPrimitive2d::TileBatch(TileMap2dPrimitive {
         tileset: command.tilemap.tileset.clone(),
         tile_size: command.tilemap.tile_size,
         grid: command.tilemap.grid.clone(),

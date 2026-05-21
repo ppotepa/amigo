@@ -497,7 +497,7 @@ fn beacon_payload_for_light_source<'a>(
         return None;
     }
     renderables.iter().find_map(|item| match &item.primitive {
-        RenderPrimitive2d::BeaconLight(beacon)
+        RenderPrimitive2d::RadialLightVisual(beacon)
             if item.owner_entity() == source.owner && source.component_kind == "BeaconLight2D" =>
         {
             Some(beacon)

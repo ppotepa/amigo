@@ -36,7 +36,7 @@ pub(super) fn execute_world_graph_node(
         .world_2d
         .renderables
         .iter()
-        .filter(|item| matches!(item.primitive, RenderPrimitive2d::BeaconLight(_)))
+        .filter(|item| matches!(item.primitive, RenderPrimitive2d::RadialLightVisual(_)))
         .map(|item| item.render_layer().to_owned())
         .collect::<std::collections::BTreeSet<_>>();
     let overlay_beacon_layers = request
@@ -44,7 +44,7 @@ pub(super) fn execute_world_graph_node(
         .renderables
         .iter()
         .filter_map(|item| match &item.primitive {
-            RenderPrimitive2d::BeaconLight(beacon) if beacon.overlay_visible => {
+            RenderPrimitive2d::RadialLightVisual(beacon) if beacon.overlay_visible => {
                 Some(item.render_layer().to_owned())
             }
             _ => None,

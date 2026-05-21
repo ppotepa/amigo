@@ -53,7 +53,7 @@ pub(crate) fn collect_material_candidate_2d(
     }
 
     match item.primitive.kind() {
-        RenderPrimitive2dKind::LayeredImage => {
+        RenderPrimitive2dKind::LayeredTexturedQuads => {
             decisions.push(MaterialCandidateDecision2d::skipped(
                 item.owner_entity(),
                 item.component_kind(),
@@ -62,7 +62,7 @@ pub(crate) fn collect_material_candidate_2d(
                 "material_pipeline_out_of_scope_v1",
             ))
         }
-        RenderPrimitive2dKind::Particle => decisions.push(MaterialCandidateDecision2d::skipped(
+        RenderPrimitive2dKind::ParticleBatch => decisions.push(MaterialCandidateDecision2d::skipped(
             item.owner_entity(),
             item.component_kind(),
             item.render_layer(),
@@ -211,7 +211,7 @@ mod tests {
     #[test]
     fn vector_material_candidate_uses_same_role_gating_as_text() {
         let mut item = vector_item();
-        if let RenderPrimitive2d::VectorShape(primitive) = &mut item.primitive {
+        if let RenderPrimitive2d::VectorMesh(primitive) = &mut item.primitive {
             primitive.material.contributions.set(roles::MATERIAL_MASK, true);
         }
         let mut out = Vec::new();
@@ -231,7 +231,7 @@ mod tests {
                 "LayeredImage2D",
                 Renderable2dKind::LayeredImage,
             ),
-            RenderPrimitive2d::LayeredImage(LayeredImage2dPrimitive {
+            RenderPrimitive2d::LayeredTexturedQuads(LayeredImage2dPrimitive {
                 asset: AssetKey::new("test/poster-stack"),
                 size: Vec2::new(64.0, 64.0),
                 base_opacity: 1.0,
@@ -255,7 +255,7 @@ mod tests {
     fn particle_material_path_reports_not_mapped_to_material2d() {
         let item = Renderable2dItem::new(
             common("rain", "ParticleEmitter2D", Renderable2dKind::Particle),
-            RenderPrimitive2d::Particle(Particle2dPrimitive {
+            RenderPrimitive2d::ParticleBatch(Particle2dPrimitive {
                 emitter_entity_name: "rain".to_owned(),
                 render_layer: "default".to_owned(),
                 position: Vec2::ZERO,
@@ -337,7 +337,7 @@ mod tests {
     fn vector_item() -> Renderable2dItem {
         Renderable2dItem::new(
             common("glass", "VectorShape2D", Renderable2dKind::Vector),
-            RenderPrimitive2d::VectorShape(VectorShape2dPrimitive {
+            RenderPrimitive2d::VectorMesh(VectorShape2dPrimitive {
                 shape: VectorShape2dKindPrimitive::Circle {
                     radius: 10.0,
                     segments: 8,
@@ -345,7 +345,7 @@ mod tests {
                 style: VectorShape2dStylePrimitive {
                     stroke_color: ColorRgba::WHITE,
                     stroke_width: 0.0,
-                    fill_color: Some(ColorRgba::WHITE),
+                fill_color: Some(ColorRgba::WHITE),
                 },
                 transform: Transform2::default(),
                 viewport_fit: VectorShape2dViewportFit::Fixed,

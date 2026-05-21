@@ -65,7 +65,7 @@ fn append_renderable_material_proxy(
     item: &Renderable2dItem,
 ) {
     match &item.primitive {
-        RenderPrimitive2d::TileMap(primitive) => util::append_visual_quad(
+        RenderPrimitive2d::TileBatch(primitive) => util::append_visual_quad(
             color_batches,
             viewport,
             camera,
@@ -76,7 +76,7 @@ fn append_renderable_material_proxy(
             util::tilemap_primitive_draw_size(primitive),
             material_color_for_kind(kind, ColorRgba::new(0.08, 0.08, 0.09, 1.0)),
         ),
-        RenderPrimitive2d::VectorShape(primitive) => {
+        RenderPrimitive2d::VectorMesh(primitive) => {
             let source_color = primitive
                 .style
                 .fill_color
@@ -100,7 +100,7 @@ fn append_renderable_material_proxy(
             primitive.bounds,
             material_color_for_kind(kind, primitive.color),
         ),
-        RenderPrimitive2d::BeaconLight(primitive) => util::append_visual_quad(
+        RenderPrimitive2d::RadialLightVisual(primitive) => util::append_visual_quad(
             color_batches,
             viewport,
             camera,
@@ -115,7 +115,7 @@ fn append_renderable_material_proxy(
             ),
             material_color_for_kind(kind, primitive.color),
         ),
-        RenderPrimitive2d::Particle(primitive) => util::append_visual_quad(
+        RenderPrimitive2d::ParticleBatch(primitive) => util::append_visual_quad(
             color_batches,
             viewport,
             camera,
@@ -173,7 +173,7 @@ pub(super) fn append_camera_optical_candidate_texture_buffers(
             continue;
         };
         let Some(layered) = request.world_2d.renderables.iter().find_map(|item| match &item.primitive {
-            RenderPrimitive2d::LayeredImage(layered)
+            RenderPrimitive2d::LayeredTexturedQuads(layered)
                 if item.owner_entity() == lightmap.source.entity_name =>
             {
                 Some(layered)
@@ -242,11 +242,11 @@ fn append_camera_optical_candidate_color_buffers(
                 for renderable in request.world_2d.renderables.iter().filter(|item| {
                     matches!(
                         &item.primitive,
-                        RenderPrimitive2d::Particle(primitive)
+                        RenderPrimitive2d::ParticleBatch(primitive)
                             if &primitive.emitter_entity_name == emitter_entity_name
                     )
                 }) {
-                    let RenderPrimitive2d::Particle(command) = &renderable.primitive else {
+                    let RenderPrimitive2d::ParticleBatch(command) = &renderable.primitive else {
                         continue;
                     };
                     util::append_visual_quad(
@@ -317,9 +317,9 @@ fn append_camera_optical_candidate_color_buffers(
                 for renderable in request.world_2d.renderables.iter().filter(|item| {
                     item.owner_entity() == entity_name
                         && item.render_layer() == render_layer
-                        && matches!(item.primitive, RenderPrimitive2d::VectorShape(_))
+                        && matches!(item.primitive, RenderPrimitive2d::VectorMesh(_))
                 }) {
-                    let RenderPrimitive2d::VectorShape(command) = &renderable.primitive else {
+                    let RenderPrimitive2d::VectorMesh(command) = &renderable.primitive else {
                         continue;
                     };
                     crate::renderer::world_2d::append_vector_primitive_vertices(

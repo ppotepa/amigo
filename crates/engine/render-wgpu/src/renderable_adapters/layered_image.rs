@@ -4,11 +4,11 @@ use crate::{
 use amigo_render_api::{RenderPrimitive2d, RenderPrimitive2dKind};
 use crate::renderer::collect_material_candidate_2d;
 
-pub struct LayeredImage2dRenderableAdapter;
+pub struct LayeredTexturedQuads2dRenderableAdapter;
 
-impl WgpuRenderable2dAdapter for LayeredImage2dRenderableAdapter {
+impl WgpuRenderable2dAdapter for LayeredTexturedQuads2dRenderableAdapter {
     fn kind(&self) -> RenderPrimitive2dKind {
-        RenderPrimitive2dKind::LayeredImage
+        RenderPrimitive2dKind::LayeredTexturedQuads
     }
 
     fn append_batches(
@@ -16,7 +16,7 @@ impl WgpuRenderable2dAdapter for LayeredImage2dRenderableAdapter {
         ctx: &mut WgpuRenderable2dAdapterContext<'_>,
         item: &crate::Renderable2dItem,
     ) -> bool {
-        let RenderPrimitive2d::LayeredImage(command) = &item.primitive else {
+        let RenderPrimitive2d::LayeredTexturedQuads(command) = &item.primitive else {
             return false;
         };
 

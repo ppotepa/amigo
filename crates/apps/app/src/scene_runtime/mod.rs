@@ -522,7 +522,7 @@ fn register_scene_command_asset_references(
 ) {
     match command {
         SceneCommand::Plugin { command } => {
-            if let Some(command) = command.sprite_2d_command() {
+            if let Some(command) = command.payload_as::<amigo_scene::Sprite2dSceneCommand>() {
                 crate::app_helpers::register_mod_asset_reference(
                     asset_catalog,
                     &command.source_mod,
@@ -530,7 +530,7 @@ fn register_scene_command_asset_references(
                     "spritesheets",
                     "sprite-sheet-2d",
                 );
-            } else if let Some(command) = command.text_2d_command() {
+            } else if let Some(command) = command.payload_as::<amigo_scene::Text2dSceneCommand>() {
                 crate::app_helpers::register_mod_asset_reference(
                     asset_catalog,
                     &command.source_mod,

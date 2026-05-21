@@ -95,7 +95,7 @@ fn material_light_payload(item: &Renderable2dItem) -> Option<(Material2d, [f32; 
             command.color.a,
         ],
         amigo_render_api::RenderPrimitive2d::TexturedQuad(_) => [1.0, 1.0, 1.0, 1.0],
-        amigo_render_api::RenderPrimitive2d::VectorShape(command) => color_rgba(
+        amigo_render_api::RenderPrimitive2d::VectorMesh(command) => color_rgba(
             command
                 .style
                 .fill_color

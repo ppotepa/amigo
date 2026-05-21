@@ -4,11 +4,11 @@ use crate::{
 use amigo_render_api::{ParticleBlendMode2dPrimitive, ParticleLightMode2dPrimitive, RenderPrimitive2d, RenderPrimitive2dKind};
 use crate::renderer::collect_material_candidate_2d;
 
-pub struct Particle2dRenderableAdapter;
+pub struct ParticleBatch2dRenderableAdapter;
 
-impl WgpuRenderable2dAdapter for Particle2dRenderableAdapter {
+impl WgpuRenderable2dAdapter for ParticleBatch2dRenderableAdapter {
     fn kind(&self) -> RenderPrimitive2dKind {
-        RenderPrimitive2dKind::Particle
+        RenderPrimitive2dKind::ParticleBatch
     }
 
     fn append_batches(
@@ -16,7 +16,7 @@ impl WgpuRenderable2dAdapter for Particle2dRenderableAdapter {
         ctx: &mut WgpuRenderable2dAdapterContext<'_>,
         item: &crate::Renderable2dItem,
     ) -> bool {
-        let RenderPrimitive2d::Particle(primitive) = &item.primitive else {
+        let RenderPrimitive2d::ParticleBatch(primitive) = &item.primitive else {
             return false;
         };
 

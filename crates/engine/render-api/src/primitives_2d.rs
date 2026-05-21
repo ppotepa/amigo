@@ -64,11 +64,11 @@ pub struct TexturedQuad2dPrimitive {
 pub enum RenderPrimitive2dKind {
     TexturedQuad,
     GlyphRun,
-    VectorShape,
-    TileMap,
-    LayeredImage,
-    BeaconLight,
-    Particle,
+    VectorMesh,
+    TileBatch,
+    LayeredTexturedQuads,
+    RadialLightVisual,
+    ParticleBatch,
 }
 
 impl RenderPrimitive2dKind {
@@ -76,11 +76,11 @@ impl RenderPrimitive2dKind {
         match self {
             Self::TexturedQuad => "textured_quad_2d",
             Self::GlyphRun => "glyph_run_2d",
-            Self::VectorShape => "vector_shape_2d",
-            Self::TileMap => "tilemap_2d",
-            Self::LayeredImage => "layered_image_2d",
-            Self::BeaconLight => "beacon_light_2d",
-            Self::Particle => "particle_2d",
+            Self::VectorMesh => "vector_mesh_2d",
+            Self::TileBatch => "tile_batch_2d",
+            Self::LayeredTexturedQuads => "layered_textured_quads_2d",
+            Self::RadialLightVisual => "radial_light_visual_2d",
+            Self::ParticleBatch => "particle_batch_2d",
         }
     }
 }
@@ -359,11 +359,11 @@ pub struct Particle2dPrimitive {
 pub enum RenderPrimitive2d {
     TexturedQuad(TexturedQuad2dPrimitive),
     GlyphRun(GlyphRun2dPrimitive),
-    VectorShape(VectorShape2dPrimitive),
-    TileMap(TileMap2dPrimitive),
-    LayeredImage(LayeredImage2dPrimitive),
-    BeaconLight(BeaconLight2dPrimitive),
-    Particle(Particle2dPrimitive),
+    VectorMesh(VectorShape2dPrimitive),
+    TileBatch(TileMap2dPrimitive),
+    LayeredTexturedQuads(LayeredImage2dPrimitive),
+    RadialLightVisual(BeaconLight2dPrimitive),
+    ParticleBatch(Particle2dPrimitive),
 }
 
 impl RenderPrimitive2d {
@@ -371,11 +371,11 @@ impl RenderPrimitive2d {
         match self {
             Self::TexturedQuad(_) => RenderPrimitive2dKind::TexturedQuad,
             Self::GlyphRun(_) => RenderPrimitive2dKind::GlyphRun,
-            Self::VectorShape(_) => RenderPrimitive2dKind::VectorShape,
-            Self::TileMap(_) => RenderPrimitive2dKind::TileMap,
-            Self::LayeredImage(_) => RenderPrimitive2dKind::LayeredImage,
-            Self::BeaconLight(_) => RenderPrimitive2dKind::BeaconLight,
-            Self::Particle(_) => RenderPrimitive2dKind::Particle,
+            Self::VectorMesh(_) => RenderPrimitive2dKind::VectorMesh,
+            Self::TileBatch(_) => RenderPrimitive2dKind::TileBatch,
+            Self::LayeredTexturedQuads(_) => RenderPrimitive2dKind::LayeredTexturedQuads,
+            Self::RadialLightVisual(_) => RenderPrimitive2dKind::RadialLightVisual,
+            Self::ParticleBatch(_) => RenderPrimitive2dKind::ParticleBatch,
         }
     }
 
@@ -383,14 +383,14 @@ impl RenderPrimitive2d {
         match self {
             Self::TexturedQuad(primitive) => primitive.transform,
             Self::GlyphRun(primitive) => primitive.transform,
-            Self::VectorShape(primitive) => primitive.transform,
-            Self::TileMap(primitive) => Transform2 {
+            Self::VectorMesh(primitive) => primitive.transform,
+            Self::TileBatch(primitive) => Transform2 {
                 translation: primitive.origin_offset,
                 ..Transform2::default()
             },
-            Self::LayeredImage(primitive) => primitive.transform,
-            Self::BeaconLight(_) => Transform2::default(),
-            Self::Particle(primitive) => primitive.transform,
+            Self::LayeredTexturedQuads(primitive) => primitive.transform,
+            Self::RadialLightVisual(_) => Transform2::default(),
+            Self::ParticleBatch(primitive) => primitive.transform,
         }
     }
 
@@ -398,14 +398,14 @@ impl RenderPrimitive2d {
         match self {
             Self::TexturedQuad(primitive) => Some(&primitive.material),
             Self::GlyphRun(primitive) => Some(&primitive.material),
-            Self::VectorShape(primitive) => Some(&primitive.material),
+            Self::VectorMesh(primitive) => Some(&primitive.material),
             _ => None,
         }
     }
 
-    pub fn layered_image(&self) -> Option<&LayeredImage2dPrimitive> {
+    pub fn layered_textured_quads(&self) -> Option<&LayeredImage2dPrimitive> {
         match self {
-            Self::LayeredImage(primitive) => Some(primitive),
+            Self::LayeredTexturedQuads(primitive) => Some(primitive),
             _ => None,
         }
     }

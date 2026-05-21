@@ -9,7 +9,7 @@ use crate::BeaconLight2dDrawCommand;
 pub fn beacon_draw_command_to_render_primitive(
     command: &BeaconLight2dDrawCommand,
 ) -> RenderPrimitive2d {
-    RenderPrimitive2d::BeaconLight(BeaconLight2dPrimitive {
+    RenderPrimitive2d::RadialLightVisual(BeaconLight2dPrimitive {
         center: command.center,
         color: command.color,
         intensity: command.intensity,

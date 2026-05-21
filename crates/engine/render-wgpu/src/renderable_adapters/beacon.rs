@@ -4,11 +4,11 @@ use crate::{
     WgpuRenderable2dAdapter, WgpuRenderable2dAdapterContext,
 };
 
-pub struct Beacon2dRenderableAdapter;
+pub struct RadialLightVisual2dRenderableAdapter;
 
-impl WgpuRenderable2dAdapter for Beacon2dRenderableAdapter {
+impl WgpuRenderable2dAdapter for RadialLightVisual2dRenderableAdapter {
     fn kind(&self) -> RenderPrimitive2dKind {
-        RenderPrimitive2dKind::BeaconLight
+        RenderPrimitive2dKind::RadialLightVisual
     }
 
     fn append_batches(
@@ -16,7 +16,7 @@ impl WgpuRenderable2dAdapter for Beacon2dRenderableAdapter {
         ctx: &mut WgpuRenderable2dAdapterContext<'_>,
         item: &crate::Renderable2dItem,
     ) -> bool {
-        let RenderPrimitive2d::BeaconLight(primitive) = &item.primitive else {
+        let RenderPrimitive2d::RadialLightVisual(primitive) = &item.primitive else {
             return false;
         };
 

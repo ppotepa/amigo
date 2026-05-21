@@ -22,7 +22,7 @@ pub(super) fn execute_layered_image_parts_to_offscreen(
         .iter()
         .filter_map(|item| {
             item.primitive
-                .layered_image()
+                .layered_textured_quads()
                 .filter(|_| part_targets.contains_key(item.owner_entity()))
                 .map(|layered| (item, layered))
         })

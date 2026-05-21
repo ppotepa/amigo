@@ -177,7 +177,7 @@ fn render_per_draw_visual_map_buffer(
                     primitive.size,
                 );
             }
-            RenderPrimitive2d::LayeredImage(primitive) => {
+            RenderPrimitive2d::LayeredTexturedQuads(primitive) => {
                 if let Some(asset) = visual_map_for_kind(primitive.visual_maps.as_ref(), kind) {
                     append_visual_map_sprite_batch(
                         renderer,

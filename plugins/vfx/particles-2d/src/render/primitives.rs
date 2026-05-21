@@ -17,7 +17,7 @@ use crate::{Particle2dDrawCommand, ParticleLight2d};
 pub fn particle_draw_command_to_render_primitive(
     command: &Particle2dDrawCommand,
 ) -> RenderPrimitive2d {
-    RenderPrimitive2d::Particle(Particle2dPrimitive {
+    RenderPrimitive2d::ParticleBatch(Particle2dPrimitive {
         emitter_entity_name: command.emitter_entity_name.clone(),
         render_layer: command.render_layer.clone(),
         previous_position: command.previous_position,

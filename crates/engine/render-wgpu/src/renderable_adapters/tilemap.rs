@@ -4,11 +4,11 @@ use crate::{
 use amigo_render_api::{RenderPrimitive2d, RenderPrimitive2dKind};
 use crate::renderer::append_tilemap_primitive_fallback_vertices;
 
-pub struct TileMap2dRenderableAdapter;
+pub struct TileBatch2dRenderableAdapter;
 
-impl WgpuRenderable2dAdapter for TileMap2dRenderableAdapter {
+impl WgpuRenderable2dAdapter for TileBatch2dRenderableAdapter {
     fn kind(&self) -> RenderPrimitive2dKind {
-        RenderPrimitive2dKind::TileMap
+        RenderPrimitive2dKind::TileBatch
     }
 
     fn append_batches(
@@ -16,7 +16,7 @@ impl WgpuRenderable2dAdapter for TileMap2dRenderableAdapter {
         ctx: &mut WgpuRenderable2dAdapterContext<'_>,
         item: &crate::Renderable2dItem,
     ) -> bool {
-        let RenderPrimitive2d::TileMap(command) = &item.primitive else {
+        let RenderPrimitive2d::TileBatch(command) = &item.primitive else {
             return false;
         };
 

@@ -490,8 +490,8 @@ fn sample_renderable_positions(
         let world = match &renderable.primitive {
             RenderPrimitive2d::TexturedQuad(primitive) => primitive.transform.translation,
             RenderPrimitive2d::GlyphRun(primitive) => primitive.transform.translation,
-            RenderPrimitive2d::LayeredImage(primitive) => primitive.transform.translation,
-            RenderPrimitive2d::Particle(primitive) => primitive.position,
+            RenderPrimitive2d::LayeredTexturedQuads(primitive) => primitive.transform.translation,
+            RenderPrimitive2d::ParticleBatch(primitive) => primitive.position,
             _ => continue,
         };
         out.push(world_to_uv(

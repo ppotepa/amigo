@@ -37,7 +37,7 @@ fn shape_kind(kind: &VectorShapeKind2d) -> VectorShape2dKindPrimitive {
 pub fn vector_draw_command_to_render_primitive(
     command: &VectorShape2dDrawCommand,
 ) -> RenderPrimitive2d {
-    RenderPrimitive2d::VectorShape(VectorShape2dPrimitive {
+    RenderPrimitive2d::VectorMesh(VectorShape2dPrimitive {
         shape: shape_kind(&command.shape.kind),
         style: VectorShape2dStylePrimitive {
             stroke_color: command.shape.style.stroke_color,

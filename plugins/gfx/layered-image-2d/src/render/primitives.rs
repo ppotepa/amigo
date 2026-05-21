@@ -39,7 +39,7 @@ fn visual_maps_to_primitive(maps: &amigo_scene::VisualMaps2dSceneCommand) -> Vis
 pub fn layered_image_draw_command_to_render_primitive(
     command: &LayeredImageDrawCommand,
 ) -> RenderPrimitive2d {
-    RenderPrimitive2d::LayeredImage(LayeredImage2dPrimitive {
+    RenderPrimitive2d::LayeredTexturedQuads(LayeredImage2dPrimitive {
         asset: command.image.asset.clone(),
         size: command.image.size,
         base_opacity: command.image.base_opacity,

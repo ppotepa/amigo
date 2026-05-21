@@ -99,7 +99,7 @@ pub(super) fn execute_refractive_material_2d(
                 );
                 mask_sources.push("texture_alpha");
             }
-            RenderPrimitive2d::VectorShape(vector) => {
+            RenderPrimitive2d::VectorMesh(vector) => {
                 let vertices =
                     color_batch_vertices(&mut mask_color_batches, ParticleBlendMode2d::Alpha);
                 append_vector_primitive_vertices(

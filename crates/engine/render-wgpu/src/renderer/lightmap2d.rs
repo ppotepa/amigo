@@ -54,9 +54,9 @@ impl WgpuSceneRenderer {
     ) -> Option<LightMap2dSampler> {
         let item = renderables.iter().find(|item| {
             item.owner_entity() == source.source.entity_name
-                && matches!(item.primitive, RenderPrimitive2d::LayeredImage(_))
+                && matches!(item.primitive, RenderPrimitive2d::LayeredTexturedQuads(_))
         })?;
-        let RenderPrimitive2d::LayeredImage(command) = &item.primitive else {
+        let RenderPrimitive2d::LayeredTexturedQuads(command) = &item.primitive else {
             return None;
         };
         let prepared = assets.prepared_asset(&command.asset)?;
