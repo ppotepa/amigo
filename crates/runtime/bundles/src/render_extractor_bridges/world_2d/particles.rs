@@ -3,11 +3,19 @@ use amigo_render_wgpu::WgpuRenderFramePacket;
 use amigo_runtime::Runtime;
 
 use crate::render_extractor_bridges::context::WgpuRenderExtractorRegistry;
+use crate::render_extractor_registry::WgpuRenderExtractorBridgeRegistry;
 
 use super::common::optional;
 
 pub fn register(registry: &mut WgpuRenderExtractorRegistry) {
     registry.register(WgpuParticle2dRenderExtractorBridge);
+}
+
+pub(super) fn register_installer(bridges: &WgpuRenderExtractorBridgeRegistry) {
+    bridges.register(
+        amigo_particles_2d_plugin::render::PARTICLE_2D_EXTRACTOR_ID,
+        register,
+    );
 }
 
 pub struct WgpuParticle2dRenderExtractorBridge;

@@ -5,7 +5,9 @@ edition = "2021"
 
 [dependencies]
 amigo-plugin-api = { path = "../../../crates/core/plugin-api" }
+amigo-2d-spatial.workspace = true
 amigo-capabilities.workspace = true
+amigo-camera.workspace = true
 amigo-camera-optics-plugin.workspace = true
 amigo-core.workspace = true
 amigo-math.workspace = true
@@ -18,3 +20,5 @@ amigo-shutter-motion-plugin.workspace = true
 amigo-relight-2d-plugin.workspace = true
 amigo-scripting-api.workspace = true
 amigo-vector-2d-plugin.workspace = true
+serde.workspace = true
+serde_yaml.workspace = true

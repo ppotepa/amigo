@@ -1,10 +1,8 @@
-use amigo_plugin_api::PluginSceneComponentDescriptor;
+pub mod descriptors;
+pub mod document;
+pub mod hydration;
 
-pub fn beacon_light_2d_scene_descriptor() -> PluginSceneComponentDescriptor {
-    PluginSceneComponentDescriptor::new(
-        "amigo.lighting.beacon-light-2d.BeaconLight2D",
-        "lighting",
-        "BeaconLight2D",
-    )
-}
+pub use descriptors::*;
+pub use document::*;
+pub use hydration::*;
 

@@ -9,6 +9,7 @@ fn tilemap_collects_renderable_candidate_and_focus_depth_adapter() {
     let candidate = collect_tilemap_2d_candidates(&[Tilemap2dDocument {
         entity_name: "ground".to_owned(),
         render_layer: "world".to_owned(),
+        ..Tilemap2dDocument::default()
     }])
     .remove(0);
 

@@ -21,7 +21,7 @@ impl RuntimePlugin for Composition2dPlugin {
         if let Some(render_extractors) =
             registry.resolve::<amigo_render_api::RuntimeRenderExtractorIdRegistry>()
         {
-            render_extractors.register("composition_2d");
+            render_extractors.register(crate::COMPOSITION_2D_EXTRACTOR_ID);
         }
         register_domain_plugin(
             registry,

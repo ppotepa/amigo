@@ -279,6 +279,8 @@ dependencies = [
 name = "amigo-beacon-light-2d-plugin"
 version = "0.1.0"
 dependencies = [
+ "amigo-2d-spatial",
+ "amigo-camera",
  "amigo-camera-optics-plugin",
  "amigo-capabilities",
  "amigo-core",
@@ -293,6 +295,8 @@ dependencies = [
  "amigo-session",
  "amigo-shutter-motion-plugin",
  "amigo-vector-2d-plugin",
+ "serde",
+ "serde_yaml",
 ]
 
 [[package]]
@@ -583,6 +587,8 @@ dependencies = [
  "amigo-sprite-2d-plugin",
  "amigo-text-2d-plugin",
  "amigo-vector-2d-plugin",
+ "serde",
+ "serde_yaml",
 ]
 
 [[package]]
@@ -667,6 +673,7 @@ dependencies = [
  "amigo-scene",
  "amigo-scripting-api",
  "amigo-session",
+ "serde",
  "serde_yaml",
 ]
 
@@ -687,6 +694,8 @@ dependencies = [
  "amigo-scene",
  "amigo-scripting-api",
  "amigo-session",
+ "serde",
+ "serde_yaml",
 ]
 
 [[package]]
@@ -1143,6 +1152,8 @@ dependencies = [
  "amigo-runtime",
  "amigo-scene",
  "amigo-session",
+ "serde",
+ "serde_yaml",
 ]
 
 [[package]]

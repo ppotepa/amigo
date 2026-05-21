@@ -1,6 +1,8 @@
+use serde::{Deserialize, Serialize};
+
 use amigo_plugin_api::{scene_alpha, scene_color, CandidateStatus, TargetId};
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct LayeredImage2dLayer {
     pub id: String,
     pub distance_m: Option<f32>,

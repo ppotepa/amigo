@@ -13,6 +13,14 @@ impl RuntimePlugin for DepthMap2dPlugin {
 
     fn register(&self, registry: &mut ServiceRegistry) -> AmigoResult<()> {
         registry.register(DepthMap2dSceneService::default())?;
+        if let Some(schemas) = registry.resolve::<amigo_scene::ComponentSchemaRegistry>() {
+            schemas.register_provider(&crate::scene::FocusDepthSceneDescriptorProvider);
+            schemas.register_schema_provider(crate::scene::DepthMap2dSceneSchemaProvider);
+            schemas.register_schema_provider(crate::scene::DepthAuxMap2dSceneSchemaProvider);
+        }
+        if let Some(hydrators) = registry.resolve::<amigo_scene::ComponentHydratorRegistry>() {
+            hydrators.register(crate::scene::DepthMap2dComponentHydrator);
+        }
         if let Some(render_extractors) =
             registry.resolve::<amigo_render_api::RuntimeRenderExtractorIdRegistry>()
         {

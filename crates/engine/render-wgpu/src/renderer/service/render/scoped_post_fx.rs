@@ -398,7 +398,7 @@ fn render_scoped_source(
                 owner_scene_object_id.to_owned(),
                 BTreeSet::from([part_id.to_owned()]),
             );
-            world::execute_layered_image_parts_to_offscreen(
+            super::execute_layered_image_parts_to_offscreen(
                 renderer,
                 target,
                 world_ctx.renderables,

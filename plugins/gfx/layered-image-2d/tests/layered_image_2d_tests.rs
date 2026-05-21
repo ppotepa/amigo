@@ -15,6 +15,7 @@ fn layered_image_collects_renderable_candidate_and_focus_depth_adapter() {
     let candidate = collect_layered_image_2d_candidates(&[LayeredImage2dDocument {
         entity_name: "alley".to_owned(),
         layers: vec![layer.clone()],
+        ..LayeredImage2dDocument::default()
     }])
     .remove(0);
 

@@ -3,9 +3,17 @@ use amigo_render_wgpu::WgpuRenderFramePacket;
 use amigo_runtime::Runtime;
 
 use crate::render_extractor_bridges::context::WgpuRenderExtractorRegistry;
+use crate::render_extractor_registry::WgpuRenderExtractorBridgeRegistry;
 
 pub fn register(registry: &mut WgpuRenderExtractorRegistry) {
     registry.register(WgpuBeacon2dRenderExtractorBridge);
+}
+
+pub(super) fn register_installer(bridges: &WgpuRenderExtractorBridgeRegistry) {
+    bridges.register(
+        amigo_beacon_light_2d_plugin::render::BEACON_2D_EXTRACTOR_ID,
+        register,
+    );
 }
 
 pub struct WgpuBeacon2dRenderExtractorBridge;

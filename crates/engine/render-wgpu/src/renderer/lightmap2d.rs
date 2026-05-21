@@ -729,7 +729,6 @@ mod tests {
     use super::*;
     use amigo_2d_composition::LightRoute2dCommand;
     use amigo_light_2d_plugin::{
-        LightGroup2dCommand, LightGroup2dSourceCommand, LightGroup2dSourceKind,
         LightReceiver2dBinding, LightReceiverDarkPolicy2d, LightReceiverGlobalLight2d,
         LightSampleStrategy2d, Material2dLightingMode,
     };
@@ -809,50 +808,27 @@ mod tests {
         }
     }
 
-    fn lightmap_command(channel: &str) -> amigo_light_2d_plugin::LightMap2dSourceCommand {
-        amigo_light_2d_plugin::LightMap2dSourceCommand {
-            source_mod: "test-mod".to_owned(),
-            entity_name: "test-lightmap".to_owned(),
-            id: "test-lightmap".to_owned(),
-            source: amigo_light_2d_plugin::LightMap2dSourceRef {
-                kind: amigo_light_2d_plugin::LightMap2dSourceKind::LayeredImage2d,
-                entity_name: "test-lightmap".to_owned(),
-            },
-            channels: vec![amigo_light_2d_plugin::LightMap2dChannel {
-                id: channel.to_owned(),
-                layers: vec!["default".to_owned()],
-            }],
-        }
-    }
-
-    fn light_group(id: &str, channel: &str) -> LightGroup2dCommand {
-        LightGroup2dCommand {
-            source_mod: "test-mod".to_owned(),
-            id: id.to_owned(),
-            label: None,
-            color: ColorRgba::WHITE,
-            intensity: 1.0,
-            render_contributions: amigo_render_api::RenderContributionSet::default(),
-            camera_response: amigo_camera_optics_plugin::api::CameraOpticalResponse2d::default(),
-            sources: vec![LightGroup2dSourceCommand {
-                kind: LightGroup2dSourceKind::LightMapChannel {
-                    source: "test-lightmap".to_owned(),
-                    channel: channel.to_owned(),
-                },
-                response: 1.0,
-            }],
-        }
-    }
-
-    fn light_group_sources(group: &LightGroup2dCommand, channel: &str) -> Vec<LightSource2dCommon> {
-        amigo_light_2d_plugin::light_group_commands_to_render_contributions(
-            std::slice::from_ref(group),
-            &[],
-            &[lightmap_command(channel)],
-        )
-        .into_iter()
-        .filter_map(|contribution| contribution.as_light_source_2d().cloned())
-        .collect()
+    fn light_group_sources(id: &str, channel: &str) -> Vec<LightSource2dCommon> {
+        vec![LightSource2dCommon::active(LightSource2dCommonParams {
+            owner: id.to_owned(),
+            component_kind: "LightGroup2D".to_owned(),
+            emitter_kind: LightEmitterKind2d::LightGroup,
+            emitter_id: Some(format!("{id}:lightmap:test-lightmap:{channel}")),
+            render_layer: None,
+            color_rgba: Some([1.0, 1.0, 1.0, 1.0]),
+            intensity: Some(1.0),
+            effective_intensity: Some(1.0),
+            response: Some(1.0),
+            camera_response: None,
+            bloom: None,
+            radius_px: None,
+            falloff: None,
+            distance_m: None,
+            z_depth: None,
+            contributions: vec![LightContributionKind2d::LightingEmit],
+            reason: "test_light_group".to_owned(),
+            position_px: None,
+        })]
     }
 
     fn light_group_particle(groups: Vec<String>) -> Particle2dPrimitive {
@@ -967,12 +943,11 @@ mod tests {
 
     #[test]
     fn light_group_sampled_particle_uses_matching_lightmap_channel() {
-        let group = light_group("bar", "near");
         let color = lit_particle_color(
             &light_group_particle(vec!["bar".to_owned()]),
             &[],
             &[sampler()],
-            &light_group_sources(&group, "near"),
+            &light_group_sources("bar", "near"),
             &[],
         );
 
@@ -981,12 +956,11 @@ mod tests {
 
     #[test]
     fn light_route_blocks_unlisted_group() {
-        let group = light_group("bar", "near");
         let color = lit_particle_color(
             &light_group_particle(vec!["bar".to_owned()]),
             &[],
             &[sampler()],
-            &light_group_sources(&group, "near"),
+            &light_group_sources("bar", "near"),
             &[LightRoute2dCommand {
                 source_mod: "test-mod".to_owned(),
                 receiver_layer: "default".to_owned(),

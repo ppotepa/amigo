@@ -22,3 +22,5 @@ amigo-sprite-2d-plugin.workspace = true
 amigo-text-2d-plugin.workspace = true
 amigo-vector-2d-plugin.workspace = true
 amigo-render-api.workspace = true
+serde.workspace = true
+serde_yaml.workspace = true

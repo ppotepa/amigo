@@ -22,10 +22,17 @@ impl RuntimePlugin for Lighting2dPlugin {
             registry,
             super::reset::Lighting2dSceneResetHandler,
         )?;
+        if let Some(schemas) = registry.resolve::<amigo_scene::ComponentSchemaRegistry>() {
+            schemas.register_provider(&crate::scene::Lighting2dSceneDescriptorProvider);
+            schemas.register_schema_provider(crate::scene::GlobalLight2dSceneSchemaProvider);
+        }
+        if let Some(hydrators) = registry.resolve::<amigo_scene::ComponentHydratorRegistry>() {
+            hydrators.register(crate::scene::GlobalLight2dComponentHydrator);
+        }
         if let Some(render_extractors) =
             registry.resolve::<amigo_render_api::RuntimeRenderExtractorIdRegistry>()
         {
-            render_extractors.register("lighting_2d");
+            render_extractors.register(super::LIGHTING_2D_EXTRACTOR_ID);
         }
         register_domain_plugin(
             registry,

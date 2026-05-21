@@ -9,6 +9,8 @@ use amigo_render_api::{
     RenderLightMap2dSourceKind, RenderLightMap2dSourceRef,
 };
 
+pub const LIGHTING_2D_EXTRACTOR_ID: &str = "lighting_2d";
+
 pub struct Lighting2dRenderExtractionContext<'a> {
     pub global_light2d_scene_service: &'a GlobalLight2dSceneService,
     pub lightmap2d_scene_service: &'a LightMap2dSceneService,
@@ -26,7 +28,7 @@ pub struct Lighting2dRenderExtractor;
 
 impl Lighting2dRenderExtractor {
     pub fn name(&self) -> &'static str {
-        "lighting_2d"
+        LIGHTING_2D_EXTRACTOR_ID
     }
 
     pub fn extract(

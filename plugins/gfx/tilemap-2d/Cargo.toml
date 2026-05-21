@@ -15,3 +15,5 @@ amigo-render-api.workspace = true
 amigo-runtime.workspace = true
 amigo-scene.workspace = true
 amigo-session.workspace = true
+serde.workspace = true
+serde_yaml.workspace = true

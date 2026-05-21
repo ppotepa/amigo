@@ -2,6 +2,8 @@ use crate::{
     LightRoute2dCommand, LightRoute2dSceneService, RenderLayer2dCommand, RenderLayer2dSceneService,
 };
 
+pub const COMPOSITION_2D_EXTRACTOR_ID: &str = "composition_2d";
+
 pub struct Composition2dRenderExtractionContext<'a> {
     pub render_layer2d_scene_service: &'a RenderLayer2dSceneService,
     pub light_route2d_scene_service: &'a LightRoute2dSceneService,
@@ -22,7 +24,7 @@ pub struct Composition2dRenderExtractor;
 
 impl Composition2dRenderExtractor {
     pub fn name(&self) -> &'static str {
-        "composition_2d"
+        COMPOSITION_2D_EXTRACTOR_ID
     }
 
     pub fn extract(
