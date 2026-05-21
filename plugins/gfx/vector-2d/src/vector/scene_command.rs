@@ -65,7 +65,7 @@ pub fn handle_vector_scene_command(
             Ok(handle_queue_vector_shape_scene_command(ctx, command))
         }
         SceneCommand::Plugin { command } => {
-            let Some(command) = command.vector_shape_2d_command().cloned() else {
+            let Some(command) = command.payload_as::<VectorShape2dSceneCommand>().cloned() else {
                 return Err(AmigoError::Message(format!(
                 "vector-2d cannot handle command {}",
                 format_scene_command(&SceneCommand::Plugin { command })

@@ -2,8 +2,6 @@ use std::any::Any;
 use std::fmt;
 use std::sync::Arc;
 
-use crate::{Sprite2dSceneCommand, Text2dSceneCommand, VectorShape2dSceneCommand};
-
 pub trait PluginSceneCommandPayload: Send + Sync {
     fn command_type(&self) -> &'static str;
     fn command_as_any(&self) -> &dyn Any;
@@ -27,18 +25,6 @@ impl PluginSceneCommand {
 
     pub fn payload_as<T: 'static>(&self) -> Option<&T> {
         self.payload.command_as_any().downcast_ref::<T>()
-    }
-
-    pub fn sprite_2d_command(&self) -> Option<&Sprite2dSceneCommand> {
-        self.payload_as::<Sprite2dSceneCommand>()
-    }
-
-    pub fn text_2d_command(&self) -> Option<&Text2dSceneCommand> {
-        self.payload_as::<Text2dSceneCommand>()
-    }
-
-    pub fn vector_shape_2d_command(&self) -> Option<&VectorShape2dSceneCommand> {
-        self.payload_as::<VectorShape2dSceneCommand>()
     }
 }
 

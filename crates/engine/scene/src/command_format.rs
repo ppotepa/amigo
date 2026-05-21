@@ -7,32 +7,7 @@ pub fn format_scene_command(command: &SceneCommand) -> String {
             format!("scene.configure({entity_name})")
         }
         SceneCommand::SelectScene { scene } => format!("scene.select({})", scene.as_str()),
-        SceneCommand::Plugin { command } => {
-            if let Some(sprite) = command.sprite_2d_command() {
-                format!(
-                "scene.plugin.sprite({}, {}, {}x{})",
-                sprite.entity_name,
-                sprite.texture.as_str(),
-                sprite.size.x,
-                sprite.size.y
-                )
-            } else if let Some(text) = command.text_2d_command() {
-                format!(
-                "scene.plugin.text({}, {}, {}x{})",
-                text.entity_name,
-                text.font.as_str(),
-                text.bounds.x,
-                text.bounds.y
-                )
-            } else if let Some(vector) = command.vector_shape_2d_command() {
-                format!(
-                "scene.plugin.vector({}, {:?})",
-                vector.entity_name, vector.kind
-                )
-            } else {
-                format!("scene.plugin({})", command.command_type)
-            }
-        }
+        SceneCommand::Plugin { command } => format!("scene.plugin({})", command.command_type),
         SceneCommand::ReloadActiveScene => "scene.reload_active".to_owned(),
         SceneCommand::ClearEntities => "scene.clear".to_owned(),
         SceneCommand::QueueSprite2d { command } => format!(

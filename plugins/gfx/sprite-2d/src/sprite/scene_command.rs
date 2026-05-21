@@ -86,7 +86,7 @@ pub fn handle_sprite_scene_command(
             })
         }
         SceneCommand::Plugin { command } => {
-            let Some(command) = command.sprite_2d_command().cloned() else {
+            let Some(command) = command.payload_as::<Sprite2dSceneCommand>().cloned() else {
                 return Err(AmigoError::Message(
                     "sprite-2d plugin command payload mismatch".to_owned(),
                 ));

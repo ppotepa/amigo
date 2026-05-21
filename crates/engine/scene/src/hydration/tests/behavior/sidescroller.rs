@@ -119,7 +119,7 @@ entities:
         assert!(plan.commands.iter().any(|command| {
             let command = match command {
                 SceneCommand::QueueSprite2d { command } => Some(command),
-                SceneCommand::Plugin { command } => command.sprite_2d_command(),
+                SceneCommand::Plugin { command } => command.payload_as::<crate::Sprite2dSceneCommand>(),
                 _ => None,
             };
             command.is_some_and(|command| {

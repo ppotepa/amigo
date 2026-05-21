@@ -16,7 +16,7 @@ fn sprite_command(
 ) -> Option<&crate::Sprite2dSceneCommand> {
     match command {
         SceneCommand::QueueSprite2d { command } => Some(command),
-        SceneCommand::Plugin { command } => command.sprite_2d_command(),
+        SceneCommand::Plugin { command } => command.payload_as::<crate::Sprite2dSceneCommand>(),
         _ => None,
     }
 }
@@ -24,7 +24,7 @@ fn sprite_command(
 fn text_command(command: &SceneCommand) -> Option<&crate::Text2dSceneCommand> {
     match command {
         SceneCommand::QueueText2d { command } => Some(command),
-        SceneCommand::Plugin { command } => command.text_2d_command(),
+        SceneCommand::Plugin { command } => command.payload_as::<crate::Text2dSceneCommand>(),
         _ => None,
     }
 }
@@ -32,7 +32,7 @@ fn text_command(command: &SceneCommand) -> Option<&crate::Text2dSceneCommand> {
 fn vector_command(command: &SceneCommand) -> Option<&crate::VectorShape2dSceneCommand> {
     match command {
         SceneCommand::QueueVectorShape2d { command } => Some(command),
-        SceneCommand::Plugin { command } => command.vector_shape_2d_command(),
+        SceneCommand::Plugin { command } => command.payload_as::<crate::VectorShape2dSceneCommand>(),
         _ => None,
     }
 }

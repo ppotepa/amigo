@@ -65,7 +65,7 @@ pub fn handle_text_scene_command(
     match command {
         SceneCommand::QueueText2d { command } => Ok(handle_queue_text_scene_command(ctx, command)),
         SceneCommand::Plugin { command } => {
-            let Some(command) = command.text_2d_command().cloned() else {
+            let Some(command) = command.payload_as::<Text2dSceneCommand>().cloned() else {
                 return Err(AmigoError::Message(format!(
                 "text-2d cannot handle command {}",
                 format_scene_command(&SceneCommand::Plugin { command })
