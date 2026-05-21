@@ -923,7 +923,7 @@ mod tests {
         let beacon = test_beacon("cursor", 0.0, 0.0);
         let light = normalize_beacon_for_plate_relight(
             match &test_renderable_for_beacon("cursor", &beacon).primitive {
-                RenderPrimitive2d::BeaconLight(primitive) => primitive,
+                RenderPrimitive2d::RadialLightVisual(primitive) => primitive,
                 _ => unreachable!(),
             },
             Vec2::new(1672.0, 941.0),
@@ -938,7 +938,7 @@ mod tests {
         let beacon = test_beacon("cursor", 420.0, -35.0);
         let light = normalize_beacon_for_plate_relight(
             match &test_renderable_for_beacon("cursor", &beacon).primitive {
-                RenderPrimitive2d::BeaconLight(primitive) => primitive,
+                RenderPrimitive2d::RadialLightVisual(primitive) => primitive,
                 _ => unreachable!(),
             },
             Vec2::new(1672.0, 941.0),
@@ -955,7 +955,7 @@ mod tests {
         beacon.beam_width_degrees = 35.0;
         let light = normalize_beacon_for_plate_relight(
             match &test_renderable_for_beacon("spot", &beacon).primitive {
-                RenderPrimitive2d::BeaconLight(primitive) => primitive,
+                RenderPrimitive2d::RadialLightVisual(primitive) => primitive,
                 _ => unreachable!(),
             },
             Vec2::new(1672.0, 941.0),
@@ -969,7 +969,7 @@ mod tests {
         let beacon = test_beacon("cursor", 420.0, -35.0);
         let light = normalize_beacon_for_plate_relight(
             match &test_renderable_for_beacon("cursor", &beacon).primitive {
-                RenderPrimitive2d::BeaconLight(primitive) => primitive,
+                RenderPrimitive2d::RadialLightVisual(primitive) => primitive,
                 _ => unreachable!(),
             },
             Vec2::new(1672.0, 941.0),
@@ -986,7 +986,7 @@ mod tests {
         beacon.z_depth = Some(0.66);
         let light = normalize_beacon_for_plate_relight(
             match &test_renderable_for_beacon("cursor", &beacon).primitive {
-                RenderPrimitive2d::BeaconLight(primitive) => primitive,
+                RenderPrimitive2d::RadialLightVisual(primitive) => primitive,
                 _ => unreachable!(),
             },
             Vec2::new(1672.0, 941.0),
@@ -1221,7 +1221,7 @@ mod tests {
                 0.0,
                 amigo_render_api::Renderable2dKind::Beacon,
             ),
-            amigo_render_api::RenderPrimitive2d::BeaconLight(beacon.clone()),
+            amigo_render_api::RenderPrimitive2d::RadialLightVisual(beacon.clone()),
         )
     }
 }

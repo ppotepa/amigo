@@ -901,7 +901,7 @@ fn rebuilds_vector_scene_service_from_packet() {
             1.0,
             amigo_render_api::Renderable2dKind::Vector,
         ),
-        amigo_render_api::RenderPrimitive2d::VectorShape(
+        amigo_render_api::RenderPrimitive2d::VectorMesh(
             amigo_render_api::VectorShape2dPrimitive {
                 shape: amigo_render_api::VectorShape2dKindPrimitive::Polygon {
                     points: vec![
@@ -1017,7 +1017,7 @@ fn rebuilds_tilemap_scene_service_from_packet() {
             0.0,
             amigo_render_api::Renderable2dKind::TileMap,
         ),
-        amigo_render_api::RenderPrimitive2d::TileMap(amigo_render_api::TileMap2dPrimitive {
+        amigo_render_api::RenderPrimitive2d::TileBatch(amigo_render_api::TileMap2dPrimitive {
             tileset: AssetKey::new(
                 "playground-sidescroller/spritesheets/platformer/tilesets/platform/base",
             ),
@@ -1031,7 +1031,7 @@ fn rebuilds_tilemap_scene_service_from_packet() {
     assert_eq!(packet.renderables_2d().len(), 1);
     assert_eq!(packet.renderables_2d()[0].owner_entity(), "tilemap");
     match &packet.renderables_2d()[0].primitive {
-        amigo_render_api::RenderPrimitive2d::TileMap(tilemap) => {
+        amigo_render_api::RenderPrimitive2d::TileBatch(tilemap) => {
             assert_eq!(tilemap.grid.len(), 2)
         }
         other => panic!("expected tilemap primitive, got {other:?}"),

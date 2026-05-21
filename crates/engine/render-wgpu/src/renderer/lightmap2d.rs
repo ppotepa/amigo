@@ -760,7 +760,7 @@ mod tests {
             transform: Transform2::default(),
         };
         match amigo_particles_2d_plugin::render::particle_draw_command_to_render_primitive(&command) {
-            RenderPrimitive2d::Particle(primitive) => primitive,
+            RenderPrimitive2d::ParticleBatch(primitive) => primitive,
             _ => unreachable!("particle draw command should map to particle primitive"),
         }
     }
