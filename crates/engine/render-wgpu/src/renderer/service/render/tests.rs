@@ -62,7 +62,7 @@ mod focus_blur_layer_plan_tests {
     #[test]
     fn focus_blur_plan_prefers_explicit_render_depth_over_implicit_affected_layers() {
         let plan = build_focus_blur_layer_plan(
-            amigo_composite_plugin::FocusBlur2d {
+            amigo_render_api::FocusBlur2d {
                 affected_layers: vec!["background.city".to_owned()],
                 ..Default::default()
             },
@@ -87,7 +87,7 @@ mod focus_blur_layer_plan_tests {
     #[test]
     fn focus_blur_plan_splits_depth_map_z_depth_and_overlay_layers() {
         let plan = build_focus_blur_layer_plan(
-            amigo_composite_plugin::FocusBlur2d::default(),
+            amigo_render_api::FocusBlur2d::default(),
             &[
                 layer(
                     "background.city",
@@ -121,7 +121,7 @@ mod focus_blur_layer_plan_tests {
     #[test]
     fn focus_blur_plan_preserves_z_depth_layer_order() {
         let plan = build_focus_blur_layer_plan(
-            amigo_composite_plugin::FocusBlur2d::default(),
+            amigo_render_api::FocusBlur2d::default(),
             &[
                 RenderLayer2dCommand {
                     order: -18.0,
@@ -178,7 +178,7 @@ mod focus_blur_layer_plan_tests {
     #[test]
     fn focus_blur_plan_treats_distance_layers_as_constant_z_depth_layers() {
         let plan = build_focus_blur_layer_plan(
-            amigo_composite_plugin::FocusBlur2d::default(),
+            amigo_render_api::FocusBlur2d::default(),
             &[RenderLayer2dCommand {
                 depth: amigo_2d_composition::RenderDepth2d {
                     mode: amigo_2d_composition::RenderDepthMode2d::Distance,
@@ -202,7 +202,7 @@ mod focus_blur_layer_plan_tests {
     #[test]
     fn focus_blur_plan_treats_infinity_as_far_z_depth() {
         let plan = build_focus_blur_layer_plan(
-            amigo_composite_plugin::FocusBlur2d::default(),
+            amigo_render_api::FocusBlur2d::default(),
             &[layer(
                 "sky",
                 amigo_2d_composition::RenderDepthMode2d::Infinity,

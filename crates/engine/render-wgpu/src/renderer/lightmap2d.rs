@@ -710,7 +710,10 @@ mod tests {
         LightReceiver2dBinding, LightReceiverDarkPolicy2d, LightReceiverGlobalLight2d,
         LightSampleStrategy2d, Material2dLightingMode,
     };
-    use amigo_particles_2d_plugin::ParticleShape2d;
+    use amigo_particles_2d_plugin::{
+        ParticleBlendMode2d as PluginParticleBlendMode2d,
+        ParticleLineAnchor2d as PluginParticleLineAnchor2d, ParticleShape2d,
+    };
     use amigo_render_api::{LightContributionKind2d, LightSource2dCommonParams};
 
     fn particle_with_binding(binding: LightReceiver2dBinding) -> Particle2dPrimitive {
@@ -724,8 +727,8 @@ mod tests {
             render_layer: "default".to_owned(),
             z_index: 0.0,
             shape: ParticleShape2d::Line { length: 8.0 },
-            line_anchor: ParticleLineAnchor2d::Center,
-            blend_mode: ParticleBlendMode2d::Screen,
+            line_anchor: PluginParticleLineAnchor2d::Center,
+            blend_mode: PluginParticleBlendMode2d::Screen,
             motion_stretch: None,
             material: amigo_particles_2d_plugin::ParticleMaterial2d {
                 lighting_mode: Material2dLightingMode::LightMapSampled,
