@@ -8,6 +8,8 @@ use amigo_sprite_2d_plugin::runtime::collect_sprite_2d_candidates;
 use amigo_sprite_2d_plugin::scene::{
     sprite_2d_scene_descriptor, Sprite2dDocument,
 };
+use amigo_scene::RenderContributionsDocument;
+use amigo_scene::SceneVec2Document;
 
 #[test]
 fn sprite_document_collects_active_renderable_candidate() {
@@ -15,6 +17,13 @@ fn sprite_document_collects_active_renderable_candidate() {
         entity_name: "hero".to_owned(),
         render_layer: "world".to_owned(),
         texture: "hero.png".to_owned(),
+        size: SceneVec2Document { x: 64.0, y: 64.0 },
+        sheet: None,
+        animation: None,
+        visual_maps: None,
+        render_contributions: RenderContributionsDocument::default(),
+        material: None,
+        z_index: 0.0,
         opacity: 1.0,
         visible: true,
     }]);
@@ -33,6 +42,13 @@ fn sprite_contributions_are_adapter_mapped() {
         entity_name: "hero".to_owned(),
         render_layer: "world".to_owned(),
         texture: "hero.png".to_owned(),
+        size: SceneVec2Document { x: 64.0, y: 64.0 },
+        sheet: None,
+        animation: None,
+        visual_maps: None,
+        render_contributions: RenderContributionsDocument::default(),
+        material: None,
+        z_index: 0.0,
         opacity: 1.0,
         visible: true,
     }])

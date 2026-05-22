@@ -189,3 +189,95 @@ fn material2d_scene_command(material: Option<Material2dDocument>) -> Option<Mate
         camera_response: camera_optical_response_from_document(material.camera_response),
     })
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use amigo_scene::{
+        ComponentHydrationContext, RenderContributionsDocument, SceneCommand, SceneDocument,
+        SceneEntityDocument, SceneMetadataDocument, SceneVisual2dDocument,
+    };
+    use std::collections::BTreeMap;
+
+    #[test]
+    fn sprite_hydrator_converts_plugin_envelope_into_plugin_scene_command() {
+        let hydrator = Sprite2dComponentHydrator;
+        let component = SceneComponentDocument::Plugin {
+            component_type: "amigo.gfx.sprite-2d.Sprite2D".to_owned(),
+            payload: serde_yaml::to_value(Sprite2dDocument {
+                entity_name: String::new(),
+                render_layer: "world".to_owned(),
+                texture: "test/sprite".to_owned(),
+                size: SceneVec2Document { x: 64.0, y: 32.0 },
+                sheet: None,
+                animation: None,
+                visual_maps: None,
+                render_contributions: RenderContributionsDocument::default(),
+                material: None,
+                z_index: 3.0,
+                opacity: 1.0,
+                visible: true,
+            })
+            .expect("sprite document should serialize"),
+        };
+        let entity = SceneEntityDocument {
+            id: "sprite".to_owned(),
+            name: "sprite".to_owned(),
+            tags: Vec::new(),
+            groups: Vec::new(),
+            visible: true,
+            simulation_enabled: true,
+            collision_enabled: true,
+            properties: BTreeMap::new(),
+            transform2: None,
+            transform3: None,
+            post_fx: Vec::new(),
+            prefab: None,
+            prefab_overrides: Vec::new(),
+            components: vec![component.clone()],
+        };
+        let document = SceneDocument {
+            version: 1,
+            scene: SceneMetadataDocument {
+                id: "test-scene".to_owned(),
+                label: String::new(),
+                description: None,
+            },
+            transitions: Vec::new(),
+            collision_events: Vec::new(),
+            audio_cues: Vec::new(),
+            activation_sets: Vec::new(),
+            visual2d: SceneVisual2dDocument::default(),
+            state: BTreeMap::new(),
+            entities: vec![entity.clone()],
+        };
+        let mut commands = Vec::new();
+
+        hydrator
+            .hydrate(ComponentHydrationContext {
+                source_mod: "test-mod",
+                document: &document,
+                entity: &entity,
+                entity_name: "sprite",
+                component_index: 0,
+                component: &component,
+                commands: &mut commands,
+            })
+            .expect("sprite hydrator should accept plugin envelope");
+
+        assert_eq!(commands.len(), 1);
+        match &commands[0] {
+            SceneCommand::Plugin { command } => {
+                assert_eq!(command.command_type, "amigo.gfx.sprite-2d.scene-command.Sprite2D");
+                let payload = command
+                    .payload_as::<Sprite2dSceneCommand>()
+                    .expect("plugin scene payload should downcast");
+                assert_eq!(payload.entity_name, "sprite");
+                assert_eq!(payload.texture, AssetKey::new("test/sprite"));
+                assert_eq!(payload.size, Vec2::new(64.0, 32.0));
+                assert_eq!(payload.z_index, 3.0);
+            }
+            other => panic!("expected plugin scene command, got {other:?}"),
+        }
+    }
+}
