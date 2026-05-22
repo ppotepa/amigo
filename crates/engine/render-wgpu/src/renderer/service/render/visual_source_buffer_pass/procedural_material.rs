@@ -1,7 +1,12 @@
 use super::*;
-use amigo_camera::{CameraOpticalCandidate2d, CameraOpticalCoverage2d, CameraOpticalCandidateStatus2d, CameraOpticalResponse2d};
-use amigo_camera_optics_plugin::render::CameraOpticalRenderTargetPlan;
-use amigo_render_api::{RenderPrimitive2d, Renderable2dItem};
+use amigo_camera::{
+    CameraOpticalCandidate2d, CameraOpticalCandidateStatus2d, CameraOpticalCoverage2d,
+    CameraOpticalResponse2d,
+};
+use amigo_render_api::{
+    scene_emissive_target_id, scene_highlight_target_id, CameraOpticalRenderTargetPlan,
+    RenderPrimitive2d, Renderable2dItem,
+};
 
 pub(super) fn render_procedural_material_buffer(
     renderer: &mut WgpuSceneRenderer,
@@ -156,8 +161,7 @@ pub(super) fn append_camera_optical_candidate_texture_buffers(
         .iter()
         .filter(|candidate| candidate.is_active())
     {
-        let Some((source, channel)) =
-            amigo_camera_optics_plugin::render::lightmap_channel_parts(&candidate.coverage)
+        let Some((source, channel)) = lightmap_channel_parts(&candidate.coverage)
         else {
             continue;
         };
@@ -334,7 +338,7 @@ fn append_camera_optical_candidate_color_buffers(
                     appended = true;
                 }
             }
-            coverage if amigo_camera_optics_plugin::render::coverage_uses_texture_path(coverage) => {
+            coverage if coverage_uses_texture_path(coverage) => {
                 // Texture-backed LightMapChannel candidates are handled by
                 // append_camera_optical_candidate_texture_buffers.
             }
@@ -356,12 +360,49 @@ fn optical_candidate_color_for_kind(
     else {
         return ColorRgba::new(0.0, 0.0, 0.0, candidate.color_rgba[3]);
     };
-    let rgba =
-        amigo_camera_optics_plugin::render::optical_candidate_color_rgba_for_target(
-            candidate,
-            &plan.target,
-        );
+    let rgba = optical_candidate_color_rgba_for_target(candidate, &plan.target);
     ColorRgba::new(rgba[0], rgba[1], rgba[2], rgba[3])
+}
+
+fn coverage_uses_texture_path(coverage: &CameraOpticalCoverage2d) -> bool {
+    matches!(coverage, CameraOpticalCoverage2d::LightMapChannel { .. })
+}
+
+fn lightmap_channel_parts(coverage: &CameraOpticalCoverage2d) -> Option<(&str, &str)> {
+    match coverage {
+        CameraOpticalCoverage2d::LightMapChannel { source, channel } => {
+            Some((source.as_str(), channel.as_str()))
+        }
+        _ => None,
+    }
+}
+
+fn optical_candidate_color_rgba_for_target(
+    candidate: &CameraOpticalCandidate2d,
+    target: &amigo_plugin_api::TargetId,
+) -> [f32; 4] {
+    let gain = if candidate
+        .target_ids
+        .iter()
+        .any(|candidate_target| candidate_target == target)
+    {
+        if target.0 == "SceneHighlight" {
+            candidate.highlight_gain()
+        } else if target.0 == "SceneEmissive" {
+            candidate.emissive_gain()
+        } else {
+            0.0
+        }
+    } else {
+        0.0
+    };
+
+    [
+        candidate.color_rgba[0] * gain,
+        candidate.color_rgba[1] * gain,
+        candidate.color_rgba[2] * gain,
+        candidate.color_rgba[3],
+    ]
 }
 
 #[cfg(test)]
@@ -372,10 +413,10 @@ mod tests {
             amigo_render_api::RenderContributionSet::from_pairs(roles.iter().map(|role| (*role, true)));
         let mut target_ids = Vec::new();
         if roles.enabled_or(amigo_render_api::render_contribution_roles::CAMERA_FX_SOURCE, false) {
-            target_ids.push(amigo_camera_optics_plugin::render::scene_highlight_target_id());
+            target_ids.push(scene_highlight_target_id());
         }
         if roles.enabled_or(amigo_render_api::render_contribution_roles::BLOOM_SOURCE, false) {
-            target_ids.push(amigo_camera_optics_plugin::render::scene_emissive_target_id());
+            target_ids.push(scene_emissive_target_id());
         }
         CameraOpticalCandidate2d {
             owner: "neon.mid".to_owned(),
@@ -442,8 +483,7 @@ mod tests {
     #[test]
     fn lightmap_channel_candidate_resolves_source_and_channel() {
         let candidate = candidate(&[amigo_render_api::render_contribution_roles::CAMERA_FX_SOURCE]);
-        let Some((source, channel)) =
-            amigo_camera_optics_plugin::render::lightmap_channel_parts(&candidate.coverage)
+        let Some((source, channel)) = lightmap_channel_parts(&candidate.coverage)
         else {
             panic!("expected lightmap channel coverage");
         };

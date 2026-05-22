@@ -370,6 +370,7 @@ dependencies = [
  "amigo-camera-profiles-plugin",
  "amigo-composite-plugin",
  "amigo-plugin-api",
+ "amigo-render-api",
  "serde",
 ]
 

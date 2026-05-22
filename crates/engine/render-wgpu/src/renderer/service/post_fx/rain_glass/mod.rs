@@ -6,8 +6,8 @@ mod types;
 
 use std::time::Instant;
 
-use amigo_composite_plugin::{RainGlass2d, RainGlassRaindropCompose};
 use amigo_core::AmigoResult;
+use amigo_render_api::{PostFx2dId, PostFxHost2dId, RainGlass2d, RainGlassRaindropCompose};
 use wgpu::util::DeviceExt;
 
 use crate::WgpuOffscreenTarget;
@@ -723,8 +723,8 @@ fn fullscreen_pass<'a>(
 pub(crate) fn execute_rain_glass(
     renderer: &mut WgpuSceneRenderer,
     _request: &WgpuFrameRenderRequest<'_>,
-    host_id: &amigo_composite_plugin::PostFxHost2dId,
-    effect_id: &amigo_composite_plugin::PostFx2dId,
+    host_id: &PostFxHost2dId,
+    effect_id: &PostFx2dId,
     rain: RainGlass2d,
     input_view: &wgpu::TextureView,
     output: &mut WgpuOffscreenTarget,

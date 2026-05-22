@@ -2418,16 +2418,7 @@ impl WgpuSceneRenderer {
             crate::renderer::service::post_fx::pipelines::RefractiveMaterialPipelineProvider,
             &post_fx_pipeline_ctx,
         );
-        let focus_blur_pipeline_layout =
-            device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                label: Some("amigo-scene-focus-blur-pipeline-layout"),
-                bind_group_layouts: &[
-                    Some(&focus_blur_texture_bind_group_layout),
-                    Some(&wet_reflections_uniform_bind_group_layout),
-                ],
-                immediate_size: 0,
-            });
-        let mut post_fx_pipelines = post_fx_pipeline_registry.into_pipelines();
+        let post_fx_pipelines = post_fx_pipeline_registry.into_pipelines();
 
         Self {
             color_alpha_pipeline,

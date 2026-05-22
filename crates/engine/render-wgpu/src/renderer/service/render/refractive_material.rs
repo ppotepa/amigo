@@ -428,7 +428,7 @@ fn bytes_of<T>(value: &T) -> &[u8] {
 mod tests {
     use super::*;
     use amigo_assets::AssetKey;
-    use amigo_camera_optics_plugin::api::CameraOpticalResponse2d;
+    use amigo_camera::CameraOpticalResponse2d;
     use amigo_math::Transform2;
     use amigo_material_api::{
         Material2dOptical, Material2dOpticalMode, MaterialCandidate2dCommon,

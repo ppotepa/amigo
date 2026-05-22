@@ -1,12 +1,11 @@
 use amigo_2d_composition::{LightRoute2dCommand, RenderLayer2dCommand};
-use amigo_composite_plugin::ScopedPostFx2dStack;
 use amigo_3d_material::MaterialDrawCommand;
 use amigo_3d_mesh::MeshDrawCommand;
 use amigo_3d_text::Text3dDrawCommand;
 use amigo_render_api::{
     CameraCaptureInput2d, CameraDebugView2d, LightSource2dCommon, RenderContribution2d,
     RenderDepthAuxMap2d, RenderDepthMap2d, RenderExtractionOutput2d, RenderLightGroup2d,
-    RenderLightMap2dSource, Renderable2dItem,
+    RenderLightMap2dSource, Renderable2dItem, ScopedPostFx2dStack,
 };
 
 use crate::UiOverlayDocument;
@@ -326,7 +325,7 @@ impl amigo_2d_composition::Composition2dRenderOutput for WgpuRenderFramePacket {
     }
 }
 
-impl amigo_composite_plugin::PostFx2dRenderOutput for WgpuRenderFramePacket {
+impl amigo_render_api::PostFx2dRenderOutput for WgpuRenderFramePacket {
     fn set_post_fx2d_stacks(&mut self, stacks: Vec<ScopedPostFx2dStack>) {
         self.set_post_fx_stacks(stacks);
     }

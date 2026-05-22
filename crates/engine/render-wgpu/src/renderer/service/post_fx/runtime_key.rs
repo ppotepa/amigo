@@ -1,4 +1,4 @@
-use amigo_composite_plugin::{PostFx2dId, PostFxHost2dId};
+use amigo_render_api::{PostFx2dId, PostFxHost2dId};
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub(crate) struct PostFxRuntimeKey {

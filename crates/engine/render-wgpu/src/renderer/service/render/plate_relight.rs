@@ -1192,11 +1192,11 @@ mod tests {
             intensity: Some(beacon.intensity),
             effective_intensity: Some(beacon.intensity * beacon.color.a),
             response: Some(1.0),
-            camera_response: Some(amigo_camera_optics_plugin::api::CameraOpticalResponse2d {
+            camera_response: Some(amigo_camera::CameraOpticalResponse2d {
                 enabled: true,
                 intensity: beacon.camera_intensity,
                 glare: beacon.camera_glare,
-                ..amigo_camera_optics_plugin::api::CameraOpticalResponse2d::default()
+                ..amigo_camera::CameraOpticalResponse2d::default()
             }),
             bloom: Some(beacon.bloom),
             radius_px: Some(beacon.halo_radius_px.max(beacon.core_radius_px)),

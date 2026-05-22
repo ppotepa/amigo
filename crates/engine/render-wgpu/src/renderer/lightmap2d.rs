@@ -113,25 +113,17 @@ impl WgpuSceneRenderer {
 
     fn primitive_layered_image_viewport_fit(
         fit: amigo_render_api::LayeredImageViewportFit2dPrimitive,
-    ) -> amigo_layered_image_2d_plugin::LayeredImageViewportFit2d {
+    ) -> LayeredImageViewportFit2d {
         match fit {
-            amigo_render_api::LayeredImageViewportFit2dPrimitive::Fixed => {
-                amigo_layered_image_2d_plugin::LayeredImageViewportFit2d::Fixed
-            }
-            amigo_render_api::LayeredImageViewportFit2dPrimitive::Stretch => {
-                amigo_layered_image_2d_plugin::LayeredImageViewportFit2d::Stretch
-            }
-            amigo_render_api::LayeredImageViewportFit2dPrimitive::Contain => {
-                amigo_layered_image_2d_plugin::LayeredImageViewportFit2d::Contain
-            }
-            amigo_render_api::LayeredImageViewportFit2dPrimitive::Cover => {
-                amigo_layered_image_2d_plugin::LayeredImageViewportFit2d::Cover
-            }
+            amigo_render_api::LayeredImageViewportFit2dPrimitive::Fixed => LayeredImageViewportFit2d::Fixed,
+            amigo_render_api::LayeredImageViewportFit2dPrimitive::Stretch => LayeredImageViewportFit2d::Stretch,
+            amigo_render_api::LayeredImageViewportFit2dPrimitive::Contain => LayeredImageViewportFit2d::Contain,
+            amigo_render_api::LayeredImageViewportFit2dPrimitive::Cover => LayeredImageViewportFit2d::Cover,
         }
     }
 
     fn apply_primitive_layer_overrides(
-        asset: &mut amigo_layered_image_2d_plugin::LayeredImageAsset,
+        asset: &mut LayeredImageAsset,
         overrides: &[amigo_render_api::LayeredImageLayerOverride2dPrimitive],
     ) {
         for override_entry in overrides {
@@ -147,21 +139,11 @@ impl WgpuSceneRenderer {
             }
             if let Some(blend_mode) = override_entry.blend_mode {
                 layer.blend_mode = match blend_mode {
-                    amigo_render_api::LayeredImageBlendMode2dPrimitive::Alpha => {
-                        amigo_layered_image_2d_plugin::LayeredImageBlendMode2d::Alpha
-                    }
-                    amigo_render_api::LayeredImageBlendMode2dPrimitive::Additive => {
-                        amigo_layered_image_2d_plugin::LayeredImageBlendMode2d::Additive
-                    }
-                    amigo_render_api::LayeredImageBlendMode2dPrimitive::Screen => {
-                        amigo_layered_image_2d_plugin::LayeredImageBlendMode2d::Screen
-                    }
-                    amigo_render_api::LayeredImageBlendMode2dPrimitive::Multiply => {
-                        amigo_layered_image_2d_plugin::LayeredImageBlendMode2d::Multiply
-                    }
-                    amigo_render_api::LayeredImageBlendMode2dPrimitive::Lighten => {
-                        amigo_layered_image_2d_plugin::LayeredImageBlendMode2d::Lighten
-                    }
+                    amigo_render_api::LayeredImageBlendMode2dPrimitive::Alpha => LayeredImageBlendMode2d::Alpha,
+                    amigo_render_api::LayeredImageBlendMode2dPrimitive::Additive => LayeredImageBlendMode2d::Additive,
+                    amigo_render_api::LayeredImageBlendMode2dPrimitive::Screen => LayeredImageBlendMode2d::Screen,
+                    amigo_render_api::LayeredImageBlendMode2dPrimitive::Multiply => LayeredImageBlendMode2d::Multiply,
+                    amigo_render_api::LayeredImageBlendMode2dPrimitive::Lighten => LayeredImageBlendMode2d::Lighten,
                 };
             }
         }
@@ -546,18 +528,14 @@ fn lightmap_2d_render_size(
     viewport: &Viewport,
     fixed_size: Vec2,
     canvas_size: Vec2,
-    fit: amigo_layered_image_2d_plugin::LayeredImageViewportFit2d,
+    fit: LayeredImageViewportFit2d,
 ) -> Vec2 {
     let viewport_size = viewport.size();
     match fit {
-        amigo_layered_image_2d_plugin::LayeredImageViewportFit2d::Fixed => fixed_size,
-        amigo_layered_image_2d_plugin::LayeredImageViewportFit2d::Stretch => viewport_size,
-        amigo_layered_image_2d_plugin::LayeredImageViewportFit2d::Contain => {
-            scaled_lightmap_2d_size(canvas_size, viewport_size, f32::min)
-        }
-        amigo_layered_image_2d_plugin::LayeredImageViewportFit2d::Cover => {
-            scaled_lightmap_2d_size(canvas_size, viewport_size, f32::max)
-        }
+        LayeredImageViewportFit2d::Fixed => fixed_size,
+        LayeredImageViewportFit2d::Stretch => viewport_size,
+        LayeredImageViewportFit2d::Contain => scaled_lightmap_2d_size(canvas_size, viewport_size, f32::min),
+        LayeredImageViewportFit2d::Cover => scaled_lightmap_2d_size(canvas_size, viewport_size, f32::max),
     }
 }
 

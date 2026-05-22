@@ -1,4 +1,4 @@
-use amigo_composite_plugin::PostFxLensDroplets2d;
+use amigo_render_api::PostFxLensDroplets2d;
 
 use crate::{WgpuOffscreenTarget, renderer::service::WgpuSceneRenderer, renderer::*};
 

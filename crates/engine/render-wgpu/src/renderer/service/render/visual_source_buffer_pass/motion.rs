@@ -29,8 +29,8 @@ pub(super) fn produce_motion_buffer(
             request,
             &source_view,
             &mut target,
-            &amigo_composite_plugin::PostFxHost2dId::new("camera"),
-            &amigo_composite_plugin::PostFx2dId::new("shutter_blur"),
+            &amigo_render_api::PostFxHost2dId::new("camera"),
+            &amigo_render_api::PostFx2dId::new("shutter_blur"),
             "shutter_blur",
         )?;
     }
@@ -44,8 +44,8 @@ fn render_shutter_motion_fallback(
     request: &WgpuFrameRenderRequest<'_>,
     source: &wgpu::TextureView,
     target: &mut WgpuOffscreenTarget,
-    host_id: &amigo_composite_plugin::PostFxHost2dId,
-    effect_id: &amigo_composite_plugin::PostFx2dId,
+    host_id: &amigo_render_api::PostFxHost2dId,
+    effect_id: &amigo_render_api::PostFx2dId,
     feature_id: &str,
 ) -> AmigoResult<()> {
     if request
@@ -72,7 +72,7 @@ fn render_shutter_motion_fallback(
     }
     for stack in request.post_fx_stacks {
         for instance in &stack.effects {
-            if let amigo_composite_plugin::PostFx2d::ShutterBlur(effect) = &instance.effect {
+            if let amigo_render_api::PostFx2d::ShutterBlur(effect) = &instance.effect {
                 if effect.is_active() {
                     return crate::renderer::service::post_fx::shutter_blur::execute_motion_debug(
                         renderer,

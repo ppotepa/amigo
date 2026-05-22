@@ -1,4 +1,4 @@
-use amigo_composite_plugin::PostFxBlur2d;
+use amigo_render_api::PostFxBlur2d;
 use image::RgbaImage;
 
 pub(crate) fn apply_blur(source: RgbaImage, blur: PostFxBlur2d) -> RgbaImage {

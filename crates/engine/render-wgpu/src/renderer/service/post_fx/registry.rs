@@ -1,7 +1,11 @@
-use amigo_composite_plugin::{PostFx2d, PostFx2dId, PostFxHost2dId, PostFxPipelineKind, PostFxScope2d};
 use amigo_core::{AmigoError, AmigoResult};
 use amigo_math::ColorRgba;
-use amigo_render_api::RenderFeatureId;
+use amigo_render_api::{
+    CameraExposure2d, CameraOptics2d, ColorQuantize2d, ColorRamp2d, Crt2d, DirtyBloom2d,
+    FilmEmulsion2d, FilmNoise2d, FocusBlur2d, PostFx2d, PostFx2dId, PostFxHost2dId,
+    PostFxLensDroplets2d, PostFxPipelineKind, PostFxScope2d, PostFxWetReflections2d,
+    RainGlass2d, RenderFeatureId, ScanOutput2d, ShutterBlur2d, Downscale2d,
+};
 
 use crate::{
     WgpuOffscreenTarget,
@@ -311,7 +315,7 @@ impl WgpuPostFxExecutor for CopyThroughExecutor {
 
 fn execute_camera_exposure(
     renderer: &mut WgpuSceneRenderer,
-    effect: amigo_composite_plugin::CameraExposure2d,
+    effect: CameraExposure2d,
     input_view: &wgpu::TextureView,
     output: &mut WgpuOffscreenTarget,
 ) -> AmigoResult<()> {
@@ -320,7 +324,7 @@ fn execute_camera_exposure(
 
 fn execute_camera_optics(
     renderer: &mut WgpuSceneRenderer,
-    effect: amigo_composite_plugin::CameraOptics2d,
+    effect: CameraOptics2d,
     descriptor: &amigo_render_api::PostFxRenderDescriptor,
     input_view: &wgpu::TextureView,
     output: &mut WgpuOffscreenTarget,
@@ -344,7 +348,7 @@ fn execute_camera_optics(
 
 fn execute_color_quantize(
     renderer: &mut WgpuSceneRenderer,
-    effect: amigo_composite_plugin::ColorQuantize2d,
+    effect: ColorQuantize2d,
     input_view: &wgpu::TextureView,
     output: &mut WgpuOffscreenTarget,
 ) -> AmigoResult<()> {
@@ -353,7 +357,7 @@ fn execute_color_quantize(
 
 fn execute_color_ramp(
     renderer: &mut WgpuSceneRenderer,
-    effect: amigo_composite_plugin::ColorRamp2d,
+    effect: ColorRamp2d,
     input_view: &wgpu::TextureView,
     output: &mut WgpuOffscreenTarget,
 ) -> AmigoResult<()> {
@@ -362,7 +366,7 @@ fn execute_color_ramp(
 
 fn execute_crt(
     renderer: &mut WgpuSceneRenderer,
-    effect: amigo_composite_plugin::Crt2d,
+    effect: Crt2d,
     input_view: &wgpu::TextureView,
     output: &mut WgpuOffscreenTarget,
 ) -> AmigoResult<()> {
@@ -371,7 +375,7 @@ fn execute_crt(
 
 fn execute_downscale(
     renderer: &mut WgpuSceneRenderer,
-    effect: amigo_composite_plugin::Downscale2d,
+    effect: Downscale2d,
     input_view: &wgpu::TextureView,
     output: &mut WgpuOffscreenTarget,
 ) -> AmigoResult<()> {
@@ -380,7 +384,7 @@ fn execute_downscale(
 
 fn execute_dirty_bloom(
     renderer: &mut WgpuSceneRenderer,
-    effect: amigo_composite_plugin::DirtyBloom2d,
+    effect: DirtyBloom2d,
     input_view: &wgpu::TextureView,
     output: &mut WgpuOffscreenTarget,
 ) -> AmigoResult<()> {
@@ -389,7 +393,7 @@ fn execute_dirty_bloom(
 
 fn execute_film_emulsion(
     renderer: &mut WgpuSceneRenderer,
-    effect: amigo_composite_plugin::FilmEmulsion2d,
+    effect: FilmEmulsion2d,
     descriptor: &amigo_render_api::PostFxRenderDescriptor,
     input_view: &wgpu::TextureView,
     output: &mut WgpuOffscreenTarget,
@@ -413,7 +417,7 @@ fn execute_film_emulsion(
 
 fn execute_film_noise(
     renderer: &mut WgpuSceneRenderer,
-    effect: amigo_composite_plugin::FilmNoise2d,
+    effect: FilmNoise2d,
     input_view: &wgpu::TextureView,
     output: &mut WgpuOffscreenTarget,
 ) -> AmigoResult<()> {
@@ -423,7 +427,7 @@ fn execute_film_noise(
 fn execute_focus_blur(
     renderer: &mut WgpuSceneRenderer,
     request: &WgpuFrameRenderRequest<'_>,
-    effect: amigo_composite_plugin::FocusBlur2d,
+    effect: FocusBlur2d,
     input_view: &wgpu::TextureView,
     output: &mut WgpuOffscreenTarget,
 ) -> AmigoResult<()> {
@@ -432,7 +436,7 @@ fn execute_focus_blur(
 
 fn execute_lens_droplets(
     renderer: &mut WgpuSceneRenderer,
-    effect: amigo_composite_plugin::PostFxLensDroplets2d,
+    effect: PostFxLensDroplets2d,
     input_view: &wgpu::TextureView,
     output: &mut WgpuOffscreenTarget,
 ) -> AmigoResult<()> {
@@ -444,7 +448,7 @@ fn execute_rain_glass(
     request: &WgpuFrameRenderRequest<'_>,
     host_id: &PostFxHost2dId,
     effect_id: &PostFx2dId,
-    effect: amigo_composite_plugin::RainGlass2d,
+    effect: RainGlass2d,
     descriptor: &amigo_render_api::PostFxRenderDescriptor,
     input_view: &wgpu::TextureView,
     output: &mut WgpuOffscreenTarget,
@@ -458,7 +462,7 @@ fn execute_rain_glass(
 
 fn execute_scan_output(
     renderer: &mut WgpuSceneRenderer,
-    effect: amigo_composite_plugin::ScanOutput2d,
+    effect: ScanOutput2d,
     input_view: &wgpu::TextureView,
     output: &mut WgpuOffscreenTarget,
 ) -> AmigoResult<()> {
@@ -469,7 +473,7 @@ fn execute_shutter_blur(
     renderer: &mut WgpuSceneRenderer,
     host_id: &PostFxHost2dId,
     effect_id: &PostFx2dId,
-    effect: amigo_composite_plugin::ShutterBlur2d,
+    effect: ShutterBlur2d,
     input_view: &wgpu::TextureView,
     output: &mut WgpuOffscreenTarget,
 ) -> AmigoResult<()> {
@@ -479,7 +483,7 @@ fn execute_shutter_blur(
 fn execute_wet_reflections(
     renderer: &mut WgpuSceneRenderer,
     request: &WgpuFrameRenderRequest<'_>,
-    effect: amigo_composite_plugin::PostFxWetReflections2d,
+    effect: PostFxWetReflections2d,
     input_view: &wgpu::TextureView,
     output: &mut WgpuOffscreenTarget,
 ) -> AmigoResult<()> {

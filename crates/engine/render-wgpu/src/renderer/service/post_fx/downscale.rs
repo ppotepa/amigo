@@ -1,4 +1,4 @@
-use amigo_composite_plugin::Downscale2d;
+use amigo_render_api::Downscale2d;
 use amigo_core::AmigoResult;
 use amigo_math::{ColorRgba, Vec2};
 use wgpu::util::DeviceExt;

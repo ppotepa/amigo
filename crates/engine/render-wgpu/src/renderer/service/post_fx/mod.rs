@@ -20,7 +20,7 @@ mod scan_output;
 pub(crate) mod shutter_blur;
 pub(crate) mod wet_reflections;
 
-use amigo_composite_plugin::{PostFx2d, PostFxEmbossMode2d};
+use amigo_render_api::{PostFx2d, PostFxEmbossMode2d};
 use image::RgbaImage;
 
 pub(crate) use executor::{WgpuPostFxExecutionContext, WgpuPostFxExecutor};

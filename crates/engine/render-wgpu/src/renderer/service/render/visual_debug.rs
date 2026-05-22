@@ -11,8 +11,8 @@ pub(super) fn try_execute_camera_debug_view(
     target: &mut WgpuOffscreenTarget,
     source: &wgpu::TextureView,
     visual_sources: Option<&crate::renderer::service::WgpuCameraVisualSources2d>,
-    host_id: &amigo_composite_plugin::PostFxHost2dId,
-    effect_id: &amigo_composite_plugin::PostFx2dId,
+    host_id: &amigo_render_api::PostFxHost2dId,
+    effect_id: &amigo_render_api::PostFx2dId,
     feature_id: &str,
 ) -> AmigoResult<bool> {
     if !request.camera_debug_view.wants_visual_source_debug() {
@@ -235,8 +235,8 @@ fn render_visual_source_debug_view(
     source: &wgpu::TextureView,
     visual_sources: Option<&crate::renderer::service::WgpuCameraVisualSources2d>,
     kind: amigo_render_api::VisualSourceKind2d,
-    _host_id: &amigo_composite_plugin::PostFxHost2dId,
-    _effect_id: &amigo_composite_plugin::PostFx2dId,
+    _host_id: &amigo_render_api::PostFxHost2dId,
+    _effect_id: &amigo_render_api::PostFx2dId,
     _feature_id: &str,
 ) -> AmigoResult<()> {
     let Some(runtime) = visual_sources.and_then(|sources| sources.get(kind)) else {

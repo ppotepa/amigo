@@ -1,4 +1,4 @@
-use amigo_composite_plugin::{FocusBlur2d, FocusTarget2d};
+use amigo_render_api::{FocusBlur2d, FocusTarget2d};
 use amigo_core::AmigoResult;
 use amigo_math::{ColorRgba, Transform2, Vec2};
 use amigo_render_api::{

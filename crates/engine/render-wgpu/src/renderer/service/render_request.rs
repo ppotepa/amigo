@@ -1,6 +1,5 @@
 use amigo_2d_composition::{LightRoute2dCommand, RenderLayer2dCommand};
 use amigo_camera::CameraOpticalCandidate2d;
-use amigo_composite_plugin::ScopedPostFx2dStack;
 use amigo_3d_material::MaterialDrawCommand;
 use amigo_3d_mesh::MeshDrawCommand;
 use amigo_3d_text::Text3dDrawCommand;
@@ -8,6 +7,7 @@ use amigo_assets::AssetCatalog;
 use amigo_render_api::{
     CameraCaptureInput2d, CameraDebugView2d, FrameCompositionPlan, FrameGraph,
     LightSource2dCommon, RenderDepthAuxMap2d, RenderDepthMap2d, RenderLightMap2dSource,
+    ScopedPostFx2dStack,
 };
 use amigo_scene::SceneService;
 

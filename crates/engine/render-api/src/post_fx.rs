@@ -201,3 +201,7 @@ pub type ObjectPostFx2dStack = ScopedPostFx2dStack;
 pub type GroupPostFx2dStack = ScopedPostFx2dStack;
 pub type SourceImagePostFx2dStack = ScopedPostFx2dStack;
 pub type ImagePartPostFx2dStack = ScopedPostFx2dStack;
+
+pub trait PostFx2dRenderOutput {
+    fn set_post_fx2d_stacks(&mut self, stacks: Vec<ScopedPostFx2dStack>);
+}

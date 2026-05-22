@@ -9,4 +9,5 @@ amigo-camera.workspace = true
 amigo-composite-plugin.workspace = true
 amigo-assets.workspace = true
 amigo-camera-profiles-plugin.workspace = true
+amigo-render-api.workspace = true
 serde.workspace = true

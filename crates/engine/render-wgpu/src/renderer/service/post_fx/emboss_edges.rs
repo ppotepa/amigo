@@ -1,4 +1,4 @@
-use amigo_composite_plugin::PostFxEmbossEdges2d;
+use amigo_render_api::PostFxEmbossEdges2d;
 use image::RgbaImage;
 
 pub(crate) fn apply_emboss_edges(source: RgbaImage, emboss: PostFxEmbossEdges2d) -> RgbaImage {

@@ -1,4 +1,4 @@
-use amigo_composite_plugin::FilmNoise2d;
+use amigo_render_api::FilmNoise2d;
 use amigo_core::AmigoResult;
 use amigo_math::{ColorRgba, Vec2};
 use std::time::{SystemTime, UNIX_EPOCH};

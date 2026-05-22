@@ -8,20 +8,16 @@ use std::sync::Arc;
 use std::time::SystemTime;
 
 use amigo_2d_composition::{LightRoute2dCommand, RenderLayer2dCommand};
-use amigo_layered_image_2d_plugin::{
-    LayeredImageAssetSource, LayeredImageBlendMode2d,
-};
-use amigo_particles_2d_plugin::{
-    ParticleBlendMode2d, ParticleLineAnchor2d,
-};
-use amigo_composite_plugin::{PostFx2d, PostFx2dCacheKey};
-pub(crate) use amigo_sprite_2d_plugin::SpriteSheet;
 use amigo_3d_material::MaterialDrawCommand;
 use amigo_3d_mesh::MeshDrawCommand;
 use amigo_3d_text::Text3dDrawCommand;
-use amigo_assets::{AssetCatalog, PreparedAsset, PreparedAssetKind};
+use amigo_assets::{AssetCatalog, AssetKey, PreparedAsset, PreparedAssetKind};
 use amigo_core::AmigoResult;
 use amigo_math::{ColorRgba, Transform2, Transform3, Vec2, Vec3};
+use amigo_render_api::{
+    ParticleBlendMode2dPrimitive, ParticleLineAnchor2dPrimitive, PostFx2d,
+    PostFx2dCacheKey, PostFx2dStack, cached_image_post_fx_stack_from_flat_metadata,
+};
 use amigo_scene::SceneService;
 use image::{GenericImageView, RgbaImage};
 use wgpu::util::DeviceExt;
@@ -31,6 +27,181 @@ use crate::ui_overlay::{
 };
 use crate::Renderable2dItem;
 use crate::{WgpuOffscreenTarget, WgpuSurfaceState};
+
+type ParticleBlendMode2d = ParticleBlendMode2dPrimitive;
+type ParticleLineAnchor2d = ParticleLineAnchor2dPrimitive;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum LayeredImageBlendMode2d {
+    Alpha,
+    Additive,
+    Screen,
+    Multiply,
+    Lighten,
+}
+
+impl LayeredImageBlendMode2d {
+    pub(crate) fn parse(value: &str) -> Self {
+        match value.trim().to_ascii_lowercase().as_str() {
+            "alpha" => Self::Alpha,
+            "add" | "additive" => Self::Additive,
+            "screen" => Self::Screen,
+            "multiply" => Self::Multiply,
+            "lighten" => Self::Lighten,
+            _ => Self::Alpha,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum LayeredImageViewportFit2d {
+    Fixed,
+    Stretch,
+    Contain,
+    Cover,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) struct LayeredImageLayer {
+    pub id: String,
+    pub label: String,
+    pub image: String,
+    pub blend_mode: LayeredImageBlendMode2d,
+    pub opacity: f32,
+    pub color: Option<ColorRgba>,
+    pub animation_hint: Option<String>,
+    pub post_fx: Option<PostFx2dStack>,
+    pub enabled: bool,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) struct LayeredImageAsset {
+    pub key: AssetKey,
+    pub label: Option<String>,
+    pub canvas_size: Vec2,
+    pub base_image: String,
+    pub layers: Vec<LayeredImageLayer>,
+    pub preview_image: Option<String>,
+}
+
+pub(crate) trait LayeredImageAssetSource {
+    fn layered_image_asset(&self, key: &AssetKey) -> Option<LayeredImageAsset>;
+}
+
+impl LayeredImageAssetSource for AssetCatalog {
+    fn layered_image_asset(&self, key: &AssetKey) -> Option<LayeredImageAsset> {
+        self.prepared_asset(key)
+            .and_then(|prepared| infer_layered_image_asset_from_prepared(&prepared))
+    }
+}
+
+fn infer_layered_image_asset_from_prepared(prepared: &PreparedAsset) -> Option<LayeredImageAsset> {
+    if !matches!(prepared.kind, PreparedAssetKind::LayeredImage2d) {
+        return None;
+    }
+
+    let canvas_width = metadata_f32(prepared, "canvas.width")?;
+    let canvas_height = metadata_f32(prepared, "canvas.height")?;
+    let base_image = metadata_string(prepared, "base.image")
+        .or_else(|| metadata_string(prepared, "base.file"))
+        .or_else(|| metadata_string(prepared, "base"))?;
+
+    let mut layers = Vec::new();
+    for index in 0..infer_indexed_count(prepared, "layers") {
+        let prefix = format!("layers.{index}");
+        let id = metadata_string(prepared, &format!("{prefix}.id"))
+            .unwrap_or_else(|| format!("layer_{index:03}"));
+        let Some(image) = metadata_string(prepared, &format!("{prefix}.image")) else {
+            continue;
+        };
+        let label = metadata_string(prepared, &format!("{prefix}.label"))
+            .unwrap_or_else(|| id.clone());
+        let blend_mode = metadata_string(prepared, &format!("{prefix}.blend"))
+            .map(|value| LayeredImageBlendMode2d::parse(&value))
+            .unwrap_or(LayeredImageBlendMode2d::Additive);
+        let opacity = metadata_f32(prepared, &format!("{prefix}.default_opacity"))
+            .unwrap_or(1.0)
+            .clamp(0.0, 4.0);
+
+        layers.push(LayeredImageLayer {
+            id,
+            label,
+            image,
+            blend_mode,
+            opacity,
+            color: metadata_string(prepared, &format!("{prefix}.color"))
+                .and_then(|value| parse_hex_rgba(&value)),
+            animation_hint: metadata_string(prepared, &format!("{prefix}.animation_hint")),
+            post_fx: cached_image_post_fx_stack_from_flat_metadata(
+                &prepared.metadata,
+                &format!("{prefix}.post_fx"),
+            ),
+            enabled: metadata_bool(prepared, &format!("{prefix}.enabled")).unwrap_or(true),
+        });
+    }
+
+    Some(LayeredImageAsset {
+        key: prepared.key.clone(),
+        label: prepared.label.clone(),
+        canvas_size: Vec2::new(canvas_width, canvas_height),
+        base_image,
+        layers,
+        preview_image: metadata_string(prepared, "preview.image"),
+    })
+}
+
+fn infer_indexed_count(prepared: &PreparedAsset, prefix: &str) -> usize {
+    let prefix = format!("{prefix}.");
+    prepared
+        .metadata
+        .keys()
+        .filter_map(|key| key.strip_prefix(&prefix))
+        .filter_map(|rest| rest.split_once('.').map(|(index, _)| index))
+        .filter_map(|index| index.parse::<usize>().ok())
+        .max()
+        .map_or(0, |index| index + 1)
+}
+
+fn metadata_string(prepared: &PreparedAsset, key: &str) -> Option<String> {
+    prepared
+        .metadata
+        .get(key)
+        .cloned()
+        .filter(|value| !value.trim().is_empty())
+}
+
+fn metadata_f32(prepared: &PreparedAsset, key: &str) -> Option<f32> {
+    prepared.metadata.get(key)?.parse::<f32>().ok()
+}
+
+fn metadata_bool(prepared: &PreparedAsset, key: &str) -> Option<bool> {
+    prepared.metadata.get(key)?.parse::<bool>().ok()
+}
+
+fn parse_hex_rgba(value: &str) -> Option<ColorRgba> {
+    let hex = value.trim().trim_start_matches('#');
+    let parse = |range: std::ops::Range<usize>| {
+        u8::from_str_radix(&hex[range], 16)
+            .ok()
+            .map(|v| v as f32 / 255.0)
+    };
+
+    match hex.len() {
+        6 => Some(ColorRgba::new(
+            parse(0..2)?,
+            parse(2..4)?,
+            parse(4..6)?,
+            1.0,
+        )),
+        8 => Some(ColorRgba::new(
+            parse(0..2)?,
+            parse(2..4)?,
+            parse(4..6)?,
+            parse(6..8)?,
+        )),
+        _ => None,
+    }
+}
 
 const COLOR_SHADER: &str = r#"
 struct VertexIn {
@@ -270,6 +441,24 @@ pub(crate) struct LightMap2dSampler {
     transform: Transform2,
     size: Vec2,
     channels: BTreeMap<String, Vec<LightMap2dLayer>>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) struct SpriteSheet {
+    pub columns: u32,
+    pub rows: u32,
+    pub frame_count: u32,
+    pub frame_size: Vec2,
+    pub fps: f32,
+    pub looping: bool,
+}
+
+impl SpriteSheet {
+    pub(crate) fn visible_frame_count(&self) -> u32 {
+        self.frame_count
+            .max(1)
+            .min(self.columns.max(1).saturating_mul(self.rows.max(1)))
+    }
 }
 
 pub(crate) struct CachedTextureResource {
