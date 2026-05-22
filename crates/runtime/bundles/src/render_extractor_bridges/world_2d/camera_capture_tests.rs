@@ -127,16 +127,18 @@ fn camera_capture_input_applies_camera_z_to_distance_layers() {
 #[test]
 fn camera_capture_input_does_not_set_highlight_for_lightmaps_without_candidates() {
     let mut packet = WgpuRenderFramePacket::default();
-    packet.push_world_2d_lightmap(amigo_light_2d_plugin::LightMap2dSourceCommand {
-        source_mod: "rotten-club".to_owned(),
-        entity_name: "bar.lightmap".to_owned(),
-        id: "bar.lightmap".to_owned(),
-        source: amigo_light_2d_plugin::LightMap2dSourceRef {
-            kind: amigo_light_2d_plugin::LightMap2dSourceKind::LayeredImage2d,
-            entity_name: "bar.lightmap".to_owned(),
+    packet.push_render_contribution_2d(amigo_render_api::RenderContribution2d::lightmap_2d(
+        amigo_render_api::RenderLightMap2dSource {
+            source_mod: "rotten-club".to_owned(),
+            owner_entity: "bar.lightmap".to_owned(),
+            source_id: "bar.lightmap".to_owned(),
+            source: amigo_render_api::RenderLightMap2dSourceRef {
+                kind: amigo_render_api::RenderLightMap2dSourceKind::LayeredImage2d,
+                entity_name: "bar.lightmap".to_owned(),
+            },
+            channels: Vec::new(),
         },
-        channels: Vec::new(),
-    });
+    ));
 
     let runtime = test_runtime();
     let input = build_camera_capture_input(
