@@ -5,11 +5,17 @@ use crate::renderer::pipelines::create_color_pipeline;
 
 mod camera_exposure;
 mod camera_optics;
+mod film_emulsion;
+mod film_noise;
 mod focus_blur;
+mod scan_output;
 
 pub(crate) use camera_exposure::CameraExposurePipelineProvider;
 pub(crate) use camera_optics::CameraOpticsPipelineProvider;
+pub(crate) use film_emulsion::FilmEmulsionPipelineProvider;
+pub(crate) use film_noise::FilmNoisePipelineProvider;
 pub(crate) use focus_blur::FocusBlurPipelineProvider;
+pub(crate) use scan_output::ScanOutputPipelineProvider;
 
 pub(crate) struct WgpuPostFxPipelineCreateContext<'a> {
     pub(crate) device: &'a wgpu::Device,
@@ -90,9 +96,6 @@ pub(crate) fn build_default_post_fx_pipelines(
     registry.into_pipelines()
 }
 
-pub(crate) struct FilmEmulsionPipelineProvider;
-pub(crate) struct FilmNoisePipelineProvider;
-pub(crate) struct ScanOutputPipelineProvider;
 pub(crate) struct ColorQuantizePipelineProvider;
 pub(crate) struct DownscalePipelineProvider;
 pub(crate) struct ShutterBlurPipelineProvider;
@@ -102,93 +105,6 @@ pub(crate) struct CrtPipelineProvider;
 pub(crate) struct WetReflectionsPipelineProvider;
 pub(crate) struct PlateRelightPipelineProvider;
 pub(crate) struct RefractiveMaterialPipelineProvider;
-
-impl WgpuPostFxPipelineProvider for FilmEmulsionPipelineProvider {
-    fn pipeline_id(&self) -> &'static str {
-        crate::renderer::service::POST_FX_EXECUTOR_FILM_EMULSION
-    }
-
-    fn create_pipeline(
-        &self,
-        ctx: &WgpuPostFxPipelineCreateContext<'_>,
-    ) -> wgpu::RenderPipeline {
-        let layout = ctx
-            .device
-            .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                label: Some("amigo-scene-film-emulsion-pipeline-layout"),
-                bind_group_layouts: &[
-                    Some(ctx.camera_visual_source_bind_group_layout),
-                    Some(ctx.wet_reflections_uniform_bind_group_layout),
-                ],
-                immediate_size: 0,
-            });
-        create_copy_blend_pipeline(
-            ctx.device,
-            ctx.film_emulsion_shader,
-            &layout,
-            ctx.format,
-            "amigo-scene-film-emulsion-pipeline",
-        )
-    }
-}
-
-impl WgpuPostFxPipelineProvider for FilmNoisePipelineProvider {
-    fn pipeline_id(&self) -> &'static str {
-        crate::renderer::service::POST_FX_EXECUTOR_FILM_NOISE
-    }
-
-    fn create_pipeline(
-        &self,
-        ctx: &WgpuPostFxPipelineCreateContext<'_>,
-    ) -> wgpu::RenderPipeline {
-        let layout = ctx
-            .device
-            .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                label: Some("amigo-scene-film-noise-pipeline-layout"),
-                bind_group_layouts: &[
-                    Some(ctx.texture_bind_group_layout),
-                    Some(ctx.wet_reflections_uniform_bind_group_layout),
-                ],
-                immediate_size: 0,
-            });
-        create_copy_blend_pipeline(
-            ctx.device,
-            ctx.film_noise_shader,
-            &layout,
-            ctx.format,
-            "amigo-scene-film-noise-pipeline",
-        )
-    }
-}
-
-impl WgpuPostFxPipelineProvider for ScanOutputPipelineProvider {
-    fn pipeline_id(&self) -> &'static str {
-        crate::renderer::service::POST_FX_EXECUTOR_SCAN_OUTPUT
-    }
-
-    fn create_pipeline(
-        &self,
-        ctx: &WgpuPostFxPipelineCreateContext<'_>,
-    ) -> wgpu::RenderPipeline {
-        let layout = ctx
-            .device
-            .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                label: Some("amigo-scene-scan-output-pipeline-layout"),
-                bind_group_layouts: &[
-                    Some(ctx.texture_bind_group_layout),
-                    Some(ctx.wet_reflections_uniform_bind_group_layout),
-                ],
-                immediate_size: 0,
-            });
-        create_copy_blend_pipeline(
-            ctx.device,
-            ctx.scan_output_shader,
-            &layout,
-            ctx.format,
-            "amigo-scene-scan-output-pipeline",
-        )
-    }
-}
 
 impl WgpuPostFxPipelineProvider for ColorQuantizePipelineProvider {
     fn pipeline_id(&self) -> &'static str {
