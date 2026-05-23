@@ -1,6 +1,7 @@
 use super::{
     WgpuPostFxPipelineCreateContext, WgpuPostFxPipelineProvider, create_copy_blend_pipeline,
 };
+use crate::renderer::service::post_fx::shaders::CAMERA_OPTICS_SHADER;
 
 pub(crate) struct CameraOpticsPipelineProvider;
 
@@ -13,6 +14,12 @@ impl WgpuPostFxPipelineProvider for CameraOpticsPipelineProvider {
         &self,
         ctx: &WgpuPostFxPipelineCreateContext<'_>,
     ) -> wgpu::RenderPipeline {
+        let shader = ctx
+            .device
+            .create_shader_module(wgpu::ShaderModuleDescriptor {
+                label: Some("amigo-scene-camera-optics-shader"),
+                source: wgpu::ShaderSource::Wgsl(CAMERA_OPTICS_SHADER.into()),
+            });
         let layout = ctx
             .device
             .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
@@ -25,7 +32,7 @@ impl WgpuPostFxPipelineProvider for CameraOpticsPipelineProvider {
             });
         create_copy_blend_pipeline(
             ctx.device,
-            ctx.camera_optics_shader,
+            &shader,
             &layout,
             ctx.format,
             "amigo-scene-camera-optics-pipeline",

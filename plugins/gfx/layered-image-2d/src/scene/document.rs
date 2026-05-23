@@ -1,3 +1,5 @@
+use std::any::Any;
+
 use serde::{Deserialize, Serialize};
 use serde_yaml::Value;
 
@@ -5,8 +7,8 @@ use crate::api::LayeredImage2dLayer;
 
 use amigo_scene::{
     LayeredImageLayerOverrideDocument, LayeredImageViewportFit2dDocument, SceneComponentDocument,
-    SceneComponentSchemaProvider, SceneDocumentError, SceneDocumentResult, SceneVec2Document,
-    VisualMaps2dDocument,
+    SceneComponentPayload, SceneComponentSchemaProvider, SceneDocumentError,
+    SceneDocumentResult, SceneVec2Document, VisualMaps2dDocument,
 };
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
@@ -78,6 +80,16 @@ impl LayeredImage2dDocument {
     }
 }
 
+impl SceneComponentPayload for LayeredImage2dDocument {
+    fn component_type(&self) -> &'static str {
+        "amigo.gfx.layered-image-2d.LayeredImage2D"
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+}
+
 pub fn parse_layered_image_2d_plugin_payload(
     payload: &Value,
 ) -> SceneDocumentResult<LayeredImage2dDocument> {
@@ -101,6 +113,13 @@ impl SceneComponentSchemaProvider for LayeredImage2dSceneSchemaProvider {
         serde_yaml::to_value(serde_yaml::from_value::<LayeredImage2dDocument>(
             Value::Mapping(payload),
         )?)
+    }
+
+    fn parse_payload_value(
+        &self,
+        payload: &Value,
+    ) -> SceneDocumentResult<Box<dyn SceneComponentPayload>> {
+        Ok(Box::new(parse_layered_image_2d_plugin_payload(payload)?))
     }
 }
 

@@ -1,6 +1,7 @@
 use super::{
     WgpuPostFxPipelineCreateContext, WgpuPostFxPipelineProvider, create_copy_blend_pipeline,
 };
+use crate::renderer::service::post_fx::shaders::SCAN_OUTPUT_SHADER;
 
 pub(crate) struct ScanOutputPipelineProvider;
 
@@ -13,6 +14,12 @@ impl WgpuPostFxPipelineProvider for ScanOutputPipelineProvider {
         &self,
         ctx: &WgpuPostFxPipelineCreateContext<'_>,
     ) -> wgpu::RenderPipeline {
+        let shader = ctx
+            .device
+            .create_shader_module(wgpu::ShaderModuleDescriptor {
+                label: Some("amigo-scene-scan-output-shader"),
+                source: wgpu::ShaderSource::Wgsl(SCAN_OUTPUT_SHADER.into()),
+            });
         let layout = ctx
             .device
             .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
@@ -25,7 +32,7 @@ impl WgpuPostFxPipelineProvider for ScanOutputPipelineProvider {
             });
         create_copy_blend_pipeline(
             ctx.device,
-            ctx.scan_output_shader,
+            &shader,
             &layout,
             ctx.format,
             "amigo-scene-scan-output-pipeline",

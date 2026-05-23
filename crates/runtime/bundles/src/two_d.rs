@@ -43,10 +43,13 @@ pub struct TwoDRuntimeBundle;
 
 struct WgpuTwoDRenderExtractorBridgePlugin;
 
-fn register_two_d_profile_render_extractor_bridges(
-    bridges: &WgpuRenderExtractorBridgeRegistry,
-) {
-    for installer in render_extractor_bridges::world_2d_plugin_bridge_installers() {
+fn two_d_profile_render_extractor_bridge_installers(
+) -> Vec<crate::render_extractor_registry::WgpuRenderExtractorBridgeInstaller> {
+    render_extractor_bridges::available_world_2d_plugin_bridge_installers()
+}
+
+fn register_two_d_profile_render_extractor_bridges(bridges: &WgpuRenderExtractorBridgeRegistry) {
+    for installer in two_d_profile_render_extractor_bridge_installers() {
         bridges.register_installer(installer);
     }
 }

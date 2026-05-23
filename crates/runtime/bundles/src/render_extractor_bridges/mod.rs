@@ -25,7 +25,7 @@ pub use visual_2d_items::{
     render_contribution_decisions_summary, supported_renderable_2d_component_kinds,
 };
 pub use world_2d::{
-    register_world_2d_builtin_render_extractors, world_2d_plugin_bridge_installers,
+    available_world_2d_plugin_bridge_installers, register_world_2d_builtin_render_extractors,
 };
 pub use world_3d::register_world_3d_render_extractors;
 

@@ -1,6 +1,7 @@
 use super::{
     WgpuPostFxPipelineCreateContext, WgpuPostFxPipelineProvider, create_copy_blend_pipeline,
 };
+use crate::renderer::service::post_fx::shaders::FILM_NOISE_SHADER;
 
 pub(crate) struct FilmNoisePipelineProvider;
 
@@ -13,6 +14,12 @@ impl WgpuPostFxPipelineProvider for FilmNoisePipelineProvider {
         &self,
         ctx: &WgpuPostFxPipelineCreateContext<'_>,
     ) -> wgpu::RenderPipeline {
+        let shader = ctx
+            .device
+            .create_shader_module(wgpu::ShaderModuleDescriptor {
+                label: Some("amigo-scene-film-noise-shader"),
+                source: wgpu::ShaderSource::Wgsl(FILM_NOISE_SHADER.into()),
+            });
         let layout = ctx
             .device
             .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
@@ -25,7 +32,7 @@ impl WgpuPostFxPipelineProvider for FilmNoisePipelineProvider {
             });
         create_copy_blend_pipeline(
             ctx.device,
-            ctx.film_noise_shader,
+            &shader,
             &layout,
             ctx.format,
             "amigo-scene-film-noise-pipeline",

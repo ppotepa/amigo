@@ -16,6 +16,7 @@ pub(crate) mod pipelines;
 pub(crate) mod rain_glass;
 mod registry;
 pub(crate) mod runtime_key;
+pub(crate) mod shaders;
 mod scan_output;
 pub(crate) mod shutter_blur;
 pub(crate) mod wet_reflections;

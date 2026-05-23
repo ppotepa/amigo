@@ -47,4 +47,14 @@ assert_no_match \
   "crates/engine/scene/src" \
   "PluginSceneCommandPayload must not be a central enum."
 
+assert_no_match \
+  "CAMERA_EXPOSURE_SHADER|CAMERA_OPTICS_SHADER|FOCUS_BLUR_SHADER|FILM_EMULSION_SHADER|FILM_NOISE_SHADER|SCAN_OUTPUT_SHADER" \
+  "crates/engine/render-wgpu/src/renderer/service/init.rs" \
+  "init.rs must not keep pilot post-fx shader sources."
+
+assert_no_match \
+  "execute_layered_image_parts_to_offscreen|layered_textured_quads\(" \
+  "crates/engine/render-wgpu/src/renderer/service/render/world.rs" \
+  "world.rs must not contain layered image part pass logic."
+
 echo "Engine boundary checks passed."

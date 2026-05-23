@@ -75,6 +75,34 @@ fn init_uses_centralized_post_fx_pipeline_bootstrap() {
         !content.contains("post_fx_pipeline_registry.register("),
         "init.rs should not manually register post-fx pipelines one by one",
     );
+    for shader in [
+        "CAMERA_EXPOSURE_SHADER",
+        "CAMERA_OPTICS_SHADER",
+        "FOCUS_BLUR_SHADER",
+        "FILM_EMULSION_SHADER",
+        "FILM_NOISE_SHADER",
+        "SCAN_OUTPUT_SHADER",
+    ] {
+        assert!(
+            !content.contains(shader),
+            "init.rs should not embed pilot post-fx shader source {shader}",
+        );
+    }
+}
+
+#[test]
+fn world_rs_does_not_embed_layered_image_parts_pass_logic() {
+    let world_rs =
+        crate_root().join("src/renderer/service/render/world.rs");
+    let content = read(world_rs);
+    assert!(
+        !content.contains("execute_layered_image_parts_to_offscreen"),
+        "world.rs should delegate layered image parts pass out of the world renderer",
+    );
+    assert!(
+        !content.contains(".layered_textured_quads("),
+        "world.rs should not inspect layered image part primitives directly",
+    );
 }
 
 #[test]

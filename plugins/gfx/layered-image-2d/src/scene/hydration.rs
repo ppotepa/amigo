@@ -5,13 +5,15 @@ use amigo_scene::{
     LayeredImageBlendMode2dDocument, LayeredImageBlendMode2dSceneCommand,
     LayeredImageLayerOverrideDocument, LayeredImageLayerOverrideSceneCommand,
     LayeredImageViewportFit2dDocument, LayeredImageViewportFit2dSceneCommand,
-    SceneComponentDocument, SceneDocumentResult, SceneTransform2Document, SceneTransform3Document,
+    PluginComponentHydrationContext, PluginComponentHydrator, SceneComponentDocument,
+    SceneDocumentError, SceneDocumentResult, SceneTransform2Document, SceneTransform3Document,
     SceneVec2Document, VisualMaps2dDocument, VisualMaps2dSceneCommand,
 };
 
-use super::{LayeredImage2dDocument, parse_layered_image_2d_plugin_payload};
+use super::LayeredImage2dDocument;
 
 pub struct LayeredImage2dComponentHydrator;
+pub struct LayeredImage2dPluginComponentHydrator;
 
 impl ComponentHydrator for LayeredImage2dComponentHydrator {
     fn provider_id(&self) -> &'static str {
@@ -20,12 +22,6 @@ impl ComponentHydrator for LayeredImage2dComponentHydrator {
 
     fn can_hydrate(&self, component: &SceneComponentDocument) -> bool {
         matches!(component, SceneComponentDocument::LayeredImage2d { .. })
-            || matches!(
-                component,
-                SceneComponentDocument::Plugin { component_type, .. }
-                    if component_type == "amigo.gfx.layered-image-2d.LayeredImage2D"
-                        || component_type == "LayeredImage2D"
-            )
     }
 
     fn hydrate(&self, ctx: ComponentHydrationContext<'_>) -> SceneDocumentResult<()> {
@@ -36,29 +32,74 @@ impl ComponentHydrator for LayeredImage2dComponentHydrator {
                 };
                 document
             }
-            SceneComponentDocument::Plugin {
-                component_type,
-                payload,
-            } if component_type == "amigo.gfx.layered-image-2d.LayeredImage2D"
-                || component_type == "LayeredImage2D" =>
-            {
-                parse_layered_image_2d_plugin_payload(payload)?
-            }
             _ => return Ok(()),
         };
 
-        ctx.commands.push(amigo_scene::SceneCommand::QueueLayeredImage2d {
+        push_layered_image_command(
+            &document,
+            ctx.source_mod,
+            ctx.entity,
+            ctx.entity_name,
+            ctx.commands,
+        );
+
+        Ok(())
+    }
+}
+
+impl PluginComponentHydrator for LayeredImage2dPluginComponentHydrator {
+    fn provider_id(&self) -> &'static str {
+        "amigo.gfx.layered-image-2d"
+    }
+
+    fn component_type(&self) -> &'static str {
+        "amigo.gfx.layered-image-2d.LayeredImage2D"
+    }
+
+    fn hydrate_plugin_payload(
+        &self,
+        ctx: PluginComponentHydrationContext<'_>,
+    ) -> SceneDocumentResult<()> {
+        let Some(document) = ctx.payload.as_any().downcast_ref::<LayeredImage2dDocument>() else {
+            return Err(SceneDocumentError::Hydration {
+                scene_id: ctx.document.scene.id.clone(),
+                entity_id: ctx.entity.id.clone(),
+                component_kind: ctx.component_type.to_owned(),
+                message: "LayeredImage2D plugin hydrator received wrong payload".to_owned(),
+            });
+        };
+
+        push_layered_image_command(
+            document,
+            ctx.source_mod,
+            ctx.entity,
+            ctx.entity_name,
+            ctx.commands,
+        );
+
+        Ok(())
+    }
+}
+
+fn push_layered_image_command(
+    document: &LayeredImage2dDocument,
+    source_mod: &str,
+    entity: &amigo_scene::SceneEntityDocument,
+    entity_name: &str,
+    commands: &mut Vec<amigo_scene::SceneCommand>,
+) {
+    commands.push(amigo_scene::SceneCommand::QueueLayeredImage2d {
             command: LayeredImage2dSceneCommand {
-                source_mod: ctx.source_mod.to_owned(),
-                entity_name: ctx.entity_name.to_owned(),
-                render_layer: document.render_layer,
-                asset: AssetKey::new(document.asset),
+                source_mod: source_mod.to_owned(),
+                entity_name: entity_name.to_owned(),
+                render_layer: document.render_layer.clone(),
+                asset: AssetKey::new(document.asset.clone()),
                 size: vec2_from_document(document.size),
                 base_opacity: document.base_opacity,
                 viewport_fit: viewport_fit_from_document(document.viewport_fit),
                 visual_maps: document.visual_maps.as_ref().map(visual_maps_from_document),
                 z_index: document.z_index,
-                transform: transform2_for_entity(ctx.entity),
+                transform: transform2_for_entity(entity),
                 layer_overrides: document
                     .layer_overrides
                     .iter()
@@ -66,9 +107,6 @@ impl ComponentHydrator for LayeredImage2dComponentHydrator {
                     .collect(),
             },
         });
-
-        Ok(())
-    }
 }
 
 fn transform2_for_entity(entity: &amigo_scene::SceneEntityDocument) -> Transform2 {
