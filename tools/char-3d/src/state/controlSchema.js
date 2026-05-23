@@ -2,6 +2,7 @@ export const rangeControls = {
     yaw: ['yaw', v => `${Math.round(v)}°`],
     pitch: ['pitch', v => `${Math.round(v)}°`],
     zoom: ['zoom', v => Number(v).toFixed(2)],
+    focalLength: ['focalLength', v => `${Math.round(v)}mm`],
     cameraYaw: ['cameraYaw', v => `${Math.round(v)}°`],
     cameraPitch: ['cameraPitch', v => `${Math.round(v)}°`],
     cameraX: ['cameraX', v => Number(v).toFixed(2)],
@@ -65,5 +66,5 @@ export const rangeControls = {
 
 export const colorControls = ['paintPaperColor','paintBaseColor','paintShadowColor','paintHighlightColor'];
 
-export const checkControls = ['auto','faceWash','paintEnabled','contours','shadowsEnabled','impreciseTween','contourHumanize','hideOccluded','backface','depthClipStrokes','clipToFaces','showHidden','sortFaces','creases','suggestive','contactLines','depthFade','tone','flow','depthDebug','seedDebug'];
+export const checkControls = ['auto','faceWash','paintEnabled','contours','shadowsEnabled','impreciseTween','contourHumanize','hideOccluded','backface','depthClipStrokes','clipToFaces','showHidden','sortFaces','creases','suggestive','contactLines','depthFade','tone','flow','depthDebug','seedDebug','skipSimulation'];
 

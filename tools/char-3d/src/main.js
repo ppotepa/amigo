@@ -3,14 +3,15 @@ import { rangeControls, colorControls, checkControls } from './state/controlSche
 import { presets } from './state/stylePresets.js';
 import { paintPalettes } from './state/paintPalettes.js';
 import { parseOBJ } from './mesh/objParser.js';
+import { prepareMeshRuntime } from './mesh/meshRuntime.js';
 import { extractFbxAdapterMesh, ensureFbxRuntime as ensureFbxRuntimeForState, FBX_MODEL_URL } from './mesh/fbxAdapter.js';
-import { SUZANNE_OBJ_URL } from './mesh/modelSources.js';
+import { BUILTIN_MODELS } from './mesh/modelSources.js';
 import { TAU, EPS, clamp, clamp01, lerp, deg, fmt, v3, sub, cross, dot, norm, len2, norm2, rot2, mix2, triArea2, hash01, noise, bary2, baryInside, mixPoint, pointFromBary } from './math/core.js';
 import { escapeHtml, normalizeHexColor, hexRgb, mixRgb, rgba } from './math/color.js';
 import { cameraKeyCodes, isTypingTarget, setModelAngles as setModelAnglesForState, setCameraAngles as setCameraAnglesForState, applyAngleSnap as applyAngleSnapForState, cameraDollyScale as cameraDollyScaleForState, updateCameraFromKeys as updateCameraFromKeysForState } from './app/cameraControls.js';
 import { computeImpreciseSampleTime as computeImpreciseSampleTimeForState, randomnessFrameSeed as randomnessFrameSeedForState, shadowRandomSeed as shadowRandomSeedForState } from './npr/randomSeeds.js';
 import { buildPaintRegions } from './paint/paintRegions.js';
-import { createPerfStats, resetPerfFrame, markCacheHit, markCacheMiss, timeSection, timeSectionEnd, finishPerfFrame, formatPerfStats } from './render/perfStats.js';
+import { createPerfStats, resetPerfFrame, markCacheHit, markCacheMiss, timeSection, timeSectionEnd, finishPerfFrame, setPerfCounter, formatPerfStats } from './render/perfStats.js';
 import {
   createRenderCache,
   buildPipelineKey,
@@ -18,10 +19,18 @@ import {
   buildPaintLayerKey,
   buildSvgKey,
   ensureLayerCanvas,
+  clearFrameLists,
   getReusableDepthBuffers,
   invalidateDerivedCaches
 } from './render/renderCache.js';
+import {
+  buildFrameWorkerMeshPayload,
+  meshFrameWorkerKey,
+  shouldUseFrameWorker,
+  snapshotFrameWorkerParams
+} from './render/frameProtocol.js';
 import { DIRTY_FLAGS, createDirtyFlags, markDirty, clearDirty } from './render/dirtyFlags.js';
+
 'use strict';
 
   const canvas = document.getElementById('view');
@@ -31,13 +40,14 @@ import { DIRTY_FLAGS, createDirtyFlags, markDirty, clearDirty } from './render/d
 
   const $ = id => document.getElementById(id);
 
-  const STORAGE_KEY = 'char3d.strokes.settings.v1';
+  const STORAGE_KEY = 'char3d.strokes.settings.v7';
   const persistedFields = [
     ...Object.keys(rangeControls),
     ...colorControls,
     ...checkControls,
     'controlMode',
     'angleSnap',
+    'projectionMode',
     'method',
     'flowMode',
     'preset',
@@ -46,6 +56,12 @@ import { DIRTY_FLAGS, createDirtyFlags, markDirty, clearDirty } from './render/d
     'modelSource',
     'animFps',
     'mode',
+    'cameraYaw',
+    'cameraPitch',
+    'cameraX',
+    'cameraY',
+    'cameraZ',
+    'focalLength',
     'rawYaw',
     'rawPitch',
     'rawCameraYaw',
@@ -54,9 +70,18 @@ import { DIRTY_FLAGS, createDirtyFlags, markDirty, clearDirty } from './render/d
   let settingsLoaded = false;
   let saveSettingsTimer = 0;
   let meshRevision = 0;
+  let objLoadToken = 0;
+  let objParseSeq = 0;
+  let objParseWorker = null;
+  let frameWorker = null;
+  let frameWorkerMeshKey = '';
+  let frameWorkerJobSeq = 0;
+  let frameWorkerPending = null;
+  let frameWorkerDropped = 0;
   const renderCache = createRenderCache();
   const perfStats = createPerfStats();
   const dirtyFlags = createDirtyFlags();
+  const builtinModelMap = new Map(BUILTIN_MODELS.map(model => [model.id, model]));
   const displayOnlyKeys = new Set(['paintEnabled','faceWash','contours','tone','flow','depthDebug','seedDebug','sortFaces','inkDominance']);
   const visibilityKeys = new Set(['hideOccluded','backface','depthClipStrokes','clipToFaces','showHidden','depthEps','creases','suggestive','contactLines']);
   const nprKeys = new Set(['method','mode','flowMode','density','layers','threshold','strokeLen','spacing','strokeWidth','curvature','crossAngle','dotSize','wobble','jitter','strokeCrookedness','strokeKinkChance','strokeToneRamp','shadowFrameDrift','shadowLoopRedraw','shadowLayoutJitter','spacingVar','lengthVar','widthVar','taper','breakup','overdraw','contourHumanize','contourDrift','contourWobble','contourGaps','contourFrameVariance','shadowsEnabled']);
@@ -79,7 +104,6 @@ import { DIRTY_FLAGS, createDirtyFlags, markDirty, clearDirty } from './render/d
       canvas.width = w;
       canvas.height = h;
       invalidateDerivedCaches(renderCache);
-      scheduleRender();
     }
   }
 
@@ -107,12 +131,12 @@ import { DIRTY_FLAGS, createDirtyFlags, markDirty, clearDirty } from './render/d
     return shadowRandomSeedForState(state);
   }
 
-  function setModelAngles(yaw, pitch) {
-    setModelAnglesForState(state, yaw, pitch);
-  }
-
   function setCameraAngles(yaw, pitch) {
     setCameraAnglesForState(state, yaw, pitch);
+  }
+
+  function setModelAngles(yaw, pitch) {
+    setModelAnglesForState(state, yaw, pitch);
   }
 
   function applyAngleSnap() {
@@ -123,59 +147,178 @@ import { DIRTY_FLAGS, createDirtyFlags, markDirty, clearDirty } from './render/d
     return cameraDollyScaleForState(state);
   }
 
+  function cullMargin() {
+    return Math.max(32, state.strokeLen * 1.5 + state.spacing * state.jitter * 2 + state.paintBleed * 16);
+  }
+
+  function bboxOffscreen(minX, minY, maxX, maxY, margin = 0) {
+    return maxX < -margin || maxY < -margin || minX > canvas.width + margin || minY > canvas.height + margin;
+  }
+
+  function writeProjectedVertex(out, x, y, z, sx, sy, inFront) {
+    out.x = x;
+    out.y = y;
+    out.z = z;
+    out.sx = sx;
+    out.sy = sy;
+    out.inFront = inFront;
+    return out;
+  }
+
+  function writeNorm2(out, x, y) {
+    const length = Math.hypot(x, y) || 1;
+    out.x = x / length;
+    out.y = y / length;
+    return out;
+  }
+
   function transformFrame() {
     const mesh = state.mesh;
-    const yaw = deg(state.yaw), pitch = deg(state.pitch);
-    const cy = Math.cos(yaw), sy = Math.sin(yaw), cp = Math.cos(pitch), sp = Math.sin(pitch);
-    const cameraYaw = deg(-state.cameraYaw), cameraPitch = deg(-state.cameraPitch);
-    const ccy = Math.cos(cameraYaw), csy = Math.sin(cameraYaw);
-    const ccp = Math.cos(cameraPitch), csp = Math.sin(cameraPitch);
+    const runtime = prepareMeshRuntime(mesh);
+    const lists = clearFrameLists(renderCache);
     const fbxAdapter = mesh?.sourceType === 'fbx';
-    const scale = Math.min(canvas.width, canvas.height) * 0.36 * state.zoom * cameraDollyScale() * (fbxAdapter ? .78 : 1);
-    const centerX = canvas.width/2 + (fbxAdapter ? Math.min(180, canvas.width * .13) : 0);
-    const centerY = canvas.height/2 - (fbxAdapter ? Math.min(42, canvas.height * .04) : 0);
-    const verts = mesh.verts.map((p, vi) => {
-      const x1 = p.x*cy + p.z*sy;
-      const z1 = -p.x*sy + p.z*cy;
-      const y2 = p.y*cp - z1*sp;
-      const z2 = p.y*sp + z1*cp;
-      const vx = x1 - state.cameraX;
-      const vy = y2 - state.cameraY;
-      const vz = z2 - state.cameraZ;
-      const x3 = vx*ccy + vz*csy;
-      const z3 = -vx*csy + vz*ccy;
-      const y4 = vy*ccp - z3*csp;
-      const z4 = vy*csp + z3*ccp;
-      let screenX = centerX + x3*scale;
-      let screenY = centerY - y4*scale;
-      if (state.projectionWobble > 0) {
-        const seed = (vi + 1) * 409.17 + randomnessFrameSeed() * 23.91;
-        const amp = state.projectionWobble * (fbxAdapter ? 1.18 : 1);
-        screenX += noise(seed, 1) * amp;
-        screenY += noise(seed, 2) * amp;
+    const freelook = state.controlMode === 'freelook';
+    const centerX = canvas.width/2 + (!freelook && fbxAdapter ? Math.min(180, canvas.width * .13) : 0);
+    const centerY = canvas.height/2 - (!freelook && fbxAdapter ? Math.min(42, canvas.height * .04) : 0);
+    const margin = cullMargin();
+    const verts = lists.verts;
+    const vertX = runtime.vertX;
+    const vertY = runtime.vertY;
+    const vertZ = runtime.vertZ;
+
+    if (freelook) {
+      const yawRad = deg(state.cameraYaw);
+      const pitchRad = deg(state.cameraPitch);
+      const fwd = norm(v3(
+        Math.sin(yawRad) * Math.cos(pitchRad),
+        -Math.sin(pitchRad),
+        -Math.cos(yawRad) * Math.cos(pitchRad)
+      ));
+      const rgt = norm(v3(Math.cos(yawRad), 0, Math.sin(yawRad)));
+      const upV = norm(cross(rgt, fwd));
+      const focal = state.focalLength || 35;
+      const scale = Math.min(canvas.width, canvas.height) * 0.1;
+
+      for (let vi = 0; vi < runtime.vertCount; vi++) {
+        const rx = vertX[vi] - state.cameraX;
+        const ry = vertY[vi] - state.cameraY;
+        const rz = vertZ[vi] - state.cameraZ;
+        const cx = rx * rgt.x + ry * rgt.y + rz * rgt.z;
+        const cy = rx * upV.x + ry * upV.y + rz * upV.z;
+        const cz = rx * fwd.x + ry * fwd.y + rz * fwd.z;
+        const perspective = state.projectionMode === 'perspective'
+          ? focal / Math.max(0.1, cz)
+          : focal / 10.0;
+        let screenX = centerX + cx * scale * perspective;
+        let screenY = centerY - cy * scale * perspective;
+        if (state.projectionWobble > 0) {
+          const seed = (vi + 1) * 409.17 + randomnessFrameSeed() * 23.91;
+          screenX += noise(seed, 1) * state.projectionWobble;
+          screenY += noise(seed, 2) * state.projectionWobble;
+        }
+        verts[vi] = writeProjectedVertex(verts[vi] || {}, cx, cy, cz, screenX, screenY, cz >= 0.1);
       }
-      return {x:x3,y:y4,z:z4,sx:screenX,sy:screenY};
-    });
+      verts.length = runtime.vertCount;
+    } else {
+      const yaw = deg(state.yaw), pitch = deg(state.pitch);
+      const cy = Math.cos(yaw), sy = Math.sin(yaw), cp = Math.cos(pitch), sp = Math.sin(pitch);
+      const cameraYaw = deg(-state.cameraYaw), cameraPitch = deg(-state.cameraPitch);
+      const ccy = Math.cos(cameraYaw), csy = Math.sin(cameraYaw);
+      const ccp = Math.cos(cameraPitch), csp = Math.sin(cameraPitch);
+      const scale = Math.min(canvas.width, canvas.height) * 0.36 * state.zoom * cameraDollyScale() * (fbxAdapter ? .78 : 1);
+
+      for (let vi = 0; vi < runtime.vertCount; vi++) {
+        const px = vertX[vi], py = vertY[vi], pz = vertZ[vi];
+        const x1 = px*cy + pz*sy;
+        const z1 = -px*sy + pz*cy;
+        const y2 = py*cp - z1*sp;
+        const z2 = py*sp + z1*cp;
+        const vx = x1 - state.cameraX;
+        const vy = y2 - state.cameraY;
+        const vz = z2 - state.cameraZ;
+        const x3 = vx*ccy + vz*csy;
+        const z3 = -vx*csy + vz*ccy;
+        const y4 = vy*ccp - z3*csp;
+        const z4 = vy*csp + z3*ccp;
+        let screenX = centerX + x3*scale;
+        let screenY = centerY - y4*scale;
+        if (state.projectionWobble > 0) {
+          const seed = (vi + 1) * 409.17 + randomnessFrameSeed() * 23.91;
+          const amp = state.projectionWobble * (fbxAdapter ? 1.18 : 1);
+          screenX += noise(seed, 1) * amp;
+          screenY += noise(seed, 2) * amp;
+        }
+        verts[vi] = writeProjectedVertex(verts[vi] || {}, x3, y4, z4, screenX, screenY, true);
+      }
+      verts.length = runtime.vertCount;
+    }
+
     const L = lightVector();
-    const faces = mesh.faces.map((face, id) => {
-      const a=verts[face.v[0]], b=verts[face.v[1]], c=verts[face.v[2]];
-      const n = norm(cross(sub(b,a), sub(c,a)));
+    const faces = lists.faces;
+    for (let id = 0; id < runtime.faceCount; id++) {
+      const a=verts[runtime.faceA[id]], b=verts[runtime.faceB[id]], c=verts[runtime.faceC[id]];
+      const minX = Math.min(a.sx, b.sx, c.sx);
+      const minY = Math.min(a.sy, b.sy, c.sy);
+      const maxX = Math.max(a.sx, b.sx, c.sx);
+      const maxY = Math.max(a.sy, b.sy, c.sy);
+      const offscreen = bboxOffscreen(minX, minY, maxX, maxY, margin);
+      const out = faces[id] || {p:[null,null,null], n:{x:0,y:0,z:0}, flow:{x:1,y:0}};
+      const n = out.n;
+      const abx = b.x - a.x, aby = b.y - a.y, abz = b.z - a.z;
+      const acx = c.x - a.x, acy = c.y - a.y, acz = c.z - a.z;
+      const nx = aby * acz - abz * acy;
+      const ny = abz * acx - abx * acz;
+      const nz = abx * acy - aby * acx;
+      const invN = 1 / (Math.hypot(nx, ny, nz) || 1);
+      n.x = nx * invN;
+      n.y = ny * invN;
+      n.z = nz * invN;
       const cx=(a.sx+b.sx+c.sx)/3, cy2=(a.sy+b.sy+c.sy)/3;
       const depth=(a.z+b.z+c.z)/3;
       const area=triArea2(a,b,c);
-      const ndotl=dot(n,L);
-      const shade = 1 - clamp01(ndotl * .5 + .5);
-      const rim = 1 - Math.abs(n.z);
-      const contact = contactScore(cy2, n);
-      let tone = clamp01(shade * .86 + rim * state.edgeDark * .36 + contact * state.contact * .42);
-      tone = Math.pow(tone, lerp(1.55, .58, clamp01(state.core/2)));
-      if (state.simplify > 0.01) {
-        const bands = Math.round(lerp(10, 3, state.simplify));
-        tone = Math.round(tone * bands) / bands;
+      const ndotl=offscreen ? 0 : dot(n,L);
+      let tone = 0;
+      if (!offscreen) {
+        const shade = 1 - clamp01(ndotl * .5 + .5);
+        const rim = 1 - Math.abs(n.z);
+        const contact = contactScore(cy2, n);
+        tone = clamp01(shade * .86 + rim * state.edgeDark * .36 + contact * state.contact * .42);
+        tone = Math.pow(tone, lerp(1.55, .58, clamp01(state.core/2)));
+        if (state.simplify > 0.01) {
+          const bands = Math.round(lerp(10, 3, state.simplify));
+          tone = Math.round(tone * bands) / bands;
+        }
       }
-      return {id, v:face.v, p:[a,b,c], n, area, cx, cy:cy2, depth, front:n.z>0, tone, ndotl, flow:{x:1,y:0}, visible:false, visibility:0};
-    });
-    return {verts, faces, L, db:null, contours:[], marks:[]};
+      const front = freelook ? n.z < 0 : n.z > 0;
+      const inFront = Boolean(a.inFront && b.inFront && c.inFront);
+      out.id = id;
+      out.p[0] = a;
+      out.p[1] = b;
+      out.p[2] = c;
+      out.area = area;
+      out.cx = cx;
+      out.cy = cy2;
+      out.depth = depth;
+      out.front = front;
+      out.inFront = inFront;
+      out.tone = tone;
+      out.ndotl = ndotl;
+      out.flow.x = 1;
+      out.flow.y = 0;
+      out.visible = false;
+      out.visibility = 0;
+      out.minX = minX;
+      out.minY = minY;
+      out.maxX = maxX;
+      out.maxY = maxY;
+      out.offscreen = offscreen;
+      faces[id] = out;
+      if (!offscreen && Math.abs(area) > EPS && (!freelook || inFront)) lists.screenFaces.push(out);
+    }
+    faces.length = runtime.faceCount;
+    setPerfCounter(perfStats, 'facesTotal', faces.length);
+    setPerfCounter(perfStats, 'facesOnScreen', lists.screenFaces.length);
+    return {verts, faces, screenFaces:lists.screenFaces, visibleFaces:lists.visibleFaces, sortedFaces:lists.sortedFaces, L, db:null, contours:[], marks:[], depthMode: freelook ? 'min' : 'max', cullMargin:margin, viewport:{width:canvas.width, height:canvas.height, margin}};
   }
 
   function contactScore(y, n) {
@@ -192,20 +335,28 @@ import { DIRTY_FLAGS, createDirtyFlags, markDirty, clearDirty } from './render/d
     const depth = reusable.depth;
     const owner = reusable.owner;
     const sx = w / canvas.width, sy = h / canvas.height;
-    for (const f of frame.faces) {
+    const nearIsSmaller = frame.depthMode === 'min';
+    depth.fill(nearIsSmaller ? 1e9 : -1e9);
+    let rasterized = 0;
+    for (const f of frame.screenFaces) {
       if (state.backface && !f.front) continue;
-      rasterTri(f, depth, owner, w, h, sx, sy);
+      if (nearIsSmaller && !f.inFront) continue;
+      if (bboxOffscreen(f.minX, f.minY, f.maxX, f.maxY, 0)) continue;
+      rasterTri(f, depth, owner, w, h, sx, sy, nearIsSmaller);
+      rasterized++;
     }
-    return {w,h,depth,owner,sx,sy,quality};
+    setPerfCounter(perfStats, 'facesDepth', rasterized);
+    return {w,h,depth,owner,sx,sy,quality,nearIsSmaller};
   }
 
-  function rasterTri(f, depth, owner, w, h, sx, sy) {
+  function rasterTri(f, depth, owner, w, h, sx, sy, nearIsSmaller) {
     const p=f.p;
     const ax=p[0].sx*sx, ay=p[0].sy*sy, az=p[0].z;
     const bx=p[1].sx*sx, by=p[1].sy*sy, bz=p[1].z;
     const cx=p[2].sx*sx, cy=p[2].sy*sy, cz=p[2].z;
-    const minX=clamp(Math.floor(Math.min(ax,bx,cx))-1,0,w-1), maxX=clamp(Math.ceil(Math.max(ax,bx,cx))+1,0,w-1);
-    const minY=clamp(Math.floor(Math.min(ay,by,cy))-1,0,h-1), maxY=clamp(Math.ceil(Math.max(ay,by,cy))+1,0,h-1);
+    if (nearIsSmaller && az < 0.1 && bz < 0.1 && cz < 0.1) return;
+    const minX=clamp(Math.floor(f.minX*sx)-1,0,w-1), maxX=clamp(Math.ceil(f.maxX*sx)+1,0,w-1);
+    const minY=clamp(Math.floor(f.minY*sy)-1,0,h-1), maxY=clamp(Math.ceil(f.maxY*sy)+1,0,h-1);
     const den = (by-cy)*(ax-cx) + (cx-bx)*(ay-cy);
     if (Math.abs(den) < EPS) return;
     for (let y=minY;y<=maxY;y++) for (let x=minX;x<=maxX;x++) {
@@ -215,27 +366,35 @@ import { DIRTY_FLAGS, createDirtyFlags, markDirty, clearDirty } from './render/d
       const ww=1-u-v;
       if (u < -0.005 || v < -0.005 || ww < -0.005) continue;
       const z = u*az + v*bz + ww*cz;
+      if (nearIsSmaller && z < 0.1) continue;
       const idx=y*w+x;
-      if (z > depth[idx]) { depth[idx]=z; owner[idx]=f.id; }
+      if (nearIsSmaller ? z < depth[idx] : z > depth[idx]) { depth[idx]=z; owner[idx]=f.id; }
     }
   }
 
   function sampleDepth(db, x, y) {
-    if (!db || x<0 || y<0 || x>=canvas.width || y>=canvas.height) return -1e9;
+    if (!db || x<0 || y<0 || x>=canvas.width || y>=canvas.height) return db?.nearIsSmaller ? 1e9 : -1e9;
     const ix=clamp(Math.floor(x*db.sx),0,db.w-1), iy=clamp(Math.floor(y*db.sy),0,db.h-1);
     return db.depth[iy*db.w+ix];
   }
 
   function isVisiblePoint(db, x, y, z) {
     if (!state.hideOccluded || !state.depthClipStrokes) return x>=0 && y>=0 && x<canvas.width && y<canvas.height;
+    if (db?.nearIsSmaller) {
+      if (z < 0.1) return false;
+      return z <= sampleDepth(db, x, y) + state.depthEps;
+    }
     return z >= sampleDepth(db, x, y) - state.depthEps;
   }
 
   function computeVisibilityAndFlow(frame) {
     const db = frame.db;
-    for (const f of frame.faces) {
+    const needsFlow = state.shadowsEnabled || state.flow || state.paintEnabled || state.faceWash || state.tone;
+    frame.visibleFaces.length = 0;
+    for (const f of frame.screenFaces) {
       const p=f.p;
       if (state.backface && !f.front) { f.visible=false; f.visibility=0; continue; }
+      if (db?.nearIsSmaller && !f.inFront) { f.visible=false; f.visibility=0; continue; }
       const samples = [
         {x:f.cx,y:f.cy,z:f.depth},
         mixPoint(p[0],p[1],p[2],.60,.20,.20),
@@ -246,49 +405,68 @@ import { DIRTY_FLAGS, createDirtyFlags, markDirty, clearDirty } from './render/d
       for (const s of samples) if (isVisiblePoint(db,s.x,s.y,s.z)) ok++;
       f.visibility = ok / samples.length;
       f.visible = !state.hideOccluded ? true : ok > 0;
-      f.flow = computeFlow(f, frame);
+      if (f.visible) {
+        if (needsFlow) computeFlow(f, frame);
+        frame.visibleFaces.push(f);
+      }
     }
+    setPerfCounter(perfStats, 'facesVisible', frame.visibleFaces.length);
   }
 
   function computeFlow(f, frame) {
     const p=f.p;
-    let best = {x:p[1].sx-p[0].sx, y:p[1].sy-p[0].sy};
-    let bestLen = len2(best);
+    let bestX = p[1].sx-p[0].sx;
+    let bestY = p[1].sy-p[0].sy;
+    let bestLen = bestX * bestX + bestY * bestY;
     for (let i=0;i<3;i++) {
       const a=p[i], b=p[(i+1)%3];
-      const e={x:b.sx-a.sx, y:b.sy-a.sy};
-      const l=len2(e);
-      if (l > bestLen) { best=e; bestLen=l; }
+      const ex = b.sx-a.sx;
+      const ey = b.sy-a.sy;
+      const l = ex * ex + ey * ey;
+      if (l > bestLen) { bestX = ex; bestY = ey; bestLen = l; }
     }
-    const form = norm2(best);
-    const radial = norm2({x:f.cx-canvas.width/2, y:f.cy-canvas.height/2});
-    const crossContour = norm2({x:-radial.y, y:radial.x});
-    const light = norm2({x:frame.L.x, y:-frame.L.y});
-    const terminator = norm2({x:-light.y, y:light.x});
-    const parallel = norm2(rot2({x:1,y:0}, deg(-22)));
+    const form = writeNorm2(computeFlow.tmpForm, bestX, bestY);
+    const radial = writeNorm2(computeFlow.tmpRadial, f.cx-canvas.width/2, f.cy-canvas.height/2);
+    const crossX = -radial.y;
+    const crossY = radial.x;
+    const light = writeNorm2(computeFlow.tmpLight, frame.L.x, -frame.L.y);
+    const termX = -light.y;
+    const termY = light.x;
+    const parallelAngle = deg(-22);
+    const parallelX = Math.cos(parallelAngle);
+    const parallelY = Math.sin(parallelAngle);
+    const out = f.flow;
     switch (state.flowMode) {
-      case 'parallel': return parallel;
-      case 'form': return form;
-      case 'crossContour': return mix2(crossContour, form, .18);
-      case 'silhouette': return crossContour;
-      case 'light': return light;
-      case 'terminator': return terminator;
-      default: return norm2({x:form.x*.50 + crossContour.x*.32 + terminator.x*.20, y:form.y*.50 + crossContour.y*.32 + terminator.y*.20});
+      case 'parallel': out.x = parallelX; out.y = parallelY; return out;
+      case 'form': out.x = form.x; out.y = form.y; return out;
+      case 'crossContour': return writeNorm2(out, crossX*.82 + form.x*.18, crossY*.82 + form.y*.18);
+      case 'silhouette': out.x = crossX; out.y = crossY; return out;
+      case 'light': out.x = light.x; out.y = light.y; return out;
+      case 'terminator': out.x = termX; out.y = termY; return out;
+      default: return writeNorm2(out, form.x*.50 + crossX*.32 + termX*.20, form.y*.50 + crossY*.32 + termY*.20);
     }
   }
+  computeFlow.tmpForm = {x:1,y:0};
+  computeFlow.tmpRadial = {x:1,y:0};
+  computeFlow.tmpLight = {x:1,y:0};
 
   function computeContours(frame) {
     const out=[];
     const mesh=state.mesh;
+    const runtime = prepareMeshRuntime(mesh);
     const fbxAdapter = mesh?.sourceType === 'fbx';
-    for (const e of mesh.edges) {
-      const f0=frame.faces[e.faces[0]];
-      const f1=e.faces.length>1 ? frame.faces[e.faces[1]] : null;
+    let tested = 0;
+    for (let i = 0; i < runtime.edgeCount; i++) {
+      const f0=frame.faces[runtime.edgeF0[i]];
+      const f1=runtime.edgeF1[i] >= 0 ? frame.faces[runtime.edgeF1[i]] : null;
+      if (f0?.offscreen && (f1?.offscreen ?? true)) continue;
       const boundary=!f1;
       const silhouette=f1 ? (f0.front !== f1.front) : true;
       const crease=f1 ? dot(f0.n, f1.n) < .70 : false;
       const toneBreak=f1 ? Math.abs(f0.tone - f1.tone) > .32 : false;
-      const a=frame.verts[e.a], b=frame.verts[e.b];
+      const a=frame.verts[runtime.edgeA[i]], b=frame.verts[runtime.edgeB[i]];
+      if (bboxOffscreen(Math.min(a.sx, b.sx), Math.min(a.sy, b.sy), Math.max(a.sx, b.sx), Math.max(a.sy, b.sy), frame.cullMargin)) continue;
+      tested++;
       const screenLen = Math.hypot(a.sx-b.sx, a.sy-b.sy);
       let kind='';
       if (boundary || silhouette) kind='contour';
@@ -299,8 +477,10 @@ import { DIRTY_FLAGS, createDirtyFlags, markDirty, clearDirty } from './render/d
       const mx=(a.sx+b.sx)/2, my=(a.sy+b.sy)/2, mz=(a.z+b.z)/2;
       const visible = isVisiblePoint(frame.db, mx, my, mz);
       if (!visible && !state.showHidden) continue;
-      out.push({x1:a.sx,y1:a.sy,z1:a.z,x2:b.sx,y2:b.sy,z2:b.z,kind,visible,id:out.length,edgeKey:`${e.a}_${e.b}`});
+      out.push({x1:a.sx,y1:a.sy,z1:a.z,x2:b.sx,y2:b.sy,z2:b.z,kind,visible,id:out.length});
     }
+    setPerfCounter(perfStats, 'contoursTested', tested);
+    setPerfCounter(perfStats, 'contoursDrawn', out.length);
     return out;
   }
 
@@ -308,8 +488,10 @@ import { DIRTY_FLAGS, createDirtyFlags, markDirty, clearDirty } from './render/d
     const marks=[];
     const fbxAdapter = state.mesh?.sourceType === 'fbx';
     const minArea = fbxAdapter ? 0.22 : 1.5;
-    const faces = frame.faces.filter(f => f.area > minArea && f.visible && (!state.backface || f.front));
-    faces.sort((a,b)=>a.depth-b.depth);
+    const faces = frame.sortedFaces;
+    faces.length = 0;
+    for (const f of frame.visibleFaces) if (f.area > minArea && (!state.backface || f.front)) faces.push(f);
+    faces.sort((a,b)=>b.depth-a.depth); // DRAW FROM FAR TO NEAR
     const baseMarks = fbxAdapter ? 760 : 450;
     const markRange = fbxAdapter ? 2600 : 1800;
     const maxMarks = Math.floor(baseMarks + markRange * clamp01(state.density/2) * lerp(1.15,.45,state.economy));
@@ -319,6 +501,7 @@ import { DIRTY_FLAGS, createDirtyFlags, markDirty, clearDirty } from './render/d
       const made = generateFaceMarks(f, frame, marks, maxMarks-used);
       used += made;
     }
+    setPerfCounter(perfStats, 'marksGenerated', marks.length);
     return marks;
   }
 
@@ -340,13 +523,8 @@ import { DIRTY_FLAGS, createDirtyFlags, markDirty, clearDirty } from './render/d
     if (state.method === 'stipple') raw = f.area / (spacing*spacing) * state.density * lerp(.7,3.0,tone) * f.visibility;
     if (state.method === 'comic' && tone > .70) raw *= 1.35;
     if (fbxAdapter) raw *= 1.45;
-
-    // Stable per-face seed must be initialized before any hash/noise call.
-    // v2 used `seed` before this declaration, which caused a temporal dead-zone
-    // ReferenceError and killed every render frame.
     const shadowSeed = shadowRandomSeed();
     const seed=(f.id+1)*1009.133 + shadowSeed * (1 + hash01(f.id + 19.3) * .7);
-
     let n = Math.floor(raw);
     if (hash01(seed + 991.7) < raw - n) n++;
     if (tone > .08 && raw > .045 && hash01(seed + 113.9) < raw * 1.8) n = Math.max(n, 1);
@@ -521,24 +699,218 @@ import { DIRTY_FLAGS, createDirtyFlags, markDirty, clearDirty } from './render/d
     const frame=timeSection(perfStats, 'projection', () => transformFrame());
     frame.db=timeSection(perfStats, 'depth', () => buildDepthBuffer(frame));
     timeSection(perfStats, 'visibility', () => computeVisibilityAndFlow(frame));
-    frame.contours=timeSection(perfStats, 'contours', () => computeContours(frame));
+    frame.contours=state.contours ? timeSection(perfStats, 'contours', () => computeContours(frame)) : [];
     frame.marks=state.shadowsEnabled ? timeSection(perfStats, 'marks', () => generateMarks(frame)) : [];
+    frame.pipelineKey = pipelineKey;
     renderCache.pipelineKey = pipelineKey;
     renderCache.frame = frame;
     return frame;
+  }
+
+  async function computeFrameForRender() {
+    const pipelineKey = buildPipelineKey(state, canvas);
+    if (renderCache.frame && renderCache.pipelineKey === pipelineKey) {
+      markCacheHit(perfStats);
+      return renderCache.frame;
+    }
+
+    const mesh = state.mesh;
+    const runtime = prepareMeshRuntime(mesh);
+    if (!shouldUseFrameWorker(mesh, runtime)) return computeFrame();
+    if (frameWorkerPending) {
+      frameWorkerDropped++;
+      setPerfCounter(perfStats, 'workerDropped', frameWorkerDropped);
+      return null;
+    }
+
+    markCacheMiss(perfStats);
+    try {
+      const result = await computeFrameInWorker(mesh, runtime, pipelineKey);
+      const frame = frameFromWorkerResult(result, pipelineKey);
+      frame.marks = state.shadowsEnabled ? timeSection(perfStats, 'marks', () => generateMarks(frame)) : [];
+      renderCache.pipelineKey = pipelineKey;
+      renderCache.frame = frame;
+      return frame;
+    } catch (err) {
+      if (err?.message === 'frame worker job superseded') return null;
+      console.warn('frame worker fallback', err);
+      setPerfCounter(perfStats, 'workerFallback', 1);
+      return computeFrame();
+    }
+  }
+
+  function ensureFrameWorker(mesh, runtime) {
+    if (!frameWorker) {
+      frameWorker = new Worker(new URL('./render/frameWorker.js', import.meta.url), { type: 'module' });
+    }
+    const nextKey = meshFrameWorkerKey(mesh);
+    if (nextKey !== frameWorkerMeshKey) {
+      frameWorkerMeshKey = nextKey;
+      frameWorker.postMessage({
+        type: 'mesh',
+        meshKey: frameWorkerMeshKey,
+        mesh: buildFrameWorkerMeshPayload(mesh, runtime),
+      });
+    }
+    return frameWorker;
+  }
+
+  function computeFrameInWorker(mesh, runtime, pipelineKey) {
+    const worker = ensureFrameWorker(mesh, runtime);
+    const jobId = ++frameWorkerJobSeq;
+    const params = snapshotFrameWorkerParams(state, canvas, {
+      randomSeed: randomnessFrameSeed(),
+      cameraDollyScale: cameraDollyScale(),
+      cullMargin: cullMargin(),
+    });
+
+    return new Promise((resolve, reject) => {
+      const pending = { jobId, pipelineKey, resolve, reject };
+      frameWorkerPending = pending;
+      worker.onmessage = event => {
+        const msg = event.data || {};
+        if (msg.type === 'mesh-ready') return;
+        if (!frameWorkerPending || msg.jobId !== frameWorkerPending.jobId) return;
+        frameWorkerPending = null;
+        if (msg.type === 'error') reject(new Error(msg.message || 'frame worker failed'));
+        else if (msg.type === 'frame') resolve(msg.result);
+      };
+      worker.onerror = error => {
+        if (frameWorkerPending?.jobId === jobId) frameWorkerPending = null;
+        reject(error);
+      };
+      worker.postMessage({ type: 'frame', jobId, meshKey: frameWorkerMeshKey, params });
+    });
+  }
+
+  function frameFromWorkerResult(result, pipelineKey) {
+    const lists = clearFrameLists(renderCache);
+    const verts = lists.verts;
+    const vertCount = result.verts.x.length;
+    for (let i = 0; i < vertCount; i++) {
+      const v = verts[i] || {};
+      v.x = result.verts.x[i];
+      v.y = result.verts.y[i];
+      v.z = result.verts.z[i];
+      v.sx = result.verts.sx[i];
+      v.sy = result.verts.sy[i];
+      v.inFront = Boolean(result.verts.inFront[i]);
+      verts[i] = v;
+    }
+    verts.length = vertCount;
+
+    const screenFaces = lists.screenFaces;
+    const visibleFaces = lists.visibleFaces;
+    const faces = lists.faces;
+    faces.length = result.counters.facesTotal;
+    const screen = result.screen;
+    for (let i = 0; i < screen.ids.length; i++) {
+      const id = screen.ids[i];
+      const face = faces[id] || { p: [null, null, null], n: { x: 0, y: 0, z: 0 }, flow: { x: 1, y: 0 } };
+      face.id = id;
+      face.p[0] = verts[screen.a[i]];
+      face.p[1] = verts[screen.b[i]];
+      face.p[2] = verts[screen.c[i]];
+      face.n.x = screen.nx[i];
+      face.n.y = screen.ny[i];
+      face.n.z = screen.nz[i];
+      face.flow.x = screen.flowX[i] || 1;
+      face.flow.y = screen.flowY[i] || 0;
+      face.area = screen.area[i];
+      face.cx = screen.cx[i];
+      face.cy = screen.cy[i];
+      face.depth = screen.depth[i];
+      face.front = Boolean(screen.front[i]);
+      face.inFront = Boolean(screen.inFront[i]);
+      face.tone = screen.tone[i];
+      face.ndotl = screen.ndotl[i];
+      face.visible = Boolean(screen.visible[i]);
+      face.visibility = screen.visibility[i];
+      face.minX = screen.minX[i];
+      face.minY = screen.minY[i];
+      face.maxX = screen.maxX[i];
+      face.maxY = screen.maxY[i];
+      face.offscreen = false;
+      faces[id] = face;
+      screenFaces.push(face);
+      if (face.visible) visibleFaces.push(face);
+    }
+
+    const contours = contoursFromWorkerResult(result.contours, lists.contours);
+    const frame = {
+      verts,
+      faces,
+      screenFaces,
+      visibleFaces,
+      sortedFaces: lists.sortedFaces,
+      L: result.L,
+      db: result.db,
+      contours,
+      marks: [],
+      depthMode: result.depthMode,
+      cullMargin: result.viewport.margin,
+      viewport: result.viewport,
+      pipelineKey,
+    };
+
+    for (const [name, value] of Object.entries(result.timings || {})) {
+      if (name in perfStats.last) perfStats.last[name] = value;
+    }
+    for (const [name, value] of Object.entries(result.counters || {})) setPerfCounter(perfStats, name, value);
+    setPerfCounter(perfStats, 'workerMs', result.timings?.workerTotal || 0);
+    setPerfCounter(perfStats, 'workerDropped', frameWorkerDropped);
+    return frame;
+  }
+
+  function contoursFromWorkerResult(contours, out = []) {
+    const names = ['', 'contour', 'crease', 'suggestive'];
+    out.length = contours.kind.length;
+    for (let i = 0; i < contours.kind.length; i++) {
+      const item = out[i] || {};
+      item.x1 = contours.x1[i];
+      item.y1 = contours.y1[i];
+      item.z1 = contours.z1[i];
+      item.x2 = contours.x2[i];
+      item.y2 = contours.y2[i];
+      item.z2 = contours.z2[i];
+      item.kind = names[contours.kind[i]] || 'contour';
+      item.visible = Boolean(contours.visible[i]);
+      item.id = i;
+      out[i] = item;
+    }
+    return out;
   }
 
   function renderFrame(frame) {
     ctx.save();
     ctx.setTransform(1,0,0,1,0,0);
     drawCachedBackground();
-    drawCachedPaintLayer(frame);
-    if (state.depthDebug) drawDepthDebug(frame.db);
-    if (state.shadowsEnabled) drawMarks(frame.marks);
-    if (state.contours) drawContours(frame.contours);
-    if (state.flow) drawFlow(frame);
-    if (state.seedDebug) drawSeeds(frame.marks);
+    if (!state.skipSimulation) {
+      if (shouldDrawPaintLayer()) drawCachedPaintLayer(frame);
+      if (state.depthDebug) drawDepthDebug(frame.db);
+      if (state.shadowsEnabled) drawMarks(frame.marks);
+      if (state.contours) drawContours(frame.contours);
+      if (state.flow) drawFlow(frame);
+      if (state.seedDebug) drawSeeds(frame.marks);
+    } else {
+      ctx.strokeStyle = '#2d5f62';
+      ctx.lineWidth = 0.5;
+      ctx.beginPath();
+      for (let i = 0; i < frame.screenFaces.length; i++) {
+        const f = frame.screenFaces[i];
+        if (frame.depthMode === 'min' && !f.inFront) continue;
+        ctx.moveTo(f.p[0].sx, f.p[0].sy);
+        ctx.lineTo(f.p[1].sx, f.p[1].sy);
+        ctx.lineTo(f.p[2].sx, f.p[2].sy);
+        ctx.lineTo(f.p[0].sx, f.p[0].sy);
+      }
+      ctx.stroke();
+    }
     ctx.restore();
+  }
+
+  function shouldDrawPaintLayer() {
+    return Boolean(state.paintEnabled || state.faceWash || state.tone);
   }
 
   function drawCachedBackground() {
@@ -590,9 +962,13 @@ import { DIRTY_FLAGS, createDirtyFlags, markDirty, clearDirty } from './render/d
   function paintFaces(frame) {
     const key = `${state.sortFaces ? 1 : 0}:${state.backface ? 1 : 0}`;
     if (frame.paintFacesKey === key && frame.paintFaces) return frame.paintFaces;
-    const faces = state.sortFaces ? frame.faces.slice().sort((a,b)=>a.depth-b.depth) : frame.faces.slice();
-    frame.paintFaces = faces.filter(f => f.visible && (!state.backface || f.front));
+    const faces = frame.sortedFaces;
+    faces.length = 0;
+    for (const f of frame.visibleFaces) if (!state.backface || f.front) faces.push(f);
+    if (state.sortFaces) faces.sort((a,b)=>b.depth-a.depth); // PAINT FAR TO NEAR
+    frame.paintFaces = faces;
     frame.paintFacesKey = key;
+    setPerfCounter(perfStats, 'paintFaces', frame.paintFaces.length);
     return frame.paintFaces;
   }
 
@@ -610,24 +986,26 @@ import { DIRTY_FLAGS, createDirtyFlags, markDirty, clearDirty } from './render/d
   function drawBinnedFacePass(faces, targetCtx, options) {
     const toneBins = options.toneBins || 18;
     const visibilityBins = options.visibilityBins || 4;
-    const buckets = new Map();
+    const bucketStride = visibilityBins + 1;
+    const buckets = new Array((toneBins + 1) * bucketStride);
     for (const f of faces) {
       const tone = clamp01(options.tone ? options.tone(f) : f.tone);
       if (options.skip && options.skip(f, tone)) continue;
       const toneBin = clamp(Math.round(tone * toneBins), 0, toneBins);
       const visibilityBin = clamp(Math.round(clamp01(f.visibility) * visibilityBins), 0, visibilityBins);
-      const key = `${toneBin}:${visibilityBin}`;
-      let bucket = buckets.get(key);
+      const key = toneBin * bucketStride + visibilityBin;
+      let bucket = buckets[key];
       if (!bucket) {
         bucket = { path: new Path2D(), count: 0, toneSum: 0, visibilitySum: 0 };
-        buckets.set(key, bucket);
+        buckets[key] = bucket;
       }
       addFaceToPath(bucket.path, f);
       bucket.count++;
       bucket.toneSum += tone;
       bucket.visibilitySum += clamp01(f.visibility);
     }
-    for (const bucket of buckets.values()) {
+    for (const bucket of buckets) {
+      if (!bucket) continue;
       const tone = bucket.toneSum / Math.max(1, bucket.count);
       const visibility = bucket.visibilitySum / Math.max(1, bucket.count);
       targetCtx.fillStyle = options.fill(tone, visibility);
@@ -650,7 +1028,8 @@ import { DIRTY_FLAGS, createDirtyFlags, markDirty, clearDirty } from './render/d
 
   function fillPaintRegion(targetCtx, region) {
     if (typeof Path2D !== 'undefined' && region.d) {
-      targetCtx.fill(new Path2D(region.d));
+      region.path2d ||= new Path2D(region.d);
+      targetCtx.fill(region.path2d);
       return;
     }
     regionPath(targetCtx, region);
@@ -659,15 +1038,22 @@ import { DIRTY_FLAGS, createDirtyFlags, markDirty, clearDirty } from './render/d
 
   function clipPaintRegion(targetCtx, region) {
     if (typeof Path2D !== 'undefined' && region.d) {
-      targetCtx.clip(new Path2D(region.d));
+      region.path2d ||= new Path2D(region.d);
+      targetCtx.clip(region.path2d);
       return;
     }
     regionPath(targetCtx, region);
     targetCtx.clip();
   }
 
+  function regionOffscreen(region, margin = 0) {
+    const b = region.bounds;
+    return !b || bboxOffscreen(b.minX, b.minY, b.maxX, b.maxY, margin);
+  }
+
   function drawPaintRegions(regions, targetCtx) {
     for (const region of regions) {
+      if (regionOffscreen(region, 0)) continue;
       targetCtx.save();
       targetCtx.globalCompositeOperation = region.composite || 'source-over';
       targetCtx.globalAlpha = clamp01(region.opacity);
@@ -678,14 +1064,19 @@ import { DIRTY_FLAGS, createDirtyFlags, markDirty, clearDirty } from './render/d
     }
   }
 
-  function clipProjectedPaintMask(targetCtx, faces) {
-    targetCtx.beginPath();
-    for (const f of faces) {
-      targetCtx.moveTo(f.p[0].sx, f.p[0].sy);
-      targetCtx.lineTo(f.p[1].sx, f.p[1].sy);
-      targetCtx.lineTo(f.p[2].sx, f.p[2].sy);
-      targetCtx.closePath();
+  function clipProjectedPaintMask(targetCtx, frame, faces) {
+    if (typeof Path2D !== 'undefined') {
+      const key = `${faces.length}:${state.sortFaces ? 1 : 0}:${state.backface ? 1 : 0}`;
+      if (frame.paintMaskKey !== key || !frame.paintMaskPath) {
+        frame.paintMaskKey = key;
+        frame.paintMaskPath = new Path2D();
+        for (const f of faces) addFaceToPath(frame.paintMaskPath, f);
+      }
+      targetCtx.clip(frame.paintMaskPath);
+      return;
     }
+    targetCtx.beginPath();
+    for (const f of faces) addFaceToPath(targetCtx, f);
     targetCtx.clip();
   }
 
@@ -698,6 +1089,7 @@ import { DIRTY_FLAGS, createDirtyFlags, markDirty, clearDirty } from './render/d
     targetCtx.lineCap = 'round';
     targetCtx.lineJoin = 'round';
     for (const region of regions) {
+      if (regionOffscreen(region, 24)) continue;
       if (!region.samples || region.kind === 'highlight') continue;
       const baseAlpha = region.kind === 'base' ? 0.08 : 0.12;
       const count = clamp(Math.round(region.samples.length * lerp(0.45, 1.25, wet)), 2, 22);
@@ -738,8 +1130,9 @@ import { DIRTY_FLAGS, createDirtyFlags, markDirty, clearDirty } from './render/d
     const registration = state.paintRegistration || 0;
     const regions = buildPaintRegions(frame, state);
     frame.paintRegions = regions;
+    setPerfCounter(perfStats, 'paintRegions', regions.length);
     targetCtx.save();
-    clipProjectedPaintMask(targetCtx, faces);
+    clipProjectedPaintMask(targetCtx, frame, faces);
     targetCtx.translate(noise(21.7, randomnessFrameSeed()) * registration * .32, noise(31.1, randomnessFrameSeed()) * registration * .32);
     drawPaintRegions(regions, targetCtx);
     drawLayeredWatercolorStrokes(regions, targetCtx);
@@ -757,6 +1150,7 @@ import { DIRTY_FLAGS, createDirtyFlags, markDirty, clearDirty } from './render/d
     const maxDots = state.mesh?.sourceType === 'fbx' ? 950 : 520;
     for (const region of regions) {
       if (count >= maxDots) break;
+      if (regionOffscreen(region, scale)) continue;
       if (!['wash','shadow','base'].includes(region.kind)) continue;
       const bounds = region.bounds;
       const area = Math.max(1, bounds.w * bounds.h);
@@ -791,6 +1185,7 @@ import { DIRTY_FLAGS, createDirtyFlags, markDirty, clearDirty } from './render/d
     let count = 0;
     for (const region of regions) {
       if (count >= max) break;
+      if (regionOffscreen(region, 1)) continue;
       const area = region.bounds.w * region.bounds.h;
       if (area < 8) continue;
       const seed = (region.seed + 1) * 331.7 + randomnessFrameSeed() * 11.9;
@@ -849,10 +1244,30 @@ import { DIRTY_FLAGS, createDirtyFlags, markDirty, clearDirty } from './render/d
     ctx.save(); ctx.lineCap='round'; ctx.lineJoin='round';
     const inkAlpha = clamp(state.inkDominance || 1, .35, 1.35);
     const inkWidth = lerp(.92, 1.10, clamp01((inkAlpha - .35) / 1));
+    let dotBatch = null;
+    const flushDots = () => {
+      if (!dotBatch) return;
+      ctx.globalAlpha = dotBatch.alpha;
+      ctx.fillStyle = dotBatch.color;
+      ctx.fill(dotBatch.path);
+      dotBatch = null;
+    };
     for (const m of marks) {
       if (m.kind === 'dot') {
-        ctx.globalAlpha=clamp01(m.alpha * inkAlpha); ctx.fillStyle=m.color; ctx.beginPath(); ctx.arc(m.x,m.y,m.r,0,TAU); ctx.fill();
+        const alpha = clamp01(m.alpha * inkAlpha);
+        if (typeof Path2D === 'undefined') {
+          flushDots();
+          ctx.globalAlpha=alpha; ctx.fillStyle=m.color; ctx.beginPath(); ctx.arc(m.x,m.y,m.r,0,TAU); ctx.fill();
+          continue;
+        }
+        if (!dotBatch || dotBatch.color !== m.color || dotBatch.alpha !== alpha) {
+          flushDots();
+          dotBatch = {color:m.color, alpha, path:new Path2D()};
+        }
+        dotBatch.path.moveTo(m.x + m.r, m.y);
+        dotBatch.path.arc(m.x,m.y,m.r,0,TAU);
       } else if (m.pts.length > 1) {
+        flushDots();
         ctx.strokeStyle=m.color; ctx.lineWidth=m.width * inkWidth;
         ctx.setLineDash(m.dry ? [Math.max(1,m.width*1.2), Math.max(2,m.width*2.4)] : []);
         if (m.inkRamp > .01 && m.pts.length > 2) drawVariableStroke({...m, alpha:clamp01(m.alpha * inkAlpha), width:m.width * inkWidth}, m.pts);
@@ -864,6 +1279,7 @@ import { DIRTY_FLAGS, createDirtyFlags, markDirty, clearDirty } from './render/d
         }
       }
     }
+    flushDots();
     ctx.setLineDash([]); ctx.restore();
   }
 
@@ -893,8 +1309,7 @@ import { DIRTY_FLAGS, createDirtyFlags, markDirty, clearDirty } from './render/d
 
   function contourFrameSeed() {
     if (!state.contourHumanize) return 0;
-    if (state.modelSource === 'walking') return Math.floor(state.animFrameIndex * clamp01(state.contourFrameVariance));
-    return Math.floor((state.rawYaw ?? state.yaw) * .18 * clamp01(state.contourFrameVariance));
+    return Math.floor(state.cameraYaw * .18 * clamp01(state.contourFrameVariance));
   }
 
   function contourVariantPoints(s) {
@@ -920,19 +1335,55 @@ import { DIRTY_FLAGS, createDirtyFlags, markDirty, clearDirty } from './render/d
     ];
   }
 
+  function strokeContourVariant(s) {
+    const len = Math.hypot(s.x2 - s.x1, s.y2 - s.y1);
+    if (!state.contourHumanize || s.kind !== 'contour' || len < 4) {
+      ctx.beginPath();
+      ctx.moveTo(s.x1, s.y1);
+      ctx.lineTo(s.x2, s.y2);
+      ctx.stroke();
+      return true;
+    }
+    const seed = (s.id + 1) * 817.37 + contourFrameSeed() * 53.19;
+    if (state.contourGaps > 0 && hash01(seed + 3.7) < state.contourGaps * .42) return false;
+    const nx = -(s.y2 - s.y1) / len;
+    const ny = (s.x2 - s.x1) / len;
+    const drift = state.contourDrift * (state.modelSource === 'walking' ? 1.15 : 1);
+    const wobble = state.contourWobble;
+    const o0 = noise(seed, 1) * drift;
+    const o1 = noise(seed, 2) * drift;
+    const mid = noise(seed, 3) * drift * (1 + wobble * 1.8);
+    const insetA = state.contourGaps > 0 && hash01(seed + 11.1) < state.contourGaps ? lerp(.04, .18, hash01(seed + 12.4)) : 0;
+    const insetB = state.contourGaps > 0 && hash01(seed + 15.2) < state.contourGaps ? lerp(.04, .18, hash01(seed + 16.5)) : 0;
+    const x1 = lerp(s.x1, s.x2, insetA);
+    const y1 = lerp(s.y1, s.y2, insetA);
+    const x2 = lerp(s.x2, s.x1, insetB);
+    const y2 = lerp(s.y2, s.y1, insetB);
+    const ax = x1 + nx * o0;
+    const ay = y1 + ny * o0;
+    const mx = lerp(x1, x2, .5) + nx * mid;
+    const my = lerp(y1, y2, .5) + ny * mid;
+    const bx = x2 + nx * o1;
+    const by = y2 + ny * o1;
+    ctx.beginPath();
+    ctx.moveTo(ax, ay);
+    ctx.quadraticCurveTo(mx, my, (mx + bx) / 2, (my + by) / 2);
+    ctx.lineTo(bx, by);
+    ctx.stroke();
+    return true;
+  }
+
   function drawContours(segs) {
     ctx.save(); ctx.lineCap='round'; ctx.lineJoin='round';
     const inkAlpha = clamp(state.inkDominance || 1, .35, 1.35);
     const inkWidth = lerp(.92, 1.12, clamp01((inkAlpha - .35) / 1));
     for (const s of segs) {
-      const pts = contourVariantPoints(s);
-      if (!pts) continue;
       ctx.globalAlpha=clamp01((s.visible ? (s.kind==='contour'? .92:.46) : .24) * inkAlpha);
       ctx.strokeStyle=s.visible ? '#17110b' : '#65584d';
       const widthNoise = state.contourHumanize && s.kind==='contour' ? lerp(.88,1.18,hash01((s.id+1)*19.23 + contourFrameSeed())) : 1;
       ctx.lineWidth=(s.visible ? (s.kind==='contour'?1.45:.76) : .85) * widthNoise * inkWidth;
       ctx.setLineDash(s.visible ? [] : [6,5]);
-      strokeSmooth(pts);
+      strokeContourVariant(s);
     }
     ctx.restore();
   }
@@ -940,7 +1391,7 @@ import { DIRTY_FLAGS, createDirtyFlags, markDirty, clearDirty } from './render/d
   function drawFlow(frame) {
     ctx.save(); ctx.strokeStyle='rgba(20,94,103,.68)'; ctx.lineWidth=1; ctx.lineCap='round';
     let k=0;
-    for (const f of frame.faces) {
+    for (const f of frame.visibleFaces) {
       if (!f.visible || f.area < 20 || (++k % 3)) continue;
       const l=12, d=f.flow; ctx.beginPath(); ctx.moveTo(f.cx-d.x*l*.5,f.cy-d.y*l*.5); ctx.lineTo(f.cx+d.x*l*.5,f.cy+d.y*l*.5); ctx.stroke();
     }
@@ -955,29 +1406,33 @@ import { DIRTY_FLAGS, createDirtyFlags, markDirty, clearDirty } from './render/d
 
   function drawDepthDebug(db) {
     const img=ctx.createImageData(db.w,db.h); let min=1e9,max=-1e9;
-    for (const z of db.depth) if (z>-1e8) { min=Math.min(min,z); max=Math.max(max,z); }
+    const aliveDepth = db.nearIsSmaller
+      ? z => z < 1e8
+      : z => z > -1e8;
+    for (const z of db.depth) if (aliveDepth(z)) { min=Math.min(min,z); max=Math.max(max,z); }
     const span=Math.max(.001,max-min);
     for (let i=0;i<db.depth.length;i++) {
-      const z=db.depth[i], alive=z>-1e8, t=alive?(z-min)/span:0;
-      img.data[i*4]=20; img.data[i*4+1]=Math.floor(80+t*130); img.data[i*4+2]=Math.floor(100+t*130); img.data[i*4+3]=alive?110:0;
+      const z=db.depth[i], alive=aliveDepth(z), t=alive?clamp01((z-min)/span):0;
+      const val = Math.floor((1-t)*255);
+      img.data[i*4]=val; img.data[i*4+1]=val; img.data[i*4+2]=val; img.data[i*4+3]=alive?255:0;
     }
     const tmp=document.createElement('canvas'); tmp.width=db.w; tmp.height=db.h; tmp.getContext('2d').putImageData(img,0,0);
     ctx.drawImage(tmp,0,0,canvas.width,canvas.height);
   }
 
   function updateStatus(frame) {
-    const visible=frame.faces.filter(f=>f.visible && (!state.backface || f.front)).length;
+    const visible=frame.visibleFaces.filter(f=>!state.backface || f.front).length;
     const model = state.mesh?.name || 'model';
-    const tween = state.impreciseTween ? ` · drift: <b>${fmt(state.animJitterFrames,2)}f</b>` : '';
-    const topology = state.mesh?.sourceType === 'fbx' ? ` · topology: <b>cached</b> · vtx frame: <b>${state.mesh.frameVersion || 0}</b>` : '';
-    const anim = state.modelSource === 'walking' ? ` · FBX adapter: <b>${state.animFps} fps</b>${tween} · source: <b>${state.walkingFbxReady?'walking.fbx':'not found'}</b>${topology}` : '';
+    const tween = '';
+    const topology = state.mesh?.sourceType === 'fbx' ? ` · topology: cached` : '';
+    const fbxSource = escapeHtml(state.fbxSourceLabel || 'walking.fbx');
+    const anim = state.modelSource === 'walking' ? ` · FBX source: <b>${state.walkingFbxReady?fbxSource:'not found'}</b>${topology}` : '';
     const html = `model: <b>${escapeHtml(model)}</b>${anim}<br>` +
-      `control: <b>${state.controlMode}</b> · camera xyz: ${fmt(state.cameraX,2)}, ${fmt(state.cameraY,2)}, ${fmt(state.cameraZ,2)} · look: ${Math.round(state.cameraYaw)}°/${Math.round(state.cameraPitch)}°<br>` +
-      `faces: ${frame.faces.length} · visible faces: ${visible} · strokes/dots: ${frame.marks.length} · contours: ${frame.contours.length}<br>` +
-      `method: <b>${state.method}</b> · flow: <b>${state.flowMode}</b> · dirty: <b>${dirtyFlags.last}</b> · hide occluded: <b>${state.hideOccluded?'ON':'OFF'}</b> · depth buffer: ${frame.db.w}×${frame.db.h}<br>` +
+      `projection: <b>${state.projectionMode}</b> · focal length: <b>${Math.round(state.focalLength)}mm</b><br>` +
+      `camera xyz: ${fmt(state.cameraX,2)}, ${fmt(state.cameraY,2)}, ${fmt(state.cameraZ,2)} · look: ${Math.round(state.cameraYaw)}°/${Math.round(state.cameraPitch)}°<br>` +
+      `faces: ${visible}/${frame.screenFaces.length}/${frame.faces.length} visible/screen/total · strokes: ${frame.marks.length}<br>` +
       formatPerfStats(perfStats, fmt);
     if (statusEl) statusEl.innerHTML = html;
-    if (legendEl) legendEl.innerHTML = state.hideOccluded ? 'Depth visibility ON: tylne ucho i tylne stroke’i są odcinane przez bufor głębi.' : 'Depth visibility OFF: tryb diagnostyczny pokazuje także zasłonięte regiony.';
   }
 
   function scheduleRender(scope = DIRTY_FLAGS.PROJECTION) {
@@ -985,18 +1440,26 @@ import { DIRTY_FLAGS, createDirtyFlags, markDirty, clearDirty } from './render/d
     state.needsRender = true;
     if (state.scheduled) return;
     state.scheduled = true;
-    requestAnimationFrame(() => {
+    requestAnimationFrame(async () => {
       state.scheduled = false;
       if (!state.mesh || !state.needsRender) return;
       state.needsRender = false;
       try {
         const totalStart = performance.now();
         resetPerfFrame(perfStats, false);
-        const frame = computeFrame();
+        const frame = await computeFrameForRender();
+        if (!frame) {
+          state.needsRender = true;
+          return;
+        }
+        if (frame.pipelineKey !== buildPipelineKey(state, canvas)) {
+          scheduleRender(DIRTY_FLAGS.PROJECTION);
+          return;
+        }
         state.frame = frame;
         const drawStart = performance.now();
         if (dirtyFlags.projection || dirtyFlags.visibility || dirtyFlags.paint) renderCache.paint.key = '';
-        if (dirtyFlags.mesh || dirtyFlags.projection || dirtyFlags.visibility || dirtyFlags.npr || dirtyFlags.paint) {
+        if (dirtyFlags.mesh || dirtyFlags.projection || dirtyFlags.visibility || dirtyFlags.npr || dirtyFlags.paint || dirtyFlags.display) {
           renderCache.svg.key = '';
           renderCache.svg.text = '';
         }
@@ -1009,7 +1472,6 @@ import { DIRTY_FLAGS, createDirtyFlags, markDirty, clearDirty } from './render/d
       } catch (err) {
         state.lastError = err && err.stack ? err.stack : String(err);
         console.error(err);
-        if (statusEl) statusEl.innerHTML = '<b>Render error:</b> ' + escapeHtml(String(err && err.message ? err.message : err));
       }
     });
   }
@@ -1018,14 +1480,57 @@ import { DIRTY_FLAGS, createDirtyFlags, markDirty, clearDirty } from './render/d
     if (!updateCameraFromKeysForState(state, dt)) return false;
     syncUi();
     scheduleRender();
-    requestSaveSettings();
     return true;
+  }
+
+  function resetViewForModel(kind = 'obj') {
+    state.pressedKeys.clear();
+    state.auto = false;
+    if (kind === 'fbx') {
+      Object.assign(state, {
+        controlMode: 'freelook',
+        angleSnap: 0,
+        yaw: -24,
+        pitch: 12,
+        zoom: 1,
+        cameraYaw: 0,
+        cameraPitch: 0,
+        cameraX: 0,
+        cameraY: 0.6,
+        cameraZ: 6.5,
+        rawYaw: -24,
+        rawPitch: 12,
+        rawCameraYaw: 0,
+        rawCameraPitch: 0,
+        focalLength: 35,
+        projectionMode: 'perspective',
+      });
+    } else {
+      Object.assign(state, {
+        controlMode: 'orbit',
+        angleSnap: 0,
+        yaw: -24,
+        pitch: 12,
+        zoom: 1,
+        cameraYaw: 0,
+        cameraPitch: 0,
+        cameraX: 0,
+        cameraY: 0,
+        cameraZ: 0,
+        rawYaw: -24,
+        rawPitch: 12,
+        rawCameraYaw: 0,
+        rawCameraPitch: 0,
+        focalLength: 35,
+        projectionMode: 'perspective',
+      });
+    }
   }
 
   function snapshotSettings() {
     const values = {};
     for (const key of persistedFields) values[key] = state[key];
-    return { version: 1, savedAt: Date.now(), values };
+    return { version: 7, savedAt: Date.now(), values };
   }
 
   function requestSaveSettings() {
@@ -1065,7 +1570,7 @@ import { DIRTY_FLAGS, createDirtyFlags, markDirty, clearDirty } from './render/d
       for (const key of persistedFields) {
         if (!(key in values)) continue;
         const value = values[key];
-        if (key in rangeControls || ['angleSnap','animFps','rawYaw','rawPitch','rawCameraYaw','rawCameraPitch'].includes(key)) {
+        if (key in rangeControls) {
           const num = Number(value);
           if (Number.isFinite(num)) state[key] = num;
         } else if (colorControls.includes(key)) {
@@ -1076,18 +1581,10 @@ import { DIRTY_FLAGS, createDirtyFlags, markDirty, clearDirty } from './render/d
           state[key] = value;
         }
       }
-      state.paintPalette = paintPalettes[state.paintPalette] ? state.paintPalette : 'cleanComic';
-      state.paintBrush = ['watercolor','gouache','comicCel','inkWash'].includes(state.paintBrush) ? state.paintBrush : 'watercolor';
-      state.modelSource = state.modelSource === 'walking' ? 'walking' : 'suzanne';
-      state.animFps = [2,4,8,12,24,30,60].includes(Number(state.animFps)) ? Number(state.animFps) : 24;
-      state.rawYaw = Number.isFinite(Number(state.rawYaw)) ? Number(state.rawYaw) : state.yaw;
-      state.rawPitch = Number.isFinite(Number(state.rawPitch)) ? Number(state.rawPitch) : state.pitch;
-      state.rawCameraYaw = Number.isFinite(Number(state.rawCameraYaw)) ? Number(state.rawCameraYaw) : state.cameraYaw;
-      state.rawCameraPitch = Number.isFinite(Number(state.rawCameraPitch)) ? Number(state.rawCameraPitch) : state.cameraPitch;
-      applyAngleSnap();
+      state.controlMode = state.controlMode === 'freelook' ? 'freelook' : 'orbit';
+      state.projectionMode = state.projectionMode === 'ortho' ? 'ortho' : 'perspective';
       return true;
     } catch (err) {
-      console.warn('Settings load failed', err);
       return false;
     }
   }
@@ -1099,9 +1596,7 @@ import { DIRTY_FLAGS, createDirtyFlags, markDirty, clearDirty } from './render/d
       if (label) label.textContent=format(state[key]);
     }
     if ($('controlMode')) $('controlMode').value=state.controlMode;
-    if ($('controlModeV')) $('controlModeV').textContent=state.controlMode === 'freelook' ? 'free' : 'orbit';
-    if ($('angleSnap')) $('angleSnap').value=String(state.angleSnap);
-    if ($('angleSnapV')) $('angleSnapV').textContent=state.angleSnap ? `${state.angleSnap}°` : 'smooth';
+    if ($('projectionMode')) $('projectionMode').value=state.projectionMode;
     for (const id of checkControls) { const el=$(id); if (el) el.checked=!!state[id]; }
     if ($('method')) $('method').value=state.method;
     if ($('flowMode')) $('flowMode').value=state.flowMode;
@@ -1120,11 +1615,10 @@ import { DIRTY_FLAGS, createDirtyFlags, markDirty, clearDirty } from './render/d
       if (!el) continue;
       const update = () => {
         const value = Number(el.value);
-        if (key === 'yaw') setModelAngles(value, state.rawPitch ?? state.pitch);
-        else if (key === 'pitch') setModelAngles(state.rawYaw ?? state.yaw, value);
-        else if (key === 'cameraYaw') setCameraAngles(value, state.rawCameraPitch ?? state.cameraPitch);
-        else if (key === 'cameraPitch') setCameraAngles(state.rawCameraYaw ?? state.cameraYaw, value);
+        if (key === 'yaw' || key === 'pitch') setModelAngles(key === 'yaw' ? value : state.yaw, key === 'pitch' ? value : state.pitch);
+        else if (key === 'cameraYaw' || key === 'cameraPitch') setCameraAngles(key === 'cameraYaw' ? value : state.cameraYaw, key === 'cameraPitch' ? value : state.cameraPitch);
         else state[key] = value;
+        if (key === 'angleSnap') applyAngleSnap();
         if (label) label.textContent = format(state[key]);
         syncUi();
         scheduleRender(renderScopeForKey(key));
@@ -1147,8 +1641,8 @@ import { DIRTY_FLAGS, createDirtyFlags, markDirty, clearDirty } from './render/d
     $('preset')?.addEventListener('change', e => applyPreset(e.target.value));
     $('paintBrush')?.addEventListener('change', e => { state.paintBrush=e.target.value; syncUi(); scheduleRender(DIRTY_FLAGS.PAINT); requestSaveSettings(); });
     $('paintPalette')?.addEventListener('change', e => applyPaintPalette(e.target.value));
-    $('controlMode')?.addEventListener('change', e => { state.controlMode=e.target.value; state.auto=false; syncUi(); scheduleRender(); requestSaveSettings(); });
-    $('angleSnap')?.addEventListener('change', e => { state.angleSnap=Number(e.target.value)||0; applyAngleSnap(); syncUi(); scheduleRender(); requestSaveSettings(); });
+    $('controlMode')?.addEventListener('change', e => { state.controlMode=e.target.value === 'freelook' ? 'freelook' : 'orbit'; syncUi(); scheduleRender(DIRTY_FLAGS.PROJECTION); requestSaveSettings(); });
+    $('projectionMode')?.addEventListener('change', e => { state.projectionMode=e.target.value === 'perspective' ? 'perspective' : 'ortho'; syncUi(); scheduleRender(DIRTY_FLAGS.PROJECTION); requestSaveSettings(); });
     $('modelSource')?.addEventListener('change', e => setModelSource(e.target.value));
     $('animFps')?.addEventListener('change', e => { state.animFps=Number(e.target.value)||24; state.animAccumulator=0; requestSaveSettings(); });
     for (const b of document.querySelectorAll('.modeButtons button')) b.addEventListener('click', () => { state.mode=b.dataset.mode; syncUi(); scheduleRender(DIRTY_FLAGS.NPR); requestSaveSettings(); });
@@ -1156,18 +1650,21 @@ import { DIRTY_FLAGS, createDirtyFlags, markDirty, clearDirty } from './render/d
       document.querySelectorAll('.tabBtn').forEach(x=>x.classList.toggle('active', x===b));
       document.querySelectorAll('.tabPane').forEach(p=>p.classList.toggle('active', p.id===b.dataset.tab));
     });
-    $('reset')?.addEventListener('click', () => { Object.assign(state,{controlMode:'orbit',angleSnap:0,yaw:-24,pitch:12,zoom:1,cameraYaw:0,cameraPitch:0,cameraX:0,cameraY:0,cameraZ:0,rawYaw:-24,rawPitch:12,rawCameraYaw:0,rawCameraPitch:0,lightAz:-42,lightEl:42,auto:true}); state.pressedKeys.clear(); syncUi(); scheduleRender(); requestSaveSettings(); });
+    $('reset')?.addEventListener('click', () => { resetViewForModel(builtinModelMap.get(state.modelSource)?.kind || 'obj'); syncUi(); scheduleRender(); requestSaveSettings(); });
     $('exportSvg')?.addEventListener('click', exportSvg);
     $('exportPng')?.addEventListener('click', exportPng);
     $('exportAtlas')?.addEventListener('click', exportAtlas);
     $('file')?.addEventListener('change', e => loadFile(e.target.files && e.target.files[0]));
+    $('fbxFile')?.addEventListener('change', e => loadCustomFbxFile(e.target.files && e.target.files[0]));
     canvas.addEventListener('contextmenu', e => e.preventDefault());
     canvas.addEventListener('pointerdown', e => {
       state.dragging=true;
       state.lastX=e.clientX;
       state.lastY=e.clientY;
       state.auto=false;
-      state.dragMode = (e.button === 1 || e.altKey) ? 'pan' : ((state.controlMode === 'freelook' || e.button === 2 || e.shiftKey) ? 'camera' : 'model');
+      state.dragMode = (e.button === 1 || e.altKey)
+        ? 'pan'
+        : (state.controlMode === 'freelook' ? 'camera' : (e.button === 2 || e.shiftKey ? 'camera' : 'model'));
       canvas.setPointerCapture?.(e.pointerId);
       syncUi();
     });
@@ -1176,43 +1673,41 @@ import { DIRTY_FLAGS, createDirtyFlags, markDirty, clearDirty } from './render/d
       const dx=e.clientX-state.lastX, dy=e.clientY-state.lastY;
       state.lastX=e.clientX; state.lastY=e.clientY;
       if (state.dragMode === 'camera') {
-        state.controlMode='freelook';
-        setCameraAngles((state.rawCameraYaw ?? state.cameraYaw)+dx*.28, (state.rawCameraPitch ?? state.cameraPitch)+dy*.24);
+        setCameraAngles(state.cameraYaw - dx*.28, state.cameraPitch - dy*.24);
+      } else if (state.dragMode === 'model') {
+        setModelAngles((state.rawYaw ?? state.yaw) + dx*.45, (state.rawPitch ?? state.pitch) + dy*.35);
       } else if (state.dragMode === 'pan') {
-        const pan = 1 / (Math.min(canvas.width, canvas.height) * .36 * state.zoom * cameraDollyScale());
-        state.cameraX=clamp(state.cameraX-dx*pan,-3,3);
-        state.cameraY=clamp(state.cameraY+dy*pan,-3,3);
-      } else {
-        setModelAngles((state.rawYaw ?? state.yaw)+dx*.45, (state.rawPitch ?? state.pitch)+dy*.35);
+        const pan = 0.01;
+        state.cameraX -= dx * pan;
+        state.cameraY += dy * pan;
       }
       syncUi();
       scheduleRender();
-      requestSaveSettings();
     });
-    canvas.addEventListener('pointerup', e => { state.dragging=false; try{canvas.releasePointerCapture?.(e.pointerId);}catch(_){} });
-    canvas.addEventListener('pointercancel', e => { state.dragging=false; try{canvas.releasePointerCapture?.(e.pointerId);}catch(_){} });
-    canvas.addEventListener('wheel', e => { e.preventDefault(); state.zoom=clamp(state.zoom*Math.exp(-e.deltaY*.001),.55,1.8); syncUi(); scheduleRender(); requestSaveSettings(); }, {passive:false});
+    canvas.addEventListener('pointerup', e => { state.dragging=false; requestSaveSettings(); try{canvas.releasePointerCapture?.(e.pointerId);}catch(_){} });
+    canvas.addEventListener('pointercancel', e => { state.dragging=false; requestSaveSettings(); try{canvas.releasePointerCapture?.(e.pointerId);}catch(_){} });
+    canvas.addEventListener('wheel', e => {
+      e.preventDefault();
+      if (state.controlMode === 'freelook') state.cameraZ=clamp(state.cameraZ + e.deltaY*.01, -100, 100);
+      else state.zoom = clamp(state.zoom * Math.exp(-e.deltaY*.001), .55, 1.8);
+      syncUi();
+      scheduleRender();
+      requestSaveSettings();
+    }, {passive:false});
     window.addEventListener('resize', () => { resizeCanvas(); scheduleRender(); });
     window.addEventListener('keydown', e => {
       if (isTypingTarget(e.target)) return;
       if (cameraKeyCodes.has(e.code)) {
         e.preventDefault();
         state.pressedKeys.add(e.code);
-        if (!e.shiftKey) state.controlMode='freelook';
         state.auto=false;
         syncUi();
         return;
       }
       if (e.code==='Space') { e.preventDefault(); state.auto=!state.auto; syncUi(); scheduleRender(); requestSaveSettings(); }
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase()==='e') { e.preventDefault(); exportSvg(); }
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase()==='p') { e.preventDefault(); exportPng(); }
-      if (e.key==='1') { state.method='hatching'; syncUi(); scheduleRender(); requestSaveSettings(); }
-      if (e.key==='2') { state.method='crosshatch'; syncUi(); scheduleRender(); requestSaveSettings(); }
-      if (e.key==='3') { state.method='stipple'; syncUi(); scheduleRender(); requestSaveSettings(); }
-      if (e.key==='4') { state.method='drybrush'; syncUi(); scheduleRender(); requestSaveSettings(); }
     });
-    window.addEventListener('keyup', e => { state.pressedKeys.delete(e.code); });
-    window.addEventListener('blur', () => state.pressedKeys.clear());
+    window.addEventListener('keyup', e => { state.pressedKeys.delete(e.code); if (cameraKeyCodes.has(e.code)) requestSaveSettings(); });
+    window.addEventListener('blur', () => { if (state.pressedKeys.size) requestSaveSettings(); state.pressedKeys.clear(); });
     window.addEventListener('dragover', e => e.preventDefault());
     window.addEventListener('drop', e => { e.preventDefault(); loadFile(e.dataTransfer.files && e.dataTransfer.files[0]); });
   }
@@ -1221,11 +1716,6 @@ import { DIRTY_FLAGS, createDirtyFlags, markDirty, clearDirty } from './render/d
     const p=presets[key]; if (!p) return;
     Object.assign(state,p);
     state.preset=key;
-    state.rawYaw = state.yaw;
-    state.rawPitch = state.pitch;
-    state.rawCameraYaw = state.cameraYaw;
-    state.rawCameraPitch = state.cameraPitch;
-    applyAngleSnap();
     syncUi();
     scheduleRender();
     requestSaveSettings();
@@ -1233,17 +1723,109 @@ import { DIRTY_FLAGS, createDirtyFlags, markDirty, clearDirty } from './render/d
 
   function loadFile(file) {
     if (!file) return;
-    const reader=new FileReader();
-    reader.onload=()=>loadOBJText(String(reader.result || ''), file.name || 'dropped OBJ');
-    reader.readAsText(file);
+    const lowerName = String(file.name || '').toLowerCase();
+    if (lowerName.endsWith('.fbx')) {
+      loadCustomFbxFile(file);
+      return;
+    }
+    loadOBJSource({ file }, file.name || 'dropped OBJ');
+  }
+
+  async function parseOBJAsync(source, name) {
+    if (typeof Worker === 'undefined') {
+      let text = source.text || '';
+      if (!text && source.file && typeof source.file.text === 'function') text = await source.file.text();
+      if (!text && source.url) {
+        const response = await fetch(source.url);
+        if (!response.ok) throw new Error(`${name || source.url} fetch failed: ${response.status}`);
+        text = await response.text();
+      }
+      const mesh = parseOBJ(text);
+      prepareMeshRuntime(mesh);
+      return { mesh, sourceLength: text.length };
+    }
+    const id = ++objParseSeq;
+    if (!objParseWorker) {
+      objParseWorker = new Worker(new URL('./mesh/objParseWorker.js', import.meta.url), { type: 'module' });
+    }
+
+    return new Promise((resolve, reject) => {
+      const worker = objParseWorker;
+      const cleanup = () => {
+        worker.removeEventListener('message', onMessage);
+        worker.removeEventListener('error', onError);
+      };
+      const onMessage = event => {
+        const data = event.data || {};
+        if (data.id !== id) return;
+        cleanup();
+        if (data.ok) resolve({ mesh: data.mesh, sourceLength: data.sourceLength || 0 });
+        else reject(new Error(data.error || 'OBJ parser worker failed.'));
+      };
+      const onError = error => {
+        cleanup();
+        if (objParseWorker === worker) {
+          objParseWorker.terminate();
+          objParseWorker = null;
+        }
+        reject(error instanceof Error ? error : new Error(String(error?.message || error)));
+      };
+      worker.addEventListener('message', onMessage);
+      worker.addEventListener('error', onError);
+      worker.postMessage({ id, ...source, name });
+    });
+  }
+
+  function clearCustomFbxUrl() {
+    if (!state.fbxCustomObjectUrl) return;
+    URL.revokeObjectURL(state.fbxCustomObjectUrl);
+    state.fbxCustomObjectUrl = '';
+  }
+
+  function resetFbxRuntime() {
+    objLoadToken++;
+    state.fbxLoadToken = (state.fbxLoadToken || 0) + 1;
+    state.fbxRuntime = null;
+    state.fbxLoadPromise = null;
+    state.fbxError = '';
+    state.fbxAdapterKind = '';
+    state.frame = null;
+    renderCache.frame = null;
+    renderCache.pipelineKey = '';
+    invalidateDerivedCaches(renderCache);
+  }
+
+  async function loadCustomFbxFile(file) {
+    if (!file) return;
+    clearCustomFbxUrl();
+    state.fbxCustomObjectUrl = URL.createObjectURL(file);
+    state.fbxSourceUrl = state.fbxCustomObjectUrl;
+    state.fbxSourceLabel = file.name || 'custom.fbx';
+    state.walkingFbxReady = true;
+    resetFbxRuntime();
+    resetViewForModel('fbx');
+    state.modelSource = 'walking';
+    syncUi();
+    requestSaveSettings();
+    await startFbxMode();
   }
 
   function loadOBJText(text, name) {
+    return loadOBJSource({ text }, name);
+  }
+
+  async function loadOBJSource(source, name) {
+    const token = ++objLoadToken;
     try {
-      const mesh = parseOBJ(text);
+      if (statusEl) statusEl.textContent = `loading ${name || 'OBJ'}...`;
+      const parsed = await parseOBJAsync(source, name);
+      if (token !== objLoadToken) return;
+      const mesh = parsed.mesh;
+      prepareMeshRuntime(mesh);
       mesh.name = name;
-      mesh.cacheId = `obj:${++meshRevision}:${name}:${text.length}`;
+      mesh.cacheId = `obj:${++meshRevision}:${name}:${parsed.sourceLength || 0}`;
       mesh.frameVersion = 0;
+      resetViewForModel('obj');
       state.mesh = mesh;
       state.frame = null;
       renderCache.frame = null;
@@ -1251,19 +1833,26 @@ import { DIRTY_FLAGS, createDirtyFlags, markDirty, clearDirty } from './render/d
       invalidateDerivedCaches(renderCache);
       scheduleRender(DIRTY_FLAGS.MESH);
     }
-    catch(err) { console.error(err); if (statusEl) statusEl.textContent='OBJ error: '+err.message; }
-  }
-
-
-  async function loadSuzanneModel() {
-    try {
-      const res = await fetch(SUZANNE_OBJ_URL);
-      if (!res.ok) throw new Error(`Suzanne OBJ fetch failed: ${res.status}`);
-      const obj = await res.text();
-      loadOBJText(obj, 'embedded Suzanne/Susan OBJ');
-    } catch (err) {
+    catch(err) {
+      if (token !== objLoadToken) return;
       console.error(err);
       if (statusEl) statusEl.textContent = 'OBJ error: ' + (err && err.message ? err.message : err);
+    }
+  }
+
+  function populateModelSourceOptions() {
+    const select = $('modelSource');
+    if (!select) return;
+    select.innerHTML = BUILTIN_MODELS.map(model => `<option value="${model.id}">${escapeHtml(model.label)}</option>`).join('');
+    if (!builtinModelMap.has(state.modelSource)) state.modelSource = BUILTIN_MODELS[0]?.id || 'suzanne';
+    select.value = state.modelSource;
+  }
+
+  async function loadBuiltInObjModel(model) {
+    try {
+      await loadOBJSource({ url: model.url }, model.label);
+    } catch (err) {
+      console.error(err);
     }
   }
 
@@ -1271,6 +1860,8 @@ import { DIRTY_FLAGS, createDirtyFlags, markDirty, clearDirty } from './render/d
     return ensureFbxRuntimeForState(state);
   }
   function setModelSource(source) {
+    const model = builtinModelMap.get(source) || builtinModelMap.get('suzanne');
+    source = model?.id || 'suzanne';
     state.modelSource = source;
     state.animTime = 0;
     state.animFrameIndex = 0;
@@ -1279,11 +1870,19 @@ import { DIRTY_FLAGS, createDirtyFlags, markDirty, clearDirty } from './render/d
     state.animJitterFrames = 0;
     state.animAccumulator = 0;
     state.animLastMs = performance.now();
-    if (source === 'walking') {
+    if (model?.kind === 'fbx') {
+      resetViewForModel('fbx');
+      state.fbxSourceUrl = state.fbxCustomObjectUrl || model.url || '';
+      state.fbxSourceLabel = state.fbxCustomObjectUrl ? (state.fbxSourceLabel || 'custom.fbx') : (model.label || 'walking.fbx');
       startFbxMode();
     } else {
       stopFbxMode();
-      loadSuzanneModel();
+      clearCustomFbxUrl();
+      state.fbxSourceUrl = '';
+      state.fbxSourceLabel = '';
+      resetFbxRuntime();
+      resetViewForModel('obj');
+      loadBuiltInObjModel(model || builtinModelMap.get('suzanne'));
     }
     syncUi();
     requestSaveSettings();
@@ -1291,7 +1890,7 @@ import { DIRTY_FLAGS, createDirtyFlags, markDirty, clearDirty } from './render/d
 
   async function probeWalkingFbx() {
     try {
-      const res = await fetch(FBX_MODEL_URL, { method:'HEAD' });
+      const res = await fetch((builtinModelMap.get('walking')?.url) || FBX_MODEL_URL, { method:'HEAD' });
       state.walkingFbxReady = !!res.ok;
     } catch (_) {
       state.walkingFbxReady = false;
@@ -1308,14 +1907,12 @@ import { DIRTY_FLAGS, createDirtyFlags, markDirty, clearDirty } from './render/d
     state.animAccumulator = 0;
     state.animLastMs = performance.now();
     state.fbxClockMs = state.animLastMs;
-    if (statusEl) statusEl.innerHTML = 'loading <b>walking.fbx</b>...';
     try {
       await ensureFbxRuntime();
       renderFbxFrame(0);
       scheduleRender();
     } catch (err) {
       console.error(err);
-      if (statusEl) statusEl.innerHTML = '<b>FBX error:</b> ' + escapeHtml(state.fbxError || err.message || err);
     }
   }
 
@@ -1405,8 +2002,7 @@ import { DIRTY_FLAGS, createDirtyFlags, markDirty, clearDirty } from './render/d
     const out=document.createElement('canvas'); out.width=cols*cellW; out.height=rows*cellH;
     const o=out.getContext('2d'); o.fillStyle=paperColor(); o.fillRect(0,0,out.width,out.height);
     for (let i=0;i<keys.length;i++) {
-      Object.assign(state,presets[keys[i]],{preset:keys[i],auto:false,yaw:-26+(i%3)*10,pitch:12});
-      state.rawYaw=state.yaw; state.rawPitch=state.pitch; applyAngleSnap();
+      Object.assign(state,presets[keys[i]],{preset:keys[i],auto:false});
       const frame=computeFrame(); renderFrame(frame);
       const x=(i%cols)*cellW, y=Math.floor(i/cols)*cellH;
       o.drawImage(canvas,0,0,canvas.width,canvas.height,x,y,cellW,cellH);
@@ -1422,11 +2018,6 @@ import { DIRTY_FLAGS, createDirtyFlags, markDirty, clearDirty } from './render/d
     const controlDt = Math.min(.08, Math.max(0, (now - (state.lastTickMs || now)) / 1000));
     state.lastTickMs = now;
     updateCameraFromKeys(controlDt);
-    if (state.auto && !state.dragging) {
-      setModelAngles((state.rawYaw ?? state.yaw) + .16, state.rawPitch ?? state.pitch);
-      syncUi();
-      if (state.modelSource !== 'walking') scheduleRender();
-    }
     if (state.animPlaying && state.modelSource === 'walking') {
       const dt = Math.min(.12, Math.max(0, (now - (state.animLastMs || now)) / 1000));
       state.animLastMs = now;
@@ -1447,15 +2038,11 @@ import { DIRTY_FLAGS, createDirtyFlags, markDirty, clearDirty } from './render/d
     bindUi();
     loadSavedSettings();
     settingsLoaded = true;
+    populateModelSourceOptions();
     syncUi(); resizeCanvas();
     await probeWalkingFbx();
-    if (state.modelSource === 'walking') {
-      startFbxMode();
-    } else {
-      await loadSuzanneModel();
-    }
+    setModelSource(state.modelSource);
     animationLoop();
   }
 
   init();
-

@@ -61,8 +61,10 @@ export function cameraDollyScale(state) {
 }
 
 export function updateCameraFromKeys(state, dt) {
+  if (state.controlMode !== 'freelook') return false;
   const keys = state.pressedKeys;
   if (!keys.size || dt <= 0) return false;
+  
   let right = 0, up = 0, forward = 0, lookX = 0, lookY = 0;
   if (keys.has('KeyD')) right += 1;
   if (keys.has('KeyA')) right -= 1;
@@ -74,20 +76,37 @@ export function updateCameraFromKeys(state, dt) {
   if (keys.has('ArrowLeft')) lookX -= 1;
   if (keys.has('ArrowDown')) lookY += 1;
   if (keys.has('ArrowUp')) lookY -= 1;
+  
   if (!right && !up && !forward && !lookX && !lookY) return false;
 
-  const fast = (keys.has('ShiftLeft') || keys.has('ShiftRight')) ? 2.8 : 1;
-  const move = 1.45 * fast * dt / Math.max(0.45, state.zoom);
-  const yaw = deg(state.cameraYaw), pitch = deg(state.cameraPitch);
-  const forwardAxis = v3(Math.sin(yaw)*Math.cos(pitch), -Math.sin(pitch), Math.cos(yaw)*Math.cos(pitch));
-  const rightAxis = v3(Math.cos(yaw), 0, -Math.sin(yaw));
-  const upAxis = v3(Math.sin(yaw)*Math.sin(pitch), Math.cos(pitch), Math.cos(yaw)*Math.sin(pitch));
+  const fast = (keys.has('ShiftLeft') || keys.has('ShiftRight')) ? 3.0 : 1;
+  const moveSpeed = 8.0 * fast * dt;
+  
+  const yawRad = deg(state.cameraYaw);
+  const pitchRad = deg(state.cameraPitch);
+  
+  // Forward axis (world space direction camera is looking)
+  // Looking at -Z when Yaw=0, Pitch=0
+  const fwd = v3(
+    Math.sin(yawRad) * Math.cos(pitchRad),
+    -Math.sin(pitchRad),
+    -Math.cos(yawRad) * Math.cos(pitchRad)
+  );
+  
+  // Right axis (perpendicular to Forward and World Up)
+  const rgt = v3(Math.cos(yawRad), 0, Math.sin(yawRad));
+  
+  // World Up
+  const vup = v3(0, 1, 0);
 
-  state.cameraX = clamp(state.cameraX + (rightAxis.x*right + upAxis.x*up + forwardAxis.x*forward) * move, -3, 3);
-  state.cameraY = clamp(state.cameraY + (rightAxis.y*right + upAxis.y*up + forwardAxis.y*forward) * move, -3, 3);
-  state.cameraZ = clamp(state.cameraZ + (rightAxis.z*right + upAxis.z*up + forwardAxis.z*forward) * move, -3, 3);
-  setCameraAngles(state, (state.rawCameraYaw ?? state.cameraYaw) + lookX * 72 * dt * fast, (state.rawCameraPitch ?? state.cameraPitch) + lookY * 60 * dt * fast);
-  state.controlMode = 'freelook';
-  state.auto = false;
+  state.cameraX += (rgt.x * right + fwd.x * forward) * moveSpeed;
+  state.cameraY += (rgt.y * right + fwd.y * forward + vup.y * up) * moveSpeed;
+  state.cameraZ += (rgt.z * right + fwd.z * forward) * moveSpeed;
+  
+  setCameraAngles(state, 
+    state.cameraYaw + lookX * 100 * dt * fast, 
+    state.cameraPitch + lookY * 100 * dt * fast
+  );
+  
   return true;
 }

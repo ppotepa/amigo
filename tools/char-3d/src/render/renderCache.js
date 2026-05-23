@@ -1,6 +1,7 @@
 const PIPELINE_FIELDS = [
-  'yaw', 'pitch', 'zoom',
+  'controlMode', 'angleSnap', 'yaw', 'pitch', 'zoom',
   'cameraYaw', 'cameraPitch', 'cameraX', 'cameraY', 'cameraZ',
+  'projectionMode', 'focalLength',
   'lightAz', 'lightEl',
   'method', 'mode', 'flowMode',
   'density', 'layers', 'threshold', 'core', 'contact', 'edgeDark', 'simplify', 'economy',
@@ -9,7 +10,8 @@ const PIPELINE_FIELDS = [
   'shadowFrameDrift', 'shadowLoopRedraw', 'shadowLayoutJitter',
   'projectionWobble', 'spacingVar', 'lengthVar', 'widthVar', 'taper', 'breakup', 'overdraw',
   'contourHumanize', 'contourDrift', 'contourWobble', 'contourGaps', 'contourFrameVariance',
-  'shadowsEnabled', 'hideOccluded', 'backface', 'depthClipStrokes', 'clipToFaces',
+  'shadowsEnabled', 'paintEnabled', 'contours', 'flow',
+  'hideOccluded', 'backface', 'depthClipStrokes', 'clipToFaces',
   'showHidden', 'depthEps', 'creases', 'suggestive', 'contactLines',
   'animFrameIndex', 'animLoopIndex', 'animSampleTime', 'animJitterFrames',
 ];
@@ -37,6 +39,17 @@ function createLayerRecord() {
   };
 }
 
+function createFrameLists() {
+  return {
+    verts: [],
+    faces: [],
+    screenFaces: [],
+    visibleFaces: [],
+    sortedFaces: [],
+    contours: [],
+  };
+}
+
 export function createRenderCache() {
   return {
     frame: null,
@@ -53,7 +66,17 @@ export function createRenderCache() {
       depth: null,
       owner: null,
     },
+    frameLists: createFrameLists(),
   };
+}
+
+export function clearFrameLists(cache) {
+  const lists = cache.frameLists || (cache.frameLists = createFrameLists());
+  lists.screenFaces.length = 0;
+  lists.visibleFaces.length = 0;
+  lists.sortedFaces.length = 0;
+  lists.contours.length = 0;
+  return lists;
 }
 
 export function buildPipelineKey(state, canvas) {
@@ -76,6 +99,7 @@ export function buildBackgroundLayerKey(state, canvas) {
 export function buildPaintLayerKey(state, canvas, frame) {
   return JSON.stringify({
     size: [canvas.width, canvas.height],
+    projection: frame?.pipelineKey || null,
     frame: frame ? [frame.faces.length, frame.contours?.length || 0, frame.marks?.length || 0] : null,
     values: PAINT_FIELDS.map(field => state[field]),
   });
@@ -91,7 +115,8 @@ export function buildSvgKey(state, frame) {
       state.paintBrush, state.paintRegionResolution, state.paintRegionSimplify, state.paintEdgeBleed,
       state.paintPigmentGranulation, state.paintRegionJitter, state.paintWetMix,
       state.contours, state.inkDominance, state.hideOccluded, state.method, state.flowMode, state.mode,
-      state.backface, state.sortFaces, state.yaw, state.pitch, state.cameraYaw, state.cameraPitch,
+      state.backface, state.sortFaces, state.controlMode, state.angleSnap, state.yaw, state.pitch, state.zoom, state.cameraYaw, state.cameraPitch,
+      state.cameraX, state.cameraY, state.cameraZ, state.projectionMode, state.focalLength,
     ],
   });
 }

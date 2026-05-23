@@ -180,6 +180,21 @@ function boundsForPoints(points) {
   return { minX, minY, maxX, maxY, w: maxX - minX, h: maxY - minY };
 }
 
+function regionInViewport(region, frame) {
+  const viewport = frame?.viewport;
+  if (!viewport || !region?.bounds) return true;
+  const margin = Math.max(0, viewport.margin || 0);
+  const b = region.bounds;
+  return b.maxX >= -margin
+    && b.maxY >= -margin
+    && b.minX <= viewport.width + margin
+    && b.minY <= viewport.height + margin;
+}
+
+function pushVisibleRegion(regions, region, frame) {
+  if (region && regionInViewport(region, frame)) regions.push(region);
+}
+
 function selectRegionGroups(faces, predicate, maxRegions, seedBase) {
   const selected = faces.filter(predicate);
   if (!selected.length) return [];
@@ -219,7 +234,7 @@ export function buildPaintRegions(frame, state) {
     style,
     'source-over',
   );
-  if (baseRegion) regions.push(baseRegion);
+  pushVisibleRegion(regions, baseRegion, frame);
 
   const washGroups = selectRegionGroups(
     faces,
@@ -231,7 +246,7 @@ export function buildPaintRegions(frame, state) {
     const tone = averageTone(washGroups[i]).tone;
     const color = rgbCss(mixRgb(base, shadow, clamp01(tone * 0.82)));
     const region = makeRegion('wash', washGroups[i], color, state.paintWashOpacity * style.washOpacity * (0.22 + tone * 0.48), 21.7 + i, state, style, style.composite);
-    if (region) regions.push(region);
+    pushVisibleRegion(regions, region, frame);
   }
 
   const steps = Math.max(1, Math.round(state.paintCelSteps || 1));
@@ -245,7 +260,7 @@ export function buildPaintRegions(frame, state) {
     const tone = averageTone(shadowGroups[i]).tone;
     const stepped = Math.floor(clamp01(tone) * steps) / steps;
     const region = makeRegion('shadow', shadowGroups[i], rgbCss(shadow), state.paintCelStrength * (0.28 + stepped * 0.82), 41.2 + i, state, style, 'multiply');
-    if (region) regions.push(region);
+    pushVisibleRegion(regions, region, frame);
   }
 
   const highlightGroups = selectRegionGroups(
@@ -258,7 +273,7 @@ export function buildPaintRegions(frame, state) {
     const tone = averageTone(highlightGroups[i]).tone;
     const light = clamp01((0.34 - tone) * 2.2);
     const region = makeRegion('highlight', highlightGroups[i], rgbCss(highlight), state.paintHighlightAmount * (0.2 + light), 61.8 + i, state, style, 'screen');
-    if (region) regions.push(region);
+    pushVisibleRegion(regions, region, frame);
   }
 
   return regions;

@@ -5,8 +5,12 @@ function v3(x = 0, y = 0, z = 0) { return { x, y, z }; }
 export function parseOBJ(text) {
   const verts = [];
   const faces = [];
-  const lines = text.split(/\r?\n/);
-  for (const raw of lines) {
+  let lineStart = 0;
+  while (lineStart <= text.length) {
+    let lineEnd = text.indexOf('\n', lineStart);
+    if (lineEnd < 0) lineEnd = text.length;
+    const raw = text.slice(lineStart, lineEnd);
+    lineStart = lineEnd + 1;
     const line = raw.trim();
     if (!line || line[0] === '#') continue;
     const parts = line.split(/\s+/);

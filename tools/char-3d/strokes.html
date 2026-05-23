@@ -39,13 +39,13 @@
     .head { padding: 14px 14px 10px; border-bottom: 1px solid var(--line); }
     h1 { font-size: 16px; margin: 0 0 4px; letter-spacing: -.02em; }
     .sub { color: var(--muted); font-size: 12px; line-height: 1.36; }
-    .tabs { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; padding: 10px 10px 0; }
-    .tabs button { padding: 8px 5px; font-size: 11px; border-radius: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .tabs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; padding: 10px 10px 0; }
+    .tabs button { padding: 8px 5px; font-size: 11px; border-radius: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .tabs button.active { background: var(--ink); color: #fff7ea; border-color: var(--ink); }
     .content { overflow: auto; padding: 10px 14px 14px; }
     .tabPane { display: none; }
     .tabPane.active { display: block; }
-    .group { border: 1px solid var(--line); border-radius: 15px; padding: 10px; margin-bottom: 10px; background: rgba(255,255,255,.36); }
+    .group { border: 1px solid var(--line); border-radius: 8px; padding: 10px; margin-bottom: 10px; background: rgba(255,255,255,.36); }
     .groupTitle { font-weight: 700; font-size: 12px; margin: 0 0 8px; color: #3d332b; display:flex; justify-content:space-between; gap:8px; }
     .row { display: grid; grid-template-columns: 138px 1fr 48px; gap: 8px; align-items: center; margin: 7px 0; font-size: 12px; }
     .row label { color: #3f352c; }
@@ -74,6 +74,8 @@
     .modeButtons button.active { background: #17110b; color: #fff8ec; border-color: #17110b; }
     .twocol { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
     .threecol { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 7px; }
+    .wideRow { display: grid; grid-template-columns: 116px 1fr; gap: 8px; align-items: center; margin: 7px 0; font-size: 12px; }
+    .wideRow label { color: #3f352c; }
     .checks { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 12px; margin: 8px 0 4px; font-size: 12px; }
     .checks label { display: flex; align-items: center; gap: 7px; color: #3f352c; }
     .checks input { accent-color: var(--accent); }
@@ -122,29 +124,14 @@
   <section class="panel">
     <div class="head">
       <h1>Susan/Suzanne — NPR Shadow Editor</h1>
-      <div class="sub">Jednoplikowa makieta HTML/JS: OBJ → Canvas/SVG z depth testem, edycją cieniowania, stroke’ami: hatch, crosshatch, dots, halftone, pencil, dry brush, scribble.</div>
-      <input id="file" type="file" accept=".obj,.ob,text/plain" />
-      <div class="twocol" style="margin-top:8px">
-        <select id="modelSource">
-          <option value="suzanne">embedded Suzanne OBJ</option>
-          <option value="walking">walking.fbx realtime</option>
-        </select>
-        <select id="animFps">
-          <option value="2">2 fps</option>
-          <option value="4">4 fps</option>
-          <option value="8">8 fps</option>
-          <option value="12">12 fps</option>
-          <option value="24" selected>24 fps</option>
-          <option value="30">30 fps</option>
-          <option value="60">60 fps</option>
-        </select>
-      </div>
+      <div class="sub">OBJ/FBX → projekcja wektorowa → warstwy NPR: kontur, cień, tusz, kolor i losowość ręcznej kreski.</div>
     </div>
 
     <div class="tabs">
-      <button class="tabBtn active" data-tab="viewTab">View</button>
-      <button class="tabBtn" data-tab="shadowTab">Shadows</button>
-      <button class="tabBtn" data-tab="strokeTab">Stroke</button>
+      <button class="tabBtn active" data-tab="modelTab">Model</button>
+      <button class="tabBtn" data-tab="cameraTab">Camera</button>
+      <button class="tabBtn" data-tab="lookTab">Look</button>
+      <button class="tabBtn" data-tab="inkTab">Ink</button>
       <button class="tabBtn" data-tab="paintTab">Paint</button>
       <button class="tabBtn" data-tab="rndTab">RND</button>
       <button class="tabBtn" data-tab="visibilityTab">Visibility</button>
@@ -152,7 +139,75 @@
     </div>
 
     <div class="content">
-      <div id="viewTab" class="tabPane active">
+      <div id="modelTab" class="tabPane active">
+        <div class="group">
+          <div class="groupTitle">Source</div>
+          <div class="wideRow"><label>Built-in</label><select id="modelSource">
+            <option value="suzanne">embedded Suzanne OBJ</option>
+          </select></div>
+          <div class="wideRow"><label>OBJ file</label><input id="file" type="file" accept=".obj,.ob,text/plain" /></div>
+          <div class="wideRow"><label>FBX file</label><input id="fbxFile" type="file" accept=".fbx,model/fbx,application/octet-stream" /></div>
+        </div>
+        <div class="group">
+          <div class="groupTitle">Animation</div>
+          <div class="wideRow"><label>Playback FPS</label><select id="animFps">
+            <option value="2">2 fps</option>
+            <option value="4">4 fps</option>
+            <option value="8">8 fps</option>
+            <option value="12">12 fps</option>
+            <option value="24" selected>24 fps</option>
+            <option value="30">30 fps</option>
+            <option value="60">60 fps</option>
+          </select></div>
+          <div class="checks">
+            <label><input id="auto" type="checkbox" checked> auto rotate / play</label>
+            <label><input id="impreciseTween" type="checkbox" checked> imprecise tweening</label>
+          </div>
+          <div class="row"><label>Timing drift</label><input id="tweenJitterFrames" type="range" min="0" max="2" value="1.25" step="0.05"><span id="tweenJitterFramesV">1.25f</span></div>
+        </div>
+        <div class="group">
+          <div class="groupTitle">Actions</div>
+          <div class="twocol">
+            <button id="reset">Reset view</button>
+            <button id="exportSvg">Export SVG</button>
+          </div>
+          <div class="twocol" style="margin-top:7px">
+            <button id="exportPng">Export PNG</button>
+            <button id="exportAtlas">PNG atlas stylów</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="cameraTab" class="tabPane">
+        <div class="group">
+          <div class="groupTitle">Navigation</div>
+          <div class="row"><label>Control mode</label><select id="controlMode"><option value="orbit">orbit model</option><option value="freelook">freelook camera</option></select><span id="controlModeV">orbit</span></div>
+          <div class="row"><label>Angle snap</label><select id="angleSnap"><option value="0">smooth</option><option value="15">15° steps</option><option value="30">30° steps</option></select><span id="angleSnapV">smooth</span></div>
+          <div class="row"><label>Model yaw</label><input id="yaw" type="range" min="-180" max="180" value="-24" step="1"><span id="yawV">-24°</span></div>
+          <div class="row"><label>Model pitch</label><input id="pitch" type="range" min="-85" max="85" value="12" step="1"><span id="pitchV">12°</span></div>
+          <div class="row"><label>Model zoom</label><input id="zoom" type="range" min="0.55" max="1.8" value="1" step="0.01"><span id="zoomV">1.00</span></div>
+        </div>
+        <div class="group">
+          <div class="groupTitle">Lens</div>
+          <div class="row"><label>Focal Length</label><input id="focalLength" type="range" min="12" max="200" value="35" step="1"><span id="focalLengthV">35mm</span></div>
+          <div class="row"><label>Projection</label><select id="projectionMode"><option value="perspective">perspective</option><option value="ortho">ortho</option></select><span></span></div>
+        </div>
+        <div class="group">
+          <div class="groupTitle">Freelook camera</div>
+          <div class="row"><label>Camera X</label><input id="cameraX" type="range" min="-100" max="100" value="0" step="0.01"><span id="cameraXV">0.00</span></div>
+          <div class="row"><label>Camera Y</label><input id="cameraY" type="range" min="-100" max="100" value="0" step="0.01"><span id="cameraYV">0.00</span></div>
+          <div class="row"><label>Camera Z</label><input id="cameraZ" type="range" min="-100" max="100" value="5" step="0.01"><span id="cameraZV">5.00</span></div>
+          <div class="row"><label>Camera Yaw</label><input id="cameraYaw" type="range" min="-180" max="180" value="0" step="1"><span id="cameraYawV">0°</span></div>
+          <div class="row"><label>Camera Pitch</label><input id="cameraPitch" type="range" min="-85" max="85" value="0" step="1"><span id="cameraPitchV">0°</span></div>
+        </div>
+        <div class="group">
+          <div class="groupTitle">Light</div>
+          <div class="row"><label>Light azimuth</label><input id="lightAz" type="range" min="-180" max="180" value="-42" step="1"><span id="lightAzV">-42°</span></div>
+          <div class="row"><label>Light height</label><input id="lightEl" type="range" min="-20" max="85" value="42" step="1"><span id="lightElV">42°</span></div>
+        </div>
+      </div>
+
+      <div id="lookTab" class="tabPane">
         <div class="group">
           <div class="groupTitle">Tool mode</div>
           <div class="modeButtons">
@@ -160,40 +215,7 @@
             <button id="modePENCIL" data-mode="PENCIL">PENCIL</button>
             <button id="modeBRUSH" data-mode="BRUSH">BRUSH</button>
           </div>
-          <div class="note">INK = czyste stroke’i, PENCIL = lekkie warstwy, BRUSH = grubsze przerywane pociągnięcia.</div>
         </div>
-        <div class="group">
-          <div class="groupTitle">Camera / light</div>
-          <div class="row"><label>Control mode</label><select id="controlMode"><option value="orbit">orbit model</option><option value="freelook">freelook camera</option></select><span id="controlModeV">orbit</span></div>
-          <div class="row"><label>Angle snap</label><select id="angleSnap"><option value="0">smooth</option><option value="15">15° steps</option><option value="30">30° steps</option></select><span id="angleSnapV">smooth</span></div>
-          <div class="row"><label>Yaw</label><input id="yaw" type="range" min="-180" max="180" value="-24" step="1"><span id="yawV">-24°</span></div>
-          <div class="row"><label>Pitch</label><input id="pitch" type="range" min="-85" max="85" value="12" step="1"><span id="pitchV">12°</span></div>
-          <div class="row"><label>Zoom</label><input id="zoom" type="range" min="0.55" max="1.8" value="1.0" step="0.01"><span id="zoomV">1.00</span></div>
-          <div class="row"><label>Camera yaw</label><input id="cameraYaw" type="range" min="-180" max="180" value="0" step="1"><span id="cameraYawV">0°</span></div>
-          <div class="row"><label>Camera pitch</label><input id="cameraPitch" type="range" min="-85" max="85" value="0" step="1"><span id="cameraPitchV">0°</span></div>
-          <div class="row"><label>Camera X</label><input id="cameraX" type="range" min="-3" max="3" value="0" step="0.01"><span id="cameraXV">0.00</span></div>
-          <div class="row"><label>Camera Y</label><input id="cameraY" type="range" min="-3" max="3" value="0" step="0.01"><span id="cameraYV">0.00</span></div>
-          <div class="row"><label>Camera Z</label><input id="cameraZ" type="range" min="-3" max="3" value="0" step="0.01"><span id="cameraZV">0.00</span></div>
-          <div class="row"><label>Light azimuth</label><input id="lightAz" type="range" min="-180" max="180" value="-42" step="1"><span id="lightAzV">-42°</span></div>
-          <div class="row"><label>Light height</label><input id="lightEl" type="range" min="-20" max="85" value="42" step="1"><span id="lightElV">42°</span></div>
-          <div class="checks">
-            <label><input id="auto" type="checkbox" checked> auto rotate</label>
-            <label><input id="faceWash" type="checkbox" checked> soft face wash</label>
-            <label><input id="contours" type="checkbox" checked> contour lines</label>
-            <label><input id="shadowsEnabled" type="checkbox" checked> shadow strokes</label>
-          </div>
-        </div>
-        <div class="twocol">
-          <button id="reset">Reset view</button>
-          <button id="exportSvg">Export SVG</button>
-        </div>
-        <div class="twocol" style="margin-top:7px">
-          <button id="exportPng">Export PNG</button>
-          <button id="exportAtlas">PNG atlas stylów</button>
-        </div>
-      </div>
-
-      <div id="shadowTab" class="tabPane">
         <div class="group">
           <div class="groupTitle">Preset / method</div>
           <select id="preset">
@@ -232,6 +254,16 @@
           <div class="row"><label>Flow mode</label><select id="flowMode"><option value="mixed">Mixed</option><option value="parallel">Parallel</option><option value="form">Form / mesh edge</option><option value="crossContour">Cross-contour</option><option value="silhouette">Silhouette aligned</option><option value="light">Light aligned</option><option value="terminator">Terminator aligned</option></select><span></span></div>
         </div>
         <div class="group">
+          <div class="groupTitle">Output layers</div>
+          <div class="checks">
+            <label><input id="paintEnabled" type="checkbox" checked> color passes</label>
+            <label><input id="faceWash" type="checkbox" checked> soft face wash</label>
+            <label><input id="contours" type="checkbox" checked> contour lines</label>
+            <label><input id="shadowsEnabled" type="checkbox" checked> shadow strokes</label>
+            <label><input id="skipSimulation" type="checkbox"> skip hand-drawn simulation</label>
+          </div>
+        </div>
+        <div class="group">
           <div class="groupTitle">Tone / density</div>
           <div class="row"><label>Density</label><input id="density" type="range" min="0" max="2" value="0.72" step="0.01"><span id="densityV">0.72</span></div>
           <div class="row"><label>Layer count</label><input id="layers" type="range" min="1" max="4" value="1" step="1"><span id="layersV">1</span></div>
@@ -244,7 +276,7 @@
         </div>
       </div>
 
-      <div id="strokeTab" class="tabPane">
+      <div id="inkTab" class="tabPane">
         <div class="group">
           <div class="groupTitle">Stroke geometry</div>
           <div class="row"><label>Stroke length</label><input id="strokeLen" type="range" min="5" max="130" value="44" step="1"><span id="strokeLenV">44</span></div>
@@ -260,9 +292,6 @@
         <div class="group">
           <div class="groupTitle">Palette</div>
           <div class="row"><label>Preset</label><select id="paintPalette"><option value="cleanComic">clean comic</option><option value="pulp">old pulp</option><option value="mangaWash">manga wash</option><option value="noirTint">noir tint</option><option value="blueShadow">blue shadow</option><option value="retroPrint">retro print</option></select><span></span></div>
-          <div class="checks">
-            <label><input id="paintEnabled" type="checkbox" checked> color passes</label>
-          </div>
           <div class="row"><label>Brush</label><select id="paintBrush"><option value="watercolor">watercolor</option><option value="gouache">gouache</option><option value="comicCel">comic cel</option><option value="inkWash">ink wash</option></select><span></span></div>
           <div class="row"><label>Paper</label><input id="paintPaperColor" type="color" value="#f6f2e8"><span></span></div>
           <div class="row"><label>Base fill</label><input id="paintBaseColor" type="color" value="#d7ad85"><span></span></div>
@@ -298,13 +327,6 @@
       </div>
 
       <div id="rndTab" class="tabPane">
-        <div class="group">
-          <div class="groupTitle">Animation randomness</div>
-          <div class="row"><label>Timing drift</label><input id="tweenJitterFrames" type="range" min="0" max="2" value="1.25" step="0.05"><span id="tweenJitterFramesV">1.25f</span></div>
-          <div class="checks">
-            <label><input id="impreciseTween" type="checkbox" checked> imprecise tweening</label>
-          </div>
-        </div>
         <div class="group">
           <div class="groupTitle">Stroke randomness</div>
           <div class="row"><label>Wobble</label><input id="wobble" type="range" min="0" max="1" value="0.34" step="0.01"><span id="wobbleV">0.34</span></div>
