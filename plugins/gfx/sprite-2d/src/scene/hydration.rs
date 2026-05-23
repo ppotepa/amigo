@@ -5,7 +5,8 @@ use amigo_scene::{
     ComponentHydrationContext, ComponentHydrator, Material2dDocument,
     Material2dLightingSceneCommand, Material2dOpticalModeDocument,
     Material2dOpticalModeSceneCommand, Material2dOpticalSceneCommand, Material2dSceneCommand,
-    RenderContributions2dSceneCommand, SceneComponentDocument, SceneDocumentResult,
+    PluginComponentHydrationContext, PluginComponentHydrator, RenderContributions2dSceneCommand,
+    SceneComponentDocument, SceneDocumentError, SceneDocumentResult,
     SceneSpriteAnimationDocument, SceneSpriteSheetDocument, SceneTransform2Document,
     SceneTransform3Document, SceneVec2Document, Sprite2dSceneCommand,
     SpriteAnimation2dSceneOverride, SpriteSheet2dSceneCommand, VisualMaps2dDocument,
@@ -14,7 +15,7 @@ use amigo_scene::{
 
 use crate::api::{Sprite2dRenderResponse, Sprite2dRenderableCandidate};
 
-use super::{Sprite2dDocument, parse_sprite_2d_plugin_payload};
+use super::Sprite2dDocument;
 
 pub fn sprite_candidate_from_document(document: &Sprite2dDocument) -> Sprite2dRenderableCandidate {
     Sprite2dRenderableCandidate::active(
@@ -28,6 +29,7 @@ pub fn sprite_candidate_from_document(document: &Sprite2dDocument) -> Sprite2dRe
 }
 
 pub struct Sprite2dComponentHydrator;
+pub struct Sprite2dPluginComponentHydrator;
 
 impl ComponentHydrator for Sprite2dComponentHydrator {
     fn provider_id(&self) -> &'static str {
@@ -52,15 +54,57 @@ impl ComponentHydrator for Sprite2dComponentHydrator {
                 };
                 document
             }
-            SceneComponentDocument::Plugin {
-                component_type,
-                payload,
-            } if component_type == "amigo.gfx.sprite-2d.Sprite2D"
-                || component_type == "Sprite2D" =>
-            {
-                parse_sprite_2d_plugin_payload(payload)?
-            }
+            SceneComponentDocument::Plugin { .. } => return Ok(()),
             _ => return Ok(()),
+        };
+
+        ctx.commands.push(amigo_scene::SceneCommand::plugin(
+            crate::sprite_plugin_scene_command(Sprite2dSceneCommand {
+                source_mod: ctx.source_mod.to_owned(),
+                entity_name: ctx.entity_name.to_owned(),
+                render_layer: document.render_layer.clone(),
+                texture: AssetKey::new(document.texture.clone()),
+                size: vec2_from_document(document.size),
+                sheet: document.sheet.map(sprite_sheet_from_document),
+                animation: document.animation.map(sprite_animation_from_document),
+                visual_maps: document.visual_maps.as_ref().map(visual_maps_from_document),
+                render_contributions: RenderContributions2dSceneCommand {
+                    roles: document
+                        .render_contributions
+                        .clone()
+                        .with_defaults(sprite_render_contribution_defaults())
+                        .into_roles(),
+                },
+                material: material2d_scene_command(document.material.clone()),
+                z_index: document.z_index,
+                transform: transform2_for_entity(ctx.entity),
+            }),
+        ));
+
+        Ok(())
+    }
+}
+
+impl PluginComponentHydrator for Sprite2dPluginComponentHydrator {
+    fn provider_id(&self) -> &'static str {
+        "amigo.gfx.sprite-2d"
+    }
+
+    fn component_type(&self) -> &'static str {
+        "amigo.gfx.sprite-2d.Sprite2D"
+    }
+
+    fn hydrate_plugin_payload(
+        &self,
+        ctx: PluginComponentHydrationContext<'_>,
+    ) -> SceneDocumentResult<()> {
+        let Some(document) = ctx.payload.as_any().downcast_ref::<Sprite2dDocument>() else {
+            return Err(SceneDocumentError::Hydration {
+                scene_id: ctx.document.scene.id.clone(),
+                entity_id: ctx.entity.id.clone(),
+                component_kind: ctx.component_type.to_owned(),
+                message: "Sprite2D plugin hydrator received wrong payload".to_owned(),
+            });
         };
 
         ctx.commands.push(amigo_scene::SceneCommand::plugin(

@@ -1,9 +1,11 @@
+use std::any::Any;
+
 use serde::{Deserialize, Serialize};
 use serde_yaml::Value;
 
 use amigo_scene::{
     Material2dDocument, RenderContributionsDocument, SceneComponentDocument,
-    SceneComponentSchemaProvider, SceneDocumentError, SceneDocumentResult,
+    SceneComponentPayload, SceneComponentSchemaProvider, SceneDocumentError, SceneDocumentResult,
     SceneSpriteAnimationDocument, SceneSpriteSheetDocument, SceneVec2Document,
     VisualMaps2dDocument,
 };
@@ -67,6 +69,16 @@ impl Sprite2dDocument {
     }
 }
 
+impl SceneComponentPayload for Sprite2dDocument {
+    fn component_type(&self) -> &'static str {
+        "amigo.gfx.sprite-2d.Sprite2D"
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+}
+
 pub fn parse_sprite_2d_plugin_payload(payload: &Value) -> SceneDocumentResult<Sprite2dDocument> {
     serde_yaml::from_value::<Sprite2dDocument>(payload.clone())
         .map_err(|source| SceneDocumentError::Parse { path: None, source })
@@ -86,6 +98,13 @@ impl SceneComponentSchemaProvider for Sprite2dSceneSchemaProvider {
 
     fn parse_yaml(&self, payload: serde_yaml::Mapping) -> Result<Value, serde_yaml::Error> {
         serde_yaml::to_value(serde_yaml::from_value::<Sprite2dDocument>(Value::Mapping(payload))?)
+    }
+
+    fn parse_payload_value(
+        &self,
+        payload: &Value,
+    ) -> SceneDocumentResult<Box<dyn SceneComponentPayload>> {
+        Ok(Box::new(parse_sprite_2d_plugin_payload(payload)?))
     }
 }
 

@@ -5,17 +5,18 @@ use amigo_scene::{
     ComponentHydrationContext, ComponentHydrator, Material2dDocument,
     Material2dLightingSceneCommand, Material2dOpticalModeDocument,
     Material2dOpticalModeSceneCommand, Material2dOpticalSceneCommand, Material2dSceneCommand,
-    RenderContributions2dSceneCommand, SceneComponentDocument, SceneDocumentError,
-    SceneDocumentResult, SceneTransform2Document, SceneTransform3Document, SceneVec2Document,
-    Text2dAlignDocument, Text2dAlignSceneCommand, Text2dBlendModeDocument,
-    Text2dBlendModeSceneCommand, Text2dGlowSceneCommand, Text2dOutlineSceneCommand,
-    Text2dSceneCommand, Text2dShadowSceneCommand, Text2dStyleDocument,
-    Text2dStyleSceneCommand,
+    PluginComponentHydrationContext, PluginComponentHydrator, RenderContributions2dSceneCommand,
+    SceneComponentDocument, SceneDocumentError, SceneDocumentResult, SceneTransform2Document,
+    SceneTransform3Document, SceneVec2Document, Text2dAlignDocument, Text2dAlignSceneCommand,
+    Text2dBlendModeDocument, Text2dBlendModeSceneCommand, Text2dGlowSceneCommand,
+    Text2dOutlineSceneCommand, Text2dSceneCommand, Text2dShadowSceneCommand,
+    Text2dStyleDocument, Text2dStyleSceneCommand,
 };
 
-use super::{Text2dDocument, parse_text_2d_plugin_payload};
+use super::Text2dDocument;
 
 pub struct Text2dComponentHydrator;
+pub struct Text2dPluginComponentHydrator;
 
 impl ComponentHydrator for Text2dComponentHydrator {
     fn provider_id(&self) -> &'static str {
@@ -40,15 +41,58 @@ impl ComponentHydrator for Text2dComponentHydrator {
                 };
                 document
             }
-            SceneComponentDocument::Plugin {
-                component_type,
-                payload,
-            } if component_type == "amigo.gfx.text-2d.Text2D"
-                || component_type == "Text2D" =>
-            {
-                parse_text_2d_plugin_payload(payload)?
-            }
+            SceneComponentDocument::Plugin { .. } => return Ok(()),
             _ => return Ok(()),
+        };
+
+        ctx.commands.push(amigo_scene::SceneCommand::plugin(
+            crate::text_plugin_scene_command(Text2dSceneCommand {
+                source_mod: ctx.source_mod.to_owned(),
+                entity_name: ctx.entity_name.to_owned(),
+                render_layer: document.render_layer.clone(),
+                content: document.content.clone(),
+                font: AssetKey::new(document.font.clone()),
+                bounds: vec2_from_document(document.bounds),
+                style: text2d_style_from_document(
+                    &document.style,
+                    &ctx.document.scene.id,
+                    &ctx.entity.id,
+                    "Text2D",
+                )?,
+                render_contributions: RenderContributions2dSceneCommand {
+                    roles: document.render_contributions.clone().into_roles(),
+                },
+                post_fx_host_id: None,
+                z_index: document.z_index,
+                material: material2d_scene_command(document.material),
+                transform: transform2_for_entity(ctx.entity),
+            }),
+        ));
+
+        Ok(())
+    }
+}
+
+impl PluginComponentHydrator for Text2dPluginComponentHydrator {
+    fn provider_id(&self) -> &'static str {
+        "amigo.gfx.text-2d"
+    }
+
+    fn component_type(&self) -> &'static str {
+        "amigo.gfx.text-2d.Text2D"
+    }
+
+    fn hydrate_plugin_payload(
+        &self,
+        ctx: PluginComponentHydrationContext<'_>,
+    ) -> SceneDocumentResult<()> {
+        let Some(document) = ctx.payload.as_any().downcast_ref::<Text2dDocument>() else {
+            return Err(SceneDocumentError::Hydration {
+                scene_id: ctx.document.scene.id.clone(),
+                entity_id: ctx.entity.id.clone(),
+                component_kind: ctx.component_type.to_owned(),
+                message: "Text2D plugin hydrator received wrong payload".to_owned(),
+            });
         };
 
         ctx.commands.push(amigo_scene::SceneCommand::plugin(

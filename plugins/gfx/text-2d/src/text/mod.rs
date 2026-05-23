@@ -180,6 +180,12 @@ impl RuntimePlugin for Text2dPlugin {
         }
         if let Some(hydrators) = registry.resolve::<amigo_scene::ComponentHydratorRegistry>() {
             hydrators.register(crate::scene::hydration::Text2dComponentHydrator);
+            hydrators.register_plugin(crate::scene::hydration::Text2dPluginComponentHydrator);
+        }
+        if let Some(graph_providers) =
+            registry.resolve::<amigo_scene::ComponentGraphProviderRegistry>()
+        {
+            graph_providers.register(crate::scene::Text2dPluginGraphProvider);
         }
         if let Some(render_extractors) =
             registry.resolve::<amigo_render_api::RuntimeRenderExtractorIdRegistry>()

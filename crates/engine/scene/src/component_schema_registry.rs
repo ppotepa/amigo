@@ -1,10 +1,19 @@
+use std::any::Any;
 use std::collections::BTreeMap;
 use std::sync::Arc;
 use std::sync::RwLock;
 
 use serde_yaml::{Mapping, Value};
 
-use crate::{ScenePluginComponentDescriptor, ScenePluginDescriptorProvider};
+use crate::{
+    SceneDocumentError, SceneDocumentResult, ScenePluginComponentDescriptor,
+    ScenePluginDescriptorProvider,
+};
+
+pub trait SceneComponentPayload: Send + Sync {
+    fn component_type(&self) -> &'static str;
+    fn as_any(&self) -> &dyn Any;
+}
 
 pub trait SceneComponentSchemaProvider: Send + Sync {
     fn component_type(&self) -> &'static str;
@@ -14,6 +23,20 @@ pub trait SceneComponentSchemaProvider: Send + Sync {
     }
 
     fn parse_yaml(&self, payload: Mapping) -> Result<Value, serde_yaml::Error>;
+
+    fn parse_payload_value(
+        &self,
+        payload: &Value,
+    ) -> SceneDocumentResult<Box<dyn SceneComponentPayload>> {
+        let _ = payload;
+        Err(SceneDocumentError::Compile {
+            path: None,
+            message: format!(
+                "typed plugin payload parsing is not implemented for `{}`",
+                self.component_type()
+            ),
+        })
+    }
 }
 
 #[derive(Default)]
@@ -74,6 +97,19 @@ impl ComponentSchemaRegistry {
             .get(component_type)
             .cloned()
             .map(|provider| provider.parse_yaml(payload))
+    }
+
+    pub fn parse_typed_plugin_payload(
+        &self,
+        component_type: &str,
+        payload: &Value,
+    ) -> Option<SceneDocumentResult<Box<dyn SceneComponentPayload>>> {
+        self.schema_providers
+            .read()
+            .expect("component schema registry poisoned")
+            .get(component_type)
+            .cloned()
+            .map(|provider| provider.parse_payload_value(payload))
     }
 
     pub fn known_component_types(&self) -> Vec<String> {

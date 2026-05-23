@@ -21,6 +21,7 @@ impl RuntimePlugin for ScenePlugin {
         registry.register(SceneResetHandlerRegistry::default())?;
         registry.register(ComponentMetadataProviderRegistry::default())?;
         registry.register(ComponentHydratorRegistry::default())?;
+        registry.register(ComponentGraphProviderRegistry::default())?;
         registry.register(ComponentSchemaRegistry::default())?;
         registry.register(PluginSceneCommandHandlerRegistry::default())?;
 

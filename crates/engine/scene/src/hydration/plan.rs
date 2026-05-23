@@ -68,7 +68,7 @@ pub fn build_scene_hydration_plan(
     source_mod: &str,
     document: &SceneDocument,
 ) -> SceneDocumentResult<SceneHydrationPlan> {
-    build_scene_hydration_plan_with_component_hydrators(source_mod, document, None)
+    build_scene_hydration_plan_with_component_hydrators(source_mod, document, None, None)
 }
 
 pub fn build_scene_hydration_plan_for_runtime(
@@ -77,10 +77,12 @@ pub fn build_scene_hydration_plan_for_runtime(
     document: &SceneDocument,
 ) -> SceneDocumentResult<SceneHydrationPlan> {
     let hydrators = runtime.resolve::<crate::ComponentHydratorRegistry>();
+    let schemas = runtime.resolve::<crate::ComponentSchemaRegistry>();
     build_scene_hydration_plan_with_component_hydrators(
         source_mod,
         document,
         hydrators.as_deref(),
+        schemas.as_deref(),
     )
 }
 
@@ -88,6 +90,7 @@ pub fn build_scene_hydration_plan_with_component_hydrators(
     source_mod: &str,
     document: &SceneDocument,
     hydrators: Option<&crate::ComponentHydratorRegistry>,
+    schemas: Option<&crate::ComponentSchemaRegistry>,
 ) -> SceneDocumentResult<SceneHydrationPlan> {
     // Architectural stop-point:
     // Hydration still consumes SceneDocument directly for compatibility.
@@ -118,6 +121,19 @@ pub fn build_scene_hydration_plan_with_component_hydrators(
         });
 
         for (component_index, component) in entity.components.iter().enumerate() {
+            if hydrate_plugin_component_payload(
+                source_mod,
+                document,
+                entity,
+                &entity_name,
+                component_index,
+                component,
+                hydrators,
+                schemas,
+                &mut commands,
+            )? {
+                continue;
+            }
             if hydrate_component_core(
                 source_mod,
                 document,
@@ -203,6 +219,46 @@ pub fn build_scene_hydration_plan_with_component_hydrators(
     }
 
     Ok(SceneHydrationPlan { commands })
+}
+
+fn hydrate_plugin_component_payload(
+    source_mod: &str,
+    document: &SceneDocument,
+    entity: &crate::SceneEntityDocument,
+    entity_name: &str,
+    component_index: usize,
+    component: &SceneComponentDocument,
+    hydrators: Option<&crate::ComponentHydratorRegistry>,
+    schemas: Option<&crate::ComponentSchemaRegistry>,
+    commands: &mut Vec<SceneCommand>,
+) -> SceneDocumentResult<bool> {
+    let (Some(hydrators), Some(schemas)) = (hydrators, schemas) else {
+        return Ok(false);
+    };
+    let SceneComponentDocument::Plugin {
+        component_type,
+        payload,
+    } = component
+    else {
+        return Ok(false);
+    };
+    let Some(payload) = schemas.parse_typed_plugin_payload(component_type, payload) else {
+        return Ok(false);
+    };
+    let payload = payload?;
+    hydrators.hydrate_plugin_payload(
+        component_type,
+        crate::PluginComponentHydrationContext {
+            source_mod,
+            document,
+            entity,
+            entity_name,
+            component_index,
+            component_type,
+            payload: payload.as_ref(),
+            commands,
+        },
+    )
 }
 
 include!("plan/components_core.rs");

@@ -5,6 +5,7 @@ use crate::document::{
     SceneEntityDocument,
 };
 use crate::metadata_traits::MetadataTraitKind;
+use crate::{ComponentGraphProviderRegistry, ComponentSchemaRegistry};
 
 use super::component_capabilities::component_2d_traits;
 use super::semantics::{SceneGraphSemanticRole, SceneGraphSemantics};
@@ -16,6 +17,30 @@ use super::{
 pub fn build_semantic_scene_graph(
     document: &SceneDocument,
     source_file: impl Into<String>,
+) -> SemanticSceneGraph {
+    build_semantic_scene_graph_with_services(document, source_file, None, None)
+}
+
+pub fn build_semantic_scene_graph_for_runtime(
+    runtime: &amigo_runtime::Runtime,
+    document: &SceneDocument,
+    source_file: impl Into<String>,
+) -> SemanticSceneGraph {
+    let schemas = runtime.resolve::<ComponentSchemaRegistry>();
+    let graph_providers = runtime.resolve::<ComponentGraphProviderRegistry>();
+    build_semantic_scene_graph_with_services(
+        document,
+        source_file,
+        schemas.as_deref(),
+        graph_providers.as_deref(),
+    )
+}
+
+fn build_semantic_scene_graph_with_services(
+    document: &SceneDocument,
+    source_file: impl Into<String>,
+    schemas: Option<&ComponentSchemaRegistry>,
+    graph_providers: Option<&ComponentGraphProviderRegistry>,
 ) -> SemanticSceneGraph {
     let source_file = source_file.into();
     let mut graph = SemanticSceneGraph::new(document.scene.id.as_str());
@@ -217,7 +242,7 @@ pub fn build_semantic_scene_graph(
             duplicate_objects.insert(entity.id.clone());
         }
 
-        let console_path = entity_console_path(entity);
+        let console_path = entity_console_path(entity, schemas, graph_providers);
         let object_node = graph.add_child(
             &objects_parent,
             SceneGraphNode::new(
@@ -308,6 +333,8 @@ pub fn build_semantic_scene_graph(
                 component,
                 &draw_layers,
                 &scene_objects,
+                schemas,
+                graph_providers,
             );
         }
     }
@@ -323,8 +350,12 @@ pub fn build_semantic_scene_graph(
     graph
 }
 
-fn entity_console_path(entity: &SceneEntityDocument) -> String {
-    if let Some(layer) = primary_render_layer(entity) {
+fn entity_console_path(
+    entity: &SceneEntityDocument,
+    schemas: Option<&ComponentSchemaRegistry>,
+    graph_providers: Option<&ComponentGraphProviderRegistry>,
+) -> String {
+    if let Some(layer) = primary_render_layer(entity, schemas, graph_providers) {
         if layer.contains('.') {
             return format!("world.{layer}");
         }
@@ -338,7 +369,11 @@ fn entity_console_path(entity: &SceneEntityDocument) -> String {
     )
 }
 
-fn primary_render_layer(entity: &SceneEntityDocument) -> Option<String> {
+fn primary_render_layer(
+    entity: &SceneEntityDocument,
+    schemas: Option<&ComponentSchemaRegistry>,
+    graph_providers: Option<&ComponentGraphProviderRegistry>,
+) -> Option<String> {
     entity
         .components
         .iter()
@@ -347,6 +382,26 @@ fn primary_render_layer(entity: &SceneEntityDocument) -> Option<String> {
             | SceneComponentDocument::LayeredImage2d { render_layer, .. }
             | SceneComponentDocument::BeaconLight2d { render_layer, .. } => {
                 Some(render_layer.clone())
+            }
+            SceneComponentDocument::Plugin {
+                component_type,
+                payload,
+            } => {
+                let (Some(schemas), Some(graph_providers)) = (schemas, graph_providers) else {
+                    return None;
+                };
+                let Some(payload) = schemas.parse_typed_plugin_payload(component_type, payload)
+                else {
+                    return None;
+                };
+                let Ok(payload) = payload else {
+                    return None;
+                };
+                graph_providers
+                    .with_provider(component_type, |provider| {
+                        provider.primary_render_layer(payload.as_ref())
+                    })
+                    .flatten()
             }
             _ => None,
         })
@@ -390,6 +445,8 @@ fn add_component_references(
     component: &SceneComponentDocument,
     draw_layers: &BTreeMap<String, SceneGraphNodeId>,
     scene_objects: &BTreeMap<String, SceneGraphNodeId>,
+    schemas: Option<&ComponentSchemaRegistry>,
+    graph_providers: Option<&ComponentGraphProviderRegistry>,
 ) {
     match component {
         SceneComponentDocument::Sprite2d {
@@ -666,6 +723,30 @@ fn add_component_references(
                 font,
                 true,
             );
+        }
+        SceneComponentDocument::Plugin {
+            component_type,
+            payload,
+        } => {
+            let (Some(schemas), Some(graph_providers)) = (schemas, graph_providers) else {
+                return;
+            };
+            let Some(payload) = schemas.parse_typed_plugin_payload(component_type, payload) else {
+                return;
+            };
+            let Ok(payload) = payload else {
+                return;
+            };
+            let _ = graph_providers.with_provider(component_type, |provider| {
+                let mut ctx = crate::PluginComponentGraphContext {
+                    payload: payload.as_ref(),
+                    component_node,
+                    graph,
+                    draw_layers,
+                    scene_objects,
+                };
+                provider.add_references(&mut ctx);
+            });
         }
         _ => {}
     }

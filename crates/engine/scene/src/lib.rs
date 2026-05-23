@@ -11,6 +11,7 @@ mod component_metadata;
 mod component_metadata_provider;
 /// Plugin-owned component hydration extension point.
 mod component_hydrator_registry;
+mod component_graph_provider;
 /// Plugin-owned component schema descriptor registry.
 mod component_schema_registry;
 /// Authored scene document structures and loading entry points.
@@ -66,6 +67,7 @@ pub use command_format::*;
 pub use commands::{RuntimeSceneCommandHandler, *};
 pub use component_metadata::*;
 pub use component_hydrator_registry::*;
+pub use component_graph_provider::*;
 pub use component_schema_registry::*;
 pub use component_metadata_provider::*;
 pub use document::*;

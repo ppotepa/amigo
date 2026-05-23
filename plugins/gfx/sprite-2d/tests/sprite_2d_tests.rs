@@ -1,8 +1,8 @@
 use amigo_plugin_api::CandidateStatus;
 use amigo_runtime::{RuntimePlugin, ServiceRegistry, SystemRegistry};
 use amigo_scene::{
-    ComponentHydratorRegistry, ComponentSchemaRegistry, PluginSceneCommandHandlerRegistry,
-    RuntimeSceneCommandHandlerRegistry, ScenePlugin,
+    ComponentGraphProviderRegistry, ComponentHydratorRegistry, ComponentSchemaRegistry,
+    PluginSceneCommandHandlerRegistry, RuntimeSceneCommandHandlerRegistry, ScenePlugin,
 };
 use amigo_sprite_2d_plugin::participation::adapters::{
     camera_optics::sprite_coverage_to_camera_optics,
@@ -100,6 +100,9 @@ fn sprite_plugin_registers_schema_provider_and_hydrator() {
     let hydrators = registry
         .resolve::<ComponentHydratorRegistry>()
         .expect("component hydrator registry should exist");
+    let graph_providers = registry
+        .resolve::<ComponentGraphProviderRegistry>()
+        .expect("component graph provider registry should exist");
     let plugin_scene_handlers = registry
         .resolve::<PluginSceneCommandHandlerRegistry>()
         .expect("plugin scene command handler registry should exist");
@@ -109,6 +112,7 @@ fn sprite_plugin_registers_schema_provider_and_hydrator() {
         .iter()
         .any(|id| id == "amigo.gfx.sprite-2d.Sprite2D"));
     assert!(hydrators.provider_ids().contains(&"amigo.gfx.sprite-2d"));
+    assert!(graph_providers.provider_ids().contains(&"amigo.gfx.sprite-2d"));
     assert!(plugin_scene_handlers
         .handler_for("amigo.gfx.sprite-2d.scene-command.Sprite2D")
         .is_some());

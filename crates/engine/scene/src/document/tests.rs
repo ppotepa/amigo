@@ -288,6 +288,26 @@ impl SceneComponentSchemaProvider for TestSpriteSchemaProvider {
         );
         Ok(Value::Mapping(payload))
     }
+
+    fn parse_payload_value(
+        &self,
+        _payload: &Value,
+    ) -> crate::SceneDocumentResult<Box<dyn crate::SceneComponentPayload>> {
+        #[derive(Debug)]
+        struct TestPayload;
+
+        impl crate::SceneComponentPayload for TestPayload {
+            fn component_type(&self) -> &'static str {
+                "amigo.gfx.sprite-2d.Sprite2D"
+            }
+
+            fn as_any(&self) -> &dyn std::any::Any {
+                self
+            }
+        }
+
+        Ok(Box::new(TestPayload))
+    }
 }
 
 #[test]
