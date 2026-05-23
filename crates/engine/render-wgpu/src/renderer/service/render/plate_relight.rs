@@ -681,7 +681,10 @@ fn light_list_summary(sources: &[WgpuPlateRelightSource<'_>]) -> String {
 }
 
 fn is_plate_relight_debug(request: &WgpuFrameRenderRequest<'_>) -> bool {
-    amigo_relight_2d_plugin::is_plate_relight_render_debug_view(&request.camera_debug_view)
+    request
+        .camera_debug_view
+        .as_str()
+        .starts_with("relight.plate.")
 }
 
 fn set_status(

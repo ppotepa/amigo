@@ -117,7 +117,11 @@ pub(super) fn execute_post_fx_graph_node(
         return renderer.copy_offscreen_to_offscreen(target, &source);
     }
 
-    if amigo_relight_2d_plugin::is_plate_relight_render_debug_view(&request.camera_debug_view) {
+    if request
+        .camera_debug_view
+        .as_str()
+        .starts_with("relight.plate.")
+    {
         return renderer.copy_offscreen_to_offscreen(target, &source);
     }
 
