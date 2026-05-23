@@ -149,14 +149,12 @@ pub(super) fn append_camera_optical_candidate_texture_buffers(
         let Some(channel) = lightmap.channels.iter().find(|entry| &entry.id == channel) else {
             continue;
         };
-        let Some(layered) = request.world_2d.renderables.iter().find_map(|item| match &item.primitive {
-            RenderPrimitive2d::LayeredTexturedQuads(layered)
-                if item.owner_entity() == lightmap.source.entity_name =>
-            {
-                Some(layered)
-            }
-            _ => None,
-        })
+        let Some(layered) = request
+            .world_2d
+            .renderables
+            .iter()
+            .find(|item| item.owner_entity() == lightmap.source.entity_name)
+            .and_then(|item| item.primitive.layered_textured_quads())
         else {
             continue;
         };
@@ -217,13 +215,13 @@ fn append_camera_optical_candidate_color_buffers(
                 emitter_entity_name,
             } => {
                 for renderable in request.world_2d.renderables.iter().filter(|item| {
-                    matches!(
-                        &item.primitive,
-                        RenderPrimitive2d::ParticleBatch(primitive)
-                            if &primitive.emitter_entity_name == emitter_entity_name
-                    )
+                    item.primitive
+                        .particle_batch()
+                        .is_some_and(|primitive| {
+                            &primitive.emitter_entity_name == emitter_entity_name
+                        })
                 }) {
-                    let RenderPrimitive2d::ParticleBatch(command) = &renderable.primitive else {
+                    let Some(command) = renderable.primitive.particle_batch() else {
                         continue;
                     };
                     util::append_visual_quad(
@@ -248,9 +246,9 @@ fn append_camera_optical_candidate_color_buffers(
                 for renderable in request.world_2d.renderables.iter().filter(|item| {
                     item.owner_entity() == entity_name
                         && item.render_layer() == render_layer
-                        && matches!(item.primitive, RenderPrimitive2d::GlyphRun(_))
+                        && item.primitive.glyph_run().is_some()
                 }) {
-                    let RenderPrimitive2d::GlyphRun(command) = &renderable.primitive else {
+                    let Some(command) = renderable.primitive.glyph_run() else {
                         continue;
                     };
                     util::append_visual_quad(
@@ -271,9 +269,9 @@ fn append_camera_optical_candidate_color_buffers(
                 for renderable in request.world_2d.renderables.iter().filter(|item| {
                     item.owner_entity() == entity_name
                         && item.render_layer() == render_layer
-                        && matches!(item.primitive, RenderPrimitive2d::TexturedQuad(_))
+                        && item.primitive.textured_quad().is_some()
                 }) {
-                    let RenderPrimitive2d::TexturedQuad(command) = &renderable.primitive else {
+                    let Some(command) = renderable.primitive.textured_quad() else {
                         continue;
                     };
                     util::append_visual_quad(
@@ -294,9 +292,9 @@ fn append_camera_optical_candidate_color_buffers(
                 for renderable in request.world_2d.renderables.iter().filter(|item| {
                     item.owner_entity() == entity_name
                         && item.render_layer() == render_layer
-                        && matches!(item.primitive, RenderPrimitive2d::VectorMesh(_))
+                        && item.primitive.vector_mesh().is_some()
                 }) {
-                    let RenderPrimitive2d::VectorMesh(command) = &renderable.primitive else {
+                    let Some(command) = renderable.primitive.vector_mesh() else {
                         continue;
                     };
                     crate::renderer::world_2d::append_vector_primitive_vertices(

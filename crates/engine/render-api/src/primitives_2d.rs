@@ -410,6 +410,41 @@ impl RenderPrimitive2d {
         }
     }
 
+    pub fn textured_quad(&self) -> Option<&TexturedQuad2dPrimitive> {
+        match self {
+            Self::TexturedQuad(primitive) => Some(primitive),
+            _ => None,
+        }
+    }
+
+    pub fn glyph_run(&self) -> Option<&GlyphRun2dPrimitive> {
+        match self {
+            Self::GlyphRun(primitive) => Some(primitive),
+            _ => None,
+        }
+    }
+
+    pub fn vector_mesh(&self) -> Option<&VectorShape2dPrimitive> {
+        match self {
+            Self::VectorMesh(primitive) => Some(primitive),
+            _ => None,
+        }
+    }
+
+    pub fn particle_batch(&self) -> Option<&Particle2dPrimitive> {
+        match self {
+            Self::ParticleBatch(primitive) => Some(primitive),
+            _ => None,
+        }
+    }
+
+    pub fn radial_light_visual(&self) -> Option<&BeaconLight2dPrimitive> {
+        match self {
+            Self::RadialLightVisual(primitive) => Some(primitive),
+            _ => None,
+        }
+    }
+
     pub fn proxy_quad_transform(&self) -> Option<Transform2> {
         match self {
             Self::TexturedQuad(primitive) => Some(primitive.transform),
