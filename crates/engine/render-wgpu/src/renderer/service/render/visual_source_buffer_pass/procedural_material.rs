@@ -69,18 +69,26 @@ fn append_renderable_material_proxy(
     kind: amigo_render_api::VisualSourceKind2d,
     item: &Renderable2dItem,
 ) {
-    match &item.primitive {
-        RenderPrimitive2d::TileBatch(primitive) => util::append_visual_quad(
+    if let (Some(transform), Some(size)) = (
+        item.primitive.proxy_quad_transform(),
+        item.primitive.proxy_quad_size(),
+    ) {
+        let source_color = item
+            .primitive
+            .proxy_quad_color()
+            .unwrap_or(ColorRgba::new(0.08, 0.08, 0.09, 1.0));
+        util::append_visual_quad(
             color_batches,
             viewport,
             camera,
-            Transform2 {
-                translation: primitive.origin_offset,
-                ..Transform2::default()
-            },
-            util::tilemap_primitive_draw_size(primitive),
-            material_color_for_kind(kind, ColorRgba::new(0.08, 0.08, 0.09, 1.0)),
-        ),
+            transform,
+            size,
+            material_color_for_kind(kind, source_color),
+        );
+        return;
+    }
+
+    match &item.primitive {
         RenderPrimitive2d::VectorMesh(primitive) => {
             let source_color = primitive
                 .style
@@ -97,41 +105,6 @@ fn append_renderable_material_proxy(
                 Some(color),
             );
         }
-        RenderPrimitive2d::GlyphRun(primitive) => util::append_visual_quad(
-            color_batches,
-            viewport,
-            camera,
-            primitive.transform,
-            primitive.bounds,
-            material_color_for_kind(kind, primitive.color),
-        ),
-        RenderPrimitive2d::RadialLightVisual(primitive) => util::append_visual_quad(
-            color_batches,
-            viewport,
-            camera,
-            Transform2 {
-                translation: primitive.center,
-                rotation_radians: primitive.rotation_radians,
-                scale: Vec2::new(1.0, 1.0),
-            },
-            Vec2::new(
-                primitive.halo_radius_px.max(primitive.core_radius_px) * 2.0,
-                primitive.halo_radius_px.max(primitive.core_radius_px) * 2.0,
-            ),
-            material_color_for_kind(kind, primitive.color),
-        ),
-        RenderPrimitive2d::ParticleBatch(primitive) => util::append_visual_quad(
-            color_batches,
-            viewport,
-            camera,
-            Transform2 {
-                translation: primitive.position,
-                rotation_radians: primitive.transform.rotation_radians,
-                scale: primitive.transform.scale,
-            },
-            Vec2::new(primitive.size.max(1.0), primitive.size.max(1.0)),
-            material_color_for_kind(kind, primitive.color),
-        ),
         _ => {}
     }
 }

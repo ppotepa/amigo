@@ -151,75 +151,60 @@ fn append_renderable_motion(
     item: &Renderable2dItem,
     index: usize,
 ) {
+    if let (Some(transform), Some(size)) = (
+        item.primitive.proxy_quad_transform(),
+        item.primitive.proxy_quad_size(),
+    ) {
+        let (key, current, previous) = match &item.primitive {
+            RenderPrimitive2d::TileBatch(_) => {
+                let key = format!("tilemap:{}", item.owner_entity());
+                let current = transform.translation;
+                let previous = renderer.visual_source_previous_positions_2d.get(&key).copied();
+                (key, current, previous)
+            }
+            RenderPrimitive2d::TexturedQuad(_) => {
+                let key = format!("quad:{}:{}", item.component_kind(), item.owner_entity());
+                let current = transform.translation;
+                let previous = renderer.visual_source_previous_positions_2d.get(&key).copied();
+                (key, current, previous)
+            }
+            RenderPrimitive2d::LayeredTexturedQuads(_) => {
+                let key = format!("layered_image:{}", item.owner_entity());
+                let current = transform.translation;
+                let previous = renderer.visual_source_previous_positions_2d.get(&key).copied();
+                (key, current, previous)
+            }
+            RenderPrimitive2d::GlyphRun(_) => {
+                let key = format!("text2d:{}", item.owner_entity());
+                let current = transform.translation;
+                let previous = renderer.visual_source_previous_positions_2d.get(&key).copied();
+                (key, current, previous)
+            }
+            RenderPrimitive2d::RadialLightVisual(_) => {
+                let key = format!("beacon:{}", item.owner_entity());
+                let current = transform.translation;
+                let previous = renderer.visual_source_previous_positions_2d.get(&key).copied();
+                (key, current, previous)
+            }
+            RenderPrimitive2d::ParticleBatch(primitive) => {
+                let key = format!("particle:{}:{index}", primitive.emitter_entity_name);
+                (key, primitive.position, Some(primitive.previous_position))
+            }
+            RenderPrimitive2d::VectorMesh(_) => unreachable!("vector mesh handled below"),
+        };
+        current_positions.insert(key, current);
+        util::append_visual_quad(
+            color_batches,
+            viewport,
+            camera,
+            transform,
+            size,
+            motion_vector_color(previous, current, target_size),
+        );
+        return;
+    }
+
     match &item.primitive {
-        RenderPrimitive2d::TileBatch(primitive) => {
-            let transform = Transform2 {
-                translation: primitive.origin_offset,
-                ..Transform2::default()
-            };
-            let key = format!("tilemap:{}", item.owner_entity());
-            current_positions.insert(key.clone(), transform.translation);
-            util::append_visual_quad(
-                color_batches,
-                viewport,
-                camera,
-                transform,
-                util::tilemap_primitive_draw_size(primitive),
-                motion_vector_color(
-                    renderer.visual_source_previous_positions_2d.get(&key).copied(),
-                    transform.translation,
-                    target_size,
-                ),
-            );
-        }
-        RenderPrimitive2d::TexturedQuad(primitive) => {
-            let key = format!("quad:{}:{}", item.component_kind(), item.owner_entity());
-            current_positions.insert(key.clone(), primitive.transform.translation);
-            util::append_visual_quad(
-                color_batches,
-                viewport,
-                camera,
-                primitive.transform,
-                primitive.size,
-                motion_vector_color(
-                    renderer.visual_source_previous_positions_2d.get(&key).copied(),
-                    primitive.transform.translation,
-                    target_size,
-                ),
-            );
-        }
-        RenderPrimitive2d::LayeredTexturedQuads(primitive) => {
-            let key = format!("layered_image:{}", item.owner_entity());
-            current_positions.insert(key.clone(), primitive.transform.translation);
-            util::append_visual_quad(
-                color_batches,
-                viewport,
-                camera,
-                primitive.transform,
-                primitive.size,
-                motion_vector_color(
-                    renderer.visual_source_previous_positions_2d.get(&key).copied(),
-                    primitive.transform.translation,
-                    target_size,
-                ),
-            );
-        }
-        RenderPrimitive2d::GlyphRun(primitive) => {
-            let key = format!("text2d:{}", item.owner_entity());
-            current_positions.insert(key.clone(), primitive.transform.translation);
-            util::append_visual_quad(
-                color_batches,
-                viewport,
-                camera,
-                primitive.transform,
-                primitive.bounds,
-                motion_vector_color(
-                    renderer.visual_source_previous_positions_2d.get(&key).copied(),
-                    primitive.transform.translation,
-                    target_size,
-                ),
-            );
-        }
         RenderPrimitive2d::VectorMesh(primitive) => {
             let transform =
                 crate::renderer::world_2d::vector_primitive_viewport_fit_transform(viewport, primitive);
@@ -240,45 +225,7 @@ fn append_renderable_motion(
                 Some(color),
             );
         }
-        RenderPrimitive2d::RadialLightVisual(primitive) => {
-            let key = format!("beacon:{}", item.owner_entity());
-            current_positions.insert(key.clone(), primitive.center);
-            util::append_visual_quad(
-                color_batches,
-                viewport,
-                camera,
-                Transform2 {
-                    translation: primitive.center,
-                    rotation_radians: primitive.rotation_radians,
-                    scale: Vec2::new(1.0, 1.0),
-                },
-                Vec2::new(
-                    primitive.halo_radius_px.max(primitive.core_radius_px) * 2.0,
-                    primitive.halo_radius_px.max(primitive.core_radius_px) * 2.0,
-                ),
-                motion_vector_color(
-                    renderer.visual_source_previous_positions_2d.get(&key).copied(),
-                    primitive.center,
-                    target_size,
-                ),
-            );
-        }
-        RenderPrimitive2d::ParticleBatch(primitive) => {
-            let key = format!("particle:{}:{index}", primitive.emitter_entity_name);
-            current_positions.insert(key, primitive.position);
-            util::append_visual_quad(
-                color_batches,
-                viewport,
-                camera,
-                Transform2 {
-                    translation: primitive.position,
-                    rotation_radians: primitive.transform.rotation_radians,
-                    scale: primitive.transform.scale,
-                },
-                Vec2::new(primitive.size.max(1.0), primitive.size.max(1.0)),
-                motion_vector_color(Some(primitive.previous_position), primitive.position, target_size),
-            );
-        }
+        _ => {}
     }
 }
 

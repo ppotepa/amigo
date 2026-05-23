@@ -409,4 +409,63 @@ impl RenderPrimitive2d {
             _ => None,
         }
     }
+
+    pub fn proxy_quad_transform(&self) -> Option<Transform2> {
+        match self {
+            Self::TexturedQuad(primitive) => Some(primitive.transform),
+            Self::GlyphRun(primitive) => Some(primitive.transform),
+            Self::TileBatch(primitive) => Some(Transform2 {
+                translation: primitive.origin_offset,
+                ..Transform2::default()
+            }),
+            Self::LayeredTexturedQuads(primitive) => Some(primitive.transform),
+            Self::RadialLightVisual(primitive) => Some(Transform2 {
+                translation: primitive.center,
+                rotation_radians: primitive.rotation_radians,
+                scale: Vec2::new(1.0, 1.0),
+            }),
+            Self::ParticleBatch(primitive) => Some(Transform2 {
+                translation: primitive.position,
+                rotation_radians: primitive.transform.rotation_radians,
+                scale: primitive.transform.scale,
+            }),
+            Self::VectorMesh(_) => None,
+        }
+    }
+
+    pub fn proxy_quad_size(&self) -> Option<Vec2> {
+        match self {
+            Self::TexturedQuad(primitive) => Some(primitive.size),
+            Self::GlyphRun(primitive) => Some(primitive.bounds),
+            Self::TileBatch(primitive) => Some(Vec2::new(
+                primitive
+                    .grid
+                    .iter()
+                    .map(|row| row.chars().count())
+                    .max()
+                    .unwrap_or(1) as f32
+                    * primitive.tile_size.x.max(1.0),
+                primitive.grid.len().max(1) as f32 * primitive.tile_size.y.max(1.0),
+            )),
+            Self::LayeredTexturedQuads(primitive) => Some(primitive.size),
+            Self::RadialLightVisual(primitive) => {
+                let radius = primitive.halo_radius_px.max(primitive.core_radius_px) * 2.0;
+                Some(Vec2::new(radius, radius))
+            }
+            Self::ParticleBatch(primitive) => {
+                let size = primitive.size.max(1.0);
+                Some(Vec2::new(size, size))
+            }
+            Self::VectorMesh(_) => None,
+        }
+    }
+
+    pub fn proxy_quad_color(&self) -> Option<ColorRgba> {
+        match self {
+            Self::GlyphRun(primitive) => Some(primitive.color),
+            Self::RadialLightVisual(primitive) => Some(primitive.color),
+            Self::ParticleBatch(primitive) => Some(primitive.color),
+            _ => None,
+        }
+    }
 }
