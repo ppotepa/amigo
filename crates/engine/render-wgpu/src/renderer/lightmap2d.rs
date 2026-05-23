@@ -706,32 +706,30 @@ fn inverse_transform_point_2d(point: Vec2, transform: Transform2) -> Vec2 {
 mod tests {
     use super::*;
     use amigo_2d_composition::LightRoute2dCommand;
-    use amigo_light_2d_plugin::{
-        LightReceiver2dBinding, LightReceiverDarkPolicy2d, LightReceiverGlobalLight2d,
-        LightSampleStrategy2d, Material2dLightingMode,
+    use amigo_render_api::{
+        LightContributionKind2d, LightReceiver2dBindingPrimitive,
+        LightReceiverDarkPolicy2dPrimitive, LightReceiverGlobalLight2dPrimitive,
+        LightSampleStrategy2dPrimitive, LightSource2dCommonParams, Particle2dPrimitive,
+        ParticleBlendMode2dPrimitive, ParticleLineAnchor2dPrimitive,
+        ParticleMaterial2dPrimitive, ParticleMaterialLightingMode2dPrimitive,
+        ParticleShape2dPrimitive,
     };
-    use amigo_particles_2d_plugin::{
-        ParticleBlendMode2d as PluginParticleBlendMode2d,
-        ParticleLineAnchor2d as PluginParticleLineAnchor2d, ParticleShape2d,
-    };
-    use amigo_render_api::{LightContributionKind2d, LightSource2dCommonParams};
 
-    fn particle_with_binding(binding: LightReceiver2dBinding) -> Particle2dPrimitive {
-        let command = amigo_particles_2d_plugin::Particle2dDrawCommand {
+    fn particle_with_binding(binding: LightReceiver2dBindingPrimitive) -> Particle2dPrimitive {
+        Particle2dPrimitive {
             emitter_entity_name: "rain".to_owned(),
+            render_layer: "default".to_owned(),
             previous_position: Vec2::ZERO,
             position: Vec2::ZERO,
             velocity: Vec2::ZERO,
             size: 1.0,
             color: ColorRgba::new(1.0, 1.0, 1.0, 0.25),
-            render_layer: "default".to_owned(),
-            z_index: 0.0,
-            shape: ParticleShape2d::Line { length: 8.0 },
-            line_anchor: PluginParticleLineAnchor2d::Center,
-            blend_mode: PluginParticleBlendMode2d::Screen,
+            shape: ParticleShape2dPrimitive::Line { length: 8.0 },
+            line_anchor: ParticleLineAnchor2dPrimitive::Center,
+            blend_mode: ParticleBlendMode2dPrimitive::Screen,
             motion_stretch: None,
-            material: amigo_particles_2d_plugin::ParticleMaterial2d {
-                lighting_mode: Material2dLightingMode::LightMapSampled,
+            material: ParticleMaterial2dPrimitive {
+                lighting_mode: ParticleMaterialLightingMode2dPrimitive::LightMapSampled,
                 receives_light: true,
                 light_response: 1.0,
                 light_receiver: Some(binding),
@@ -739,23 +737,19 @@ mod tests {
             light: None,
             light_position: None,
             transform: Transform2::default(),
-        };
-        match amigo_particles_2d_plugin::render::particle_draw_command_to_render_primitive(&command) {
-            RenderPrimitive2d::ParticleBatch(primitive) => primitive,
-            _ => unreachable!("particle draw command should map to particle primitive"),
         }
     }
 
-    fn binding(channel: &str) -> LightReceiver2dBinding {
-        LightReceiver2dBinding {
+    fn binding(channel: &str) -> LightReceiver2dBindingPrimitive {
+        LightReceiver2dBindingPrimitive {
             groups: Vec::new(),
             source: "test-lightmap".to_owned(),
             channel: channel.to_owned(),
-            sample_strategy: LightSampleStrategy2d::Point,
+            sample_strategy: LightSampleStrategy2dPrimitive::Point,
             sample_points: 1,
             radius_px: 0.0,
             exposure: 1.0,
-            dark_policy: LightReceiverDarkPolicy2d::Transparent,
+            dark_policy: LightReceiverDarkPolicy2dPrimitive::Transparent,
             global_lights: Vec::new(),
         }
     }
@@ -857,7 +851,7 @@ mod tests {
     #[test]
     fn base_color_dark_policy_preserves_particle_color_in_darkness() {
         let mut binding = binding("near");
-        binding.dark_policy = LightReceiverDarkPolicy2d::BaseColor;
+        binding.dark_policy = LightReceiverDarkPolicy2dPrimitive::BaseColor;
 
         let color = lit_particle_color(&particle_with_binding(binding), &[], &[], &[], &[]);
 
@@ -867,7 +861,7 @@ mod tests {
     #[test]
     fn shadow_tint_dark_policy_keeps_dim_particle_color_in_darkness() {
         let mut binding = binding("near");
-        binding.dark_policy = LightReceiverDarkPolicy2d::ShadowTint;
+        binding.dark_policy = LightReceiverDarkPolicy2dPrimitive::ShadowTint;
 
         let color = lit_particle_color(&particle_with_binding(binding), &[], &[], &[], &[]);
 
@@ -887,7 +881,7 @@ mod tests {
     #[test]
     fn global_light_can_light_particle_without_lightmap_sample() {
         let mut binding = binding("near");
-        binding.global_lights = vec![LightReceiverGlobalLight2d {
+        binding.global_lights = vec![LightReceiverGlobalLight2dPrimitive {
             id: "lightning".to_owned(),
             response: 1.0,
         }];

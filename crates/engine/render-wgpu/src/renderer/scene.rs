@@ -141,72 +141,58 @@ pub(crate) fn render_layer_lookup(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use amigo_render_api::RenderSpace2d;
-    use amigo_sprite_2d_plugin::{Sprite, SpriteDrawCommand};
-    use amigo_text_2d_plugin::{Text2d, Text2dDrawCommand, Text2dStyle};
     use amigo_assets::AssetKey;
-    use amigo_scene::SceneEntityId;
+    use amigo_material_api::MaterialCoverageKind2d;
+    use amigo_render_api::{
+        GlyphRun2dBlendMode, GlyphRun2dPrimitive, RenderMaterialBinding2d, RenderPrimitive2d,
+        RenderSpace2d, Renderable2dCommon, Renderable2dKind, TexturedQuad2dPrimitive,
+    };
 
     fn sprite_item(render_layer: &str, z_index: f32) -> Renderable2dItem {
-        let command = SpriteDrawCommand {
-            entity_id: SceneEntityId::new(1),
-            entity_name: format!("sprite-{render_layer}"),
-            sprite: Sprite {
-                texture: AssetKey::new("test/sprite"),
-                size: Vec2::new(16.0, 16.0),
-                sheet: None,
-                sheet_is_explicit: false,
-                animation_override: None,
-                visual_maps: None,
-                frame_index: 0,
-                frame_elapsed: 0.0,
-            },
-            render_layer: render_layer.to_owned(),
-            z_index,
-            transform: Transform2::default(),
-            material: None,
-            render_contributions: amigo_render_api::RenderContributionSet::default(),
-        };
         Renderable2dItem::new(
-            amigo_render_api::Renderable2dCommon {
-                owner_entity: command.entity_name.clone(),
+            Renderable2dCommon {
+                owner_entity: format!("sprite-{render_layer}"),
                 component_kind: "Sprite2D".to_owned(),
                 render_space: RenderSpace2d::World,
-                render_layer: command.render_layer.clone(),
-                z_index: command.z_index,
-                kind: amigo_render_api::Renderable2dKind::Sprite,
+                render_layer: render_layer.to_owned(),
+                z_index,
+                kind: Renderable2dKind::Sprite,
             },
-            amigo_sprite_2d_plugin::render::sprite_draw_command_to_render_primitive(&command),
+            RenderPrimitive2d::TexturedQuad(TexturedQuad2dPrimitive {
+                texture: AssetKey::new("test/sprite"),
+                size: Vec2::new(16.0, 16.0),
+                transform: Transform2::default(),
+                sheet: None,
+                frame_index: 0,
+                visual_maps: None,
+                material: RenderMaterialBinding2d::none(MaterialCoverageKind2d::TextureAlpha),
+            }),
         )
     }
 
     fn text_item(render_layer: &str, z_index: f32) -> Renderable2dItem {
-        let command = Text2dDrawCommand {
-            entity_id: SceneEntityId::new(2),
-            entity_name: format!("text-{render_layer}"),
-            render_layer: render_layer.to_owned(),
-            text: Text2d {
-                content: "title".to_owned(),
-                font: AssetKey::new("test/font"),
-                bounds: Vec2::new(200.0, 60.0),
-                transform: Transform2::default(),
-                style: Text2dStyle::default(),
-                post_fx_host_id: None,
-            },
-            z_index,
-            material: None,
-            render_contributions: amigo_render_api::RenderContributionSet::default(),
-        };
         Renderable2dItem::new(
-            amigo_render_api::Renderable2dCommon {
-                owner_entity: command.entity_name.clone(),
+            Renderable2dCommon {
+                owner_entity: format!("text-{render_layer}"),
                 component_kind: "Text2D".to_owned(),
                 render_space: RenderSpace2d::World,
-                render_layer: command.render_layer.clone(),
-                z_index: command.z_index,
-                kind: amigo_render_api::Renderable2dKind::Text,
+                render_layer: render_layer.to_owned(),
+                z_index,
+                kind: Renderable2dKind::Text,
             },
-            amigo_text_2d_plugin::render::text_draw_command_to_render_primitive(&command),
+            RenderPrimitive2d::GlyphRun(GlyphRun2dPrimitive {
+                font: AssetKey::new("test/font"),
+                text: "title".to_owned(),
+                bounds: Vec2::new(200.0, 60.0),
+                transform: Transform2::default(),
+                color: ColorRgba::WHITE,
+                font_size: Some(24.0),
+                blend: GlyphRun2dBlendMode::Alpha,
+                shadow: None,
+                outline: None,
+                glow: None,
+                material: RenderMaterialBinding2d::none(MaterialCoverageKind2d::Glyphs),
+            }),
         )
     }
 
