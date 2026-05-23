@@ -9,6 +9,10 @@ fn read(path: impl AsRef<Path>) -> String {
     fs::read_to_string(path).expect("file should be readable")
 }
 
+fn cargo_toml() -> PathBuf {
+    crate_root().join("Cargo.toml")
+}
+
 fn walk_rs_files(root: &Path, out: &mut Vec<PathBuf>) {
     for entry in fs::read_dir(root).expect("directory should be readable") {
         let entry = entry.expect("dir entry should be readable");
@@ -83,4 +87,25 @@ fn render_wgpu_live_path_does_not_import_2d_plugin_render_models() {
             );
         }
     }
+}
+
+#[test]
+fn render_wgpu_source_tree_does_not_import_plugin_crates() {
+    for path in render_wgpu_rs_files() {
+        let content = read(&path);
+        assert!(
+            !content.contains("_plugin"),
+            "render-wgpu source tree should not import plugin crates in {}",
+            path.display()
+        );
+    }
+}
+
+#[test]
+fn render_wgpu_cargo_toml_does_not_depend_on_plugin_crates() {
+    let cargo = read(cargo_toml());
+    assert!(
+        !cargo.contains("-plugin"),
+        "render-wgpu Cargo.toml should not depend on plugin crates",
+    );
 }
