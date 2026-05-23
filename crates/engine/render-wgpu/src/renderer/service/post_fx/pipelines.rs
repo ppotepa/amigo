@@ -3,6 +3,17 @@ use std::collections::BTreeMap;
 use crate::renderer::TextureVertex;
 use crate::renderer::pipelines::create_color_pipeline;
 
+#[path = "pipelines/camera_exposure.rs"]
+mod camera_exposure;
+#[path = "pipelines/camera_optics.rs"]
+mod camera_optics;
+#[path = "pipelines/focus_blur.rs"]
+mod focus_blur;
+
+pub(crate) use camera_exposure::CameraExposurePipelineProvider;
+pub(crate) use camera_optics::CameraOpticsPipelineProvider;
+pub(crate) use focus_blur::FocusBlurPipelineProvider;
+
 pub(crate) struct WgpuPostFxPipelineCreateContext<'a> {
     pub(crate) device: &'a wgpu::Device,
     pub(crate) format: wgpu::TextureFormat,
@@ -82,9 +93,6 @@ pub(crate) fn build_default_post_fx_pipelines(
     registry.into_pipelines()
 }
 
-pub(crate) struct CameraExposurePipelineProvider;
-pub(crate) struct CameraOpticsPipelineProvider;
-pub(crate) struct FocusBlurPipelineProvider;
 pub(crate) struct FilmEmulsionPipelineProvider;
 pub(crate) struct FilmNoisePipelineProvider;
 pub(crate) struct ScanOutputPipelineProvider;
@@ -97,93 +105,6 @@ pub(crate) struct CrtPipelineProvider;
 pub(crate) struct WetReflectionsPipelineProvider;
 pub(crate) struct PlateRelightPipelineProvider;
 pub(crate) struct RefractiveMaterialPipelineProvider;
-
-impl WgpuPostFxPipelineProvider for CameraExposurePipelineProvider {
-    fn pipeline_id(&self) -> &'static str {
-        crate::renderer::service::POST_FX_EXECUTOR_CAMERA_EXPOSURE
-    }
-
-    fn create_pipeline(
-        &self,
-        ctx: &WgpuPostFxPipelineCreateContext<'_>,
-    ) -> wgpu::RenderPipeline {
-        let layout = ctx
-            .device
-            .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                label: Some("amigo-scene-camera-exposure-pipeline-layout"),
-                bind_group_layouts: &[
-                    Some(ctx.texture_bind_group_layout),
-                    Some(ctx.wet_reflections_uniform_bind_group_layout),
-                ],
-                immediate_size: 0,
-            });
-        create_copy_blend_pipeline(
-            ctx.device,
-            ctx.camera_exposure_shader,
-            &layout,
-            ctx.format,
-            "amigo-scene-camera-exposure-pipeline",
-        )
-    }
-}
-
-impl WgpuPostFxPipelineProvider for CameraOpticsPipelineProvider {
-    fn pipeline_id(&self) -> &'static str {
-        crate::renderer::service::POST_FX_EXECUTOR_CAMERA_OPTICS
-    }
-
-    fn create_pipeline(
-        &self,
-        ctx: &WgpuPostFxPipelineCreateContext<'_>,
-    ) -> wgpu::RenderPipeline {
-        let layout = ctx
-            .device
-            .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                label: Some("amigo-scene-camera-optics-pipeline-layout"),
-                bind_group_layouts: &[
-                    Some(ctx.camera_visual_source_bind_group_layout),
-                    Some(ctx.wet_reflections_uniform_bind_group_layout),
-                ],
-                immediate_size: 0,
-            });
-        create_copy_blend_pipeline(
-            ctx.device,
-            ctx.camera_optics_shader,
-            &layout,
-            ctx.format,
-            "amigo-scene-camera-optics-pipeline",
-        )
-    }
-}
-
-impl WgpuPostFxPipelineProvider for FocusBlurPipelineProvider {
-    fn pipeline_id(&self) -> &'static str {
-        crate::renderer::service::POST_FX_EXECUTOR_FOCUS_BLUR
-    }
-
-    fn create_pipeline(
-        &self,
-        ctx: &WgpuPostFxPipelineCreateContext<'_>,
-    ) -> wgpu::RenderPipeline {
-        let layout = ctx
-            .device
-            .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                label: Some("amigo-scene-focus-blur-pipeline-layout"),
-                bind_group_layouts: &[
-                    Some(ctx.focus_blur_texture_bind_group_layout),
-                    Some(ctx.wet_reflections_uniform_bind_group_layout),
-                ],
-                immediate_size: 0,
-            });
-        create_copy_blend_pipeline(
-            ctx.device,
-            ctx.focus_blur_shader,
-            &layout,
-            ctx.format,
-            "amigo-scene-focus-blur-pipeline",
-        )
-    }
-}
 
 impl WgpuPostFxPipelineProvider for FilmEmulsionPipelineProvider {
     fn pipeline_id(&self) -> &'static str {
@@ -470,7 +391,7 @@ impl WgpuPostFxPipelineProvider for RefractiveMaterialPipelineProvider {
     }
 }
 
-fn create_copy_blend_pipeline(
+pub(super) fn create_copy_blend_pipeline(
     device: &wgpu::Device,
     shader: &wgpu::ShaderModule,
     layout: &wgpu::PipelineLayout,
