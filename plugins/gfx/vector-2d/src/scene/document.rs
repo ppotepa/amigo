@@ -1,11 +1,13 @@
+use std::any::Any;
+
 use serde::{Deserialize, Serialize};
 use serde_yaml::Value;
 
 use amigo_material_api::Material2dDocument;
 use amigo_scene::{
     RenderContributionsDocument, SceneComponentDocument, SceneComponentSchemaProvider,
-    SceneDocumentError, SceneDocumentResult, SceneVectorShapeKindComponentDocument,
-    SceneVec2Document,
+    SceneComponentPayload, SceneDocumentError, SceneDocumentResult,
+    SceneVectorShapeKindComponentDocument, SceneVec2Document,
 };
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
@@ -74,6 +76,16 @@ impl Vector2dDocument {
     }
 }
 
+impl SceneComponentPayload for Vector2dDocument {
+    fn component_type(&self) -> &'static str {
+        "amigo.gfx.vector-2d.VectorShape2D"
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+}
+
 pub fn parse_vector_2d_plugin_payload(payload: &Value) -> SceneDocumentResult<Vector2dDocument> {
     serde_yaml::from_value::<Vector2dDocument>(payload.clone())
         .map_err(|source| SceneDocumentError::Parse { path: None, source })
@@ -93,6 +105,13 @@ impl SceneComponentSchemaProvider for Vector2dSceneSchemaProvider {
 
     fn parse_yaml(&self, payload: serde_yaml::Mapping) -> Result<Value, serde_yaml::Error> {
         serde_yaml::to_value(serde_yaml::from_value::<Vector2dDocument>(Value::Mapping(payload))?)
+    }
+
+    fn parse_payload_value(
+        &self,
+        payload: &Value,
+    ) -> SceneDocumentResult<Box<dyn SceneComponentPayload>> {
+        Ok(Box::new(parse_vector_2d_plugin_payload(payload)?))
     }
 }
 

@@ -2,6 +2,10 @@ use crate::renderer::service::post_fx::apply_cached_image_post_fx_rgba;
 use crate::renderer::*;
 use std::collections::BTreeSet;
 
+use amigo_render_api::{
+    LayeredImageAsset, LayeredImageBlendMode2d, LayeredImageViewportFit2d,
+};
+
 impl WgpuSceneRenderer {
     pub(crate) fn append_textured_quad_texture_batch(
         &mut self,
@@ -343,13 +347,12 @@ impl WgpuSceneRenderer {
     ) -> Option<&CachedTextureResource> {
         let image_path = resolve_image_path(prepared)?;
         let linear_sampling = metadata_bool(prepared, "sampling.linear")
-            .unwrap_or(false)
             || prepared
                 .metadata
                 .get("sampling")
                 .map(|value| value.eq_ignore_ascii_case("linear"))
                 .unwrap_or(false);
-        let alpha_from_ink = metadata_bool(prepared, "alpha_from_ink").unwrap_or(false);
+        let alpha_from_ink = metadata_bool(prepared, "alpha_from_ink");
         self.ensure_texture_from_path(
             device,
             queue,

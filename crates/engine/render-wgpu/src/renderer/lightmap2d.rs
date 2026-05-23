@@ -1,5 +1,6 @@
 use crate::renderer::*;
 use amigo_render_api::{
+    LayeredImageAsset, LayeredImageBlendMode2d, LayeredImageViewportFit2d,
     LightEmitterKind2d, LightSource2dCommon,
     LightReceiver2dBindingPrimitive, LightReceiverDarkPolicy2dPrimitive,
     LightSampleStrategy2dPrimitive, Particle2dPrimitive,

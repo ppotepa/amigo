@@ -14,8 +14,6 @@ mod text;
 mod tilemap;
 mod vector;
 
-use crate::render_extractor_registry::WgpuRenderExtractorBridgeRegistry;
-
 pub fn register_world_2d_render_extractors(
     registry: &mut crate::render_extractor_bridges::context::WgpuRenderExtractorRegistry,
 ) {
@@ -32,19 +30,20 @@ pub fn register_world_2d_render_extractors(
     particles::register(registry);
 }
 
-pub fn register_world_2d_plugin_render_extractor_bridge_installers(
-    bridges: &WgpuRenderExtractorBridgeRegistry,
-) {
-    tilemap::register_installer(bridges);
-    sprite::register_installer(bridges);
-    layered_image::register_installer(bridges);
-    depth::register_installer(bridges);
-    vector::register_installer(bridges);
-    beacon::register_installer(bridges);
-    text::register_installer(bridges);
-    composition::register_installer(bridges);
-    lighting::register_installer(bridges);
-    particles::register_installer(bridges);
+pub fn world_2d_plugin_bridge_installers(
+) -> Vec<crate::render_extractor_registry::WgpuRenderExtractorBridgeInstaller> {
+    vec![
+        tilemap::installer(),
+        sprite::installer(),
+        layered_image::installer(),
+        depth::installer(),
+        vector::installer(),
+        beacon::installer(),
+        text::installer(),
+        composition::installer(),
+        lighting::installer(),
+        particles::installer(),
+    ]
 }
 
 pub fn register_world_2d_builtin_render_extractors(

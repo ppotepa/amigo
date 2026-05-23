@@ -4,19 +4,17 @@ use amigo_runtime::Runtime;
 use amigo_scene::SceneService;
 
 use crate::render_extractor_bridges::context::WgpuRenderExtractorRegistry;
-use crate::render_extractor_registry::WgpuRenderExtractorBridgeRegistry;
-
 use super::common::optional;
 
 pub fn register(registry: &mut WgpuRenderExtractorRegistry) {
     registry.register(WgpuTileMap2dRenderExtractorBridge);
 }
 
-pub(super) fn register_installer(bridges: &WgpuRenderExtractorBridgeRegistry) {
-    bridges.register(
-        amigo_tilemap_2d_plugin::render::TILEMAP_2D_EXTRACTOR_ID,
-        register,
-    );
+pub(super) fn installer() -> crate::render_extractor_registry::WgpuRenderExtractorBridgeInstaller {
+    crate::render_extractor_registry::WgpuRenderExtractorBridgeInstaller {
+        extractor_id: amigo_tilemap_2d_plugin::render::TILEMAP_2D_EXTRACTOR_ID,
+        install: register,
+    }
 }
 
 pub struct WgpuTileMap2dRenderExtractorBridge;

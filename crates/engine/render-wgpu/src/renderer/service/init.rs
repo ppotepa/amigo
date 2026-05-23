@@ -2356,10 +2356,12 @@ impl WgpuSceneRenderer {
                 plate_relight_shader: &plate_relight_shader,
                 refractive_material_shader: &refractive_material_shader,
             };
-        let post_fx_pipelines =
+        let mut pipelines = crate::renderer::service::pipeline_registry::WgpuPipelineRegistry::default();
+        pipelines.extend(
             crate::renderer::service::post_fx::pipelines::build_default_post_fx_pipelines(
                 &post_fx_pipeline_ctx,
-            );
+            ),
+        );
 
         Self {
             color_alpha_pipeline,
@@ -2378,7 +2380,7 @@ impl WgpuSceneRenderer {
             shutter_blur_texture_bind_group_layout,
             wet_reflections_texture_bind_group_layout,
             wet_reflections_uniform_bind_group_layout,
-            post_fx_pipelines,
+            pipelines,
             post_fx_executors: crate::renderer::service::post_fx::default_post_fx_executor_registry(),
             shutter_blur_runtimes: BTreeMap::new(),
             rain_glass_runtimes: BTreeMap::new(),

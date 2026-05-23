@@ -4,19 +4,17 @@ use amigo_runtime::Runtime;
 use amigo_scene::SceneService;
 
 use crate::render_extractor_bridges::context::WgpuRenderExtractorRegistry;
-use crate::render_extractor_registry::WgpuRenderExtractorBridgeRegistry;
-
 use super::common::optional;
 
 pub fn register(registry: &mut WgpuRenderExtractorRegistry) {
     registry.register(WgpuLayeredImage2dRenderExtractorBridge);
 }
 
-pub(super) fn register_installer(bridges: &WgpuRenderExtractorBridgeRegistry) {
-    bridges.register(
-        amigo_layered_image_2d_plugin::render::LAYERED_IMAGE_2D_EXTRACTOR_ID,
-        register,
-    );
+pub(super) fn installer() -> crate::render_extractor_registry::WgpuRenderExtractorBridgeInstaller {
+    crate::render_extractor_registry::WgpuRenderExtractorBridgeInstaller {
+        extractor_id: amigo_layered_image_2d_plugin::render::LAYERED_IMAGE_2D_EXTRACTOR_ID,
+        install: register,
+    }
 }
 
 pub struct WgpuLayeredImage2dRenderExtractorBridge;

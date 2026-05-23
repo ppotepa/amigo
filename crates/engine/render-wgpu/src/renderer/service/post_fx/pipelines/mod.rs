@@ -5,17 +5,35 @@ use crate::renderer::pipelines::create_color_pipeline;
 
 mod camera_exposure;
 mod camera_optics;
+mod color_quantize;
+mod crt;
+mod dirty_bloom;
+mod downscale;
 mod film_emulsion;
 mod film_noise;
 mod focus_blur;
+mod highlight_extract;
+mod plate_relight;
+mod refractive_material;
 mod scan_output;
+mod shutter_blur;
+mod wet_reflections;
 
 pub(crate) use camera_exposure::CameraExposurePipelineProvider;
 pub(crate) use camera_optics::CameraOpticsPipelineProvider;
+pub(crate) use color_quantize::ColorQuantizePipelineProvider;
+pub(crate) use crt::CrtPipelineProvider;
+pub(crate) use dirty_bloom::DirtyBloomPipelineProvider;
+pub(crate) use downscale::DownscalePipelineProvider;
 pub(crate) use film_emulsion::FilmEmulsionPipelineProvider;
 pub(crate) use film_noise::FilmNoisePipelineProvider;
 pub(crate) use focus_blur::FocusBlurPipelineProvider;
+pub(crate) use highlight_extract::HighlightExtractPipelineProvider;
+pub(crate) use plate_relight::PlateRelightPipelineProvider;
+pub(crate) use refractive_material::RefractiveMaterialPipelineProvider;
 pub(crate) use scan_output::ScanOutputPipelineProvider;
+pub(crate) use shutter_blur::ShutterBlurPipelineProvider;
+pub(crate) use wet_reflections::WetReflectionsPipelineProvider;
 
 pub(crate) struct WgpuPostFxPipelineCreateContext<'a> {
     pub(crate) device: &'a wgpu::Device,
@@ -94,214 +112,6 @@ pub(crate) fn build_default_post_fx_pipelines(
     registry.register(PlateRelightPipelineProvider, ctx);
     registry.register(RefractiveMaterialPipelineProvider, ctx);
     registry.into_pipelines()
-}
-
-pub(crate) struct ColorQuantizePipelineProvider;
-pub(crate) struct DownscalePipelineProvider;
-pub(crate) struct ShutterBlurPipelineProvider;
-pub(crate) struct DirtyBloomPipelineProvider;
-pub(crate) struct HighlightExtractPipelineProvider;
-pub(crate) struct CrtPipelineProvider;
-pub(crate) struct WetReflectionsPipelineProvider;
-pub(crate) struct PlateRelightPipelineProvider;
-pub(crate) struct RefractiveMaterialPipelineProvider;
-
-impl WgpuPostFxPipelineProvider for ColorQuantizePipelineProvider {
-    fn pipeline_id(&self) -> &'static str {
-        crate::renderer::service::POST_FX_EXECUTOR_COLOR_QUANTIZE
-    }
-
-    fn create_pipeline(
-        &self,
-        ctx: &WgpuPostFxPipelineCreateContext<'_>,
-    ) -> wgpu::RenderPipeline {
-        let layout = ctx
-            .device
-            .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                label: Some("amigo-scene-color-quantize-pipeline-layout"),
-                bind_group_layouts: &[
-                    Some(ctx.texture_bind_group_layout),
-                    Some(ctx.wet_reflections_uniform_bind_group_layout),
-                    Some(ctx.texture_bind_group_layout),
-                ],
-                immediate_size: 0,
-            });
-        create_copy_blend_pipeline(
-            ctx.device,
-            ctx.color_quantize_shader,
-            &layout,
-            ctx.format,
-            "amigo-scene-color-quantize-pipeline",
-        )
-    }
-}
-
-impl WgpuPostFxPipelineProvider for DownscalePipelineProvider {
-    fn pipeline_id(&self) -> &'static str {
-        crate::renderer::service::POST_FX_EXECUTOR_DOWNSCALE
-    }
-
-    fn create_pipeline(&self, ctx: &WgpuPostFxPipelineCreateContext<'_>) -> wgpu::RenderPipeline {
-        let layout = ctx.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("amigo-scene-downscale-pipeline-layout"),
-            bind_group_layouts: &[
-                Some(ctx.texture_bind_group_layout),
-                Some(ctx.wet_reflections_uniform_bind_group_layout),
-            ],
-            immediate_size: 0,
-        });
-        create_copy_blend_pipeline(
-            ctx.device,
-            ctx.downscale_shader,
-            &layout,
-            ctx.format,
-            "amigo-scene-downscale-pipeline",
-        )
-    }
-}
-
-impl WgpuPostFxPipelineProvider for ShutterBlurPipelineProvider {
-    fn pipeline_id(&self) -> &'static str {
-        crate::renderer::service::POST_FX_EXECUTOR_SHUTTER_BLUR
-    }
-
-    fn create_pipeline(&self, ctx: &WgpuPostFxPipelineCreateContext<'_>) -> wgpu::RenderPipeline {
-        let layout = ctx.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("amigo-scene-shutter-blur-pipeline-layout"),
-            bind_group_layouts: &[
-                Some(ctx.shutter_blur_texture_bind_group_layout),
-                Some(ctx.wet_reflections_uniform_bind_group_layout),
-            ],
-            immediate_size: 0,
-        });
-        create_copy_blend_pipeline(
-            ctx.device,
-            ctx.shutter_blur_shader,
-            &layout,
-            ctx.format,
-            "amigo-scene-shutter-blur-pipeline",
-        )
-    }
-}
-
-impl WgpuPostFxPipelineProvider for DirtyBloomPipelineProvider {
-    fn pipeline_id(&self) -> &'static str {
-        crate::renderer::service::POST_FX_EXECUTOR_DIRTY_BLOOM
-    }
-
-    fn create_pipeline(&self, ctx: &WgpuPostFxPipelineCreateContext<'_>) -> wgpu::RenderPipeline {
-        let layout = ctx.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("amigo-scene-dirty-bloom-pipeline-layout"),
-            bind_group_layouts: &[
-                Some(ctx.texture_bind_group_layout),
-                Some(ctx.wet_reflections_uniform_bind_group_layout),
-            ],
-            immediate_size: 0,
-        });
-        create_copy_blend_pipeline(
-            ctx.device,
-            ctx.dirty_bloom_shader,
-            &layout,
-            ctx.format,
-            "amigo-scene-dirty-bloom-pipeline",
-        )
-    }
-}
-
-impl WgpuPostFxPipelineProvider for HighlightExtractPipelineProvider {
-    fn pipeline_id(&self) -> &'static str {
-        crate::renderer::service::POST_FX_AUX_HIGHLIGHT_EXTRACT
-    }
-
-    fn create_pipeline(&self, ctx: &WgpuPostFxPipelineCreateContext<'_>) -> wgpu::RenderPipeline {
-        let layout = ctx.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("amigo-scene-highlight-extract-pipeline-layout"),
-            bind_group_layouts: &[
-                Some(ctx.texture_bind_group_layout),
-                Some(ctx.wet_reflections_uniform_bind_group_layout),
-            ],
-            immediate_size: 0,
-        });
-        create_copy_blend_pipeline(
-            ctx.device,
-            ctx.highlight_extract_shader,
-            &layout,
-            ctx.format,
-            "amigo-scene-highlight-extract-pipeline",
-        )
-    }
-}
-
-impl WgpuPostFxPipelineProvider for CrtPipelineProvider {
-    fn pipeline_id(&self) -> &'static str {
-        crate::renderer::service::POST_FX_EXECUTOR_CRT
-    }
-
-    fn create_pipeline(&self, ctx: &WgpuPostFxPipelineCreateContext<'_>) -> wgpu::RenderPipeline {
-        let layout = ctx.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("amigo-scene-crt-pipeline-layout"),
-            bind_group_layouts: &[
-                Some(ctx.texture_bind_group_layout),
-                Some(ctx.wet_reflections_uniform_bind_group_layout),
-            ],
-            immediate_size: 0,
-        });
-        create_copy_blend_pipeline(
-            ctx.device,
-            ctx.crt_shader,
-            &layout,
-            ctx.format,
-            "amigo-scene-crt-pipeline",
-        )
-    }
-}
-
-impl WgpuPostFxPipelineProvider for WetReflectionsPipelineProvider {
-    fn pipeline_id(&self) -> &'static str {
-        crate::renderer::service::POST_FX_EXECUTOR_WET_REFLECTIONS
-    }
-
-    fn create_pipeline(&self, ctx: &WgpuPostFxPipelineCreateContext<'_>) -> wgpu::RenderPipeline {
-        create_copy_blend_pipeline(
-            ctx.device,
-            ctx.wet_reflections_shader,
-            ctx.wet_reflections_pipeline_layout,
-            ctx.format,
-            "amigo-scene-wet-reflections-pipeline",
-        )
-    }
-}
-
-impl WgpuPostFxPipelineProvider for PlateRelightPipelineProvider {
-    fn pipeline_id(&self) -> &'static str {
-        crate::renderer::service::POST_FX_AUX_PLATE_RELIGHT
-    }
-
-    fn create_pipeline(&self, ctx: &WgpuPostFxPipelineCreateContext<'_>) -> wgpu::RenderPipeline {
-        create_copy_blend_pipeline(
-            ctx.device,
-            ctx.plate_relight_shader,
-            ctx.wet_reflections_pipeline_layout,
-            ctx.format,
-            "amigo-scene-plate-relight-pipeline",
-        )
-    }
-}
-
-impl WgpuPostFxPipelineProvider for RefractiveMaterialPipelineProvider {
-    fn pipeline_id(&self) -> &'static str {
-        crate::renderer::service::POST_FX_AUX_REFRACTIVE_MATERIAL
-    }
-
-    fn create_pipeline(&self, ctx: &WgpuPostFxPipelineCreateContext<'_>) -> wgpu::RenderPipeline {
-        create_copy_blend_pipeline(
-            ctx.device,
-            ctx.refractive_material_shader,
-            ctx.focus_blur_pipeline_layout,
-            ctx.format,
-            "amigo-scene-refractive-material-pipeline",
-        )
-    }
 }
 
 pub(super) fn create_copy_blend_pipeline(

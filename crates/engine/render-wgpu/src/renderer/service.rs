@@ -1,6 +1,7 @@
 mod font_atlas;
 mod init;
 mod model;
+mod pipeline_registry;
 mod post_fx;
 mod render;
 mod render_request;

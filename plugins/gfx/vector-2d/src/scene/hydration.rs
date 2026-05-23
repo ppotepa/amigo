@@ -4,15 +4,16 @@ use amigo_scene::{
     ComponentHydrationContext, ComponentHydrator, Material2dDocument,
     Material2dLightingSceneCommand, Material2dOpticalModeDocument,
     Material2dOpticalModeSceneCommand, Material2dOpticalSceneCommand, Material2dSceneCommand,
-    RenderContributions2dSceneCommand, SceneComponentDocument, SceneDocumentError,
-    SceneDocumentResult, SceneTransform2Document, SceneTransform3Document,
-    SceneVectorShapeKindComponentDocument, SceneVec2Document, VectorShape2dSceneCommand,
-    VectorShapeKind2dSceneCommand, VectorStyle2dSceneCommand,
+    PluginComponentHydrationContext, PluginComponentHydrator, RenderContributions2dSceneCommand,
+    SceneComponentDocument, SceneDocumentError, SceneDocumentResult, SceneTransform2Document,
+    SceneTransform3Document, SceneVectorShapeKindComponentDocument, SceneVec2Document,
+    VectorShape2dSceneCommand, VectorShapeKind2dSceneCommand, VectorStyle2dSceneCommand,
 };
 
-use super::{Vector2dDocument, parse_vector_2d_plugin_payload};
+use super::Vector2dDocument;
 
 pub struct VectorShape2dComponentHydrator;
+pub struct Vector2dPluginComponentHydrator;
 
 impl ComponentHydrator for VectorShape2dComponentHydrator {
     fn provider_id(&self) -> &'static str {
@@ -21,12 +22,6 @@ impl ComponentHydrator for VectorShape2dComponentHydrator {
 
     fn can_hydrate(&self, component: &SceneComponentDocument) -> bool {
         matches!(component, SceneComponentDocument::VectorShape2d { .. })
-            || matches!(
-                component,
-                SceneComponentDocument::Plugin { component_type, .. }
-                    if component_type == "amigo.gfx.vector-2d.VectorShape2D"
-                        || component_type == "VectorShape2D"
-            )
     }
 
     fn hydrate(&self, ctx: ComponentHydrationContext<'_>) -> SceneDocumentResult<()> {
@@ -37,71 +32,121 @@ impl ComponentHydrator for VectorShape2dComponentHydrator {
                 };
                 document
             }
-            SceneComponentDocument::Plugin {
-                component_type,
-                payload,
-            } if component_type == "amigo.gfx.vector-2d.VectorShape2D"
-                || component_type == "VectorShape2D" =>
-            {
-                parse_vector_2d_plugin_payload(payload)?
-            }
             _ => return Ok(()),
         };
 
-        let stroke_color = document
-            .stroke_color
-            .as_deref()
-            .map(|value| parse_color_rgba_hex(value, &ctx.document.scene.id, &ctx.entity.id, "VectorShape2D"))
-            .transpose()?
-            .unwrap_or(ColorRgba::WHITE);
-        let fill_color = document
-            .fill_color
-            .as_deref()
-            .map(|value| parse_color_rgba_hex(value, &ctx.document.scene.id, &ctx.entity.id, "VectorShape2D"))
-            .transpose()?;
-        let kind = match &document.kind {
-            SceneVectorShapeKindComponentDocument::Polyline => VectorShapeKind2dSceneCommand::Polyline {
-                points: document.points.iter().copied().map(vec2_from_document).collect(),
-                closed: document.closed,
-            },
-            SceneVectorShapeKindComponentDocument::Polygon => VectorShapeKind2dSceneCommand::Polygon {
-                points: document.points.iter().copied().map(vec2_from_document).collect(),
-            },
-            SceneVectorShapeKindComponentDocument::Circle => VectorShapeKind2dSceneCommand::Circle {
-                radius: document.radius.max(0.0),
-                segments: document.segments.max(3),
-            },
-        };
-
-        let mut command = VectorShape2dSceneCommand::new(
-            ctx.source_mod.to_owned(),
-            ctx.entity_name.to_owned(),
-            kind,
-            VectorStyle2dSceneCommand {
-                stroke_color,
-                stroke_width: document.stroke_width.max(0.0),
-                fill_color,
-            },
-        );
-        command.z_index = document.z_index;
-        command.render_layer = document.render_layer.clone();
-        command.render_contributions = RenderContributions2dSceneCommand {
-            roles: document
-                .render_contributions
-                .clone()
-                .with_defaults(vector_render_contribution_defaults())
-                .into_roles(),
-        };
-        command.material = material2d_scene_command(document.material);
-        command.transform = transform2_for_entity(ctx.entity);
-
-        ctx.commands
-            .push(amigo_scene::SceneCommand::plugin(crate::vector_plugin_scene_command(
-                command,
-            )));
+        push_vector_shape_command(
+            &document,
+            ctx.source_mod,
+            ctx.document,
+            ctx.entity,
+            ctx.entity_name,
+            "VectorShape2D",
+            ctx.commands,
+        )?;
 
         Ok(())
     }
+}
+
+impl PluginComponentHydrator for Vector2dPluginComponentHydrator {
+    fn provider_id(&self) -> &'static str {
+        "amigo.gfx.vector-2d"
+    }
+
+    fn component_type(&self) -> &'static str {
+        "amigo.gfx.vector-2d.VectorShape2D"
+    }
+
+    fn hydrate_plugin_payload(
+        &self,
+        ctx: PluginComponentHydrationContext<'_>,
+    ) -> SceneDocumentResult<()> {
+        let Some(document) = ctx.payload.as_any().downcast_ref::<Vector2dDocument>() else {
+            return Err(SceneDocumentError::Hydration {
+                scene_id: ctx.document.scene.id.clone(),
+                entity_id: ctx.entity.id.clone(),
+                component_kind: ctx.component_type.to_owned(),
+                message: "VectorShape2D plugin hydrator received wrong payload".to_owned(),
+            });
+        };
+
+        push_vector_shape_command(
+            document,
+            ctx.source_mod,
+            ctx.document,
+            ctx.entity,
+            ctx.entity_name,
+            ctx.component_type,
+            ctx.commands,
+        )
+    }
+}
+
+fn push_vector_shape_command(
+    document: &Vector2dDocument,
+    source_mod: &str,
+    scene_document: &amigo_scene::SceneDocument,
+    entity: &amigo_scene::SceneEntityDocument,
+    entity_name: &str,
+    component_kind: &str,
+    commands: &mut Vec<amigo_scene::SceneCommand>,
+) -> SceneDocumentResult<()> {
+    let stroke_color = document
+        .stroke_color
+        .as_deref()
+        .map(|value| {
+            parse_color_rgba_hex(value, &scene_document.scene.id, &entity.id, component_kind)
+        })
+        .transpose()?
+        .unwrap_or(ColorRgba::WHITE);
+    let fill_color = document
+        .fill_color
+        .as_deref()
+        .map(|value| {
+            parse_color_rgba_hex(value, &scene_document.scene.id, &entity.id, component_kind)
+        })
+        .transpose()?;
+    let kind = match &document.kind {
+        SceneVectorShapeKindComponentDocument::Polyline => VectorShapeKind2dSceneCommand::Polyline {
+            points: document.points.iter().copied().map(vec2_from_document).collect(),
+            closed: document.closed,
+        },
+        SceneVectorShapeKindComponentDocument::Polygon => VectorShapeKind2dSceneCommand::Polygon {
+            points: document.points.iter().copied().map(vec2_from_document).collect(),
+        },
+        SceneVectorShapeKindComponentDocument::Circle => VectorShapeKind2dSceneCommand::Circle {
+            radius: document.radius.max(0.0),
+            segments: document.segments.max(3),
+        },
+    };
+
+    let mut command = VectorShape2dSceneCommand::new(
+        source_mod.to_owned(),
+        entity_name.to_owned(),
+        kind,
+        VectorStyle2dSceneCommand {
+            stroke_color,
+            stroke_width: document.stroke_width.max(0.0),
+            fill_color,
+        },
+    );
+    command.z_index = document.z_index;
+    command.render_layer = document.render_layer.clone();
+    command.render_contributions = RenderContributions2dSceneCommand {
+        roles: document
+            .render_contributions
+            .clone()
+            .with_defaults(vector_render_contribution_defaults())
+            .into_roles(),
+    };
+    command.material = material2d_scene_command(document.material.clone());
+    command.transform = transform2_for_entity(entity);
+
+    commands.push(amigo_scene::SceneCommand::plugin(
+        crate::vector_plugin_scene_command(command),
+    ));
+    Ok(())
 }
 
 fn vector_render_contribution_defaults() -> [(&'static str, bool); 6] {

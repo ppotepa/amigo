@@ -2,6 +2,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use amigo_math::Vec2;
 
+use crate::renderer::service::pipeline_registry::WgpuPipelineRegistry;
 use crate::renderer::service::{CachedFontAtlas, WgpuEmergencyOverlayLine};
 use crate::renderer::{CachedLightMap2dImage, CachedTextureResource};
 
@@ -43,7 +44,7 @@ pub struct WgpuSceneRenderer {
     pub(crate) shutter_blur_texture_bind_group_layout: wgpu::BindGroupLayout,
     pub(crate) wet_reflections_texture_bind_group_layout: wgpu::BindGroupLayout,
     pub(crate) wet_reflections_uniform_bind_group_layout: wgpu::BindGroupLayout,
-    pub(crate) post_fx_pipelines: BTreeMap<&'static str, wgpu::RenderPipeline>,
+    pub(crate) pipelines: WgpuPipelineRegistry,
     pub(crate) post_fx_executors: crate::renderer::service::post_fx::WgpuPostFxExecutorRegistry,
     pub(crate) shutter_blur_runtimes: BTreeMap<
         crate::renderer::service::post_fx::runtime_key::PostFxRuntimeKey,
@@ -66,9 +67,11 @@ pub struct WgpuSceneRenderer {
 }
 
 impl WgpuSceneRenderer {
+    pub(crate) fn pipeline(&self, id: &str) -> &wgpu::RenderPipeline {
+        self.pipelines.required(id)
+    }
+
     pub(crate) fn post_fx_pipeline(&self, id: &str) -> &wgpu::RenderPipeline {
-        self.post_fx_pipelines
-            .get(id)
-            .unwrap_or_else(|| panic!("missing WGPU post-fx pipeline: {id}"))
+        self.pipeline(id)
     }
 }

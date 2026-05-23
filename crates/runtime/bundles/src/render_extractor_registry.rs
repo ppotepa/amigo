@@ -7,6 +7,11 @@ use amigo_runtime::Runtime;
 use crate::render_extractor_bridges::{self, WgpuRenderExtractorRegistry};
 pub(crate) type WgpuBridgeInstaller = fn(&mut WgpuRenderExtractorRegistry);
 
+pub(crate) struct WgpuRenderExtractorBridgeInstaller {
+    pub(crate) extractor_id: &'static str,
+    pub(crate) install: WgpuBridgeInstaller,
+}
+
 #[derive(Default)]
 pub(crate) struct WgpuRenderExtractorBridgeRegistry {
     installers: RwLock<BTreeMap<String, WgpuBridgeInstaller>>,
@@ -18,6 +23,10 @@ impl WgpuRenderExtractorBridgeRegistry {
             .write()
             .expect("render extractor bridge registry poisoned")
             .insert(id.into(), installer);
+    }
+
+    pub(crate) fn register_installer(&self, installer: WgpuRenderExtractorBridgeInstaller) {
+        self.register(installer.extractor_id, installer.install);
     }
 
     fn install(&self, id: &str, registry: &mut WgpuRenderExtractorRegistry) {

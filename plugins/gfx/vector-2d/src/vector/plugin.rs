@@ -30,6 +30,7 @@ impl RuntimePlugin for Vector2dPlugin {
         }
         if let Some(hydrators) = registry.resolve::<amigo_scene::ComponentHydratorRegistry>() {
             hydrators.register(crate::scene::hydration::VectorShape2dComponentHydrator);
+            hydrators.register_plugin(crate::scene::hydration::Vector2dPluginComponentHydrator);
         }
         if let Some(render_extractors) =
             registry.resolve::<amigo_render_api::RuntimeRenderExtractorIdRegistry>()

@@ -43,6 +43,14 @@ pub struct TwoDRuntimeBundle;
 
 struct WgpuTwoDRenderExtractorBridgePlugin;
 
+fn register_two_d_profile_render_extractor_bridges(
+    bridges: &WgpuRenderExtractorBridgeRegistry,
+) {
+    for installer in render_extractor_bridges::world_2d_plugin_bridge_installers() {
+        bridges.register_installer(installer);
+    }
+}
+
 impl PluginBundle for TwoDRuntimeBundle {
     fn name(&self) -> &'static str {
         "amigo-2d-bundle"
@@ -76,9 +84,7 @@ impl RuntimePlugin for WgpuTwoDRenderExtractorBridgePlugin {
 
     fn register(&self, registry: &mut ServiceRegistry) -> AmigoResult<()> {
         let bridges = registry.required::<WgpuRenderExtractorBridgeRegistry>()?;
-        render_extractor_bridges::register_world_2d_plugin_render_extractor_bridge_installers(
-            bridges.as_ref(),
-        );
+        register_two_d_profile_render_extractor_bridges(bridges.as_ref());
 
         Ok(())
     }
