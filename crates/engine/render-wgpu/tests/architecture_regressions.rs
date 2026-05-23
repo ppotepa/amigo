@@ -64,6 +64,20 @@ fn post_fx_registry_does_not_use_central_executor_match() {
 }
 
 #[test]
+fn init_uses_centralized_post_fx_pipeline_bootstrap() {
+    let init_rs = crate_root().join("src/renderer/service/init.rs");
+    let content = read(init_rs);
+    assert!(
+        content.contains("build_default_post_fx_pipelines("),
+        "init.rs should build post-fx pipelines through centralized bootstrap helper",
+    );
+    assert!(
+        !content.contains("post_fx_pipeline_registry.register("),
+        "init.rs should not manually register post-fx pipelines one by one",
+    );
+}
+
+#[test]
 fn render_wgpu_live_path_does_not_import_2d_plugin_render_models() {
     let forbidden = [
         "amigo_composite_plugin",
