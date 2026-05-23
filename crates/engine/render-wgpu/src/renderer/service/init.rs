@@ -2328,8 +2328,6 @@ impl WgpuSceneRenderer {
                 ],
                 immediate_size: 0,
             });
-        let mut post_fx_pipeline_registry =
-            crate::renderer::service::post_fx::pipelines::WgpuPostFxPipelineRegistry::default();
         let post_fx_pipeline_ctx =
             crate::renderer::service::post_fx::pipelines::WgpuPostFxPipelineCreateContext {
                 device,
@@ -2358,67 +2356,10 @@ impl WgpuSceneRenderer {
                 plate_relight_shader: &plate_relight_shader,
                 refractive_material_shader: &refractive_material_shader,
             };
-        post_fx_pipeline_registry.register(
-            crate::renderer::service::post_fx::pipelines::CameraExposurePipelineProvider,
-            &post_fx_pipeline_ctx,
-        );
-        post_fx_pipeline_registry.register(
-            crate::renderer::service::post_fx::pipelines::CameraOpticsPipelineProvider,
-            &post_fx_pipeline_ctx,
-        );
-        post_fx_pipeline_registry.register(
-            crate::renderer::service::post_fx::pipelines::FocusBlurPipelineProvider,
-            &post_fx_pipeline_ctx,
-        );
-        post_fx_pipeline_registry.register(
-            crate::renderer::service::post_fx::pipelines::FilmEmulsionPipelineProvider,
-            &post_fx_pipeline_ctx,
-        );
-        post_fx_pipeline_registry.register(
-            crate::renderer::service::post_fx::pipelines::FilmNoisePipelineProvider,
-            &post_fx_pipeline_ctx,
-        );
-        post_fx_pipeline_registry.register(
-            crate::renderer::service::post_fx::pipelines::ScanOutputPipelineProvider,
-            &post_fx_pipeline_ctx,
-        );
-        post_fx_pipeline_registry.register(
-            crate::renderer::service::post_fx::pipelines::ColorQuantizePipelineProvider,
-            &post_fx_pipeline_ctx,
-        );
-        post_fx_pipeline_registry.register(
-            crate::renderer::service::post_fx::pipelines::DownscalePipelineProvider,
-            &post_fx_pipeline_ctx,
-        );
-        post_fx_pipeline_registry.register(
-            crate::renderer::service::post_fx::pipelines::ShutterBlurPipelineProvider,
-            &post_fx_pipeline_ctx,
-        );
-        post_fx_pipeline_registry.register(
-            crate::renderer::service::post_fx::pipelines::DirtyBloomPipelineProvider,
-            &post_fx_pipeline_ctx,
-        );
-        post_fx_pipeline_registry.register(
-            crate::renderer::service::post_fx::pipelines::HighlightExtractPipelineProvider,
-            &post_fx_pipeline_ctx,
-        );
-        post_fx_pipeline_registry.register(
-            crate::renderer::service::post_fx::pipelines::CrtPipelineProvider,
-            &post_fx_pipeline_ctx,
-        );
-        post_fx_pipeline_registry.register(
-            crate::renderer::service::post_fx::pipelines::WetReflectionsPipelineProvider,
-            &post_fx_pipeline_ctx,
-        );
-        post_fx_pipeline_registry.register(
-            crate::renderer::service::post_fx::pipelines::PlateRelightPipelineProvider,
-            &post_fx_pipeline_ctx,
-        );
-        post_fx_pipeline_registry.register(
-            crate::renderer::service::post_fx::pipelines::RefractiveMaterialPipelineProvider,
-            &post_fx_pipeline_ctx,
-        );
-        let post_fx_pipelines = post_fx_pipeline_registry.into_pipelines();
+        let post_fx_pipelines =
+            crate::renderer::service::post_fx::pipelines::build_default_post_fx_pipelines(
+                &post_fx_pipeline_ctx,
+            );
 
         Self {
             color_alpha_pipeline,

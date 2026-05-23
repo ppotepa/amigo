@@ -60,6 +60,28 @@ impl WgpuPostFxPipelineRegistry {
     }
 }
 
+pub(crate) fn build_default_post_fx_pipelines(
+    ctx: &WgpuPostFxPipelineCreateContext<'_>,
+) -> BTreeMap<&'static str, wgpu::RenderPipeline> {
+    let mut registry = WgpuPostFxPipelineRegistry::default();
+    registry.register(CameraExposurePipelineProvider, ctx);
+    registry.register(CameraOpticsPipelineProvider, ctx);
+    registry.register(FocusBlurPipelineProvider, ctx);
+    registry.register(FilmEmulsionPipelineProvider, ctx);
+    registry.register(FilmNoisePipelineProvider, ctx);
+    registry.register(ScanOutputPipelineProvider, ctx);
+    registry.register(ColorQuantizePipelineProvider, ctx);
+    registry.register(DownscalePipelineProvider, ctx);
+    registry.register(ShutterBlurPipelineProvider, ctx);
+    registry.register(DirtyBloomPipelineProvider, ctx);
+    registry.register(HighlightExtractPipelineProvider, ctx);
+    registry.register(CrtPipelineProvider, ctx);
+    registry.register(WetReflectionsPipelineProvider, ctx);
+    registry.register(PlateRelightPipelineProvider, ctx);
+    registry.register(RefractiveMaterialPipelineProvider, ctx);
+    registry.into_pipelines()
+}
+
 pub(crate) struct CameraExposurePipelineProvider;
 pub(crate) struct CameraOpticsPipelineProvider;
 pub(crate) struct FocusBlurPipelineProvider;
