@@ -24,7 +24,7 @@ pub use visual_2d_items::{
     RenderSpace2d, Renderable2dCommon, Renderable2dItem, Renderable2dKind,
     render_contribution_decisions_summary, supported_renderable_2d_component_kinds,
 };
-pub use world_2d::{
+pub(crate) use world_2d::{
     available_world_2d_plugin_bridge_installers, register_world_2d_builtin_render_extractors,
 };
 pub use world_3d::register_world_3d_render_extractors;

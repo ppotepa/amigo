@@ -20,6 +20,8 @@ impl RuntimePlugin for DepthMap2dPlugin {
         }
         if let Some(hydrators) = registry.resolve::<amigo_scene::ComponentHydratorRegistry>() {
             hydrators.register(crate::scene::DepthMap2dComponentHydrator);
+            hydrators.register_plugin(crate::scene::DepthMap2dPluginComponentHydrator);
+            hydrators.register_plugin(crate::scene::DepthAuxMap2dPluginComponentHydrator);
         }
         if let Some(render_extractors) =
             registry.resolve::<amigo_render_api::RuntimeRenderExtractorIdRegistry>()

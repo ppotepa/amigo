@@ -1,9 +1,12 @@
+use std::any::Any;
+
 use serde::{Deserialize, Serialize};
 use serde_yaml::Value;
 
 use amigo_scene::{
     DepthAuxMap2dChannelsDocument, LayeredImageViewportFit2dDocument, SceneComponentDocument,
-    SceneComponentSchemaProvider, SceneDocumentError, SceneDocumentResult, SceneVec2Document,
+    SceneComponentPayload, SceneComponentSchemaProvider, SceneDocumentError,
+    SceneDocumentResult, SceneVec2Document,
 };
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
@@ -61,6 +64,16 @@ impl DepthMap2dDocument {
     }
 }
 
+impl SceneComponentPayload for DepthMap2dDocument {
+    fn component_type(&self) -> &'static str {
+        "amigo.camera.focus-depth.DepthMap2D"
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct DepthAuxMap2dDocument {
     pub id: String,
@@ -101,6 +114,16 @@ impl DepthAuxMap2dDocument {
     }
 }
 
+impl SceneComponentPayload for DepthAuxMap2dDocument {
+    fn component_type(&self) -> &'static str {
+        "amigo.camera.focus-depth.DepthAuxMap2D"
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+}
+
 pub fn parse_depth_map_2d_plugin_payload(payload: &Value) -> SceneDocumentResult<DepthMap2dDocument> {
     serde_yaml::from_value::<DepthMap2dDocument>(payload.clone())
         .map_err(|source| SceneDocumentError::Parse { path: None, source })
@@ -128,6 +151,13 @@ impl SceneComponentSchemaProvider for DepthMap2dSceneSchemaProvider {
     fn parse_yaml(&self, payload: serde_yaml::Mapping) -> Result<Value, serde_yaml::Error> {
         serde_yaml::to_value(serde_yaml::from_value::<DepthMap2dDocument>(Value::Mapping(payload))?)
     }
+
+    fn parse_payload_value(
+        &self,
+        payload: &Value,
+    ) -> SceneDocumentResult<Box<dyn SceneComponentPayload>> {
+        Ok(Box::new(parse_depth_map_2d_plugin_payload(payload)?))
+    }
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -146,6 +176,13 @@ impl SceneComponentSchemaProvider for DepthAuxMap2dSceneSchemaProvider {
         serde_yaml::to_value(serde_yaml::from_value::<DepthAuxMap2dDocument>(
             Value::Mapping(payload),
         )?)
+    }
+
+    fn parse_payload_value(
+        &self,
+        payload: &Value,
+    ) -> SceneDocumentResult<Box<dyn SceneComponentPayload>> {
+        Ok(Box::new(parse_depth_aux_map_2d_plugin_payload(payload)?))
     }
 }
 

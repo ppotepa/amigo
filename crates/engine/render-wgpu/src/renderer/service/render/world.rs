@@ -1,5 +1,4 @@
 use super::material_candidates::WgpuMaterialCandidate2d;
-use super::world_filters::WorldPassLoad;
 use super::*;
 use amigo_render_api::{LightSource2dCommon, RenderLightMap2dSource};
 use amigo_material_api::MaterialCandidateDecision2d;
