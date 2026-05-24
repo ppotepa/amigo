@@ -1,12 +1,14 @@
 use amigo_math::ColorRgba;
 use amigo_scene::{
     ComponentHydrationContext, ComponentHydrator, GlobalLight2dSceneCommand,
-    SceneComponentDocument, SceneDocumentError, SceneDocumentResult,
+    PluginComponentHydrationContext, PluginComponentHydrator, SceneComponentDocument,
+    SceneDocumentError, SceneDocumentResult,
 };
 
-use super::{parse_global_light_2d_plugin_payload, GlobalLight2dDocument};
+use super::GlobalLight2dDocument;
 
 pub struct GlobalLight2dComponentHydrator;
+pub struct GlobalLight2dPluginComponentHydrator;
 
 impl ComponentHydrator for GlobalLight2dComponentHydrator {
     fn provider_id(&self) -> &'static str {
@@ -15,12 +17,6 @@ impl ComponentHydrator for GlobalLight2dComponentHydrator {
 
     fn can_hydrate(&self, component: &SceneComponentDocument) -> bool {
         matches!(component, SceneComponentDocument::GlobalLight2d { .. })
-            || matches!(
-                component,
-                SceneComponentDocument::Plugin { component_type, .. }
-                    if component_type == "amigo.lighting.light-2d.GlobalLight2D"
-                        || component_type == "GlobalLight2D"
-            )
     }
 
     fn hydrate(&self, ctx: ComponentHydrationContext<'_>) -> SceneDocumentResult<()> {
@@ -31,34 +27,77 @@ impl ComponentHydrator for GlobalLight2dComponentHydrator {
                 };
                 document
             }
-            SceneComponentDocument::Plugin {
-                component_type,
-                payload,
-            } if component_type == "amigo.lighting.light-2d.GlobalLight2D"
-                || component_type == "GlobalLight2D" =>
-            {
-                parse_global_light_2d_plugin_payload(payload)?
-            }
             _ => return Ok(()),
         };
 
-        ctx.commands.push(amigo_scene::SceneCommand::QueueGlobalLight2d {
+        push_global_light_command(
+            ctx.source_mod,
+            &ctx.document.scene.id,
+            &ctx.entity.id,
+            ctx.entity_name,
+            ctx.commands,
+            &document,
+        )?;
+
+        Ok(())
+    }
+}
+
+impl PluginComponentHydrator for GlobalLight2dPluginComponentHydrator {
+    fn provider_id(&self) -> &'static str {
+        "amigo.lighting.light-2d"
+    }
+
+    fn component_type(&self) -> &'static str {
+        "amigo.lighting.light-2d.GlobalLight2D"
+    }
+
+    fn hydrate_plugin_payload(
+        &self,
+        ctx: PluginComponentHydrationContext<'_>,
+    ) -> SceneDocumentResult<()> {
+        let Some(document) = ctx.payload.as_any().downcast_ref::<GlobalLight2dDocument>() else {
+            return Err(SceneDocumentError::Hydration {
+                scene_id: ctx.document.scene.id.clone(),
+                entity_id: ctx.entity.id.clone(),
+                component_kind: ctx.component_type.to_owned(),
+                message: "GlobalLight2D plugin hydrator received wrong payload".to_owned(),
+            });
+        };
+        push_global_light_command(
+            ctx.source_mod,
+            &ctx.document.scene.id,
+            &ctx.entity.id,
+            ctx.entity_name,
+            ctx.commands,
+            document,
+        )
+    }
+}
+
+fn push_global_light_command(
+    source_mod: &str,
+    scene_id: &str,
+    entity_id: &str,
+    entity_name: &str,
+    commands: &mut Vec<amigo_scene::SceneCommand>,
+    document: &GlobalLight2dDocument,
+) -> SceneDocumentResult<()> {
+    commands.push(amigo_scene::SceneCommand::QueueGlobalLight2d {
             command: GlobalLight2dSceneCommand {
-                source_mod: ctx.source_mod.to_owned(),
-                entity_name: ctx.entity_name.to_owned(),
-                id: document.id,
+                source_mod: source_mod.to_owned(),
+                entity_name: entity_name.to_owned(),
+                id: document.id.clone(),
                 color: parse_color_rgba_hex(
                     &document.color,
-                    &ctx.document.scene.id,
-                    &ctx.entity.id,
+                    scene_id,
+                    entity_id,
                     "GlobalLight2D",
                 )?,
                 intensity: document.intensity.max(0.0),
             },
         });
-
-        Ok(())
-    }
+    Ok(())
 }
 
 fn parse_color_rgba_hex(

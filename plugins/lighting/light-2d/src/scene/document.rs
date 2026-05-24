@@ -1,8 +1,10 @@
+use std::any::Any;
+
 use serde::{Deserialize, Serialize};
 use serde_yaml::Value;
 
 use amigo_scene::{
-    SceneComponentDocument, SceneComponentSchemaProvider, SceneDocumentError,
+    SceneComponentDocument, SceneComponentPayload, SceneComponentSchemaProvider, SceneDocumentError,
     SceneDocumentResult,
 };
 
@@ -32,6 +34,16 @@ impl GlobalLight2dDocument {
     }
 }
 
+impl SceneComponentPayload for GlobalLight2dDocument {
+    fn component_type(&self) -> &'static str {
+        "amigo.lighting.light-2d.GlobalLight2D"
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+}
+
 pub fn parse_global_light_2d_plugin_payload(
     payload: &Value,
 ) -> SceneDocumentResult<GlobalLight2dDocument> {
@@ -55,6 +67,13 @@ impl SceneComponentSchemaProvider for GlobalLight2dSceneSchemaProvider {
         serde_yaml::to_value(serde_yaml::from_value::<GlobalLight2dDocument>(
             Value::Mapping(payload),
         )?)
+    }
+
+    fn parse_payload_value(
+        &self,
+        payload: &Value,
+    ) -> SceneDocumentResult<Box<dyn SceneComponentPayload>> {
+        Ok(Box::new(parse_global_light_2d_plugin_payload(payload)?))
     }
 }
 

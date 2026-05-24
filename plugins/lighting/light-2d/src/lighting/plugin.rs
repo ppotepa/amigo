@@ -28,6 +28,7 @@ impl RuntimePlugin for Lighting2dPlugin {
         }
         if let Some(hydrators) = registry.resolve::<amigo_scene::ComponentHydratorRegistry>() {
             hydrators.register(crate::scene::GlobalLight2dComponentHydrator);
+            hydrators.register_plugin(crate::scene::GlobalLight2dPluginComponentHydrator);
         }
         if let Some(render_extractors) =
             registry.resolve::<amigo_render_api::RuntimeRenderExtractorIdRegistry>()
