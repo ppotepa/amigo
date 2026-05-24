@@ -45,15 +45,3 @@ pub(super) fn color_to_wgpu(color: ColorRgba) -> wgpu::Color {
         a: color.a as f64,
     }
 }
-
-pub(super) fn tilemap_primitive_draw_size(tilemap: &amigo_render_api::TileMap2dPrimitive) -> Vec2 {
-    let width = tilemap
-        .grid
-        .iter()
-        .map(|row| row.chars().count())
-        .max()
-        .unwrap_or(1) as f32
-        * tilemap.tile_size.x.max(1.0);
-    let height = tilemap.grid.len().max(1) as f32 * tilemap.tile_size.y.max(1.0);
-    Vec2::new(width, height)
-}

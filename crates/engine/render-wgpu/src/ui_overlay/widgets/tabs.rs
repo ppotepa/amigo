@@ -8,7 +8,7 @@ pub(crate) fn append_tab_view_header_primitives(
     if tabs.is_empty() {
         return;
     }
-    let header_height = crate::ui_overlay::layout::tab_view_header_height(&layout.node);
+    let header_height = crate::ui_overlay::overlay_layout::tab_view_header_height(&layout.node);
     let tab_width = layout.rect.width / tabs.len() as f32;
     let background = layout
         .node

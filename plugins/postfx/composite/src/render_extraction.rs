@@ -1,6 +1,6 @@
 use amigo_render_api::PostFx2dRenderOutput;
 
-use crate::{PostFx2dService, ScopedPostFx2dStack};
+use crate::PostFx2dService;
 
 #[derive(Clone, Copy)]
 pub struct PostFx2dRenderExtractionContext<'a> {

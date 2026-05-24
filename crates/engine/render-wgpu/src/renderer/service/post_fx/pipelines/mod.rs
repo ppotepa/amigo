@@ -42,19 +42,9 @@ pub(crate) struct WgpuPostFxPipelineCreateContext<'a> {
     pub(crate) camera_visual_source_bind_group_layout: &'a wgpu::BindGroupLayout,
     pub(crate) focus_blur_texture_bind_group_layout: &'a wgpu::BindGroupLayout,
     pub(crate) shutter_blur_texture_bind_group_layout: &'a wgpu::BindGroupLayout,
-    pub(crate) wet_reflections_texture_bind_group_layout: &'a wgpu::BindGroupLayout,
     pub(crate) wet_reflections_uniform_bind_group_layout: &'a wgpu::BindGroupLayout,
     pub(crate) wet_reflections_pipeline_layout: &'a wgpu::PipelineLayout,
     pub(crate) focus_blur_pipeline_layout: &'a wgpu::PipelineLayout,
-    pub(crate) color_quantize_shader: &'a wgpu::ShaderModule,
-    pub(crate) downscale_shader: &'a wgpu::ShaderModule,
-    pub(crate) shutter_blur_shader: &'a wgpu::ShaderModule,
-    pub(crate) dirty_bloom_shader: &'a wgpu::ShaderModule,
-    pub(crate) highlight_extract_shader: &'a wgpu::ShaderModule,
-    pub(crate) crt_shader: &'a wgpu::ShaderModule,
-    pub(crate) wet_reflections_shader: &'a wgpu::ShaderModule,
-    pub(crate) plate_relight_shader: &'a wgpu::ShaderModule,
-    pub(crate) refractive_material_shader: &'a wgpu::ShaderModule,
 }
 
 pub(crate) trait WgpuPostFxPipelineProvider {

@@ -359,6 +359,8 @@ dependencies = [
  "amigo-scene",
  "amigo-session",
  "rhai",
+ "serde",
+ "serde_yaml",
 ]
 
 [[package]]
@@ -782,6 +784,7 @@ dependencies = [
  "amigo-scene",
  "amigo-session",
  "amigo-shutter-motion-plugin",
+ "serde",
  "serde_yaml",
 ]
 

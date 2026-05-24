@@ -4,15 +4,17 @@ use amigo_math::{ColorRgba, Transform2, Vec2};
 use amigo_scene::{
     BeaconLight2dSceneCommand, ComponentHydrationContext, ComponentHydrator,
     LayeredImageViewportFit2dDocument, LayeredImageViewportFit2dSceneCommand,
+    PluginComponentHydrationContext, PluginComponentHydrator,
     RenderContributions2dSceneCommand, RenderDepth2dDocument, RenderDepth2dSceneCommand,
     RenderDepthMode2dDocument, RenderDepthMode2dSceneCommand, SceneComponentDocument,
     SceneDocumentError, SceneDocumentResult, SceneTransform2Document, SceneTransform3Document,
     SceneVec2Document,
 };
 
-use super::{parse_beacon_light_2d_plugin_payload, BeaconLight2dDocument};
+use super::BeaconLight2dDocument;
 
 pub struct BeaconLight2dComponentHydrator;
+pub struct BeaconLight2dPluginComponentHydrator;
 
 impl ComponentHydrator for BeaconLight2dComponentHydrator {
     fn provider_id(&self) -> &'static str {
@@ -21,12 +23,6 @@ impl ComponentHydrator for BeaconLight2dComponentHydrator {
 
     fn can_hydrate(&self, component: &SceneComponentDocument) -> bool {
         matches!(component, SceneComponentDocument::BeaconLight2d { .. })
-            || matches!(
-                component,
-                SceneComponentDocument::Plugin { component_type, .. }
-                    if component_type == "amigo.lighting.beacon-light-2d.BeaconLight2D"
-                        || component_type == "BeaconLight2D"
-            )
     }
 
     fn hydrate(&self, ctx: ComponentHydrationContext<'_>) -> SceneDocumentResult<()> {
@@ -37,78 +33,120 @@ impl ComponentHydrator for BeaconLight2dComponentHydrator {
                 };
                 document
             }
-            SceneComponentDocument::Plugin {
-                component_type,
-                payload,
-            } if component_type == "amigo.lighting.beacon-light-2d.BeaconLight2D"
-                || component_type == "BeaconLight2D" =>
-            {
-                parse_beacon_light_2d_plugin_payload(payload)?
-            }
             _ => return Ok(()),
         };
 
-        let depth_space = ctx.document.visual2d.spatial.depth_space.to_runtime();
-        let resolved_depth = document
-            .depth
-            .as_ref()
-            .map(|depth| render_depth_from_document(depth, depth_space));
-        let z_depth = resolved_depth
-            .as_ref()
-            .map(|depth| depth.z_depth)
-            .or_else(|| document.z_depth.map(|value| value.clamp(0.0, 1.0)));
-
-        ctx.commands.push(amigo_scene::SceneCommand::QueueBeaconLight2d {
-            command: BeaconLight2dSceneCommand {
-                source_mod: ctx.source_mod.to_owned(),
-                entity_name: ctx.entity_name.to_owned(),
-                id: document.id,
-                render_layer: document.render_layer,
-                color: parse_color_rgba_hex(
-                    &document.color,
-                    &ctx.document.scene.id,
-                    &ctx.entity.id,
-                    "BeaconLight2D",
-                )?,
-                base_intensity: document.base_intensity.max(0.0),
-                frequency_hz: document.frequency_hz.max(0.0),
-                duty_cycle: document.duty_cycle.clamp(0.01, 0.99),
-                rise_seconds: document.rise_seconds.max(0.0),
-                fall_seconds: document.fall_seconds.max(0.0),
-                phase_offset: document.phase_offset,
-                sync_group: document.sync_group,
-                jitter_amount: document.jitter_amount.max(0.0),
-                jitter_hz: document.jitter_hz.max(0.0),
-                core_radius_px: document.core_radius_px.max(0.25),
-                halo_radius_px: document.halo_radius_px.max(0.25),
-                glow_strength: document.glow_strength.max(0.0),
-                beam_enabled: document.beam_enabled,
-                beam_length_px: document.beam_length_px.max(0.0),
-                beam_width_degrees: document.beam_width_degrees.clamp(1.0, 179.0),
-                beam_strength: document.beam_strength.max(0.0),
-                aberration_px: document.aberration_px.max(0.0),
-                bloom: document.bloom.max(0.0),
-                camera_response: camera_optical_response_from_document(document.camera_response),
-                depth: resolved_depth,
-                z_depth,
-                z_index: document.z_index,
-                render_contributions: RenderContributions2dSceneCommand {
-                    roles: document
-                        .render_contributions
-                        .with_defaults(beacon_render_contribution_defaults())
-                        .into_roles(),
-                },
-                enabled: document.enabled,
-                transform: transform2_for_entity(ctx.entity),
-                viewport_fit: viewport_fit_from_document(document.viewport_fit),
-                viewport_canvas_size: document
-                    .viewport_canvas_size
-                    .map(vec2_from_document),
-            },
-        });
-
-        Ok(())
+        push_beacon_light_command(
+            ctx.source_mod,
+            ctx.document,
+            ctx.entity,
+            ctx.entity_name,
+            ctx.commands,
+            &document,
+        )
     }
+}
+
+impl PluginComponentHydrator for BeaconLight2dPluginComponentHydrator {
+    fn provider_id(&self) -> &'static str {
+        "amigo.lighting.beacon-light-2d"
+    }
+
+    fn component_type(&self) -> &'static str {
+        "amigo.lighting.beacon-light-2d.BeaconLight2D"
+    }
+
+    fn hydrate_plugin_payload(
+        &self,
+        ctx: PluginComponentHydrationContext<'_>,
+    ) -> SceneDocumentResult<()> {
+        let Some(document) = ctx.payload.as_any().downcast_ref::<BeaconLight2dDocument>() else {
+            return Err(SceneDocumentError::Hydration {
+                scene_id: ctx.document.scene.id.clone(),
+                entity_id: ctx.entity.id.clone(),
+                component_kind: ctx.component_type.to_owned(),
+                message: "BeaconLight2D plugin hydrator received wrong payload".to_owned(),
+            });
+        };
+
+        push_beacon_light_command(
+            ctx.source_mod,
+            ctx.document,
+            ctx.entity,
+            ctx.entity_name,
+            ctx.commands,
+            document,
+        )
+    }
+}
+
+fn push_beacon_light_command(
+    source_mod: &str,
+    document_root: &amigo_scene::SceneDocument,
+    entity: &amigo_scene::SceneEntityDocument,
+    entity_name: &str,
+    commands: &mut Vec<amigo_scene::SceneCommand>,
+    document: &BeaconLight2dDocument,
+) -> SceneDocumentResult<()> {
+    let depth_space = document_root.visual2d.spatial.depth_space.to_runtime();
+    let resolved_depth = document
+        .depth
+        .as_ref()
+        .map(|depth| render_depth_from_document(depth, depth_space));
+    let z_depth = resolved_depth
+        .as_ref()
+        .map(|depth| depth.z_depth)
+        .or_else(|| document.z_depth.map(|value| value.clamp(0.0, 1.0)));
+
+    commands.push(amigo_scene::SceneCommand::QueueBeaconLight2d {
+        command: BeaconLight2dSceneCommand {
+            source_mod: source_mod.to_owned(),
+            entity_name: entity_name.to_owned(),
+            id: document.id.clone(),
+            render_layer: document.render_layer.clone(),
+            color: parse_color_rgba_hex(
+                &document.color,
+                &document_root.scene.id,
+                &entity.id,
+                "BeaconLight2D",
+            )?,
+            base_intensity: document.base_intensity.max(0.0),
+            frequency_hz: document.frequency_hz.max(0.0),
+            duty_cycle: document.duty_cycle.clamp(0.01, 0.99),
+            rise_seconds: document.rise_seconds.max(0.0),
+            fall_seconds: document.fall_seconds.max(0.0),
+            phase_offset: document.phase_offset,
+            sync_group: document.sync_group.clone(),
+            jitter_amount: document.jitter_amount.max(0.0),
+            jitter_hz: document.jitter_hz.max(0.0),
+            core_radius_px: document.core_radius_px.max(0.25),
+            halo_radius_px: document.halo_radius_px.max(0.25),
+            glow_strength: document.glow_strength.max(0.0),
+            beam_enabled: document.beam_enabled,
+            beam_length_px: document.beam_length_px.max(0.0),
+            beam_width_degrees: document.beam_width_degrees.clamp(1.0, 179.0),
+            beam_strength: document.beam_strength.max(0.0),
+            aberration_px: document.aberration_px.max(0.0),
+            bloom: document.bloom.max(0.0),
+            camera_response: camera_optical_response_from_document(document.camera_response),
+            depth: resolved_depth,
+            z_depth,
+            z_index: document.z_index,
+            render_contributions: RenderContributions2dSceneCommand {
+                roles: document
+                    .render_contributions
+                    .clone()
+                    .with_defaults(beacon_render_contribution_defaults())
+                    .into_roles(),
+            },
+            enabled: document.enabled,
+            transform: transform2_for_entity(entity),
+            viewport_fit: viewport_fit_from_document(document.viewport_fit),
+            viewport_canvas_size: document.viewport_canvas_size.map(vec2_from_document),
+        },
+    });
+
+    Ok(())
 }
 
 fn beacon_render_contribution_defaults() -> [(&'static str, bool); 4] {

@@ -13,7 +13,6 @@ mod scoped_post_fx;
 #[cfg(test)]
 mod tests;
 mod ui_pass;
-mod util;
 mod visual_debug;
 mod visual_source_buffer_pass;
 mod world;

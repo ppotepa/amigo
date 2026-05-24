@@ -23,6 +23,14 @@ impl RuntimePlugin for Particle2dPlugin {
     fn register(&self, registry: &mut ServiceRegistry) -> amigo_core::AmigoResult<()> {
         registry.register(Particle2dSceneService::default())?;
         amigo_scene::register_scene_reset_handler(registry, crate::Particle2dSceneResetHandler)?;
+        if let Some(schemas) = registry.resolve::<amigo_scene::ComponentSchemaRegistry>() {
+            schemas.register_provider(&crate::scene::ParticleEmitter2dSceneDescriptorProvider);
+            schemas.register_schema_provider(crate::scene::ParticleEmitter2dSceneSchemaProvider);
+        }
+        if let Some(hydrators) = registry.resolve::<amigo_scene::ComponentHydratorRegistry>() {
+            hydrators.register(crate::scene::ParticleEmitter2dComponentHydrator);
+            hydrators.register_plugin(crate::scene::ParticleEmitter2dPluginComponentHydrator);
+        }
         registry.register(ParticlePreset2dService::default())?;
         if let Some(render_extractors) =
             registry.resolve::<amigo_render_api::RuntimeRenderExtractorIdRegistry>()

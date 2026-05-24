@@ -1,10 +1,12 @@
+use std::any::Any;
+
 use serde::{Deserialize, Serialize};
 use serde_yaml::Value;
 
 use amigo_camera::CameraOpticalResponse2dDocument;
 use amigo_scene::{
     LayeredImageViewportFit2dDocument, RenderContributionsDocument, RenderDepth2dDocument,
-    SceneComponentDocument, SceneComponentSchemaProvider, SceneDocumentError,
+    SceneComponentDocument, SceneComponentPayload, SceneComponentSchemaProvider, SceneDocumentError,
     SceneDocumentResult, SceneVec2Document,
 };
 
@@ -139,6 +141,16 @@ impl BeaconLight2dDocument {
     }
 }
 
+impl SceneComponentPayload for BeaconLight2dDocument {
+    fn component_type(&self) -> &'static str {
+        "amigo.lighting.beacon-light-2d.BeaconLight2D"
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+}
+
 pub fn parse_beacon_light_2d_plugin_payload(
     payload: &Value,
 ) -> SceneDocumentResult<BeaconLight2dDocument> {
@@ -162,6 +174,10 @@ impl SceneComponentSchemaProvider for BeaconLight2dSceneSchemaProvider {
         serde_yaml::to_value(serde_yaml::from_value::<BeaconLight2dDocument>(
             Value::Mapping(payload),
         )?)
+    }
+
+    fn parse_payload_value(&self, payload: &Value) -> SceneDocumentResult<Box<dyn SceneComponentPayload>> {
+        Ok(Box::new(parse_beacon_light_2d_plugin_payload(payload)?))
     }
 }
 

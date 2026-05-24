@@ -28,6 +28,7 @@ impl RuntimePlugin for TileMap2dPlugin {
         }
         if let Some(hydrators) = registry.resolve::<amigo_scene::ComponentHydratorRegistry>() {
             hydrators.register(crate::scene::TileMap2dComponentHydrator);
+            hydrators.register_plugin(crate::scene::TileMap2dPluginComponentHydrator);
         }
         if let Some(render_extractors) =
             registry.resolve::<amigo_render_api::RuntimeRenderExtractorIdRegistry>()

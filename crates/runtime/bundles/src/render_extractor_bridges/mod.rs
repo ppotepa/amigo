@@ -25,7 +25,10 @@ pub use visual_2d_items::{
     render_contribution_decisions_summary, supported_renderable_2d_component_kinds,
 };
 pub(crate) use world_2d::{
-    available_world_2d_plugin_bridge_installers, register_world_2d_builtin_render_extractors,
+    beacon_bridge_installer, composition_bridge_installer, depth_bridge_installer,
+    layered_image_bridge_installer, lighting_bridge_installer, particles_bridge_installer,
+    register_world_2d_builtin_render_extractors, sprite_bridge_installer, text_bridge_installer,
+    tilemap_bridge_installer, vector_bridge_installer,
 };
 pub use world_3d::register_world_3d_render_extractors;
 

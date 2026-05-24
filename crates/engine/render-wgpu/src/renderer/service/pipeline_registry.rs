@@ -6,10 +6,6 @@ pub(crate) struct WgpuPipelineRegistry {
 }
 
 impl WgpuPipelineRegistry {
-    pub(crate) fn insert(&mut self, id: &'static str, pipeline: wgpu::RenderPipeline) {
-        self.pipelines.insert(id, pipeline);
-    }
-
     pub(crate) fn extend(&mut self, pipelines: BTreeMap<&'static str, wgpu::RenderPipeline>) {
         self.pipelines.extend(pipelines);
     }

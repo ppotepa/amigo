@@ -1,6 +1,7 @@
 use super::{
     WgpuPostFxPipelineCreateContext, WgpuPostFxPipelineProvider, create_copy_blend_pipeline,
 };
+use crate::renderer::service::post_fx::shaders::COLOR_QUANTIZE_SHADER;
 
 pub(crate) struct ColorQuantizePipelineProvider;
 
@@ -13,6 +14,10 @@ impl WgpuPostFxPipelineProvider for ColorQuantizePipelineProvider {
         &self,
         ctx: &WgpuPostFxPipelineCreateContext<'_>,
     ) -> wgpu::RenderPipeline {
+        let shader = ctx.device.create_shader_module(wgpu::ShaderModuleDescriptor {
+            label: Some("amigo-scene-color-quantize-shader"),
+            source: wgpu::ShaderSource::Wgsl(COLOR_QUANTIZE_SHADER.into()),
+        });
         let layout = ctx
             .device
             .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
@@ -26,7 +31,7 @@ impl WgpuPostFxPipelineProvider for ColorQuantizePipelineProvider {
             });
         create_copy_blend_pipeline(
             ctx.device,
-            ctx.color_quantize_shader,
+            &shader,
             &layout,
             ctx.format,
             "amigo-scene-color-quantize-pipeline",

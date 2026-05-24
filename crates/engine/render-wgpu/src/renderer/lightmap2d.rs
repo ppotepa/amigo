@@ -1,11 +1,13 @@
 use crate::renderer::*;
 use amigo_render_api::{
     LayeredImageAsset, LayeredImageBlendMode2d, LayeredImageViewportFit2d,
-    LightEmitterKind2d, LightSource2dCommon,
-    LightReceiver2dBindingPrimitive, LightReceiverDarkPolicy2dPrimitive,
-    LightSampleStrategy2dPrimitive, Particle2dPrimitive,
-    ParticleMaterialLightingMode2dPrimitive, RenderLightMap2dSource, RenderLightMap2dSourceKind,
-    RenderPrimitive2d,
+    RenderLightMap2dSource, RenderLightMap2dSourceKind, RenderPrimitive2d,
+};
+#[cfg(test)]
+use amigo_render_api::{
+    LightEmitterKind2d, LightReceiver2dBindingPrimitive, LightReceiverDarkPolicy2dPrimitive,
+    LightSampleStrategy2dPrimitive, LightSource2dCommon, Particle2dPrimitive,
+    ParticleMaterialLightingMode2dPrimitive,
 };
 
 impl WgpuSceneRenderer {
@@ -203,6 +205,7 @@ impl WgpuSceneRenderer {
     }
 }
 
+#[cfg(test)]
 pub(crate) fn lit_particle_color(
     particle: &Particle2dPrimitive,
     lights: &[ParticleRenderLight],
@@ -242,6 +245,7 @@ pub(crate) fn lit_particle_color(
     }
 }
 
+#[cfg(test)]
 fn dynamic_lit_particle_color(
     particle: &Particle2dPrimitive,
     lights: &[ParticleRenderLight],
@@ -274,6 +278,7 @@ fn dynamic_lit_particle_color(
     )
 }
 
+#[cfg(test)]
 fn light_group_particle_color(
     particle: &Particle2dPrimitive,
     binding: &LightReceiver2dBindingPrimitive,
@@ -343,6 +348,7 @@ fn light_group_particle_color(
     finish_lightmapped_particle_color(particle, binding, sampled_any_position, r, g, b)
 }
 
+#[cfg(test)]
 enum LightGroupSourceRef<'a> {
     GlobalLight {
         id: &'a str,
@@ -353,6 +359,7 @@ enum LightGroupSourceRef<'a> {
     },
 }
 
+#[cfg(test)]
 fn parse_light_group_source_ref<'a>(
     group_id: &str,
     emitter_id: Option<&'a str>,
@@ -369,6 +376,7 @@ fn parse_light_group_source_ref<'a>(
     Some(LightGroupSourceRef::LightMapChannel { source, channel })
 }
 
+#[cfg(test)]
 fn permitted_receiver_groups<'a>(
     receiver_groups: &'a [String],
     receiver_layer: &str,
@@ -388,6 +396,7 @@ fn permitted_receiver_groups<'a>(
         .collect()
 }
 
+#[cfg(test)]
 fn lightmapped_particle_color(
     particle: &Particle2dPrimitive,
     binding: &LightReceiver2dBindingPrimitive,
@@ -425,6 +434,7 @@ fn lightmapped_particle_color(
     finish_lightmapped_particle_color(particle, binding, sampled_any_position, r, g, b)
 }
 
+#[cfg(test)]
 fn sample_lightmap_channel_into(
     particle: &Particle2dPrimitive,
     binding: &LightReceiver2dBindingPrimitive,
@@ -461,6 +471,7 @@ fn sample_lightmap_channel_into(
     sampled_any_position
 }
 
+#[cfg(test)]
 fn sample_global_light_into(
     light_sources: &[LightSource2dCommon],
     id: &str,
@@ -486,6 +497,7 @@ fn sample_global_light_into(
     *b = b.max((lb * tint.b * scale).clamp(0.0, 1.0));
 }
 
+#[cfg(test)]
 fn finish_lightmapped_particle_color(
     particle: &Particle2dPrimitive,
     binding: &LightReceiver2dBindingPrimitive,
@@ -557,6 +569,7 @@ fn scaled_lightmap_2d_size(
     Vec2::new(source_size.x * scale, source_size.y * scale)
 }
 
+#[cfg(test)]
 impl LightMap2dSampler {
     fn uv_for_world_position(&self, position: Vec2) -> Option<Vec2> {
         if self.size.x <= f32::EPSILON || self.size.y <= f32::EPSILON {
@@ -572,6 +585,7 @@ impl LightMap2dSampler {
     }
 }
 
+#[cfg(test)]
 impl LightMap2dImageData {
     fn sample(&self, uv: Vec2) -> [f32; 4] {
         if self.width == 0 || self.height == 0 || self.pixels.is_empty() {
@@ -633,6 +647,7 @@ impl LightMap2dImageData {
     }
 }
 
+#[cfg(test)]
 fn for_each_particle_light_sample_position(
     particle: &Particle2dPrimitive,
     binding: &LightReceiver2dBindingPrimitive,
@@ -668,6 +683,7 @@ fn for_each_particle_light_sample_position(
     }
 }
 
+#[cfg(test)]
 fn particle_light_sample_length(particle: &Particle2dPrimitive) -> f32 {
     let amigo_render_api::ParticleShape2dPrimitive::Line { length } = particle.shape else {
         return particle.size.max(1.0);
@@ -686,6 +702,7 @@ fn particle_light_sample_length(particle: &Particle2dPrimitive) -> f32 {
     (length + distance * stretch.velocity_scale).min(stretch.max_length.max(length))
 }
 
+#[cfg(test)]
 fn inverse_transform_point_2d(point: Vec2, transform: Transform2) -> Vec2 {
     let translated = Vec2::new(
         point.x - transform.translation.x,

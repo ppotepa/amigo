@@ -1,6 +1,7 @@
 use super::{
     WgpuPostFxPipelineCreateContext, WgpuPostFxPipelineProvider, create_copy_blend_pipeline,
 };
+use crate::renderer::service::post_fx::shaders::REFRACTIVE_MATERIAL_SHADER;
 
 pub(crate) struct RefractiveMaterialPipelineProvider;
 
@@ -10,9 +11,13 @@ impl WgpuPostFxPipelineProvider for RefractiveMaterialPipelineProvider {
     }
 
     fn create_pipeline(&self, ctx: &WgpuPostFxPipelineCreateContext<'_>) -> wgpu::RenderPipeline {
+        let shader = ctx.device.create_shader_module(wgpu::ShaderModuleDescriptor {
+            label: Some("amigo-scene-refractive-material-shader"),
+            source: wgpu::ShaderSource::Wgsl(REFRACTIVE_MATERIAL_SHADER.into()),
+        });
         create_copy_blend_pipeline(
             ctx.device,
-            ctx.refractive_material_shader,
+            &shader,
             ctx.focus_blur_pipeline_layout,
             ctx.format,
             "amigo-scene-refractive-material-pipeline",

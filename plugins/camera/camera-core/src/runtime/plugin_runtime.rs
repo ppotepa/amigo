@@ -27,6 +27,14 @@ impl RuntimePlugin for CameraPlugin {
             registry,
             crate::runtime::CameraCoreSceneResetHandler,
         )?;
+        if let Some(schemas) = registry.resolve::<amigo_scene::ComponentSchemaRegistry>() {
+            schemas.register_provider(&crate::scene::Camera2dSceneDescriptorProvider);
+            schemas.register_schema_provider(crate::scene::Camera2dSceneSchemaProvider);
+        }
+        if let Some(hydrators) = registry.resolve::<amigo_scene::ComponentHydratorRegistry>() {
+            hydrators.register(crate::scene::Camera2dComponentHydrator);
+            hydrators.register_plugin(crate::scene::Camera2dPluginComponentHydrator);
+        }
 
         if let (Some(control), Some(cameras), Some(assets)) = (
             registry.resolve::<RuntimeControlService>(),

@@ -45,7 +45,18 @@ struct WgpuTwoDRenderExtractorBridgePlugin;
 
 fn two_d_profile_render_extractor_bridge_installers(
 ) -> Vec<crate::render_extractor_registry::WgpuRenderExtractorBridgeInstaller> {
-    render_extractor_bridges::available_world_2d_plugin_bridge_installers()
+    vec![
+        render_extractor_bridges::tilemap_bridge_installer(),
+        render_extractor_bridges::sprite_bridge_installer(),
+        render_extractor_bridges::layered_image_bridge_installer(),
+        render_extractor_bridges::depth_bridge_installer(),
+        render_extractor_bridges::vector_bridge_installer(),
+        render_extractor_bridges::beacon_bridge_installer(),
+        render_extractor_bridges::text_bridge_installer(),
+        render_extractor_bridges::composition_bridge_installer(),
+        render_extractor_bridges::lighting_bridge_installer(),
+        render_extractor_bridges::particles_bridge_installer(),
+    ]
 }
 
 fn register_two_d_profile_render_extractor_bridges(bridges: &WgpuRenderExtractorBridgeRegistry) {

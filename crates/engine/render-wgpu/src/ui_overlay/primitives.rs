@@ -1,4 +1,4 @@
-use crate::ui_overlay::layout::group_box_label_height;
+use crate::ui_overlay::overlay_layout::group_box_label_height;
 use crate::ui_overlay::{
     UiDrawPrimitive, UiLayoutNode, UiOverlayNodeKind, UiOverlayStyle, UiRect, UiTextAnchor,
     append_color_picker_rgb_primitives, append_curve_editor_primitives,

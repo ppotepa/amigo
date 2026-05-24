@@ -31,6 +31,7 @@ fn normalize_path(path: PathBuf) -> PathBuf {
     normalized
 }
 
+#[cfg(test)]
 pub(crate) fn infer_sprite_sheet_from_asset(prepared: &PreparedAsset) -> Option<SpriteSheet> {
     if !matches!(prepared.kind, PreparedAssetKind::SpriteSheet2d) {
         return None;
@@ -130,42 +131,6 @@ pub(crate) fn metadata_bool(prepared: &PreparedAsset, key: &str) -> bool {
         .get(key)
         .map(|value| value.eq_ignore_ascii_case("true") || value == "1")
         .unwrap_or(false)
-}
-
-pub(crate) fn sprite_uv_rect(
-    texture_size: Vec2,
-    sheet: Option<SpriteSheet>,
-    frame_index: u32,
-) -> TextureUvRect {
-    let Some(sheet) = sheet else {
-        return TextureUvRect {
-            u0: 0.0,
-            v0: 0.0,
-            u1: 1.0,
-            v1: 1.0,
-        };
-    };
-
-    let columns = sheet.columns.max(1);
-    let rows = sheet.rows.max(1);
-    let frame = frame_index.min(sheet.visible_frame_count().saturating_sub(1));
-    let column = frame % columns;
-    let row = frame / columns;
-    let frame_width = if sheet.frame_size.x > 0.0 {
-        sheet.frame_size.x
-    } else {
-        texture_size.x / columns as f32
-    };
-    let frame_height = if sheet.frame_size.y > 0.0 {
-        sheet.frame_size.y
-    } else {
-        texture_size.y / rows as f32
-    };
-    let u0 = (column as f32 * frame_width) / texture_size.x.max(1.0);
-    let v0 = (row as f32 * frame_height) / texture_size.y.max(1.0);
-    let u1 = ((column as f32 + 1.0) * frame_width) / texture_size.x.max(1.0);
-    let v1 = ((row as f32 + 1.0) * frame_height) / texture_size.y.max(1.0);
-    TextureUvRect { u0, v0, u1, v1 }
 }
 
 fn infer_tileset_tile_ids(prepared: &PreparedAsset) -> BTreeMap<String, u32> {

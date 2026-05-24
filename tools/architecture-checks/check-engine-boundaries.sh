@@ -5,8 +5,9 @@ assert_no_match() {
   local pattern="$1"
   local path="$2"
   local message="$3"
+  shift 3
 
-    if rg -n --glob "src/**" "$pattern" "$path"; then
+  if rg -n "$@" "$pattern" "$path"; then
     echo "$message" >&2
     exit 1
   fi
@@ -15,7 +16,8 @@ assert_no_match() {
 assert_no_match \
   "\\bwgpu\\b|wgpu::|RenderPipeline|RenderPass|BindGroup|CommandEncoder" \
   "plugins" \
-  "Plugins must not import WGPU."
+  "Plugins must not import WGPU." \
+  --glob "src/**"
 
 assert_no_match \
   "amigo-.*-plugin" \
@@ -56,5 +58,10 @@ assert_no_match \
   "execute_layered_image_parts_to_offscreen|layered_textured_quads\(" \
   "crates/engine/render-wgpu/src/renderer/service/render/world.rs" \
   "world.rs must not contain layered image part pass logic."
+
+assert_no_match \
+  "const COLOR_SHADER|const TEXTURE_SHADER" \
+  "crates/engine/render-wgpu/src/renderer.rs" \
+  "renderer.rs must not keep core shader source constants."
 
 echo "Engine boundary checks passed."

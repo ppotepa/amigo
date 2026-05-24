@@ -1,9 +1,11 @@
+use std::any::Any;
+
 use serde::{Deserialize, Serialize};
 use serde_yaml::Value;
 
 use amigo_scene::{
-    SceneComponentDocument, SceneComponentSchemaProvider, SceneDocumentError, SceneDocumentResult,
-    SceneVec2Document, TileMap2dEditorDocument,
+    SceneComponentDocument, SceneComponentPayload, SceneComponentSchemaProvider,
+    SceneDocumentError, SceneDocumentResult, SceneVec2Document, TileMap2dEditorDocument,
 };
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
@@ -71,6 +73,16 @@ impl Tilemap2dDocument {
     }
 }
 
+impl SceneComponentPayload for Tilemap2dDocument {
+    fn component_type(&self) -> &'static str {
+        "amigo.gfx.tilemap-2d.TileMap2D"
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+}
+
 pub fn parse_tilemap_2d_plugin_payload(payload: &Value) -> SceneDocumentResult<Tilemap2dDocument> {
     serde_yaml::from_value::<Tilemap2dDocument>(payload.clone())
         .map_err(|source| SceneDocumentError::Parse { path: None, source })
@@ -90,6 +102,13 @@ impl SceneComponentSchemaProvider for TileMap2dSceneSchemaProvider {
 
     fn parse_yaml(&self, payload: serde_yaml::Mapping) -> Result<Value, serde_yaml::Error> {
         serde_yaml::to_value(serde_yaml::from_value::<Tilemap2dDocument>(Value::Mapping(payload))?)
+    }
+
+    fn parse_payload_value(
+        &self,
+        payload: &Value,
+    ) -> SceneDocumentResult<Box<dyn SceneComponentPayload>> {
+        Ok(Box::new(parse_tilemap_2d_plugin_payload(payload)?))
     }
 }
 

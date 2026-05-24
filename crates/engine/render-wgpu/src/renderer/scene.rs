@@ -1,16 +1,5 @@
 use crate::renderer::*;
 
-pub(crate) fn resolve_transform2(
-    scene: &SceneService,
-    entity_name: &str,
-    fallback: Transform2,
-) -> Transform2 {
-    scene
-        .transform_of(entity_name)
-        .map(transform2_from_transform3)
-        .unwrap_or(fallback)
-}
-
 pub(crate) fn resolve_transform3(
     scene: &SceneService,
     entity_name: &str,

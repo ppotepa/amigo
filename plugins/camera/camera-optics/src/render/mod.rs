@@ -7,7 +7,6 @@ pub mod targets;
 pub use candidate_buffers::*;
 pub use color_coverage::*;
 pub use lightmap_channel::*;
-pub use pass::*;
 pub use targets::*;
 pub use amigo_render_api::{
     CameraOpticalRenderTargetPlan, scene_emissive_target_id, scene_highlight_target_id,

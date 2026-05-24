@@ -182,13 +182,6 @@ pub(crate) fn rotate_z(point: Vec3, angle: f32) -> Vec3 {
     )
 }
 
-pub(crate) fn transform2_from_transform3(transform: Transform3) -> Transform2 {
-    Transform2 {
-        translation: Vec2::new(transform.translation.x, transform.translation.y),
-        rotation_radians: transform.rotation_euler.z,
-        scale: Vec2::new(transform.scale.x, transform.scale.y),
-    }
-}
 
 pub(crate) fn sprite_color(asset_key: &str) -> ColorRgba {
     if asset_key.contains("square") {

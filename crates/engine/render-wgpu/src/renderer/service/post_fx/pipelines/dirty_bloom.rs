@@ -1,6 +1,7 @@
 use super::{
     WgpuPostFxPipelineCreateContext, WgpuPostFxPipelineProvider, create_copy_blend_pipeline,
 };
+use crate::renderer::service::post_fx::shaders::DIRTY_BLOOM_SHADER;
 
 pub(crate) struct DirtyBloomPipelineProvider;
 
@@ -10,6 +11,10 @@ impl WgpuPostFxPipelineProvider for DirtyBloomPipelineProvider {
     }
 
     fn create_pipeline(&self, ctx: &WgpuPostFxPipelineCreateContext<'_>) -> wgpu::RenderPipeline {
+        let shader = ctx.device.create_shader_module(wgpu::ShaderModuleDescriptor {
+            label: Some("amigo-scene-dirty-bloom-shader"),
+            source: wgpu::ShaderSource::Wgsl(DIRTY_BLOOM_SHADER.into()),
+        });
         let layout = ctx
             .device
             .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
@@ -22,7 +27,7 @@ impl WgpuPostFxPipelineProvider for DirtyBloomPipelineProvider {
             });
         create_copy_blend_pipeline(
             ctx.device,
-            ctx.dirty_bloom_shader,
+            &shader,
             &layout,
             ctx.format,
             "amigo-scene-dirty-bloom-pipeline",

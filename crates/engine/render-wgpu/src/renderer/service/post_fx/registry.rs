@@ -91,7 +91,7 @@ pub(crate) fn execute_screen_space_post_fx(
         request,
         host_id,
         effect_id,
-        feature_id,
+        _feature_id: feature_id,
         descriptor: &descriptor,
         effect,
         input_view,

@@ -30,6 +30,7 @@ struct DirtyBloomUniform {
 
 #[repr(C)]
 #[derive(Clone, Copy)]
+#[allow(dead_code)]
 struct HighlightExtractUniform {
     resolution: [f32; 2],
     threshold: f32,
@@ -145,6 +146,7 @@ pub(crate) fn execute_dirty_bloom(
     Ok(())
 }
 
+#[allow(dead_code)]
 pub(crate) fn execute_luma_extract_debug(
     renderer: &mut WgpuSceneRenderer,
     input_view: &wgpu::TextureView,
@@ -237,6 +239,7 @@ pub(crate) fn execute_luma_extract_debug(
     Ok(())
 }
 
+#[allow(dead_code)]
 pub(crate) fn execute_highlight_extract_debug(
     renderer: &mut WgpuSceneRenderer,
     input_view: &wgpu::TextureView,

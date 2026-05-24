@@ -4,10 +4,11 @@ function Assert-NoMatch {
     param(
         [string]$Pattern,
         [string]$Path,
-        [string]$Message
+        [string]$Message,
+        [string[]]$ExtraArgs = @()
     )
 
-    $matches = rg -n --glob "src/**" $Pattern $Path
+    $matches = rg -n @ExtraArgs $Pattern $Path
     if ($LASTEXITCODE -eq 0) {
         Write-Host $matches
         throw $Message
@@ -17,7 +18,8 @@ function Assert-NoMatch {
 Assert-NoMatch `
     "\bwgpu\b|wgpu::|RenderPipeline|RenderPass|BindGroup|CommandEncoder" `
     "plugins" `
-    "Plugins must not import WGPU."
+    "Plugins must not import WGPU." `
+    @("--glob", "src/**")
 
 Assert-NoMatch `
     "amigo-.*-plugin" `
@@ -58,5 +60,10 @@ Assert-NoMatch `
     "execute_layered_image_parts_to_offscreen|layered_textured_quads\(" `
     "crates/engine/render-wgpu/src/renderer/service/render/world.rs" `
     "world.rs must not contain layered image part pass logic."
+
+Assert-NoMatch `
+    "const COLOR_SHADER|const TEXTURE_SHADER" `
+    "crates/engine/render-wgpu/src/renderer.rs" `
+    "renderer.rs must not keep core shader source constants."
 
 Write-Host "Engine boundary checks passed."

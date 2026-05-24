@@ -1,11 +1,9 @@
 use super::*;
 use amigo_camera::{
-    CameraOpticalCandidate2d, CameraOpticalCandidateStatus2d, CameraOpticalCoverage2d,
-    CameraOpticalResponse2d,
+    CameraOpticalCandidate2d, CameraOpticalCoverage2d,
 };
 use amigo_render_api::{
-    scene_emissive_target_id, scene_highlight_target_id, CameraOpticalRenderTargetPlan,
-    RenderPrimitive2d, Renderable2dItem,
+    CameraOpticalRenderTargetPlan, RenderPrimitive2d, Renderable2dItem,
 };
 
 pub(super) fn render_procedural_material_buffer(

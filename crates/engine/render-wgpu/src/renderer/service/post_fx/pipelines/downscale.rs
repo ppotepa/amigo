@@ -1,6 +1,7 @@
 use super::{
     WgpuPostFxPipelineCreateContext, WgpuPostFxPipelineProvider, create_copy_blend_pipeline,
 };
+use crate::renderer::service::post_fx::shaders::DOWNSCALE_SHADER;
 
 pub(crate) struct DownscalePipelineProvider;
 
@@ -10,6 +11,10 @@ impl WgpuPostFxPipelineProvider for DownscalePipelineProvider {
     }
 
     fn create_pipeline(&self, ctx: &WgpuPostFxPipelineCreateContext<'_>) -> wgpu::RenderPipeline {
+        let shader = ctx.device.create_shader_module(wgpu::ShaderModuleDescriptor {
+            label: Some("amigo-scene-downscale-shader"),
+            source: wgpu::ShaderSource::Wgsl(DOWNSCALE_SHADER.into()),
+        });
         let layout = ctx
             .device
             .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
@@ -22,7 +27,7 @@ impl WgpuPostFxPipelineProvider for DownscalePipelineProvider {
             });
         create_copy_blend_pipeline(
             ctx.device,
-            ctx.downscale_shader,
+            &shader,
             &layout,
             ctx.format,
             "amigo-scene-downscale-pipeline",

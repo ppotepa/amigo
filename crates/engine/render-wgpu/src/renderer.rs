@@ -2,7 +2,6 @@ use std::borrow::Cow;
 use std::cmp::Ordering;
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
-use std::mem::size_of;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::SystemTime;
@@ -30,123 +29,6 @@ use crate::{WgpuOffscreenTarget, WgpuSurfaceState};
 
 type ParticleBlendMode2d = ParticleBlendMode2dPrimitive;
 type ParticleLineAnchor2d = ParticleLineAnchor2dPrimitive;
-
-const COLOR_SHADER: &str = r#"
-struct VertexIn {
-    @location(0) position: vec2<f32>,
-    @location(1) color: vec4<f32>,
-}
-
-struct VertexOut {
-    @builtin(position) clip_position: vec4<f32>,
-    @location(0) color: vec4<f32>,
-}
-
-@vertex
-fn vs_main(vertex: VertexIn) -> VertexOut {
-    var out: VertexOut;
-    out.clip_position = vec4<f32>(vertex.position, 0.0, 1.0);
-    out.color = vertex.color;
-    return out;
-}
-
-@fragment
-fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
-    return input.color;
-}
-"#;
-
-const TEXTURE_SHADER: &str = r#"
-struct VertexIn {
-    @location(0) position: vec2<f32>,
-    @location(1) uv: vec2<f32>,
-    @location(2) color: vec4<f32>,
-}
-
-struct VertexOut {
-    @builtin(position) clip_position: vec4<f32>,
-    @location(0) uv: vec2<f32>,
-    @location(1) color: vec4<f32>,
-}
-
-@group(0) @binding(0) var color_texture: texture_2d<f32>;
-@group(0) @binding(1) var color_sampler: sampler;
-
-@vertex
-fn vs_main(vertex: VertexIn) -> VertexOut {
-    var out: VertexOut;
-    out.clip_position = vec4<f32>(vertex.position, 0.0, 1.0);
-    out.uv = vertex.uv;
-    out.color = vertex.color;
-    return out;
-}
-
-@fragment
-fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
-    return textureSample(color_texture, color_sampler, input.uv) * input.color;
-}
-"#;
-
-#[repr(C)]
-#[derive(Clone, Copy, Debug, Default)]
-pub(crate) struct ColorVertex {
-    position: [f32; 2],
-    color: [f32; 4],
-}
-
-impl ColorVertex {
-    const ATTRIBUTES: [wgpu::VertexAttribute; 2] = wgpu::vertex_attr_array![
-        0 => Float32x2,
-        1 => Float32x4
-    ];
-
-    pub(crate) fn new(position: Vec2, color: ColorRgba) -> Self {
-        Self {
-            position: [position.x, position.y],
-            color: [color.r, color.g, color.b, color.a],
-        }
-    }
-
-    pub(crate) fn layout() -> wgpu::VertexBufferLayout<'static> {
-        wgpu::VertexBufferLayout {
-            array_stride: size_of::<ColorVertex>() as wgpu::BufferAddress,
-            step_mode: wgpu::VertexStepMode::Vertex,
-            attributes: &Self::ATTRIBUTES,
-        }
-    }
-}
-
-#[repr(C)]
-#[derive(Clone, Copy, Debug, Default)]
-pub(crate) struct TextureVertex {
-    position: [f32; 2],
-    uv: [f32; 2],
-    color: [f32; 4],
-}
-
-impl TextureVertex {
-    const ATTRIBUTES: [wgpu::VertexAttribute; 3] = wgpu::vertex_attr_array![
-        0 => Float32x2,
-        1 => Float32x2,
-        2 => Float32x4
-    ];
-
-    pub(crate) fn new(position: Vec2, uv: Vec2, color: ColorRgba) -> Self {
-        Self {
-            position: [position.x, position.y],
-            uv: [uv.x, uv.y],
-            color: [color.r, color.g, color.b, color.a],
-        }
-    }
-
-    pub(crate) fn layout() -> wgpu::VertexBufferLayout<'static> {
-        wgpu::VertexBufferLayout {
-            array_stride: size_of::<TextureVertex>() as wgpu::BufferAddress,
-            step_mode: wgpu::VertexStepMode::Vertex,
-            attributes: &Self::ATTRIBUTES,
-        }
-    }
-}
 
 #[derive(Clone, Copy)]
 pub(crate) struct Viewport {
@@ -242,6 +124,7 @@ impl WgpuSceneRenderer {
     }
 }
 
+#[allow(dead_code)]
 #[derive(Clone, Copy)]
 pub(crate) struct ParticleRenderLight {
     position: Vec2,
@@ -250,6 +133,7 @@ pub(crate) struct ParticleRenderLight {
     intensity: f32,
 }
 
+#[allow(dead_code)]
 #[derive(Clone)]
 pub(crate) struct LightMap2dImageData {
     width: u32,
@@ -257,12 +141,14 @@ pub(crate) struct LightMap2dImageData {
     pixels: Arc<Vec<[f32; 4]>>,
 }
 
+#[allow(dead_code)]
 #[derive(Clone)]
 pub(crate) struct LightMap2dLayer {
     image: LightMap2dImageData,
     opacity: f32,
 }
 
+#[allow(dead_code)]
 #[derive(Clone)]
 pub(crate) struct LightMap2dSampler {
     id: String,
@@ -326,7 +212,9 @@ mod particles;
 mod pipelines;
 mod scene;
 mod service;
+mod shaders;
 mod text;
+mod vertices;
 mod world_2d;
 mod world_3d;
 
@@ -336,7 +224,9 @@ use glyphs::*;
 use math::*;
 use pipelines::*;
 use scene::*;
+use shaders::*;
 use text::*;
+use vertices::*;
 use world_2d::*;
 use world_3d::*;
 

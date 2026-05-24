@@ -7,6 +7,7 @@ use amigo_render_api::{
     RenderPrimitive2d, RenderPrimitive2dKind,
 };
 
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub(crate) struct MaterialCandidateSource2d {
     pub(super) owner_entity: String,

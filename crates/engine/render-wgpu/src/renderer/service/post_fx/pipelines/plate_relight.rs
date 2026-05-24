@@ -1,6 +1,7 @@
 use super::{
     WgpuPostFxPipelineCreateContext, WgpuPostFxPipelineProvider, create_copy_blend_pipeline,
 };
+use crate::renderer::service::post_fx::shaders::PLATE_RELIGHT_SHADER;
 
 pub(crate) struct PlateRelightPipelineProvider;
 
@@ -10,9 +11,13 @@ impl WgpuPostFxPipelineProvider for PlateRelightPipelineProvider {
     }
 
     fn create_pipeline(&self, ctx: &WgpuPostFxPipelineCreateContext<'_>) -> wgpu::RenderPipeline {
+        let shader = ctx.device.create_shader_module(wgpu::ShaderModuleDescriptor {
+            label: Some("amigo-scene-plate-relight-shader"),
+            source: wgpu::ShaderSource::Wgsl(PLATE_RELIGHT_SHADER.into()),
+        });
         create_copy_blend_pipeline(
             ctx.device,
-            ctx.plate_relight_shader,
+            &shader,
             ctx.wet_reflections_pipeline_layout,
             ctx.format,
             "amigo-scene-plate-relight-pipeline",

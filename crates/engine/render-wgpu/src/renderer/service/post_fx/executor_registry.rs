@@ -3,8 +3,7 @@ use std::sync::Arc;
 
 use amigo_core::{AmigoError, AmigoResult};
 
-use super::executor::{WgpuPostFxExecutionContext, WgpuPostFxExecutor};
-use crate::renderer::service::WgpuSceneRenderer;
+use super::executor::WgpuPostFxExecutor;
 
 #[derive(Default)]
 pub(crate) struct WgpuPostFxExecutorRegistry {

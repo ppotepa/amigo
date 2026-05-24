@@ -152,3 +152,17 @@ fn render_wgpu_cargo_toml_does_not_depend_on_plugin_crates() {
         "render-wgpu Cargo.toml should not depend on plugin crates",
     );
 }
+
+#[test]
+fn renderer_rs_does_not_embed_core_shader_sources() {
+    let renderer_rs = crate_root().join("src/renderer.rs");
+    let content = read(renderer_rs);
+    assert!(
+        !content.contains("const COLOR_SHADER"),
+        "renderer.rs should not embed COLOR_SHADER",
+    );
+    assert!(
+        !content.contains("const TEXTURE_SHADER"),
+        "renderer.rs should not embed TEXTURE_SHADER",
+    );
+}
