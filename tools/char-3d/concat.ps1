@@ -13,25 +13,66 @@ $zipPath = Join-Path $root $ZipName
 $projectFiles = @(
   "concat.ps1",
   "strokes.html",
+  "package.json",
   "scripts/perf-report.mjs",
+  "scripts/bake-walking-amc.mjs",
   "src/app/cameraControls.js",
   "src/main.js",
   "src/mesh/fbxAdapter.js",
+  "src/mesh/fbxClipBake.js",
   "src/mesh/modelSources.js",
   "src/mesh/objParser.js",
   "src/mesh/meshRuntime.js",
   "src/mesh/objParseWorker.js",
   "src/paint/paintRegions.js",
+  "src/scene/bounds.js",
+  "src/scene/scenePartition.js",
+  "src/render/projectionContext.js",
+  "src/render/visibilitySelection.js",
+  "src/render/detailPolicy.js",
+  "src/render/renderSelection.js",
   "src/render/perfStats.js",
   "src/render/renderCache.js",
   "src/render/frameProtocol.js",
   "src/render/frameWorker.js",
   "src/state/controlSchema.js",
-  "src/state/defaultState.js"
+  "src/state/defaultState.js",
+  "src/state/stylePresets.js"
 )
 
+$rustProjectFiles = @(
+  "rust-impl/.gitignore",
+  "rust-impl/Cargo.toml",
+  "rust-impl/Cargo.lock",
+  "rust-impl/README.md"
+)
+
+$rustSourceRoot = Join-Path $root "rust-impl/src"
+if (Test-Path -LiteralPath $rustSourceRoot -PathType Container) {
+  $rustProjectFiles += Get-ChildItem -LiteralPath $rustSourceRoot -Recurse -File |
+    Where-Object {
+      $_.FullName -notmatch "\\target\\" -and
+      $_.Extension -in @(".rs", ".wgsl")
+    } |
+    Sort-Object FullName |
+    ForEach-Object {
+      $full = $_.FullName
+      $rootFull = [System.IO.Path]::GetFullPath($root).TrimEnd([System.IO.Path]::DirectorySeparatorChar, [System.IO.Path]::AltDirectorySeparatorChar)
+      $relative = $full.Substring($rootFull.Length).TrimStart([System.IO.Path]::DirectorySeparatorChar, [System.IO.Path]::AltDirectorySeparatorChar)
+      $relative -replace "\\", "/"
+    }
+}
+
+$projectFiles += $rustProjectFiles
+
 function Normalize-RelativePath([string]$path) {
-  $relative = [System.IO.Path]::GetRelativePath($root, $path)
+  $rootFull = [System.IO.Path]::GetFullPath($root).TrimEnd([System.IO.Path]::DirectorySeparatorChar, [System.IO.Path]::AltDirectorySeparatorChar)
+  $pathFull = [System.IO.Path]::GetFullPath($path)
+  if ($pathFull.StartsWith($rootFull, [System.StringComparison]::OrdinalIgnoreCase)) {
+    $relative = $pathFull.Substring($rootFull.Length).TrimStart([System.IO.Path]::DirectorySeparatorChar, [System.IO.Path]::AltDirectorySeparatorChar)
+  } else {
+    $relative = $pathFull
+  }
   return $relative -replace "\\", "/"
 }
 
@@ -58,7 +99,7 @@ $files = foreach ($relative in $projectFiles) {
 $builder = [System.Text.StringBuilder]::new()
 [void]$builder.AppendLine("# char-3d concat")
 [void]$builder.AppendLine("# Scope: tools/char-3d mini-project files authored/changed during this work.")
-[void]$builder.AppendLine("# Excludes dist, node_modules, logs, generated outputs, package metadata, old demos, and large model assets.")
+[void]$builder.AppendLine("# Excludes dist, node_modules, logs, generated outputs, old demos, and large model assets.")
 [void]$builder.AppendLine("# Generated: " + (Get-Date -Format "yyyy-MM-dd HH:mm:ss zzz"))
 [void]$builder.AppendLine("# Root: " + $root)
 [void]$builder.AppendLine("# File count: " + $files.Count)

@@ -1,13 +1,20 @@
 import { EPS, clamp, clamp01, deg, lerp, noise } from '../math/core.js';
+import { buildScenePartition, getScenePartitionKey } from '../scene/scenePartition.js';
+import { createProjectionContext, projectWorldPoint } from './projectionContext.js';
+import { selectVisibleRenderUnits } from './visibilitySelection.js';
+import { assignDetailTiers, detailAllowsInternalLine } from './detailPolicy.js';
+import { buildRenderSelection, buildFullRenderSelection } from './renderSelection.js';
 
 let mesh = null;
 let meshKey = '';
+let partitionCache = { key: '', value: null };
 
 self.onmessage = event => {
   const msg = event.data || {};
   if (msg.type === 'mesh') {
     meshKey = msg.meshKey || '';
     mesh = msg.mesh;
+    partitionCache = { key: '', value: null };
     self.postMessage({ type: 'mesh-ready', meshKey });
     return;
   }
@@ -32,8 +39,9 @@ function transferFrameResult(result) {
     result.verts.sx.buffer, result.verts.sy.buffer, result.verts.inFront.buffer,
     result.db.depth.buffer, result.db.owner.buffer,
   ];
-  for (const value of Object.values(result.screen)) out.push(value.buffer);
-  for (const key of ['x1', 'y1', 'z1', 'x2', 'y2', 'z2', 'kind', 'visible']) {
+  if (result.verts.localToGlobal?.buffer) out.push(result.verts.localToGlobal.buffer);
+  for (const value of Object.values(result.screen)) if (value?.buffer) out.push(value.buffer);
+  for (const key of ['x1', 'y1', 'z1', 'x2', 'y2', 'z2', 'kind', 'visible', 'detailTier']) {
     out.push(result.contours[key].buffer);
   }
   return out;
@@ -41,9 +49,19 @@ function transferFrameResult(result) {
 
 function computeFrame(p) {
   const timings = {};
+  const selectionStart = performance.now();
+  const projectionContext = createProjectionContext({
+    ...p,
+    centerX: p.width / 2,
+    centerY: p.height / 2,
+    sourceScaleMul: 1,
+  });
+  const renderSelection = buildWorkerRenderSelection(p, projectionContext);
+  timings.selection = performance.now() - selectionStart;
+
   const projectionStart = performance.now();
-  const verts = projectVertices(p);
-  const faceData = buildFaces(p, verts);
+  const verts = projectVertices(p, renderSelection, projectionContext);
+  const faceData = buildFaces(p, verts, renderSelection);
   timings.projection = performance.now() - projectionStart;
 
   const depthStart = performance.now();
@@ -66,11 +84,17 @@ function computeFrame(p) {
     timings,
     counters: {
       facesTotal: mesh.faceCount,
+      facesSelected: renderSelection.faceIds.length,
+      vertsSelected: renderSelection.vertexIds.length,
+      edgesSelected: renderSelection.edgeIds.length,
       facesOnScreen: faceData.count,
       facesDepth: db.rasterized,
       facesVisible: faceData.visibleCount,
       contoursTested: contours.tested,
       contoursDrawn: contours.count,
+      ...renderSelection.counters,
+      ...(renderSelection.visibilityCounters || {}),
+      ...(renderSelection.detailCounters || {}),
     },
     depthMode: p.controlMode === 'freelook' ? 'min' : 'max',
     viewport: { width: p.width, height: p.height, margin: p.cullMargin },
@@ -78,77 +102,54 @@ function computeFrame(p) {
   };
 }
 
-function projectVertices(p) {
-  const n = mesh.vertCount;
+function workerRuntime() {
+  return mesh;
+}
+
+function getOrBuildPartition(p) {
+  const runtime = workerRuntime();
+  const key = getScenePartitionKey(runtime, p);
+  if (partitionCache.key === key && partitionCache.value) return partitionCache.value;
+  const value = buildScenePartition(runtime, p);
+  partitionCache = { key, value };
+  return value;
+}
+
+function buildWorkerRenderSelection(p, projectionContext) {
+  const runtime = workerRuntime();
+  if (!p.scenePartitionEnabled && !p.visibilityCullingEnabled && !p.detailPolicyEnabled && !p.vectorBudgetEnabled) {
+    return buildFullRenderSelection(runtime);
+  }
+  const partition = getOrBuildPartition(p);
+  const viewport = { width: p.width, height: p.height };
+  const visibility = selectVisibleRenderUnits(partition, projectionContext, viewport, p);
+  const detailed = assignDetailTiers(visibility, p);
+  const selection = buildRenderSelection(detailed, runtime, p);
+  selection.visibilityCounters = visibility.counters;
+  selection.detailCounters = detailed.counters;
+  return selection;
+}
+
+function projectVertices(p, renderSelection, projectionContext) {
+  const n = renderSelection.vertexIds.length;
   const x = new Float32Array(n);
   const y = new Float32Array(n);
   const z = new Float32Array(n);
   const sx = new Float32Array(n);
   const sy = new Float32Array(n);
   const inFront = new Uint8Array(n);
-  const centerX = p.width / 2;
-  const centerY = p.height / 2;
-
-  if (p.controlMode === 'freelook') {
-    const yawRad = deg(p.cameraYaw);
-    const pitchRad = deg(p.cameraPitch);
-    const fwd = norm3(
-      Math.sin(yawRad) * Math.cos(pitchRad),
-      -Math.sin(pitchRad),
-      -Math.cos(yawRad) * Math.cos(pitchRad)
-    );
-    const rgt = norm3(Math.cos(yawRad), 0, Math.sin(yawRad));
-    const up = norm3(
-      rgt.y * fwd.z - rgt.z * fwd.y,
-      rgt.z * fwd.x - rgt.x * fwd.z,
-      rgt.x * fwd.y - rgt.y * fwd.x
-    );
-    const focal = p.focalLength || 35;
-    const scale = Math.min(p.width, p.height) * 0.1;
-    for (let i = 0; i < n; i++) {
-      const rx = mesh.vertX[i] - p.cameraX;
-      const ry = mesh.vertY[i] - p.cameraY;
-      const rz = mesh.vertZ[i] - p.cameraZ;
-      const cx = rx * rgt.x + ry * rgt.y + rz * rgt.z;
-      const cy = rx * up.x + ry * up.y + rz * up.z;
-      const cz = rx * fwd.x + ry * fwd.y + rz * fwd.z;
-      const perspective = p.projectionMode === 'perspective' ? focal / Math.max(0.1, cz) : focal / 10.0;
-      x[i] = cx; y[i] = cy; z[i] = cz;
-      sx[i] = centerX + cx * scale * perspective;
-      sy[i] = centerY - cy * scale * perspective;
-      inFront[i] = cz >= 0.1 ? 1 : 0;
-      applyProjectionWobble(p, i, sx, sy, 1);
-    }
-    return { x, y, z, sx, sy, inFront };
+  const tmp = {};
+  for (let local = 0; local < n; local++) {
+    const global = renderSelection.vertexIds[local];
+    projectWorldPoint(projectionContext, mesh.vertX[global], mesh.vertY[global], mesh.vertZ[global], global, tmp);
+    x[local] = tmp.x;
+    y[local] = tmp.y;
+    z[local] = tmp.z;
+    sx[local] = tmp.sx;
+    sy[local] = tmp.sy;
+    inFront[local] = tmp.inFront ? 1 : 0;
   }
-
-  const yaw = deg(p.yaw);
-  const pitch = deg(p.pitch);
-  const cy = Math.cos(yaw), syaw = Math.sin(yaw), cp = Math.cos(pitch), sp = Math.sin(pitch);
-  const cameraYaw = deg(-p.cameraYaw), cameraPitch = deg(-p.cameraPitch);
-  const ccy = Math.cos(cameraYaw), csy = Math.sin(cameraYaw);
-  const ccp = Math.cos(cameraPitch), csp = Math.sin(cameraPitch);
-  const scale = Math.min(p.width, p.height) * 0.36 * p.zoom * p.cameraDollyScale;
-  for (let i = 0; i < n; i++) {
-    const px = mesh.vertX[i], py = mesh.vertY[i], pz = mesh.vertZ[i];
-    const x1 = px * cy + pz * syaw;
-    const z1 = -px * syaw + pz * cy;
-    const y2 = py * cp - z1 * sp;
-    const z2 = py * sp + z1 * cp;
-    const vx = x1 - p.cameraX;
-    const vy = y2 - p.cameraY;
-    const vz = z2 - p.cameraZ;
-    const x3 = vx * ccy + vz * csy;
-    const z3 = -vx * csy + vz * ccy;
-    const y4 = vy * ccp - z3 * csp;
-    const z4 = vy * csp + z3 * ccp;
-    x[i] = x3; y[i] = y4; z[i] = z4;
-    sx[i] = centerX + x3 * scale;
-    sy[i] = centerY - y4 * scale;
-    inFront[i] = 1;
-    applyProjectionWobble(p, i, sx, sy, 1);
-  }
-  return { x, y, z, sx, sy, inFront };
+  return { x, y, z, sx, sy, inFront, localToGlobal: renderSelection.vertexIds };
 }
 
 function applyProjectionWobble(p, i, sx, sy, ampMul) {
@@ -159,7 +160,7 @@ function applyProjectionWobble(p, i, sx, sy, ampMul) {
   sy[i] += noise(seed, 2) * amp;
 }
 
-function buildFaces(p, verts) {
+function buildFaces(p, verts, renderSelection) {
   const faceCount = mesh.faceCount;
   const ids = [];
   const aList = [];
@@ -183,8 +184,15 @@ function buildFaces(p, verts) {
   const maxY = [];
   const L = lightVector(p);
 
-  for (let id = 0; id < faceCount; id++) {
-    const ai = mesh.faceA[id], bi = mesh.faceB[id], ci = mesh.faceC[id];
+  const faceIds = renderSelection?.faceIds || null;
+  const loopCount = faceIds ? faceIds.length : faceCount;
+  for (let faceIndex = 0; faceIndex < loopCount; faceIndex++) {
+    const id = faceIds ? faceIds[faceIndex] : faceIndex;
+    const aiGlobal = mesh.faceA[id], biGlobal = mesh.faceB[id], ciGlobal = mesh.faceC[id];
+    const ai = renderSelection?.globalToLocalVertex ? renderSelection.globalToLocalVertex[aiGlobal] : aiGlobal;
+    const bi = renderSelection?.globalToLocalVertex ? renderSelection.globalToLocalVertex[biGlobal] : biGlobal;
+    const ci = renderSelection?.globalToLocalVertex ? renderSelection.globalToLocalVertex[ciGlobal] : ciGlobal;
+    if (ai < 0 || bi < 0 || ci < 0) continue;
     const ax = verts.x[ai], ay = verts.y[ai], az = verts.z[ai];
     const bx = verts.x[bi], by = verts.y[bi], bz = verts.z[bi];
     const cx3 = verts.x[ci], cy3 = verts.y[ci], cz = verts.z[ci];
@@ -226,7 +234,8 @@ function buildFaces(p, verts) {
     }
 
     const fArea = Math.abs((sx1 - sx0) * (sy2 - sy0) - (sy1 - sy0) * (sx2 - sx0)) * 0.5;
-    if (!isOffscreen && fArea > EPS && (p.controlMode !== 'freelook' || inFront[id])) {
+    const tooSmall = p.vectorBudgetEnabled && fArea < (Number(p.vectorMinFaceAreaPx) || 0);
+    if (!isOffscreen && !tooSmall && fArea > Math.max(EPS, p.cleanupMinFaceAreaPx || 0) && (p.controlMode !== 'freelook' || inFront[id])) {
       ids.push(id); aList.push(ai); bList.push(bi); cList.push(ci);
       area.push(fArea);
       cx.push((sx0 + sx1 + sx2) / 3);
@@ -252,6 +261,9 @@ function buildFaces(p, verts) {
     maxX: Float32Array.from(maxX),
     maxY: Float32Array.from(maxY),
     nx, ny, nz, tone, ndotl, front, inFront, offscreen,
+    detailTier: renderSelection?.faceTier || new Int8Array(faceCount),
+    faceUnit: renderSelection?.faceUnit || new Int32Array(faceCount),
+    renderSelection,
     visibility: new Float32Array(ids.length),
     visible: new Uint8Array(ids.length),
     flowX: new Float32Array(ids.length),
@@ -331,14 +343,15 @@ function computeVisibilityAndFlow(p, faceData, db) {
     faceData.visibility[i] = ok / samples.length;
     faceData.visible[i] = !p.hideOccluded || ok > 0 ? 1 : 0;
     if (faceData.visible[i]) {
-        if (needsFlow) computeFlow(p, faceData.verts, i);
+        if (needsFlow) computeFlow(p, faceData, i);
       visibleCount++;
     }
   }
   faceData.visibleCount = visibleCount;
 }
 
-function computeFlow(p, verts, i) {
+function computeFlow(p, faceData, i) {
+  const verts = faceData.verts;
   const ai = faceData.a[i], bi = faceData.b[i], ci = faceData.c[i];
   const ids = [ai, bi, ci];
   let bestX = verts.sx[bi] - verts.sx[ai];
@@ -376,34 +389,54 @@ function computeFlow(p, verts, i) {
 function computeContours(p, verts, faceData, db) {
   const out = {
     x1: [], y1: [], z1: [], x2: [], y2: [], z2: [],
-    kind: [], visible: [],
+    kind: [], visible: [], detailTier: [],
     tested: 0,
     count: 0,
   };
-  for (let i = 0; i < mesh.edgeCount; i++) {
+  const edgeIds = faceData.renderSelection?.edgeIds || null;
+  const edgeCount = edgeIds ? edgeIds.length : mesh.edgeCount;
+  const maxContours = p.vectorBudgetEnabled ? Math.max(0, Number(p.vectorMaxContourLines) || 0) : Infinity;
+  for (let edgeIndex = 0; edgeIndex < edgeCount; edgeIndex++) {
+    const i = edgeIds ? edgeIds[edgeIndex] : edgeIndex;
     const f0 = mesh.edgeF0[i];
     const f1 = mesh.edgeF1[i];
-    if (faceData.offscreen[f0] && (f1 < 0 || faceData.offscreen[f1])) continue;
+    const f0Selected = f0 >= 0 && (faceData.detailTier[f0] ?? 4) < 4;
+    const f1Selected = f1 >= 0 && (faceData.detailTier[f1] ?? 4) < 4;
+    if (!f0Selected && !f1Selected) continue;
+    const primary = f0Selected ? f0 : f1;
+    const secondary = f0Selected && f1Selected ? f1 : -1;
+    if (faceData.offscreen[primary] && (secondary < 0 || faceData.offscreen[secondary])) continue;
     const a = mesh.edgeA[i], b = mesh.edgeB[i];
-    if (bboxOffscreen(p, Math.min(verts.sx[a], verts.sx[b]), Math.min(verts.sy[a], verts.sy[b]), Math.max(verts.sx[a], verts.sx[b]), Math.max(verts.sy[a], verts.sy[b]), p.cullMargin)) continue;
+    const la = faceData.renderSelection?.globalToLocalVertex ? faceData.renderSelection.globalToLocalVertex[a] : a;
+    const lb = faceData.renderSelection?.globalToLocalVertex ? faceData.renderSelection.globalToLocalVertex[b] : b;
+    if (la < 0 || lb < 0) continue;
+    if (bboxOffscreen(p, Math.min(verts.sx[la], verts.sx[lb]), Math.min(verts.sy[la], verts.sy[lb]), Math.max(verts.sx[la], verts.sx[lb]), Math.max(verts.sy[la], verts.sy[lb]), p.cullMargin)) continue;
     out.tested++;
-    const boundary = f1 < 0;
-    const silhouette = f1 >= 0 ? faceData.front[f0] !== faceData.front[f1] : true;
-    const crease = f1 >= 0 ? faceDot(faceData, f0, f1) < 0.70 : false;
-    const toneBreak = f1 >= 0 ? Math.abs(faceData.tone[f0] - faceData.tone[f1]) > 0.32 : false;
+    const screenLen = Math.hypot(verts.sx[la] - verts.sx[lb], verts.sy[la] - verts.sy[lb]);
+    if (screenLen < (p.cleanupMinLineLengthPx || 0)) continue;
+    if (p.vectorBudgetEnabled && screenLen < (Number(p.vectorMinEdgeLengthPx) || 0)) continue;
+    if (screenLen > (p.cleanupMaxEdgeLengthPx || Infinity)) continue;
+    const boundary = secondary < 0;
+    const silhouette = secondary >= 0 ? faceData.front[primary] !== faceData.front[secondary] : true;
+    const crease = secondary >= 0 ? faceDot(faceData, primary, secondary) < 0.70 : false;
+    const toneBreak = secondary >= 0 ? Math.abs(faceData.tone[primary] - faceData.tone[secondary]) > 0.32 : false;
     let kind = 0;
     if (boundary || silhouette) kind = 1;
     else if (p.creases && crease) kind = 2;
     else if (p.suggestive && toneBreak) kind = 3;
     if (!kind) continue;
-    const mx = (verts.sx[a] + verts.sx[b]) / 2;
-    const my = (verts.sy[a] + verts.sy[b]) / 2;
-    const mz = (verts.z[a] + verts.z[b]) / 2;
+    const tier = faceData.renderSelection?.edgeTier?.[i] ?? Math.min(faceData.detailTier[primary] || 0, secondary >= 0 ? faceData.detailTier[secondary] || 0 : 0);
+    if (!detailAllowsInternalLine(tier, kind === 1 ? 'contour' : kind === 2 ? 'crease' : 'suggestive')) continue;
+    const mx = (verts.sx[la] + verts.sx[lb]) / 2;
+    const my = (verts.sy[la] + verts.sy[lb]) / 2;
+    const mz = (verts.z[la] + verts.z[lb]) / 2;
     const visible = isVisiblePoint(p, db, mx, my, mz);
     if (!visible && !p.showHidden) continue;
-    out.x1.push(verts.sx[a]); out.y1.push(verts.sy[a]); out.z1.push(verts.z[a]);
-    out.x2.push(verts.sx[b]); out.y2.push(verts.sy[b]); out.z2.push(verts.z[b]);
+    if (out.kind.length >= maxContours) break;
+    out.x1.push(verts.sx[la]); out.y1.push(verts.sy[la]); out.z1.push(verts.z[la]);
+    out.x2.push(verts.sx[lb]); out.y2.push(verts.sy[lb]); out.z2.push(verts.z[lb]);
     out.kind.push(kind); out.visible.push(visible ? 1 : 0);
+    out.detailTier.push(tier);
   }
   out.count = out.kind.length;
   return {
@@ -415,6 +448,7 @@ function computeContours(p, verts, faceData, db) {
     z2: Float32Array.from(out.z2),
     kind: Uint8Array.from(out.kind),
     visible: Uint8Array.from(out.visible),
+    detailTier: Int8Array.from(out.detailTier),
     tested: out.tested,
     count: out.count,
   };
@@ -428,6 +462,8 @@ function packScreenFaces(faceData) {
   const ndotl = new Float32Array(faceData.count);
   const front = new Uint8Array(faceData.count);
   const inFront = new Uint8Array(faceData.count);
+  const detailTier = new Int8Array(faceData.count);
+  const unitId = new Int32Array(faceData.count);
   for (let i = 0; i < faceData.count; i++) {
     const id = faceData.ids[i];
     nx[i] = faceData.nx[id];
@@ -437,6 +473,8 @@ function packScreenFaces(faceData) {
     ndotl[i] = faceData.ndotl[id];
     front[i] = faceData.front[id];
     inFront[i] = faceData.inFront[id];
+    detailTier[i] = faceData.detailTier?.[id] ?? 0;
+    unitId[i] = faceData.faceUnit?.[id] ?? -1;
   }
   return {
     ids: faceData.ids,
@@ -450,6 +488,8 @@ function packScreenFaces(faceData) {
     ndotl,
     front,
     inFront,
+    detailTier,
+    unitId,
     area: faceData.area,
     cx: faceData.cx,
     cy: faceData.cy,
@@ -469,7 +509,7 @@ function emptyContours() {
   return {
     x1: new Float32Array(0), y1: new Float32Array(0), z1: new Float32Array(0),
     x2: new Float32Array(0), y2: new Float32Array(0), z2: new Float32Array(0),
-    kind: new Uint8Array(0), visible: new Uint8Array(0),
+    kind: new Uint8Array(0), visible: new Uint8Array(0), detailTier: new Int8Array(0),
     tested: 0, count: 0,
   };
 }

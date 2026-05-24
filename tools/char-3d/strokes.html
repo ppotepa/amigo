@@ -39,7 +39,7 @@
     .head { padding: 14px 14px 10px; border-bottom: 1px solid var(--line); }
     h1 { font-size: 16px; margin: 0 0 4px; letter-spacing: -.02em; }
     .sub { color: var(--muted); font-size: 12px; line-height: 1.36; }
-    .tabs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; padding: 10px 10px 0; }
+    .tabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; padding: 10px 10px 0; }
     .tabs button { padding: 8px 5px; font-size: 11px; border-radius: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .tabs button.active { background: var(--ink); color: #fff7ea; border-color: var(--ink); }
     .content { overflow: auto; padding: 10px 14px 14px; }
@@ -130,12 +130,16 @@
     <div class="tabs">
       <button class="tabBtn active" data-tab="modelTab">Model</button>
       <button class="tabBtn" data-tab="cameraTab">Camera</button>
-      <button class="tabBtn" data-tab="lookTab">Look</button>
-      <button class="tabBtn" data-tab="inkTab">Ink</button>
-      <button class="tabBtn" data-tab="paintTab">Paint</button>
-      <button class="tabBtn" data-tab="rndTab">RND</button>
-      <button class="tabBtn" data-tab="visibilityTab">Visibility</button>
+      <button class="tabBtn" data-tab="lookTab">Features</button>
+      <button class="tabBtn" data-tab="inkTab">Stroke Tools</button>
+      <button class="tabBtn" data-tab="shadowTab">Shadow</button>
+      <button class="tabBtn" data-tab="paintTab">Paint Regions</button>
+      <button class="tabBtn" data-tab="cleanupTab">Cleanup</button>
+      <button class="tabBtn" data-tab="rndTab">Randomness</button>
+      <button class="tabBtn" data-tab="visibilityTab">Lines</button>
+      <button class="tabBtn" data-tab="detailTab">Detail</button>
       <button class="tabBtn" data-tab="debugTab">Debug</button>
+      <button class="tabBtn" data-tab="exportTab">Export</button>
     </div>
 
     <div class="content">
@@ -164,17 +168,6 @@
             <label><input id="impreciseTween" type="checkbox" checked> imprecise tweening</label>
           </div>
           <div class="row"><label>Timing drift</label><input id="tweenJitterFrames" type="range" min="0" max="2" value="1.25" step="0.05"><span id="tweenJitterFramesV">1.25f</span></div>
-        </div>
-        <div class="group">
-          <div class="groupTitle">Actions</div>
-          <div class="twocol">
-            <button id="reset">Reset view</button>
-            <button id="exportSvg">Export SVG</button>
-          </div>
-          <div class="twocol" style="margin-top:7px">
-            <button id="exportPng">Export PNG</button>
-            <button id="exportAtlas">PNG atlas stylów</button>
-          </div>
         </div>
       </div>
 
@@ -249,6 +242,15 @@
             <option value="scumbleCharcoal">28 · Charcoal Scumble</option>
             <option value="scumbleDust">29 · Dusty Scumble</option>
             <option value="techEtch">30 · Technical Etching</option>
+            <option value="pipelineCleanInk">Pipeline · Clean Ink</option>
+            <option value="pipelinePencilStudy">Pipeline · Pencil Study</option>
+            <option value="pipelineBrushWash">Pipeline · Brush Wash</option>
+            <option value="pipelineComicShadow">Pipeline · Comic Shadow</option>
+            <option value="pipelineDenseHairSafe">Pipeline · Dense Hair Safe</option>
+            <option value="pipelineNoisyHandDrawn">Pipeline · Noisy Hand Drawn</option>
+            <option value="largeSceneBalanced">31 · Large Scene Balanced</option>
+            <option value="closeSubjectDetail">32 · Close Subject Detail</option>
+            <option value="denseSceneCleanup">33 · Dense Scene Cleanup</option>
           </select>
           <div class="row"><label>Method</label><select id="method"><option value="hatching">Hatching</option><option value="crosshatch">Cross-hatching</option><option value="contourHatch">Contour hatching</option><option value="feather">Feathering</option><option value="stipple">Stippling / dots</option><option value="halftone">Halftone dots</option><option value="scribble">Scribble shading</option><option value="scumble">Scumbling</option><option value="drybrush">Dry brush</option><option value="graphite">Graphite build-up</option><option value="comic">Ink fill + hatch</option><option value="hybrid">Hybrid line + dot</option></select><span></span></div>
           <div class="row"><label>Flow mode</label><select id="flowMode"><option value="mixed">Mixed</option><option value="parallel">Parallel</option><option value="form">Form / mesh edge</option><option value="crossContour">Cross-contour</option><option value="silhouette">Silhouette aligned</option><option value="light">Light aligned</option><option value="terminator">Terminator aligned</option></select><span></span></div>
@@ -265,18 +267,22 @@
         </div>
         <div class="group">
           <div class="groupTitle">Tone / density</div>
-          <div class="row"><label>Density</label><input id="density" type="range" min="0" max="2" value="0.72" step="0.01"><span id="densityV">0.72</span></div>
-          <div class="row"><label>Layer count</label><input id="layers" type="range" min="1" max="4" value="1" step="1"><span id="layersV">1</span></div>
-          <div class="row"><label>Light threshold</label><input id="threshold" type="range" min="0" max="0.9" value="0.20" step="0.01"><span id="thresholdV">0.20</span></div>
           <div class="row"><label>Core emphasis</label><input id="core" type="range" min="0" max="2" value="1.0" step="0.01"><span id="coreV">1.00</span></div>
           <div class="row"><label>Contact accent</label><input id="contact" type="range" min="0" max="1" value="0.35" step="0.01"><span id="contactV">0.35</span></div>
           <div class="row"><label>Edge darkening</label><input id="edgeDark" type="range" min="0" max="1" value="0.24" step="0.01"><span id="edgeDarkV">0.24</span></div>
           <div class="row"><label>Tonal simplify</label><input id="simplify" type="range" min="0" max="1" value="0.25" step="0.01"><span id="simplifyV">0.25</span></div>
-          <div class="row"><label>Shadow economy</label><input id="economy" type="range" min="0" max="1" value="0.34" step="0.01"><span id="economyV">0.34</span></div>
         </div>
       </div>
 
       <div id="inkTab" class="tabPane">
+        <div class="group">
+          <div class="groupTitle">Line set tools</div>
+          <div class="row"><label>Main contour</label><select id="mainContourTool"><option value="mainInk">main ink</option><option value="thinPen">thin pen</option><option value="softPencil">soft pencil</option><option value="shadowPencil">shadow pencil</option><option value="hiddenGuide">hidden guide</option></select><span></span></div>
+          <div class="row"><label>Crease accent</label><select id="creaseAccentTool"><option value="thinPen">thin pen</option><option value="mainInk">main ink</option><option value="softPencil">soft pencil</option><option value="shadowPencil">shadow pencil</option><option value="hiddenGuide">hidden guide</option></select><span></span></div>
+          <div class="row"><label>Suggestive</label><select id="suggestiveContourTool"><option value="softPencil">soft pencil</option><option value="thinPen">thin pen</option><option value="mainInk">main ink</option><option value="shadowPencil">shadow pencil</option><option value="hiddenGuide">hidden guide</option></select><span></span></div>
+          <div class="row"><label>Hidden line</label><select id="hiddenLineTool"><option value="hiddenGuide">hidden guide</option><option value="softPencil">soft pencil</option><option value="thinPen">thin pen</option><option value="mainInk">main ink</option><option value="shadowPencil">shadow pencil</option></select><span></span></div>
+          <div class="row"><label>Shadow hatch</label><select id="shadowHatchTool"><option value="shadowPencil">shadow pencil</option><option value="softPencil">soft pencil</option><option value="thinPen">thin pen</option><option value="mainInk">main ink</option><option value="hiddenGuide">hidden guide</option></select><span></span></div>
+        </div>
         <div class="group">
           <div class="groupTitle">Stroke geometry</div>
           <div class="row"><label>Stroke length</label><input id="strokeLen" type="range" min="5" max="130" value="44" step="1"><span id="strokeLenV">44</span></div>
@@ -317,6 +323,11 @@
         </div>
         <div class="group">
           <div class="groupTitle">Paint regions</div>
+          <div class="checks">
+            <label><input id="baseWashEnabled" type="checkbox" checked> base wash region set</label>
+            <label><input id="shadowRegionEnabled" type="checkbox" checked> shadow region set</label>
+            <label><input id="highlightRegionEnabled" type="checkbox" checked> highlight region set</label>
+          </div>
           <div class="row"><label>Region resolution</label><input id="paintRegionResolution" type="range" min="192" max="640" value="384" step="32"><span id="paintRegionResolutionV">384px</span></div>
           <div class="row"><label>Region simplify</label><input id="paintRegionSimplify" type="range" min="0" max="1" value="0.45" step="0.01"><span id="paintRegionSimplifyV">0.45</span></div>
           <div class="row"><label>Edge bleed</label><input id="paintEdgeBleed" type="range" min="0" max="1" value="0.65" step="0.01"><span id="paintEdgeBleedV">0.65</span></div>
@@ -326,7 +337,46 @@
         </div>
       </div>
 
+      <div id="shadowTab" class="tabPane">
+        <div class="group">
+          <div class="groupTitle">Shadow strokes</div>
+          <div class="row"><label>Density</label><input id="density" type="range" min="0" max="2" value="0.72" step="0.01"><span id="densityV">0.72</span></div>
+          <div class="row"><label>Layer count</label><input id="layers" type="range" min="1" max="4" value="1" step="1"><span id="layersV">1</span></div>
+          <div class="row"><label>Light threshold</label><input id="threshold" type="range" min="0" max="0.9" value="0.20" step="0.01"><span id="thresholdV">0.20</span></div>
+          <div class="row"><label>Shadow economy</label><input id="economy" type="range" min="0" max="1" value="0.34" step="0.01"><span id="economyV">0.34</span></div>
+        </div>
+        <div class="group">
+          <div class="groupTitle">Shadow regions</div>
+          <div class="row"><label>Tone bands</label><input id="shadowBandCount" type="range" min="1" max="8" value="3" step="1"><span id="shadowBandCountV">3</span></div>
+          <div class="row"><label>Region bleed</label><input id="shadowRegionBleed" type="range" min="0" max="1" value="0.2" step="0.01"><span id="shadowRegionBleedV">0.20</span></div>
+          <div class="row"><label>Color jitter</label><input id="shadowColorJitter" type="range" min="0" max="1" value="0.25" step="0.01"><span id="shadowColorJitterV">0.25</span></div>
+        </div>
+      </div>
+
+      <div id="cleanupTab" class="tabPane">
+        <div class="group">
+          <div class="groupTitle">Geometry cleanup</div>
+          <div class="row"><label>Min face area</label><input id="cleanupMinFaceAreaPx" type="range" min="0" max="30" value="2" step="0.5"><span id="cleanupMinFaceAreaPxV">2.0px</span></div>
+          <div class="row"><label>Min line length</label><input id="cleanupMinLineLengthPx" type="range" min="0" max="40" value="3" step="0.5"><span id="cleanupMinLineLengthPxV">3.0px</span></div>
+          <div class="row"><label>Max edge length</label><input id="cleanupMaxEdgeLengthPx" type="range" min="20" max="500" value="500" step="5"><span id="cleanupMaxEdgeLengthPxV">500px</span></div>
+          <div class="row"><label>Density clamp</label><input id="cleanupDensityClamp" type="range" min="0" max="1" value="0.65" step="0.01"><span id="cleanupDensityClampV">0.65</span></div>
+        </div>
+        <div class="group">
+          <div class="groupTitle">Region cleanup</div>
+          <div class="row"><label>Region min area</label><input id="cleanupRegionMinAreaPx" type="range" min="0" max="4000" value="80" step="10"><span id="cleanupRegionMinAreaPxV">80px²</span></div>
+          <div class="row"><label>Region min faces</label><input id="cleanupRegionMinFaces" type="range" min="1" max="80" value="3" step="1"><span id="cleanupRegionMinFacesV">3</span></div>
+          <div class="row"><label>Region max aspect</label><input id="cleanupRegionMaxAspect" type="range" min="2" max="40" value="16" step="0.5"><span id="cleanupRegionMaxAspectV">16.0</span></div>
+          <div class="row"><label>Hair suppression</label><input id="hairRegionSuppression" type="range" min="0" max="1" value="0.5" step="0.01"><span id="hairRegionSuppressionV">0.50</span></div>
+        </div>
+      </div>
+
       <div id="rndTab" class="tabPane">
+        <div class="group">
+          <div class="groupTitle">Temporal / projection</div>
+          <div class="row"><label>Temporal coherence</label><input id="temporalCoherence" type="range" min="0" max="1" value="0.85" step="0.01"><span id="temporalCoherenceV">0.85</span></div>
+          <div class="row"><label>Projection human error</label><input id="projectionHumanError" type="range" min="0" max="1" value="0.12" step="0.01"><span id="projectionHumanErrorV">0.12</span></div>
+          <div class="row"><label>Pressure jitter</label><input id="strokePressureJitter" type="range" min="0" max="1" value="0.22" step="0.01"><span id="strokePressureJitterV">0.22</span></div>
+        </div>
         <div class="group">
           <div class="groupTitle">Stroke randomness</div>
           <div class="row"><label>Wobble</label><input id="wobble" type="range" min="0" max="1" value="0.34" step="0.01"><span id="wobbleV">0.34</span></div>
@@ -380,10 +430,76 @@
         <div class="group">
           <div class="groupTitle">Line classes</div>
           <div class="checks">
+            <label><input id="mainContourEnabled" type="checkbox" checked> main contour line set</label>
             <label><input id="creases" type="checkbox" checked> crease accents</label>
+            <label><input id="creaseAccentEnabled" type="checkbox" checked> crease line set</label>
             <label><input id="suggestive" type="checkbox" checked> suggestive accents</label>
+            <label><input id="suggestiveContourEnabled" type="checkbox" checked> suggestive line set</label>
             <label><input id="contactLines" type="checkbox" checked> contact accents</label>
+            <label><input id="hiddenLineEnabled" type="checkbox" checked> hidden line set</label>
+            <label><input id="shadowHatchEnabled" type="checkbox" checked> shadow hatch line set</label>
             <label><input id="depthFade" type="checkbox" checked> depth fade hidden</label>
+          </div>
+        </div>
+      </div>
+
+      <div id="detailTab" class="tabPane">
+        <div class="group">
+          <div class="groupTitle">Scene partition</div>
+          <div class="checks">
+            <label><input id="scenePartitionEnabled" type="checkbox" checked> scene partition</label>
+          </div>
+          <div class="row"><label>Cell size</label><input id="scenePartitionCellSize" type="range" min="4" max="128" value="24" step="1"><span id="scenePartitionCellSizeV">24</span></div>
+          <div class="row"><label>Max units</label><input id="scenePartitionMaxUnits" type="range" min="64" max="8192" value="4096" step="64"><span id="scenePartitionMaxUnitsV">4096</span></div>
+        </div>
+        <div class="group">
+          <div class="groupTitle">Camera visibility</div>
+          <div class="checks">
+            <label><input id="visibilityCullingEnabled" type="checkbox" checked> visibility culling</label>
+          </div>
+          <div class="row"><label>Margin</label><input id="visibilityMarginPx" type="range" min="0" max="260" value="80" step="1"><span id="visibilityMarginPxV">80px</span></div>
+          <div class="row"><label>Min area</label><input id="visibilityMinAreaPx" type="range" min="0" max="120" value="2" step="0.5"><span id="visibilityMinAreaPxV">2.0px²</span></div>
+          <div class="row"><label>Min radius</label><input id="visibilityMinRadiusPx" type="range" min="0" max="40" value="1.5" step="0.1"><span id="visibilityMinRadiusPxV">1.5px</span></div>
+        </div>
+        <div class="group">
+          <div class="groupTitle">Detail tiers</div>
+          <div class="checks">
+            <label><input id="detailPolicyEnabled" type="checkbox" checked> detail policy</label>
+          </div>
+          <div class="row"><label>D0 radius</label><input id="detailTier0RadiusPx" type="range" min="20" max="500" value="180" step="1"><span id="detailTier0RadiusPxV">180px</span></div>
+          <div class="row"><label>D1 radius</label><input id="detailTier1RadiusPx" type="range" min="10" max="300" value="80" step="1"><span id="detailTier1RadiusPxV">80px</span></div>
+          <div class="row"><label>D2 radius</label><input id="detailTier2RadiusPx" type="range" min="4" max="160" value="28" step="1"><span id="detailTier2RadiusPxV">28px</span></div>
+          <div class="row"><label>D3 radius</label><input id="detailTier3RadiusPx" type="range" min="1" max="80" value="8" step="1"><span id="detailTier3RadiusPxV">8px</span></div>
+          <div class="row"><label>Density penalty</label><input id="detailDensityPenalty" type="range" min="0" max="2" value="0.35" step="0.01"><span id="detailDensityPenaltyV">0.35</span></div>
+          <div class="row"><label>Importance bias</label><input id="detailImportanceBias" type="range" min="0.1" max="4" value="1" step="0.01"><span id="detailImportanceBiasV">1.00</span></div>
+        </div>
+        <div class="group">
+          <div class="groupTitle">Vector budget</div>
+          <div class="checks">
+            <label><input id="vectorBudgetEnabled" type="checkbox" checked> vector budget</label>
+          </div>
+          <div class="row"><label>Max faces</label><input id="vectorMaxProjectedFaces" type="range" min="1000" max="120000" value="18000" step="500"><span id="vectorMaxProjectedFacesV">18000</span></div>
+          <div class="row"><label>Max edges</label><input id="vectorMaxVisibleEdges" type="range" min="1000" max="160000" value="12000" step="500"><span id="vectorMaxVisibleEdgesV">12000</span></div>
+          <div class="row"><label>Max contours</label><input id="vectorMaxContourLines" type="range" min="500" max="60000" value="7000" step="250"><span id="vectorMaxContourLinesV">7000</span></div>
+          <div class="row"><label>Max marks</label><input id="vectorMaxShadowMarks" type="range" min="0" max="16000" value="2600" step="100"><span id="vectorMaxShadowMarksV">2600</span></div>
+          <div class="row"><label>Min face area</label><input id="vectorMinFaceAreaPx" type="range" min="0" max="30" value="0.8" step="0.1"><span id="vectorMinFaceAreaPxV">0.8px²</span></div>
+          <div class="row"><label>Min edge length</label><input id="vectorMinEdgeLengthPx" type="range" min="0" max="30" value="1.6" step="0.1"><span id="vectorMinEdgeLengthPxV">1.6px</span></div>
+        </div>
+        <div class="group">
+          <div class="groupTitle">Region budget</div>
+          <div class="checks">
+            <label><input id="regionBudgetEnabled" type="checkbox" checked> region budget</label>
+            <label><input id="regionAllowFarFills" type="checkbox"> allow far fills</label>
+          </div>
+          <div class="row"><label>Min region area</label><input id="regionMinProjectedAreaPx" type="range" min="0" max="2000" value="24" step="2"><span id="regionMinProjectedAreaPxV">24px²</span></div>
+          <div class="row"><label>Max regions</label><input id="regionMaxPaintRegions" type="range" min="0" max="2000" value="600" step="10"><span id="regionMaxPaintRegionsV">600</span></div>
+        </div>
+        <div class="group">
+          <div class="groupTitle">Debug overlays</div>
+          <div class="checks">
+            <label><input id="visibilityDebug" type="checkbox"> visibility overlay</label>
+            <label><input id="detailDebug" type="checkbox"> detail tier overlay</label>
+            <label><input id="budgetDebug" type="checkbox"> budget overlay</label>
           </div>
         </div>
       </div>
@@ -396,6 +512,9 @@
             <label><input id="flow" type="checkbox"> flow debug</label>
             <label><input id="depthDebug" type="checkbox"> depth debug</label>
             <label><input id="seedDebug" type="checkbox"> seed debug</label>
+            <label><input id="regionDebug" type="checkbox"> paint region IDs</label>
+            <label><input id="cleanupDebug" type="checkbox"> rejected faces</label>
+            <label><input id="densityDebug" type="checkbox"> density heatmap</label>
           </div>
         </div>
         <div class="group">
@@ -411,6 +530,27 @@
         </div>
         <div id="status" class="status">Ładowanie...</div>
         <div class="dropHint">Wbudowany OBJ działa offline po dwukliku. Możesz też przeciągnąć inny OBJ na canvas.</div>
+      </div>
+
+      <div id="exportTab" class="tabPane">
+        <div class="group">
+          <div class="groupTitle">Export</div>
+          <div class="twocol">
+            <button id="reset">Reset view</button>
+            <button id="exportSvg">Export SVG</button>
+          </div>
+          <div class="twocol" style="margin-top:7px">
+            <button id="exportPng">Export PNG</button>
+            <button id="exportAtlas">PNG atlas stylów</button>
+          </div>
+          <div class="twocol" style="margin-top:7px">
+            <button id="exportFbxClip">Bake walking.amc</button>
+          </div>
+        </div>
+        <div class="group">
+          <div class="groupTitle">SVG layers</div>
+          <div class="note">SVG export zapisuje teraz metadane `data-tool`, `data-line-set` i `data-source` dla stroke’ów oraz konturów.</div>
+        </div>
       </div>
     </div>
   </section>

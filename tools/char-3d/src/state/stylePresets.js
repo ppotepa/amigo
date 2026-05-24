@@ -1,3 +1,26 @@
+const cleanInkLineSets = {
+  mainContour: { enabled: true, source: ['silhouette', 'boundary'], tool: 'mainInk', minLengthPx: 4, simplifyPx: 0.7, priority: 100 },
+  creaseAccent: { enabled: true, source: ['crease'], tool: 'thinPen', minLengthPx: 8, priority: 80 },
+  suggestiveContour: { enabled: true, source: ['suggestive'], tool: 'softPencil', strength: 0.45, minLengthPx: 8, priority: 60 },
+  hiddenLine: { enabled: true, source: ['hidden'], tool: 'hiddenGuide', minLengthPx: 6, priority: 20 },
+  shadowHatch: { enabled: true, source: ['toneBand', 'shadow'], tool: 'shadowPencil', method: 'hatching', densityByTone: true, priority: 40 }
+};
+
+const pencilLineSets = {
+  ...cleanInkLineSets,
+  mainContour: { ...cleanInkLineSets.mainContour, tool: 'softPencil', minLengthPx: 3 },
+  creaseAccent: { ...cleanInkLineSets.creaseAccent, tool: 'thinPen', minLengthPx: 5 },
+  shadowHatch: { ...cleanInkLineSets.shadowHatch, tool: 'shadowPencil' }
+};
+
+const comicLineSets = {
+  ...cleanInkLineSets,
+  mainContour: { ...cleanInkLineSets.mainContour, tool: 'mainInk', minLengthPx: 5 },
+  creaseAccent: { ...cleanInkLineSets.creaseAccent, tool: 'mainInk', minLengthPx: 9 },
+  suggestiveContour: { ...cleanInkLineSets.suggestiveContour, enabled: false },
+  shadowHatch: { ...cleanInkLineSets.shadowHatch, tool: 'thinPen' }
+};
+
 export const presets = {
     cleanInk: { mode:'INK', method:'hatching', flowMode:'mixed', density:.72, layers:1, threshold:.20, core:1.0, spacing:13, strokeLen:44, strokeWidth:1.05, curvature:.18, wobble:.20, jitter:.12, breakup:.02, taper:.62, economy:.34, dotSize:2.1, widthVar:.12, spacingVar:.18, lengthVar:.18 },
     cleanInkTight: { mode:'INK', method:'hatching', flowMode:'parallel', density:.92, layers:1, threshold:.18, core:1.08, spacing:10, strokeLen:42, strokeWidth:.98, curvature:.12, wobble:.14, jitter:.08, breakup:.01, taper:.58, economy:.26, widthVar:.10, spacingVar:.14, lengthVar:.15 },
@@ -28,6 +51,36 @@ export const presets = {
     featherDeep: { mode:'INK', method:'feather', flowMode:'terminator', density:1.02, layers:2, threshold:.14, core:1.26, spacing:10, strokeLen:44, strokeWidth:1.08, curvature:.26, wobble:.20, jitter:.12, breakup:.02, taper:.92, economy:.24, edgeDark:.34, contact:.46 },
     scumbleCharcoal: { mode:'BRUSH', method:'scumble', flowMode:'mixed', density:.96, layers:2, threshold:.12, core:.92, spacing:12, strokeLen:26, strokeWidth:1.20, curvature:.78, wobble:.72, jitter:.58, breakup:.18, taper:.20, economy:.16, overdraw:.46, widthVar:.44, spacingVar:.36, lengthVar:.40 },
     scumbleDust: { mode:'PENCIL', method:'scumble', flowMode:'mixed', density:.74, layers:2, threshold:.16, core:.80, spacing:14, strokeLen:24, strokeWidth:.88, curvature:.82, wobble:.68, jitter:.52, breakup:.14, taper:.18, economy:.24, overdraw:.34, widthVar:.36, spacingVar:.38, lengthVar:.42 },
-    techEtch: { mode:'INK', method:'crosshatch', flowMode:'parallel', density:1.18, layers:4, threshold:.12, core:1.42, spacing:8, strokeLen:56, strokeWidth:.68, curvature:.05, wobble:.04, jitter:.03, breakup:0, taper:.22, economy:.14, crossAngle:60, edgeDark:.36, contact:.42, widthVar:.04, spacingVar:.04, lengthVar:.06 }
+    techEtch: { mode:'INK', method:'crosshatch', flowMode:'parallel', density:1.18, layers:4, threshold:.12, core:1.42, spacing:8, strokeLen:56, strokeWidth:.68, curvature:.05, wobble:.04, jitter:.03, breakup:0, taper:.22, economy:.14, crossAngle:60, edgeDark:.36, contact:.42, widthVar:.04, spacingVar:.04, lengthVar:.06 },
+    pipelineCleanInk: { mode:'INK', method:'hatching', flowMode:'mixed', density:.76, layers:1, threshold:.20, core:1.05, spacing:13, strokeLen:44, strokeWidth:1.0, cleanupMinFaceAreaPx:2, cleanupMinLineLengthPx:4, cleanupDensityClamp:.65, cleanupRegionMinAreaPx:120, cleanupRegionMinFaces:4, cleanupRegionMaxAspect:14, shadowBandCount:3, temporalCoherence:.9, projectionHumanError:.08, strokePressureJitter:.16, lineSets: cleanInkLineSets },
+    pipelinePencilStudy: { mode:'PENCIL', method:'graphite', flowMode:'mixed', density:1.1, layers:3, threshold:.12, core:.82, spacing:9, strokeLen:34, strokeWidth:.65, cleanupMinFaceAreaPx:1.5, cleanupMinLineLengthPx:2.5, cleanupDensityClamp:.72, shadowBandCount:4, temporalCoherence:.86, projectionHumanError:.16, strokePressureJitter:.34, lineSets: pencilLineSets },
+    pipelineBrushWash: { mode:'BRUSH', method:'drybrush', flowMode:'light', density:.72, layers:1, threshold:.15, core:.96, spacing:16, strokeLen:74, strokeWidth:1.85, cleanupRegionMinAreaPx:180, cleanupRegionMinFaces:5, shadowBandCount:3, shadowRegionBleed:.36, shadowColorJitter:.34, temporalCoherence:.82, projectionHumanError:.14, lineSets: { ...cleanInkLineSets, shadowHatch: { ...cleanInkLineSets.shadowHatch, tool: 'mainInk' } } },
+    pipelineComicShadow: { mode:'INK', method:'comic', flowMode:'terminator', density:1.04, layers:2, threshold:.23, core:2.0, spacing:8, strokeLen:56, strokeWidth:1.55, cleanupDensityClamp:.58, cleanupRegionMinAreaPx:160, cleanupRegionMinFaces:5, shadowBandCount:2, shadowColorJitter:.12, temporalCoherence:.94, projectionHumanError:.05, lineSets: comicLineSets },
+    pipelineDenseHairSafe: { mode:'PENCIL', method:'hybrid', flowMode:'mixed', density:.86, layers:2, threshold:.15, spacing:12, strokeLen:40, strokeWidth:.88, cleanupMinFaceAreaPx:4, cleanupMinLineLengthPx:5, cleanupDensityClamp:.48, cleanupRegionMinAreaPx:260, cleanupRegionMinFaces:8, cleanupRegionMaxAspect:9, hairRegionSuppression:.92, shadowBandCount:3, temporalCoherence:.9, lineSets: { ...pencilLineSets, suggestiveContour: { ...pencilLineSets.suggestiveContour, enabled: false } } },
+    pipelineNoisyHandDrawn: { mode:'PENCIL', method:'scribble', flowMode:'mixed', density:.82, layers:2, threshold:.13, spacing:15, strokeLen:48, strokeWidth:.9, wobble:.8, jitter:.62, cleanupDensityClamp:.72, contourDrift:2.3, contourWobble:.36, contourGaps:.14, strokePressureJitter:.55, projectionHumanError:.32, temporalCoherence:.58, lineSets: pencilLineSets },
+    largeSceneBalanced: {
+      scenePartitionEnabled: true, scenePartitionMode: 'spatial', scenePartitionCellSize: 32, visibilityCullingEnabled: true,
+      visibilityMarginPx: 80, visibilityMinAreaPx: 3, visibilityMinRadiusPx: 1.8, detailPolicyEnabled: true,
+      detailTier0RadiusPx: 180, detailTier1RadiusPx: 80, detailTier2RadiusPx: 28, detailTier3RadiusPx: 8,
+      detailDensityPenalty: .35, vectorBudgetEnabled: true, vectorMaxProjectedFaces: 12000, vectorMaxVisibleEdges: 8000,
+      vectorMaxContourLines: 5000, vectorMaxShadowMarks: 900, vectorMinFaceAreaPx: 1.2, vectorMinEdgeLengthPx: 2.2,
+      regionBudgetEnabled: true, regionMinProjectedAreaPx: 48, regionMaxPaintRegions: 260, regionAllowFarFills: false
+    },
+    closeSubjectDetail: {
+      scenePartitionEnabled: true, scenePartitionMode: 'spatial', scenePartitionCellSize: 18, visibilityCullingEnabled: true,
+      visibilityMarginPx: 90, visibilityMinAreaPx: .5, visibilityMinRadiusPx: .8, detailPolicyEnabled: true,
+      detailTier0RadiusPx: 120, detailTier1RadiusPx: 54, detailTier2RadiusPx: 18, detailTier3RadiusPx: 5,
+      detailDensityPenalty: .12, vectorBudgetEnabled: true, vectorMaxProjectedFaces: 36000, vectorMaxVisibleEdges: 26000,
+      vectorMaxContourLines: 14000, vectorMaxShadowMarks: 4200, vectorMinFaceAreaPx: .35, vectorMinEdgeLengthPx: .8,
+      regionBudgetEnabled: true, regionMinProjectedAreaPx: 16, regionMaxPaintRegions: 850, regionAllowFarFills: true
+    },
+    denseSceneCleanup: {
+      scenePartitionEnabled: true, scenePartitionMode: 'spatial', scenePartitionCellSize: 20, visibilityCullingEnabled: true,
+      visibilityMarginPx: 60, visibilityMinAreaPx: 6, visibilityMinRadiusPx: 2.6, detailPolicyEnabled: true,
+      detailTier0RadiusPx: 220, detailTier1RadiusPx: 110, detailTier2RadiusPx: 42, detailTier3RadiusPx: 12,
+      detailDensityPenalty: .85, vectorBudgetEnabled: true, vectorMaxProjectedFaces: 9000, vectorMaxVisibleEdges: 6000,
+      vectorMaxContourLines: 3500, vectorMaxShadowMarks: 650, vectorMinFaceAreaPx: 2.4, vectorMinEdgeLengthPx: 3.2,
+      regionBudgetEnabled: true, regionMinProjectedAreaPx: 96, regionMaxPaintRegions: 160, regionAllowFarFills: false
+    }
   };
 

@@ -1,4 +1,4 @@
-import { TAU, clamp, clamp01, hash01, lerp, noise } from '../math/core.js';
+import { clamp, clamp01, hash01, lerp, noise } from '../math/core.js';
 import { hexRgb, mixRgb } from '../math/color.js';
 import { resolvePaintStyle } from './paintStyles.js';
 
@@ -125,6 +125,18 @@ function averageTone(faces) {
   return { tone: tone * inv, visibility: visibility * inv, depth: depth * inv };
 }
 
+function boundsArea(bounds) {
+  if (!bounds) return 0;
+  return Math.max(0, bounds.w || 0) * Math.max(0, bounds.h || 0);
+}
+
+function averageDetailTier(faces) {
+  if (!faces.length) return 0;
+  let sum = 0;
+  for (const face of faces) sum += face.detailTier ?? 0;
+  return sum / faces.length;
+}
+
 function regionSamples(faces, seed, maxSamples = 18) {
   if (!faces.length) return [];
   const stride = Math.max(1, Math.floor(faces.length / maxSamples));
@@ -150,12 +162,16 @@ function makeRegion(kind, faces, color, opacity, seed, state, style, composite =
   if (!contour) return null;
   const tone = averageTone(faces);
   const d = smoothRegionPath(contour);
+  const bounds = boundsForPoints(contour);
   return {
     id: `${kind}:${Math.round(seed * 1000)}`,
     kind,
     d,
     points: contour,
-    bounds: boundsForPoints(contour),
+    bounds,
+    projectedAreaPx: boundsArea(bounds),
+    detailTier: averageDetailTier(faces),
+    faceCount: faces.length,
     color,
     opacity: clamp01(opacity * tone.visibility),
     composite,
@@ -180,6 +196,24 @@ function boundsForPoints(points) {
   return { minX, minY, maxX, maxY, w: maxX - minX, h: maxY - minY };
 }
 
+function faceVertexKey(vertex) {
+  if (!vertex) return '';
+  if (Number.isFinite(vertex._paintRegionVertexKey)) return vertex._paintRegionVertexKey;
+  return `${Math.round(vertex.sx * 10)}:${Math.round(vertex.sy * 10)}:${Math.round((vertex.z || 0) * 1000)}`;
+}
+
+function faceAreaSum(faces) {
+  let area = 0;
+  for (const face of faces) area += Math.abs(face.area || 0);
+  return area;
+}
+
+function groupAspect(faces) {
+  const bounds = boundsForPoints(collectFacePoints(faces, false));
+  const shortSide = Math.max(1, Math.min(bounds.w, bounds.h));
+  return Math.max(bounds.w, bounds.h) / shortSide;
+}
+
 function regionInViewport(region, frame) {
   const viewport = frame?.viewport;
   if (!viewport || !region?.bounds) return true;
@@ -191,26 +225,80 @@ function regionInViewport(region, frame) {
     && b.minY <= viewport.height + margin;
 }
 
-function pushVisibleRegion(regions, region, frame) {
-  if (region && regionInViewport(region, frame)) regions.push(region);
+function pushVisibleRegion(regions, region, frame, state) {
+  if (!region || !regionInViewport(region, frame)) return;
+  if (state?.regionBudgetEnabled) {
+    if ((region.projectedAreaPx || 0) < (Number(state.regionMinProjectedAreaPx) || 0)) return;
+    if (!state.regionAllowFarFills && (region.detailTier || 0) > 2) return;
+    if (regions.length >= Math.max(0, Number(state.regionMaxPaintRegions) || 0)) return;
+  }
+  regions.push(region);
 }
 
-function selectRegionGroups(faces, predicate, maxRegions, seedBase) {
+function regionSetEnabled(state, id) {
+  const flat = `${id}Enabled`;
+  if (flat in state) return !!state[flat];
+  return state.regionSets?.[id]?.enabled !== false;
+}
+
+function splitConnectedFaceGroups(selected) {
+  if (selected.length <= 1) return selected.length ? [selected] : [];
+  const vertexToFaces = new Map();
+  for (let i = 0; i < selected.length; i++) {
+    const face = selected[i];
+    for (const vertex of face.p || []) {
+      const key = faceVertexKey(vertex);
+      if (!vertexToFaces.has(key)) vertexToFaces.set(key, []);
+      vertexToFaces.get(key).push(i);
+    }
+  }
+
+  const visited = new Uint8Array(selected.length);
+  const groups = [];
+  for (let start = 0; start < selected.length; start++) {
+    if (visited[start]) continue;
+    const group = [];
+    const stack = [start];
+    visited[start] = 1;
+    while (stack.length) {
+      const index = stack.pop();
+      const face = selected[index];
+      group.push(face);
+      for (const vertex of face.p || []) {
+        const neighbors = vertexToFaces.get(faceVertexKey(vertex)) || [];
+        for (const next of neighbors) {
+          if (visited[next]) continue;
+          visited[next] = 1;
+          stack.push(next);
+        }
+      }
+    }
+    groups.push(group);
+  }
+  return groups;
+}
+
+function regionGroupAccepted(group, state) {
+  const area = faceAreaSum(group);
+  const minArea = state.cleanupRegionMinAreaPx ?? 80;
+  const minFaces = Math.max(1, Math.round(state.cleanupRegionMinFaces ?? 3));
+  if (group.length < minFaces || area < minArea) return false;
+  const aspect = groupAspect(group);
+  if (aspect > (state.cleanupRegionMaxAspect ?? 16)) return false;
+
+  const avgFaceArea = area / Math.max(1, group.length);
+  const hairLike = avgFaceArea < Math.max(2, minArea * 0.025) && aspect > 5;
+  if (hairLike && (state.hairRegionSuppression ?? 0.5) > 0) {
+    return hash01(group[0].id + area * 0.013) > clamp01(state.hairRegionSuppression ?? 0.5);
+  }
+  return true;
+}
+
+function selectRegionGroups(faces, predicate, maxRegions, seedBase, state) {
   const selected = faces.filter(predicate);
   if (!selected.length) return [];
-  const center = regionCenter(selected.map(faceCentroid));
-  const buckets = new Map();
-  for (const face of selected) {
-    const p = faceCentroid(face);
-    const angle = Math.atan2(p.y - center.y, p.x - center.x);
-    const ring = Math.hypot(p.x - center.x, p.y - center.y) > 140 ? 1 : 0;
-    const sector = Math.floor((((angle + Math.PI) / TAU) * maxRegions + hash01(face.id + seedBase) * 0.35) % maxRegions);
-    const key = `${sector}:${ring}`;
-    if (!buckets.has(key)) buckets.set(key, []);
-    buckets.get(key).push(face);
-  }
-  return [...buckets.values()]
-    .filter(group => group.length >= 2)
+  return splitConnectedFaceGroups(selected)
+    .filter(group => regionGroupAccepted(group, state))
     .sort((a, b) => b.length - a.length)
     .slice(0, maxRegions);
 }
@@ -218,62 +306,77 @@ function selectRegionGroups(faces, predicate, maxRegions, seedBase) {
 export function buildPaintRegions(frame, state) {
   const faces = frame.paintFaces || [];
   if (!faces.length) return [];
+  const sourceFaces = state.regionBudgetEnabled
+    ? faces.filter(face => (face.detailTier ?? 0) <= (state.regionAllowFarFills ? 3 : 2) && Math.abs(face.area || 0) >= (Number(state.vectorMinFaceAreaPx) || 0))
+    : faces;
+  if (!sourceFaces.length) return [];
   const style = resolvePaintStyle(state);
   const regionScale = clamp((state.paintRegionResolution || 384) / 384, 0.65, 1.35);
   const base = hexRgb(state.paintBaseColor, '#d7ad85');
   const shadow = hexRgb(state.paintShadowColor, '#5d6f95');
   const highlight = hexRgb(state.paintHighlightColor, '#fff0c2');
   const regions = [];
-  const baseRegion = makeRegion(
-    'base',
-    faces,
-    rgbCss(base),
-    state.paintBaseOpacity * style.opacity,
-    11.31,
-    state,
-    style,
-    'source-over',
-  );
-  pushVisibleRegion(regions, baseRegion, frame);
+  if (regionSetEnabled(state, 'baseWash')) {
+    const baseRegion = makeRegion(
+      'base',
+      sourceFaces,
+      rgbCss(base),
+      state.paintBaseOpacity * style.opacity,
+      11.31,
+      state,
+      style,
+      'source-over',
+    );
+    pushVisibleRegion(regions, baseRegion, frame, state);
+  }
 
   const washGroups = selectRegionGroups(
-    faces,
+    sourceFaces,
     face => clamp01(face.tone) > 0.16,
     Math.max(2, Math.round((style.shadowRegions - 2) * regionScale)),
     17.9,
+    state,
   );
   for (let i = 0; i < washGroups.length; i++) {
     const tone = averageTone(washGroups[i]).tone;
     const color = rgbCss(mixRgb(base, shadow, clamp01(tone * 0.82)));
     const region = makeRegion('wash', washGroups[i], color, state.paintWashOpacity * style.washOpacity * (0.22 + tone * 0.48), 21.7 + i, state, style, style.composite);
-    pushVisibleRegion(regions, region, frame);
+    pushVisibleRegion(regions, region, frame, state);
   }
 
   const steps = Math.max(1, Math.round(state.paintCelSteps || 1));
+  const bandCount = Math.max(1, Math.round(state.shadowBandCount || steps));
   const shadowGroups = selectRegionGroups(
-    faces,
-    face => Math.floor(clamp01(face.tone) * steps) / steps > 0,
+    sourceFaces,
+    face => Math.floor(clamp01(face.tone) * bandCount) / bandCount > 0,
     Math.max(2, Math.round(style.shadowRegions * regionScale)),
     31.4,
+    state,
   );
-  for (let i = 0; i < shadowGroups.length; i++) {
-    const tone = averageTone(shadowGroups[i]).tone;
-    const stepped = Math.floor(clamp01(tone) * steps) / steps;
-    const region = makeRegion('shadow', shadowGroups[i], rgbCss(shadow), state.paintCelStrength * (0.28 + stepped * 0.82), 41.2 + i, state, style, 'multiply');
-    pushVisibleRegion(regions, region, frame);
+  if (regionSetEnabled(state, 'shadowRegion')) {
+    for (let i = 0; i < shadowGroups.length; i++) {
+      const tone = averageTone(shadowGroups[i]).tone;
+      const stepped = Math.floor(clamp01(tone) * bandCount) / bandCount;
+      const jitteredShadow = mixRgb(shadow, base, clamp01(noise(41.2 + i, 6) * (state.shadowColorJitter || 0) * .25));
+      const region = makeRegion('shadow', shadowGroups[i], rgbCss(jitteredShadow), state.paintCelStrength * (0.28 + stepped * 0.82), 41.2 + i, state, {...style, bleed: style.bleed + (state.shadowRegionBleed || 0) * .25}, 'multiply');
+      pushVisibleRegion(regions, region, frame, state);
+    }
   }
 
   const highlightGroups = selectRegionGroups(
-    faces,
+    sourceFaces,
     face => clamp01((0.34 - face.tone) * 2.2) > 0.08,
     Math.max(1, Math.round(style.highlightRegions * regionScale)),
     53.1,
+    state,
   );
-  for (let i = 0; i < highlightGroups.length; i++) {
-    const tone = averageTone(highlightGroups[i]).tone;
-    const light = clamp01((0.34 - tone) * 2.2);
-    const region = makeRegion('highlight', highlightGroups[i], rgbCss(highlight), state.paintHighlightAmount * (0.2 + light), 61.8 + i, state, style, 'screen');
-    pushVisibleRegion(regions, region, frame);
+  if (regionSetEnabled(state, 'highlightRegion')) {
+    for (let i = 0; i < highlightGroups.length; i++) {
+      const tone = averageTone(highlightGroups[i]).tone;
+      const light = clamp01((0.34 - tone) * 2.2);
+      const region = makeRegion('highlight', highlightGroups[i], rgbCss(highlight), state.paintHighlightAmount * (0.2 + light), 61.8 + i, state, style, 'screen');
+      pushVisibleRegion(regions, region, frame, state);
+    }
   }
 
   return regions;

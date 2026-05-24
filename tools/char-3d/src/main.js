@@ -5,12 +5,18 @@ import { paintPalettes } from './state/paintPalettes.js';
 import { parseOBJ } from './mesh/objParser.js';
 import { prepareMeshRuntime } from './mesh/meshRuntime.js';
 import { extractFbxAdapterMesh, ensureFbxRuntime as ensureFbxRuntimeForState, FBX_MODEL_URL } from './mesh/fbxAdapter.js';
+import { buildFbxClipAmc, downloadArrayBuffer } from './mesh/fbxClipBake.js';
 import { BUILTIN_MODELS } from './mesh/modelSources.js';
 import { TAU, EPS, clamp, clamp01, lerp, deg, fmt, v3, sub, cross, dot, norm, len2, norm2, rot2, mix2, triArea2, hash01, noise, bary2, baryInside, mixPoint, pointFromBary } from './math/core.js';
 import { escapeHtml, normalizeHexColor, hexRgb, mixRgb, rgba } from './math/color.js';
 import { cameraKeyCodes, isTypingTarget, setModelAngles as setModelAnglesForState, setCameraAngles as setCameraAnglesForState, applyAngleSnap as applyAngleSnapForState, cameraDollyScale as cameraDollyScaleForState, updateCameraFromKeys as updateCameraFromKeysForState } from './app/cameraControls.js';
 import { computeImpreciseSampleTime as computeImpreciseSampleTimeForState, randomnessFrameSeed as randomnessFrameSeedForState, shadowRandomSeed as shadowRandomSeedForState } from './npr/randomSeeds.js';
 import { buildPaintRegions } from './paint/paintRegions.js';
+import { buildScenePartition, getScenePartitionKey } from './scene/scenePartition.js';
+import { createProjectionContext, projectWorldPoint } from './render/projectionContext.js';
+import { selectVisibleRenderUnits } from './render/visibilitySelection.js';
+import { assignDetailTiers, detailAllowsInternalLine, detailMarkMultiplier } from './render/detailPolicy.js';
+import { buildRenderSelection, buildFullRenderSelection } from './render/renderSelection.js';
 import { createPerfStats, resetPerfFrame, markCacheHit, markCacheMiss, timeSection, timeSectionEnd, finishPerfFrame, setPerfCounter, formatPerfStats } from './render/perfStats.js';
 import {
   createRenderCache,
@@ -45,6 +51,11 @@ import { DIRTY_FLAGS, createDirtyFlags, markDirty, clearDirty } from './render/d
     ...Object.keys(rangeControls),
     ...colorControls,
     ...checkControls,
+    'mainContourTool',
+    'creaseAccentTool',
+    'suggestiveContourTool',
+    'hiddenLineTool',
+    'shadowHatchTool',
     'controlMode',
     'angleSnap',
     'projectionMode',
@@ -67,6 +78,7 @@ import { DIRTY_FLAGS, createDirtyFlags, markDirty, clearDirty } from './render/d
     'rawCameraYaw',
     'rawCameraPitch'
   ];
+  const lineToolControls = ['mainContourTool','creaseAccentTool','suggestiveContourTool','hiddenLineTool','shadowHatchTool'];
   let settingsLoaded = false;
   let saveSettingsTimer = 0;
   let meshRevision = 0;
@@ -82,12 +94,27 @@ import { DIRTY_FLAGS, createDirtyFlags, markDirty, clearDirty } from './render/d
   const perfStats = createPerfStats();
   const dirtyFlags = createDirtyFlags();
   const builtinModelMap = new Map(BUILTIN_MODELS.map(model => [model.id, model]));
-  const displayOnlyKeys = new Set(['paintEnabled','faceWash','contours','tone','flow','depthDebug','seedDebug','sortFaces','inkDominance']);
+  const displayOnlyKeys = new Set(['paintEnabled','faceWash','contours','tone','flow','depthDebug','seedDebug','regionDebug','cleanupDebug','densityDebug','visibilityDebug','detailDebug','budgetDebug','sortFaces','inkDominance']);
   const visibilityKeys = new Set(['hideOccluded','backface','depthClipStrokes','clipToFaces','showHidden','depthEps','creases','suggestive','contactLines']);
-  const nprKeys = new Set(['method','mode','flowMode','density','layers','threshold','strokeLen','spacing','strokeWidth','curvature','crossAngle','dotSize','wobble','jitter','strokeCrookedness','strokeKinkChance','strokeToneRamp','shadowFrameDrift','shadowLoopRedraw','shadowLayoutJitter','spacingVar','lengthVar','widthVar','taper','breakup','overdraw','contourHumanize','contourDrift','contourWobble','contourGaps','contourFrameVariance','shadowsEnabled']);
+  const selectionKeys = new Set([
+    'scenePartitionEnabled','scenePartitionMode','scenePartitionCellSize','scenePartitionMaxUnits',
+    'visibilityCullingEnabled','visibilityMarginPx','visibilityMinAreaPx','visibilityMinRadiusPx',
+    'detailPolicyEnabled','detailTier0RadiusPx','detailTier1RadiusPx','detailTier2RadiusPx','detailTier3RadiusPx',
+    'detailDensityPenalty','detailImportanceBias',
+    'vectorBudgetEnabled','vectorMaxProjectedFaces','vectorMaxVisibleEdges','vectorMaxContourLines',
+    'vectorMinFaceAreaPx','vectorMinEdgeLengthPx'
+  ]);
+  const budgetDisplayKeys = new Set(['visibilityDebug','detailDebug','densityDebug','budgetDebug','regionDebug','cleanupDebug','depthDebug','seedDebug']);
+  const nprKeys = new Set(['method','mode','flowMode','density','layers','threshold','strokeLen','spacing','strokeWidth','curvature','crossAngle','dotSize','wobble','jitter','strokeCrookedness','strokeKinkChance','strokeToneRamp','shadowFrameDrift','shadowLoopRedraw','shadowLayoutJitter','spacingVar','lengthVar','widthVar','taper','breakup','overdraw','contourHumanize','contourDrift','contourWobble','contourGaps','contourFrameVariance','shadowsEnabled','vectorMaxShadowMarks','mainContourEnabled','creaseAccentEnabled','suggestiveContourEnabled','hiddenLineEnabled','shadowHatchEnabled','mainContourTool','creaseAccentTool','suggestiveContourTool','hiddenLineTool','shadowHatchTool']);
 
   function renderScopeForKey(key) {
+    if (budgetDisplayKeys.has(key)) return DIRTY_FLAGS.DISPLAY;
     if (String(key).startsWith('paint')) return DIRTY_FLAGS.PAINT;
+    if (String(key).startsWith('region')) return DIRTY_FLAGS.PAINT;
+    if (String(key).startsWith('cleanupRegion') || key === 'hairRegionSuppression' || key === 'shadowBandCount' || key === 'shadowRegionBleed' || key === 'shadowColorJitter' || key === 'baseWashEnabled' || key === 'shadowRegionEnabled' || key === 'highlightRegionEnabled') return DIRTY_FLAGS.PAINT;
+    if (String(key).startsWith('cleanup') || key === 'temporalCoherence' || key === 'projectionHumanError') return DIRTY_FLAGS.PROJECTION;
+    if (key === 'strokePressureJitter') return DIRTY_FLAGS.NPR;
+    if (selectionKeys.has(key)) return DIRTY_FLAGS.PROJECTION;
     if (displayOnlyKeys.has(key)) return DIRTY_FLAGS.DISPLAY;
     if (visibilityKeys.has(key)) return DIRTY_FLAGS.VISIBILITY;
     if (nprKeys.has(key)) return DIRTY_FLAGS.NPR;
@@ -172,91 +199,89 @@ import { DIRTY_FLAGS, createDirtyFlags, markDirty, clearDirty } from './render/d
     return out;
   }
 
-  function transformFrame() {
+  function createFrameProjectionContext(runtime) {
+    const mesh = state.mesh;
+    const fbxAdapter = mesh?.sourceType === 'fbx';
+    const freelook = state.controlMode === 'freelook';
+    const centerX = canvas.width / 2 + (!freelook && fbxAdapter ? Math.min(180, canvas.width * .13) : 0);
+    const centerY = canvas.height / 2 - (!freelook && fbxAdapter ? Math.min(42, canvas.height * .04) : 0);
+    return createProjectionContext({
+      width: canvas.width,
+      height: canvas.height,
+      controlMode: state.controlMode,
+      projectionMode: state.projectionMode,
+      yaw: state.yaw,
+      pitch: state.pitch,
+      zoom: state.zoom,
+      cameraYaw: state.cameraYaw,
+      cameraPitch: state.cameraPitch,
+      cameraX: state.cameraX,
+      cameraY: state.cameraY,
+      cameraZ: state.cameraZ,
+      focalLength: state.focalLength,
+      projectionWobble: state.projectionWobble,
+      randomSeed: randomnessFrameSeed(),
+      cameraDollyScale: cameraDollyScale(),
+      centerX,
+      centerY,
+      sourceScaleMul: fbxAdapter ? .78 : 1,
+      sourceWobbleMul: fbxAdapter ? 1.18 : 1,
+      runtime,
+    });
+  }
+
+  function getOrBuildScenePartition(runtime) {
+    if (!runtime) return null;
+    const key = getScenePartitionKey(runtime, state);
+    if (renderCache.partition?.key === key && renderCache.partition.value) return renderCache.partition.value;
+    const partition = buildScenePartition(runtime, state);
+    renderCache.partition = { key, value: partition };
+    return partition;
+  }
+
+  function buildFrameRenderSelection(runtime, projectionContext) {
+    if (!runtime) return null;
+    if (!state.scenePartitionEnabled && !state.visibilityCullingEnabled && !state.detailPolicyEnabled && !state.vectorBudgetEnabled) {
+      return buildFullRenderSelection(runtime);
+    }
+    const partition = getOrBuildScenePartition(runtime);
+    const viewport = { width: canvas.width, height: canvas.height };
+    const visibility = timeSection(perfStats, 'selection', () => selectVisibleRenderUnits(partition, projectionContext, viewport, state));
+    const detailed = assignDetailTiers(visibility, state);
+    const selection = buildRenderSelection(detailed, runtime, state);
+    for (const [name, value] of Object.entries(visibility.counters || {})) setPerfCounter(perfStats, name, value);
+    for (const [name, value] of Object.entries(detailed.counters || {})) setPerfCounter(perfStats, name, value);
+    for (const [name, value] of Object.entries(selection.counters || {})) setPerfCounter(perfStats, name, value);
+    return selection;
+  }
+
+  function transformFrame(renderSelection, projectionContext) {
     const mesh = state.mesh;
     const runtime = prepareMeshRuntime(mesh);
     const lists = clearFrameLists(renderCache);
-    const fbxAdapter = mesh?.sourceType === 'fbx';
     const freelook = state.controlMode === 'freelook';
-    const centerX = canvas.width/2 + (!freelook && fbxAdapter ? Math.min(180, canvas.width * .13) : 0);
-    const centerY = canvas.height/2 - (!freelook && fbxAdapter ? Math.min(42, canvas.height * .04) : 0);
     const margin = cullMargin();
     const verts = lists.verts;
     const vertX = runtime.vertX;
     const vertY = runtime.vertY;
     const vertZ = runtime.vertZ;
+    renderSelection ||= buildFullRenderSelection(runtime);
+    projectionContext ||= createFrameProjectionContext(runtime);
 
-    if (freelook) {
-      const yawRad = deg(state.cameraYaw);
-      const pitchRad = deg(state.cameraPitch);
-      const fwd = norm(v3(
-        Math.sin(yawRad) * Math.cos(pitchRad),
-        -Math.sin(pitchRad),
-        -Math.cos(yawRad) * Math.cos(pitchRad)
-      ));
-      const rgt = norm(v3(Math.cos(yawRad), 0, Math.sin(yawRad)));
-      const upV = norm(cross(rgt, fwd));
-      const focal = state.focalLength || 35;
-      const scale = Math.min(canvas.width, canvas.height) * 0.1;
-
-      for (let vi = 0; vi < runtime.vertCount; vi++) {
-        const rx = vertX[vi] - state.cameraX;
-        const ry = vertY[vi] - state.cameraY;
-        const rz = vertZ[vi] - state.cameraZ;
-        const cx = rx * rgt.x + ry * rgt.y + rz * rgt.z;
-        const cy = rx * upV.x + ry * upV.y + rz * upV.z;
-        const cz = rx * fwd.x + ry * fwd.y + rz * fwd.z;
-        const perspective = state.projectionMode === 'perspective'
-          ? focal / Math.max(0.1, cz)
-          : focal / 10.0;
-        let screenX = centerX + cx * scale * perspective;
-        let screenY = centerY - cy * scale * perspective;
-        if (state.projectionWobble > 0) {
-          const seed = (vi + 1) * 409.17 + randomnessFrameSeed() * 23.91;
-          screenX += noise(seed, 1) * state.projectionWobble;
-          screenY += noise(seed, 2) * state.projectionWobble;
-        }
-        verts[vi] = writeProjectedVertex(verts[vi] || {}, cx, cy, cz, screenX, screenY, cz >= 0.1);
-      }
-      verts.length = runtime.vertCount;
-    } else {
-      const yaw = deg(state.yaw), pitch = deg(state.pitch);
-      const cy = Math.cos(yaw), sy = Math.sin(yaw), cp = Math.cos(pitch), sp = Math.sin(pitch);
-      const cameraYaw = deg(-state.cameraYaw), cameraPitch = deg(-state.cameraPitch);
-      const ccy = Math.cos(cameraYaw), csy = Math.sin(cameraYaw);
-      const ccp = Math.cos(cameraPitch), csp = Math.sin(cameraPitch);
-      const scale = Math.min(canvas.width, canvas.height) * 0.36 * state.zoom * cameraDollyScale() * (fbxAdapter ? .78 : 1);
-
-      for (let vi = 0; vi < runtime.vertCount; vi++) {
-        const px = vertX[vi], py = vertY[vi], pz = vertZ[vi];
-        const x1 = px*cy + pz*sy;
-        const z1 = -px*sy + pz*cy;
-        const y2 = py*cp - z1*sp;
-        const z2 = py*sp + z1*cp;
-        const vx = x1 - state.cameraX;
-        const vy = y2 - state.cameraY;
-        const vz = z2 - state.cameraZ;
-        const x3 = vx*ccy + vz*csy;
-        const z3 = -vx*csy + vz*ccy;
-        const y4 = vy*ccp - z3*csp;
-        const z4 = vy*csp + z3*ccp;
-        let screenX = centerX + x3*scale;
-        let screenY = centerY - y4*scale;
-        if (state.projectionWobble > 0) {
-          const seed = (vi + 1) * 409.17 + randomnessFrameSeed() * 23.91;
-          const amp = state.projectionWobble * (fbxAdapter ? 1.18 : 1);
-          screenX += noise(seed, 1) * amp;
-          screenY += noise(seed, 2) * amp;
-        }
-        verts[vi] = writeProjectedVertex(verts[vi] || {}, x3, y4, z4, screenX, screenY, true);
-      }
-      verts.length = runtime.vertCount;
+    for (let i = 0; i < renderSelection.vertexIds.length; i++) {
+      const vi = renderSelection.vertexIds[i];
+      const out = verts[vi] || {};
+      projectWorldPoint(projectionContext, vertX[vi], vertY[vi], vertZ[vi], vi, out);
+      verts[vi] = out;
     }
+    verts.length = runtime.vertCount;
 
     const L = lightVector();
     const faces = lists.faces;
-    for (let id = 0; id < runtime.faceCount; id++) {
+    for (let ii = 0; ii < renderSelection.faceIds.length; ii++) {
+      const id = renderSelection.faceIds[ii];
       const a=verts[runtime.faceA[id]], b=verts[runtime.faceB[id]], c=verts[runtime.faceC[id]];
+      if (!a || !b || !c) continue;
       const minX = Math.min(a.sx, b.sx, c.sx);
       const minY = Math.min(a.sy, b.sy, c.sy);
       const maxX = Math.max(a.sx, b.sx, c.sx);
@@ -291,6 +316,7 @@ import { DIRTY_FLAGS, createDirtyFlags, markDirty, clearDirty } from './render/d
       }
       const front = freelook ? n.z < 0 : n.z > 0;
       const inFront = Boolean(a.inFront && b.inFront && c.inFront);
+      const tooSmall = state.vectorBudgetEnabled && Math.abs(area) < (Number(state.vectorMinFaceAreaPx) || 0);
       out.id = id;
       out.p[0] = a;
       out.p[1] = b;
@@ -312,13 +338,19 @@ import { DIRTY_FLAGS, createDirtyFlags, markDirty, clearDirty } from './render/d
       out.maxX = maxX;
       out.maxY = maxY;
       out.offscreen = offscreen;
+      out.tooSmall = tooSmall;
+      out.detailTier = renderSelection.faceTier?.[id] ?? 0;
+      out.unitId = renderSelection.faceUnit?.[id] ?? -1;
       faces[id] = out;
-      if (!offscreen && Math.abs(area) > EPS && (!freelook || inFront)) lists.screenFaces.push(out);
+      if (!offscreen && !tooSmall && Math.abs(area) > EPS && (!freelook || inFront)) lists.screenFaces.push(out);
     }
     faces.length = runtime.faceCount;
-    setPerfCounter(perfStats, 'facesTotal', faces.length);
+    setPerfCounter(perfStats, 'facesTotal', runtime.faceCount);
+    setPerfCounter(perfStats, 'facesSelected', renderSelection.faceIds.length);
+    setPerfCounter(perfStats, 'vertsSelected', renderSelection.vertexIds.length);
+    setPerfCounter(perfStats, 'edgesSelected', renderSelection.edgeIds.length);
     setPerfCounter(perfStats, 'facesOnScreen', lists.screenFaces.length);
-    return {verts, faces, screenFaces:lists.screenFaces, visibleFaces:lists.visibleFaces, sortedFaces:lists.sortedFaces, L, db:null, contours:[], marks:[], depthMode: freelook ? 'min' : 'max', cullMargin:margin, viewport:{width:canvas.width, height:canvas.height, margin}};
+    return {verts, faces, screenFaces:lists.screenFaces, visibleFaces:lists.visibleFaces, sortedFaces:lists.sortedFaces, L, db:null, contours:[], marks:[], depthMode: freelook ? 'min' : 'max', cullMargin:margin, viewport:{width:canvas.width, height:canvas.height, margin}, renderSelection};
   }
 
   function contactScore(y, n) {
@@ -456,45 +488,78 @@ import { DIRTY_FLAGS, createDirtyFlags, markDirty, clearDirty } from './render/d
     const runtime = prepareMeshRuntime(mesh);
     const fbxAdapter = mesh?.sourceType === 'fbx';
     let tested = 0;
-    for (let i = 0; i < runtime.edgeCount; i++) {
-      const f0=frame.faces[runtime.edgeF0[i]];
-      const f1=runtime.edgeF1[i] >= 0 ? frame.faces[runtime.edgeF1[i]] : null;
+    const edgeIds = frame.renderSelection?.edgeIds || null;
+    const edgeCount = edgeIds ? edgeIds.length : runtime.edgeCount;
+    const maxContours = state.vectorBudgetEnabled ? Math.max(0, Number(state.vectorMaxContourLines) || 0) : Infinity;
+    for (let edgeIndex = 0; edgeIndex < edgeCount; edgeIndex++) {
+      const i = edgeIds ? edgeIds[edgeIndex] : edgeIndex;
+      const f0Id = runtime.edgeF0[i];
+      const f1Id = runtime.edgeF1[i];
+      const selectedFaceTier = frame.renderSelection?.faceTier || null;
+      let f0 = f0Id >= 0 && (!selectedFaceTier || selectedFaceTier[f0Id] < 4) ? frame.faces[f0Id] : null;
+      let f1 = f1Id >= 0 && (!selectedFaceTier || selectedFaceTier[f1Id] < 4) ? frame.faces[f1Id] : null;
+      if (!f0 && !f1) continue;
+      if (!f0) {
+        f0 = f1;
+        f1 = null;
+      }
       if (f0?.offscreen && (f1?.offscreen ?? true)) continue;
+      const a=frame.verts[runtime.edgeA[i]], b=frame.verts[runtime.edgeB[i]];
+      if (!a || !b) continue;
       const boundary=!f1;
       const silhouette=f1 ? (f0.front !== f1.front) : true;
       const crease=f1 ? dot(f0.n, f1.n) < .70 : false;
       const toneBreak=f1 ? Math.abs(f0.tone - f1.tone) > .32 : false;
-      const a=frame.verts[runtime.edgeA[i]], b=frame.verts[runtime.edgeB[i]];
       if (bboxOffscreen(Math.min(a.sx, b.sx), Math.min(a.sy, b.sy), Math.max(a.sx, b.sx), Math.max(a.sy, b.sy), frame.cullMargin)) continue;
       tested++;
       const screenLen = Math.hypot(a.sx-b.sx, a.sy-b.sy);
+      if (screenLen < (state.cleanupMinLineLengthPx || 0)) continue;
+      if (state.vectorBudgetEnabled && screenLen < (Number(state.vectorMinEdgeLengthPx) || 0)) continue;
+      if (screenLen > (state.cleanupMaxEdgeLengthPx || Infinity)) continue;
       let kind='';
       if (boundary || silhouette) kind='contour';
       else if (!fbxAdapter && state.creases && crease) kind='crease';
       else if (!fbxAdapter && state.suggestive && toneBreak) kind='suggestive';
       if (!kind) continue;
+      const tier = frame.renderSelection?.edgeTier?.[i] ?? Math.min(f0?.detailTier ?? 0, f1?.detailTier ?? 0);
+      if (!detailAllowsInternalLine(tier, kind)) continue;
       if (fbxAdapter && screenLen < 2.4) continue;
       const mx=(a.sx+b.sx)/2, my=(a.sy+b.sy)/2, mz=(a.z+b.z)/2;
       const visible = isVisiblePoint(frame.db, mx, my, mz);
       if (!visible && !state.showHidden) continue;
-      out.push({x1:a.sx,y1:a.sy,z1:a.z,x2:b.sx,y2:b.sy,z2:b.z,kind,visible,id:out.length});
+      if (out.length >= maxContours) break;
+      out.push({x1:a.sx,y1:a.sy,z1:a.z,x2:b.sx,y2:b.sy,z2:b.z,kind,visible,id:out.length,detailTier:tier});
     }
     setPerfCounter(perfStats, 'contoursTested', tested);
     setPerfCounter(perfStats, 'contoursDrawn', out.length);
+    setPerfCounter(perfStats, 'contoursBudget', Number.isFinite(maxContours) ? maxContours : 0);
+    setPerfCounter(perfStats, 'contoursBudgetHit', out.length >= maxContours ? 1 : 0);
     return out;
   }
 
   function generateMarks(frame) {
     const marks=[];
     const fbxAdapter = state.mesh?.sourceType === 'fbx';
-    const minArea = fbxAdapter ? 0.22 : 1.5;
+    const legacyMinArea = fbxAdapter ? 0.22 : 1.5;
+    const minArea = state.vectorBudgetEnabled
+      ? Math.max(legacyMinArea, state.cleanupMinFaceAreaPx || 0, Number(state.vectorMinFaceAreaPx) || 0)
+      : Math.max(legacyMinArea, state.cleanupMinFaceAreaPx || 0);
     const faces = frame.sortedFaces;
     faces.length = 0;
-    for (const f of frame.visibleFaces) if (f.area > minArea && (!state.backface || f.front)) faces.push(f);
-    faces.sort((a,b)=>b.depth-a.depth); // DRAW FROM FAR TO NEAR
+    for (const f of frame.visibleFaces) if ((f.detailTier ?? 0) < 4 && f.area > minArea && (!state.backface || f.front)) faces.push(f);
+    faces.sort((a,b)=>{
+      const ta = a.detailTier ?? 0;
+      const tb = b.detailTier ?? 0;
+      if (ta !== tb) return ta - tb;
+      return b.depth-a.depth;
+    });
     const baseMarks = fbxAdapter ? 760 : 450;
     const markRange = fbxAdapter ? 2600 : 1800;
-    const maxMarks = Math.floor(baseMarks + markRange * clamp01(state.density/2) * lerp(1.15,.45,state.economy));
+    const densityClamp = clamp01(state.cleanupDensityClamp ?? 0.65);
+    const legacyMaxMarks = Math.floor(baseMarks + markRange * clamp01(state.density/2) * densityClamp * lerp(1.15,.45,state.economy));
+    const maxMarks = state.vectorBudgetEnabled
+      ? Math.min(legacyMaxMarks, Math.max(0, Math.floor(state.vectorMaxShadowMarks || 0)))
+      : legacyMaxMarks;
     let used=0;
     for (const f of faces) {
       if (used >= maxMarks) break;
@@ -502,6 +567,8 @@ import { DIRTY_FLAGS, createDirtyFlags, markDirty, clearDirty } from './render/d
       used += made;
     }
     setPerfCounter(perfStats, 'marksGenerated', marks.length);
+    setPerfCounter(perfStats, 'marksBudget', maxMarks);
+    setPerfCounter(perfStats, 'marksBudgetHit', used >= maxMarks ? 1 : 0);
     return marks;
   }
 
@@ -523,18 +590,24 @@ import { DIRTY_FLAGS, createDirtyFlags, markDirty, clearDirty } from './render/d
     if (state.method === 'stipple') raw = f.area / (spacing*spacing) * state.density * lerp(.7,3.0,tone) * f.visibility;
     if (state.method === 'comic' && tone > .70) raw *= 1.35;
     if (fbxAdapter) raw *= 1.45;
-    const shadowSeed = shadowRandomSeed();
+    const tier = f.detailTier ?? 0;
+    if (tier >= 4) return 0;
+    raw *= detailMarkMultiplier(tier);
+    const shadowSeed = shadowRandomSeed() * lerp(1, .15, clamp01(state.temporalCoherence ?? 0.85));
     const seed=(f.id+1)*1009.133 + shadowSeed * (1 + hash01(f.id + 19.3) * .7);
     let n = Math.floor(raw);
     if (hash01(seed + 991.7) < raw - n) n++;
     if (tone > .08 && raw > .045 && hash01(seed + 113.9) < raw * 1.8) n = Math.max(n, 1);
-    n = clamp(n, 0, Math.min(42, budget));
+    const perFaceMax = tier <= 0 ? 42 : tier === 1 ? 24 : tier === 2 ? 8 : tier === 3 ? 2 : 0;
+    n = clamp(n, 0, Math.min(perFaceMax, budget));
     let made=0;
     for (let i=0; i<n && made<budget; i++) {
       const b = stableBary(seed, i, state.spacingVar);
       const c = pointFromBary(f, b.u, b.v, b.w);
       c.x += noise(seed, i+10) * state.jitter * spacing * .35;
       c.y += noise(seed, i+20) * state.jitter * spacing * .35;
+      c.x += noise(seed, i+30) * (state.projectionHumanError || 0) * spacing * .28;
+      c.y += noise(seed, i+40) * (state.projectionHumanError || 0) * spacing * .28;
       const bc = bary2(c, f.p[0], f.p[1], f.p[2]);
       if (state.clipToFaces && !baryInside(bc, .035)) continue;
       if (bc) c.z = bc.u*f.p[0].z + bc.v*f.p[1].z + bc.w*f.p[2].z;
@@ -557,18 +630,81 @@ import { DIRTY_FLAGS, createDirtyFlags, markDirty, clearDirty } from './render/d
     return {u:1-s, v:s*(1-r2), w:s*r2};
   }
 
-  function toolStyle(tone) {
-    let color='#17110b', alpha=.88, width=state.strokeWidth;
-    if (state.mode === 'PENCIL') { color='#2a2621'; alpha=.34; width*=.72; }
-    if (state.mode === 'BRUSH') { color='#17110b'; alpha=.68; width*=1.75; }
-    return {color, alpha:alpha*lerp(.48,1,tone), width};
+  function strokeTool(toolId) {
+    return state.strokeTools?.[toolId] || state.strokeTools?.mainInk || {
+      type: 'pen',
+      color: '#17110b',
+      alphaRange: [0.72, 0.96],
+      widthRange: [0.8, 1.7],
+      taper: 0.25,
+      wobble: 0.18,
+      dryness: 0.05,
+    };
+  }
+
+  function colorFromTool(tool, tone, seed) {
+    if (tool.colorRange?.length >= 2) {
+      const a = hexRgb(tool.colorRange[0], '#2f2a25');
+      const b = hexRgb(tool.colorRange[1], '#716456');
+      const jitter = (state.shadowColorJitter || 0) * noise(seed || 0, 91) * .35;
+      return rgba(mixRgb(a, b, clamp01(tone + jitter)), 1);
+    }
+    return tool.color || '#17110b';
+  }
+
+  function resolveStrokeStyle({ toolId = 'mainInk', lineSetId = '', tone = 1, seed = 0 } = {}) {
+    const tool = strokeTool(toolId);
+    const alphaRange = tool.alphaRange || [0.45, 0.9];
+    const widthRange = tool.widthRange || [0.5, 1.2];
+    let alpha = lerp(alphaRange[0], alphaRange[1], clamp01(tone));
+    let width = lerp(widthRange[0], widthRange[1], clamp01(tone));
+
+    // Legacy mode still acts as a coarse compatibility multiplier, but the tool owns identity.
+    if (state.mode === 'PENCIL' && tool.type !== 'pencil') { alpha *= .62; width *= .78; }
+    if (state.mode === 'BRUSH' && tool.type !== 'brush') { alpha *= .82; width *= 1.35; }
+
+    const pressure = 1 + noise(seed, 111) * (state.strokePressureJitter || 0) * .35;
+    return {
+      toolId,
+      lineSetId,
+      color: colorFromTool(tool, tone, seed),
+      alpha: clamp01(alpha * lerp(.48, 1, tone)),
+      width: Math.max(.15, width * state.strokeWidth * pressure),
+      taper: tool.taper ?? state.taper,
+      wobble: tool.wobble ?? state.wobble,
+      dryness: tool.dryness ?? 0,
+      grain: tool.grain ?? 0,
+    };
+  }
+
+  function lineSetConfig(id) {
+    const out = { id, ...(state.lineSets?.[id] || {}) };
+    const enabledKey = `${id}Enabled`;
+    const toolKey = `${id}Tool`;
+    if (enabledKey in state) out.enabled = !!state[enabledKey];
+    if (state[toolKey]) out.tool = state[toolKey];
+    return out;
+  }
+
+  function lineSetForContourKind(kind, visible = true) {
+    if (!visible) return lineSetConfig('hiddenLine');
+    if (kind === 'crease') return lineSetConfig('creaseAccent');
+    if (kind === 'suggestive') return lineSetConfig('suggestiveContour');
+    return lineSetConfig('mainContour');
+  }
+
+  function shadowLineSet() {
+    return lineSetConfig('shadowHatch');
   }
 
   function addMark(out, f, frame, c, tone, seed) {
-    const style=toolStyle(tone);
+    const lineSet = shadowLineSet();
+    if (lineSet.enabled === false) return;
+    const toolId = lineSet.tool || 'shadowPencil';
+    const style=resolveStrokeStyle({toolId, lineSetId: lineSet.id, tone, seed});
     const method=state.method;
-    if (method === 'stipple') { addDot(out,c,tone,seed,style,false); return; }
-    if (method === 'halftone') { addDot(out,c,tone,seed,style,true); return; }
+    if (method === 'stipple') { addDot(out,c,tone,seed,style,false,{toolId,lineSetId:lineSet.id,sourceType:'shadow'}); return; }
+    if (method === 'halftone') { addDot(out,c,tone,seed,style,true,{toolId,lineSetId:lineSet.id,sourceType:'shadow'}); return; }
     if (method === 'scribble') { addScribble(out,f,frame,c,tone,seed,style); return; }
     if (method === 'scumble') { addScumble(out,f,frame,c,tone,seed,style); return; }
     if (method === 'graphite') {
@@ -597,10 +733,10 @@ import { DIRTY_FLAGS, createDirtyFlags, markDirty, clearDirty } from './render/d
     }
   }
 
-  function addDot(out,c,tone,seed,style,halftone) {
+  function addDot(out,c,tone,seed,style,halftone,meta={}) {
     let r = state.dotSize * (halftone ? lerp(.55,2.0,tone) : lerp(.55,1.22,tone));
     r *= 1 + noise(seed,2) * (halftone ? .10 : .45) * state.jitter;
-    out.push({kind:'dot',x:c.x,y:c.y,z:c.z,r:Math.max(.25,r),color:style.color,alpha:style.alpha});
+    out.push({kind:'dot',x:c.x,y:c.y,z:c.z,r:Math.max(.25,r),color:style.color,alpha:style.alpha,toolId:meta.toolId||style.toolId,lineSetId:meta.lineSetId||style.lineSetId,sourceType:meta.sourceType||'mark',tone,seed});
   }
 
   function addStroke(out,f,frame,c,dir,tone,seed,style,opt={}) {
@@ -636,8 +772,16 @@ import { DIRTY_FLAGS, createDirtyFlags, markDirty, clearDirty } from './render/d
       const width = Math.max(.15, style.width * (1 + noise(seed,7) * state.widthVar));
       const inkRamp = state.strokeToneRamp * lerp(.45,1.25,hash01(seed + 44.8)) * lerp(.45,1,tone);
       const rampDir = hash01(seed + 45.9) < .72 ? 1 : -1;
-      out.push({kind:'line',pts:seg,color:style.color,alpha:style.alpha,width,taper:clamp01(state.taper*(opt.taperMul||1)),dry:!!opt.dry,seed,inkRamp,rampDir});
+      const lengthPx = polylineLength(seg);
+      if (lengthPx < (state.cleanupMinLineLengthPx || 0)) continue;
+      out.push({kind:'line',pts:seg,color:style.color,alpha:style.alpha,width,taper:clamp01((style.taper ?? state.taper)*(opt.taperMul||1)),dry:!!opt.dry,seed,inkRamp,rampDir,toolId:style.toolId,lineSetId:style.lineSetId,sourceType:opt.sourceType||'shadow',tone});
     }
+  }
+
+  function polylineLength(pts) {
+    let total = 0;
+    for (let i = 1; i < pts.length; i++) total += Math.hypot(pts[i].x - pts[i-1].x, pts[i].y - pts[i-1].y);
+    return total;
   }
 
   function splitSegments(pts,seed,dry) {
@@ -696,11 +840,15 @@ import { DIRTY_FLAGS, createDirtyFlags, markDirty, clearDirty } from './render/d
       return renderCache.frame;
     }
     markCacheMiss(perfStats);
-    const frame=timeSection(perfStats, 'projection', () => transformFrame());
+    const runtime = prepareMeshRuntime(state.mesh);
+    const projectionContext = createFrameProjectionContext(runtime);
+    const renderSelection = buildFrameRenderSelection(runtime, projectionContext);
+    const frame=timeSection(perfStats, 'projection', () => transformFrame(renderSelection, projectionContext));
     frame.db=timeSection(perfStats, 'depth', () => buildDepthBuffer(frame));
     timeSection(perfStats, 'visibility', () => computeVisibilityAndFlow(frame));
     frame.contours=state.contours ? timeSection(perfStats, 'contours', () => computeContours(frame)) : [];
     frame.marks=state.shadowsEnabled ? timeSection(perfStats, 'marks', () => generateMarks(frame)) : [];
+    frame.features = extractFrameFeatures(frame);
     frame.pipelineKey = pipelineKey;
     renderCache.pipelineKey = pipelineKey;
     renderCache.frame = frame;
@@ -728,6 +876,7 @@ import { DIRTY_FLAGS, createDirtyFlags, markDirty, clearDirty } from './render/d
       const result = await computeFrameInWorker(mesh, runtime, pipelineKey);
       const frame = frameFromWorkerResult(result, pipelineKey);
       frame.marks = state.shadowsEnabled ? timeSection(perfStats, 'marks', () => generateMarks(frame)) : [];
+      frame.features = extractFrameFeatures(frame);
       renderCache.pipelineKey = pipelineKey;
       renderCache.frame = frame;
       return frame;
@@ -795,6 +944,7 @@ import { DIRTY_FLAGS, createDirtyFlags, markDirty, clearDirty } from './render/d
       v.sx = result.verts.sx[i];
       v.sy = result.verts.sy[i];
       v.inFront = Boolean(result.verts.inFront[i]);
+      v.globalId = result.verts.localToGlobal ? result.verts.localToGlobal[i] : i;
       verts[i] = v;
     }
     verts.length = vertCount;
@@ -826,6 +976,8 @@ import { DIRTY_FLAGS, createDirtyFlags, markDirty, clearDirty } from './render/d
       face.ndotl = screen.ndotl[i];
       face.visible = Boolean(screen.visible[i]);
       face.visibility = screen.visibility[i];
+      face.detailTier = screen.detailTier ? screen.detailTier[i] : 0;
+      face.unitId = screen.unitId ? screen.unitId[i] : -1;
       face.minX = screen.minX[i];
       face.minY = screen.minY[i];
       face.maxX = screen.maxX[i];
@@ -850,8 +1002,15 @@ import { DIRTY_FLAGS, createDirtyFlags, markDirty, clearDirty } from './render/d
       depthMode: result.depthMode,
       cullMargin: result.viewport.margin,
       viewport: result.viewport,
+      renderSelection: null,
+      workerSelection: {
+        selectedFaces: result.counters?.selectedFaces || result.counters?.facesSelected || 0,
+        selectedEdges: result.counters?.selectedEdges || result.counters?.edgesSelected || 0,
+        selectedVertices: result.counters?.selectedVertices || result.counters?.vertsSelected || 0,
+      },
       pipelineKey,
     };
+    frame.features = extractFrameFeatures(frame);
 
     for (const [name, value] of Object.entries(result.timings || {})) {
       if (name in perfStats.last) perfStats.last[name] = value;
@@ -875,10 +1034,53 @@ import { DIRTY_FLAGS, createDirtyFlags, markDirty, clearDirty } from './render/d
       item.z2 = contours.z2[i];
       item.kind = names[contours.kind[i]] || 'contour';
       item.visible = Boolean(contours.visible[i]);
+      item.detailTier = contours.detailTier ? contours.detailTier[i] : 0;
       item.id = i;
       out[i] = item;
     }
     return out;
+  }
+
+  function extractFrameFeatures(frame) {
+    const features = {
+      silhouetteEdges: 0,
+      boundaryEdges: 0,
+      creaseEdges: 0,
+      suggestiveContours: 0,
+      hiddenLines: 0,
+      toneBands: new Array(Math.max(1, Math.round(state.shadowBandCount || 3))).fill(0),
+      shadowRegions: 0,
+      highlightRegions: 0,
+      highDensityAreas: 0,
+      rejectedArtifacts: 0,
+    };
+    for (const s of frame.contours || []) {
+      if (!s.visible) {
+        features.hiddenLines++;
+      } else if (s.kind === 'crease') {
+        features.creaseEdges++;
+      } else if (s.kind === 'suggestive') {
+        features.suggestiveContours++;
+      } else {
+        features.silhouetteEdges++;
+        features.boundaryEdges++;
+      }
+    }
+    const minArea = Math.max(0, state.cleanupMinFaceAreaPx || 0);
+    const bands = features.toneBands.length;
+    for (const f of frame.visibleFaces || []) {
+      const band = Math.min(bands - 1, Math.max(0, Math.floor(clamp01(f.tone || 0) * bands)));
+      features.toneBands[band]++;
+      if ((f.area || 0) < minArea * 3) features.highDensityAreas++;
+    }
+    for (const f of frame.screenFaces || []) {
+      if (!f.visible || (f.area || 0) < minArea) features.rejectedArtifacts++;
+    }
+    for (const region of frame.paintRegions || []) {
+      if (region.kind === 'shadow') features.shadowRegions++;
+      if (region.kind === 'highlight') features.highlightRegions++;
+    }
+    return features;
   }
 
   function renderFrame(frame) {
@@ -892,6 +1094,12 @@ import { DIRTY_FLAGS, createDirtyFlags, markDirty, clearDirty } from './render/d
       if (state.contours) drawContours(frame.contours);
       if (state.flow) drawFlow(frame);
       if (state.seedDebug) drawSeeds(frame.marks);
+      if (state.densityDebug) drawDensityDebug(frame);
+      if (state.cleanupDebug) drawCleanupDebug(frame);
+      if (state.regionDebug) drawRegionDebug(frame);
+      if (state.visibilityDebug) drawVisibilityDebug(frame);
+      if (state.detailDebug) drawDetailDebug(frame);
+      if (state.budgetDebug) drawBudgetDebug(frame);
     } else {
       ctx.strokeStyle = '#2d5f62';
       ctx.lineWidth = 0.5;
@@ -906,6 +1114,58 @@ import { DIRTY_FLAGS, createDirtyFlags, markDirty, clearDirty } from './render/d
       }
       ctx.stroke();
     }
+    ctx.restore();
+  }
+
+  function drawDetailDebug(frame) {
+    const colors = ['rgba(0,128,255,.14)', 'rgba(0,200,100,.14)', 'rgba(255,180,0,.14)', 'rgba(255,60,0,.14)', 'rgba(0,0,0,.10)'];
+    ctx.save();
+    for (const f of frame.screenFaces) {
+      const tier = Math.max(0, Math.min(4, f.detailTier ?? 0));
+      ctx.fillStyle = colors[tier];
+      facePath(f);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  function drawVisibilityDebug(frame) {
+    const units = frame.renderSelection?.units || [];
+    if (!units.length) return;
+    ctx.save();
+    ctx.lineWidth = 1;
+    ctx.font = '10px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace';
+    for (let i = 0; i < units.length; i++) {
+      const item = units[i];
+      const b = item.bounds2d;
+      if (!b) continue;
+      const tier = Math.max(0, Math.min(4, item.detailTier ?? 0));
+      const hue = [205, 145, 42, 12, 0][tier];
+      ctx.strokeStyle = `hsla(${hue}, 80%, 42%, .42)`;
+      ctx.fillStyle = `hsla(${hue}, 80%, 42%, .08)`;
+      const w = Math.max(0, b.maxX - b.minX);
+      const h = Math.max(0, b.maxY - b.minY);
+      ctx.fillRect(b.minX, b.minY, w, h);
+      ctx.strokeRect(b.minX, b.minY, w, h);
+      if (i < 160) {
+        ctx.fillStyle = `hsla(${hue}, 80%, 22%, .85)`;
+        ctx.fillText(`D${tier}`, b.minX + 3, b.minY + 3);
+      }
+    }
+    ctx.restore();
+  }
+
+  function drawBudgetDebug(frame) {
+    const c = perfStats.counters || {};
+    ctx.save();
+    ctx.font = '12px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace';
+    ctx.fillStyle = 'rgba(255,252,245,.82)';
+    ctx.fillRect(14, canvas.height - 92, 390, 72);
+    ctx.fillStyle = '#17110b';
+    ctx.fillText(`units ${c.sceneUnitsVisible || 0}/${c.sceneUnitsTotal || 0}`, 24, canvas.height - 68);
+    ctx.fillText(`selected f/e/v ${c.facesSelected || c.selectedFaces || 0}/${c.edgesSelected || c.selectedEdges || 0}/${c.vertsSelected || c.selectedVertices || 0}`, 24, canvas.height - 48);
+    ctx.fillText(`contours ${c.contoursDrawn || 0}/${c.contoursBudget || 0} marks ${c.marksGenerated || 0}/${c.marksBudget || 0}`, 24, canvas.height - 28);
+    void frame;
     ctx.restore();
   }
 
@@ -1130,7 +1390,9 @@ import { DIRTY_FLAGS, createDirtyFlags, markDirty, clearDirty } from './render/d
     const registration = state.paintRegistration || 0;
     const regions = buildPaintRegions(frame, state);
     frame.paintRegions = regions;
+    frame.features = extractFrameFeatures(frame);
     setPerfCounter(perfStats, 'paintRegions', regions.length);
+    setPerfCounter(perfStats, 'paintRegionBudget', state.regionBudgetEnabled ? state.regionMaxPaintRegions : 0);
     targetCtx.save();
     clipProjectedPaintMask(targetCtx, frame, faces);
     targetCtx.translate(noise(21.7, randomnessFrameSeed()) * registration * .32, noise(31.1, randomnessFrameSeed()) * registration * .32);
@@ -1378,10 +1640,20 @@ import { DIRTY_FLAGS, createDirtyFlags, markDirty, clearDirty } from './render/d
     const inkAlpha = clamp(state.inkDominance || 1, .35, 1.35);
     const inkWidth = lerp(.92, 1.12, clamp01((inkAlpha - .35) / 1));
     for (const s of segs) {
-      ctx.globalAlpha=clamp01((s.visible ? (s.kind==='contour'? .92:.46) : .24) * inkAlpha);
-      ctx.strokeStyle=s.visible ? '#17110b' : '#65584d';
+      const lineSet = lineSetForContourKind(s.kind, s.visible);
+      if (lineSet.enabled === false) continue;
+      const len = Math.hypot(s.x2 - s.x1, s.y2 - s.y1);
+      if (len < (lineSet.minLengthPx || state.cleanupMinLineLengthPx || 0)) continue;
+      const style = resolveStrokeStyle({
+        toolId: lineSet.tool || 'mainInk',
+        lineSetId: lineSet.id,
+        tone: s.kind === 'contour' ? 1 : (lineSet.strength || .55),
+        seed: (s.id + 1) * 19.23 + contourFrameSeed()
+      });
+      ctx.globalAlpha=clamp01(style.alpha * (s.visible ? 1 : .55) * inkAlpha);
+      ctx.strokeStyle=style.color;
       const widthNoise = state.contourHumanize && s.kind==='contour' ? lerp(.88,1.18,hash01((s.id+1)*19.23 + contourFrameSeed())) : 1;
-      ctx.lineWidth=(s.visible ? (s.kind==='contour'?1.45:.76) : .85) * widthNoise * inkWidth;
+      ctx.lineWidth=style.width * widthNoise * inkWidth;
       ctx.setLineDash(s.visible ? [] : [6,5]);
       strokeContourVariant(s);
     }
@@ -1401,6 +1673,80 @@ import { DIRTY_FLAGS, createDirtyFlags, markDirty, clearDirty } from './render/d
   function drawSeeds(marks) {
     ctx.save(); ctx.globalAlpha=.55; ctx.fillStyle='#a94917';
     for (const m of marks) { const p=m.kind==='dot'?m:m.pts[0]; if (p) ctx.fillRect(p.x-1,p.y-1,2,2); }
+    ctx.restore();
+  }
+
+  function drawDensityDebug(frame) {
+    const faces = frame.visibleFaces || [];
+    if (!faces.length) return;
+    let maxArea = 0;
+    for (const f of faces) maxArea = Math.max(maxArea, f.area || 0);
+    const areaSpan = Math.max(1, maxArea);
+    ctx.save();
+    ctx.globalCompositeOperation = 'source-over';
+    for (const f of faces) {
+      if (!f.visible) continue;
+      const density = 1 - clamp01((f.area || 0) / areaSpan);
+      if (density < .12) continue;
+      ctx.fillStyle = `rgba(${Math.round(255 * density)}, ${Math.round(180 * (1 - density))}, 24, ${0.12 + density * .34})`;
+      ctx.beginPath();
+      ctx.moveTo(f.p[0].sx, f.p[0].sy);
+      ctx.lineTo(f.p[1].sx, f.p[1].sy);
+      ctx.lineTo(f.p[2].sx, f.p[2].sy);
+      ctx.closePath();
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  function drawCleanupDebug(frame) {
+    const minArea = state.cleanupMinFaceAreaPx || 0;
+    const maxEdge = state.cleanupMaxEdgeLengthPx || Infinity;
+    ctx.save();
+    ctx.lineWidth = 1;
+    ctx.setLineDash([3, 3]);
+    ctx.strokeStyle = 'rgba(220, 54, 36, .72)';
+    ctx.fillStyle = 'rgba(220, 54, 36, .10)';
+    let drawn = 0;
+    for (const f of frame.screenFaces || []) {
+      if (drawn > 900) break;
+      const e0 = Math.hypot(f.p[0].sx - f.p[1].sx, f.p[0].sy - f.p[1].sy);
+      const e1 = Math.hypot(f.p[1].sx - f.p[2].sx, f.p[1].sy - f.p[2].sy);
+      const e2 = Math.hypot(f.p[2].sx - f.p[0].sx, f.p[2].sy - f.p[0].sy);
+      const rejected = (f.area || 0) < minArea || Math.max(e0, e1, e2) > maxEdge || !f.visible;
+      if (!rejected) continue;
+      ctx.beginPath();
+      ctx.moveTo(f.p[0].sx, f.p[0].sy);
+      ctx.lineTo(f.p[1].sx, f.p[1].sy);
+      ctx.lineTo(f.p[2].sx, f.p[2].sy);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      drawn++;
+    }
+    ctx.restore();
+  }
+
+  function drawRegionDebug(frame) {
+    const regions = frame.paintRegions || buildPaintRegions(frame, state);
+    if (!regions.length) return;
+    ctx.save();
+    ctx.font = '11px ui-monospace, SFMono-Regular, Consolas, monospace';
+    ctx.textBaseline = 'top';
+    ctx.lineWidth = 1;
+    for (let i = 0; i < regions.length; i++) {
+      const region = regions[i];
+      const b = region.bounds;
+      if (!b) continue;
+      ctx.strokeStyle = region.kind === 'shadow' ? 'rgba(84, 57, 184, .72)' : region.kind === 'highlight' ? 'rgba(232, 144, 36, .82)' : 'rgba(28, 111, 132, .68)';
+      ctx.fillStyle = 'rgba(255, 255, 255, .78)';
+      if (region.d && typeof Path2D !== 'undefined') ctx.stroke(new Path2D(region.d));
+      ctx.strokeRect(b.minX, b.minY, b.w, b.h);
+      const label = `${region.kind}:${i}`;
+      ctx.fillRect(b.minX, b.minY, ctx.measureText(label).width + 6, 15);
+      ctx.fillStyle = '#241810';
+      ctx.fillText(label, b.minX + 3, b.minY + 2);
+    }
     ctx.restore();
   }
 
@@ -1427,10 +1773,12 @@ import { DIRTY_FLAGS, createDirtyFlags, markDirty, clearDirty } from './render/d
     const topology = state.mesh?.sourceType === 'fbx' ? ` · topology: cached` : '';
     const fbxSource = escapeHtml(state.fbxSourceLabel || 'walking.fbx');
     const anim = state.modelSource === 'walking' ? ` · FBX source: <b>${state.walkingFbxReady?fbxSource:'not found'}</b>${topology}` : '';
+    const features = frame.features || extractFrameFeatures(frame);
     const html = `model: <b>${escapeHtml(model)}</b>${anim}<br>` +
       `projection: <b>${state.projectionMode}</b> · focal length: <b>${Math.round(state.focalLength)}mm</b><br>` +
       `camera xyz: ${fmt(state.cameraX,2)}, ${fmt(state.cameraY,2)}, ${fmt(state.cameraZ,2)} · look: ${Math.round(state.cameraYaw)}°/${Math.round(state.cameraPitch)}°<br>` +
       `faces: ${visible}/${frame.screenFaces.length}/${frame.faces.length} visible/screen/total · strokes: ${frame.marks.length}<br>` +
+      `features: contour ${features.silhouetteEdges}, crease ${features.creaseEdges}, suggestive ${features.suggestiveContours}, hidden ${features.hiddenLines}, regions ${features.shadowRegions + features.highlightRegions}<br>` +
       formatPerfStats(perfStats, fmt);
     if (statusEl) statusEl.innerHTML = html;
   }
@@ -1600,6 +1948,7 @@ import { DIRTY_FLAGS, createDirtyFlags, markDirty, clearDirty } from './render/d
     for (const id of checkControls) { const el=$(id); if (el) el.checked=!!state[id]; }
     if ($('method')) $('method').value=state.method;
     if ($('flowMode')) $('flowMode').value=state.flowMode;
+    for (const id of lineToolControls) { const el=$(id); if (el) el.value=state[id]; }
     if ($('preset')) $('preset').value=state.preset;
     if ($('paintBrush')) $('paintBrush').value=state.paintBrush;
     if ($('paintPalette')) $('paintPalette').value=state.paintPalette;
@@ -1638,6 +1987,10 @@ import { DIRTY_FLAGS, createDirtyFlags, markDirty, clearDirty } from './render/d
     }
     $('method')?.addEventListener('change', e => { state.method=e.target.value; scheduleRender(DIRTY_FLAGS.NPR); requestSaveSettings(); });
     $('flowMode')?.addEventListener('change', e => { state.flowMode=e.target.value; scheduleRender(DIRTY_FLAGS.NPR); requestSaveSettings(); });
+    for (const id of lineToolControls) {
+      const el=$(id); if (!el) continue;
+      el.addEventListener('change', () => { state[id]=el.value; scheduleRender(DIRTY_FLAGS.NPR); requestSaveSettings(); });
+    }
     $('preset')?.addEventListener('change', e => applyPreset(e.target.value));
     $('paintBrush')?.addEventListener('change', e => { state.paintBrush=e.target.value; syncUi(); scheduleRender(DIRTY_FLAGS.PAINT); requestSaveSettings(); });
     $('paintPalette')?.addEventListener('change', e => applyPaintPalette(e.target.value));
@@ -1654,6 +2007,7 @@ import { DIRTY_FLAGS, createDirtyFlags, markDirty, clearDirty } from './render/d
     $('exportSvg')?.addEventListener('click', exportSvg);
     $('exportPng')?.addEventListener('click', exportPng);
     $('exportAtlas')?.addEventListener('click', exportAtlas);
+    $('exportFbxClip')?.addEventListener('click', exportFbxClip);
     $('file')?.addEventListener('change', e => loadFile(e.target.files && e.target.files[0]));
     $('fbxFile')?.addEventListener('change', e => loadCustomFbxFile(e.target.files && e.target.files[0]));
     canvas.addEventListener('contextmenu', e => e.preventDefault());
@@ -1715,6 +2069,7 @@ import { DIRTY_FLAGS, createDirtyFlags, markDirty, clearDirty } from './render/d
   function applyPreset(key) {
     const p=presets[key]; if (!p) return;
     Object.assign(state,p);
+    syncLineSetControlFields();
     state.preset=key;
     syncUi();
     scheduleRender();
@@ -1729,6 +2084,15 @@ import { DIRTY_FLAGS, createDirtyFlags, markDirty, clearDirty } from './render/d
       return;
     }
     loadOBJSource({ file }, file.name || 'dropped OBJ');
+  }
+
+  function syncLineSetControlFields() {
+    for (const [lineSetId, config] of Object.entries(state.lineSets || {})) {
+      const enabledKey = `${lineSetId}Enabled`;
+      const toolKey = `${lineSetId}Tool`;
+      if (enabledKey in state) state[enabledKey] = config.enabled !== false;
+      if (toolKey in state && config.tool) state[toolKey] = config.tool;
+    }
   }
 
   async function parseOBJAsync(source, name) {
@@ -1950,6 +2314,7 @@ import { DIRTY_FLAGS, createDirtyFlags, markDirty, clearDirty } from './render/d
     if (renderCache.svg.key === svgKey && renderCache.svg.text) return renderCache.svg.text;
     const w=canvas.width,h=canvas.height, parts=[];
     parts.push(`<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">`);
+    parts.push(`<metadata>${svgEscape(JSON.stringify({ pipeline: 'vectorized-3d-humanized-projection', lineSets: state.lineSets, strokeTools: state.strokeTools, regionSets: state.regionSets, detailPolicy: state.detailPolicyEnabled, vectorBudget: state.vectorBudgetEnabled, selectedFaces: frame.renderSelection?.faceIds?.length ?? frame.workerSelection?.selectedFaces ?? null }))}</metadata>`);
     parts.push(`<rect width="100%" height="100%" fill="${svgEscape(paperColor())}"/>`);
     if (state.paintEnabled) {
       const faces = paintFaces(frame);
@@ -1960,27 +2325,54 @@ import { DIRTY_FLAGS, createDirtyFlags, markDirty, clearDirty } from './render/d
       parts.push(`<g id="paint-regions" clip-path="url(#paint-model-mask)">`);
       for (const region of regions) {
         const blend = region.composite && region.composite !== 'source-over' ? ` style="mix-blend-mode:${region.composite}"` : '';
-        parts.push(`<path d="${region.d}" fill="${svgEscape(region.color)}" fill-opacity="${fmt(region.opacity,3)}"${blend}/>`); 
+        const regionSet = region.kind === 'shadow' ? 'shadowRegion' : region.kind === 'highlight' ? 'highlightRegion' : 'baseWash';
+        parts.push(`<path data-region-set="${svgEscape(regionSet)}" data-source="${svgEscape(region.kind)}" d="${region.d}" fill="${svgEscape(region.color)}" fill-opacity="${fmt(region.opacity,3)}"${blend}/>`);
       }
       parts.push(`</g>`);
     }
     parts.push(`<g id="shadow-strokes" fill="none" stroke-linecap="round" stroke-linejoin="round">`);
     const inkAlpha = clamp(state.inkDominance || 1, .35, 1.35);
     const inkWidth = lerp(.92, 1.10, clamp01((inkAlpha - .35) / 1));
+    let currentShadowLineSet = '';
     for (const m of frame.marks) {
-      if (m.kind==='dot') parts.push(`<circle cx="${fmt(m.x,1)}" cy="${fmt(m.y,1)}" r="${fmt(m.r,2)}" fill="${m.color}" fill-opacity="${fmt(clamp01(m.alpha * inkAlpha),3)}"/>`);
-      else parts.push(`<path d="${pathD(m.pts)}" stroke="${m.color}" stroke-opacity="${fmt(clamp01(m.alpha * inkAlpha),3)}" stroke-width="${fmt(m.width * inkWidth,2)}"/>`);
+      const lineSetId = m.lineSetId || 'shadowHatch';
+      if (lineSetId !== currentShadowLineSet) {
+        if (currentShadowLineSet) parts.push(`</g>`);
+        currentShadowLineSet = lineSetId;
+        parts.push(`<g id="line-set-${svgEscape(lineSetId)}" data-line-set="${svgEscape(lineSetId)}">`);
+      }
+      const meta = ` data-tool="${svgEscape(m.toolId || '')}" data-line-set="${svgEscape(m.lineSetId || '')}" data-source="${svgEscape(m.sourceType || '')}"`;
+      if (m.kind==='dot') parts.push(`<circle${meta} cx="${fmt(m.x,1)}" cy="${fmt(m.y,1)}" r="${fmt(m.r,2)}" fill="${m.color}" fill-opacity="${fmt(clamp01(m.alpha * inkAlpha),3)}"/>`);
+      else parts.push(`<path${meta} d="${pathD(m.pts)}" stroke="${m.color}" stroke-opacity="${fmt(clamp01(m.alpha * inkAlpha),3)}" stroke-width="${fmt(m.width * inkWidth,2)}"/>`);
     }
+    if (currentShadowLineSet) parts.push(`</g>`);
     parts.push(`</g><g id="contours" fill="none" stroke-linecap="round" stroke-linejoin="round">`);
+    let currentContourLineSet = '';
     for (const s of frame.contours) {
+      const lineSet = lineSetForContourKind(s.kind, s.visible);
+      if (lineSet.enabled === false) continue;
+      const len = Math.hypot(s.x2 - s.x1, s.y2 - s.y1);
+      if (len < (lineSet.minLengthPx || state.cleanupMinLineLengthPx || 0)) continue;
       const pts = contourVariantPoints(s);
       if (!pts) continue;
+      const style = resolveStrokeStyle({
+        toolId: lineSet.tool || 'mainInk',
+        lineSetId: lineSet.id,
+        tone: s.kind === 'contour' ? 1 : (lineSet.strength || .55),
+        seed: (s.id + 1) * 19.23 + contourFrameSeed()
+      });
       const dash=s.visible?'':' stroke-dasharray="6 5"';
-      const op=clamp01((s.visible?(s.kind==='contour'?.92:.46):.24) * inkAlpha);
-      const width=(s.visible?(s.kind==='contour'?1.45:.76):.85) * inkWidth;
-      parts.push(`<path d="${pathD(pts)}" stroke="#17110b" stroke-opacity="${fmt(op,3)}" stroke-width="${fmt(width,2)}"${dash}/>`);
+      const op=clamp01(style.alpha * (s.visible ? 1 : .55) * inkAlpha);
+      const width=style.width * inkWidth;
+      if (lineSet.id !== currentContourLineSet) {
+        if (currentContourLineSet) parts.push(`</g>`);
+        currentContourLineSet = lineSet.id;
+        parts.push(`<g id="line-set-${svgEscape(lineSet.id)}" data-line-set="${svgEscape(lineSet.id)}">`);
+      }
+      parts.push(`<path data-tier="${s.detailTier ?? 0}" data-tool="${svgEscape(style.toolId || '')}" data-line-set="${svgEscape(lineSet.id || '')}" data-source="${svgEscape(s.kind || '')}" d="${pathD(pts)}" stroke="${style.color}" stroke-opacity="${fmt(op,3)}" stroke-width="${fmt(width,2)}"${dash}/>`);
     }
-    parts.push(`</g><metadata>${svgEscape(JSON.stringify({tool:'Susan Shadow Editor v4',method:state.method,flow:state.flowMode,hideOccluded:state.hideOccluded}))}</metadata></svg>`);
+    if (currentContourLineSet) parts.push(`</g>`);
+    parts.push(`</g><metadata>${svgEscape(JSON.stringify({tool:'Susan Shadow Editor v4',method:state.method,flow:state.flowMode,hideOccluded:state.hideOccluded,features:frame.features}))}</metadata></svg>`);
     renderCache.svg.key = svgKey;
     renderCache.svg.text = parts.join('\n');
     return renderCache.svg.text;
@@ -1994,6 +2386,24 @@ import { DIRTY_FLAGS, createDirtyFlags, markDirty, clearDirty } from './render/d
   }
   function exportSvg(){ const frame=state.frame || computeFrame(); downloadText('susan_shadow_editor_v4.svg','image/svg+xml',buildSvg(frame)); }
   function exportPng(){ const a=document.createElement('a'); a.download='susan_shadow_editor_v4.png'; a.href=canvas.toDataURL('image/png'); a.click(); }
+  async function exportFbxClip() {
+    if (state.modelSource !== 'walking') {
+      setModelSource('walking');
+    }
+    const rt = await ensureFbxRuntime();
+    const savedTime = state.animTime;
+    const savedSample = state.animSampleTime;
+    const buffer = buildFbxClipAmc(rt, {
+      fps: 60,
+      duration: rt.duration || 1,
+    });
+    state.animTime = savedTime;
+    state.animSampleTime = savedSample;
+    if (rt.mixer) rt.mixer.setTime(savedSample || savedTime || 0);
+    state.mesh = extractFbxAdapterMesh(rt);
+    scheduleRender();
+    downloadArrayBuffer('walking.amc', 'application/octet-stream', buffer);
+  }
   function exportAtlas() {
     const saved={...state};
     const keys=Object.keys(presets);

@@ -5,12 +5,25 @@ const PIPELINE_FIELDS = [
   'lightAz', 'lightEl',
   'method', 'mode', 'flowMode',
   'density', 'layers', 'threshold', 'core', 'contact', 'edgeDark', 'simplify', 'economy',
+  'cleanupMinFaceAreaPx', 'cleanupMinLineLengthPx', 'cleanupMaxEdgeLengthPx', 'cleanupDensityClamp',
+  'cleanupRegionMinAreaPx', 'cleanupRegionMinFaces', 'cleanupRegionMaxAspect', 'hairRegionSuppression',
+  'scenePartitionEnabled', 'scenePartitionMode', 'scenePartitionCellSize', 'scenePartitionMaxUnits',
+  'visibilityCullingEnabled', 'visibilityMarginPx', 'visibilityMinAreaPx', 'visibilityMinRadiusPx',
+  'detailPolicyEnabled', 'detailTier0RadiusPx', 'detailTier1RadiusPx', 'detailTier2RadiusPx', 'detailTier3RadiusPx',
+  'detailDensityPenalty', 'detailImportanceBias',
+  'vectorBudgetEnabled', 'vectorMaxProjectedFaces', 'vectorMaxVisibleEdges', 'vectorMaxContourLines',
+  'vectorMaxShadowMarks', 'vectorMinFaceAreaPx', 'vectorMinEdgeLengthPx',
+  'regionBudgetEnabled', 'regionMinProjectedAreaPx', 'regionMaxPaintRegions', 'regionAllowFarFills',
+  'shadowBandCount', 'shadowRegionBleed', 'shadowColorJitter',
+  'strokePressureJitter', 'temporalCoherence', 'projectionHumanError',
   'strokeLen', 'spacing', 'strokeWidth', 'curvature', 'crossAngle', 'dotSize',
   'wobble', 'jitter', 'strokeCrookedness', 'strokeKinkChance', 'strokeToneRamp',
   'shadowFrameDrift', 'shadowLoopRedraw', 'shadowLayoutJitter',
   'projectionWobble', 'spacingVar', 'lengthVar', 'widthVar', 'taper', 'breakup', 'overdraw',
   'contourHumanize', 'contourDrift', 'contourWobble', 'contourGaps', 'contourFrameVariance',
   'shadowsEnabled', 'paintEnabled', 'contours', 'flow',
+  'mainContourEnabled', 'creaseAccentEnabled', 'suggestiveContourEnabled', 'hiddenLineEnabled', 'shadowHatchEnabled',
+  'mainContourTool', 'creaseAccentTool', 'suggestiveContourTool', 'hiddenLineTool', 'shadowHatchTool',
   'hideOccluded', 'backface', 'depthClipStrokes', 'clipToFaces',
   'showHidden', 'depthEps', 'creases', 'suggestive', 'contactLines',
   'animFrameIndex', 'animLoopIndex', 'animSampleTime', 'animJitterFrames',
@@ -22,11 +35,16 @@ const BACKGROUND_FIELDS = [
 
 const PAINT_FIELDS = [
   'paintEnabled', 'paintBrush', 'faceWash', 'tone', 'sortFaces', 'backface',
+  'baseWashEnabled', 'shadowRegionEnabled', 'highlightRegionEnabled',
   'paintBaseColor', 'paintShadowColor', 'paintHighlightColor', 'paintPaperColor',
   'paintBaseOpacity', 'paintWashOpacity', 'paintCelStrength', 'paintCelSteps',
   'paintHighlightAmount', 'paintHalftone', 'paintHalftoneScale', 'paintGrain',
   'paintRegistration', 'paintBleed', 'paintRegionResolution', 'paintRegionSimplify',
   'paintEdgeBleed', 'paintPigmentGranulation', 'paintRegionJitter', 'paintWetMix',
+  'cleanupRegionMinAreaPx', 'cleanupRegionMinFaces', 'cleanupRegionMaxAspect',
+  'regionBudgetEnabled', 'regionMinProjectedAreaPx', 'regionMaxPaintRegions', 'regionAllowFarFills',
+  'detailPolicyEnabled', 'detailTier2RadiusPx', 'detailTier3RadiusPx',
+  'hairRegionSuppression', 'shadowBandCount', 'shadowRegionBleed', 'shadowColorJitter',
 ];
 
 function createLayerRecord() {
@@ -47,6 +65,7 @@ function createFrameLists() {
     visibleFaces: [],
     sortedFaces: [],
     contours: [],
+    renderSelection: null,
   };
 }
 
@@ -59,6 +78,10 @@ export function createRenderCache() {
     svg: {
       key: '',
       text: '',
+    },
+    partition: {
+      key: '',
+      value: null,
     },
     depth: {
       w: 0,
@@ -76,6 +99,7 @@ export function clearFrameLists(cache) {
   lists.visibleFaces.length = 0;
   lists.sortedFaces.length = 0;
   lists.contours.length = 0;
+  lists.renderSelection = null;
   return lists;
 }
 
@@ -114,9 +138,12 @@ export function buildSvgKey(state, frame) {
       state.paintBaseOpacity, state.paintCelStrength, state.paintCelSteps, state.paintHighlightAmount,
       state.paintBrush, state.paintRegionResolution, state.paintRegionSimplify, state.paintEdgeBleed,
       state.paintPigmentGranulation, state.paintRegionJitter, state.paintWetMix,
+      state.cleanupRegionMinAreaPx, state.cleanupRegionMinFaces, state.cleanupRegionMaxAspect,
+      state.hairRegionSuppression, state.shadowBandCount, state.shadowRegionBleed, state.shadowColorJitter,
       state.contours, state.inkDominance, state.hideOccluded, state.method, state.flowMode, state.mode,
       state.backface, state.sortFaces, state.controlMode, state.angleSnap, state.yaw, state.pitch, state.zoom, state.cameraYaw, state.cameraPitch,
       state.cameraX, state.cameraY, state.cameraZ, state.projectionMode, state.focalLength,
+      state.strokeTools, state.lineSets, state.regionSets,
     ],
   });
 }
