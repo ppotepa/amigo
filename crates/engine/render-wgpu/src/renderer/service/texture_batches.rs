@@ -51,10 +51,10 @@ impl WgpuSceneRenderer {
         blend_mode: ParticleBlendMode2d,
     ) -> &wgpu::RenderPipeline {
         match blend_mode {
-            ParticleBlendMode2d::Alpha => &self.color_alpha_pipeline,
-            ParticleBlendMode2d::Additive => &self.color_additive_pipeline,
-            ParticleBlendMode2d::Multiply => &self.color_multiply_pipeline,
-            ParticleBlendMode2d::Screen => &self.color_screen_pipeline,
+            ParticleBlendMode2d::Alpha => self.pipeline(CORE_COLOR_ALPHA_PIPELINE),
+            ParticleBlendMode2d::Additive => self.pipeline(CORE_COLOR_ADDITIVE_PIPELINE),
+            ParticleBlendMode2d::Multiply => self.pipeline(CORE_COLOR_MULTIPLY_PIPELINE),
+            ParticleBlendMode2d::Screen => self.pipeline(CORE_COLOR_SCREEN_PIPELINE),
         }
     }
 
@@ -63,12 +63,12 @@ impl WgpuSceneRenderer {
         blend_mode: TextureBlendMode,
     ) -> &wgpu::RenderPipeline {
         match blend_mode {
-            TextureBlendMode::Opaque => &self.texture_opaque_pipeline,
-            TextureBlendMode::Alpha => &self.texture_alpha_pipeline,
-            TextureBlendMode::Additive => &self.texture_additive_pipeline,
-            TextureBlendMode::Multiply => &self.texture_multiply_pipeline,
-            TextureBlendMode::Screen => &self.texture_screen_pipeline,
-            TextureBlendMode::Lighten => &self.texture_lighten_pipeline,
+            TextureBlendMode::Opaque => self.pipeline(CORE_TEXTURE_OPAQUE_PIPELINE),
+            TextureBlendMode::Alpha => self.pipeline(CORE_TEXTURE_ALPHA_PIPELINE),
+            TextureBlendMode::Additive => self.pipeline(CORE_TEXTURE_ADDITIVE_PIPELINE),
+            TextureBlendMode::Multiply => self.pipeline(CORE_TEXTURE_MULTIPLY_PIPELINE),
+            TextureBlendMode::Screen => self.pipeline(CORE_TEXTURE_SCREEN_PIPELINE),
+            TextureBlendMode::Lighten => self.pipeline(CORE_TEXTURE_LIGHTEN_PIPELINE),
         }
     }
 

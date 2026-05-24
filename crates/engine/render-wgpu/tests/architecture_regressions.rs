@@ -166,3 +166,48 @@ fn renderer_rs_does_not_embed_core_shader_sources() {
         "renderer.rs should not embed TEXTURE_SHADER",
     );
 }
+
+#[test]
+fn model_rs_does_not_keep_dedicated_core_pipeline_fields() {
+    let model_rs = crate_root().join("src/renderer/service/model.rs");
+    let content = read(model_rs);
+    for field in [
+        "color_alpha_pipeline",
+        "color_additive_pipeline",
+        "color_multiply_pipeline",
+        "color_screen_pipeline",
+        "texture_alpha_pipeline",
+        "texture_opaque_pipeline",
+        "texture_additive_pipeline",
+        "texture_multiply_pipeline",
+        "texture_screen_pipeline",
+        "texture_lighten_pipeline",
+    ] {
+        assert!(
+            !content.contains(field),
+            "service/model.rs should not keep dedicated core pipeline field {field}",
+        );
+    }
+}
+
+#[test]
+fn init_rs_does_not_manually_create_core_pipelines() {
+    let init_rs = crate_root().join("src/renderer/service/init.rs");
+    let content = read(init_rs);
+    assert!(
+        content.contains("build_default_core_pipelines("),
+        "init.rs should build core pipelines through centralized bootstrap helper",
+    );
+    assert!(
+        !content.contains("create_color_pipeline"),
+        "init.rs should not manually create core pipelines",
+    );
+    assert!(
+        !content.contains("COLOR_SHADER"),
+        "init.rs should not embed COLOR_SHADER usage",
+    );
+    assert!(
+        !content.contains("TEXTURE_SHADER"),
+        "init.rs should not embed TEXTURE_SHADER usage",
+    );
+}

@@ -66,4 +66,14 @@ Assert-NoMatch `
     "crates/engine/render-wgpu/src/renderer.rs" `
     "renderer.rs must not keep core shader source constants."
 
+Assert-NoMatch `
+    "color_alpha_pipeline|color_additive_pipeline|color_multiply_pipeline|color_screen_pipeline|texture_alpha_pipeline|texture_opaque_pipeline|texture_additive_pipeline|texture_multiply_pipeline|texture_screen_pipeline|texture_lighten_pipeline" `
+    "crates/engine/render-wgpu/src/renderer/service/model.rs" `
+    "WgpuSceneRenderer must not own dedicated core pipeline fields."
+
+Assert-NoMatch `
+    "create_color_pipeline|COLOR_SHADER|TEXTURE_SHADER" `
+    "crates/engine/render-wgpu/src/renderer/service/init.rs" `
+    "init.rs must not manually create core color or texture pipelines."
+
 Write-Host "Engine boundary checks passed."

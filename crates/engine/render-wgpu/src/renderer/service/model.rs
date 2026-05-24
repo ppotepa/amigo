@@ -28,16 +28,6 @@ pub(crate) const POST_FX_AUX_PLATE_RELIGHT: &str = "aux.plate_relight";
 pub(crate) const POST_FX_AUX_REFRACTIVE_MATERIAL: &str = "aux.refractive_material";
 
 pub struct WgpuSceneRenderer {
-    pub(crate) color_alpha_pipeline: wgpu::RenderPipeline,
-    pub(crate) color_additive_pipeline: wgpu::RenderPipeline,
-    pub(crate) color_multiply_pipeline: wgpu::RenderPipeline,
-    pub(crate) color_screen_pipeline: wgpu::RenderPipeline,
-    pub(crate) texture_alpha_pipeline: wgpu::RenderPipeline,
-    pub(crate) texture_opaque_pipeline: wgpu::RenderPipeline,
-    pub(crate) texture_additive_pipeline: wgpu::RenderPipeline,
-    pub(crate) texture_multiply_pipeline: wgpu::RenderPipeline,
-    pub(crate) texture_screen_pipeline: wgpu::RenderPipeline,
-    pub(crate) texture_lighten_pipeline: wgpu::RenderPipeline,
     pub(crate) texture_bind_group_layout: wgpu::BindGroupLayout,
     pub(crate) camera_visual_source_bind_group_layout: wgpu::BindGroupLayout,
     pub(crate) focus_blur_texture_bind_group_layout: wgpu::BindGroupLayout,
