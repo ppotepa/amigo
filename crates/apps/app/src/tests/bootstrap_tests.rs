@@ -137,11 +137,14 @@ fn particle_preset_catalog_files_are_valid() {
         );
         let emitter = mapping_field(&document, "emitter")
             .unwrap_or_else(|| panic!("preset `{id}` should declare emitter mapping"));
-        assert_eq!(
-            emitter
-                .get(serde_yaml::Value::String("type".to_owned()))
-                .and_then(serde_yaml::Value::as_str),
-            Some("ParticleEmitter2D"),
+        let emitter_type = emitter
+            .get(serde_yaml::Value::String("type".to_owned()))
+            .and_then(serde_yaml::Value::as_str);
+        assert!(
+            matches!(
+                emitter_type,
+                Some("amigo.vfx.particles-2d.ParticleEmitter2D" | "ParticleEmitter2D")
+            ),
             "preset `{id}` should declare emitter.type"
         );
         seen_ids.push(id.to_owned());

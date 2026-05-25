@@ -1,24 +1,29 @@
 use std::any::type_name;
 use std::sync::Arc;
 
+use amigo_2d_composition::{
+    LightRoute2dSceneService, RenderLayer2dCommand, RenderLayer2dSceneService,
+};
 use amigo_assets::AssetCatalog;
+use amigo_camera_optics_plugin::api::CameraOpticalCandidate2d;
+use amigo_composite_plugin::PostFx2dService;
 use amigo_core::{AmigoError, AmigoResult};
-use amigo_runtime::Runtime;
-use amigo_session::RuntimeSession;
+use amigo_particles_2d_plugin::Particle2dSceneService;
 use amigo_render_api::{
-    FrameGraphBuildInfo, RenderCompositionDiagnosticsService, RenderContribution2d, RenderFrameStats,
-    RenderFrameStatsService, build_frame_graph_from_plan,
+    build_frame_graph_from_plan, FrameGraphBuildInfo, LightRoute2dCommand, RenderAssetSource,
+    RenderCompositionDiagnosticsService, RenderContribution2d, RenderDepthAuxMap2d,
+    RenderDepthMap2d, RenderFrameStats, RenderFrameStatsService, RenderLightMap2dSource,
+    Renderable2dKind,
 };
-use amigo_render_wgpu::WgpuSceneRenderer;
+use amigo_render_wgpu::{
+    UiOverlayDocument, WgpuEmergencyOverlayLine, WgpuFrameRenderTarget, WgpuGameViewportPlacement,
+    WgpuRenderFramePacket, WgpuSceneRenderer, WgpuWorld2dRenderInput, WgpuWorld3dRenderInput,
+};
+use amigo_runtime::Runtime;
 use amigo_scene::SceneService;
+use amigo_session::RuntimeSession;
 
-use crate::{
-    LightRoute2dSceneService, RenderLayer2dSceneService, WgpuFrameCompositionBuilder,
-    update_wgpu_render_composition_diagnostics,
-};
-use crate::amigo_particles_2d_plugin::Particle2dSceneService;
-use crate::amigo_composite_plugin::PostFx2dService;
-use crate::amigo_2d_composition::RenderLayer2dCommand;
+use crate::{update_wgpu_render_composition_diagnostics, WgpuFrameCompositionBuilder};
 
 fn required<T>(runtime: &Runtime) -> AmigoResult<Arc<T>>
 where
@@ -55,10 +60,9 @@ pub fn extract_game_frame_packet(
     include_game_ui: bool,
 ) -> AmigoResult<amigo_render_wgpu::WgpuRenderFramePacket> {
     session.begin_render_frame_extract();
-    let mut render_packet = crate::default_wgpu_render_extractor_registry_for_runtime(
-        session.runtime(),
-    )
-    .extract_all(session.runtime());
+    let mut render_packet =
+        crate::default_wgpu_render_extractor_registry_for_runtime(session.runtime())
+            .extract_all(session.runtime());
     render_packet.clear_debug_overlay();
     if !include_game_ui {
         render_packet.clear_game_ui_overlay();
@@ -70,10 +74,9 @@ pub fn extract_game_frame_packet(
 pub fn extract_live_host_overlay_packet(
     session: &RuntimeSession,
 ) -> AmigoResult<amigo_render_wgpu::WgpuRenderFramePacket> {
-    let mut render_packet = crate::default_wgpu_render_extractor_registry_for_runtime(
-        session.runtime(),
-    )
-    .extract_all(session.runtime());
+    let mut render_packet =
+        crate::default_wgpu_render_extractor_registry_for_runtime(session.runtime())
+            .extract_all(session.runtime());
     render_packet.clear_world_content();
     render_packet.clear_game_ui_overlay();
     amigo_editor_ingame::append_editor_overlay(
@@ -81,6 +84,129 @@ pub fn extract_live_host_overlay_packet(
         &mut WgpuEditorOverlayOutput(&mut render_packet),
     );
     Ok(render_packet)
+}
+
+pub struct PreparedWgpuWorld2dRenderInput<'a> {
+    render_packet: &'a WgpuRenderFramePacket,
+    render_layers: &'a [RenderLayer2dCommand],
+    light_routes: &'a [LightRoute2dCommand],
+    lightmaps: Vec<RenderLightMap2dSource>,
+    depth_maps: Vec<RenderDepthMap2d>,
+    depth_aux_maps: Vec<RenderDepthAuxMap2d>,
+    camera_optical_candidates: Vec<CameraOpticalCandidate2d>,
+}
+
+impl<'a> PreparedWgpuWorld2dRenderInput<'a> {
+    pub fn as_render_input(&self) -> WgpuWorld2dRenderInput<'_> {
+        WgpuWorld2dRenderInput {
+            renderables: self.render_packet.renderables_2d(),
+            depth_maps: self.depth_maps.as_slice(),
+            depth_aux_maps: self.depth_aux_maps.as_slice(),
+            lightmaps: self.lightmaps.as_slice(),
+            light_sources: self.render_packet.world_2d_light_sources(),
+            camera_optical_candidates: self.camera_optical_candidates.as_slice(),
+            render_layers: self.render_layers,
+            light_routes: self.light_routes,
+        }
+    }
+}
+
+pub fn prepare_wgpu_world_2d_render_input<'a>(
+    render_packet: &'a WgpuRenderFramePacket,
+    render_layers: &'a [RenderLayer2dCommand],
+    light_routes: &'a [LightRoute2dCommand],
+) -> PreparedWgpuWorld2dRenderInput<'a> {
+    let lightmaps = render_packet
+        .render_contributions_2d()
+        .iter()
+        .filter_map(RenderContribution2d::as_lightmap_2d)
+        .cloned()
+        .collect::<Vec<_>>();
+    let depth_maps = render_packet
+        .render_contributions_2d()
+        .iter()
+        .filter_map(RenderContribution2d::as_depth_map_2d)
+        .cloned()
+        .collect::<Vec<_>>();
+    let depth_aux_maps = render_packet
+        .render_contributions_2d()
+        .iter()
+        .filter_map(RenderContribution2d::as_depth_aux_map_2d)
+        .cloned()
+        .collect::<Vec<_>>();
+    let camera_optical_candidates =
+        crate::render_extractor_bridges::collect_camera_optical_candidates_from_light_sources_2d(
+            render_packet.world_2d_light_sources(),
+        );
+
+    PreparedWgpuWorld2dRenderInput {
+        render_packet,
+        render_layers,
+        light_routes,
+        lightmaps,
+        depth_maps,
+        depth_aux_maps,
+        camera_optical_candidates,
+    }
+}
+
+pub fn prepare_wgpu_world_3d_render_input(
+    render_packet: &WgpuRenderFramePacket,
+) -> WgpuWorld3dRenderInput<'_> {
+    WgpuWorld3dRenderInput {
+        meshes: render_packet.world_3d_meshes(),
+        materials: render_packet.world_3d_materials(),
+        text3d: Some(render_packet.world_3d_text()),
+    }
+}
+
+pub struct WgpuFrameSubmitInput<'a> {
+    pub target: WgpuFrameRenderTarget<'a>,
+    pub scene: &'a SceneService,
+    pub assets: &'a dyn RenderAssetSource,
+    pub render_packet: &'a WgpuRenderFramePacket,
+    pub render_layers: &'a [RenderLayer2dCommand],
+    pub light_routes: &'a [LightRoute2dCommand],
+    pub debug_ui: &'a [UiOverlayDocument],
+    pub emergency_overlay: &'a [WgpuEmergencyOverlayLine],
+    pub composition_plan: &'a amigo_render_api::FrameCompositionPlan,
+    pub frame_graph: &'a amigo_render_api::FrameGraph,
+    pub game_viewport: Option<WgpuGameViewportPlacement>,
+}
+
+pub fn submit_wgpu_frame_render_request(
+    renderer: &mut WgpuSceneRenderer,
+    input: WgpuFrameSubmitInput<'_>,
+) -> AmigoResult<()> {
+    let world_2d = prepare_wgpu_world_2d_render_input(
+        input.render_packet,
+        input.render_layers,
+        input.light_routes,
+    );
+    let world_3d = prepare_wgpu_world_3d_render_input(input.render_packet);
+    let scene_view =
+        crate::build_render_scene_view(input.scene, input.render_packet.active_camera_2d_entity());
+    let render_request = amigo_render_wgpu::WgpuFrameRenderRequest {
+        target: input.target,
+        scene_view: &scene_view,
+        assets: input.assets,
+        world_2d: world_2d.as_render_input(),
+        world_3d,
+        game_ui: input.render_packet.game_ui_overlay(),
+        debug_ui: input.debug_ui,
+        post_fx_stacks: input.render_packet.post_fx_stacks(),
+        camera_capture_input_2d: input.render_packet.camera_capture_input_2d(),
+        visual_source_flags_2d: Some(input.render_packet.visual_source_flags_2d()),
+        camera_debug_view: input
+            .render_packet
+            .camera_debug_view_2d()
+            .unwrap_or_else(amigo_render_api::CameraDebugView2d::final_output),
+        emergency_overlay: input.emergency_overlay,
+        composition_plan: input.composition_plan,
+        frame_graph: input.frame_graph,
+        game_viewport: input.game_viewport,
+    };
+    renderer.render_frame_request(render_request)
 }
 
 pub fn render_game_frame_to_cache(
@@ -134,20 +260,20 @@ pub fn render_game_frame_to_cache(
             frame_index: previous.frame_index + 1,
             window_width: target.width,
             window_height: target.height,
-            world_2d_tilemaps: render_packet.renderable_2d_count_by_component_kind("TileMap2D"),
-            world_2d_sprites: render_packet.renderable_2d_count_by_component_kind("Sprite2D"),
+            world_2d_tilemaps: render_packet.renderable_2d_count_by_kind(Renderable2dKind::TileMap),
+            world_2d_sprites: render_packet.renderable_2d_count_by_kind(Renderable2dKind::Sprite),
             world_2d_layered_images: render_packet
-                .renderable_2d_count_by_component_kind("LayeredImage2D"),
+                .renderable_2d_count_by_kind(Renderable2dKind::LayeredImage),
             world_2d_render_layers: render_packet.world_2d_render_layers().len(),
             world_2d_light_routes: render_packet.world_2d_light_routes().len(),
             world_2d_global_lights: render_packet.light_source_2d_contribution_count(),
             world_2d_lightmaps: render_packet.lightmap_2d_contribution_count(),
             world_2d_light_groups: render_packet.light_group_2d_contribution_count(),
-            world_2d_vectors: render_packet.renderable_2d_count_by_component_kind("VectorShape2D"),
-            world_2d_beacons: render_packet.renderable_2d_count_by_component_kind("BeaconLight2D"),
-            world_2d_text: render_packet.renderable_2d_count_by_component_kind("Text2D"),
+            world_2d_vectors: render_packet.renderable_2d_count_by_kind(Renderable2dKind::Vector),
+            world_2d_beacons: render_packet.renderable_2d_count_by_kind(Renderable2dKind::Beacon),
+            world_2d_text: render_packet.renderable_2d_count_by_kind(Renderable2dKind::Text),
             world_2d_particles: render_packet
-                .renderable_2d_count_by_component_kind("ParticleEmitter2D"),
+                .renderable_2d_count_by_kind(Renderable2dKind::Particle),
             world_3d_meshes: render_packet.world_3d_meshes().len(),
             world_3d_materials: render_packet.world_3d_materials().len(),
             world_3d_text: render_packet.world_3d_text().len(),
@@ -179,9 +305,7 @@ pub fn render_game_frame_to_cache(
             .count(),
     );
 
-    if let Ok(post_fx_service) =
-        required::<PostFx2dService>(runtime)
-    {
+    if let Ok(post_fx_service) = required::<PostFx2dService>(runtime) {
         let has_post_fx = !render_packet.post_fx_stacks().is_empty();
         let renderer_mode = if has_post_fx {
             "frame_graph_postfx"
@@ -193,62 +317,22 @@ pub fn render_game_frame_to_cache(
 
     let extracted_render_layer_commands = render_layers.commands();
     let extracted_light_route_commands = light_routes.commands();
-    let render_lightmaps_2d = render_packet
-        .render_contributions_2d()
-        .iter()
-        .filter_map(RenderContribution2d::as_lightmap_2d)
-        .cloned()
-        .collect::<Vec<_>>();
-    let render_depth_maps_2d = render_packet
-        .render_contributions_2d()
-        .iter()
-        .filter_map(RenderContribution2d::as_depth_map_2d)
-        .cloned()
-        .collect::<Vec<_>>();
-    let render_depth_aux_maps_2d = render_packet
-        .render_contributions_2d()
-        .iter()
-        .filter_map(RenderContribution2d::as_depth_aux_map_2d)
-        .cloned()
-        .collect::<Vec<_>>();
-    let camera_optical_candidates =
-        crate::render_extractor_bridges::collect_camera_optical_candidates_from_light_sources_2d(
-            render_packet.world_2d_light_sources(),
-        );
-    let render_request = amigo_render_wgpu::WgpuFrameRenderRequest {
-        target: amigo_render_wgpu::WgpuFrameRenderTarget::Offscreen(target),
-        scene: scene.as_ref(),
-        assets: assets.as_ref(),
-        world_2d: amigo_render_wgpu::WgpuWorld2dRenderInput {
-            renderables: render_packet.renderables_2d(),
-            depth_maps: render_depth_maps_2d.as_slice(),
-            depth_aux_maps: render_depth_aux_maps_2d.as_slice(),
-            lightmaps: render_lightmaps_2d.as_slice(),
-            light_sources: render_packet.world_2d_light_sources(),
-            camera_optical_candidates: camera_optical_candidates.as_slice(),
+    submit_wgpu_frame_render_request(
+        renderer,
+        WgpuFrameSubmitInput {
+            target: amigo_render_wgpu::WgpuFrameRenderTarget::Offscreen(target),
+            scene: scene.as_ref(),
+            assets: assets.as_ref(),
+            render_packet: &render_packet,
             render_layers: extracted_render_layer_commands.as_slice(),
             light_routes: extracted_light_route_commands.as_slice(),
+            debug_ui: &[],
+            emergency_overlay: &[],
+            composition_plan: &composition_plan,
+            frame_graph: &frame_graph,
+            game_viewport: None,
         },
-        world_3d: amigo_render_wgpu::WgpuWorld3dRenderInput {
-            meshes: render_packet.world_3d_meshes(),
-            materials: render_packet.world_3d_materials(),
-            text3d: Some(render_packet.world_3d_text()),
-        },
-        game_ui: render_packet.game_ui_overlay(),
-        debug_ui: &[],
-        post_fx_stacks: render_packet.post_fx_stacks(),
-        active_camera_2d_entity: render_packet.active_camera_2d_entity(),
-        camera_capture_input_2d: render_packet.camera_capture_input_2d(),
-        visual_source_flags_2d: Some(render_packet.visual_source_flags_2d()),
-        camera_debug_view: render_packet
-            .camera_debug_view_2d()
-            .unwrap_or_else(amigo_render_api::CameraDebugView2d::final_output),
-        emergency_overlay: &[],
-        composition_plan: &composition_plan,
-        frame_graph: &frame_graph,
-        game_viewport: None,
-    };
-    renderer.render_frame_request(render_request)?;
+    )?;
     if let Ok(render_diagnostics) = required::<RenderCompositionDiagnosticsService>(runtime) {
         render_diagnostics
             .set_plate_relight_summary(renderer.plate_relight_last_summary().to_owned());
@@ -364,10 +448,11 @@ pub fn camera_focus_for_input(
     assets: &AssetCatalog,
     input: &amigo_render_api::CameraCaptureInput2d,
 ) -> Option<CameraFocusPlanInfo> {
-    let camera_service =
-        required::<amigo_camera_core_plugin::CameraService>(runtime).ok()?;
+    let camera_service = required::<amigo_camera_core_plugin::CameraService>(runtime).ok()?;
     let rig = camera_service.main_resolved_camera_rig_2d(Some(assets), input.depth_space)?;
-    let motion = camera_service.main_camera_depth_motion_2d().unwrap_or_default();
+    let motion = camera_service
+        .main_camera_depth_motion_2d()
+        .unwrap_or_default();
     Some(CameraFocusPlanInfo {
         base_focus_distance_m: rig.aperture.base_focus_distance_m,
         effective_focus_distance_m: rig.aperture.effective_focus_distance_m,
@@ -387,13 +472,10 @@ pub fn render_camera_contributions_summary(
     input: Option<&amigo_render_api::CameraCaptureInput2d>,
     beacon_contributions_summary: Option<String>,
 ) -> Option<String> {
-    let camera_service =
-        required::<amigo_camera_core_plugin::CameraService>(runtime).ok()?;
+    let camera_service = required::<amigo_camera_core_plugin::CameraService>(runtime).ok()?;
     let depth_space = input.map(|input| input.depth_space).unwrap_or_default();
-    let mut summary = camera_service.camera_render_contributions_summary_for_depth_space(
-        Some(assets),
-        depth_space,
-    );
+    let mut summary = camera_service
+        .camera_render_contributions_summary_for_depth_space(Some(assets), depth_space);
     if let Some(beacon_contributions_summary) = beacon_contributions_summary {
         summary.push('\n');
         summary.push_str(&beacon_contributions_summary);

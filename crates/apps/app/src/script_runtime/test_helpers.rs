@@ -1,4 +1,11 @@
 use super::*;
+use amigo_runtime_bundles::RenderLayer2dSceneService;
+use amigo_runtime_bundles::{
+    can_handle_layered_image_script_command, handle_layered_image_script_command,
+    LayeredImageSceneService, LayeredImageScriptCommandContext, LayeredImageScriptCommandOutcome,
+};
+use amigo_runtime_bundles::{GlobalLight2dSceneService, LightGroup2dSceneService};
+use amigo_runtime_bundles::{handle_ui_script_command, UiScriptCommandContext, UiStateService};
 
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn dispatch_script_command(
@@ -7,7 +14,7 @@ pub(crate) fn dispatch_script_command(
     script_event_queue: &amigo_scripting_api::ScriptEventQueue,
     dev_console_state: &amigo_scripting_api::DevConsoleState,
     asset_catalog: &amigo_assets::AssetCatalog,
-    ui_state: &amigo_runtime_bundles::UiStateService,
+    ui_state: &UiStateService,
     audio_command_queue: &amigo_runtime_bundles::AudioCommandQueue,
     audio_scene_service: &amigo_runtime_bundles::AudioSceneService,
     _diagnostics: &RuntimeDiagnostics,
@@ -32,8 +39,8 @@ pub(crate) fn dispatch_script_command(
             );
         }
         "ui" => {
-            let _ = amigo_runtime_bundles::handle_ui_script_command(
-                amigo_runtime_bundles::UiScriptCommandContext {
+            let _ = handle_ui_script_command(
+                UiScriptCommandContext {
                     ui_state_service: ui_state,
                 },
                 command,
@@ -62,33 +69,33 @@ pub(crate) fn dispatch_script_command_with_layered_image_service(
     script_event_queue: &amigo_scripting_api::ScriptEventQueue,
     dev_console_state: &amigo_scripting_api::DevConsoleState,
     asset_catalog: &amigo_assets::AssetCatalog,
-    layered_images: &amigo_runtime_bundles::LayeredImageSceneService,
-    _render_layers: &amigo_runtime_bundles::RenderLayer2dSceneService,
-    _global_lights: &amigo_runtime_bundles::GlobalLight2dSceneService,
-    _light_groups: &amigo_runtime_bundles::LightGroup2dSceneService,
-    ui_state: &amigo_runtime_bundles::UiStateService,
+    layered_images: &LayeredImageSceneService,
+    _render_layers: &RenderLayer2dSceneService,
+    _global_lights: &GlobalLight2dSceneService,
+    _light_groups: &LightGroup2dSceneService,
+    ui_state: &UiStateService,
     audio_command_queue: &amigo_runtime_bundles::AudioCommandQueue,
     audio_scene_service: &amigo_runtime_bundles::AudioSceneService,
     diagnostics: &RuntimeDiagnostics,
     launch_selection: &LaunchSelection,
 ) {
-    if amigo_runtime_bundles::can_handle_layered_image_script_command(
+    if can_handle_layered_image_script_command(
         &command,
     ) {
         let outcome =
-            amigo_runtime_bundles::handle_layered_image_script_command(
-                amigo_runtime_bundles::LayeredImageScriptCommandContext {
+            handle_layered_image_script_command(
+                LayeredImageScriptCommandContext {
                     layered_image_scene_service: layered_images,
                 },
                 command,
             );
 
         match outcome {
-            amigo_runtime_bundles::LayeredImageScriptCommandOutcome::Updated(message)
-            | amigo_runtime_bundles::LayeredImageScriptCommandOutcome::ParseError(message) => {
+            LayeredImageScriptCommandOutcome::Updated(message)
+            | LayeredImageScriptCommandOutcome::ParseError(message) => {
                 dev_console_state.write_line(message);
             }
-            amigo_runtime_bundles::LayeredImageScriptCommandOutcome::Unhandled => {}
+            LayeredImageScriptCommandOutcome::Unhandled => {}
         }
         return;
     }

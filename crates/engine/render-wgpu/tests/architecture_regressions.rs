@@ -31,14 +31,157 @@ fn render_wgpu_rs_files() -> Vec<PathBuf> {
     files
 }
 
+fn strip_rust_comments(content: &str) -> String {
+    let mut stripped = String::with_capacity(content.len());
+    let mut chars = content.chars().peekable();
+    let mut in_block_comment = false;
+
+    while let Some(ch) = chars.next() {
+        if in_block_comment {
+            if ch == '*' && chars.peek().is_some_and(|next| *next == '/') {
+                chars.next();
+                stripped.push(' ');
+                stripped.push(' ');
+                in_block_comment = false;
+            } else if ch == '\n' {
+                stripped.push('\n');
+            } else {
+                stripped.push(' ');
+            }
+            continue;
+        }
+
+        if ch == '/' && chars.peek().is_some_and(|next| *next == '/') {
+            chars.next();
+            stripped.push(' ');
+            stripped.push(' ');
+            for comment_ch in chars.by_ref() {
+                if comment_ch == '\n' {
+                    stripped.push('\n');
+                    break;
+                }
+                stripped.push(' ');
+            }
+        } else if ch == '/' && chars.peek().is_some_and(|next| *next == '*') {
+            chars.next();
+            stripped.push(' ');
+            stripped.push(' ');
+            in_block_comment = true;
+        } else {
+            stripped.push(ch);
+        }
+    }
+
+    stripped
+}
+
+fn line_number_for_offset(content: &str, offset: usize) -> usize {
+    content[..offset]
+        .bytes()
+        .filter(|byte| *byte == b'\n')
+        .count()
+        + 1
+}
+
+fn first_needle_line(content: &str, needle: &str) -> Option<usize> {
+    content
+        .find(needle)
+        .map(|offset| line_number_for_offset(content, offset))
+}
+
+fn skip_ascii_whitespace(bytes: &[u8], mut offset: usize) -> usize {
+    while bytes
+        .get(offset)
+        .is_some_and(|byte| byte.is_ascii_whitespace())
+    {
+        offset += 1;
+    }
+    offset
+}
+
+fn find_ascii(haystack: &[u8], needle: &[u8], start: usize) -> Option<usize> {
+    haystack
+        .get(start..)?
+        .windows(needle.len())
+        .position(|window| window == needle)
+        .map(|offset| start + offset)
+}
+
+fn owner_entity_equality_line(content: &str) -> Option<usize> {
+    let bytes = content.as_bytes();
+    let needle = b"owner_entity";
+    let mut start = 0;
+
+    while let Some(offset) = find_ascii(bytes, needle, start) {
+        let mut cursor = offset + needle.len();
+        cursor = skip_ascii_whitespace(bytes, cursor);
+        if bytes.get(cursor) != Some(&b'(') {
+            start = offset + 1;
+            continue;
+        }
+        cursor = skip_ascii_whitespace(bytes, cursor + 1);
+        if bytes.get(cursor) != Some(&b')') {
+            start = offset + 1;
+            continue;
+        }
+        cursor = skip_ascii_whitespace(bytes, cursor + 1);
+        if bytes.get(cursor..cursor + 2) == Some(b"==") {
+            return Some(line_number_for_offset(content, offset));
+        }
+        start = offset + 1;
+    }
+
+    None
+}
+
 #[test]
 fn world_rs_does_not_branch_on_render_primitive_variants() {
-    let world_rs =
-        crate_root().join("src/renderer/service/render/world.rs");
+    let world_rs = crate_root().join("src/renderer/service/render/world.rs");
     assert!(
         !read(world_rs).contains("RenderPrimitive2d::"),
         "world.rs should not branch on RenderPrimitive2d variants",
     );
+}
+
+#[test]
+fn architecture_procedural_material_pass_has_no_renderer_side_guessing() {
+    let path = crate_root()
+        .join("src/renderer/service/render/visual_source_buffer_pass/procedural_material.rs");
+    let content = strip_rust_comments(&read(&path));
+    if let Some(line) = first_needle_line(&content, "RenderPrimitive2d::") {
+        panic!(
+            "procedural material visual-source path should not branch on RenderPrimitive2d variants in {}:{}",
+            path.display(),
+            line,
+        );
+    }
+    if let Some(line) = owner_entity_equality_line(&content) {
+        panic!(
+            "procedural material visual-source path should not compare owner_entity() with domain state in {}:{}",
+            path.display(),
+            line,
+        );
+    }
+}
+
+#[test]
+fn architecture_plate_relight_has_no_renderer_side_beacon_matching() {
+    let path = crate_root().join("src/renderer/service/render/plate_relight.rs");
+    let content = strip_rust_comments(&read(&path));
+    if let Some(line) = owner_entity_equality_line(&content) {
+        panic!(
+            "plate relight should not compare owner_entity() with light source state in {}:{}",
+            path.display(),
+            line,
+        );
+    }
+    if let Some(line) = first_needle_line(&content, "source.component_kind == \"BeaconLight2D\"") {
+        panic!(
+            "plate relight should not match beacon payloads through component-kind strings in {}:{}",
+            path.display(),
+            line,
+        );
+    }
 }
 
 #[test]
@@ -92,8 +235,7 @@ fn init_uses_centralized_post_fx_pipeline_bootstrap() {
 
 #[test]
 fn world_rs_does_not_embed_layered_image_parts_pass_logic() {
-    let world_rs =
-        crate_root().join("src/renderer/service/render/world.rs");
+    let world_rs = crate_root().join("src/renderer/service/render/world.rs");
     let content = read(world_rs);
     assert!(
         !content.contains("execute_layered_image_parts_to_offscreen"),
@@ -116,7 +258,10 @@ fn render_wgpu_live_path_does_not_import_2d_plugin_render_models() {
     ];
 
     for path in render_wgpu_rs_files() {
-        let file_name = path.file_name().and_then(|name| name.to_str()).unwrap_or("");
+        let file_name = path
+            .file_name()
+            .and_then(|name| name.to_str())
+            .unwrap_or("");
         if file_name.ends_with("tests.rs") {
             continue;
         }
@@ -136,8 +281,7 @@ fn render_wgpu_source_tree_does_not_import_plugin_crates() {
     for path in render_wgpu_rs_files() {
         let content = read(&path);
         assert!(
-            !content.contains("_plugin")
-                || content.contains("amigo_plugin_api"),
+            !content.contains("_plugin") || content.contains("amigo_plugin_api"),
             "render-wgpu source tree should not import plugin crates in {}",
             path.display()
         );

@@ -295,7 +295,7 @@ fn sample_post_fx_node() -> FrameGraphNodeKind {
 
     #[test]
     fn camera_optics_render_descriptor_declares_visual_source_inputs() {
-        let descriptor = super::PostFx2d::CameraOptics(super::CameraOptics2d::default())
+        let descriptor = super::post_fx_camera_optics(super::CameraOptics2d::default())
             .render_descriptor();
 
         assert_eq!(descriptor.feature_id, "camera_optics");
@@ -319,7 +319,7 @@ fn sample_post_fx_node() -> FrameGraphNodeKind {
 
     #[test]
     fn focus_blur_render_descriptor_marks_depth_debug_and_layer_replay() {
-        let descriptor = super::PostFx2d::FocusBlur(super::FocusBlur2d::default()).render_descriptor();
+        let descriptor = super::post_fx_focus_blur(super::FocusBlur2d::default()).render_descriptor();
 
         assert_eq!(descriptor.feature_id, "focus_blur");
         assert_eq!(
@@ -336,11 +336,11 @@ fn sample_post_fx_node() -> FrameGraphNodeKind {
 
     #[test]
     fn cached_image_policy_distinguishes_blur_emboss_and_passthrough_effects() {
-        let blur = super::PostFx2d::Blur(super::PostFxBlur2d::default()).render_descriptor();
+        let blur = super::post_fx_blur(super::PostFxBlur2d::default()).render_descriptor();
         let emboss =
-            super::PostFx2d::EmbossEdges(super::PostFxEmbossEdges2d::default()).render_descriptor();
+            super::post_fx_emboss_edges(super::PostFxEmbossEdges2d::default()).render_descriptor();
         let rain_glass =
-            super::PostFx2d::RainGlass(super::RainGlass2d::default()).render_descriptor();
+            super::post_fx_rain_glass(super::RainGlass2d::default()).render_descriptor();
 
         assert_eq!(
             blur.cached_image_policy,
@@ -359,7 +359,7 @@ fn sample_post_fx_node() -> FrameGraphNodeKind {
     #[test]
     fn render_descriptor_lookup_by_kind_matches_effect_descriptor() {
         let from_effect =
-            super::PostFx2d::ShutterBlur(super::ShutterBlur2d::default()).render_descriptor();
+            super::post_fx_shutter_blur(super::ShutterBlur2d::default()).render_descriptor();
         let from_kind = super::PostFxRenderDescriptor::for_kind("shutter_blur")
             .expect("known effect kind should resolve");
 
@@ -375,18 +375,98 @@ fn sample_post_fx_node() -> FrameGraphNodeKind {
     }
 
     #[test]
-    fn compatibility_helpers_follow_render_descriptor_policy() {
-        let blur = super::PostFx2d::Blur(super::PostFxBlur2d::default());
-        let emboss = super::PostFx2d::EmbossEdges(super::PostFxEmbossEdges2d::default());
-        let camera_optics = super::PostFx2d::CameraOptics(super::CameraOptics2d::default());
+    fn render_descriptor_lookup_returns_none_for_unknown_kind() {
+        assert_eq!(super::PostFxRenderDescriptor::for_kind("unknown_post_fx"), None);
+    }
 
-        assert!(blur.is_cached_image_compatible());
-        assert!(emboss.is_cached_image_compatible());
-        assert!(!camera_optics.is_cached_image_compatible());
+    #[test]
+    fn render_descriptor_registry_is_unique_and_self_consistent() {
+        let mut seen = std::collections::BTreeSet::new();
 
-        assert!(!blur.is_frame_graph_compatible());
-        assert!(!emboss.is_frame_graph_compatible());
-        assert!(camera_optics.is_frame_graph_compatible());
+        for entry in super::PostFxRenderDescriptor::registry() {
+            assert!(
+                seen.insert(entry.kind),
+                "duplicate render descriptor kind {}",
+                entry.kind
+            );
+            assert_eq!(entry.kind, entry.descriptor.feature_id);
+            assert_eq!(
+                super::PostFxRenderDescriptor::for_kind(entry.kind),
+                Some(entry.descriptor)
+            );
+        }
+    }
+
+    #[test]
+    fn every_effect_variant_has_an_explicit_render_descriptor() {
+        let effects = [
+            super::post_fx_blur(super::PostFxBlur2d::default()),
+            super::post_fx_camera_exposure(super::CameraExposure2d::default()),
+            super::post_fx_camera_optics(super::CameraOptics2d::default()),
+            super::post_fx_color_quantize(super::ColorQuantize2d::default()),
+            super::post_fx_color_ramp(super::ColorRamp2d::default()),
+            super::post_fx_crt(super::Crt2d::default()),
+            super::post_fx_downscale(super::Downscale2d::default()),
+            super::post_fx_dirty_bloom(super::DirtyBloom2d::default()),
+            super::post_fx_emboss_edges(super::PostFxEmbossEdges2d::default()),
+            super::post_fx_film_emulsion(super::FilmEmulsion2d::default()),
+            super::post_fx_film_noise(super::FilmNoise2d::default()),
+            super::post_fx_focus_blur(super::FocusBlur2d::default()),
+            super::post_fx_lens_droplets(super::PostFxLensDroplets2d::default()),
+            super::post_fx_rain_glass(super::RainGlass2d::default()),
+            super::post_fx_scan_output(super::ScanOutput2d::default()),
+            super::post_fx_shutter_blur(super::ShutterBlur2d::default()),
+            super::post_fx_wet_reflections(super::PostFxWetReflections2d::default()),
+        ];
+
+        let effect_kinds = effects
+            .iter()
+            .map(|effect| effect.kind())
+            .collect::<std::collections::BTreeSet<_>>();
+        let descriptor_kinds = super::PostFxRenderDescriptor::registry()
+            .iter()
+            .map(|entry| entry.kind)
+            .collect::<std::collections::BTreeSet<_>>();
+
+        assert_eq!(descriptor_kinds, effect_kinds);
+
+        for effect in &effects {
+            let descriptor = effect.render_descriptor();
+
+            assert_eq!(descriptor.feature_id, effect.kind());
+            assert!(
+                super::PostFxRenderDescriptor::for_kind(effect.kind()).is_some(),
+                "missing render descriptor for {}",
+                effect.kind()
+            );
+            assert!(
+                descriptor.requires_executor(),
+                "missing executor id for {}",
+                effect.kind()
+            );
+            assert!(
+                descriptor
+                    .required_inputs
+                    .contains(&super::PostFxRenderInput::SourceColor),
+                "missing source color input for {}",
+                effect.kind()
+            );
+        }
+    }
+
+    #[test]
+    fn pipeline_helpers_follow_render_descriptor_policy() {
+        let blur = super::post_fx_blur(super::PostFxBlur2d::default());
+        let emboss = super::post_fx_emboss_edges(super::PostFxEmbossEdges2d::default());
+        let camera_optics = super::post_fx_camera_optics(super::CameraOptics2d::default());
+
+        assert!(blur.uses_cached_image_pipeline());
+        assert!(emboss.uses_cached_image_pipeline());
+        assert!(!camera_optics.uses_cached_image_pipeline());
+
+        assert!(!blur.uses_frame_graph_pipeline());
+        assert!(!emboss.uses_frame_graph_pipeline());
+        assert!(camera_optics.uses_frame_graph_pipeline());
     }
 }
 

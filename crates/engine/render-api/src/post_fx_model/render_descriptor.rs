@@ -1,5 +1,3 @@
-use crate::PostFx2d;
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum PostFxRenderInput {
     SourceColor,
@@ -63,60 +61,57 @@ pub struct PostFxRenderDescriptor {
     pub required_inputs: &'static [PostFxRenderInput],
     pub output: PostFxRenderOutput,
     pub cached_image_policy: PostFxCachedImagePolicy,
-    pub frame_graph_compatible: bool,
+    pub frame_graph_enabled: bool,
     pub debug_policy: PostFxDebugPolicy,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct PostFxRenderDescriptorEntry {
+    pub kind: &'static str,
+    pub descriptor: PostFxRenderDescriptor,
+}
+
+pub const POST_FX_RENDER_DESCRIPTOR_REGISTRY: &[PostFxRenderDescriptorEntry] = &[
+    descriptor_entry("blur", blur_descriptor()),
+    descriptor_entry("camera_exposure", camera_exposure_descriptor()),
+    descriptor_entry("camera_optics", camera_optics_descriptor()),
+    descriptor_entry("color_quantize", color_quantize_descriptor()),
+    descriptor_entry("color_ramp", color_ramp_descriptor()),
+    descriptor_entry("crt", crt_descriptor()),
+    descriptor_entry("downscale", downscale_descriptor()),
+    descriptor_entry("dirty_bloom", dirty_bloom_descriptor()),
+    descriptor_entry("embossed_edges", emboss_edges_descriptor()),
+    descriptor_entry("film_emulsion", film_emulsion_descriptor()),
+    descriptor_entry("film_noise", film_noise_descriptor()),
+    descriptor_entry("focus_blur", focus_blur_descriptor()),
+    descriptor_entry("lens_droplets", lens_droplets_descriptor()),
+    descriptor_entry("rain_glass", rain_glass_descriptor()),
+    descriptor_entry("scan_output", scan_output_descriptor()),
+    descriptor_entry("shutter_blur", shutter_blur_descriptor()),
+    descriptor_entry("wet_reflections", wet_reflections_descriptor()),
+];
+
 impl PostFxRenderDescriptor {
-    pub fn for_effect(effect: &PostFx2d) -> Self {
-        match effect {
-            PostFx2d::Blur(_) => blur_descriptor(),
-            PostFx2d::CameraExposure(_) => camera_exposure_descriptor(),
-            PostFx2d::CameraOptics(_) => camera_optics_descriptor(),
-            PostFx2d::ColorQuantize(_) => color_quantize_descriptor(),
-            PostFx2d::ColorRamp(_) => color_ramp_descriptor(),
-            PostFx2d::Crt(_) => crt_descriptor(),
-            PostFx2d::Downscale(_) => downscale_descriptor(),
-            PostFx2d::DirtyBloom(_) => dirty_bloom_descriptor(),
-            PostFx2d::EmbossEdges(_) => emboss_edges_descriptor(),
-            PostFx2d::FilmEmulsion(_) => film_emulsion_descriptor(),
-            PostFx2d::FilmNoise(_) => film_noise_descriptor(),
-            PostFx2d::FocusBlur(_) => focus_blur_descriptor(),
-            PostFx2d::LensDroplets(_) => lens_droplets_descriptor(),
-            PostFx2d::RainGlass(_) => rain_glass_descriptor(),
-            PostFx2d::ScanOutput(_) => scan_output_descriptor(),
-            PostFx2d::ShutterBlur(_) => shutter_blur_descriptor(),
-            PostFx2d::WetReflections(_) => wet_reflections_descriptor(),
-        }
+    pub fn registry() -> &'static [PostFxRenderDescriptorEntry] {
+        POST_FX_RENDER_DESCRIPTOR_REGISTRY
     }
 
     pub fn for_kind(kind: &str) -> Option<Self> {
-        match kind {
-            "blur" => Some(blur_descriptor()),
-            "camera_exposure" => Some(camera_exposure_descriptor()),
-            "camera_optics" => Some(camera_optics_descriptor()),
-            "color_quantize" => Some(color_quantize_descriptor()),
-            "color_ramp" => Some(color_ramp_descriptor()),
-            "crt" => Some(crt_descriptor()),
-            "downscale" => Some(downscale_descriptor()),
-            "dirty_bloom" => Some(dirty_bloom_descriptor()),
-            "embossed_edges" => Some(emboss_edges_descriptor()),
-            "film_emulsion" => Some(film_emulsion_descriptor()),
-            "film_noise" => Some(film_noise_descriptor()),
-            "focus_blur" => Some(focus_blur_descriptor()),
-            "lens_droplets" => Some(lens_droplets_descriptor()),
-            "rain_glass" => Some(rain_glass_descriptor()),
-            "scan_output" => Some(scan_output_descriptor()),
-            "shutter_blur" => Some(shutter_blur_descriptor()),
-            "wet_reflections" => Some(wet_reflections_descriptor()),
-            _ => None,
-        }
+        Self::registry()
+            .iter()
+            .find(|entry| entry.kind == kind)
+            .map(|entry| entry.descriptor)
+    }
+
+    pub fn requires_executor(&self) -> bool {
+        !self.executor_id.is_empty()
     }
 }
 
-impl PostFx2d {
+impl crate::PostFx2d {
     pub fn render_descriptor(&self) -> PostFxRenderDescriptor {
-        PostFxRenderDescriptor::for_effect(self)
+        PostFxRenderDescriptor::for_kind(self.kind())
+            .expect("PostFx2d variants must have render descriptors")
     }
 }
 
@@ -148,7 +143,7 @@ const fn descriptor(
     required_inputs: &'static [PostFxRenderInput],
     output: PostFxRenderOutput,
     cached_image_policy: PostFxCachedImagePolicy,
-    frame_graph_compatible: bool,
+    frame_graph_enabled: bool,
     debug_policy: PostFxDebugPolicy,
 ) -> PostFxRenderDescriptor {
     PostFxRenderDescriptor {
@@ -157,9 +152,16 @@ const fn descriptor(
         required_inputs,
         output,
         cached_image_policy,
-        frame_graph_compatible,
+        frame_graph_enabled,
         debug_policy,
     }
+}
+
+const fn descriptor_entry(
+    kind: &'static str,
+    descriptor: PostFxRenderDescriptor,
+) -> PostFxRenderDescriptorEntry {
+    PostFxRenderDescriptorEntry { kind, descriptor }
 }
 
 const fn blur_descriptor() -> PostFxRenderDescriptor {

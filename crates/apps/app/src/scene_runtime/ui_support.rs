@@ -1,9 +1,9 @@
 use super::super::*;
+use amigo_scene::SceneUiDocument;
 use amigo_runtime_bundles::{
     UiDocument as RuntimeUiDocument, collect_scene_ui_font_asset_keys,
     scene_ui_document_to_runtime_document,
 };
-use amigo_scene::SceneUiDocument;
 
 pub(super) fn register_ui_font_asset_references(
     asset_catalog: &AssetCatalog,

@@ -183,7 +183,7 @@ fn interactive_asteroids_sustained_thrust_moves_camera() {
     let camera_follow = handler
         .session
         .runtime()
-        .resolve::<amigo_camera_core_plugin::CameraFollow2dSceneService>()
+        .resolve::<amigo_runtime_bundles::CameraFollow2dSceneService>()
         .expect("camera follow scene service should exist");
     assert!(
         camera_follow

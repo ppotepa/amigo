@@ -1,23 +1,14 @@
-# amigo-tilemap-2d-plugin
+# Tilemap 2D Runtime
 
-2D tilemap scene services and ruleset resolution.
+Tilemap 2D runtime services own tilemap state for gameplay and rendering.
 
-## Responsibility
-- Hydrate authored tile layers.
-- Resolve tile rulesets.
-- Provide tilemap data to gameplay, physics, and rendering.
-- Validate tilemap data.
+## Responsibilities
+- Store hydrated tilemap commands for the active scene.
+- Resolve rulesets before extraction.
+- Validate authored tilemap dimensions, layer data, and tile references.
+- Provide tilemap draw commands to the render extractor.
 
-## Not here
-- Tilemap editor UI.
-- GPU rendering backend.
-- Generic asset catalog logic.
-
-## Depends on
-- amigo-2d-physics.
-- amigo-assets.
-- amigo-core.
-- amigo-math.
-- amigo-runtime.
-- amigo-capabilities.
-- amigo-scene.
+## Boundaries
+- Tilemap editor UI is outside this plugin.
+- GPU pipeline implementation is outside this plugin.
+- Generic asset catalog behavior is outside this plugin.

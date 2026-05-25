@@ -2,26 +2,25 @@
 mod tests;
 
 use super::*;
-use amigo_render_api::RenderContribution2d;
 use amigo_session::RuntimeSession;
 
 pub(crate) use amigo_render_api::RenderCompositionDiagnosticsService;
-pub(crate) use amigo_render_api::{FrameGraphBuildInfo, build_frame_graph_from_plan};
 pub(crate) use amigo_render_api::RenderFrameStats;
 pub(crate) use amigo_render_api::RenderFrameStatsService;
+pub(crate) use amigo_render_api::Renderable2dKind;
+pub(crate) use amigo_render_api::{build_frame_graph_from_plan, FrameGraphBuildInfo};
 #[cfg(test)]
 pub(crate) use amigo_render_wgpu::WgpuRenderFramePacket;
 pub(crate) use amigo_runtime_bundles::WgpuFrameCompositionBuilder;
-pub(crate) use amigo_runtime_bundles::{
-    WgpuEditorOverlayOutput, extract_live_host_overlay_packet,
-    audio_debug_snapshot, input_debug_snapshot, particle_debug_snapshot, render_game_frame_to_cache,
-    update_ui_input_viewport_state, update_wgpu_postfx_renderer_mode,
-    update_wgpu_render_composition_diagnostics,
-};
 pub(crate) use amigo_runtime_bundles::WgpuFrameCompositionOptions;
 pub(crate) use amigo_runtime_bundles::{
-    LightRoute2dSceneService, RenderLayer2dSceneService,
+    audio_debug_snapshot, extract_live_host_overlay_packet, input_debug_snapshot,
+    particle_debug_snapshot, render_game_frame_to_cache, update_ui_input_viewport_state,
+    update_wgpu_postfx_renderer_mode, update_wgpu_render_composition_diagnostics,
+    WgpuEditorOverlayOutput,
 };
+pub(crate) use amigo_runtime_bundles::{submit_wgpu_frame_render_request, WgpuFrameSubmitInput};
+pub(crate) use amigo_runtime_bundles::{LightRoute2dSceneService, RenderLayer2dSceneService};
 
 #[cfg(test)]
 pub(crate) use amigo_runtime_bundles::{
@@ -53,7 +52,10 @@ pub(crate) fn build_render_frame_for_session(
     let mut render_packet =
         amigo_runtime_bundles::default_wgpu_render_extractor_registry_for_runtime(runtime)
             .extract_all(runtime);
-    amigo_editor_ingame::append_editor_overlay(runtime, &mut WgpuEditorOverlayOutput(&mut render_packet));
+    amigo_editor_ingame::append_editor_overlay(
+        runtime,
+        &mut WgpuEditorOverlayOutput(&mut render_packet),
+    );
     session.complete_render_frame_extract();
 
     let editor_game_viewport =
@@ -101,20 +103,20 @@ pub(crate) fn build_render_frame_for_session(
             frame_index: previous.frame_index + 1,
             window_width: surface_size.width,
             window_height: surface_size.height,
-            world_2d_tilemaps: render_packet.renderable_2d_count_by_component_kind("TileMap2D"),
-            world_2d_sprites: render_packet.renderable_2d_count_by_component_kind("Sprite2D"),
+            world_2d_tilemaps: render_packet.renderable_2d_count_by_kind(Renderable2dKind::TileMap),
+            world_2d_sprites: render_packet.renderable_2d_count_by_kind(Renderable2dKind::Sprite),
             world_2d_layered_images: render_packet
-                .renderable_2d_count_by_component_kind("LayeredImage2D"),
+                .renderable_2d_count_by_kind(Renderable2dKind::LayeredImage),
             world_2d_render_layers: render_packet.world_2d_render_layers().len(),
             world_2d_light_routes: render_packet.world_2d_light_routes().len(),
             world_2d_global_lights: render_packet.light_source_2d_contribution_count(),
             world_2d_lightmaps: render_packet.lightmap_2d_contribution_count(),
             world_2d_light_groups: render_packet.light_group_2d_contribution_count(),
-            world_2d_vectors: render_packet.renderable_2d_count_by_component_kind("VectorShape2D"),
-            world_2d_beacons: render_packet.renderable_2d_count_by_component_kind("BeaconLight2D"),
-            world_2d_text: render_packet.renderable_2d_count_by_component_kind("Text2D"),
+            world_2d_vectors: render_packet.renderable_2d_count_by_kind(Renderable2dKind::Vector),
+            world_2d_beacons: render_packet.renderable_2d_count_by_kind(Renderable2dKind::Beacon),
+            world_2d_text: render_packet.renderable_2d_count_by_kind(Renderable2dKind::Text),
             world_2d_particles: render_packet
-                .renderable_2d_count_by_component_kind("ParticleEmitter2D"),
+                .renderable_2d_count_by_kind(Renderable2dKind::Particle),
             world_3d_meshes: render_packet.world_3d_meshes().len(),
             world_3d_materials: render_packet.world_3d_materials().len(),
             world_3d_text: render_packet.world_3d_text().len(),
@@ -160,62 +162,22 @@ pub(crate) fn build_render_frame_for_session(
     let extracted_render_layer_commands = render_layers.commands();
     let extracted_light_route_commands = light_routes.commands();
     let emergency_overlay = emergency_overlay_lines(runtime);
-    let render_lightmaps_2d = render_packet
-        .render_contributions_2d()
-        .iter()
-        .filter_map(RenderContribution2d::as_lightmap_2d)
-        .cloned()
-        .collect::<Vec<_>>();
-    let render_depth_maps_2d = render_packet
-        .render_contributions_2d()
-        .iter()
-        .filter_map(RenderContribution2d::as_depth_map_2d)
-        .cloned()
-        .collect::<Vec<_>>();
-    let render_depth_aux_maps_2d = render_packet
-        .render_contributions_2d()
-        .iter()
-        .filter_map(RenderContribution2d::as_depth_aux_map_2d)
-        .cloned()
-        .collect::<Vec<_>>();
-    let camera_optical_candidates =
-        amigo_runtime_bundles::render_extractor_bridges::collect_camera_optical_candidates_from_light_sources_2d(
-            render_packet.world_2d_light_sources(),
-        );
-    let render_request = amigo_render_wgpu::WgpuFrameRenderRequest {
-        target: amigo_render_wgpu::WgpuFrameRenderTarget::Surface(surface),
-        scene: scene.as_ref(),
-        assets: assets.as_ref(),
-        world_2d: amigo_render_wgpu::WgpuWorld2dRenderInput {
-            renderables: render_packet.renderables_2d(),
-            depth_maps: render_depth_maps_2d.as_slice(),
-            depth_aux_maps: render_depth_aux_maps_2d.as_slice(),
-            lightmaps: render_lightmaps_2d.as_slice(),
-            light_sources: render_packet.world_2d_light_sources(),
-            camera_optical_candidates: camera_optical_candidates.as_slice(),
+    submit_wgpu_frame_render_request(
+        renderer,
+        WgpuFrameSubmitInput {
+            target: amigo_render_wgpu::WgpuFrameRenderTarget::Surface(surface),
+            scene: scene.as_ref(),
+            assets: assets.as_ref(),
+            render_packet: &render_packet,
             render_layers: extracted_render_layer_commands.as_slice(),
             light_routes: extracted_light_route_commands.as_slice(),
+            debug_ui: render_packet.debug_overlay(),
+            emergency_overlay: emergency_overlay.as_slice(),
+            composition_plan: &composition_plan,
+            frame_graph: &frame_graph,
+            game_viewport: editor_game_viewport,
         },
-        world_3d: amigo_render_wgpu::WgpuWorld3dRenderInput {
-            meshes: render_packet.world_3d_meshes(),
-            materials: render_packet.world_3d_materials(),
-            text3d: Some(render_packet.world_3d_text()),
-        },
-        game_ui: render_packet.game_ui_overlay(),
-        debug_ui: render_packet.debug_overlay(),
-        post_fx_stacks: render_packet.post_fx_stacks(),
-        active_camera_2d_entity: render_packet.active_camera_2d_entity(),
-        camera_capture_input_2d: render_packet.camera_capture_input_2d(),
-        visual_source_flags_2d: Some(render_packet.visual_source_flags_2d()),
-        camera_debug_view: render_packet
-            .camera_debug_view_2d()
-            .unwrap_or_else(amigo_render_api::CameraDebugView2d::final_output),
-        emergency_overlay: emergency_overlay.as_slice(),
-        composition_plan: &composition_plan,
-        frame_graph: &frame_graph,
-        game_viewport: editor_game_viewport,
-    };
-    renderer.render_frame_request(render_request)?;
+    )?;
     if let Ok(render_diagnostics) = required::<RenderCompositionDiagnosticsService>(runtime) {
         render_diagnostics
             .set_plate_relight_summary(renderer.plate_relight_last_summary().to_owned());
@@ -225,7 +187,6 @@ pub(crate) fn build_render_frame_for_session(
     session.complete_render_submit();
     Ok(())
 }
-
 
 pub(crate) fn editor_game_viewport_placement(
     runtime: &Runtime,
@@ -282,4 +243,3 @@ pub(crate) fn emergency_overlay_lines(
         })
         .unwrap_or_default()
 }
-

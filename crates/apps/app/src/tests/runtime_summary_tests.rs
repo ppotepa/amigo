@@ -1,3 +1,8 @@
+use amigo_runtime_bundles::PostFx2dService;
+use amigo_render_api::{
+    post_fx_lens_droplets, PostFx2dStack, PostFxLensDroplets2d, ScopedPostFx2dStack,
+};
+
 use super::*;
 
 #[test]
@@ -132,19 +137,19 @@ fn runtime_render_graph_with_lens_droplets_has_plan_and_no_surface_write_warning
     .expect("console bootstrap should succeed");
 
     let post_fx_service = runtime
-        .resolve::<amigo_runtime_bundles::PostFx2dService>()
+        .resolve::<PostFx2dService>()
         .expect("post-fx service should exist");
     post_fx_service.set_scoped_stacks(vec![
-        amigo_runtime_bundles::ScopedPostFx2dStack::from_frame_stack(
-            amigo_runtime_bundles::PostFx2dStack {
+        ScopedPostFx2dStack::from_frame_stack(
+            PostFx2dStack {
                 effects: vec![
-                    amigo_runtime_bundles::PostFx2d::LensDroplets(
-                        amigo_runtime_bundles::PostFxLensDroplets2d {
+                    post_fx_lens_droplets(
+                        PostFxLensDroplets2d {
                             enabled: true,
                             affects_world: true,
                             affects_game_ui: true,
                             affects_debug_ui: true,
-                            ..amigo_runtime_bundles::PostFxLensDroplets2d::default()
+                            ..PostFxLensDroplets2d::default()
                         },
                     ),
                 ],

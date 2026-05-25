@@ -1,487 +1,8 @@
-use std::collections::BTreeMap;
-
-use serde::{Deserialize, Serialize};
-
 use crate::MetadataTraitKind;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub enum ComponentKind {
-    Camera2D,
-    Camera3D,
-    Light3D,
-    Sprite2D,
-    LayeredImage2D,
-    DepthMap2D,
-    DepthAuxMap2D,
-    GlobalLight2D,
-    LightMap2DSource,
-    TileMap2D,
-    Text2D,
-    VectorShape2D,
-    BeaconLight2D,
-    EntityPool,
-    Lifetime,
-    ProjectileEmitter2D,
-    InputActionMap,
-    Behavior,
-    EventPipeline,
-    UiModelBindings,
-    ScriptComponent,
-    ParticleEmitter2D,
-    Velocity2D,
-    Bounds2D,
-    FreeflightMotion2D,
-    KinematicBody2D,
-    AabbCollider2D,
-    StaticCollider2D,
-    CircleCollider2D,
-    Trigger2D,
-    MotionController2D,
-    CameraFollow2D,
-    Parallax2D,
-    TileMapMarker2D,
-    Mesh3D,
-    Material3D,
-    Text3D,
-    UiDocument,
-    UiThemeSet,
-}
+mod model;
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
-pub struct ComponentKindId(String);
-
-impl ComponentKindId {
-    pub fn new(value: impl Into<String>) -> Self {
-        Self(value.into())
-    }
-
-    pub fn as_str(&self) -> &str {
-        &self.0
-    }
-}
-
-impl From<ComponentKind> for ComponentKindId {
-    fn from(kind: ComponentKind) -> Self {
-        Self::new(kind.type_name())
-    }
-}
-
-impl ComponentKind {
-    pub fn type_name(self) -> &'static str {
-        match self {
-            ComponentKind::Camera2D => "Camera2D",
-            ComponentKind::Camera3D => "Camera3D",
-            ComponentKind::Light3D => "Light3D",
-            ComponentKind::Sprite2D => "Sprite2D",
-            ComponentKind::LayeredImage2D => "LayeredImage2D",
-            ComponentKind::DepthMap2D => "DepthMap2D",
-            ComponentKind::DepthAuxMap2D => "DepthAuxMap2D",
-            ComponentKind::GlobalLight2D => "GlobalLight2D",
-            ComponentKind::LightMap2DSource => "LightMap2DSource",
-            ComponentKind::TileMap2D => "TileMap2D",
-            ComponentKind::Text2D => "Text2D",
-            ComponentKind::VectorShape2D => "VectorShape2D",
-            ComponentKind::BeaconLight2D => "BeaconLight2D",
-            ComponentKind::EntityPool => "EntityPool",
-            ComponentKind::Lifetime => "Lifetime",
-            ComponentKind::ProjectileEmitter2D => "ProjectileEmitter2D",
-            ComponentKind::InputActionMap => "InputActionMap",
-            ComponentKind::Behavior => "Behavior",
-            ComponentKind::EventPipeline => "EventPipeline",
-            ComponentKind::UiModelBindings => "UiModelBindings",
-            ComponentKind::ScriptComponent => "ScriptComponent",
-            ComponentKind::ParticleEmitter2D => "ParticleEmitter2D",
-            ComponentKind::Velocity2D => "Velocity2D",
-            ComponentKind::Bounds2D => "Bounds2D",
-            ComponentKind::FreeflightMotion2D => "FreeflightMotion2D",
-            ComponentKind::KinematicBody2D => "KinematicBody2D",
-            ComponentKind::AabbCollider2D => "AabbCollider2D",
-            ComponentKind::StaticCollider2D => "StaticCollider2D",
-            ComponentKind::CircleCollider2D => "CircleCollider2D",
-            ComponentKind::Trigger2D => "Trigger2D",
-            ComponentKind::MotionController2D => "MotionController2D",
-            ComponentKind::CameraFollow2D => "CameraFollow2D",
-            ComponentKind::Parallax2D => "Parallax2D",
-            ComponentKind::TileMapMarker2D => "TileMapMarker2D",
-            ComponentKind::Mesh3D => "Mesh3D",
-            ComponentKind::Material3D => "Material3D",
-            ComponentKind::Text3D => "Text3D",
-            ComponentKind::UiDocument => "UiDocument",
-            ComponentKind::UiThemeSet => "UiThemeSet",
-        }
-    }
-
-    pub fn all() -> &'static [ComponentKind] {
-        &[
-            ComponentKind::Camera2D,
-            ComponentKind::Camera3D,
-            ComponentKind::Light3D,
-            ComponentKind::Sprite2D,
-            ComponentKind::LayeredImage2D,
-            ComponentKind::DepthMap2D,
-            ComponentKind::DepthAuxMap2D,
-            ComponentKind::GlobalLight2D,
-            ComponentKind::LightMap2DSource,
-            ComponentKind::TileMap2D,
-            ComponentKind::Text2D,
-            ComponentKind::VectorShape2D,
-            ComponentKind::BeaconLight2D,
-            ComponentKind::EntityPool,
-            ComponentKind::Lifetime,
-            ComponentKind::ProjectileEmitter2D,
-            ComponentKind::InputActionMap,
-            ComponentKind::Behavior,
-            ComponentKind::EventPipeline,
-            ComponentKind::UiModelBindings,
-            ComponentKind::ScriptComponent,
-            ComponentKind::ParticleEmitter2D,
-            ComponentKind::Velocity2D,
-            ComponentKind::Bounds2D,
-            ComponentKind::FreeflightMotion2D,
-            ComponentKind::KinematicBody2D,
-            ComponentKind::AabbCollider2D,
-            ComponentKind::StaticCollider2D,
-            ComponentKind::CircleCollider2D,
-            ComponentKind::Trigger2D,
-            ComponentKind::MotionController2D,
-            ComponentKind::CameraFollow2D,
-            ComponentKind::Parallax2D,
-            ComponentKind::TileMapMarker2D,
-            ComponentKind::Mesh3D,
-            ComponentKind::Material3D,
-            ComponentKind::Text3D,
-            ComponentKind::UiDocument,
-            ComponentKind::UiThemeSet,
-        ]
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub enum ComponentDomain {
-    Render2D,
-    Render3D,
-    Physics2D,
-    Motion2D,
-    Scripting,
-    Audio,
-    UI,
-    Camera,
-    Particles,
-    Data,
-    EditorOnly,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub enum AssetDomain {
-    Image,
-    Sprite,
-    Spritesheet,
-    LayeredImage,
-    TileSet,
-    TileRuleSet,
-    TileMap,
-    Audio,
-    Font,
-    Scene,
-    Prefab,
-    Script,
-    Material,
-    Mesh,
-    ParticlePreset,
-    CursorPack,
-    UiTheme,
-    Raw,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub enum EditorControlKind {
-    Transform2D,
-    Transform3D,
-    Rect2D,
-    TextBounds2D,
-    VectorVertex2D,
-    TileMapBrush2D,
-    Collider2D,
-    Trigger2D,
-    Camera2D,
-    AudioRadius2D,
-    InspectorOnly,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub enum EditorPatchOpKind {
-    SetTransform2,
-    SetTransform3,
-    SetTextContent,
-    SetTextBounds,
-    SetVectorPoints,
-    SetTileCell,
-    ResizeTileMap,
-    SetColliderShape,
-    SetCamera2D,
-    SetPrefabOverride,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub enum TransformPolicy {
-    None,
-    UsesEntityTransform2,
-    UsesEntityTransform3,
-    ComponentLocal2D,
-    ComponentLocal3D,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub enum BoundsPolicy {
-    None,
-    EntityTransformPoint,
-    ComponentBounds2D {
-        field: &'static str,
-    },
-    SpawnArea2D {
-        field: &'static str,
-        size_field: &'static str,
-        fallback_width: u32,
-        fallback_height: u32,
-    },
-    DerivedFromGeometry2D,
-    DerivedFromTileMap,
-    DerivedFromCollider2D,
-    CameraViewport2D,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ComponentAssetRefDescriptor {
-    pub field_path: &'static str,
-    pub domain: AssetDomain,
-    pub required: bool,
-    pub trait_kind: MetadataTraitKind,
-    pub group: &'static str,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub enum EditorPropertyValueKind {
-    String,
-    Number,
-    Bool,
-    Vec2,
-    Vec3,
-    Color,
-    AssetRef,
-    Enum,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub enum EditorPropertyAccess {
-    ReadOnly,
-    Editable,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub enum EditorPropertyEditorKind {
-    Text,
-    Number,
-    Checkbox,
-    Vec2,
-    Vec3,
-    Color,
-    AssetPicker,
-    EnumSelect,
-    ReadOnly,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub enum EditorPropertyVisibility {
-    Primary,
-    Advanced,
-    Debug,
-    Hidden,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub enum EditorRuntimeBindingTemplate {
-    None,
-    RenderLayerField,
-    ComponentRuntimeField,
-    LayeredImageBaseOpacity,
-    LayeredImagePartField,
-    ParticleEmitterField,
-    SceneCommandPatch,
-    MockOnly,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct EditorNumberConstraints {
-    pub min: Option<f32>,
-    pub max: Option<f32>,
-    pub step: Option<f32>,
-    pub clamp: bool,
-    pub unit: Option<&'static str>,
-    pub display_scale: f32,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct EditorPropertyOption {
-    pub id: &'static str,
-    pub label: &'static str,
-}
-
-pub const EDITOR_NUMBER_OPACITY: EditorNumberConstraints = EditorNumberConstraints {
-    min: Some(0.0),
-    max: Some(1.0),
-    step: Some(0.01),
-    clamp: true,
-    unit: None,
-    display_scale: 1.0,
-};
-
-pub const EDITOR_NUMBER_Z_DEPTH: EditorNumberConstraints = EditorNumberConstraints {
-    min: Some(0.0),
-    max: Some(1.0),
-    step: Some(0.01),
-    clamp: true,
-    unit: None,
-    display_scale: 1.0,
-};
-
-pub const EDITOR_NUMBER_ORDER: EditorNumberConstraints = EditorNumberConstraints {
-    min: Some(-1000.0),
-    max: Some(1000.0),
-    step: Some(1.0),
-    clamp: true,
-    unit: None,
-    display_scale: 1.0,
-};
-
-pub const EDITOR_NUMBER_PARTICLE_RATE: EditorNumberConstraints = EditorNumberConstraints {
-    min: Some(0.0),
-    max: Some(1000.0),
-    step: Some(1.0),
-    clamp: true,
-    unit: None,
-    display_scale: 1.0,
-};
-
-pub const EDITOR_NUMBER_PARTICLE_COUNT: EditorNumberConstraints = EditorNumberConstraints {
-    min: Some(0.0),
-    max: Some(10000.0),
-    step: Some(1.0),
-    clamp: true,
-    unit: None,
-    display_scale: 1.0,
-};
-
-pub const EDITOR_NUMBER_PARTICLE_SECONDS: EditorNumberConstraints = EditorNumberConstraints {
-    min: Some(0.0),
-    max: Some(60.0),
-    step: Some(0.01),
-    clamp: true,
-    unit: Some("s"),
-    display_scale: 1.0,
-};
-
-pub const EDITOR_NUMBER_PARTICLE_SPEED: EditorNumberConstraints = EditorNumberConstraints {
-    min: Some(0.0),
-    max: Some(2000.0),
-    step: Some(1.0),
-    clamp: true,
-    unit: None,
-    display_scale: 1.0,
-};
-
-pub const EDITOR_NUMBER_PARTICLE_DEGREES: EditorNumberConstraints = EditorNumberConstraints {
-    min: Some(-360.0),
-    max: Some(360.0),
-    step: Some(1.0),
-    clamp: true,
-    unit: Some("deg"),
-    display_scale: 1.0,
-};
-
-pub const EDITOR_NUMBER_PARTICLE_SIZE: EditorNumberConstraints = EditorNumberConstraints {
-    min: Some(0.0),
-    max: Some(512.0),
-    step: Some(0.1),
-    clamp: true,
-    unit: Some("px"),
-    display_scale: 1.0,
-};
-
-pub const EDITOR_NUMBER_PARTICLE_VELOCITY_SCALE: EditorNumberConstraints =
-    EditorNumberConstraints {
-        min: Some(0.0),
-        max: Some(1.0),
-        step: Some(0.01),
-        clamp: true,
-        unit: None,
-        display_scale: 1.0,
-    };
-
-#[derive(Debug, Clone, Copy, PartialEq, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct EditorPropertyDescriptor {
-    pub path: &'static str,
-    pub label: &'static str,
-    pub value_kind: EditorPropertyValueKind,
-    pub access: EditorPropertyAccess,
-    pub editor: EditorPropertyEditorKind,
-    pub asset_domain: Option<AssetDomain>,
-    pub trait_kind: Option<MetadataTraitKind>,
-    pub group: &'static str,
-    pub patch_op: Option<EditorPatchOpKind>,
-    pub number_constraints: Option<EditorNumberConstraints>,
-    pub options: &'static [EditorPropertyOption],
-    pub visibility: EditorPropertyVisibility,
-    pub order: i32,
-    pub tags: &'static [&'static str],
-    pub readonly_reason: Option<&'static str>,
-    pub binding_template: Option<EditorRuntimeBindingTemplate>,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub enum ComponentOwnerScope {
-    Scene,
-    Entity,
-    UiNode,
-    Asset,
-}
-
-pub const ENTITY_OWNER_SCOPES: &[ComponentOwnerScope] = &[ComponentOwnerScope::Entity];
-pub const SCENE_OWNER_SCOPES: &[ComponentOwnerScope] = &[ComponentOwnerScope::Scene];
-
-#[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ComponentTypeDescriptor {
-    pub kind: ComponentKind,
-    pub type_name: &'static str,
-    pub label: &'static str,
-    pub domains: &'static [ComponentDomain],
-    pub owner_scopes: &'static [ComponentOwnerScope],
-    pub default_yaml: Option<&'static str>,
-    pub metadata_traits: &'static [MetadataTraitKind],
-    pub asset_refs: &'static [ComponentAssetRefDescriptor],
-    pub properties: &'static [EditorPropertyDescriptor],
-    pub transform_policy: TransformPolicy,
-    pub bounds_policy: BoundsPolicy,
-    pub editor_controls: &'static [EditorControlKind],
-    pub patch_ops: &'static [EditorPatchOpKind],
-}
+pub use model::*;
 
 macro_rules! p {
     ($path:literal, $label:literal, $kind:expr, $editor:expr, $trait_kind:expr, $group:literal) => {
@@ -586,71 +107,9 @@ macro_rules! p {
     };
 }
 
-impl ComponentTypeDescriptor {
-    pub fn has_trait(&self, trait_kind: MetadataTraitKind) -> bool {
-        self.metadata_traits.contains(&trait_kind)
-    }
-
-    pub fn default_yaml(mut self, yaml: &'static str) -> Self {
-        self.default_yaml = Some(yaml);
-        self
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct ComponentRegistry {
-    descriptors: BTreeMap<ComponentKindId, ComponentTypeDescriptor>,
-}
-
-impl ComponentRegistry {
-    pub fn new(descriptors: impl IntoIterator<Item = ComponentTypeDescriptor>) -> Self {
-        Self {
-            descriptors: descriptors
-                .into_iter()
-                .map(|descriptor| (ComponentKindId::from(descriptor.kind), descriptor))
-                .collect(),
-        }
-    }
-
-    pub fn descriptor(&self, kind: ComponentKind) -> Option<&ComponentTypeDescriptor> {
-        self.descriptors.get(&ComponentKindId::from(kind))
-    }
-
-    pub fn descriptor_by_kind_id(
-        &self,
-        kind_id: &ComponentKindId,
-    ) -> Option<&ComponentTypeDescriptor> {
-        self.descriptors.get(kind_id)
-    }
-
-    pub fn descriptor_by_type_name(&self, type_name: &str) -> Option<&ComponentTypeDescriptor> {
-        self.descriptors
-            .values()
-            .find(|descriptor| descriptor.type_name.eq_ignore_ascii_case(type_name))
-    }
-
-    pub fn insert(
-        &mut self,
-        descriptor: ComponentTypeDescriptor,
-    ) -> Option<ComponentTypeDescriptor> {
-        self.descriptors
-            .insert(ComponentKindId::from(descriptor.kind), descriptor)
-    }
-
-    pub fn extend(&mut self, descriptors: impl IntoIterator<Item = ComponentTypeDescriptor>) {
-        for descriptor in descriptors {
-            self.insert(descriptor);
-        }
-    }
-
-    pub fn iter(&self) -> impl Iterator<Item = &ComponentTypeDescriptor> {
-        self.descriptors.values()
-    }
-}
-
 pub fn camera_2d_descriptor() -> ComponentTypeDescriptor {
     ComponentTypeDescriptor {
-        kind: ComponentKind::Camera2D,
+        kind_id: "Camera2D",
         type_name: "Camera2D",
         label: "Camera 2D",
         domains: &[ComponentDomain::Camera],
@@ -1007,7 +466,7 @@ pub fn camera_2d_descriptor() -> ComponentTypeDescriptor {
 
 pub fn global_light_2d_descriptor() -> ComponentTypeDescriptor {
     generic_component_descriptor(
-        ComponentKind::GlobalLight2D,
+        "GlobalLight2D",
         "GlobalLight2D",
         "Global Light 2D",
         &[ComponentDomain::Render2D],
@@ -1052,7 +511,7 @@ pub fn global_light_2d_descriptor() -> ComponentTypeDescriptor {
 
 pub fn beacon_light_2d_descriptor() -> ComponentTypeDescriptor {
     generic_component_descriptor(
-        ComponentKind::BeaconLight2D,
+        "BeaconLight2D",
         "BeaconLight2D",
         "Beacon Light 2D",
         &[ComponentDomain::Render2D],
@@ -1224,7 +683,7 @@ pub fn beacon_light_2d_descriptor() -> ComponentTypeDescriptor {
 
 pub fn lightmap_2d_source_descriptor() -> ComponentTypeDescriptor {
     generic_component_descriptor(
-        ComponentKind::LightMap2DSource,
+        "LightMap2DSource",
         "LightMap2DSource",
         "Light Map 2D Source",
         &[ComponentDomain::Render2D],
@@ -1252,149 +711,9 @@ pub fn lightmap_2d_source_descriptor() -> ComponentTypeDescriptor {
     )
 }
 
-pub fn tile_map_2d_descriptor() -> ComponentTypeDescriptor {
-    ComponentTypeDescriptor {
-        kind: ComponentKind::TileMap2D,
-        type_name: "TileMap2D",
-        label: "Tile Map 2D",
-        domains: &[ComponentDomain::Render2D],
-        owner_scopes: ENTITY_OWNER_SCOPES,
-        default_yaml: None,
-        metadata_traits: &[
-            MetadataTraitKind::Renderable2D,
-            MetadataTraitKind::RenderLayered2D,
-            MetadataTraitKind::UsesTransform2D,
-            MetadataTraitKind::Selectable,
-            MetadataTraitKind::HasBounds2D,
-            MetadataTraitKind::HasAssetRefs,
-            MetadataTraitKind::HasEditorControls,
-            MetadataTraitKind::GenericEditable,
-        ],
-        asset_refs: &[
-            ComponentAssetRefDescriptor {
-                field_path: "tileset",
-                domain: AssetDomain::TileSet,
-                required: true,
-                trait_kind: MetadataTraitKind::HasAssetRefs,
-                group: "assetRefs.primary",
-            },
-            ComponentAssetRefDescriptor {
-                field_path: "ruleset",
-                domain: AssetDomain::TileRuleSet,
-                required: false,
-                trait_kind: MetadataTraitKind::HasAssetRefs,
-                group: "assetRefs.optional",
-            },
-        ],
-        properties: &[
-            EditorPropertyDescriptor {
-                path: "tileset",
-                label: "Tileset",
-                value_kind: EditorPropertyValueKind::AssetRef,
-                access: EditorPropertyAccess::Editable,
-                editor: EditorPropertyEditorKind::AssetPicker,
-                asset_domain: Some(AssetDomain::TileSet),
-                trait_kind: Some(MetadataTraitKind::HasAssetRefs),
-                group: "assetRefs.primary",
-                patch_op: None,
-                number_constraints: None,
-                options: &[],
-                visibility: EditorPropertyVisibility::Primary,
-                order: 0,
-                tags: &[],
-                readonly_reason: None,
-                binding_template: None,
-            },
-            EditorPropertyDescriptor {
-                path: "ruleset",
-                label: "Ruleset",
-                value_kind: EditorPropertyValueKind::AssetRef,
-                access: EditorPropertyAccess::Editable,
-                editor: EditorPropertyEditorKind::AssetPicker,
-                asset_domain: Some(AssetDomain::TileRuleSet),
-                trait_kind: Some(MetadataTraitKind::HasAssetRefs),
-                group: "assetRefs.optional",
-                patch_op: None,
-                number_constraints: None,
-                options: &[],
-                visibility: EditorPropertyVisibility::Primary,
-                order: 0,
-                tags: &[],
-                readonly_reason: None,
-                binding_template: None,
-            },
-            EditorPropertyDescriptor {
-                path: "tile_size",
-                label: "Tile Size",
-                value_kind: EditorPropertyValueKind::Vec2,
-                access: EditorPropertyAccess::Editable,
-                editor: EditorPropertyEditorKind::Vec2,
-                asset_domain: None,
-                trait_kind: Some(MetadataTraitKind::HasBounds2D),
-                group: "bounds2.size",
-                patch_op: None,
-                number_constraints: None,
-                options: &[],
-                visibility: EditorPropertyVisibility::Primary,
-                order: 0,
-                tags: &[],
-                readonly_reason: None,
-                binding_template: None,
-            },
-            EditorPropertyDescriptor {
-                path: "render_layer",
-                label: "Render Layer",
-                value_kind: EditorPropertyValueKind::String,
-                access: EditorPropertyAccess::Editable,
-                editor: EditorPropertyEditorKind::Text,
-                asset_domain: None,
-                trait_kind: Some(MetadataTraitKind::RenderLayered2D),
-                group: "render2d.order",
-                patch_op: None,
-                number_constraints: None,
-                options: &[],
-                visibility: EditorPropertyVisibility::Primary,
-                order: 0,
-                tags: &[],
-                readonly_reason: None,
-                binding_template: None,
-            },
-            EditorPropertyDescriptor {
-                path: "grid",
-                label: "Grid",
-                value_kind: EditorPropertyValueKind::String,
-                access: EditorPropertyAccess::ReadOnly,
-                editor: EditorPropertyEditorKind::ReadOnly,
-                asset_domain: None,
-                trait_kind: Some(MetadataTraitKind::Renderable2D),
-                group: "render2d.content",
-                patch_op: None,
-                number_constraints: None,
-                options: &[],
-                visibility: EditorPropertyVisibility::Primary,
-                order: 0,
-                tags: &[],
-                readonly_reason: None,
-                binding_template: None,
-            },
-        ],
-        transform_policy: TransformPolicy::UsesEntityTransform2,
-        bounds_policy: BoundsPolicy::DerivedFromTileMap,
-        editor_controls: &[
-            EditorControlKind::Transform2D,
-            EditorControlKind::TileMapBrush2D,
-        ],
-        patch_ops: &[
-            EditorPatchOpKind::SetTransform2,
-            EditorPatchOpKind::SetTileCell,
-            EditorPatchOpKind::ResizeTileMap,
-        ],
-    }
-}
-
 pub fn trigger_2d_descriptor() -> ComponentTypeDescriptor {
     generic_component_descriptor(
-        ComponentKind::Trigger2D,
+        "Trigger2D",
         "Trigger2D",
         "Trigger 2D",
         &[ComponentDomain::Physics2D],
@@ -1456,7 +775,7 @@ pub fn trigger_2d_descriptor() -> ComponentTypeDescriptor {
 
 pub fn script_component_descriptor() -> ComponentTypeDescriptor {
     ComponentTypeDescriptor {
-        kind: ComponentKind::ScriptComponent,
+        kind_id: "ScriptComponent",
         type_name: "ScriptComponent",
         label: "Script Component",
         domains: &[ComponentDomain::Scripting],
@@ -1520,7 +839,7 @@ pub fn script_component_descriptor() -> ComponentTypeDescriptor {
 }
 
 fn generic_component_descriptor(
-    kind: ComponentKind,
+    kind_id: &'static str,
     type_name: &'static str,
     label: &'static str,
     domains: &'static [ComponentDomain],
@@ -1533,7 +852,7 @@ fn generic_component_descriptor(
     patch_ops: &'static [EditorPatchOpKind],
 ) -> ComponentTypeDescriptor {
     ComponentTypeDescriptor {
-        kind,
+        kind_id,
         type_name,
         label,
         domains,
@@ -1551,7 +870,7 @@ fn generic_component_descriptor(
 
 pub fn aabb_collider_2d_descriptor() -> ComponentTypeDescriptor {
     generic_component_descriptor(
-        ComponentKind::AabbCollider2D,
+        "AabbCollider2D",
         "AabbCollider2D",
         "AABB Collider 2D",
         &[ComponentDomain::Physics2D],
@@ -1606,7 +925,7 @@ pub fn aabb_collider_2d_descriptor() -> ComponentTypeDescriptor {
 
 pub fn circle_collider_2d_descriptor() -> ComponentTypeDescriptor {
     generic_component_descriptor(
-        ComponentKind::CircleCollider2D,
+        "CircleCollider2D",
         "CircleCollider2D",
         "Circle Collider 2D",
         &[ComponentDomain::Physics2D],
@@ -1642,7 +961,7 @@ pub fn circle_collider_2d_descriptor() -> ComponentTypeDescriptor {
 
 pub fn input_action_map_descriptor() -> ComponentTypeDescriptor {
     let mut descriptor = generic_component_descriptor(
-        ComponentKind::InputActionMap,
+        "InputActionMap",
         "InputActionMap",
         "Input Action Map",
         &[ComponentDomain::Data],
@@ -1685,14 +1004,14 @@ active: true",
 }
 
 fn generic_data_descriptor(
-    kind: ComponentKind,
+    kind_id: &'static str,
     type_name: &'static str,
     label: &'static str,
     traits: &'static [MetadataTraitKind],
     properties: &'static [EditorPropertyDescriptor],
 ) -> ComponentTypeDescriptor {
     generic_component_descriptor(
-        kind,
+        kind_id,
         type_name,
         label,
         &[ComponentDomain::Data],
@@ -1708,7 +1027,7 @@ fn generic_data_descriptor(
 
 pub fn behavior_descriptor() -> ComponentTypeDescriptor {
     generic_component_descriptor(
-        ComponentKind::Behavior,
+        "Behavior",
         "Behavior",
         "Behavior",
         &[ComponentDomain::Scripting, ComponentDomain::Data],
@@ -1905,7 +1224,7 @@ pub fn behavior_descriptor() -> ComponentTypeDescriptor {
 }
 pub fn event_pipeline_descriptor() -> ComponentTypeDescriptor {
     let mut descriptor = generic_data_descriptor(
-        ComponentKind::EventPipeline,
+        "EventPipeline",
         "EventPipeline",
         "Event Pipeline",
         &[
@@ -1944,7 +1263,7 @@ topic: scene.transition",
 }
 pub fn ui_document_descriptor() -> ComponentTypeDescriptor {
     generic_component_descriptor(
-        ComponentKind::UiDocument,
+        "UiDocument",
         "UiDocument",
         "UI Document",
         &[ComponentDomain::UI],
@@ -1973,7 +1292,7 @@ pub fn ui_document_descriptor() -> ComponentTypeDescriptor {
 }
 pub fn ui_model_bindings_descriptor() -> ComponentTypeDescriptor {
     generic_component_descriptor(
-        ComponentKind::UiModelBindings,
+        "UiModelBindings",
         "UiModelBindings",
         "UI Model Bindings",
         &[ComponentDomain::UI],
@@ -1992,7 +1311,7 @@ pub fn ui_model_bindings_descriptor() -> ComponentTypeDescriptor {
 }
 pub fn ui_theme_set_descriptor() -> ComponentTypeDescriptor {
     generic_component_descriptor(
-        ComponentKind::UiThemeSet,
+        "UiThemeSet",
         "UiThemeSet",
         "UI Theme Set",
         &[ComponentDomain::UI],
@@ -2021,7 +1340,7 @@ pub fn ui_theme_set_descriptor() -> ComponentTypeDescriptor {
 }
 pub fn velocity_2d_descriptor() -> ComponentTypeDescriptor {
     generic_component_descriptor(
-        ComponentKind::Velocity2D,
+        "Velocity2D",
         "Velocity2D",
         "Velocity 2D",
         &[ComponentDomain::Motion2D],
@@ -2047,7 +1366,7 @@ pub fn velocity_2d_descriptor() -> ComponentTypeDescriptor {
 }
 pub fn lifetime_descriptor() -> ComponentTypeDescriptor {
     generic_data_descriptor(
-        ComponentKind::Lifetime,
+        "Lifetime",
         "Lifetime",
         "Lifetime",
         &[
@@ -2083,273 +1402,9 @@ pub fn lifetime_descriptor() -> ComponentTypeDescriptor {
         ],
     )
 }
-pub fn particle_emitter_2d_descriptor() -> ComponentTypeDescriptor {
-    generic_component_descriptor(
-        ComponentKind::ParticleEmitter2D,
-        "ParticleEmitter2D",
-        "Particle Emitter 2D",
-        &[ComponentDomain::Particles, ComponentDomain::Render2D],
-        &[
-            MetadataTraitKind::Renderable2D,
-            MetadataTraitKind::RenderLayered2D,
-            MetadataTraitKind::LightReceiver2D,
-            MetadataTraitKind::UsesTransform2D,
-            MetadataTraitKind::Selectable,
-            MetadataTraitKind::HasBounds2D,
-            MetadataTraitKind::Motion2D,
-            MetadataTraitKind::HasEditorControls,
-            MetadataTraitKind::GenericEditable,
-        ],
-        &[
-            p!(live
-                "active",
-                "Active",
-                EditorPropertyValueKind::Bool,
-                EditorPropertyEditorKind::Checkbox,
-                MetadataTraitKind::Renderable2D,
-                "render2d.content",
-                EditorRuntimeBindingTemplate::ParticleEmitterField
-            ),
-            p!(live num
-                "spawn_rate",
-                "Spawn Rate",
-                EditorPropertyValueKind::Number,
-                EditorPropertyEditorKind::Number,
-                MetadataTraitKind::Renderable2D,
-                "render2d.content",
-                EDITOR_NUMBER_PARTICLE_RATE,
-                EditorRuntimeBindingTemplate::ParticleEmitterField
-            ),
-            p!(live num
-                "max_particles",
-                "Max Particles",
-                EditorPropertyValueKind::Number,
-                EditorPropertyEditorKind::Number,
-                MetadataTraitKind::Renderable2D,
-                "render2d.content",
-                EDITOR_NUMBER_PARTICLE_COUNT,
-                EditorRuntimeBindingTemplate::ParticleEmitterField
-            ),
-            p!(live num
-                "particle_lifetime",
-                "Particle Lifetime",
-                EditorPropertyValueKind::Number,
-                EditorPropertyEditorKind::Number,
-                MetadataTraitKind::Renderable2D,
-                "render2d.content",
-                EDITOR_NUMBER_PARTICLE_SECONDS,
-                EditorRuntimeBindingTemplate::ParticleEmitterField
-            ),
-            p!(live num
-                "initial_speed",
-                "Initial Speed",
-                EditorPropertyValueKind::Number,
-                EditorPropertyEditorKind::Number,
-                MetadataTraitKind::Motion2D,
-                "motion2.tuning",
-                EDITOR_NUMBER_PARTICLE_SPEED,
-                EditorRuntimeBindingTemplate::ParticleEmitterField
-            ),
-            p!(live num
-                "initial_size",
-                "Initial Size",
-                EditorPropertyValueKind::Number,
-                EditorPropertyEditorKind::Number,
-                MetadataTraitKind::HasBounds2D,
-                "bounds2.size",
-                EDITOR_NUMBER_PARTICLE_SIZE,
-                EditorRuntimeBindingTemplate::ParticleEmitterField
-            ),
-            p!(live num
-                "final_size",
-                "Final Size",
-                EditorPropertyValueKind::Number,
-                EditorPropertyEditorKind::Number,
-                MetadataTraitKind::HasBounds2D,
-                "bounds2.size",
-                EDITOR_NUMBER_PARTICLE_SIZE,
-                EditorRuntimeBindingTemplate::ParticleEmitterField
-            ),
-            p!(
-                "render_layer",
-                "Render Layer",
-                EditorPropertyValueKind::String,
-                EditorPropertyEditorKind::Text,
-                MetadataTraitKind::RenderLayered2D,
-                "render2d.order"
-            ),
-            p!(live num
-                "z_index",
-                "Z Index",
-                EditorPropertyValueKind::Number,
-                EditorPropertyEditorKind::Number,
-                MetadataTraitKind::Renderable2D,
-                "render2d.order",
-                EDITOR_NUMBER_ORDER,
-                EditorRuntimeBindingTemplate::ParticleEmitterField
-            ),
-            p!(
-                "color",
-                "Color",
-                EditorPropertyValueKind::Color,
-                EditorPropertyEditorKind::Color,
-                MetadataTraitKind::Renderable2D,
-                "render2d.color"
-            ),
-            p!(ro "color_ramp", "Color Ramp", MetadataTraitKind::Renderable2D, "render2d.color"),
-            p!(ro "alpha_curve", "Alpha Curve", MetadataTraitKind::Renderable2D, "render2d.color"),
-            p!(ro "size_curve", "Size Curve", MetadataTraitKind::HasBounds2D, "bounds2.size"),
-            p!(ro "speed_curve", "Speed Curve", MetadataTraitKind::Motion2D, "motion2.tuning"),
-            p!(ro "emission_rate_curve", "Emission Rate Curve", MetadataTraitKind::Renderable2D, "render2d.content"),
-            p!(ro "shape", "Shape", MetadataTraitKind::Renderable2D, "render2d.content"),
-            p!(ro "spawn_area", "Spawn Area", MetadataTraitKind::HasBounds2D, "bounds2.size"),
-            p!(live num
-                "spread_degrees",
-                "Spread Degrees",
-                EditorPropertyValueKind::Number,
-                EditorPropertyEditorKind::Number,
-                MetadataTraitKind::Renderable2D,
-                "render2d.content",
-                EDITOR_NUMBER_PARTICLE_DEGREES,
-                EditorRuntimeBindingTemplate::ParticleEmitterField
-            ),
-            p!(live num
-                "local_direction_degrees",
-                "Local Direction Degrees",
-                EditorPropertyValueKind::Number,
-                EditorPropertyEditorKind::Number,
-                MetadataTraitKind::Renderable2D,
-                "render2d.content",
-                EDITOR_NUMBER_PARTICLE_DEGREES,
-                EditorRuntimeBindingTemplate::ParticleEmitterField
-            ),
-            p!(live num
-                "lifetime_jitter",
-                "Lifetime Jitter",
-                EditorPropertyValueKind::Number,
-                EditorPropertyEditorKind::Number,
-                MetadataTraitKind::Renderable2D,
-                "render2d.content",
-                EDITOR_NUMBER_PARTICLE_SECONDS,
-                EditorRuntimeBindingTemplate::ParticleEmitterField
-            ),
-            p!(live num
-                "speed_jitter",
-                "Speed Jitter",
-                EditorPropertyValueKind::Number,
-                EditorPropertyEditorKind::Number,
-                MetadataTraitKind::Motion2D,
-                "motion2.tuning",
-                EDITOR_NUMBER_PARTICLE_SPEED,
-                EditorRuntimeBindingTemplate::ParticleEmitterField
-            ),
-            p!(ro "forces", "Forces", MetadataTraitKind::Motion2D, "motion2.tuning"),
-            p!(
-                "material",
-                "Material",
-                EditorPropertyValueKind::String,
-                EditorPropertyEditorKind::Text,
-                MetadataTraitKind::LightReceiver2D,
-                "render2d.lighting"
-            ),
-            p!(
-                "attached_to",
-                "Attached To",
-                EditorPropertyValueKind::String,
-                EditorPropertyEditorKind::Text,
-                MetadataTraitKind::Motion2D,
-                "motion2.attachment"
-            ),
-            p!(
-                "local_offset",
-                "Local Offset",
-                EditorPropertyValueKind::Vec2,
-                EditorPropertyEditorKind::Vec2,
-                MetadataTraitKind::HasBounds2D,
-                "bounds2.offset"
-            ),
-            p!(
-                "blend_mode",
-                "Blend Mode",
-                EditorPropertyValueKind::String,
-                EditorPropertyEditorKind::Text,
-                MetadataTraitKind::Renderable2D,
-                "render2d.content"
-            ),
-            p!(live num
-                "inherit_parent_velocity",
-                "Inherit Parent Velocity",
-                EditorPropertyValueKind::Number,
-                EditorPropertyEditorKind::Number,
-                MetadataTraitKind::Motion2D,
-                "motion2.tuning",
-                EDITOR_NUMBER_PARTICLE_VELOCITY_SCALE,
-                EditorRuntimeBindingTemplate::ParticleEmitterField
-            ),
-            p!(
-                "align",
-                "Align",
-                EditorPropertyValueKind::String,
-                EditorPropertyEditorKind::Text,
-                MetadataTraitKind::Renderable2D,
-                "render2d.content"
-            ),
-            p!(
-                "motion_stretch",
-                "Motion Stretch",
-                EditorPropertyValueKind::Number,
-                EditorPropertyEditorKind::Number,
-                MetadataTraitKind::Motion2D,
-                "motion2.tuning"
-            ),
-            p!(
-                "simulation_space",
-                "Simulation Space",
-                EditorPropertyValueKind::String,
-                EditorPropertyEditorKind::Text,
-                MetadataTraitKind::Renderable2D,
-                "render2d.content"
-            ),
-            p!(
-                "light",
-                "Light",
-                EditorPropertyValueKind::Bool,
-                EditorPropertyEditorKind::Checkbox,
-                MetadataTraitKind::Renderable2D,
-                "render2d.content"
-            ),
-            p!(
-                "line_anchor",
-                "Line Anchor",
-                EditorPropertyValueKind::String,
-                EditorPropertyEditorKind::Text,
-                MetadataTraitKind::Renderable2D,
-                "render2d.content"
-            ),
-            p!(
-                "velocity_mode",
-                "Velocity Mode",
-                EditorPropertyValueKind::String,
-                EditorPropertyEditorKind::Text,
-                MetadataTraitKind::Motion2D,
-                "motion2.tuning"
-            ),
-        ],
-        &[],
-        TransformPolicy::UsesEntityTransform2,
-        BoundsPolicy::SpawnArea2D {
-            field: "spawn_area",
-            size_field: "size",
-            fallback_width: 128,
-            fallback_height: 128,
-        },
-        &[EditorControlKind::Transform2D, EditorControlKind::Rect2D],
-        &[EditorPatchOpKind::SetTransform2],
-    )
-}
 pub fn tile_map_marker_2d_descriptor() -> ComponentTypeDescriptor {
     generic_component_descriptor(
-        ComponentKind::TileMapMarker2D,
+        "TileMapMarker2D",
         "TileMapMarker2D",
         "Tile Map Marker 2D",
         &[ComponentDomain::EditorOnly],
@@ -2402,7 +1457,7 @@ pub fn tile_map_marker_2d_descriptor() -> ComponentTypeDescriptor {
 }
 pub fn camera_follow_2d_descriptor() -> ComponentTypeDescriptor {
     generic_component_descriptor(
-        ComponentKind::CameraFollow2D,
+        "CameraFollow2D",
         "CameraFollow2D",
         "Camera Follow 2D",
         &[ComponentDomain::Camera],
@@ -2478,7 +1533,7 @@ pub fn camera_follow_2d_descriptor() -> ComponentTypeDescriptor {
 }
 pub fn parallax_2d_descriptor() -> ComponentTypeDescriptor {
     generic_component_descriptor(
-        ComponentKind::Parallax2D,
+        "Parallax2D",
         "Parallax2D",
         "Parallax 2D",
         &[ComponentDomain::Render2D, ComponentDomain::Camera],
@@ -2514,7 +1569,7 @@ pub fn parallax_2d_descriptor() -> ComponentTypeDescriptor {
 }
 pub fn freeflight_motion_2d_descriptor() -> ComponentTypeDescriptor {
     generic_component_descriptor(
-        ComponentKind::FreeflightMotion2D,
+        "FreeflightMotion2D",
         "FreeflightMotion2D",
         "Freeflight Motion 2D",
         &[ComponentDomain::Motion2D],
@@ -2603,7 +1658,7 @@ pub fn freeflight_motion_2d_descriptor() -> ComponentTypeDescriptor {
 }
 pub fn kinematic_body_2d_descriptor() -> ComponentTypeDescriptor {
     generic_component_descriptor(
-        ComponentKind::KinematicBody2D,
+        "KinematicBody2D",
         "KinematicBody2D",
         "Kinematic Body 2D",
         &[ComponentDomain::Motion2D, ComponentDomain::Physics2D],
@@ -2647,7 +1702,7 @@ pub fn kinematic_body_2d_descriptor() -> ComponentTypeDescriptor {
 }
 pub fn motion_controller_2d_descriptor() -> ComponentTypeDescriptor {
     generic_component_descriptor(
-        ComponentKind::MotionController2D,
+        "MotionController2D",
         "MotionController2D",
         "Motion Controller 2D",
         &[ComponentDomain::Motion2D],
@@ -2724,7 +1779,7 @@ pub fn motion_controller_2d_descriptor() -> ComponentTypeDescriptor {
 }
 pub fn projectile_emitter_2d_descriptor() -> ComponentTypeDescriptor {
     generic_component_descriptor(
-        ComponentKind::ProjectileEmitter2D,
+        "ProjectileEmitter2D",
         "ProjectileEmitter2D",
         "Projectile Emitter 2D",
         &[ComponentDomain::Motion2D, ComponentDomain::Data],
@@ -2777,7 +1832,7 @@ pub fn projectile_emitter_2d_descriptor() -> ComponentTypeDescriptor {
 }
 pub fn entity_pool_descriptor() -> ComponentTypeDescriptor {
     generic_data_descriptor(
-        ComponentKind::EntityPool,
+        "EntityPool",
         "EntityPool",
         "Entity Pool",
         &[
@@ -2799,7 +1854,7 @@ pub fn entity_pool_descriptor() -> ComponentTypeDescriptor {
 }
 pub fn bounds_2d_descriptor() -> ComponentTypeDescriptor {
     generic_component_descriptor(
-        ComponentKind::Bounds2D,
+        "Bounds2D",
         "Bounds2D",
         "Bounds 2D",
         &[ComponentDomain::EditorOnly],
@@ -2835,7 +1890,7 @@ pub fn bounds_2d_descriptor() -> ComponentTypeDescriptor {
 
 pub fn camera_3d_descriptor() -> ComponentTypeDescriptor {
     generic_component_descriptor(
-        ComponentKind::Camera3D,
+        "Camera3D",
         "Camera3D",
         "Camera 3D",
         &[ComponentDomain::Camera],
@@ -2857,7 +1912,7 @@ pub fn camera_3d_descriptor() -> ComponentTypeDescriptor {
 
 pub fn light_3d_descriptor() -> ComponentTypeDescriptor {
     generic_component_descriptor(
-        ComponentKind::Light3D,
+        "Light3D",
         "Light3D",
         "Light 3D",
         &[ComponentDomain::Render3D],
@@ -2884,7 +1939,7 @@ pub fn light_3d_descriptor() -> ComponentTypeDescriptor {
 
 pub fn mesh_3d_descriptor() -> ComponentTypeDescriptor {
     generic_component_descriptor(
-        ComponentKind::Mesh3D,
+        "Mesh3D",
         "Mesh3D",
         "Mesh 3D",
         &[ComponentDomain::Render3D],
@@ -2928,7 +1983,7 @@ pub fn mesh_3d_descriptor() -> ComponentTypeDescriptor {
 
 pub fn material_3d_descriptor() -> ComponentTypeDescriptor {
     generic_component_descriptor(
-        ComponentKind::Material3D,
+        "Material3D",
         "Material3D",
         "Material 3D",
         &[ComponentDomain::Render3D],
@@ -2989,7 +2044,7 @@ pub fn material_3d_descriptor() -> ComponentTypeDescriptor {
 
 pub fn text_3d_descriptor() -> ComponentTypeDescriptor {
     generic_component_descriptor(
-        ComponentKind::Text3D,
+        "Text3D",
         "Text3D",
         "Text 3D",
         &[ComponentDomain::Render3D],
@@ -3051,7 +2106,7 @@ pub fn text_3d_descriptor() -> ComponentTypeDescriptor {
 
 pub fn static_collider_2d_descriptor() -> ComponentTypeDescriptor {
     generic_component_descriptor(
-        ComponentKind::StaticCollider2D,
+        "StaticCollider2D",
         "StaticCollider2D",
         "Static Collider 2D",
         &[ComponentDomain::Physics2D],
@@ -3099,7 +2154,7 @@ pub fn static_collider_2d_descriptor() -> ComponentTypeDescriptor {
 
 pub fn depth_map_2d_descriptor() -> ComponentTypeDescriptor {
     ComponentTypeDescriptor {
-        kind: ComponentKind::DepthMap2D,
+        kind_id: "DepthMap2D",
         type_name: "DepthMap2D",
         label: "Depth Map 2D",
         domains: &[ComponentDomain::Render2D, ComponentDomain::Camera],
@@ -3187,7 +2242,7 @@ pub fn depth_map_2d_descriptor() -> ComponentTypeDescriptor {
 
 pub fn depth_aux_map_2d_descriptor() -> ComponentTypeDescriptor {
     ComponentTypeDescriptor {
-        kind: ComponentKind::DepthAuxMap2D,
+        kind_id: "DepthAuxMap2D",
         type_name: "DepthAuxMap2D",
         label: "Depth Aux Map 2D",
         domains: &[ComponentDomain::Render2D, ComponentDomain::Camera],
@@ -3273,7 +2328,7 @@ pub fn depth_aux_map_2d_descriptor() -> ComponentTypeDescriptor {
     }
 }
 
-/// Built-in legacy registry.
+/// Built-in registry for engine-owned descriptors.
 ///
 /// New plugin-owned component descriptors must be registered through
 /// ComponentMetadataProvider instead of being added here.
@@ -3288,7 +2343,6 @@ pub fn default_component_registry() -> ComponentRegistry {
         global_light_2d_descriptor(),
         beacon_light_2d_descriptor(),
         lightmap_2d_source_descriptor(),
-        tile_map_2d_descriptor(),
         trigger_2d_descriptor(),
         script_component_descriptor(),
         behavior_descriptor(),
@@ -3302,7 +2356,6 @@ pub fn default_component_registry() -> ComponentRegistry {
         circle_collider_2d_descriptor(),
         velocity_2d_descriptor(),
         lifetime_descriptor(),
-        particle_emitter_2d_descriptor(),
         tile_map_marker_2d_descriptor(),
         camera_follow_2d_descriptor(),
         parallax_2d_descriptor(),

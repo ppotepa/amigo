@@ -18,6 +18,37 @@ fn read_app_file(relative: &str) -> String {
         .unwrap_or_else(|error| panic!("failed to read {}: {error}", path.display()))
 }
 
+fn app_dependency_names(cargo: &str) -> Vec<&str> {
+    let mut in_dependency_section = false;
+    let mut dependencies = Vec::new();
+
+    for line in cargo.lines() {
+        let line = line.trim();
+        if line.starts_with('[') {
+            let section = line.trim_matches(&['[', ']'][..]);
+            in_dependency_section = section == "dependencies"
+                || section == "dev-dependencies"
+                || section == "build-dependencies"
+                || section.ends_with(".dependencies")
+                || section.ends_with(".dev-dependencies")
+                || section.ends_with(".build-dependencies");
+            continue;
+        }
+        if !in_dependency_section || line.is_empty() || line.starts_with('#') {
+            continue;
+        }
+
+        let Some(key) = line.split('=').next() else {
+            continue;
+        };
+        let key = key.trim().trim_matches('"');
+        let dependency = key.strip_suffix(".workspace").unwrap_or(key);
+        dependencies.push(dependency);
+    }
+
+    dependencies
+}
+
 fn assert_app_path_absent(relative: &str, message: &str) {
     let path = app_root().join(relative);
     assert!(!path.exists(), "{message}: {}", path.display());
@@ -103,6 +134,20 @@ fn app_cargo_does_not_depend_directly_on_domain_crates() {
         assert!(
             !cargo.contains(forbidden),
             "apps/app Cargo.toml must not depend directly on domain crate `{forbidden}`"
+        );
+    }
+}
+
+#[test]
+fn app_cargo_does_not_depend_directly_on_domain_plugins() {
+    let cargo = read_app_file("Cargo.toml");
+
+    for dependency in app_dependency_names(&cargo) {
+        let allowed = dependency == "amigo-plugin-api";
+        let domain_plugin = dependency.starts_with("amigo-") && dependency.ends_with("-plugin");
+        assert!(
+            allowed || !domain_plugin,
+            "apps/app Cargo.toml must not depend directly on domain plugin `{dependency}`"
         );
     }
 }

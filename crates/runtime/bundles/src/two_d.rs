@@ -1,13 +1,20 @@
+use std::fs;
+use std::path::Path;
+
 use amigo_2d_composition::Composition2dPlugin;
 use amigo_2d_physics::Physics2dPlugin;
 use amigo_beacon_light_2d_plugin::Beacon2dPlugin;
 use amigo_composite_plugin::PostFx2dPlugin;
-use amigo_core::AmigoResult;
+use amigo_core::{AmigoError, AmigoResult};
 use amigo_focus_depth_plugin::{DepthMap2dPlugin, FocusTargets2dRuntimePlugin};
 use amigo_layered_image_2d_plugin::LayeredImagePlugin;
 use amigo_light_2d_plugin::Lighting2dPlugin;
-use amigo_particles_2d_plugin::Particle2dPlugin;
+use amigo_particles_2d_plugin::{Particle2dPlugin, ParticleEmitter2d, ParticlePreset2d};
 use amigo_runtime::{PluginBundle, RuntimeBuilder, RuntimePlugin, ServiceRegistry};
+use amigo_scene::{
+    build_scene_hydration_plan, SceneCommand, SceneComponentDocument, SceneDocument,
+    SceneEntityDocument, SceneMetadataDocument,
+};
 use amigo_session::RuntimeSession;
 use amigo_shutter_motion_plugin::MOTION_2D_PLUGIN;
 use amigo_sprite_2d_plugin::SpritePlugin;
@@ -19,25 +26,160 @@ use amigo_vector_2d_plugin::Vector2dPlugin;
 use crate::render_extractor_bridges;
 use crate::render_extractor_registry::WgpuRenderExtractorBridgeRegistry;
 
-pub use amigo_shutter_motion_plugin::CANONICAL_MOTION_2D_RUNTIME_REPORT_LABEL;
-pub use amigo_particles_2d_plugin::{
-    Particle2dEmitterRuntimeInput, Particle2dSceneService, ParticleAlignMode2d,
-    ParticleBlendMode2d, ParticleEmitter2d, ParticleEmitter2dCommand, ParticleLineAnchor2d,
-    ParticleMaterial2d, ParticlePreset2d, ParticlePreset2dService, ParticleShape2d,
-    ParticleSimulationSpace2d, ParticleSpawnArea2d, ParticleVelocityMode2d,
-    tick_particles_2d_world,
-};
-pub use amigo_ui::{
-    UiDocument, UiInputService, UiStateService, collect_scene_ui_font_asset_keys,
-    handle_ui_script_command, process_ui_input, resolve_ui_overlay_documents,
-    scene_ui_document_to_runtime_document, tick_ui_bindings, UiDrawCommand, UiInputViewportState,
-    UiLayer, UiNode, UiNodeKind, UiSceneService, UiScriptCommandContext, UiStyle, UiTarget,
-    UiTheme, UiThemePalette, UiThemeService,
-};
-pub use amigo_layered_image_2d_plugin::{
-    LayeredImageScriptCommandContext, LayeredImageScriptCommandOutcome,
-    can_handle_layered_image_script_command, handle_layered_image_script_command,
-};
+pub fn load_particle_preset_file(source_mod: &str, path: &Path) -> AmigoResult<ParticlePreset2d> {
+    let raw = fs::read_to_string(path)?;
+    let document = serde_yaml::from_str::<serde_yaml::Value>(&raw).map_err(|error| {
+        AmigoError::Message(format!(
+            "failed to parse particle preset `{}`: {error}",
+            path.display()
+        ))
+    })?;
+    if string_field(&document, "kind") != Some("particle-preset-2d") {
+        return Err(AmigoError::Message(format!(
+            "particle preset `{}` must declare kind: particle-preset-2d",
+            path.display()
+        )));
+    }
+
+    let id = string_field(&document, "id")
+        .filter(|id| !id.is_empty())
+        .ok_or_else(|| {
+            AmigoError::Message(format!(
+                "particle preset `{}` must declare non-empty id",
+                path.display()
+            ))
+        })?
+        .to_owned();
+    let label = string_field(&document, "label")
+        .unwrap_or(id.as_str())
+        .to_owned();
+    let category = string_field(&document, "category")
+        .unwrap_or_default()
+        .to_owned();
+    let tags = string_sequence_field(&document, "tags");
+    let emitter_value = mapping_value(&document, "emitter").ok_or_else(|| {
+        AmigoError::Message(format!(
+            "particle preset `{}` must declare emitter",
+            path.display()
+        ))
+    })?;
+    let emitter_component = serde_yaml::from_value::<SceneComponentDocument>(emitter_value.clone())
+        .map_err(|error| {
+            AmigoError::Message(format!(
+                "failed to parse emitter in particle preset `{}`: {error}",
+                path.display()
+            ))
+        })?;
+    if !emitter_component.is_particle_emitter_2d() {
+        return Err(AmigoError::Message(format!(
+            "particle preset `{}` emitter must be type: ParticleEmitter2D",
+            path.display()
+        )));
+    }
+
+    let scene_document = SceneDocument {
+        version: 1,
+        scene: SceneMetadataDocument {
+            id: format!("particle-preset-{id}"),
+            label: label.clone(),
+            description: None,
+        },
+        transitions: Vec::new(),
+        collision_events: Vec::new(),
+        audio_cues: Vec::new(),
+        activation_sets: Vec::new(),
+        visual2d: Default::default(),
+        state: Default::default(),
+        entities: vec![SceneEntityDocument {
+            id: id.clone(),
+            name: format!("particle-preset-{id}"),
+            tags: Vec::new(),
+            groups: Vec::new(),
+            visible: false,
+            simulation_enabled: false,
+            collision_enabled: false,
+            properties: Default::default(),
+            transform2: None,
+            transform3: None,
+            post_fx: Vec::new(),
+            prefab: None,
+            prefab_overrides: Vec::new(),
+            components: vec![emitter_component],
+        }],
+    };
+    let plan = build_scene_hydration_plan(source_mod, &scene_document).map_err(|error| {
+        AmigoError::Message(format!(
+            "failed to hydrate particle preset `{}`: {error}",
+            path.display()
+        ))
+    })?;
+    let emitter = plan
+        .commands
+        .iter()
+        .find_map(|command| match command {
+            SceneCommand::Plugin { command } => command
+                .payload_as::<amigo_scene::ParticleEmitter2dSceneCommand>()
+                .map(ParticleEmitter2d::from_scene_command),
+            _ => None,
+        })
+        .ok_or_else(|| {
+            AmigoError::Message(format!(
+                "particle preset `{}` did not produce ParticleEmitter2D command",
+                path.display()
+            ))
+        })?;
+
+    Ok(ParticlePreset2d {
+        source_mod: source_mod.to_owned(),
+        id,
+        label,
+        category,
+        tags,
+        emitter,
+    })
+}
+
+pub fn tick_ui_bindings(runtime: &amigo_runtime::Runtime) -> AmigoResult<()> {
+    amigo_ui::tick_ui_bindings(runtime)
+}
+
+pub fn collect_scene_ui_font_asset_keys(
+    document: &amigo_scene::SceneUiDocument,
+) -> Vec<amigo_assets::AssetKey> {
+    amigo_ui::collect_scene_ui_font_asset_keys(document)
+}
+
+pub fn scene_ui_document_to_runtime_document(
+    document: &amigo_scene::SceneUiDocument,
+) -> amigo_ui::UiDocument {
+    amigo_ui::scene_ui_document_to_runtime_document(document)
+}
+
+fn string_field<'a>(value: &'a serde_yaml::Value, key: &str) -> Option<&'a str> {
+    value
+        .as_mapping()
+        .and_then(|mapping| mapping.get(serde_yaml::Value::String(key.to_owned())))
+        .and_then(serde_yaml::Value::as_str)
+}
+
+fn mapping_value<'a>(value: &'a serde_yaml::Value, key: &str) -> Option<&'a serde_yaml::Value> {
+    value
+        .as_mapping()
+        .and_then(|mapping| mapping.get(serde_yaml::Value::String(key.to_owned())))
+}
+
+fn string_sequence_field(value: &serde_yaml::Value, key: &str) -> Vec<String> {
+    mapping_value(value, key)
+        .and_then(serde_yaml::Value::as_sequence)
+        .map(|values| {
+            values
+                .iter()
+                .filter_map(serde_yaml::Value::as_str)
+                .map(str::to_owned)
+                .collect()
+        })
+        .unwrap_or_default()
+}
 
 pub struct TwoDRuntimeBundle;
 

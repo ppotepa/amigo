@@ -4,7 +4,9 @@
 use super::*;
 use crate::runtime_context::RuntimeContext;
 use crate::scene_runtime::current_loaded_scene_document_summary;
-use amigo_runtime_bundles::{SpriteSceneService, SpriteSheet, TileMap2dSceneService};
+use amigo_runtime_bundles::prepare_loaded_asset_domain_metadata;
+use amigo_runtime_bundles::{SpriteSceneService, SpriteSheet};
+use amigo_runtime_bundles::TileMap2dSceneService;
 
 pub(super) fn process_pending_asset_loads(runtime: &Runtime) -> AmigoResult<()> {
     let ctx = RuntimeContext::new(runtime);
@@ -50,13 +52,9 @@ pub(super) fn process_pending_asset_loads(runtime: &Runtime) -> AmigoResult<()> 
                             request.key.as_str()
                         ));
                     } else {
-                        sync_sprite_sheet_metadata(
+                        prepare_loaded_asset_domain_metadata(
                             asset_catalog.as_ref(),
                             sprite_scene_service.as_ref(),
-                            &loaded_asset.key,
-                        );
-                        sync_tile_ruleset_metadata(
-                            asset_catalog.as_ref(),
                             tilemap_scene_service.as_ref(),
                             &loaded_asset.key,
                         );
@@ -98,35 +96,6 @@ pub(super) fn process_pending_asset_loads(runtime: &Runtime) -> AmigoResult<()> 
     Ok(())
 }
 
-fn sync_sprite_sheet_metadata(
-    asset_catalog: &AssetCatalog,
-    sprite_scene_service: &SpriteSceneService,
-    asset_key: &AssetKey,
-) {
-    let Some(prepared) = asset_catalog.prepared_asset(asset_key) else {
-        return;
-    };
-    let Some(sheet) = amigo_runtime_bundles::infer_sprite_sheet_from_prepared_asset(&prepared)
-    else {
-        return;
-    };
-    sprite_scene_service.sync_sheet_for_texture(asset_key, sheet);
-}
-
-fn sync_tile_ruleset_metadata(
-    asset_catalog: &AssetCatalog,
-    tilemap_scene_service: &TileMap2dSceneService,
-    asset_key: &AssetKey,
-) {
-    let Some(prepared) = asset_catalog.prepared_asset(asset_key) else {
-        return;
-    };
-    let Some(ruleset) = amigo_runtime_bundles::infer_tile_ruleset_from_prepared_asset(&prepared)
-    else {
-        return;
-    };
-    tilemap_scene_service.sync_ruleset_for_asset(asset_key, &ruleset);
-}
 #[allow(dead_code)]
 pub(super) fn resolve_sprite_sheet_for_command(
     asset_catalog: &AssetCatalog,

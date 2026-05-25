@@ -1,7 +1,7 @@
 # Third-Party Notices
 
-This repository contains original code and content, plus implementations that were
-developed with direct reference to upstream open-source work.
+This repository contains original code and content, plus implementations that
+were developed with direct reference to upstream open-source work.
 
 ## RainGlass effect reference
 

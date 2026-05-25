@@ -1,10 +1,6 @@
 use super::*;
-use amigo_camera::{
-    CameraOpticalCandidate2d, CameraOpticalCoverage2d,
-};
-use amigo_render_api::{
-    CameraOpticalRenderTargetPlan, RenderPrimitive2d, Renderable2dItem,
-};
+use amigo_camera::{CameraOpticalCandidate2d, CameraOpticalCoverage2d};
+use amigo_render_api::{CameraOpticalRenderTargetPlan, Renderable2dItem};
 
 pub(super) fn render_procedural_material_buffer(
     renderer: &mut WgpuSceneRenderer,
@@ -15,7 +11,7 @@ pub(super) fn render_procedural_material_buffer(
 ) -> AmigoResult<()> {
     renderer.clear_offscreen_to_color(
         target,
-        util::color_to_wgpu(crate::renderer::service::fallback_color_for(kind)),
+        util::color_to_wgpu(crate::renderer::service::missing_debug_color_for(kind)),
     )
 }
 
@@ -42,7 +38,13 @@ pub(super) fn append_procedural_material_buffers(
     if optical_plan
         .as_ref()
         .is_some_and(|plan| plan.accepts_color_candidates)
-        && append_camera_optical_candidate_color_buffers(color_batches, request, viewport, camera, kind)
+        && append_camera_optical_candidate_color_buffers(
+            color_batches,
+            request,
+            viewport,
+            camera,
+            kind,
+        )
     {
         return;
     }
@@ -86,92 +88,29 @@ fn append_renderable_material_proxy(
         return;
     }
 
-    match &item.primitive {
-        RenderPrimitive2d::VectorMesh(primitive) => {
-            let source_color = primitive
-                .style
-                .fill_color
-                .unwrap_or(primitive.style.stroke_color);
-            let color = material_color_for_kind(kind, source_color);
-            crate::renderer::world_2d::append_vector_primitive_vertices(
-                color_batch_vertices(color_batches, ParticleBlendMode2d::Alpha),
-                viewport,
-                camera,
-                primitive,
-                None,
-                Some(color),
-                Some(color),
-            );
-        }
-        _ => {}
-    }
+    // Vector/material coverage needs explicit candidate geometry; do not proxy it
+    // from render primitive shape in the visual-source path.
 }
 
 pub(super) fn append_camera_optical_candidate_texture_buffers(
-    renderer: &mut WgpuSceneRenderer,
-    texture_batches: &mut Vec<TextureBatch>,
-    target: &WgpuOffscreenTarget,
-    request: &WgpuFrameRenderRequest<'_>,
-    viewport: &Viewport,
-    camera: Transform2,
+    _renderer: &mut WgpuSceneRenderer,
+    _texture_batches: &mut Vec<TextureBatch>,
+    _target: &WgpuOffscreenTarget,
+    _request: &WgpuFrameRenderRequest<'_>,
+    _viewport: &Viewport,
+    _camera: Transform2,
     kind: amigo_render_api::VisualSourceKind2d,
 ) -> bool {
-    let Some(plan) =
-        CameraOpticalRenderTargetPlan::for_visual_kind_name(kind.as_str())
-    else {
+    let Some(plan) = CameraOpticalRenderTargetPlan::for_visual_kind_name(kind.as_str()) else {
         return false;
     };
     if !plan.accepts_texture_candidates {
         return false;
     };
 
-    let mut appended = false;
-    for candidate in request
-        .world_2d
-        .camera_optical_candidates
-        .iter()
-        .filter(|candidate| candidate.is_active())
-    {
-        let Some((source, channel)) = lightmap_channel_parts(&candidate.coverage)
-        else {
-            continue;
-        };
-        let Some(lightmap) = request
-            .world_2d
-            .lightmaps
-            .iter()
-            .find(|lightmap| &lightmap.source_id == source)
-        else {
-            continue;
-        };
-        let Some(channel) = lightmap.channels.iter().find(|entry| &entry.id == channel) else {
-            continue;
-        };
-        let Some(layered) = request
-            .world_2d
-            .renderables
-            .iter()
-            .find(|item| item.owner_entity() == lightmap.source.entity_name)
-            .and_then(|item| item.primitive.layered_textured_quads())
-        else {
-            continue;
-        };
-        let included_parts = channel.layers.iter().cloned().collect::<std::collections::BTreeSet<_>>();
-        appended |= renderer.append_layered_image_texture_batches_filtered_tinted(
-            texture_batches,
-            &target.device,
-            &target.queue,
-            request.assets,
-            viewport,
-            camera,
-            layered,
-            Some(&included_parts),
-            None,
-            false,
-            optical_candidate_color_for_kind(candidate, kind),
-        );
-    }
-    appended
+    // LightMapChannel candidates do not yet carry a backend drawable. Skip until
+    // the candidate contract provides explicit texture source data.
+    false
 }
 
 fn append_camera_optical_candidate_color_buffers(
@@ -181,12 +120,15 @@ fn append_camera_optical_candidate_color_buffers(
     camera: Transform2,
     kind: amigo_render_api::VisualSourceKind2d,
 ) -> bool {
+    let Some(plan) = CameraOpticalRenderTargetPlan::for_visual_kind_name(kind.as_str()) else {
+        return false;
+    };
     let mut appended = false;
     for candidate in request
         .world_2d
         .camera_optical_candidates
         .iter()
-        .filter(|candidate| candidate.is_active())
+        .filter(|candidate| candidate.is_active() && candidate_targets_plan(candidate, &plan))
     {
         let color = optical_candidate_color_for_kind(candidate, kind);
         match &candidate.coverage {
@@ -213,11 +155,9 @@ fn append_camera_optical_candidate_color_buffers(
                 emitter_entity_name,
             } => {
                 for renderable in request.world_2d.renderables.iter().filter(|item| {
-                    item.primitive
-                        .particle_batch()
-                        .is_some_and(|primitive| {
-                            &primitive.emitter_entity_name == emitter_entity_name
-                        })
+                    item.primitive.particle_batch().is_some_and(|primitive| {
+                        &primitive.emitter_entity_name == emitter_entity_name
+                    })
                 }) {
                     let Some(command) = renderable.primitive.particle_batch() else {
                         continue;
@@ -238,74 +178,22 @@ fn append_camera_optical_candidate_color_buffers(
                 }
             }
             CameraOpticalCoverage2d::Glyphs {
-                entity_name,
-                render_layer,
+                entity_name: _,
+                render_layer: _,
             } => {
-                for renderable in request.world_2d.renderables.iter().filter(|item| {
-                    item.owner_entity() == entity_name
-                        && item.render_layer() == render_layer
-                        && item.primitive.glyph_run().is_some()
-                }) {
-                    let Some(command) = renderable.primitive.glyph_run() else {
-                        continue;
-                    };
-                    util::append_visual_quad(
-                        color_batches,
-                        viewport,
-                        camera,
-                        command.transform,
-                        command.bounds,
-                        color,
-                    );
-                    appended = true;
-                }
+                // Requires explicit candidate geometry before the backend can draw it.
             }
             CameraOpticalCoverage2d::TextureAlpha {
-                entity_name,
-                render_layer,
+                entity_name: _,
+                render_layer: _,
             } => {
-                for renderable in request.world_2d.renderables.iter().filter(|item| {
-                    item.owner_entity() == entity_name
-                        && item.render_layer() == render_layer
-                        && item.primitive.textured_quad().is_some()
-                }) {
-                    let Some(command) = renderable.primitive.textured_quad() else {
-                        continue;
-                    };
-                    util::append_visual_quad(
-                        color_batches,
-                        viewport,
-                        camera,
-                        command.transform,
-                        command.size,
-                        color,
-                    );
-                    appended = true;
-                }
+                // Requires explicit candidate geometry before the backend can draw it.
             }
             CameraOpticalCoverage2d::VectorCoverage {
-                entity_name,
-                render_layer,
+                entity_name: _,
+                render_layer: _,
             } => {
-                for renderable in request.world_2d.renderables.iter().filter(|item| {
-                    item.owner_entity() == entity_name
-                        && item.render_layer() == render_layer
-                        && item.primitive.vector_mesh().is_some()
-                }) {
-                    let Some(command) = renderable.primitive.vector_mesh() else {
-                        continue;
-                    };
-                    crate::renderer::world_2d::append_vector_primitive_vertices(
-                        color_batch_vertices(color_batches, ParticleBlendMode2d::Alpha),
-                        viewport,
-                        camera,
-                        command,
-                        None,
-                        Some(color),
-                        Some(color),
-                    );
-                    appended = true;
-                }
+                // Requires explicit candidate geometry before the backend can draw it.
             }
             coverage if coverage_uses_texture_path(coverage) => {
                 // Texture-backed LightMapChannel candidates are handled by
@@ -320,13 +208,21 @@ fn append_camera_optical_candidate_color_buffers(
     appended
 }
 
+fn candidate_targets_plan(
+    candidate: &CameraOpticalCandidate2d,
+    plan: &CameraOpticalRenderTargetPlan,
+) -> bool {
+    candidate
+        .target_ids
+        .iter()
+        .any(|candidate_target| candidate_target == &plan.target)
+}
+
 fn optical_candidate_color_for_kind(
     candidate: &CameraOpticalCandidate2d,
     kind: amigo_render_api::VisualSourceKind2d,
 ) -> ColorRgba {
-    let Some(plan) =
-        CameraOpticalRenderTargetPlan::for_visual_kind_name(kind.as_str())
-    else {
+    let Some(plan) = CameraOpticalRenderTargetPlan::for_visual_kind_name(kind.as_str()) else {
         return ColorRgba::new(0.0, 0.0, 0.0, candidate.color_rgba[3]);
     };
     let rgba = optical_candidate_color_rgba_for_target(candidate, &plan.target);
@@ -335,15 +231,6 @@ fn optical_candidate_color_for_kind(
 
 fn coverage_uses_texture_path(coverage: &CameraOpticalCoverage2d) -> bool {
     matches!(coverage, CameraOpticalCoverage2d::LightMapChannel { .. })
-}
-
-fn lightmap_channel_parts(coverage: &CameraOpticalCoverage2d) -> Option<(&str, &str)> {
-    match coverage {
-        CameraOpticalCoverage2d::LightMapChannel { source, channel } => {
-            Some((source.as_str(), channel.as_str()))
-        }
-        _ => None,
-    }
 }
 
 fn optical_candidate_color_rgba_for_target(
@@ -377,14 +264,23 @@ fn optical_candidate_color_rgba_for_target(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use amigo_camera::{CameraOpticalCandidateStatus2d, CameraOpticalResponse2d};
+    use amigo_render_api::{scene_emissive_target_id, scene_highlight_target_id};
     fn candidate(roles: &[&str]) -> CameraOpticalCandidate2d {
-        let roles =
-            amigo_render_api::RenderContributionSet::from_pairs(roles.iter().map(|role| (*role, true)));
+        let roles = amigo_render_api::RenderContributionSet::from_pairs(
+            roles.iter().map(|role| (*role, true)),
+        );
         let mut target_ids = Vec::new();
-        if roles.enabled_or(amigo_render_api::render_contribution_roles::CAMERA_FX_SOURCE, false) {
+        if roles.enabled_or(
+            amigo_render_api::render_contribution_roles::CAMERA_FX_SOURCE,
+            false,
+        ) {
             target_ids.push(scene_highlight_target_id());
         }
-        if roles.enabled_or(amigo_render_api::render_contribution_roles::BLOOM_SOURCE, false) {
+        if roles.enabled_or(
+            amigo_render_api::render_contribution_roles::BLOOM_SOURCE,
+            false,
+        ) {
             target_ids.push(scene_emissive_target_id());
         }
         CameraOpticalCandidate2d {
@@ -447,17 +343,6 @@ mod tests {
         assert_eq!(color.g, 0.0);
         assert_eq!(color.b, 0.0);
         assert!((color.a - 0.8).abs() < 0.001);
-    }
-
-    #[test]
-    fn lightmap_channel_candidate_resolves_source_and_channel() {
-        let candidate = candidate(&[amigo_render_api::render_contribution_roles::CAMERA_FX_SOURCE]);
-        let Some((source, channel)) = lightmap_channel_parts(&candidate.coverage)
-        else {
-            panic!("expected lightmap channel coverage");
-        };
-        assert_eq!(source, "neon-alley-lightmap");
-        assert_eq!(channel, "mid_neon");
     }
 }
 

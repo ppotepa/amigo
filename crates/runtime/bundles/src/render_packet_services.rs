@@ -1,35 +1,8 @@
-pub use amigo_2d_composition::{
-    LightRoute2dSceneService, RenderLayer2dSceneService,
-};
-pub use amigo_3d_material::{Material3d, MaterialDrawCommand, MaterialSceneService};
-pub use amigo_material_api::MaterialCoverageKind2d;
-pub use amigo_3d_mesh::{Mesh3d, MeshDrawCommand, MeshSceneService};
-pub use amigo_3d_text::{Text3d, Text3dDrawCommand, Text3dSceneService};
-pub use amigo_composite_plugin::{
-    Crt2d, DirtyBloom2d, FilmNoise2d, PostFx2d, PostFx2dService, PostFx2dStack, PostFxBlur2d,
-    PostFxLensDroplets2d, PostFxWetReflections2d, ScopedPostFx2dStack,
-};
-pub use amigo_beacon_light_2d_plugin::BeaconLight2dSceneService;
-pub use amigo_layered_image_2d_plugin::{
-    LayeredImageBlendMode2d, LayeredImageDrawCommand, LayeredImageInstance,
-    LayeredImageSceneService, LayeredImageViewportFit2d,
-};
-pub use amigo_light_2d_plugin::{
-    GlobalLight2dSceneService, LightGroup2dSceneService, LightMap2dSceneService,
-    Material2dLightingMode,
-};
-pub use amigo_sprite_2d_plugin::{Sprite, SpriteDrawCommand, SpriteSceneService, SpriteSheet};
-pub use amigo_text_2d_plugin::{Text2d, Text2dDrawCommand, Text2dSceneService, Text2dStyle};
-pub use amigo_tilemap_2d_plugin::{
-    TileMap2d, TileMap2dDrawCommand, TileMap2dSceneService, TileVariantKind2d,
-};
-pub use amigo_vector_2d_plugin::{
-    VectorSceneService, VectorShape2d, VectorShape2dDrawCommand, VectorShapeKind2d,
-    VectorStyle2d, VectorViewportFit2d,
-};
-
+use amigo_2d_composition::{LightRoute2dSceneService, RenderLayer2dSceneService};
 use amigo_render_wgpu::WgpuRenderFramePacket;
 use amigo_scene::Sprite2dSceneCommand;
+use amigo_sprite_2d_plugin::{SpriteSceneService, SpriteSheet};
+use amigo_tilemap_2d_plugin::TileMap2dSceneService;
 
 pub fn infer_sprite_sheet_from_prepared_asset(
     prepared: &amigo_assets::PreparedAsset,
@@ -41,6 +14,23 @@ pub fn infer_tile_ruleset_from_prepared_asset(
     prepared: &amigo_assets::PreparedAsset,
 ) -> Option<amigo_tilemap_2d_plugin::TileRuleSet2d> {
     amigo_tilemap_2d_plugin::infer_tile_ruleset_from_prepared_asset(prepared)
+}
+
+pub fn prepare_loaded_asset_domain_metadata(
+    asset_catalog: &amigo_assets::AssetCatalog,
+    sprite_scene_service: &SpriteSceneService,
+    tilemap_scene_service: &TileMap2dSceneService,
+    asset_key: &amigo_assets::AssetKey,
+) {
+    let Some(prepared) = asset_catalog.prepared_asset(asset_key) else {
+        return;
+    };
+    if let Some(sheet) = infer_sprite_sheet_from_prepared_asset(&prepared) {
+        sprite_scene_service.sync_sheet_for_texture(asset_key, sheet);
+    }
+    if let Some(ruleset) = infer_tile_ruleset_from_prepared_asset(&prepared) {
+        tilemap_scene_service.sync_ruleset_for_asset(asset_key, &ruleset);
+    }
 }
 
 pub fn resolve_sprite_sheet_for_command(

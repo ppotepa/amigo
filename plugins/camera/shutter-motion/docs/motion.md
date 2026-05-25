@@ -1,23 +1,15 @@
-# amigo-shutter-motion-plugin
+# Shutter Motion Runtime
 
-2D movement controllers and projectile helpers.
+The runtime side of this plugin owns reusable 2D motion services.
 
-## Responsibility
-- Platformer-style motion controller state.
-- Freeflight motion.
-- Velocity stepping.
-- Bounds handling.
-- Projectile emitter launch helpers.
+## Responsibilities
+- Queue and update platformer-style motion controllers.
+- Queue and update freeflight controllers.
+- Step velocity and bounds behavior.
+- Launch projectiles from authored emitters.
+- Publish scene events for queued motion and lifecycle outcomes.
 
-## Not here
-- Collision resolution.
-- Input mapping.
-- Rendering.
-
-## Depends on
-- amigo-2d-physics.
-- amigo-core.
-- amigo-math.
-- amigo-runtime.
-- amigo-capabilities.
-- amigo-scene.
+## Boundaries
+- Collision resolution belongs to physics.
+- Input mapping belongs to input actions.
+- Motion blur target planning belongs to the shutter contribution pipeline.

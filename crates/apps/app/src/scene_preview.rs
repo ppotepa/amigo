@@ -1,21 +1,9 @@
 use std::path::PathBuf;
 
-use amigo_assets::AssetCatalog;
 use amigo_core::{AmigoError, AmigoResult};
-use amigo_input_api::InputState;
-use amigo_render_wgpu::{
-    UiViewportSize, WgpuOffscreenTarget, WgpuRenderBackend, WgpuSceneRenderer,
-};
+use amigo_render_wgpu::{WgpuOffscreenTarget, WgpuRenderBackend, WgpuSceneRenderer};
 use amigo_runtime::Runtime;
 use amigo_runtime::{SystemPhase, SystemRegistry};
-use amigo_runtime_bundles::{
-    LightGroup2dSceneService, LightMap2dSceneService, LightRoute2dSceneService,
-    MaterialSceneService, MeshSceneService,
-    PostFx2dService, RenderLayer2dSceneService, Text3dSceneService, UiInputService,
-    UiInputViewportState, UiSceneService, UiStateService, UiThemeService,
-};
-use amigo_render_api::RenderContribution2d;
-use amigo_scene::SceneService;
 
 use crate::{BootstrapOptions, BootstrapSummary, bootstrap_session_with_options};
 
@@ -118,11 +106,11 @@ impl ScenePreviewHost {
             let summary = bootstrap.summary().clone();
             let (session, _) = bootstrap.into_parts();
             let runtime = session.into_runtime();
-            crate::runtime_context::required::<UiInputViewportState>(&runtime)?
-            .set(Some(UiViewportSize::new(
+            amigo_runtime_bundles::set_runtime_ui_viewport_state(
+                &runtime,
                 self.options.width as f32,
                 self.options.height as f32,
-            )));
+            )?;
             self.runtime = Some(runtime);
             self.summary = Some(summary);
         }
@@ -228,12 +216,7 @@ impl ScenePreviewHost {
             systems.run_phase(SystemPhase::FixedUpdate, runtime)?;
             systems.run_phase(SystemPhase::Update, runtime)?;
             systems.run_phase(SystemPhase::PostUpdate, runtime)?;
-            if let Some(input_state) = runtime.resolve::<InputState>() {
-                input_state.clear_frame_transients();
-            }
-            if let Some(ui_input) = runtime.resolve::<UiInputService>() {
-                ui_input.clear_frame_transients();
-            }
+            amigo_runtime_bundles::clear_runtime_frame_transients(runtime);
             crate::summary::refresh_runtime_summary(runtime)?
         };
         self.summary = Some(updated);
@@ -245,110 +228,23 @@ impl ScenePreviewHost {
         let height = self.options.height;
         self.ensure_offscreen(width, height)?;
 
-        let runtime = self.runtime()?;
-        let scene = crate::runtime_context::required::<SceneService>(runtime)?;
-        let assets = crate::runtime_context::required::<AssetCatalog>(runtime)?;
-        let render_layers =
-            crate::runtime_context::required::<RenderLayer2dSceneService>(runtime)?;
-        let light_routes =
-            crate::runtime_context::required::<LightRoute2dSceneService>(runtime)?;
-        let _ = crate::runtime_context::required::<LightMap2dSceneService>(runtime)?;
-        let _ = crate::runtime_context::required::<LightGroup2dSceneService>(runtime)?;
-        let _ = crate::runtime_context::required::<MeshSceneService>(runtime)?;
-        let _ = crate::runtime_context::required::<Text3dSceneService>(runtime)?;
-        let _ = crate::runtime_context::required::<MaterialSceneService>(runtime)?;
-        let _ = crate::runtime_context::required::<UiSceneService>(runtime)?;
-        let _ = crate::runtime_context::required::<UiStateService>(runtime)?;
-        let _ = crate::runtime_context::required::<UiThemeService>(runtime)?;
-        let _ = crate::runtime_context::required::<PostFx2dService>(runtime)?;
-        let _ = crate::runtime_context::required::<amigo_scripting_api::DevConsoleState>(runtime)?;
-        let _ =
-            crate::runtime_context::required::<amigo_devtools::ConsoleCompletionState>(runtime)?;
-        let _ =
-            crate::runtime_context::required::<crate::debug_overlay::DebugOverlayService>(runtime)?;
-        let _ = crate::runtime_context::required::<UiInputViewportState>(runtime)?;
-        let render_packet = amigo_runtime_bundles::default_wgpu_render_extractor_registry_for_runtime(
-            runtime,
-        )
-        .extract_all(runtime);
+        let runtime = self.runtime.as_ref().ok_or_else(|| {
+            AmigoError::Message("scene preview runtime is not bootstrapped".to_owned())
+        })?;
         let emergency_overlay = crate::render_runtime::emergency_overlay_lines(runtime);
 
         let offscreen = self.offscreen.as_mut().ok_or_else(|| {
             AmigoError::Message("scene preview offscreen is not initialized".to_owned())
         })?;
 
-        let composition_plan = crate::render_runtime::WgpuFrameCompositionBuilder::build_for_target(
-            &render_packet,
-            amigo_render_api::RenderTargetPlan::Offscreen {
-                width: offscreen.target.width,
-                height: offscreen.target.height,
+        amigo_runtime_bundles::render_wgpu_runtime_frame_to_offscreen(
+            amigo_runtime_bundles::WgpuOffscreenRuntimeFrameInput {
+                runtime,
+                target: &mut offscreen.target,
+                renderer: &mut offscreen.renderer,
+                emergency_overlay: emergency_overlay.as_slice(),
             },
-        );
-        let frame_graph = crate::render_runtime::build_frame_graph_from_plan(
-            &composition_plan,
-            crate::render_runtime::FrameGraphBuildInfo {
-                width: offscreen.target.width,
-                height: offscreen.target.height,
-            },
-        );
-        let extracted_render_layer_commands = render_layers.commands();
-        let extracted_light_route_commands = light_routes.commands();
-        let render_lightmaps_2d = render_packet
-            .render_contributions_2d()
-            .iter()
-            .filter_map(RenderContribution2d::as_lightmap_2d)
-            .cloned()
-            .collect::<Vec<_>>();
-        let render_depth_maps_2d = render_packet
-            .render_contributions_2d()
-            .iter()
-            .filter_map(RenderContribution2d::as_depth_map_2d)
-            .cloned()
-            .collect::<Vec<_>>();
-        let render_depth_aux_maps_2d = render_packet
-            .render_contributions_2d()
-            .iter()
-            .filter_map(RenderContribution2d::as_depth_aux_map_2d)
-            .cloned()
-            .collect::<Vec<_>>();
-        let camera_optical_candidates =
-            amigo_runtime_bundles::render_extractor_bridges::collect_camera_optical_candidates_from_light_sources_2d(
-                render_packet.world_2d_light_sources(),
-            );
-        let render_request = amigo_render_wgpu::WgpuFrameRenderRequest {
-            target: amigo_render_wgpu::WgpuFrameRenderTarget::Offscreen(&mut offscreen.target),
-            scene: scene.as_ref(),
-            assets: assets.as_ref(),
-            world_2d: amigo_render_wgpu::WgpuWorld2dRenderInput {
-                renderables: render_packet.renderables_2d(),
-                depth_maps: render_depth_maps_2d.as_slice(),
-                depth_aux_maps: render_depth_aux_maps_2d.as_slice(),
-                lightmaps: render_lightmaps_2d.as_slice(),
-                light_sources: render_packet.world_2d_light_sources(),
-                camera_optical_candidates: camera_optical_candidates.as_slice(),
-                render_layers: extracted_render_layer_commands.as_slice(),
-                light_routes: extracted_light_route_commands.as_slice(),
-            },
-            world_3d: amigo_render_wgpu::WgpuWorld3dRenderInput {
-                meshes: render_packet.world_3d_meshes(),
-                materials: render_packet.world_3d_materials(),
-                text3d: Some(render_packet.world_3d_text()),
-            },
-            game_ui: render_packet.game_ui_overlay(),
-            debug_ui: render_packet.debug_overlay(),
-            post_fx_stacks: render_packet.post_fx_stacks(),
-            active_camera_2d_entity: render_packet.active_camera_2d_entity(),
-            camera_capture_input_2d: render_packet.camera_capture_input_2d(),
-            visual_source_flags_2d: Some(render_packet.visual_source_flags_2d()),
-            camera_debug_view: render_packet
-                .camera_debug_view_2d()
-                .unwrap_or_else(amigo_render_api::CameraDebugView2d::final_output),
-            emergency_overlay: emergency_overlay.as_slice(),
-            composition_plan: &composition_plan,
-            frame_graph: &frame_graph,
-            game_viewport: None,
-        };
-        offscreen.renderer.render_frame_request(render_request)?;
+        )?;
 
         offscreen.target.read_rgba8()
     }

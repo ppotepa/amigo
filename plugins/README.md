@@ -1,30 +1,34 @@
-# Plugin documentation index
+# Plugins
 
-- [`camera-camera-core`](camera-camera-core.md) — `plugins/camera/camera-core` / `amigo-camera-core-plugin` / `amigo.camera.camera-core` / camera/bundle
-- [`camera-camera-optics`](camera-camera-optics.md) — `plugins/camera/camera-optics` / `amigo-camera-optics-plugin` / `amigo.camera.camera-optics` / camera/target-consumer
-- [`camera-camera-profiles`](camera-camera-profiles.md) — `plugins/camera/camera-profiles` / `amigo-camera-profiles-plugin` / `amigo.camera.camera-profiles` / camera/bundle
-- [`camera-film-look`](camera-film-look.md) — `plugins/camera/film-look` / `amigo-film-look-plugin` / `amigo.camera.film-look` / camera/target-consumer
-- [`camera-focus-depth`](camera-focus-depth.md) — `plugins/camera/focus-depth` / `amigo-focus-depth-plugin` / `amigo.camera.focus-depth` / camera/target-consumer
-- [`camera-shutter-motion`](camera-shutter-motion.md) — `plugins/camera/shutter-motion` / `amigo-shutter-motion-plugin` / `amigo.camera.shutter-motion` / camera/target-consumer
-- [`devtools-codemap`](devtools-codemap.md) — `plugins/devtools/codemap` / `amigo-codemap-plugin` / `amigo.devtools.codemap` / devtools/tooling
-- [`gameplay-behavior`](gameplay-behavior.md) — `plugins/gameplay/behavior` / `amigo-behavior` / `(missing)` / gameplay/(missing)
-- [`gfx-layered-image-2d`](gfx-layered-image-2d.md) — `plugins/gfx/layered-image-2d` / `amigo-layered-image-2d-plugin` / `amigo.gfx.layered-image-2d` / gfx/renderable-source
-- [`gfx-sprite-2d`](gfx-sprite-2d.md) — `plugins/gfx/sprite-2d` / `amigo-sprite-2d-plugin` / `amigo.gfx.sprite-2d` / gfx/renderable-source
-- [`gfx-text-2d`](gfx-text-2d.md) — `plugins/gfx/text-2d` / `amigo-text-2d-plugin` / `amigo.gfx.text-2d` / gfx/renderable-source
-- [`gfx-tilemap-2d`](gfx-tilemap-2d.md) — `plugins/gfx/tilemap-2d` / `amigo-tilemap-2d-plugin` / `amigo.gfx.tilemap-2d` / gfx/renderable-source
-- [`gfx-vector-2d`](gfx-vector-2d.md) — `plugins/gfx/vector-2d` / `amigo-vector-2d-plugin` / `amigo.gfx.vector-2d` / gfx/renderable-source
-- [`lighting-beacon-light-2d`](lighting-beacon-light-2d.md) — `plugins/lighting/beacon-light-2d` / `amigo-beacon-light-2d-plugin` / `amigo.lighting.beacon-light-2d` / lighting/semantic-source
-- [`lighting-light-2d`](lighting-light-2d.md) — `plugins/lighting/light-2d` / `amigo-light-2d-plugin` / `amigo.lighting.light-2d` / lighting/semantic-source
-- [`lighting-light-groups-2d`](lighting-light-groups-2d.md) — `plugins/lighting/light-groups-2d` / `amigo-light-groups-2d-plugin` / `amigo.lighting.light-groups-2d` / lighting/semantic-source
-- [`lighting-lightmaps-2d`](lighting-lightmaps-2d.md) — `plugins/lighting/lightmaps-2d` / `amigo-lightmaps-2d-plugin` / `amigo.lighting.lightmaps-2d` / lighting/semantic-source
-- [`lighting-relight-2d`](lighting-relight-2d.md) — `plugins/lighting/relight-2d` / `amigo-relight-2d-plugin` / `amigo.lighting.relight-2d` / lighting/target-consumer
-- [`materials-material-2d`](materials-material-2d.md) — `plugins/materials/material-2d` / `amigo-material-2d-plugin` / `amigo.materials.material-2d` / materials/semantic-source
-- [`materials-material-maps`](materials-material-maps.md) — `plugins/materials/material-maps` / `amigo-material-maps-plugin` / `amigo.materials.material-maps` / materials/target-consumer
-- [`materials-procedural-materials`](materials-procedural-materials.md) — `plugins/materials/procedural-materials` / `amigo-procedural-materials-plugin` / `amigo.materials.procedural-materials` / materials/target-consumer
-- [`postfx-bloom`](postfx-bloom.md) — `plugins/postfx/bloom` / `amigo-bloom-plugin` / `amigo.postfx.bloom` / postfx/target-consumer
-- [`postfx-color-grading`](postfx-color-grading.md) — `plugins/postfx/color-grading` / `amigo-color-grading-plugin` / `amigo.postfx.color-grading` / postfx/target-consumer
-- [`postfx-composite`](postfx-composite.md) — `plugins/postfx/composite` / `amigo-composite-plugin` / `amigo.postfx.composite` / postfx/target-consumer
-- [`postfx-debug-views`](postfx-debug-views.md) — `plugins/postfx/debug-views` / `amigo-debug-views-plugin` / `amigo.postfx.debug-views` / postfx/tooling
-- [`postfx-scopes`](postfx-scopes.md) — `plugins/postfx/scopes` / `amigo-scopes-plugin` / `amigo.postfx.scopes` / postfx/tooling
-- [`vfx-particles-2d`](vfx-particles-2d.md) — `plugins/vfx/particles-2d` / `amigo-particles-2d-plugin` / `amigo.vfx.particles-2d` / vfx/renderable-source
-- [`vfx-trails-2d`](vfx-trails-2d.md) — `plugins/vfx/trails-2d` / `amigo-trails-2d-plugin` / `amigo.vfx.trails-2d` / vfx/renderable-source
+Plugins are organized by domain family:
+
+```text
+plugins/<family>/<plugin>/
+```
+
+A plugin owns its domain waterfall:
+
+```text
+source/document
+  -> roles / capabilities
+  -> contribution
+  -> response
+  -> coverage
+  -> candidate
+  -> target
+  -> consumer
+  -> diagnostics
+  -> tests
+```
+
+Plugin-local documentation lives with the plugin:
+
+```text
+plugins/<family>/<plugin>/README.md
+plugins/<family>/<plugin>/docs/pipeline.md
+plugins/<family>/<plugin>/docs/contributions.md
+plugins/<family>/<plugin>/docs/diagnostics.md
+```
+
+The old root-level `plugins/*-*.md` inventory snapshots are retired. Use codemap,
+`plugin.toml`, and the plugin-local docs for current state.

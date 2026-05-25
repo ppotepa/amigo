@@ -2,9 +2,9 @@ use amigo_core::{AmigoError, AmigoResult};
 use amigo_math::ColorRgba;
 use amigo_render_api::{
     CameraExposure2d, CameraOptics2d, ColorQuantize2d, ColorRamp2d, Crt2d, DirtyBloom2d,
-    FilmEmulsion2d, FilmNoise2d, FocusBlur2d, PostFx2d, PostFx2dId, PostFxHost2dId,
-    PostFxLensDroplets2d, PostFxPipelineKind, PostFxScope2d, PostFxWetReflections2d,
-    RainGlass2d, RenderFeatureId, ScanOutput2d, ShutterBlur2d, Downscale2d,
+    Downscale2d, FilmEmulsion2d, FilmNoise2d, FocusBlur2d, PostFx2dId, PostFxHost2dId,
+    PostFxLensDroplets2d, PostFxPipelineKind, PostFxRenderDescriptor, PostFxScope2d,
+    PostFxWetReflections2d, RainGlass2d, RenderFeatureId, ScanOutput2d, ShutterBlur2d,
 };
 
 use crate::{
@@ -60,7 +60,9 @@ pub(crate) fn execute_screen_space_post_fx(
             )
     );
     if !supported_scope_and_pipeline {
-        return renderer.copy_offscreen_to_offscreen(output, input_view);
+        return Err(post_fx_scope_pipeline_mismatch_error(
+            scope, pipeline, feature_id,
+        ));
     }
 
     let Some(effect) = request
@@ -79,13 +81,7 @@ pub(crate) fn execute_screen_space_post_fx(
     let effect_kind = effect.kind();
     let descriptor = effect.render_descriptor();
 
-    if descriptor.feature_id != feature_id.as_str() {
-        return Err(AmigoError::Message(format!(
-            "post-fx feature mismatch: graph={} stack={}",
-            feature_id,
-            effect_kind
-        )));
-    }
+    validate_post_fx_descriptor(feature_id, &descriptor, effect_kind)?;
 
     let ctx = WgpuPostFxExecutionContext {
         request,
@@ -103,7 +99,7 @@ pub(crate) fn execute_screen_space_post_fx(
     executor.execute(renderer, ctx)
 }
 
-pub(crate) fn default_post_fx_executor_registry() -> WgpuPostFxExecutorRegistry {
+pub(crate) fn default_wgpu_screen_effect_executors() -> WgpuPostFxExecutorRegistry {
     let mut registry = WgpuPostFxExecutorRegistry::default();
     registry.register(CameraExposureExecutor);
     registry.register(CameraOpticsExecutor);
@@ -120,11 +116,25 @@ pub(crate) fn default_post_fx_executor_registry() -> WgpuPostFxExecutorRegistry 
     registry.register(ScanOutputExecutor);
     registry.register(ShutterBlurExecutor);
     registry.register(WetReflectionsExecutor);
-    registry.register(CopyThroughExecutor(crate::renderer::service::POST_FX_EXECUTOR_BLUR));
+    registry.register(CopyThroughExecutor(
+        crate::renderer::service::POST_FX_EXECUTOR_BLUR,
+    ));
     registry.register(CopyThroughExecutor(
         crate::renderer::service::POST_FX_EXECUTOR_EMBOSSED_EDGES,
     ));
+    validate_wgpu_screen_effect_executors(&registry)
+        .expect("default WGPU screen post-fx executors must cover render descriptors");
     registry
+}
+
+fn validate_wgpu_screen_effect_executors(registry: &WgpuPostFxExecutorRegistry) -> AmigoResult<()> {
+    for entry in PostFxRenderDescriptor::registry() {
+        let descriptor = entry.descriptor;
+        if descriptor.requires_executor() {
+            registry.executor(descriptor.executor_id, entry.kind)?;
+        }
+    }
+    Ok(())
 }
 
 struct CameraExposureExecutor;
@@ -145,7 +155,7 @@ struct WetReflectionsExecutor;
 struct CopyThroughExecutor(&'static str);
 
 macro_rules! effect_executor {
-    ($name:ident, $executor_id:expr, $variant:path, |$renderer:ident, $ctx:ident, $effect:ident| $body:expr) => {
+    ($name:ident, $executor_id:expr, $extractor:ident, |$renderer:ident, $ctx:ident, $effect:ident| $body:expr) => {
         impl WgpuPostFxExecutor for $name {
             fn executor_id(&self) -> &'static str {
                 $executor_id
@@ -156,10 +166,11 @@ macro_rules! effect_executor {
                 $renderer: &mut WgpuSceneRenderer,
                 $ctx: Context<'_>,
             ) -> AmigoResult<()> {
-                let $variant($effect) = $ctx.effect else {
+                let effect_kind = $ctx.effect.kind();
+                let Some($effect) = $ctx.effect.$extractor() else {
                     return Err(post_fx_executor_mismatch_error(
                         $ctx.descriptor.executor_id,
-                        $ctx.effect.kind(),
+                        effect_kind,
                     ));
                 };
                 $body
@@ -171,13 +182,13 @@ macro_rules! effect_executor {
 effect_executor!(
     CameraExposureExecutor,
     crate::renderer::service::POST_FX_EXECUTOR_CAMERA_EXPOSURE,
-    PostFx2d::CameraExposure,
+    into_camera_exposure,
     |renderer, ctx, effect| execute_camera_exposure(renderer, effect, ctx.input_view, ctx.output)
 );
 effect_executor!(
     CameraOpticsExecutor,
     crate::renderer::service::POST_FX_EXECUTOR_CAMERA_OPTICS,
-    PostFx2d::CameraOptics,
+    into_camera_optics,
     |renderer, ctx, effect| execute_camera_optics(
         renderer,
         effect,
@@ -189,37 +200,37 @@ effect_executor!(
 effect_executor!(
     ColorQuantizeExecutor,
     crate::renderer::service::POST_FX_EXECUTOR_COLOR_QUANTIZE,
-    PostFx2d::ColorQuantize,
+    into_color_quantize,
     |renderer, ctx, effect| execute_color_quantize(renderer, effect, ctx.input_view, ctx.output)
 );
 effect_executor!(
     ColorRampExecutor,
     crate::renderer::service::POST_FX_EXECUTOR_COLOR_RAMP,
-    PostFx2d::ColorRamp,
+    into_color_ramp,
     |renderer, ctx, effect| execute_color_ramp(renderer, effect, ctx.input_view, ctx.output)
 );
 effect_executor!(
     CrtExecutor,
     crate::renderer::service::POST_FX_EXECUTOR_CRT,
-    PostFx2d::Crt,
+    into_crt,
     |renderer, ctx, effect| execute_crt(renderer, effect, ctx.input_view, ctx.output)
 );
 effect_executor!(
     DownscaleExecutor,
     crate::renderer::service::POST_FX_EXECUTOR_DOWNSCALE,
-    PostFx2d::Downscale,
+    into_downscale,
     |renderer, ctx, effect| execute_downscale(renderer, effect, ctx.input_view, ctx.output)
 );
 effect_executor!(
     DirtyBloomExecutor,
     crate::renderer::service::POST_FX_EXECUTOR_DIRTY_BLOOM,
-    PostFx2d::DirtyBloom,
+    into_dirty_bloom,
     |renderer, ctx, effect| execute_dirty_bloom(renderer, effect, ctx.input_view, ctx.output)
 );
 effect_executor!(
     FilmEmulsionExecutor,
     crate::renderer::service::POST_FX_EXECUTOR_FILM_EMULSION,
-    PostFx2d::FilmEmulsion,
+    into_film_emulsion,
     |renderer, ctx, effect| execute_film_emulsion(
         renderer,
         effect,
@@ -231,13 +242,13 @@ effect_executor!(
 effect_executor!(
     FilmNoiseExecutor,
     crate::renderer::service::POST_FX_EXECUTOR_FILM_NOISE,
-    PostFx2d::FilmNoise,
+    into_film_noise,
     |renderer, ctx, effect| execute_film_noise(renderer, effect, ctx.input_view, ctx.output)
 );
 effect_executor!(
     FocusBlurExecutor,
     crate::renderer::service::POST_FX_EXECUTOR_FOCUS_BLUR,
-    PostFx2d::FocusBlur,
+    into_focus_blur,
     |renderer, ctx, effect| execute_focus_blur(
         renderer,
         ctx.request,
@@ -249,13 +260,13 @@ effect_executor!(
 effect_executor!(
     LensDropletsExecutor,
     crate::renderer::service::POST_FX_EXECUTOR_LENS_DROPLETS,
-    PostFx2d::LensDroplets,
+    into_lens_droplets,
     |renderer, ctx, effect| execute_lens_droplets(renderer, effect, ctx.input_view, ctx.output)
 );
 effect_executor!(
     RainGlassExecutor,
     crate::renderer::service::POST_FX_EXECUTOR_RAIN_GLASS,
-    PostFx2d::RainGlass,
+    into_rain_glass,
     |renderer, ctx, effect| execute_rain_glass(
         renderer,
         ctx.request,
@@ -270,13 +281,13 @@ effect_executor!(
 effect_executor!(
     ScanOutputExecutor,
     crate::renderer::service::POST_FX_EXECUTOR_SCAN_OUTPUT,
-    PostFx2d::ScanOutput,
+    into_scan_output,
     |renderer, ctx, effect| execute_scan_output(renderer, effect, ctx.input_view, ctx.output)
 );
 effect_executor!(
     ShutterBlurExecutor,
     crate::renderer::service::POST_FX_EXECUTOR_SHUTTER_BLUR,
-    PostFx2d::ShutterBlur,
+    into_shutter_blur,
     |renderer, ctx, effect| execute_shutter_blur(
         renderer,
         ctx.host_id,
@@ -289,7 +300,7 @@ effect_executor!(
 effect_executor!(
     WetReflectionsExecutor,
     crate::renderer::service::POST_FX_EXECUTOR_WET_REFLECTIONS,
-    PostFx2d::WetReflections,
+    into_wet_reflections,
     |renderer, ctx, effect| execute_wet_reflections(
         renderer,
         ctx.request,
@@ -304,11 +315,7 @@ impl WgpuPostFxExecutor for CopyThroughExecutor {
         self.0
     }
 
-    fn execute(
-        &self,
-        renderer: &mut WgpuSceneRenderer,
-        ctx: Context<'_>,
-    ) -> AmigoResult<()> {
+    fn execute(&self, renderer: &mut WgpuSceneRenderer, ctx: Context<'_>) -> AmigoResult<()> {
         renderer.copy_offscreen_to_offscreen(ctx.output, ctx.input_view)
     }
 }
@@ -330,9 +337,8 @@ fn execute_camera_optics(
     output: &mut WgpuOffscreenTarget,
 ) -> AmigoResult<()> {
     let visual_sources = descriptor_visual_source_views(renderer, descriptor);
-    let response = (effect.glare_strength + effect.lens_bloom + effect.halation_bias)
-        .clamp(0.0, 3.0)
-        / 3.0;
+    let response =
+        (effect.glare_strength + effect.lens_bloom + effect.halation_bias).clamp(0.0, 3.0) / 3.0;
     super::camera_optics::execute_camera_optics(
         renderer,
         effect,
@@ -399,9 +405,8 @@ fn execute_film_emulsion(
     output: &mut WgpuOffscreenTarget,
 ) -> AmigoResult<()> {
     let visual_sources = descriptor_visual_source_views(renderer, descriptor);
-    let response = (effect.shoulder + effect.push_pull.max(0.0) + effect.opacity)
-        .clamp(0.0, 3.0)
-        / 4.0;
+    let response =
+        (effect.shoulder + effect.push_pull.max(0.0) + effect.opacity).clamp(0.0, 3.0) / 4.0;
     super::film_emulsion::execute_film_emulsion(
         renderer,
         effect,
@@ -477,7 +482,9 @@ fn execute_shutter_blur(
     input_view: &wgpu::TextureView,
     output: &mut WgpuOffscreenTarget,
 ) -> AmigoResult<()> {
-    super::shutter_blur::execute_shutter_blur(renderer, host_id, effect_id, effect, input_view, output)
+    super::shutter_blur::execute_shutter_blur(
+        renderer, host_id, effect_id, effect, input_view, output,
+    )
 }
 
 fn execute_wet_reflections(
@@ -496,34 +503,42 @@ fn descriptor_visual_source_views(
 ) -> DescriptorVisualSourceViews {
     let wants = |input| descriptor.required_inputs.contains(&input);
     DescriptorVisualSourceViews {
-        normal: wants(amigo_render_api::PostFxRenderInput::SceneNormal).then(|| {
-            renderer
-                .visual_source_targets_2d
-                .scene_normal
-                .as_ref()
-                .map(|target| target.view.clone())
-        }).flatten(),
-        wetness: wants(amigo_render_api::PostFxRenderInput::SceneWetness).then(|| {
-            renderer
-                .visual_source_targets_2d
-                .scene_wetness
-                .as_ref()
-                .map(|target| target.view.clone())
-        }).flatten(),
-        highlight: wants(amigo_render_api::PostFxRenderInput::SceneHighlight).then(|| {
-            renderer
-                .visual_source_targets_2d
-                .scene_highlight
-                .as_ref()
-                .map(|target| target.view.clone())
-        }).flatten(),
-        emissive: wants(amigo_render_api::PostFxRenderInput::SceneEmissive).then(|| {
-            renderer
-                .visual_source_targets_2d
-                .scene_emissive
-                .as_ref()
-                .map(|target| target.view.clone())
-        }).flatten(),
+        normal: wants(amigo_render_api::PostFxRenderInput::SceneNormal)
+            .then(|| {
+                renderer
+                    .visual_source_targets_2d
+                    .scene_normal
+                    .as_ref()
+                    .map(|target| target.view.clone())
+            })
+            .flatten(),
+        wetness: wants(amigo_render_api::PostFxRenderInput::SceneWetness)
+            .then(|| {
+                renderer
+                    .visual_source_targets_2d
+                    .scene_wetness
+                    .as_ref()
+                    .map(|target| target.view.clone())
+            })
+            .flatten(),
+        highlight: wants(amigo_render_api::PostFxRenderInput::SceneHighlight)
+            .then(|| {
+                renderer
+                    .visual_source_targets_2d
+                    .scene_highlight
+                    .as_ref()
+                    .map(|target| target.view.clone())
+            })
+            .flatten(),
+        emissive: wants(amigo_render_api::PostFxRenderInput::SceneEmissive)
+            .then(|| {
+                renderer
+                    .visual_source_targets_2d
+                    .scene_emissive
+                    .as_ref()
+                    .map(|target| target.view.clone())
+            })
+            .flatten(),
     }
 }
 
@@ -546,12 +561,38 @@ fn post_fx_executor_mismatch_error(executor_id: &str, effect_kind: &str) -> Amig
     ))
 }
 
+fn post_fx_scope_pipeline_mismatch_error(
+    scope: &PostFxScope2d,
+    pipeline: PostFxPipelineKind,
+    feature_id: &RenderFeatureId,
+) -> AmigoError {
+    AmigoError::Message(format!(
+        "post-fx scope/pipeline mismatch for feature {}: scope={:?} pipeline={:?}",
+        feature_id, scope, pipeline
+    ))
+}
+
+fn validate_post_fx_descriptor(
+    feature_id: &RenderFeatureId,
+    descriptor: &PostFxRenderDescriptor,
+    effect_kind: &str,
+) -> AmigoResult<()> {
+    if descriptor.feature_id != feature_id.as_str() {
+        return Err(AmigoError::Message(format!(
+            "post-fx descriptor feature mismatch: graph={} descriptor={} effect={}",
+            feature_id, descriptor.feature_id, effect_kind
+        )));
+    }
+
+    Ok(())
+}
+
 fn composite_camera_visual_source_response(
     renderer: &mut WgpuSceneRenderer,
     output: &mut WgpuOffscreenTarget,
     strength: f32,
 ) -> AmigoResult<()> {
-    // Transitional fallback only. CameraOptics, FilmEmulsion and RainGlass sample
+    // Temporary bridge only. CameraOptics, FilmEmulsion and RainGlass sample
     // visual source buffers directly; this keeps older neutral paths visible
     // without becoming the primary optical response.
     let strength = strength.clamp(0.0, 0.12);
@@ -583,4 +624,70 @@ fn composite_camera_visual_source_response(
         )?;
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn missing_registry_entry_is_explicit() {
+        let registry = WgpuPostFxExecutorRegistry::default();
+
+        let error = match registry.executor("screen_space.missing", "missing_effect") {
+            Ok(_) => panic!("missing executor should fail explicitly"),
+            Err(error) => error,
+        };
+
+        assert!(
+            error.to_string().contains(
+                "post-fx executor screen_space.missing is not registered for feature missing_effect"
+            ),
+            "unexpected error: {error}"
+        );
+    }
+
+    #[test]
+    fn descriptor_feature_mismatch_is_explicit() {
+        let descriptor = amigo_render_api::PostFxRenderDescriptor::for_kind("camera_optics")
+            .expect("camera optics descriptor must exist");
+
+        let error = validate_post_fx_descriptor(
+            &RenderFeatureId::new("film_emulsion"),
+            &descriptor,
+            "camera_optics",
+        )
+        .expect_err("mismatched descriptor should fail explicitly");
+
+        assert!(
+            error.to_string().contains(
+                "post-fx descriptor feature mismatch: graph=film_emulsion descriptor=camera_optics effect=camera_optics"
+            ),
+            "unexpected error: {error}"
+        );
+    }
+
+    #[test]
+    fn every_render_descriptor_requiring_executor_has_default_wgpu_executor() {
+        let registry = default_wgpu_screen_effect_executors();
+
+        validate_wgpu_screen_effect_executors(&registry)
+            .expect("default WGPU post-fx registry must satisfy render descriptors");
+    }
+
+    #[test]
+    fn unsupported_scope_pipeline_is_explicit() {
+        let error = post_fx_scope_pipeline_mismatch_error(
+            &PostFxScope2d::Frame,
+            PostFxPipelineKind::CachedImage,
+            &RenderFeatureId::new("blur"),
+        );
+
+        assert!(
+            error
+                .to_string()
+                .contains("post-fx scope/pipeline mismatch for feature blur"),
+            "unexpected error: {error}"
+        );
+    }
 }

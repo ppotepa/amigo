@@ -1,15 +1,16 @@
+use amigo_3d_material::MaterialSceneService;
+use amigo_3d_mesh::MeshSceneService;
+use amigo_3d_text::Text3dSceneService;
+use amigo_audio_api::{AudioCommand, AudioSceneService, AudioStateService};
+use amigo_audio_mixer::AudioMixerService;
+use amigo_audio_output::AudioOutputBackendService;
 use amigo_core::AmigoResult;
 use amigo_runtime::Runtime;
-
-use crate::{
-    amigo_3d_material::MaterialSceneService, amigo_3d_mesh::MeshSceneService,
-    amigo_3d_text::Text3dSceneService,
-    amigo_audio_api::{AudioCommand, AudioSceneService, AudioStateService},
-    amigo_audio_mixer::AudioMixerService, amigo_audio_output::AudioOutputBackendService,
-    amigo_shutter_motion_plugin::motion_runtime_plugin_report_label,
-    amigo_sprite_2d_plugin::SpriteSceneService, amigo_text_2d_plugin::Text2dSceneService,
-    amigo_ui::UiSceneService, amigo_vector_2d_plugin::VectorSceneService,
-};
+use amigo_shutter_motion_plugin::motion_runtime_plugin_report_label;
+use amigo_sprite_2d_plugin::SpriteSceneService;
+use amigo_text_2d_plugin::Text2dSceneService;
+use amigo_ui::UiSceneService;
+use amigo_vector_2d_plugin::VectorSceneService;
 
 #[derive(Debug, Clone)]
 pub struct RuntimeBundleSummary {

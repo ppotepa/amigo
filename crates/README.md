@@ -1,57 +1,16 @@
-# Crate documentation index
+# Crates
 
-- [`2d-composition`](2d-composition.md) — `crates/2d/composition` / `amigo-2d-composition` / 2D domain support
-- [`2d-material-api`](2d-material-api.md) — `crates/2d/material-api` / `amigo-material-api` / 2D domain support
-- [`2d-physics`](2d-physics.md) — `crates/2d/physics` / `amigo-2d-physics` / 2D domain support
-- [`2d-spatial`](2d-spatial.md) — `crates/2d/spatial` / `amigo-2d-spatial` / 2D domain support
-- [`3d-material`](3d-material.md) — `crates/3d/material` / `amigo-3d-material` / 3D domain support
-- [`3d-mesh`](3d-mesh.md) — `crates/3d/mesh` / `amigo-3d-mesh` / 3D domain support
-- [`3d-text`](3d-text.md) — `crates/3d/text` / `amigo-3d-text` / 3D domain support
-- [`apps-app`](apps-app.md) — `crates/apps/app` / `amigo-app` / application host
-- [`apps-launcher`](apps-launcher.md) — `crates/apps/launcher` / `amigo-launcher` / launcher
-- [`audio-api`](audio-api.md) — `crates/audio/api` / `amigo-audio-api` / audio subsystem
-- [`audio-generated`](audio-generated.md) — `crates/audio/generated` / `amigo-audio-generated` / audio subsystem
-- [`audio-mixer`](audio-mixer.md) — `crates/audio/mixer` / `amigo-audio-mixer` / audio subsystem
-- [`audio-output`](audio-output.md) — `crates/audio/output` / `amigo-audio-output` / audio subsystem
-- [`core-codemap-api`](core-codemap-api.md) — `crates/core/codemap-api` / `amigo-codemap-api` / codemap API
-- [`core-plugin-api`](core-plugin-api.md) — `crates/core/plugin-api` / `amigo-plugin-api` / plugin infrastructure
-- [`core-plugin-index`](core-plugin-index.md) — `crates/core/plugin-index` / `amigo-plugin-index` / plugin infrastructure
-- [`core-plugin-loader`](core-plugin-loader.md) — `crates/core/plugin-loader` / `amigo-plugin-loader` / plugin infrastructure
-- [`core-plugin-manifest`](core-plugin-manifest.md) — `crates/core/plugin-manifest` / `amigo-plugin-manifest` / plugin infrastructure
-- [`engine-assets`](engine-assets.md) — `crates/engine/assets` / `amigo-assets` / crate
-- [`engine-camera`](engine-camera.md) — `crates/engine/camera` / `amigo-camera` / camera contracts
-- [`engine-capabilities`](engine-capabilities.md) — `crates/engine/capabilities` / `amigo-capabilities` / crate
-- [`engine-devtools`](engine-devtools.md) — `crates/engine/devtools` / `amigo-devtools` / developer tooling runtime
-- [`engine-editor-api`](engine-editor-api.md) — `crates/engine/editor-api` / `amigo-editor-api` / editor subsystem
-- [`engine-editor-authoring`](engine-editor-authoring.md) — `crates/engine/editor-authoring` / `amigo-editor-authoring` / editor subsystem
-- [`engine-editor-ingame`](engine-editor-ingame.md) — `crates/engine/editor-ingame` / `amigo-editor-ingame` / editor subsystem
-- [`engine-editor-session`](engine-editor-session.md) — `crates/engine/editor-session` / `amigo-editor-session` / editor subsystem
-- [`engine-event-pipeline`](engine-event-pipeline.md) — `crates/engine/event-pipeline` / `amigo-event-pipeline` / crate
-- [`engine-font`](engine-font.md) — `crates/engine/font` / `amigo-font` / crate
-- [`engine-hot-reload`](engine-hot-reload.md) — `crates/engine/hot-reload` / `amigo-hot-reload` / crate
-- [`engine-input-actions`](engine-input-actions.md) — `crates/engine/input-actions` / `amigo-input-actions` / crate
-- [`engine-modding`](engine-modding.md) — `crates/engine/modding` / `amigo-modding` / crate
-- [`engine-overlay-api`](engine-overlay-api.md) — `crates/engine/overlay-api` / `amigo-overlay-api` / crate
-- [`engine-render-api`](engine-render-api.md) — `crates/engine/render-api` / `amigo-render-api` / render contract layer
-- [`engine-render-wgpu`](engine-render-wgpu.md) — `crates/engine/render-wgpu` / `amigo-render-wgpu` / WGPU backend
-- [`engine-runtime`](engine-runtime.md) — `crates/engine/runtime` / `amigo-runtime` / runtime core
-- [`engine-runtime-control`](engine-runtime-control.md) — `crates/engine/runtime-control` / `amigo-runtime-control` / runtime core
-- [`engine-scene`](engine-scene.md) — `crates/engine/scene` / `amigo-scene` / scene core
-- [`engine-session`](engine-session.md) — `crates/engine/session` / `amigo-session` / session/frame services
-- [`engine-state`](engine-state.md) — `crates/engine/state` / `amigo-state` / crate
-- [`foundation-core`](foundation-core.md) — `crates/foundation/core` / `amigo-core` / foundation utility
-- [`foundation-fx`](foundation-fx.md) — `crates/foundation/fx` / `amigo-fx` / foundation utility
-- [`foundation-math`](foundation-math.md) — `crates/foundation/math` / `amigo-math` / foundation utility
-- [`platform-app-host-api`](platform-app-host-api.md) — `crates/platform/app-host-api` / `amigo-app-host-api` / platform adapter
-- [`platform-app-host-winit`](platform-app-host-winit.md) — `crates/platform/app-host-winit` / `amigo-app-host-winit` / platform adapter
-- [`platform-file-watch-api`](platform-file-watch-api.md) — `crates/platform/file-watch-api` / `amigo-file-watch-api` / platform adapter
-- [`platform-file-watch-notify`](platform-file-watch-notify.md) — `crates/platform/file-watch-notify` / `amigo-file-watch-notify` / platform adapter
-- [`platform-input-api`](platform-input-api.md) — `crates/platform/input-api` / `amigo-input-api` / platform adapter
-- [`platform-input-winit`](platform-input-winit.md) — `crates/platform/input-winit` / `amigo-input-winit` / platform adapter
-- [`platform-window-api`](platform-window-api.md) — `crates/platform/window-api` / `amigo-window-api` / platform adapter
-- [`platform-window-winit`](platform-window-winit.md) — `crates/platform/window-winit` / `amigo-window-winit` / platform adapter
-- [`runtime-bundles`](runtime-bundles.md) — `crates/runtime/bundles` / `amigo-runtime-bundles` / runtime composition
-- [`scripting-api`](scripting-api.md) — `crates/scripting/api` / `amigo-scripting-api` / scripting layer
-- [`scripting-rhai`](scripting-rhai.md) — `crates/scripting/rhai` / `amigo-scripting-rhai` / scripting layer
-- [`ui-core`](ui-core.md) — `crates/ui/core` / `amigo-ui` / UI subsystem
-- [`ui-layout`](ui-layout.md) — `crates/ui/layout` / `amigo-ui-layout` / UI subsystem
+Crate inventory is generated from Cargo metadata and codemap, not maintained as
+one markdown file per crate.
+
+Use targeted navigation before editing a crate:
+
+```powershell
+cargo build -p amigo-codemap
+$cm = "target\debug\amigo-codemap-stable.exe"
+& $cm change-plan "<task>" --limit 20
+& $cm open-set "<crate or symbol>" --why --limit 20
+```
+
+For ownership rules, use `AGENTS.md` and `PROJECT.md`. For current package
+names and dependencies, use each crate's `Cargo.toml`.

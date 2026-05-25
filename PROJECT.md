@@ -1,14 +1,17 @@
 # PROJECT.md
 
-This document is the canonical short project-state overview for Amigo.
+This is the canonical short project-state overview for Amigo.
 
-Use this file to orient humans and agents before they open deeper architecture docs. Keep operational agent rules in `AGENTS.md`; keep detailed architecture in `docs/architecture/**`.
+Use this file to orient humans and agents before opening deeper architecture
+docs. Keep operational agent rules in `AGENTS.md`; keep detailed architecture
+notes in `docs/architecture/**`.
 
 ## Project identity
 
-Amigo is a mod-first Rust monorepo for a 2D/3D runtime engine, launcher, in-game tooling, plugins, and authored mods.
+Amigo is a mod-first Rust monorepo for a 2D/3D runtime engine, launcher,
+in-game tooling, plugins, and authored mods.
 
-Current design direction:
+Current direction:
 
 ```text
 thin app host
@@ -20,7 +23,9 @@ thin app host
   -> diagnostics/devtools
 ```
 
-The project is still in an active refactor phase. Clean final architecture is preferred over preserving compatibility paths.
+The project is still in active refactor. Prefer clean final architecture over
+compatibility paths, duplicate `v2` systems, or fallback behavior that hides
+missing contracts.
 
 ## Current architecture map
 
@@ -45,123 +50,30 @@ mods/                        authored content, scenes, scripts, assets
 
 ## Stable architecture rules
 
-- `apps/app` must stay a thin host.
+- `apps/app` stays a thin host.
 - `runtime/bundles` composes; it does not own domain behavior.
 - `render-api` owns renderer-facing contracts, not WGPU implementation.
 - `render-wgpu` executes contracts; it should not infer domain intent.
 - Plugins own domain semantics through contribution/candidate/target waterfalls.
 - Mods own content, not engine behavior.
-- Do not add `v2`, legacy, compatibility, or fallback paths unless the task explicitly requires a temporary diagnostic isolation.
+- Do not add `legacy`, `v2`, compatibility, or fallback paths unless a task
+  explicitly requires temporary diagnostic isolation.
 
-## Active refactor focus
+## Active risk
 
-The app-centric refactor is mostly complete. The highest remaining risk is central renderer coupling, especially in PostFX and camera optics.
+PostFX and camera optics remain the highest-risk architecture area. New work
+should move toward descriptor/registry-driven execution and explicit optical
+contracts instead of renderer-side effect switches or object-existence guesses.
 
-Known high-risk areas:
-
-```text
-crates/engine/render-wgpu/src/renderer/service/post_fx/registry.rs
-crates/engine/render-wgpu/src/renderer/service/model.rs
-crates/engine/render-wgpu/src/renderer/service/init.rs
-crates/engine/render-wgpu/src/renderer/service/render/scoped_post_fx.rs
-crates/engine/render-wgpu/src/renderer/service/render/visual_debug.rs
-crates/engine/render-wgpu/src/renderer/service/texture_batches.rs
-crates/engine/render-api/src/post_fx_model/flat_metadata.rs
-crates/engine/scene/src/component_metadata.rs
-```
-
-The next architecture target is descriptor/registry-driven PostFX execution instead of central `match PostFx2d` dispatch.
-
-## Camera optics target state
-
-Camera optical artifacts should be produced through explicit optical contracts, not renderer guesses.
-
-Current useful concepts:
+## Canonical documentation map
 
 ```text
-CameraOpticalResponse2d
-CameraOpticalCoverage2d
-CameraOpticalCandidate2d
-CameraOpticalRenderTargetPlan
-SceneHighlight
-SceneEmissive
+README.md                         human entrypoint
+PROJECT.md                        short project-state overview
+AGENTS.md                         agent workflow and repository rules
+docs/architecture/**              architecture source of truth
+plugins/<family>/<plugin>/docs/   plugin-owned domain documentation
 ```
 
-Lighting, lightmaps, materials, particles, text, vector coverage, and layered images should declare contributions/candidates explicitly when they participate in camera artifacts.
-
-## Documentation map
-
-Canonical docs:
-
-```text
-README.md                                      human entrypoint
-docs/architecture/runtime-refactor-status.md  runtime refactor status
-docs/architecture/runtime-bundles.md          runtime bundle rules
-docs/architecture/render-composition.md       render composition rules
-docs/architecture/camera-driven-2d-pipeline.md camera-driven 2D rules
-docs/architecture/plugins/README.md           plugin architecture overview
-docs/architecture/plugins/canonical-tree.md   canonical plugin tree
-docs/architecture/plugins/waterfall.md        plugin waterfall model
-```
-
-Operational docs:
-
-```text
-AGENTS.md             agent workflow and repository rules
-codemap.index.md      codemap taxonomy/navigation guide
-```
-
-Non-canonical / cleanup candidates:
-
-```text
-arch.md               appears to be a pasted historical refactor plan; do not treat as canonical until cleaned or archived
-```
-
-If `PROJECT.md` was missing before this file was added, use this document as the canonical replacement for project-state notes.
-
-## Plugin documentation quality rule
-
-Many plugin docs may start as placeholders. When a plugin is touched, bring its local docs up to useful quality instead of leaving only a heading.
-
-Touched plugin documentation should explain:
-
-```text
-what the plugin owns
-what it contributes
-what it consumes
-which diagnostics it emits
-which tests validate its waterfall
-```
-
-Do not mass-update all placeholder docs in one unrelated task.
-
-## Recommended validation commands
-
-Docs-only change:
-
-```powershell
-git diff --check
-```
-
-Targeted code check:
-
-```powershell
-cargo check -p <crate>
-```
-
-Targeted tests:
-
-```powershell
-cargo test -p <crate> <filter>
-```
-
-Codemap navigation:
-
-```powershell
-cargo build -p amigo-codemap
-Copy-Item target\debug\amigo-codemap.exe target\debug\amigo-codemap-stable.exe
-$cm = "target\debug\amigo-codemap-stable.exe"
-& $cm brief
-& $cm change-plan "<task>" --limit 20
-& $cm open-set "<topic>" --why --limit 20
-```
+Generated crate/plugin inventory snapshots and pasted refactor plans are not
+canonical documentation. Use codemap and Cargo metadata for current inventory.

@@ -1,17 +1,20 @@
 mod audio;
 mod core;
 mod devtools;
+mod event_pipeline;
 mod full;
 mod host_viewport;
-pub mod legacy_reexports;
+mod offscreen_runtime_frame;
 mod platform;
 mod plugin_composition;
 mod render_diagnostics;
+pub mod render_extractor_bridges;
 mod render_extractor_registry;
 mod render_packet_services;
+mod render_scene_view;
 mod render_session;
+mod runtime_service_types;
 mod runtime_summary;
-pub mod render_extractor_bridges;
 mod scripting;
 mod three_d;
 mod two_d;
@@ -19,19 +22,23 @@ mod two_d;
 pub use audio::*;
 pub use core::*;
 pub use devtools::*;
+pub use event_pipeline::*;
 pub use full::*;
 pub use host_viewport::*;
+pub use offscreen_runtime_frame::*;
 pub use platform::*;
 pub use plugin_composition::*;
 pub use render_diagnostics::*;
-pub use render_extractor_registry::*;
-pub use render_packet_services::*;
-pub use render_session::*;
-pub use runtime_summary::*;
 pub use render_extractor_bridges::{
     WgpuFrameCompositionBuilder, WgpuFrameCompositionOptions, WgpuRenderExtractorRegistry,
     default_wgpu_render_extractor_registry, register_host_render_extractor_provider,
 };
+pub use render_extractor_registry::*;
+pub use render_packet_services::*;
+pub use render_scene_view::*;
+pub use render_session::*;
+pub use runtime_service_types::*;
+pub use runtime_summary::*;
 pub use scripting::*;
 pub use three_d::*;
 pub use two_d::*;
@@ -40,10 +47,6 @@ use amigo_session::{
     RuntimeCapability, RuntimeCapabilityDescriptor, RuntimeCapabilityKind, RuntimeDomainId,
     RuntimeSession,
 };
-
-// Transitional: app/tests still use these plugin re-exports.
-// Do not add new usages. Prefer neutral helpers or direct plugin crates in plugin-owned code.
-pub use legacy_reexports::*;
 
 pub fn register_runtime_bundle_capabilities(session: &mut RuntimeSession) {
     register_core_runtime_capabilities(session);
