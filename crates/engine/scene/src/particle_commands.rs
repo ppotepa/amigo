@@ -6,6 +6,18 @@ use amigo_math::{ColorRgba, Curve1d, Vec2};
 
 use crate::LightReceiver2dBindingSceneCommand;
 
+pub const PARTICLE_EMITTER_2D_PLUGIN_SCENE_COMMAND_TYPE: &str =
+    "amigo.vfx.particles-2d.scene-command.ParticleEmitter2d";
+pub const EVENT_PIPELINE_PLUGIN_SCENE_COMMAND_TYPE: &str =
+    "amigo.event-pipeline.scene-command.EventPipeline";
+pub const INPUT_ACTION_MAP_PLUGIN_SCENE_COMMAND_TYPE: &str =
+    "amigo.input-actions.scene-command.InputActionMap";
+pub const BEHAVIOR_PLUGIN_SCENE_COMMAND_TYPE: &str = "amigo.behavior.scene-command.Behavior";
+pub const SCRIPT_COMPONENT_PLUGIN_SCENE_COMMAND_TYPE: &str =
+    "amigo.scripting-rhai.scene-command.ScriptComponent";
+pub const PROJECTILE_EMITTER_2D_PLUGIN_SCENE_COMMAND_TYPE: &str =
+    "amigo.camera.shutter-motion.scene-command.ProjectileEmitter2d";
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct ProjectileEmitter2dSceneCommand {
     pub source_mod: String,
@@ -14,6 +26,34 @@ pub struct ProjectileEmitter2dSceneCommand {
     pub speed: f32,
     pub spawn_offset: Vec2,
     pub inherit_velocity_scale: f32,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct ProjectileEmitter2dPluginSceneCommandPayload(pub ProjectileEmitter2dSceneCommand);
+
+impl crate::PluginSceneCommandPayload for ProjectileEmitter2dPluginSceneCommandPayload {
+    fn command_type(&self) -> &'static str {
+        PROJECTILE_EMITTER_2D_PLUGIN_SCENE_COMMAND_TYPE
+    }
+
+    fn command_as_any(&self) -> &dyn std::any::Any {
+        &self.0
+    }
+
+    fn eq_payload(&self, other: &dyn crate::PluginSceneCommandPayload) -> bool {
+        other
+            .command_as_any()
+            .downcast_ref::<ProjectileEmitter2dSceneCommand>()
+            .is_some_and(|command| command == &self.0)
+    }
+}
+
+pub fn projectile_emitter_2d_plugin_scene_command(
+    command: ProjectileEmitter2dSceneCommand,
+) -> crate::PluginSceneCommand {
+    crate::PluginSceneCommand::new(std::sync::Arc::new(
+        ProjectileEmitter2dPluginSceneCommandPayload(command),
+    ))
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -37,11 +77,65 @@ pub enum InputActionBindingSceneCommand {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+pub struct InputActionMapSceneCommandPluginPayload(pub InputActionMapSceneCommand);
+
+impl crate::PluginSceneCommandPayload for InputActionMapSceneCommandPluginPayload {
+    fn command_type(&self) -> &'static str {
+        INPUT_ACTION_MAP_PLUGIN_SCENE_COMMAND_TYPE
+    }
+
+    fn command_as_any(&self) -> &dyn std::any::Any {
+        &self.0
+    }
+
+    fn eq_payload(&self, other: &dyn crate::PluginSceneCommandPayload) -> bool {
+        other
+            .command_as_any()
+            .downcast_ref::<InputActionMapSceneCommand>()
+            .is_some_and(|command| command == &self.0)
+    }
+}
+
+pub fn input_action_map_plugin_scene_command(
+    command: InputActionMapSceneCommand,
+) -> crate::PluginSceneCommand {
+    crate::PluginSceneCommand::new(std::sync::Arc::new(
+        InputActionMapSceneCommandPluginPayload(command),
+    ))
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub struct BehaviorSceneCommand {
     pub source_mod: String,
     pub entity_name: String,
     pub condition: Option<BehaviorConditionSceneCommand>,
     pub behavior: BehaviorKindSceneCommand,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct BehaviorSceneCommandPluginPayload(pub BehaviorSceneCommand);
+
+impl crate::PluginSceneCommandPayload for BehaviorSceneCommandPluginPayload {
+    fn command_type(&self) -> &'static str {
+        BEHAVIOR_PLUGIN_SCENE_COMMAND_TYPE
+    }
+
+    fn command_as_any(&self) -> &dyn std::any::Any {
+        &self.0
+    }
+
+    fn eq_payload(&self, other: &dyn crate::PluginSceneCommandPayload) -> bool {
+        other
+            .command_as_any()
+            .downcast_ref::<BehaviorSceneCommand>()
+            .is_some_and(|command| command == &self.0)
+    }
+}
+
+pub fn behavior_plugin_scene_command(command: BehaviorSceneCommand) -> crate::PluginSceneCommand {
+    crate::PluginSceneCommand::new(std::sync::Arc::new(BehaviorSceneCommandPluginPayload(
+        command,
+    )))
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -177,10 +271,10 @@ pub struct ParticleProfileScalarSceneCommand {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct ParticleProfileCurve4SceneCommand {
-    pub v0: ParticleProfileScalarSceneCommand,
-    pub v1: ParticleProfileScalarSceneCommand,
-    pub v2: ParticleProfileScalarSceneCommand,
-    pub v3: ParticleProfileScalarSceneCommand,
+    pub point0: ParticleProfileScalarSceneCommand,
+    pub point1: ParticleProfileScalarSceneCommand,
+    pub point2: ParticleProfileScalarSceneCommand,
+    pub point3: ParticleProfileScalarSceneCommand,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -213,6 +307,34 @@ pub enum EventPipelineStepSceneCommand {
     Script { function: String },
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub struct EventPipelineSceneCommandPluginPayload(pub EventPipelineSceneCommand);
+
+impl crate::PluginSceneCommandPayload for EventPipelineSceneCommandPluginPayload {
+    fn command_type(&self) -> &'static str {
+        EVENT_PIPELINE_PLUGIN_SCENE_COMMAND_TYPE
+    }
+
+    fn command_as_any(&self) -> &dyn std::any::Any {
+        &self.0
+    }
+
+    fn eq_payload(&self, other: &dyn crate::PluginSceneCommandPayload) -> bool {
+        other
+            .command_as_any()
+            .downcast_ref::<EventPipelineSceneCommand>()
+            .is_some_and(|command| command == &self.0)
+    }
+}
+
+pub fn event_pipeline_plugin_scene_command(
+    command: EventPipelineSceneCommand,
+) -> crate::PluginSceneCommand {
+    crate::PluginSceneCommand::new(std::sync::Arc::new(EventPipelineSceneCommandPluginPayload(
+        command,
+    )))
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct UiModelBindingsSceneCommand {
     pub source_mod: String,
@@ -243,11 +365,95 @@ pub enum UiModelBindingKindSceneCommand {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+pub struct UiModelBindingsSceneCommandPluginPayload(pub UiModelBindingsSceneCommand);
+
+impl crate::PluginSceneCommandPayload for UiModelBindingsSceneCommandPluginPayload {
+    fn command_type(&self) -> &'static str {
+        crate::UI_MODEL_BINDINGS_PLUGIN_SCENE_COMMAND_TYPE
+    }
+
+    fn command_as_any(&self) -> &dyn std::any::Any {
+        &self.0
+    }
+
+    fn eq_payload(&self, other: &dyn crate::PluginSceneCommandPayload) -> bool {
+        other
+            .command_as_any()
+            .downcast_ref::<UiModelBindingsSceneCommand>()
+            .is_some_and(|command| command == &self.0)
+    }
+}
+
+pub fn ui_model_bindings_plugin_scene_command(
+    command: UiModelBindingsSceneCommand,
+) -> crate::PluginSceneCommand {
+    crate::PluginSceneCommand::new(std::sync::Arc::new(
+        UiModelBindingsSceneCommandPluginPayload(command),
+    ))
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub struct ScriptComponentSceneCommand {
     pub source_mod: String,
     pub entity_name: String,
     pub script: PathBuf,
     pub params: BTreeMap<String, ScriptComponentParamValueSceneCommand>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct ScriptComponentSceneCommandPluginPayload(pub ScriptComponentSceneCommand);
+
+impl crate::PluginSceneCommandPayload for ScriptComponentSceneCommandPluginPayload {
+    fn command_type(&self) -> &'static str {
+        SCRIPT_COMPONENT_PLUGIN_SCENE_COMMAND_TYPE
+    }
+
+    fn command_as_any(&self) -> &dyn std::any::Any {
+        &self.0
+    }
+
+    fn eq_payload(&self, other: &dyn crate::PluginSceneCommandPayload) -> bool {
+        other
+            .command_as_any()
+            .downcast_ref::<ScriptComponentSceneCommand>()
+            .is_some_and(|command| command == &self.0)
+    }
+}
+
+pub fn script_component_plugin_scene_command(
+    command: ScriptComponentSceneCommand,
+) -> crate::PluginSceneCommand {
+    crate::PluginSceneCommand::new(std::sync::Arc::new(
+        ScriptComponentSceneCommandPluginPayload(command),
+    ))
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct ParticleEmitter2dPluginSceneCommandPayload(pub ParticleEmitter2dSceneCommand);
+
+impl crate::PluginSceneCommandPayload for ParticleEmitter2dPluginSceneCommandPayload {
+    fn command_type(&self) -> &'static str {
+        PARTICLE_EMITTER_2D_PLUGIN_SCENE_COMMAND_TYPE
+    }
+
+    fn command_as_any(&self) -> &dyn std::any::Any {
+        &self.0
+    }
+
+    fn eq_payload(&self, other: &dyn crate::PluginSceneCommandPayload) -> bool {
+        other
+            .command_as_any()
+            .downcast_ref::<ParticleEmitter2dSceneCommand>()
+            .is_some_and(|command| command == &self.0)
+    }
+}
+
+pub fn particle_emitter_2d_plugin_scene_command(
+    command: ParticleEmitter2dSceneCommand,
+) -> crate::PluginSceneCommand {
+    crate::PluginSceneCommand::new(std::sync::Arc::new(
+        ParticleEmitter2dPluginSceneCommandPayload(command),
+    ))
 }
 
 #[derive(Debug, Clone, PartialEq)]

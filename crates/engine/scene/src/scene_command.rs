@@ -24,7 +24,7 @@ pub enum SceneActivationCommandOutcome {
 pub fn can_handle_scene_activation_scene_command(command: &SceneCommand) -> bool {
     matches!(
         command,
-        SceneCommand::QueueActivationSet { .. } | SceneCommand::ActivateSet { .. }
+        SceneCommand::ConfigureActivationSet { .. } | SceneCommand::ActivateSet { .. }
     )
 }
 
@@ -33,7 +33,7 @@ pub fn handle_scene_activation_scene_command(
     command: SceneCommand,
 ) -> AmigoResult<SceneActivationCommandOutcome> {
     match command {
-        SceneCommand::QueueActivationSet { command } => {
+        SceneCommand::ConfigureActivationSet { command } => {
             ctx.activation_set_scene_service.queue(command.clone());
             Ok(SceneActivationCommandOutcome::Queued {
                 id: command.id,

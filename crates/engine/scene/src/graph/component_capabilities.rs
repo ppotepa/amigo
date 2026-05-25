@@ -1,4 +1,4 @@
-use crate::document::SceneComponentDocument;
+use crate::document::{SceneComponentDocument, SceneComponentSemanticClass};
 use crate::metadata_traits::MetadataTraitKind;
 
 /// Static semantic capabilities for scene components.
@@ -8,8 +8,8 @@ use crate::metadata_traits::MetadataTraitKind;
 pub fn component_2d_traits(component: &SceneComponentDocument) -> Vec<MetadataTraitKind> {
     use MetadataTraitKind::*;
 
-    match component {
-        SceneComponentDocument::Sprite2d { .. } => vec![
+    match component.semantic_class() {
+        SceneComponentSemanticClass::Sprite2d => vec![
             Component2D,
             UsesTransform2D,
             Renderable2D,
@@ -21,7 +21,7 @@ pub fn component_2d_traits(component: &SceneComponentDocument) -> Vec<MetadataTr
             RuntimeControllable,
             Patchable,
         ],
-        SceneComponentDocument::LayeredImage2d { .. } => vec![
+        SceneComponentSemanticClass::LayeredImage2d => vec![
             Component2D,
             UsesTransform2D,
             Renderable2D,
@@ -33,7 +33,7 @@ pub fn component_2d_traits(component: &SceneComponentDocument) -> Vec<MetadataTr
             RuntimeControllable,
             Patchable,
         ],
-        SceneComponentDocument::TileMap2d { .. } => vec![
+        SceneComponentSemanticClass::TileMap2d => vec![
             Component2D,
             UsesTransform2D,
             Renderable2D,
@@ -43,7 +43,7 @@ pub fn component_2d_traits(component: &SceneComponentDocument) -> Vec<MetadataTr
             PostFxHost2D,
             Selectable,
         ],
-        SceneComponentDocument::Text2d { .. } => vec![
+        SceneComponentSemanticClass::Text2d => vec![
             Component2D,
             UsesTransform2D,
             Renderable2D,
@@ -54,7 +54,7 @@ pub fn component_2d_traits(component: &SceneComponentDocument) -> Vec<MetadataTr
             RuntimeControllable,
             Patchable,
         ],
-        SceneComponentDocument::VectorShape2d { .. } => vec![
+        SceneComponentSemanticClass::VectorShape2d => vec![
             Component2D,
             UsesTransform2D,
             Renderable2D,
@@ -63,7 +63,7 @@ pub fn component_2d_traits(component: &SceneComponentDocument) -> Vec<MetadataTr
             PostFxHost2D,
             Selectable,
         ],
-        SceneComponentDocument::ParticleEmitter2d { .. } => vec![
+        SceneComponentSemanticClass::ParticleEmitter2d => vec![
             Component2D,
             UsesTransform2D,
             Renderable2D,
@@ -73,7 +73,7 @@ pub fn component_2d_traits(component: &SceneComponentDocument) -> Vec<MetadataTr
             RuntimeControllable,
             Patchable,
         ],
-        SceneComponentDocument::BeaconLight2d { .. } => vec![
+        SceneComponentSemanticClass::BeaconLight2d => vec![
             Component2D,
             UsesTransform2D,
             Renderable2D,
@@ -82,61 +82,38 @@ pub fn component_2d_traits(component: &SceneComponentDocument) -> Vec<MetadataTr
             PostFxHost2D,
             Selectable,
         ],
-        SceneComponentDocument::Camera2d { .. } | SceneComponentDocument::CameraFollow2d { .. } => {
-            vec![
-                Component2D,
-                UsesTransform2D,
-                Camera,
-                RuntimeControllable,
-                Patchable,
-            ]
-        }
-        SceneComponentDocument::Velocity2d { .. }
-        | SceneComponentDocument::FreeflightMotion2d { .. }
-        | SceneComponentDocument::MotionController2d { .. } => {
-            vec![
-                Component2D,
-                UsesTransform2D,
-                Motion2D,
-                RuntimeControllable,
-                Patchable,
-            ]
-        }
-        SceneComponentDocument::KinematicBody2d { .. }
-        | SceneComponentDocument::AabbCollider2d { .. }
-        | SceneComponentDocument::StaticCollider2d { .. }
-        | SceneComponentDocument::CircleCollider2d { .. }
-        | SceneComponentDocument::Trigger2d { .. } => {
-            vec![
-                Component2D,
-                UsesTransform2D,
-                Collidable2D,
-                RuntimeControllable,
-                Patchable,
-            ]
-        }
-        SceneComponentDocument::ScriptComponent { .. } => {
+        SceneComponentSemanticClass::Camera2d => vec![
+            Component2D,
+            UsesTransform2D,
+            Camera,
+            RuntimeControllable,
+            Patchable,
+        ],
+        SceneComponentSemanticClass::Motion2d => vec![
+            Component2D,
+            UsesTransform2D,
+            Motion2D,
+            RuntimeControllable,
+            Patchable,
+        ],
+        SceneComponentSemanticClass::Physics2d => vec![
+            Component2D,
+            UsesTransform2D,
+            Collidable2D,
+            RuntimeControllable,
+            Patchable,
+        ],
+        SceneComponentSemanticClass::Script => {
             vec![Component2D, Scriptable, RuntimeControllable, Patchable]
         }
-        SceneComponentDocument::Plugin { .. } => vec![Component2D],
-        _ => vec![Component2D],
+        SceneComponentSemanticClass::Plugin | SceneComponentSemanticClass::Generic2d => {
+            vec![Component2D]
+        }
     }
 }
 
 pub fn component_is_renderable_2d(component: &SceneComponentDocument) -> bool {
     component_2d_traits(component).contains(&MetadataTraitKind::Renderable2D)
-}
-
-pub fn builtin_renderable_2d_component_kinds() -> &'static [&'static str] {
-    &[
-        "TileMap2D",
-        "LayeredImage2D",
-        "VectorShape2D",
-        "BeaconLight2D",
-        "Sprite2D",
-        "Text2D",
-        "ParticleEmitter2D",
-    ]
 }
 
 pub fn component_uses_transform_2d(component: &SceneComponentDocument) -> bool {

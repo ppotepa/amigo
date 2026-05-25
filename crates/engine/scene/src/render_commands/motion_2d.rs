@@ -1,3 +1,10 @@
+pub const CAMERA_FOLLOW_2D_PLUGIN_SCENE_COMMAND_TYPE: &str =
+    "amigo.camera.camera-core.scene-command.CameraFollow2d";
+pub const PARALLAX_2D_PLUGIN_SCENE_COMMAND_TYPE: &str =
+    "amigo.camera.camera-core.scene-command.Parallax2d";
+pub const MOTION_CONTROLLER_2D_PLUGIN_SCENE_COMMAND_TYPE: &str =
+    "amigo.camera.shutter-motion.scene-command.MotionController2d";
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct MotionController2dSceneCommand {
     pub source_mod: String,
@@ -36,6 +43,35 @@ impl MotionController2dSceneCommand {
         }
     }
 }
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct MotionController2dPluginSceneCommandPayload(pub MotionController2dSceneCommand);
+
+impl PluginSceneCommandPayload for MotionController2dPluginSceneCommandPayload {
+    fn command_type(&self) -> &'static str {
+        MOTION_CONTROLLER_2D_PLUGIN_SCENE_COMMAND_TYPE
+    }
+
+    fn command_as_any(&self) -> &dyn std::any::Any {
+        &self.0
+    }
+
+    fn eq_payload(&self, other: &dyn PluginSceneCommandPayload) -> bool {
+        other
+            .command_as_any()
+            .downcast_ref::<MotionController2dSceneCommand>()
+            .is_some_and(|command| command == &self.0)
+    }
+}
+
+pub fn motion_controller_2d_plugin_scene_command(
+    command: MotionController2dSceneCommand,
+) -> PluginSceneCommand {
+    PluginSceneCommand::new(Arc::new(MotionController2dPluginSceneCommandPayload(
+        command,
+    )))
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct CameraFollow2dSceneCommand {
     pub source_mod: String,
@@ -82,6 +118,33 @@ impl CameraFollow2dSceneCommand {
         self
     }
 }
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct CameraFollow2dPluginSceneCommandPayload(pub CameraFollow2dSceneCommand);
+
+impl PluginSceneCommandPayload for CameraFollow2dPluginSceneCommandPayload {
+    fn command_type(&self) -> &'static str {
+        CAMERA_FOLLOW_2D_PLUGIN_SCENE_COMMAND_TYPE
+    }
+
+    fn command_as_any(&self) -> &dyn std::any::Any {
+        &self.0
+    }
+
+    fn eq_payload(&self, other: &dyn PluginSceneCommandPayload) -> bool {
+        other
+            .command_as_any()
+            .downcast_ref::<CameraFollow2dSceneCommand>()
+            .is_some_and(|command| command == &self.0)
+    }
+}
+
+pub fn camera_follow_2d_plugin_scene_command(
+    command: CameraFollow2dSceneCommand,
+) -> PluginSceneCommand {
+    PluginSceneCommand::new(Arc::new(CameraFollow2dPluginSceneCommandPayload(command)))
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct Parallax2dSceneCommand {
     pub source_mod: String,
@@ -110,6 +173,31 @@ impl Parallax2dSceneCommand {
         }
     }
 }
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct Parallax2dPluginSceneCommandPayload(pub Parallax2dSceneCommand);
+
+impl PluginSceneCommandPayload for Parallax2dPluginSceneCommandPayload {
+    fn command_type(&self) -> &'static str {
+        PARALLAX_2D_PLUGIN_SCENE_COMMAND_TYPE
+    }
+
+    fn command_as_any(&self) -> &dyn std::any::Any {
+        &self.0
+    }
+
+    fn eq_payload(&self, other: &dyn PluginSceneCommandPayload) -> bool {
+        other
+            .command_as_any()
+            .downcast_ref::<Parallax2dSceneCommand>()
+            .is_some_and(|command| command == &self.0)
+    }
+}
+
+pub fn parallax_2d_plugin_scene_command(command: Parallax2dSceneCommand) -> PluginSceneCommand {
+    PluginSceneCommand::new(Arc::new(Parallax2dPluginSceneCommandPayload(command)))
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct TileMapMarker2dSceneCommand {
     pub source_mod: String,
@@ -118,6 +206,37 @@ pub struct TileMapMarker2dSceneCommand {
     pub symbol: String,
     pub index: usize,
     pub offset: Vec2,
+}
+
+pub const TILEMAP_MARKER_2D_PLUGIN_SCENE_COMMAND_TYPE: &str =
+    "amigo.gfx.tilemap-2d.scene-command.TileMapMarker2d";
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct TileMapMarker2dPluginSceneCommandPayload(pub TileMapMarker2dSceneCommand);
+
+impl crate::PluginSceneCommandPayload for TileMapMarker2dPluginSceneCommandPayload {
+    fn command_type(&self) -> &'static str {
+        TILEMAP_MARKER_2D_PLUGIN_SCENE_COMMAND_TYPE
+    }
+
+    fn command_as_any(&self) -> &dyn std::any::Any {
+        &self.0
+    }
+
+    fn eq_payload(&self, other: &dyn crate::PluginSceneCommandPayload) -> bool {
+        other
+            .command_as_any()
+            .downcast_ref::<TileMapMarker2dSceneCommand>()
+            .is_some_and(|command| command == &self.0)
+    }
+}
+
+pub fn tilemap_marker_2d_plugin_scene_command(
+    command: TileMapMarker2dSceneCommand,
+) -> crate::PluginSceneCommand {
+    crate::PluginSceneCommand::new(std::sync::Arc::new(
+        TileMapMarker2dPluginSceneCommandPayload(command),
+    ))
 }
 
 impl TileMapMarker2dSceneCommand {
@@ -139,4 +258,3 @@ impl TileMapMarker2dSceneCommand {
         }
     }
 }
-

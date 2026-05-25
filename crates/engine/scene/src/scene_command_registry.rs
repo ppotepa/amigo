@@ -6,26 +6,41 @@ use amigo_core::{AmigoError, AmigoResult};
 use crate::{PluginSceneCommand, RuntimeSceneCommandHandler, SceneCommand};
 
 #[derive(Default)]
-pub struct PluginSceneCommandHandlerRegistry {
+pub struct ScenePluginCommandHandlerRegistry {
     handlers: RwLock<BTreeMap<String, Arc<dyn RuntimeSceneCommandHandler>>>,
 }
 
-impl PluginSceneCommandHandlerRegistry {
+impl ScenePluginCommandHandlerRegistry {
     pub fn register(
         &self,
         command_type: impl Into<String>,
         handler: Arc<dyn RuntimeSceneCommandHandler>,
     ) {
-        self.handlers
-            .write()
-            .expect("plugin scene command handler registry poisoned")
-            .insert(command_type.into(), handler);
+        self.try_register(command_type, handler)
+            .expect("duplicate plugin scene command handler");
     }
 
-    pub fn handler_for(
+    pub fn try_register(
         &self,
-        command_type: &str,
-    ) -> Option<Arc<dyn RuntimeSceneCommandHandler>> {
+        command_type: impl Into<String>,
+        handler: Arc<dyn RuntimeSceneCommandHandler>,
+    ) -> AmigoResult<()> {
+        let command_type = command_type.into();
+        let mut handlers = self
+            .handlers
+            .write()
+            .expect("plugin scene command handler registry poisoned");
+        if handlers.contains_key(&command_type) {
+            return Err(AmigoError::Message(format!(
+                "duplicate plugin scene command handler `{command_type}`"
+            )));
+        }
+
+        handlers.insert(command_type, handler);
+        Ok(())
+    }
+
+    pub fn handler_for(&self, command_type: &str) -> Option<Arc<dyn RuntimeSceneCommandHandler>> {
         self.handlers
             .read()
             .expect("plugin scene command handler registry poisoned")

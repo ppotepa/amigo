@@ -1,14 +1,17 @@
-    
+use super::super::super::build_scene_hydration_plan;
+use crate::{SceneCommand, load_scene_document_from_str};
 
-    use super::super::super::build_scene_hydration_plan;
-    use crate::{
-        SceneCommand, load_scene_document_from_str,
-    };
+fn plugin_payload<T: 'static>(command: &SceneCommand) -> Option<&T> {
+    match command {
+        SceneCommand::Plugin { command } => command.payload_as::<T>(),
+        _ => None,
+    }
+}
 
-    #[test]
-    fn builds_hydration_plan_for_sidescroller_components() {
-        let document = load_scene_document_from_str(
-            r#####"
+#[test]
+fn builds_hydration_plan_for_sidescroller_components() {
+    let document = load_scene_document_from_str(
+        r#####"
 version: 1
 scene:
   id: vertical-slice
@@ -23,7 +26,7 @@ entities:
   - id: tilemap
     name: playground-sidescroller-tilemap
     components:
-      - type: TileMap2D
+      - type: amigo.gfx.tilemap-2d.TileMap2D
         tileset: playground-sidescroller/spritesheets/platformer/tilesets/platform/base
         ruleset: playground-sidescroller/spritesheets/platformer/rulesets/platform/rules
         tile_size: { x: 16.0, y: 16.0 }
@@ -58,7 +61,7 @@ entities:
   - id: coin
     name: playground-sidescroller-coin
     components:
-      - type: Sprite2D
+      - type: amigo.gfx.sprite-2d.Sprite2D
         texture: playground-sidescroller/spritesheets/coin
         size: { x: 16.0, y: 16.0 }
         animation:
@@ -70,64 +73,63 @@ entities:
         mask: [player]
         event: coin.collected
 "#####,
-        )
-        .expect("sidescroller scene should parse");
+    )
+    .expect("sidescroller scene should parse");
 
-        let plan = build_scene_hydration_plan("playground-sidescroller", &document)
-            .expect("sidescroller hydration plan should build");
+    let plan = build_scene_hydration_plan("playground-sidescroller", &document)
+        .expect("sidescroller hydration plan should build");
 
-        assert!(plan.commands.iter().any(|command| matches!(
-            command,
-            SceneCommand::QueueTileMap2d { command }
-                if command.entity_name == "playground-sidescroller-tilemap"
-                    && command.ruleset.as_ref().map(|ruleset| ruleset.as_str())
-                        == Some("playground-sidescroller/spritesheets/platformer/rulesets/platform/rules")
-        )));
-        assert!(plan.commands.iter().any(|command| matches!(
-            command,
-            SceneCommand::QueueKinematicBody2d { command }
-                if command.entity_name == "playground-sidescroller-player"
-        )));
-        assert!(plan.commands.iter().any(|command| matches!(
-            command,
-            SceneCommand::QueueAabbCollider2d { command }
-                if command.entity_name == "playground-sidescroller-player"
-        )));
-        assert!(plan.commands.iter().any(|command| matches!(
-            command,
-            SceneCommand::QueueMotionController2d { command }
-                if command.entity_name == "playground-sidescroller-player"
-        )));
-        assert!(plan.commands.iter().any(|command| matches!(
-            command,
-            SceneCommand::QueueTileMapMarker2d { command }
-                if command.entity_name == "playground-sidescroller-player"
-                    && command.symbol == "P"
-        )));
-        assert!(plan.commands.iter().any(|command| matches!(
-            command,
-            SceneCommand::QueueCameraFollow2d { command }
-                if command.entity_name == "playground-sidescroller-camera"
-                    && command.target == "playground-sidescroller-player"
-        )));
-        assert!(plan.commands.iter().any(|command| matches!(
-            command,
-            SceneCommand::QueueTrigger2d { command }
-                if command.entity_name == "playground-sidescroller-coin"
-                    && command.event.as_deref() == Some("coin.collected")
-        )));
-        assert!(plan.commands.iter().any(|command| {
-            let command = match command {
-                SceneCommand::QueueSprite2d { command } => Some(command),
-                SceneCommand::Plugin { command } => command.payload_as::<crate::Sprite2dSceneCommand>(),
-                _ => None,
-            };
-            command.is_some_and(|command| {
-                command.entity_name == "playground-sidescroller-coin"
-                    && command.animation.as_ref().and_then(|animation| animation.fps) == Some(10.0)
-                    && command.animation.as_ref().and_then(|animation| animation.looping) == Some(true)
-            })
-        }));
-    }
-
-
+    assert!(plan.commands.iter().any(|command| {
+        plugin_payload::<crate::TileMap2dSceneCommand>(command).is_some_and(|command| {
+            command.entity_name == "playground-sidescroller-tilemap"
+                && command.ruleset.as_ref().map(|ruleset| ruleset.as_str())
+                    == Some(
+                        "playground-sidescroller/spritesheets/platformer/rulesets/platform/rules",
+                    )
+        })
+    }));
+    assert!(plan.commands.iter().any(|command| {
+        plugin_payload::<crate::KinematicBody2dSceneCommand>(command)
+            .is_some_and(|command| command.entity_name == "playground-sidescroller-player")
+    }));
+    assert!(plan.commands.iter().any(|command| {
+        plugin_payload::<crate::AabbCollider2dSceneCommand>(command)
+            .is_some_and(|command| command.entity_name == "playground-sidescroller-player")
+    }));
+    assert!(plan.commands.iter().any(|command| {
+        plugin_payload::<crate::MotionController2dSceneCommand>(command)
+            .is_some_and(|command| command.entity_name == "playground-sidescroller-player")
+    }));
+    assert!(plan.commands.iter().any(|command| {
+        plugin_payload::<crate::TileMapMarker2dSceneCommand>(command).is_some_and(|command| {
+            command.entity_name == "playground-sidescroller-player" && command.symbol == "P"
+        })
+    }));
+    assert!(plan.commands.iter().any(|command| {
+        plugin_payload::<crate::CameraFollow2dSceneCommand>(command).is_some_and(|command| {
+            command.entity_name == "playground-sidescroller-camera"
+                && command.target == "playground-sidescroller-player"
+        })
+    }));
+    assert!(plan.commands.iter().any(|command| {
+        plugin_payload::<crate::Trigger2dSceneCommand>(command).is_some_and(|command| {
+            command.entity_name == "playground-sidescroller-coin"
+                && command.event.as_deref() == Some("coin.collected")
+        })
+    }));
+    assert!(plan.commands.iter().any(|command| {
+        plugin_payload::<crate::Sprite2dSceneCommand>(command).is_some_and(|command| {
+            command.entity_name == "playground-sidescroller-coin"
+                && command
+                    .animation
+                    .as_ref()
+                    .and_then(|animation| animation.fps)
+                    == Some(10.0)
+                && command
+                    .animation
+                    .as_ref()
+                    .and_then(|animation| animation.looping)
+                    == Some(true)
+        })
+    }));
+}

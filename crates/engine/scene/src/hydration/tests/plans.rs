@@ -6,16 +6,105 @@ use super::super::{
     build_scene_hydration_plan, entity_selector_from_document, scene_key_from_document,
 };
 use crate::{
-    EntitySelector, Material2dOpticalModeSceneCommand, SceneCommand,
+    ComponentHydratorRegistry, ComponentSchemaRegistry, EntitySelector,
+    Material2dOpticalModeSceneCommand, PluginComponentHydrationContext, PluginComponentHydrator,
+    SceneCommand, SceneComponentPayload, SceneComponentSchemaProvider, SceneDocumentError,
     SceneEntitySelectorDocument, SceneEntitySelectorKindDocument, load_scene_document_from_path,
-    load_scene_document_from_str,
+    load_scene_document_from_str, load_scene_document_from_str_with_component_schemas,
 };
+use serde_yaml::{Mapping, Value};
 
-fn sprite_command(
-    command: &SceneCommand,
-) -> Option<&crate::Sprite2dSceneCommand> {
+#[derive(Debug)]
+struct TestPluginSpritePayload {
+    texture: String,
+}
+
+impl SceneComponentPayload for TestPluginSpritePayload {
+    fn component_type(&self) -> &'static str {
+        "amigo.test.Sprite2D"
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+}
+
+#[derive(Clone, Copy)]
+struct TestPluginSpriteSchemaProvider;
+
+impl SceneComponentSchemaProvider for TestPluginSpriteSchemaProvider {
+    fn component_type(&self) -> &'static str {
+        "amigo.test.Sprite2D"
+    }
+
+    fn aliases(&self) -> &'static [&'static str] {
+        &["Sprite2D"]
+    }
+
+    fn parse_yaml(&self, payload: Mapping) -> Result<Value, serde_yaml::Error> {
+        Ok(Value::Mapping(payload))
+    }
+
+    fn parse_payload_value(
+        &self,
+        payload: &Value,
+    ) -> crate::SceneDocumentResult<Box<dyn SceneComponentPayload>> {
+        let mapping = payload
+            .as_mapping()
+            .ok_or_else(|| SceneDocumentError::Compile {
+                path: None,
+                message: "expected sprite payload mapping".to_owned(),
+            })?;
+        let texture = mapping
+            .get(Value::String("texture".to_owned()))
+            .and_then(Value::as_str)
+            .ok_or_else(|| SceneDocumentError::Compile {
+                path: None,
+                message: "missing sprite texture".to_owned(),
+            })?;
+        Ok(Box::new(TestPluginSpritePayload {
+            texture: texture.to_owned(),
+        }))
+    }
+}
+
+struct TestPluginSpriteHydrator;
+
+impl PluginComponentHydrator for TestPluginSpriteHydrator {
+    fn provider_id(&self) -> &'static str {
+        "amigo.test.sprite"
+    }
+
+    fn component_type(&self) -> &'static str {
+        "amigo.test.Sprite2D"
+    }
+
+    fn hydrate_plugin_payload(
+        &self,
+        ctx: PluginComponentHydrationContext<'_>,
+    ) -> crate::SceneDocumentResult<()> {
+        let Some(payload) = ctx
+            .payload
+            .as_any()
+            .downcast_ref::<TestPluginSpritePayload>()
+        else {
+            return Err(SceneDocumentError::Hydration {
+                scene_id: ctx.document.scene.id.clone(),
+                entity_id: ctx.entity.id.clone(),
+                component_kind: ctx.component_type.to_owned(),
+                message: "wrong sprite payload".to_owned(),
+            });
+        };
+        ctx.commands.push(SceneCommand::SpawnNamedEntity {
+            name: format!("plugin-hydrated:{}", payload.texture),
+            transform: None,
+        });
+        Ok(())
+    }
+}
+
+fn sprite_command(command: &SceneCommand) -> Option<&crate::Sprite2dSceneCommand> {
     match command {
-        SceneCommand::QueueSprite2d { command } => Some(command),
         SceneCommand::Plugin { command } => command.payload_as::<crate::Sprite2dSceneCommand>(),
         _ => None,
     }
@@ -23,7 +112,6 @@ fn sprite_command(
 
 fn text_command(command: &SceneCommand) -> Option<&crate::Text2dSceneCommand> {
     match command {
-        SceneCommand::QueueText2d { command } => Some(command),
         SceneCommand::Plugin { command } => command.payload_as::<crate::Text2dSceneCommand>(),
         _ => None,
     }
@@ -31,8 +119,73 @@ fn text_command(command: &SceneCommand) -> Option<&crate::Text2dSceneCommand> {
 
 fn vector_command(command: &SceneCommand) -> Option<&crate::VectorShape2dSceneCommand> {
     match command {
-        SceneCommand::QueueVectorShape2d { command } => Some(command),
-        SceneCommand::Plugin { command } => command.payload_as::<crate::VectorShape2dSceneCommand>(),
+        SceneCommand::Plugin { command } => {
+            command.payload_as::<crate::VectorShape2dSceneCommand>()
+        }
+        _ => None,
+    }
+}
+
+fn camera_command(command: &SceneCommand) -> Option<&crate::Camera2dSceneCommand> {
+    match command {
+        SceneCommand::Plugin { command } => command.payload_as::<crate::Camera2dSceneCommand>(),
+        _ => None,
+    }
+}
+
+fn beacon_command(command: &SceneCommand) -> Option<&crate::BeaconLight2dSceneCommand> {
+    match command {
+        SceneCommand::Plugin { command } => {
+            command.payload_as::<crate::BeaconLight2dSceneCommand>()
+        }
+        _ => None,
+    }
+}
+
+fn layered_image_command(command: &SceneCommand) -> Option<&crate::LayeredImage2dSceneCommand> {
+    match command {
+        SceneCommand::Plugin { command } => {
+            command.payload_as::<crate::LayeredImage2dSceneCommand>()
+        }
+        _ => None,
+    }
+}
+
+fn collision_event_rule_command(
+    command: &SceneCommand,
+) -> Option<&crate::CollisionEventRule2dSceneCommand> {
+    match command {
+        SceneCommand::Plugin { command } => {
+            command.payload_as::<crate::CollisionEventRule2dSceneCommand>()
+        }
+        _ => None,
+    }
+}
+
+fn mesh_command(command: &SceneCommand) -> Option<&crate::Mesh3dSceneCommand> {
+    match command {
+        SceneCommand::Plugin { command } => command.payload_as::<crate::Mesh3dSceneCommand>(),
+        _ => None,
+    }
+}
+
+fn material_command(command: &SceneCommand) -> Option<&crate::Material3dSceneCommand> {
+    match command {
+        SceneCommand::Plugin { command } => command.payload_as::<crate::Material3dSceneCommand>(),
+        _ => None,
+    }
+}
+
+fn text3d_command(command: &SceneCommand) -> Option<&crate::Text3dSceneCommand> {
+    match command {
+        SceneCommand::Plugin { command } => command.payload_as::<crate::Text3dSceneCommand>(),
+        _ => None,
+    }
+}
+
+fn ui_command(command: &SceneCommand) -> Option<&crate::UiSceneCommand> {
+    match command {
+        SceneCommand::Plugin { command } => command.payload_as::<crate::UiSceneCommand>(),
         _ => None,
     }
 }
@@ -57,7 +210,7 @@ entities:
       rotation_radians: 0.5
       scale: { x: 2.0, y: 3.0 }
     components:
-      - type: Sprite2D
+      - type: amigo.gfx.sprite-2d.Sprite2D
         texture: playground-2d/spritesheets/sprite-lab
         size: { x: 128.0, y: 128.0 }
 "#,
@@ -78,36 +231,81 @@ entities:
     let camera_command = plan
         .commands
         .iter()
-        .find_map(|command| match command {
-            SceneCommand::QueueCamera2d { command } => Some(command),
-            _ => None,
-        })
+        .find_map(camera_command)
         .expect("camera command should be queued");
     assert_eq!(camera_command.entity_name, "playground-2d-camera");
     assert_eq!(camera_command.camera_id, "main");
-    assert!(camera_command
-        .render_contributions
-        .enabled_or("camera.projection", false));
-    assert!(!camera_command
-        .render_contributions
-        .enabled_or("camera.exposure", true));
-    assert!(!camera_command
-        .render_contributions
-        .enabled_or("camera.film", true));
-    assert!(!camera_command
-        .render_contributions
-        .enabled_or("camera.scan_output", true));
+    assert!(
+        camera_command
+            .render_contributions
+            .enabled_or("camera.projection", false)
+    );
+    assert!(
+        !camera_command
+            .render_contributions
+            .enabled_or("camera.exposure", true)
+    );
+    assert!(
+        !camera_command
+            .render_contributions
+            .enabled_or("camera.film", true)
+    );
+    assert!(
+        !camera_command
+            .render_contributions
+            .enabled_or("camera.scan_output", true)
+    );
     assert!(plan.commands.iter().any(|command| {
         sprite_command(command).is_some_and(|command| {
             command.entity_name == "playground-2d-sprite"
                 && command.size == Vec2::new(128.0, 128.0)
-                && command.transform == Transform2 {
-                    translation: Vec2::new(12.0, -4.0),
-                    rotation_radians: 0.5,
-                    scale: Vec2::new(2.0, 3.0),
-                }
+                && command.transform
+                    == Transform2 {
+                        translation: Vec2::new(12.0, -4.0),
+                        rotation_radians: 0.5,
+                        scale: Vec2::new(2.0, 3.0),
+                    }
         })
     }));
+}
+
+#[test]
+fn hydrates_schema_alias_through_canonical_plugin_payload_type() {
+    let schemas = ComponentSchemaRegistry::default();
+    schemas.register_schema_provider(TestPluginSpriteSchemaProvider);
+    let hydrators = ComponentHydratorRegistry::default();
+    hydrators.register_plugin(TestPluginSpriteHydrator);
+
+    let document = load_scene_document_from_str_with_component_schemas(
+        r#"
+version: 1
+scene:
+  id: plugin-hydration-alias
+entities:
+  - id: sprite
+    name: sprite
+    components:
+      - type: Sprite2D
+        texture: plugin/sprite
+        size: { x: 64.0, y: 64.0 }
+"#,
+        Some(&schemas),
+    )
+    .expect("scene document should parse");
+
+    let plan = super::super::build_scene_hydration_plan_with_component_hydrators(
+        "test",
+        &document,
+        Some(&hydrators),
+        Some(&schemas),
+    )
+    .expect("plan should build");
+
+    assert!(plan.commands.iter().any(|command| matches!(
+        command,
+        SceneCommand::SpawnNamedEntity { name, transform: None }
+            if name == "plugin-hydrated:plugin/sprite"
+    )));
 }
 
 #[test]
@@ -121,7 +319,7 @@ entities:
   - id: title
     name: title
     components:
-      - type: Text2D
+      - type: amigo.gfx.text-2d.Text2D
         content: ROTTEN CLUB
         font: rotten-club/fonts/game
         bounds: { x: 1180.0, y: 240.0 }
@@ -142,11 +340,11 @@ entities:
     assert!(plan.commands.iter().any(|command| {
         text_command(command).is_some_and(|command| {
             command.entity_name == "title"
-                && command.material.as_ref().is_some_and(|material|
+                && command.material.as_ref().is_some_and(|material| {
                     material.optical.mode == Material2dOpticalModeSceneCommand::Refractive
                         && (material.optical.transmission - 0.58).abs() < f32::EPSILON
                         && material.lighting.receives_light
-                )
+                })
         })
     }));
 }
@@ -162,7 +360,7 @@ entities:
   - id: poster
     name: poster
     components:
-      - type: Sprite2D
+      - type: amigo.gfx.sprite-2d.Sprite2D
         render_layer: foreground.props
         texture: test/poster
         size: [128, 128]
@@ -183,15 +381,23 @@ entities:
     assert!(plan.commands.iter().any(|command| {
         sprite_command(command).is_some_and(|command| {
             command.entity_name == "poster"
-                && command.material.as_ref().is_some_and(|material|
+                && command.material.as_ref().is_some_and(|material| {
                     material.optical.mode == Material2dOpticalModeSceneCommand::Refractive
                         && (material.optical.transmission - 0.45).abs() < f32::EPSILON
                         && (material.optical.refraction_px - 7.0).abs() < f32::EPSILON
-                )
-                && command.render_contributions.enabled_or("world.color", false)
-                && command.render_contributions.enabled_or("material.mask", false)
-                && command.render_contributions.enabled_or("optics.refract", false)
-                && !command.render_contributions.enabled_or("transmission.source", true)
+                })
+                && command
+                    .render_contributions
+                    .enabled_or("world.color", false)
+                && command
+                    .render_contributions
+                    .enabled_or("material.mask", false)
+                && command
+                    .render_contributions
+                    .enabled_or("optics.refract", false)
+                && !command
+                    .render_contributions
+                    .enabled_or("transmission.source", true)
         })
     }));
 }
@@ -207,7 +413,7 @@ entities:
   - id: vector-glass
     name: vector-glass
     components:
-      - type: VectorShape2D
+      - type: amigo.gfx.vector-2d.VectorShape2D
         render_layer: foreground.props
         kind: circle
         radius: 48.0
@@ -229,15 +435,23 @@ entities:
     assert!(plan.commands.iter().any(|command| {
         vector_command(command).is_some_and(|command| {
             command.entity_name == "vector-glass"
-                && command.material.as_ref().is_some_and(|material|
+                && command.material.as_ref().is_some_and(|material| {
                     material.optical.mode == Material2dOpticalModeSceneCommand::Refractive
-                    && (material.optical.transmission - 0.35).abs() < f32::EPSILON
-                    && (material.optical.refraction_px - 5.0).abs() < f32::EPSILON
-                )
-                && command.render_contributions.enabled_or("world.color", false)
-                && command.render_contributions.enabled_or("material.mask", false)
-                && command.render_contributions.enabled_or("optics.refract", false)
-                && !command.render_contributions.enabled_or("transmission.source", true)
+                        && (material.optical.transmission - 0.35).abs() < f32::EPSILON
+                        && (material.optical.refraction_px - 5.0).abs() < f32::EPSILON
+                })
+                && command
+                    .render_contributions
+                    .enabled_or("world.color", false)
+                && command
+                    .render_contributions
+                    .enabled_or("material.mask", false)
+                && command
+                    .render_contributions
+                    .enabled_or("optics.refract", false)
+                && !command
+                    .render_contributions
+                    .enabled_or("transmission.source", true)
         })
     }));
 }
@@ -266,24 +480,29 @@ entities:
     let camera_command = plan
         .commands
         .iter()
-        .find_map(|command| match command {
-            SceneCommand::QueueCamera2d { command } => Some(command),
-            _ => None,
-        })
+        .find_map(camera_command)
         .expect("camera command should be queued");
 
-    assert!(camera_command
-        .render_contributions
-        .enabled_or("camera.projection", false));
-    assert!(camera_command
-        .render_contributions
-        .enabled_or("camera.film", false));
-    assert!(!camera_command
-        .render_contributions
-        .enabled_or("camera.scan_output", true));
-    assert!(!camera_command
-        .render_contributions
-        .enabled_or("camera.exposure", true));
+    assert!(
+        camera_command
+            .render_contributions
+            .enabled_or("camera.projection", false)
+    );
+    assert!(
+        camera_command
+            .render_contributions
+            .enabled_or("camera.film", false)
+    );
+    assert!(
+        !camera_command
+            .render_contributions
+            .enabled_or("camera.scan_output", true)
+    );
+    assert!(
+        !camera_command
+            .render_contributions
+            .enabled_or("camera.exposure", true)
+    );
 }
 
 #[test]
@@ -312,24 +531,29 @@ entities:
     let beacon_command = plan
         .commands
         .iter()
-        .find_map(|command| match command {
-            SceneCommand::QueueBeaconLight2d { command } => Some(command),
-            _ => None,
-        })
+        .find_map(beacon_command)
         .expect("beacon command should be queued");
 
-    assert!(!beacon_command
-        .render_contributions
-        .enabled_or("overlay.visible", true));
-    assert!(beacon_command
-        .render_contributions
-        .enabled_or("relight.plate", false));
-    assert!(!beacon_command
-        .render_contributions
-        .enabled_or("bloom.source", true));
-    assert!(beacon_command
-        .render_contributions
-        .enabled_or("camera.fx_source", false));
+    assert!(
+        !beacon_command
+            .render_contributions
+            .enabled_or("overlay.visible", true)
+    );
+    assert!(
+        beacon_command
+            .render_contributions
+            .enabled_or("relight.plate", false)
+    );
+    assert!(
+        !beacon_command
+            .render_contributions
+            .enabled_or("bloom.source", true)
+    );
+    assert!(
+        beacon_command
+            .render_contributions
+            .enabled_or("camera.fx_source", false)
+    );
 }
 
 #[test]
@@ -359,16 +583,14 @@ entities:
     let plan = build_scene_hydration_plan("test-mod", &document).expect("plan should build");
 
     assert!(plan.commands.iter().any(|command| {
-        matches!(
-            command,
-            SceneCommand::QueueLayeredImage2d { command }
-                if command.entity_name == "main-menu-background"
-                    && command.asset.as_str() == "test-mod/layered-images/test-scene"
-                    && command.size == Vec2::new(1280.0, 720.0)
-                    && command.base_opacity == 0.25
-                    && command.z_index == -100.0
-                    && command.layer_overrides.len() == 1
-        )
+        layered_image_command(command).is_some_and(|command| {
+            command.entity_name == "main-menu-background"
+                && command.asset.as_str() == "test-mod/layered-images/test-scene"
+                && command.size == Vec2::new(1280.0, 720.0)
+                && command.base_opacity == 0.25
+                && command.z_index == -100.0
+                && command.layer_overrides.len() == 1
+        })
     }));
 }
 
@@ -478,15 +700,15 @@ entities: []
     let plan =
         build_scene_hydration_plan("collision-preview", &document).expect("plan should build");
 
-    assert!(plan.commands.iter().any(|command| matches!(
-        command,
-        SceneCommand::QueueCollisionEventRule2d { command }
-            if command.id == "projectile-hits-target"
+    assert!(plan.commands.iter().any(|command| {
+        collision_event_rule_command(command).is_some_and(|command| {
+            command.id == "projectile-hits-target"
                 && command.source == EntitySelector::Tag("projectile".to_owned())
                 && command.target == EntitySelector::Group("targets".to_owned())
                 && command.event == "collision.hit"
                 && command.once_per_overlap
-    )));
+        })
+    }));
 }
 
 #[test]
@@ -514,13 +736,13 @@ fn builds_hydration_plan_for_material_scene_document() {
             && *translation == Vec3::ZERO
             && *scale == Vec3::ONE
     )));
-    assert!(plan.commands.iter().any(|command| matches!(
-        command,
-        SceneCommand::QueueMaterial3d { command }
-            if command.entity_name == "playground-3d-material-probe"
+    assert!(plan.commands.iter().any(|command| {
+        material_command(command).is_some_and(|command| {
+            command.entity_name == "playground-3d-material-probe"
                 && command.label == "debug-surface"
                 && command.albedo == ColorRgba::WHITE
-    )));
+        })
+    }));
 }
 
 #[test]
@@ -566,21 +788,15 @@ fn builds_hydration_plan_for_playground_3d_main_scene() {
 
     let plan = build_scene_hydration_plan("playground-3d", &document).expect("plan should build");
 
-    assert!(plan.commands.iter().any(|command| matches!(
-        command,
-        SceneCommand::QueueMesh3d { command }
-            if command.entity_name == "playground-3d-cube"
-    )));
-    assert!(plan.commands.iter().any(|command| matches!(
-        command,
-        SceneCommand::QueueMaterial3d { command }
-            if command.entity_name == "playground-3d-cube"
-    )));
-    assert!(plan.commands.iter().any(|command| matches!(
-        command,
-        SceneCommand::QueueText3d { command }
-            if command.entity_name == "playground-3d-hello"
-    )));
+    assert!(plan.commands.iter().any(|command| {
+        mesh_command(command).is_some_and(|command| command.entity_name == "playground-3d-cube")
+    }));
+    assert!(plan.commands.iter().any(|command| {
+        material_command(command).is_some_and(|command| command.entity_name == "playground-3d-cube")
+    }));
+    assert!(plan.commands.iter().any(|command| {
+        text3d_command(command).is_some_and(|command| command.entity_name == "playground-3d-hello")
+    }));
 }
 
 #[test]
@@ -604,9 +820,7 @@ fn builds_hydration_plan_for_playground_2d_screen_space_preview() {
         sprite_command(command)
             .is_some_and(|command| command.entity_name == "playground-2d-ui-preview-square")
     }));
-    assert!(plan.commands.iter().any(|command| matches!(
-        command,
-        SceneCommand::QueueUi { command }
-            if command.entity_name == "playground-2d-ui-preview"
-    )));
+    assert!(plan.commands.iter().any(|command| {
+        ui_command(command).is_some_and(|command| command.entity_name == "playground-2d-ui-preview")
+    }));
 }

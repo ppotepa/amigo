@@ -23,7 +23,7 @@ impl RuntimePlugin for ScenePlugin {
         registry.register(ComponentHydratorRegistry::default())?;
         registry.register(ComponentGraphProviderRegistry::default())?;
         registry.register(ComponentSchemaRegistry::default())?;
-        registry.register(PluginSceneCommandHandlerRegistry::default())?;
+        registry.register(ScenePluginCommandHandlerRegistry::default())?;
 
         let scene_handlers = registry.required::<RuntimeSceneCommandHandlerRegistry>()?;
         register_runtime_scene_command_handler(

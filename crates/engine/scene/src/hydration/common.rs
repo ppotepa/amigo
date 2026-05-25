@@ -297,10 +297,10 @@ pub(super) fn particle_profile_curve4_from_document(
     document: &SceneParticleProfileCurve4Document,
 ) -> ParticleProfileCurve4SceneCommand {
     ParticleProfileCurve4SceneCommand {
-        v0: particle_profile_scalar_from_document(&document.v0),
-        v1: particle_profile_scalar_from_document(&document.v1),
-        v2: particle_profile_scalar_from_document(&document.v2),
-        v3: particle_profile_scalar_from_document(&document.v3),
+        point0: particle_profile_scalar_from_document(&document.point0),
+        point1: particle_profile_scalar_from_document(&document.point1),
+        point2: particle_profile_scalar_from_document(&document.point2),
+        point3: particle_profile_scalar_from_document(&document.point3),
     }
 }
 

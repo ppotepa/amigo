@@ -1,9 +1,11 @@
 use amigo_render_api::{
     ColorQuantize2d, ColorRamp2d, Crt2d, DirtyBloom2d, Downscale2d, FilmNoise2d,
-    LensDroplets2dCertificationReport, LensDroplets2dStage, PostFx2d, PostFx2dId,
-    PostFx2dInstance, PostFxHost2dId, PostFxLensDroplets2d, PostFxPipelineKind, PostFxScope2d,
+    LensDroplets2dCertificationReport, LensDroplets2dStage, PostFx2d, PostFx2dId, PostFx2dInstance,
+    PostFxHost2dId, PostFxLensDroplets2d, PostFxPipelineKind, PostFxScope2d,
     PostFxWetReflections2d, RainGlass2d, RainGlassDebugView, RainGlassRaindropCompose,
-    ScopedPostFx2dStack, ShutterBlur2d, WetReflectionsDebugView,
+    ScopedPostFx2dStack, ShutterBlur2d, WetReflectionsDebugView, post_fx_color_quantize,
+    post_fx_color_ramp, post_fx_crt, post_fx_dirty_bloom, post_fx_downscale, post_fx_film_noise,
+    post_fx_lens_droplets, post_fx_rain_glass, post_fx_shutter_blur, post_fx_wet_reflections,
 };
 
 use crate::{LensDroplets2dDocument, PostFx2dDocument, SceneDocumentError, SceneDocumentResult};
@@ -102,13 +104,10 @@ pub fn post_fx_from_document(
     scene_id: &str,
     owner_id: &str,
     owner_kind: &str,
-) -> SceneDocumentResult<(
-    PostFx2d,
-    Option<LensDroplets2dCertificationReport>,
-)> {
+) -> SceneDocumentResult<(PostFx2d, Option<LensDroplets2dCertificationReport>)> {
     let output = match document {
         PostFx2dDocument::ColorQuantize(effect) => (
-            PostFx2d::ColorQuantize(
+            post_fx_color_quantize(
                 ColorQuantize2d {
                     palette_size: effect.palette_size,
                     dither_strength: effect.dither_strength,
@@ -128,7 +127,7 @@ pub fn post_fx_from_document(
             None,
         ),
         PostFx2dDocument::ColorRamp(effect) => (
-            PostFx2d::ColorRamp(
+            post_fx_color_ramp(
                 ColorRamp2d {
                     palette_size: effect.palette_size,
                     dither_strength: effect.dither_strength,
@@ -148,7 +147,7 @@ pub fn post_fx_from_document(
             None,
         ),
         PostFx2dDocument::Downscale(effect) => (
-            PostFx2d::Downscale(
+            post_fx_downscale(
                 Downscale2d {
                     factor: effect.factor,
                     opacity: effect.opacity,
@@ -158,7 +157,7 @@ pub fn post_fx_from_document(
             None,
         ),
         PostFx2dDocument::ShutterBlur(effect) => (
-            PostFx2d::ShutterBlur(
+            post_fx_shutter_blur(
                 ShutterBlur2d {
                     exposure_seconds: ShutterBlur2d::default().exposure_seconds,
                     fps: effect.fps,
@@ -175,7 +174,7 @@ pub fn post_fx_from_document(
             None,
         ),
         PostFx2dDocument::DirtyBloom(bloom) => (
-            PostFx2d::DirtyBloom(
+            post_fx_dirty_bloom(
                 DirtyBloom2d {
                     threshold: bloom.threshold,
                     strength: bloom.strength,
@@ -193,7 +192,7 @@ pub fn post_fx_from_document(
             None,
         ),
         PostFx2dDocument::Crt(crt) => (
-            PostFx2d::Crt(
+            post_fx_crt(
                 Crt2d {
                     scanline_opacity: crt.scanline_opacity,
                     scanline_frequency_px: crt.scanline_frequency_px,
@@ -208,7 +207,7 @@ pub fn post_fx_from_document(
             None,
         ),
         PostFx2dDocument::FilmNoise(noise) => (
-            PostFx2d::FilmNoise(
+            post_fx_film_noise(
                 FilmNoise2d {
                     iso: noise.iso,
                     grain_size: noise.grain_size,
@@ -246,12 +245,12 @@ pub fn post_fx_from_document(
                 });
             }
             (
-                PostFx2d::LensDroplets(report.normalized.clone()),
+                post_fx_lens_droplets(report.normalized.clone()),
                 Some(report),
             )
         }
         PostFx2dDocument::RainGlass(rain) => {
-            (PostFx2d::RainGlass(rain_glass_from_document(rain)), None)
+            (post_fx_rain_glass(rain_glass_from_document(rain)), None)
         }
         PostFx2dDocument::WetReflections(wet) => {
             let reflection_mask = wet.masks.reflection.clone().unwrap_or_default();
@@ -262,7 +261,7 @@ pub fn post_fx_from_document(
                 );
             }
             (
-                PostFx2d::WetReflections(
+                post_fx_wet_reflections(
                     PostFxWetReflections2d {
                         enabled: wet.enabled,
                         reflection_mask,

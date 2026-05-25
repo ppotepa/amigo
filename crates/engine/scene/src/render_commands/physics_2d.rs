@@ -1,3 +1,15 @@
+pub const KINEMATIC_BODY_2D_PLUGIN_SCENE_COMMAND_TYPE: &str =
+    "amigo.physics.2d.scene-command.KinematicBody2d";
+pub const AABB_COLLIDER_2D_PLUGIN_SCENE_COMMAND_TYPE: &str =
+    "amigo.physics.2d.scene-command.AabbCollider2d";
+pub const STATIC_COLLIDER_2D_PLUGIN_SCENE_COMMAND_TYPE: &str =
+    "amigo.physics.2d.scene-command.StaticCollider2d";
+pub const CIRCLE_COLLIDER_2D_PLUGIN_SCENE_COMMAND_TYPE: &str =
+    "amigo.physics.2d.scene-command.CircleCollider2d";
+pub const TRIGGER_2D_PLUGIN_SCENE_COMMAND_TYPE: &str = "amigo.physics.2d.scene-command.Trigger2d";
+pub const COLLISION_EVENT_RULE_2D_PLUGIN_SCENE_COMMAND_TYPE: &str =
+    "amigo.physics.2d.scene-command.CollisionEventRule2d";
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct KinematicBody2dSceneCommand {
     pub source_mod: String,
@@ -5,6 +17,34 @@ pub struct KinematicBody2dSceneCommand {
     pub velocity: Vec2,
     pub gravity_scale: f32,
     pub terminal_velocity: f32,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct KinematicBody2dPluginSceneCommandPayload(pub KinematicBody2dSceneCommand);
+
+impl crate::PluginSceneCommandPayload for KinematicBody2dPluginSceneCommandPayload {
+    fn command_type(&self) -> &'static str {
+        KINEMATIC_BODY_2D_PLUGIN_SCENE_COMMAND_TYPE
+    }
+
+    fn command_as_any(&self) -> &dyn std::any::Any {
+        &self.0
+    }
+
+    fn eq_payload(&self, other: &dyn crate::PluginSceneCommandPayload) -> bool {
+        other
+            .command_as_any()
+            .downcast_ref::<KinematicBody2dSceneCommand>()
+            .is_some_and(|command| command == &self.0)
+    }
+}
+
+pub fn kinematic_body_2d_plugin_scene_command(
+    command: KinematicBody2dSceneCommand,
+) -> PluginSceneCommand {
+    crate::PluginSceneCommand::new(std::sync::Arc::new(
+        KinematicBody2dPluginSceneCommandPayload(command),
+    ))
 }
 
 impl KinematicBody2dSceneCommand {
@@ -55,6 +95,34 @@ impl AabbCollider2dSceneCommand {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+pub struct AabbCollider2dPluginSceneCommandPayload(pub AabbCollider2dSceneCommand);
+
+impl crate::PluginSceneCommandPayload for AabbCollider2dPluginSceneCommandPayload {
+    fn command_type(&self) -> &'static str {
+        AABB_COLLIDER_2D_PLUGIN_SCENE_COMMAND_TYPE
+    }
+
+    fn command_as_any(&self) -> &dyn std::any::Any {
+        &self.0
+    }
+
+    fn eq_payload(&self, other: &dyn crate::PluginSceneCommandPayload) -> bool {
+        other
+            .command_as_any()
+            .downcast_ref::<AabbCollider2dSceneCommand>()
+            .is_some_and(|command| command == &self.0)
+    }
+}
+
+pub fn aabb_collider_2d_plugin_scene_command(
+    command: AabbCollider2dSceneCommand,
+) -> PluginSceneCommand {
+    crate::PluginSceneCommand::new(std::sync::Arc::new(
+        AabbCollider2dPluginSceneCommandPayload(command),
+    ))
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub struct StaticCollider2dSceneCommand {
     pub source_mod: String,
     pub entity_name: String,
@@ -82,6 +150,34 @@ impl StaticCollider2dSceneCommand {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+pub struct StaticCollider2dPluginSceneCommandPayload(pub StaticCollider2dSceneCommand);
+
+impl crate::PluginSceneCommandPayload for StaticCollider2dPluginSceneCommandPayload {
+    fn command_type(&self) -> &'static str {
+        STATIC_COLLIDER_2D_PLUGIN_SCENE_COMMAND_TYPE
+    }
+
+    fn command_as_any(&self) -> &dyn std::any::Any {
+        &self.0
+    }
+
+    fn eq_payload(&self, other: &dyn crate::PluginSceneCommandPayload) -> bool {
+        other
+            .command_as_any()
+            .downcast_ref::<StaticCollider2dSceneCommand>()
+            .is_some_and(|command| command == &self.0)
+    }
+}
+
+pub fn static_collider_2d_plugin_scene_command(
+    command: StaticCollider2dSceneCommand,
+) -> PluginSceneCommand {
+    crate::PluginSceneCommand::new(std::sync::Arc::new(
+        StaticCollider2dPluginSceneCommandPayload(command),
+    ))
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub struct CircleCollider2dSceneCommand {
     pub source_mod: String,
     pub entity_name: String,
@@ -103,6 +199,34 @@ impl CircleCollider2dSceneCommand {
             offset,
         }
     }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct CircleCollider2dPluginSceneCommandPayload(pub CircleCollider2dSceneCommand);
+
+impl crate::PluginSceneCommandPayload for CircleCollider2dPluginSceneCommandPayload {
+    fn command_type(&self) -> &'static str {
+        CIRCLE_COLLIDER_2D_PLUGIN_SCENE_COMMAND_TYPE
+    }
+
+    fn command_as_any(&self) -> &dyn std::any::Any {
+        &self.0
+    }
+
+    fn eq_payload(&self, other: &dyn crate::PluginSceneCommandPayload) -> bool {
+        other
+            .command_as_any()
+            .downcast_ref::<CircleCollider2dSceneCommand>()
+            .is_some_and(|command| command == &self.0)
+    }
+}
+
+pub fn circle_collider_2d_plugin_scene_command(
+    command: CircleCollider2dSceneCommand,
+) -> PluginSceneCommand {
+    crate::PluginSceneCommand::new(std::sync::Arc::new(
+        CircleCollider2dPluginSceneCommandPayload(command),
+    ))
 }
 #[derive(Debug, Clone, PartialEq)]
 pub struct Trigger2dSceneCommand {
@@ -137,6 +261,32 @@ impl Trigger2dSceneCommand {
     }
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub struct Trigger2dPluginSceneCommandPayload(pub Trigger2dSceneCommand);
+
+impl crate::PluginSceneCommandPayload for Trigger2dPluginSceneCommandPayload {
+    fn command_type(&self) -> &'static str {
+        TRIGGER_2D_PLUGIN_SCENE_COMMAND_TYPE
+    }
+
+    fn command_as_any(&self) -> &dyn std::any::Any {
+        &self.0
+    }
+
+    fn eq_payload(&self, other: &dyn crate::PluginSceneCommandPayload) -> bool {
+        other
+            .command_as_any()
+            .downcast_ref::<Trigger2dSceneCommand>()
+            .is_some_and(|command| command == &self.0)
+    }
+}
+
+pub fn trigger_2d_plugin_scene_command(command: Trigger2dSceneCommand) -> PluginSceneCommand {
+    crate::PluginSceneCommand::new(std::sync::Arc::new(Trigger2dPluginSceneCommandPayload(
+        command,
+    )))
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CollisionEventRule2dSceneCommand {
     pub source_mod: String,
@@ -167,3 +317,30 @@ impl CollisionEventRule2dSceneCommand {
     }
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub struct CollisionEventRule2dPluginSceneCommandPayload(pub CollisionEventRule2dSceneCommand);
+
+impl crate::PluginSceneCommandPayload for CollisionEventRule2dPluginSceneCommandPayload {
+    fn command_type(&self) -> &'static str {
+        COLLISION_EVENT_RULE_2D_PLUGIN_SCENE_COMMAND_TYPE
+    }
+
+    fn command_as_any(&self) -> &dyn std::any::Any {
+        &self.0
+    }
+
+    fn eq_payload(&self, other: &dyn crate::PluginSceneCommandPayload) -> bool {
+        other
+            .command_as_any()
+            .downcast_ref::<CollisionEventRule2dSceneCommand>()
+            .is_some_and(|command| command == &self.0)
+    }
+}
+
+pub fn collision_event_rule_2d_plugin_scene_command(
+    command: CollisionEventRule2dSceneCommand,
+) -> PluginSceneCommand {
+    crate::PluginSceneCommand::new(std::sync::Arc::new(
+        CollisionEventRule2dPluginSceneCommandPayload(command),
+    ))
+}

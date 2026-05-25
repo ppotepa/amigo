@@ -64,6 +64,39 @@ pub struct EntityPoolSceneCommand {
     pub members: Vec<String>,
 }
 
+pub const ENTITY_POOL_PLUGIN_SCENE_COMMAND_TYPE: &str =
+    "amigo.camera.shutter-motion.scene-command.EntityPool";
+pub const LIFETIME_PLUGIN_SCENE_COMMAND_TYPE: &str =
+    "amigo.camera.shutter-motion.scene-command.Lifetime";
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct EntityPoolPluginSceneCommandPayload(pub EntityPoolSceneCommand);
+
+impl crate::PluginSceneCommandPayload for EntityPoolPluginSceneCommandPayload {
+    fn command_type(&self) -> &'static str {
+        ENTITY_POOL_PLUGIN_SCENE_COMMAND_TYPE
+    }
+
+    fn command_as_any(&self) -> &dyn std::any::Any {
+        &self.0
+    }
+
+    fn eq_payload(&self, other: &dyn crate::PluginSceneCommandPayload) -> bool {
+        other
+            .command_as_any()
+            .downcast_ref::<EntityPoolSceneCommand>()
+            .is_some_and(|command| command == &self.0)
+    }
+}
+
+pub fn entity_pool_plugin_scene_command(
+    command: EntityPoolSceneCommand,
+) -> crate::PluginSceneCommand {
+    crate::PluginSceneCommand::new(std::sync::Arc::new(EntityPoolPluginSceneCommandPayload(
+        command,
+    )))
+}
+
 impl EntityPoolSceneCommand {
     pub fn new(
         source_mod: impl Into<String>,
@@ -92,6 +125,32 @@ pub struct LifetimeSceneCommand {
     pub entity_name: String,
     pub seconds: f32,
     pub outcome: LifetimeExpirationOutcome,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct LifetimePluginSceneCommandPayload(pub LifetimeSceneCommand);
+
+impl crate::PluginSceneCommandPayload for LifetimePluginSceneCommandPayload {
+    fn command_type(&self) -> &'static str {
+        LIFETIME_PLUGIN_SCENE_COMMAND_TYPE
+    }
+
+    fn command_as_any(&self) -> &dyn std::any::Any {
+        &self.0
+    }
+
+    fn eq_payload(&self, other: &dyn crate::PluginSceneCommandPayload) -> bool {
+        other
+            .command_as_any()
+            .downcast_ref::<LifetimeSceneCommand>()
+            .is_some_and(|command| command == &self.0)
+    }
+}
+
+pub fn lifetime_plugin_scene_command(command: LifetimeSceneCommand) -> crate::PluginSceneCommand {
+    crate::PluginSceneCommand::new(std::sync::Arc::new(LifetimePluginSceneCommandPayload(
+        command,
+    )))
 }
 
 impl LifetimeSceneCommand {

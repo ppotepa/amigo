@@ -1,5 +1,6 @@
 use std::collections::{BTreeMap, BTreeSet};
 
+use crate::document::SceneComponentDocument as ComponentDocument;
 use crate::document::{
     LightMap2dSourceRefDocument, PostFx2dDocument, SceneComponentDocument, SceneDocument,
     SceneEntityDocument,
@@ -378,15 +379,13 @@ fn primary_render_layer(
         .components
         .iter()
         .find_map(|component| match component {
-            SceneComponentDocument::ParticleEmitter2d { render_layer, .. }
-            | SceneComponentDocument::LayeredImage2d { render_layer, .. }
-            | SceneComponentDocument::BeaconLight2d { render_layer, .. } => {
-                Some(render_layer.clone())
+            _ if component.primary_render_layer().is_some() => {
+                component.primary_render_layer().map(str::to_owned)
             }
-            SceneComponentDocument::Plugin {
-                component_type,
-                payload,
-            } => {
+            _ if component.plugin_payload().is_some() => {
+                let Some((component_type, payload)) = component.plugin_payload() else {
+                    return None;
+                };
                 let (Some(schemas), Some(graph_providers)) = (schemas, graph_providers) else {
                     return None;
                 };
@@ -398,7 +397,7 @@ fn primary_render_layer(
                     return None;
                 };
                 graph_providers
-                    .with_provider(component_type, |provider| {
+                    .with_provider(payload.component_type(), |provider| {
                         provider.primary_render_layer(payload.as_ref())
                     })
                     .flatten()
@@ -449,7 +448,7 @@ fn add_component_references(
     graph_providers: Option<&ComponentGraphProviderRegistry>,
 ) {
     match component {
-        SceneComponentDocument::Sprite2d {
+        ComponentDocument::Sprite2d {
             render_layer,
             texture,
             ..
@@ -471,7 +470,7 @@ fn add_component_references(
                 true,
             );
         }
-        SceneComponentDocument::LayeredImage2d {
+        ComponentDocument::LayeredImage2d {
             render_layer,
             asset,
             layer_overrides,
@@ -505,7 +504,7 @@ fn add_component_references(
                 );
             }
         }
-        SceneComponentDocument::TileMap2d {
+        ComponentDocument::TileMap2d {
             render_layer,
             tileset,
             ruleset,
@@ -539,7 +538,7 @@ fn add_component_references(
                 );
             }
         }
-        SceneComponentDocument::Text2d {
+        ComponentDocument::Text2d {
             render_layer, font, ..
         } => {
             add_draw_layer_ref(
@@ -559,7 +558,7 @@ fn add_component_references(
                 true,
             );
         }
-        SceneComponentDocument::VectorShape2d { render_layer, .. } => {
+        ComponentDocument::VectorShape2d { render_layer, .. } => {
             add_draw_layer_ref(
                 graph,
                 component_node,
@@ -568,7 +567,7 @@ fn add_component_references(
                 draw_layers,
             );
         }
-        SceneComponentDocument::BeaconLight2d { render_layer, .. } => {
+        ComponentDocument::BeaconLight2d { render_layer, .. } => {
             add_draw_layer_ref(
                 graph,
                 component_node,
@@ -577,7 +576,7 @@ fn add_component_references(
                 draw_layers,
             );
         }
-        SceneComponentDocument::ParticleEmitter2d {
+        ComponentDocument::ParticleEmitter2d {
             render_layer,
             attached_to,
             ..
@@ -601,7 +600,7 @@ fn add_component_references(
                 );
             }
         }
-        SceneComponentDocument::CameraFollow2d { target, .. } => {
+        ComponentDocument::CameraFollow2d { target, .. } => {
             add_scene_object_ref(
                 graph,
                 component_node,
@@ -612,7 +611,7 @@ fn add_component_references(
                 "missing_camera_follow_target",
             );
         }
-        SceneComponentDocument::Parallax2d { camera, .. } => {
+        ComponentDocument::Parallax2d { camera, .. } => {
             add_scene_object_ref(
                 graph,
                 component_node,
@@ -623,7 +622,7 @@ fn add_component_references(
                 "missing_parallax_camera",
             );
         }
-        SceneComponentDocument::TileMapMarker2d { tilemap_entity, .. } => {
+        ComponentDocument::TileMapMarker2d { tilemap_entity, .. } => {
             if let Some(tilemap_entity) = tilemap_entity {
                 add_scene_object_ref(
                     graph,
@@ -636,7 +635,7 @@ fn add_component_references(
                 );
             }
         }
-        SceneComponentDocument::LightMap2dSource {
+        ComponentDocument::LightMap2dSource {
             source, channels, ..
         } => {
             match source {
@@ -667,7 +666,7 @@ fn add_component_references(
                 }
             }
         }
-        SceneComponentDocument::ScriptComponent { script, .. } => {
+        ComponentDocument::ScriptComponent { script, .. } => {
             add_external_ref(
                 graph,
                 component_node,
@@ -678,7 +677,7 @@ fn add_component_references(
                 true,
             );
         }
-        SceneComponentDocument::Mesh3d { mesh } => {
+        ComponentDocument::Mesh3d { mesh } => {
             add_external_ref(
                 graph,
                 component_node,
@@ -689,7 +688,7 @@ fn add_component_references(
                 true,
             );
         }
-        SceneComponentDocument::Material3d { source, albedo, .. } => {
+        ComponentDocument::Material3d { source, albedo, .. } => {
             if let Some(source) = source {
                 add_external_ref(
                     graph,
@@ -713,7 +712,7 @@ fn add_component_references(
                 );
             }
         }
-        SceneComponentDocument::Text3d { font, .. } => {
+        ComponentDocument::Text3d { font, .. } => {
             add_external_ref(
                 graph,
                 component_node,
@@ -724,10 +723,10 @@ fn add_component_references(
                 true,
             );
         }
-        SceneComponentDocument::Plugin {
-            component_type,
-            payload,
-        } => {
+        _ if component.plugin_payload().is_some() => {
+            let Some((component_type, payload)) = component.plugin_payload() else {
+                return;
+            };
             let (Some(schemas), Some(graph_providers)) = (schemas, graph_providers) else {
                 return;
             };
@@ -737,7 +736,7 @@ fn add_component_references(
             let Ok(payload) = payload else {
                 return;
             };
-            let _ = graph_providers.with_provider(component_type, |provider| {
+            let _ = graph_providers.with_provider(payload.component_type(), |provider| {
                 let mut ctx = crate::PluginComponentGraphContext {
                     payload: payload.as_ref(),
                     component_node,

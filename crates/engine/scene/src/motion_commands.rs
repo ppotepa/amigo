@@ -1,5 +1,12 @@
 use amigo_math::{Curve1d, Vec2};
 
+pub const VELOCITY_2D_PLUGIN_SCENE_COMMAND_TYPE: &str =
+    "amigo.camera.shutter-motion.scene-command.Velocity2d";
+pub const BOUNDS_2D_PLUGIN_SCENE_COMMAND_TYPE: &str =
+    "amigo.camera.shutter-motion.scene-command.Bounds2d";
+pub const FREEFLIGHT_MOTION_2D_PLUGIN_SCENE_COMMAND_TYPE: &str =
+    "amigo.camera.shutter-motion.scene-command.FreeflightMotion2d";
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct Velocity2dSceneCommand {
     pub source_mod: String,
@@ -19,6 +26,34 @@ impl Velocity2dSceneCommand {
             velocity,
         }
     }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct Velocity2dPluginSceneCommandPayload(pub Velocity2dSceneCommand);
+
+impl crate::PluginSceneCommandPayload for Velocity2dPluginSceneCommandPayload {
+    fn command_type(&self) -> &'static str {
+        VELOCITY_2D_PLUGIN_SCENE_COMMAND_TYPE
+    }
+
+    fn command_as_any(&self) -> &dyn std::any::Any {
+        &self.0
+    }
+
+    fn eq_payload(&self, other: &dyn crate::PluginSceneCommandPayload) -> bool {
+        other
+            .command_as_any()
+            .downcast_ref::<Velocity2dSceneCommand>()
+            .is_some_and(|command| command == &self.0)
+    }
+}
+
+pub fn velocity_2d_plugin_scene_command(
+    command: Velocity2dSceneCommand,
+) -> crate::PluginSceneCommand {
+    crate::PluginSceneCommand::new(std::sync::Arc::new(Velocity2dPluginSceneCommandPayload(
+        command,
+    )))
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -58,6 +93,32 @@ impl Bounds2dSceneCommand {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+pub struct Bounds2dPluginSceneCommandPayload(pub Bounds2dSceneCommand);
+
+impl crate::PluginSceneCommandPayload for Bounds2dPluginSceneCommandPayload {
+    fn command_type(&self) -> &'static str {
+        BOUNDS_2D_PLUGIN_SCENE_COMMAND_TYPE
+    }
+
+    fn command_as_any(&self) -> &dyn std::any::Any {
+        &self.0
+    }
+
+    fn eq_payload(&self, other: &dyn crate::PluginSceneCommandPayload) -> bool {
+        other
+            .command_as_any()
+            .downcast_ref::<Bounds2dSceneCommand>()
+            .is_some_and(|command| command == &self.0)
+    }
+}
+
+pub fn bounds_2d_plugin_scene_command(command: Bounds2dSceneCommand) -> crate::PluginSceneCommand {
+    crate::PluginSceneCommand::new(std::sync::Arc::new(Bounds2dPluginSceneCommandPayload(
+        command,
+    )))
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub struct FreeflightMotion2dSceneCommand {
     pub source_mod: String,
     pub entity_name: String,
@@ -75,6 +136,34 @@ pub struct FreeflightMotion2dSceneCommand {
     pub reverse_response_curve: Curve1d,
     pub strafe_response_curve: Curve1d,
     pub turn_response_curve: Curve1d,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct FreeflightMotion2dPluginSceneCommandPayload(pub FreeflightMotion2dSceneCommand);
+
+impl crate::PluginSceneCommandPayload for FreeflightMotion2dPluginSceneCommandPayload {
+    fn command_type(&self) -> &'static str {
+        FREEFLIGHT_MOTION_2D_PLUGIN_SCENE_COMMAND_TYPE
+    }
+
+    fn command_as_any(&self) -> &dyn std::any::Any {
+        &self.0
+    }
+
+    fn eq_payload(&self, other: &dyn crate::PluginSceneCommandPayload) -> bool {
+        other
+            .command_as_any()
+            .downcast_ref::<FreeflightMotion2dSceneCommand>()
+            .is_some_and(|command| command == &self.0)
+    }
+}
+
+pub fn freeflight_motion_2d_plugin_scene_command(
+    command: FreeflightMotion2dSceneCommand,
+) -> crate::PluginSceneCommand {
+    crate::PluginSceneCommand::new(std::sync::Arc::new(
+        FreeflightMotion2dPluginSceneCommandPayload(command),
+    ))
 }
 
 impl FreeflightMotion2dSceneCommand {

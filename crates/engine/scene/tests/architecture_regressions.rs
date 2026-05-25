@@ -24,11 +24,11 @@ fn scene_loader_keeps_plugin_schema_registry_path() {
     let loader_rs = crate_root().join("src/document/loader.rs");
     let content = read(loader_rs);
     assert!(
-        content.contains(".parse_plugin_payload("),
+        content.contains(".parse_plugin_payload_with_canonical_type("),
         "scene loader should continue routing plugin payloads through ComponentSchemaRegistry",
     );
     assert!(
-        content.contains("SceneComponentDocument::Plugin"),
+        content.contains("plugin_component_document("),
         "scene loader should preserve plugin envelope path for plugin-owned components",
     );
 }

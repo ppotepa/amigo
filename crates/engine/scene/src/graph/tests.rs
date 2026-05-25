@@ -1,11 +1,11 @@
-use amigo_runtime::{RuntimeBuilder, RuntimePlugin, ServiceRegistry};
+use amigo_runtime::{RuntimeBuilder, RuntimePlugin, ServiceRegistry, SystemRegistry};
 
 use crate::{
-    build_semantic_scene_graph, build_semantic_scene_graph_for_runtime,
     ComponentGraphProviderRegistry, ComponentSchemaRegistry, PluginComponentGraphContext,
-    PluginComponentGraphProvider, SceneComponentPayload, SceneComponentSchemaProvider,
-    SceneDocument, SceneDocumentError, SceneGraphDiagnosticSeverity, ScenePlugin,
-    ScenePluginComponentDescriptor, SceneReferenceKind, SceneReferenceTargetKind,
+    PluginComponentGraphProvider, RuntimeSceneCommandHandlerRegistry, SceneComponentPayload,
+    SceneComponentSchemaProvider, SceneDocument, SceneDocumentError, SceneGraphDiagnosticSeverity,
+    ScenePlugin, ScenePluginComponentDescriptor, SceneReferenceKind, SceneReferenceTargetKind,
+    build_semantic_scene_graph, build_semantic_scene_graph_for_runtime,
 };
 use serde_yaml::{Mapping, Value};
 
@@ -253,6 +253,16 @@ impl RuntimePlugin for TestTextRuntimePlugin {
     }
 }
 
+fn scene_test_runtime_builder() -> RuntimeBuilder {
+    RuntimeBuilder::default()
+        .with_service(RuntimeSceneCommandHandlerRegistry::new())
+        .expect("scene command registry should register")
+        .with_service(amigo_scripting_api::RuntimeScriptCommandHandlerRegistry::new())
+        .expect("script command registry should register")
+        .with_service(SystemRegistry::default())
+        .expect("system registry should register")
+}
+
 #[test]
 fn semantic_graph_builds_draw_layer_and_component_references() {
     let document: SceneDocument = serde_yaml::from_str(
@@ -271,7 +281,7 @@ entities:
   - id: player
     name: Player
     components:
-      - type: Sprite2D
+      - type: amigo.gfx.sprite-2d.Sprite2D
         render_layer: world
         texture: player.png
         size: [32, 32]
@@ -303,7 +313,7 @@ visual2d:
 entities:
   - id: player
     components:
-      - type: Sprite2D
+      - type: amigo.gfx.sprite-2d.Sprite2D
         render_layer: missing
         texture: player.png
         size: [32, 32]
@@ -321,7 +331,7 @@ entities:
 
 #[test]
 fn semantic_graph_uses_runtime_sprite_plugin_provider() {
-    let runtime = RuntimeBuilder::default()
+    let runtime = scene_test_runtime_builder()
         .with_plugin(ScenePlugin)
         .expect("scene plugin should register")
         .with_plugin(TestSpriteRuntimePlugin)
@@ -339,12 +349,14 @@ visual2d:
 entities:
   - id: player
     components:
-      - type: Sprite2D
+      - type: amigo.gfx.sprite-2d.Sprite2D
         render_layer: world
         texture: player.png
         size: [32, 32]
 "##,
-        runtime.resolve::<crate::ComponentSchemaRegistry>().as_deref(),
+        runtime
+            .resolve::<crate::ComponentSchemaRegistry>()
+            .as_deref(),
     )
     .expect("scene should parse");
 
@@ -360,7 +372,7 @@ entities:
 
 #[test]
 fn semantic_graph_uses_runtime_text_plugin_provider() {
-    let runtime = RuntimeBuilder::default()
+    let runtime = scene_test_runtime_builder()
         .with_plugin(ScenePlugin)
         .expect("scene plugin should register")
         .with_plugin(TestTextRuntimePlugin)
@@ -378,13 +390,15 @@ visual2d:
 entities:
   - id: title
     components:
-      - type: Text2D
+      - type: amigo.gfx.text-2d.Text2D
         render_layer: ui
         content: Amigo
         font: ui/font
         bounds: [128, 32]
 "##,
-        runtime.resolve::<crate::ComponentSchemaRegistry>().as_deref(),
+        runtime
+            .resolve::<crate::ComponentSchemaRegistry>()
+            .as_deref(),
     )
     .expect("scene should parse");
 
@@ -393,7 +407,9 @@ entities:
     assert!(graph.references.iter().any(|edge| {
         edge.kind == SceneReferenceKind::RendersIntoDrawLayer && edge.raw_target == "ui"
     }));
-    assert!(graph.references.iter().any(|edge| {
-        edge.kind == SceneReferenceKind::UsesFont && edge.raw_target == "ui/font"
-    }));
+    assert!(
+        graph.references.iter().any(|edge| {
+            edge.kind == SceneReferenceKind::UsesFont && edge.raw_target == "ui/font"
+        })
+    );
 }

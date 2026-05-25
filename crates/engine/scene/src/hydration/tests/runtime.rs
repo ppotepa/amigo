@@ -5,7 +5,7 @@ use amigo_math::{Curve1d, Vec2};
 use super::super::build_scene_hydration_plan;
 use crate::{
     EventPipelineStepSceneCommand, ParticleAlignMode2dSceneCommand,
-    ParticleBlendMode2dSceneCommand, ParticleSpawnArea2dSceneCommand, SceneCommand,
+    ParticleBlendMode2dSceneCommand, ParticleSpawnArea2dSceneCommand,
     UiModelBindingKindSceneCommand, load_scene_document_from_str,
 };
 
@@ -45,18 +45,20 @@ entities:
     let plan = build_scene_hydration_plan("test-mod", &document)
         .expect("event pipeline scene hydration should build");
 
-    assert!(plan.commands.iter().any(|command| matches!(
-        command,
-        SceneCommand::QueueEventPipeline { command }
-            if command.id == "asteroid-hit"
+    assert!(plan.commands.iter().any(|command| {
+        super::plugin_payload::<crate::EventPipelineSceneCommand>(command).is_some_and(|command| {
+            command.id == "asteroid-hit"
                 && command.topic == "collision.asteroid_hit"
                 && command.steps.len() == 6
-                && command.steps.iter().any(|step| matches!(
-                    step,
-                    EventPipelineStepSceneCommand::Script { function }
-                        if function == "on_asteroid_hit_pipeline"
-                ))
-    )));
+                && command.steps.iter().any(|step| {
+                    matches!(
+                        step,
+                        EventPipelineStepSceneCommand::Script { function }
+                            if function == "on_asteroid_hit_pipeline"
+                    )
+                })
+        })
+    }));
 }
 
 #[test]
@@ -101,18 +103,35 @@ entities:
     let plan = build_scene_hydration_plan("test-mod", &document)
         .expect("ui model bindings hydration should build");
 
-    assert!(plan.commands.iter().any(|command| matches!(
-        command,
-        SceneCommand::QueueUiModelBindings { command }
-            if command.entity_name == "ui-model-bindings"
-                && command.bindings.len() == 7
-                && command.bindings[0].format.as_deref() == Some("spawn={value}")
-                && matches!(command.bindings[2].kind, UiModelBindingKindSceneCommand::Height)
-                && matches!(command.bindings[3].kind, UiModelBindingKindSceneCommand::Selected)
-                && matches!(command.bindings[4].kind, UiModelBindingKindSceneCommand::Options)
-                && matches!(command.bindings[5].kind, UiModelBindingKindSceneCommand::Background)
-                && matches!(command.bindings[6].kind, UiModelBindingKindSceneCommand::Theme)
-    )));
+    assert!(plan.commands.iter().any(|command| {
+        super::plugin_payload::<crate::UiModelBindingsSceneCommand>(command).is_some_and(
+            |command| {
+                command.entity_name == "ui-model-bindings"
+                    && command.bindings.len() == 7
+                    && command.bindings[0].format.as_deref() == Some("spawn={value}")
+                    && matches!(
+                        command.bindings[2].kind,
+                        UiModelBindingKindSceneCommand::Height
+                    )
+                    && matches!(
+                        command.bindings[3].kind,
+                        UiModelBindingKindSceneCommand::Selected
+                    )
+                    && matches!(
+                        command.bindings[4].kind,
+                        UiModelBindingKindSceneCommand::Options
+                    )
+                    && matches!(
+                        command.bindings[5].kind,
+                        UiModelBindingKindSceneCommand::Background
+                    )
+                    && matches!(
+                        command.bindings[6].kind,
+                        UiModelBindingKindSceneCommand::Theme
+                    )
+            },
+        )
+    }));
 }
 
 #[test]
@@ -140,13 +159,15 @@ entities:
     let plan = build_scene_hydration_plan("test-mod", &document)
         .expect("script component hydration should build");
 
-    assert!(plan.commands.iter().any(|command| matches!(
-        command,
-        SceneCommand::QueueScriptComponent { command }
-            if command.entity_name == "script-actor"
-                && command.script == PathBuf::from("scripts/components/bob_motion.rhai")
-                && command.params.len() == 4
-    )));
+    assert!(plan.commands.iter().any(|command| {
+        super::plugin_payload::<crate::ScriptComponentSceneCommand>(command).is_some_and(
+            |command| {
+                command.entity_name == "script-actor"
+                    && command.script == PathBuf::from("scripts/components/bob_motion.rhai")
+                    && command.params.len() == 4
+            },
+        )
+    }));
 }
 
 #[test]
@@ -160,7 +181,7 @@ entities:
   - id: emitter
     name: test-emitter
     components:
-      - type: ParticleEmitter2D
+      - type: amigo.vfx.particles-2d.ParticleEmitter2D
         attached_to: test-source
         local_offset: { x: -12.0, y: 1.0 }
         local_direction_degrees: 180.0
@@ -219,10 +240,10 @@ entities:
     let plan = build_scene_hydration_plan("test-mod", &document)
         .expect("particle scene hydration should build");
 
-    assert!(plan.commands.iter().any(|command| matches!(
-            command,
-            SceneCommand::QueueParticleEmitter2d { command }
-                if command.entity_name == "test-emitter"
+    assert!(plan.commands.iter().any(|command| {
+        super::plugin_payload::<crate::ParticleEmitter2dSceneCommand>(command)
+            .is_some_and(|command| {
+                command.entity_name == "test-emitter"
                     && command.attached_to.as_deref() == Some("test-source")
                     && command.spawn_rate == 90.0
                     && command.max_particles == 64
@@ -240,5 +261,6 @@ entities:
                     && command.light.is_some_and(|light| (light.radius - 24.0).abs() < f32::EPSILON && (light.intensity - 0.35).abs() < f32::EPSILON && light.mode == crate::ParticleLightMode2dSceneCommand::Source && !light.glow)
                     && matches!(command.spawn_area, ParticleSpawnArea2dSceneCommand::Rect { size } if size == Vec2::new(120.0, 20.0))
                     && command.forces.len() == 2
-        )));
+            })
+    }));
 }

@@ -1,14 +1,10 @@
-    
+use super::super::super::build_scene_hydration_plan;
+use crate::{BehaviorKindSceneCommand, load_scene_document_from_str};
 
-    use super::super::super::build_scene_hydration_plan;
-    use crate::{
-        BehaviorKindSceneCommand, SceneCommand, load_scene_document_from_str,
-    };
-
-    #[test]
-    fn hydrates_menu_navigation_controller_behavior_command() {
-        let document = load_scene_document_from_str(
-            r#####"
+#[test]
+fn hydrates_menu_navigation_controller_behavior_command() {
+    let document = load_scene_document_from_str(
+        r#####"
 version: 1
 scene:
   id: behavior-scene
@@ -35,53 +31,53 @@ entities:
           - menu.highscores
           - menu.quit
 "#####,
-        )
-        .expect("behavior scene should parse");
+    )
+    .expect("behavior scene should parse");
 
-        let plan = build_scene_hydration_plan("test-mod", &document)
-            .expect("behavior scene hydration should build");
+    let plan = build_scene_hydration_plan("test-mod", &document)
+        .expect("behavior scene hydration should build");
 
-        assert!(plan.commands.iter().any(|command| matches!(
-            command,
-            SceneCommand::QueueBehavior { command }
-                if command.entity_name == "menu-controller"
-                    && matches!(
-                        &command.behavior,
-                        BehaviorKindSceneCommand::MenuNavigationController {
-                            index_state,
-                            item_count,
-                            item_count_state,
-                            up_action,
-                            down_action,
-                            confirm_action,
-                            move_audio,
-                            confirm_audio,
-                            confirm_events,
-                            selected_color_prefix,
-                            selected_color,
-                            unselected_color,
-                            wrap,
-                        } if index_state == "menu_index"
-                            && *item_count == 4
-                            && item_count_state.as_deref() == Some("menu_count")
-                            && up_action == "menu.up"
-                            && down_action == "menu.down"
-                            && confirm_action.as_deref() == Some("menu.confirm")
-                            && move_audio.as_deref() == Some("menu-move")
-                            && confirm_audio.as_deref() == Some("menu-select")
-                            && confirm_events.len() == 4
-                            && selected_color_prefix.as_deref() == Some("menu_color")
-                            && selected_color == "#FFFFFFFF"
-                            && unselected_color == "#9A9A9AFF"
-                            && *wrap
-                    )
-        )));
-    }
+    assert!(plan.commands.iter().any(|command| {
+        super::plugin_payload::<crate::BehaviorSceneCommand>(command).is_some_and(|command| {
+            command.entity_name == "menu-controller"
+                && matches!(
+                    &command.behavior,
+                    BehaviorKindSceneCommand::MenuNavigationController {
+                        index_state,
+                        item_count,
+                        item_count_state,
+                        up_action,
+                        down_action,
+                        confirm_action,
+                        move_audio,
+                        confirm_audio,
+                        confirm_events,
+                        selected_color_prefix,
+                        selected_color,
+                        unselected_color,
+                        wrap,
+                    } if index_state == "menu_index"
+                        && *item_count == 4
+                        && item_count_state.as_deref() == Some("menu_count")
+                        && up_action == "menu.up"
+                        && down_action == "menu.down"
+                        && confirm_action.as_deref() == Some("menu.confirm")
+                        && move_audio.as_deref() == Some("menu-move")
+                        && confirm_audio.as_deref() == Some("menu-select")
+                        && confirm_events.len() == 4
+                        && selected_color_prefix.as_deref() == Some("menu_color")
+                        && selected_color == "#FFFFFFFF"
+                        && unselected_color == "#9A9A9AFF"
+                        && *wrap
+                )
+        })
+    }));
+}
 
-    #[test]
-    fn hydrates_state_action_controller_behavior_commands() {
-        let document = load_scene_document_from_str(
-            r#####"
+#[test]
+fn hydrates_state_action_controller_behavior_commands() {
+    let document = load_scene_document_from_str(
+        r#####"
 version: 1
 scene:
   id: behavior-scene
@@ -104,57 +100,56 @@ entities:
         key: debug_visible
         default: false
 "#####,
-        )
-        .expect("behavior scene should parse");
+    )
+    .expect("behavior scene should parse");
 
-        let plan = build_scene_hydration_plan("test-mod", &document)
-            .expect("behavior scene hydration should build");
+    let plan = build_scene_hydration_plan("test-mod", &document)
+        .expect("behavior scene hydration should build");
 
-        assert!(plan.commands.iter().any(|command| matches!(
-            command,
-            SceneCommand::QueueBehavior { command }
-                if command.entity_name == "state-controllers"
-                    && command
-                        .condition
-                        .as_ref()
-                        .is_some_and(|condition| condition.state_key == "game_mode"
-                            && condition.not_equals.as_deref() == Some("playing"))
-                    && matches!(
-                        &command.behavior,
-                        BehaviorKindSceneCommand::SetStateOnActionController {
-                            action,
-                            key,
-                            value,
-                            audio,
-                        } if action == "ui.open"
-                            && key == "panel"
-                            && value == "settings"
-                            && audio.as_deref() == Some("click")
-                    )
-        )));
-        assert!(plan.commands.iter().any(|command| matches!(
-            command,
-            SceneCommand::QueueBehavior { command }
-                if command.entity_name == "state-controllers"
-                    && matches!(
-                        &command.behavior,
-                        BehaviorKindSceneCommand::ToggleStateController {
-                            action,
-                            key,
-                            default,
-                            audio,
-                        } if action == "debug.toggle"
-                            && key == "debug_visible"
-                            && !*default
-                            && audio.is_none()
-                    )
-        )));
-    }
+    assert!(plan.commands.iter().any(|command| {
+        super::plugin_payload::<crate::BehaviorSceneCommand>(command).is_some_and(|command| {
+            command.entity_name == "state-controllers"
+                && command.condition.as_ref().is_some_and(|condition| {
+                    condition.state_key == "game_mode"
+                        && condition.not_equals.as_deref() == Some("playing")
+                })
+                && matches!(
+                    &command.behavior,
+                    BehaviorKindSceneCommand::SetStateOnActionController {
+                        action,
+                        key,
+                        value,
+                        audio,
+                    } if action == "ui.open"
+                        && key == "panel"
+                        && value == "settings"
+                        && audio.as_deref() == Some("click")
+                )
+        })
+    }));
+    assert!(plan.commands.iter().any(|command| {
+        super::plugin_payload::<crate::BehaviorSceneCommand>(command).is_some_and(|command| {
+            command.entity_name == "state-controllers"
+                && matches!(
+                    &command.behavior,
+                    BehaviorKindSceneCommand::ToggleStateController {
+                        action,
+                        key,
+                        default,
+                        audio,
+                    } if action == "debug.toggle"
+                        && key == "debug_visible"
+                        && !*default
+                        && audio.is_none()
+                )
+        })
+    }));
+}
 
-    #[test]
-    fn hydrates_behavior_condition_numeric_and_bool_checks() {
-        let document = load_scene_document_from_str(
-            r#####"
+#[test]
+fn hydrates_behavior_condition_numeric_and_bool_checks() {
+    let document = load_scene_document_from_str(
+        r#####"
 version: 1
 scene:
   id: behavior-scene
@@ -179,34 +174,29 @@ entities:
         action: debug.toggle
         key: debug_visible
 "#####,
-        )
-        .expect("behavior scene should parse");
+    )
+    .expect("behavior scene should parse");
 
-        let plan = build_scene_hydration_plan("test-mod", &document)
-            .expect("behavior scene hydration should build");
+    let plan = build_scene_hydration_plan("test-mod", &document)
+        .expect("behavior scene hydration should build");
 
-        assert!(plan.commands.iter().any(|command| matches!(
-            command,
-            SceneCommand::QueueBehavior { command }
-                if command.entity_name == "conditional-controller"
-                    && command
-                        .condition
-                        .as_ref()
-                        .is_some_and(|condition| condition.state_key == "charge"
-                            && condition.greater_or_equal == Some(0.5)
-                            && condition.less_than == Some(1.0))
-        )));
+    assert!(plan.commands.iter().any(|command| {
+        super::plugin_payload::<crate::BehaviorSceneCommand>(command).is_some_and(|command| {
+            command.entity_name == "conditional-controller"
+                && command.condition.as_ref().is_some_and(|condition| {
+                    condition.state_key == "charge"
+                        && condition.greater_or_equal == Some(0.5)
+                        && condition.less_than == Some(1.0)
+                })
+        })
+    }));
 
-        assert!(plan.commands.iter().any(|command| matches!(
-            command,
-            SceneCommand::QueueBehavior { command }
-                if command.entity_name == "conditional-controller"
-                    && command
-                        .condition
-                        .as_ref()
-                        .is_some_and(|condition| condition.state_key == "debug_visible"
-                            && condition.is_true)
-        )));
-    }
-
-
+    assert!(plan.commands.iter().any(|command| {
+        super::plugin_payload::<crate::BehaviorSceneCommand>(command).is_some_and(|command| {
+            command.entity_name == "conditional-controller"
+                && command.condition.as_ref().is_some_and(|condition| {
+                    condition.state_key == "debug_visible" && condition.is_true
+                })
+        })
+    }));
+}

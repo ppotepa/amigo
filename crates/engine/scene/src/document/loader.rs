@@ -15,7 +15,10 @@ use super::core::{
 use super::defaults::{default_entity_lifecycle_flag, default_scene_document_version};
 use super::render_values::{SceneTransform2Document, SceneTransform3Document};
 use super::visual2d::{PostFx2dDocument, SceneVisual2dDocument};
-use super::SceneComponentDocument;
+use super::{
+    SceneComponentDocument, is_builtin_component_type, is_rejected_retired_component_type,
+    plugin_component_document,
+};
 use crate::{ComponentSchemaRegistry, SceneDocumentError, SceneDocumentResult};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -166,34 +169,37 @@ fn parse_scene_component(
 ) -> Result<SceneComponentDocument, serde_yaml::Error> {
     let envelope = serde_yaml::from_value::<SceneComponentEnvelope>(value.clone())?;
 
-    if SceneComponentDocument::is_rejected_legacy_type(&envelope.component_type) {
+    if is_rejected_retired_component_type(&envelope.component_type) {
         return serde_yaml::from_value(value);
     }
 
     if let Some(component_schemas) = component_schemas {
+        if let Some((component_type, payload)) = component_schemas
+            .parse_plugin_payload_with_canonical_type(
+                envelope.component_type.as_str(),
+                envelope.payload.clone(),
+            )
+            .transpose()?
+        {
+            return Ok(plugin_component_document(component_type, payload));
+        }
+
         if let Some(descriptor) = component_schemas.get(envelope.component_type.as_str()) {
-            let payload = component_schemas
-                .parse_plugin_payload(
-                    envelope.component_type.as_str(),
-                    envelope.payload.clone(),
-                )
-                .transpose()?
-                .unwrap_or(Value::Mapping(envelope.payload));
-            return Ok(SceneComponentDocument::Plugin {
-                component_type: descriptor.id.as_str().to_owned(),
-                payload,
-            });
+            return Ok(plugin_component_document(
+                descriptor.id.as_str().to_owned(),
+                Value::Mapping(envelope.payload),
+            ));
         }
     }
 
-    if SceneComponentDocument::is_builtin_type(&envelope.component_type) {
+    if is_builtin_component_type(&envelope.component_type) {
         return serde_yaml::from_value(value);
     }
 
-    Ok(SceneComponentDocument::Plugin {
-        component_type: envelope.component_type,
-        payload: Value::Mapping(envelope.payload),
-    })
+    Ok(plugin_component_document(
+        envelope.component_type,
+        Value::Mapping(envelope.payload),
+    ))
 }
 
 pub fn scene_document_path(

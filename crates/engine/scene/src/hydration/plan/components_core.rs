@@ -1,3 +1,5 @@
+use crate::document::SceneComponentDocument as ComponentDocument;
+
 fn hydrate_component_core(
     source_mod: &str,
     document: &SceneDocument,
@@ -22,7 +24,7 @@ fn hydrate_component_core(
         }
     }
     match component {
-        SceneComponentDocument::Camera2d {
+        ComponentDocument::Camera2d {
             id,
             mode,
             render_contributions,
@@ -34,8 +36,8 @@ fn hydrate_component_core(
             look,
             aperture,
         } => {
-            commands.push(SceneCommand::QueueCamera2d {
-                command: Camera2dSceneCommand {
+            commands.push(SceneCommand::Plugin {
+                command: camera_2d_plugin_scene_command(Camera2dSceneCommand {
                     source_mod: source_mod.to_string(),
                     entity_name: entity_name.to_string(),
                     camera_id: id.clone(),
@@ -58,10 +60,10 @@ fn hydrate_component_core(
                             max_iso: exposure.auto.max_iso,
                         },
                     },
-                shutter: CameraShutter2dSceneCommand {
-                    enabled: shutter.enabled,
-                    speed_s: shutter.speed_s,
-                    fps: shutter.fps,
+                    shutter: CameraShutter2dSceneCommand {
+                        enabled: shutter.enabled,
+                        speed_s: shutter.speed_s,
+                        fps: shutter.fps,
                         angle: shutter.angle,
                         opacity: shutter.opacity,
                         history_mix: shutter.history_mix,
@@ -141,11 +143,11 @@ fn hydrate_component_core(
                             highlight_saturation: aperture.depth_of_field.highlight_saturation,
                         },
                     },
-                },
+                }),
             });
         }
-        SceneComponentDocument::Camera3d | SceneComponentDocument::Light3d { .. } => {}
-        SceneComponentDocument::Sprite2d {
+        ComponentDocument::Camera3d | ComponentDocument::Light3d { .. } => {}
+        ComponentDocument::Sprite2d {
             render_layer,
             texture,
             size,
@@ -157,8 +159,8 @@ fn hydrate_component_core(
             z_index,
             post_fx: _,
         } => {
-            commands.push(SceneCommand::QueueSprite2d {
-                command: Sprite2dSceneCommand {
+            commands.push(SceneCommand::Plugin {
+                command: sprite_2d_plugin_scene_command(Sprite2dSceneCommand {
                     source_mod: source_mod.to_owned(),
                     entity_name: entity_name.clone(),
                     render_layer: render_layer.clone(),
@@ -176,10 +178,10 @@ fn hydrate_component_core(
                     material: material2d_scene_command(*material),
                     z_index: *z_index,
                     transform: transform2_for_entity(entity),
-                },
+                }),
             });
         }
-        SceneComponentDocument::LayeredImage2d {
+        ComponentDocument::LayeredImage2d {
             render_layer,
             asset,
             size,
@@ -190,8 +192,8 @@ fn hydrate_component_core(
             layer_overrides,
             post_fx: _,
         } => {
-            commands.push(SceneCommand::QueueLayeredImage2d {
-                command: LayeredImage2dSceneCommand {
+            commands.push(SceneCommand::Plugin {
+                command: layered_image_2d_plugin_scene_command(LayeredImage2dSceneCommand {
                     source_mod: source_mod.to_owned(),
                     entity_name: entity_name.clone(),
                     render_layer: render_layer.clone(),
@@ -212,10 +214,10 @@ fn hydrate_component_core(
                             visual_maps: item.visual_maps.as_ref().map(visual_maps_from_document),
                         })
                         .collect(),
-                },
+                }),
             });
         }
-        SceneComponentDocument::DepthMap2d {
+        ComponentDocument::DepthMap2d {
             id,
             asset,
             size,
@@ -223,8 +225,8 @@ fn hydrate_component_core(
             white_is_near,
             z_index,
         } => {
-            commands.push(SceneCommand::QueueDepthMap2d {
-                command: DepthMap2dSceneCommand {
+            commands.push(SceneCommand::Plugin {
+                command: depth_map_2d_plugin_scene_command(DepthMap2dSceneCommand {
                     source_mod: source_mod.to_owned(),
                     entity_name: entity_name.clone(),
                     id: id.clone(),
@@ -234,10 +236,10 @@ fn hydrate_component_core(
                     white_is_near: *white_is_near,
                     z_index: *z_index,
                     transform: transform2_for_entity(entity),
-                },
+                }),
             });
         }
-        SceneComponentDocument::DepthAuxMap2d {
+        ComponentDocument::DepthAuxMap2d {
             id,
             asset,
             surface_asset,
@@ -246,8 +248,8 @@ fn hydrate_component_core(
             channels,
             z_index,
         } => {
-            commands.push(SceneCommand::QueueDepthAuxMap2d {
-                command: DepthAuxMap2dSceneCommand {
+            commands.push(SceneCommand::Plugin {
+                command: depth_aux_map_2d_plugin_scene_command(DepthAuxMap2dSceneCommand {
                     source_mod: source_mod.to_owned(),
                     entity_name: entity_name.clone(),
                     id: id.clone(),
@@ -258,16 +260,16 @@ fn hydrate_component_core(
                     channels: depth_aux_channels_from_document(channels),
                     z_index: *z_index,
                     transform: transform2_for_entity(entity),
-                },
+                }),
             });
         }
-        SceneComponentDocument::GlobalLight2d {
+        ComponentDocument::GlobalLight2d {
             id,
             color,
             intensity,
         } => {
-            commands.push(SceneCommand::QueueGlobalLight2d {
-                command: GlobalLight2dSceneCommand {
+            commands.push(SceneCommand::Plugin {
+                command: global_light_2d_plugin_scene_command(GlobalLight2dSceneCommand {
                     source_mod: source_mod.to_owned(),
                     entity_name: entity_name.clone(),
                     id: id.clone(),
@@ -278,16 +280,16 @@ fn hydrate_component_core(
                         component.kind(),
                     )?,
                     intensity: intensity.max(0.0),
-                },
+                }),
             });
         }
-        SceneComponentDocument::LightMap2dSource {
+        ComponentDocument::LightMap2dSource {
             id,
             source,
             channels,
         } => {
-            commands.push(SceneCommand::QueueLightMap2dSource {
-                command: LightMap2dSourceSceneCommand {
+            commands.push(SceneCommand::Plugin {
+                command: lightmap_2d_source_plugin_scene_command(LightMap2dSourceSceneCommand {
                     source_mod: source_mod.to_owned(),
                     entity_name: entity_name.clone(),
                     id: id.clone(),
@@ -296,10 +298,10 @@ fn hydrate_component_core(
                         .iter()
                         .map(lightmap_channel_from_document)
                         .collect(),
-                },
+                }),
             });
         }
-        SceneComponentDocument::TileMap2d {
+        ComponentDocument::TileMap2d {
             render_layer,
             tileset,
             ruleset,
@@ -321,9 +323,11 @@ fn hydrate_component_core(
             command.render_layer = render_layer.clone();
             command.depth_fill_rows = *depth_fill_rows;
             command.z_index = *z_index;
-            commands.push(SceneCommand::QueueTileMap2d { command });
+            commands.push(SceneCommand::Plugin {
+                command: tilemap_2d_plugin_scene_command(command),
+            });
         }
-        SceneComponentDocument::Text2d {
+        ComponentDocument::Text2d {
             render_layer,
             content,
             font,
@@ -334,8 +338,8 @@ fn hydrate_component_core(
             material,
             post_fx,
         } => {
-            commands.push(SceneCommand::QueueText2d {
-                command: Text2dSceneCommand {
+            commands.push(SceneCommand::Plugin {
+                command: text_2d_plugin_scene_command(Text2dSceneCommand {
                     source_mod: source_mod.to_owned(),
                     entity_name: entity_name.clone(),
                     render_layer: render_layer.clone(),
@@ -357,10 +361,10 @@ fn hydrate_component_core(
                     z_index: *z_index,
                     material: material2d_scene_command(*material),
                     transform: transform2_for_entity(entity),
-                },
+                }),
             });
         }
-        SceneComponentDocument::VectorShape2d {
+        ComponentDocument::VectorShape2d {
             render_layer,
             kind,
             points,
@@ -427,9 +431,11 @@ fn hydrate_component_core(
             };
             command.material = material2d_scene_command(*material);
             command.transform = transform2_for_entity(entity);
-            commands.push(SceneCommand::QueueVectorShape2d { command });
+            commands.push(SceneCommand::Plugin {
+                command: vector_shape_2d_plugin_scene_command(command),
+            });
         }
-        SceneComponentDocument::BeaconLight2d {
+        ComponentDocument::BeaconLight2d {
             id,
             render_layer,
             color,
@@ -461,8 +467,8 @@ fn hydrate_component_core(
             viewport_canvas_size,
             post_fx: _,
         } => {
-            commands.push(SceneCommand::QueueBeaconLight2d {
-                command: BeaconLight2dSceneCommand {
+            commands.push(SceneCommand::Plugin {
+                command: beacon_light_2d_plugin_scene_command(BeaconLight2dSceneCommand {
                     source_mod: source_mod.to_owned(),
                     entity_name: entity_name.clone(),
                     id: id.clone(),
@@ -491,10 +497,9 @@ fn hydrate_component_core(
                     beam_strength: (*beam_strength).max(0.0),
                     aberration_px: (*aberration_px).max(0.0),
                     bloom: (*bloom).max(0.0),
-                    camera_response:
-                        amigo_camera::camera_optical_response_from_document(
-                            *camera_response,
-                        ),
+                    camera_response: amigo_camera::camera_optical_response_from_document(
+                        *camera_response,
+                    ),
                     depth: depth.as_ref().map(|depth| {
                         render_depth_from_document(
                             depth,
@@ -524,56 +529,58 @@ fn hydrate_component_core(
                     viewport_canvas_size: viewport_canvas_size
                         .as_ref()
                         .map(|size| vec2_from_document(*size)),
-                },
+                }),
             });
         }
-        SceneComponentDocument::EntityPool { pool, members } => {
-            commands.push(SceneCommand::QueueEntityPool {
-                command: EntityPoolSceneCommand::new(
+        ComponentDocument::EntityPool { pool, members } => {
+            commands.push(SceneCommand::Plugin {
+                command: entity_pool_plugin_scene_command(EntityPoolSceneCommand::new(
                     source_mod.to_owned(),
                     pool.clone().unwrap_or_else(|| entity_name.clone()),
                     members.clone(),
-                ),
+                )),
             });
         }
-        SceneComponentDocument::Lifetime {
+        ComponentDocument::Lifetime {
             seconds,
             outcome,
             pool,
         } => {
-            commands.push(SceneCommand::QueueLifetime {
-                command: LifetimeSceneCommand::new(
+            commands.push(SceneCommand::Plugin {
+                command: lifetime_plugin_scene_command(LifetimeSceneCommand::new(
                     source_mod.to_owned(),
                     entity_name.clone(),
                     *seconds,
                     lifetime_outcome_from_document(*outcome, pool.clone()),
-                ),
+                )),
             });
         }
-        SceneComponentDocument::ProjectileEmitter2d {
+        ComponentDocument::ProjectileEmitter2d {
             pool,
             speed,
             spawn_offset,
             inherit_velocity_scale,
         } => {
-            commands.push(SceneCommand::QueueProjectileEmitter2d {
-                command: ProjectileEmitter2dSceneCommand::new(
-                    source_mod.to_owned(),
-                    entity_name.clone(),
-                    pool.clone(),
-                    *speed,
-                    vec2_from_document(*spawn_offset),
-                    *inherit_velocity_scale,
+            commands.push(SceneCommand::Plugin {
+                command: projectile_emitter_2d_plugin_scene_command(
+                    ProjectileEmitter2dSceneCommand::new(
+                        source_mod.to_owned(),
+                        entity_name.clone(),
+                        pool.clone(),
+                        *speed,
+                        vec2_from_document(*spawn_offset),
+                        *inherit_velocity_scale,
+                    ),
                 ),
             });
         }
-        SceneComponentDocument::InputActionMap {
+        ComponentDocument::InputActionMap {
             id,
             active,
             actions,
         } => {
-            commands.push(SceneCommand::QueueInputActionMap {
-                command: InputActionMapSceneCommand {
+            commands.push(SceneCommand::Plugin {
+                command: input_action_map_plugin_scene_command(InputActionMapSceneCommand {
                     source_mod: source_mod.to_owned(),
                     entity_name: entity_name.clone(),
                     id: id.clone(),
@@ -584,15 +591,15 @@ fn hydrate_component_core(
                             (action.clone(), input_action_binding_from_document(binding))
                         })
                         .collect(),
-                },
+                }),
             });
         }
-        SceneComponentDocument::Behavior {
+        ComponentDocument::Behavior {
             enabled_when,
             behavior,
         } => {
-            commands.push(SceneCommand::QueueBehavior {
-                command: BehaviorSceneCommand {
+            commands.push(SceneCommand::Plugin {
+                command: behavior_plugin_scene_command(BehaviorSceneCommand {
                     source_mod: source_mod.to_owned(),
                     entity_name: entity_name.clone(),
                     condition: enabled_when.as_ref().map(|condition| {
@@ -614,12 +621,12 @@ fn hydrate_component_core(
                         &entity.id,
                         component.kind(),
                     )?,
-                },
+                }),
             });
         }
-        SceneComponentDocument::EventPipeline { id, topic, steps } => {
-            commands.push(SceneCommand::QueueEventPipeline {
-                command: EventPipelineSceneCommand {
+        ComponentDocument::EventPipeline { id, topic, steps } => {
+            commands.push(SceneCommand::Plugin {
+                command: event_pipeline_plugin_scene_command(EventPipelineSceneCommand {
                     source_mod: source_mod.to_owned(),
                     entity_name: entity_name.clone(),
                     id: id.clone(),
@@ -628,24 +635,24 @@ fn hydrate_component_core(
                         .iter()
                         .map(event_pipeline_step_from_document)
                         .collect(),
-                },
+                }),
             });
         }
-        SceneComponentDocument::UiModelBindings { bindings } => {
-            commands.push(SceneCommand::QueueUiModelBindings {
-                command: UiModelBindingsSceneCommand {
+        ComponentDocument::UiModelBindings { bindings } => {
+            commands.push(SceneCommand::Plugin {
+                command: ui_model_bindings_plugin_scene_command(UiModelBindingsSceneCommand {
                     source_mod: source_mod.to_owned(),
                     entity_name: entity_name.clone(),
                     bindings: bindings
                         .iter()
                         .map(ui_model_binding_from_document)
                         .collect(),
-                },
+                }),
             });
         }
-        SceneComponentDocument::ScriptComponent { script, params } => {
-            commands.push(SceneCommand::QueueScriptComponent {
-                command: ScriptComponentSceneCommand {
+        ComponentDocument::ScriptComponent { script, params } => {
+            commands.push(SceneCommand::Plugin {
+                command: script_component_plugin_scene_command(ScriptComponentSceneCommand {
                     source_mod: source_mod.to_owned(),
                     entity_name: entity_name.clone(),
                     script: script.into(),
@@ -655,7 +662,7 @@ fn hydrate_component_core(
                             (key.clone(), script_component_param_from_document(value))
                         })
                         .collect(),
-                },
+                }),
             });
         }
         _ => return Ok(false),
@@ -808,7 +815,9 @@ fn text2d_style_from_document(
     })
 }
 
-fn material2d_scene_command(material: Option<Material2dDocument>) -> Option<Material2dSceneCommand> {
+fn material2d_scene_command(
+    material: Option<Material2dDocument>,
+) -> Option<Material2dSceneCommand> {
     material.map(|material| Material2dSceneCommand {
         optical: Material2dOpticalSceneCommand {
             mode: match material.optical.mode {
@@ -834,10 +843,9 @@ fn material2d_scene_command(material: Option<Material2dDocument>) -> Option<Mate
             receives_light: material.lighting.receives_light,
             response: material.lighting.response,
         },
-        camera_response:
-            amigo_camera::camera_optical_response_from_document(
-                material.camera_response,
-            ),
+        camera_response: amigo_camera::camera_optical_response_from_document(
+            material.camera_response,
+        ),
     })
 }
 

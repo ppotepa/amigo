@@ -4,8 +4,8 @@ use std::path::{Component, Path, PathBuf};
 use serde_yaml::{Mapping, Value};
 
 use super::{
-    SceneDocument, SceneFrameClockDocument, SceneFramePresentationDocument, SceneSchedulingDocument,
-    parse_scene_document_value,
+    SceneDocument, SceneFrameClockDocument, SceneFramePresentationDocument,
+    SceneSchedulingDocument, parse_scene_document_value,
 };
 use crate::{ComponentSchemaRegistry, SceneDocumentError, SceneDocumentResult};
 
@@ -90,12 +90,13 @@ pub fn compile_scene_document_from_path_with_component_schemas(
     expand_authoring_refs(&mut value, scene_path, mod_root, &mut dependencies)?;
     validate_compiled_value(&value)?;
 
-    let document = parse_scene_document_value(value.clone(), component_schemas).map_err(|source| {
-        SceneDocumentError::Parse {
-            path: Some(scene_path.to_path_buf()),
-            source,
-        }
-    })?;
+    let document =
+        parse_scene_document_value(value.clone(), component_schemas).map_err(|source| {
+            SceneDocumentError::Parse {
+                path: Some(scene_path.to_path_buf()),
+                source,
+            }
+        })?;
 
     let scheduling = merge_scene_scheduling_documents(scheduling_values)?;
 
@@ -388,11 +389,11 @@ fn resolve_reference(
 ) -> SceneDocumentResult<PathBuf> {
     if let Some(rest) = value.strip_prefix("mod:") {
         reject_unsafe_relative(rest)?;
-        return resolve_with_yaml_fallback(&mod_root.join(rest));
+        return resolve_with_yaml_default_extension(&mod_root.join(rest));
     }
     reject_unsafe_relative(value)?;
     let base = base_path.parent().unwrap_or_else(|| Path::new(""));
-    resolve_with_yaml_fallback(&base.join(value))
+    resolve_with_yaml_default_extension(&base.join(value))
 }
 
 fn reject_unsafe_relative(value: &str) -> SceneDocumentResult<()> {
@@ -413,7 +414,7 @@ fn reject_unsafe_relative(value: &str) -> SceneDocumentResult<()> {
     Ok(())
 }
 
-fn resolve_with_yaml_fallback(path: &Path) -> SceneDocumentResult<PathBuf> {
+fn resolve_with_yaml_default_extension(path: &Path) -> SceneDocumentResult<PathBuf> {
     if path.extension().is_some() {
         return Ok(path.to_path_buf());
     }

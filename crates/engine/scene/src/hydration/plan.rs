@@ -1,9 +1,9 @@
 use super::style::{parse_color_rgba_hex, parse_optional_color_rgba_hex, ui_theme_from_component};
 use super::*;
-use amigo_camera::camera_optical_response_from_document;
-use amigo_render_api::PostFxScope2d;
 use amigo_assets::AssetKey;
+use amigo_camera::camera_optical_response_from_document;
 use amigo_math::{ColorRgba, Curve1d};
+use amigo_render_api::PostFxScope2d;
 
 use super::post_fx::{
     build_scoped_post_fx_stack, component_post_fx_host_id, draw_layer_post_fx_host_id,
@@ -19,11 +19,10 @@ use crate::{
     CameraExposureMode2dSceneCommand, CameraFilm2dSceneCommand, CameraFocus2dDocument,
     CameraFocus2dSceneCommand, CameraFollow2dSceneCommand, CameraLens2dSceneCommand,
     CameraLensSurface2dSceneCommand, CameraLook2dSceneCommand, CameraShutter2dSceneCommand,
-    CircleCollider2dSceneCommand, CollisionEventRule2dSceneCommand, DepthCurve2dSceneCommand,
-    DepthAuxMap2dChannelsDocument, DepthAuxMap2dChannelsSceneCommand,
-    DepthAuxMap2dSceneCommand, DepthMap2dSceneCommand, DepthMapViewportFit2dSceneCommand,
-    DepthSpace2dSceneCommand, EntityPoolSceneCommand, EventPipelineSceneCommand,
-    FreeflightMotion2dSceneCommand,
+    CircleCollider2dSceneCommand, CollisionEventRule2dSceneCommand, DepthAuxMap2dChannelsDocument,
+    DepthAuxMap2dChannelsSceneCommand, DepthAuxMap2dSceneCommand, DepthCurve2dSceneCommand,
+    DepthMap2dSceneCommand, DepthMapViewportFit2dSceneCommand, DepthSpace2dSceneCommand,
+    EntityPoolSceneCommand, EventPipelineSceneCommand, FreeflightMotion2dSceneCommand,
     GlobalLight2dSceneCommand, InputActionMapSceneCommand, KinematicBody2dSceneCommand,
     LayeredImage2dSceneCommand, LayeredImageBlendMode2dDocument,
     LayeredImageBlendMode2dSceneCommand, LayeredImageLayerOverrideSceneCommand,
@@ -35,8 +34,7 @@ use crate::{
     LightReceiver2dBindingSceneDocument, LightReceiverDarkPolicy2dSceneCommand,
     LightReceiverDarkPolicy2dSceneDocument, LightReceiverGlobalLight2dSceneCommand,
     LightReceiverGlobalLight2dSceneDocument, LightRoute2dSceneCommand,
-    LightSampleStrategy2dSceneCommand, LightSampleStrategy2dSceneDocument,
-    Material2dDocument,
+    LightSampleStrategy2dSceneCommand, LightSampleStrategy2dSceneDocument, Material2dDocument,
     Material2dLightingModeSceneCommand, Material2dLightingModeSceneDocument,
     Material2dLightingSceneCommand, Material2dOpticalModeDocument,
     Material2dOpticalModeSceneCommand, Material2dOpticalSceneCommand, Material2dSceneCommand,
@@ -44,10 +42,10 @@ use crate::{
     OpticalLayerRole2dDocument, OpticalLayerRole2dSceneCommand, Parallax2dSceneCommand,
     ParticleEmitter2dSceneCommand, ParticleMotionStretch2dSceneCommand,
     ParticleShapeChoice2dSceneCommand, ParticleShapeKeyframe2dSceneCommand, PostFx2dDocument,
-    ProjectileEmitter2dSceneCommand, RenderDepth2dDocument, RenderDepth2dSceneCommand,
+    ProjectileEmitter2dSceneCommand, RenderContributions2dSceneCommand,
+    RenderContributionsDocument, RenderDepth2dDocument, RenderDepth2dSceneCommand,
     RenderDepthMode2dDocument, RenderDepthMode2dSceneCommand, RenderLayer2dSceneCommand,
-    RenderContributions2dSceneCommand, RenderContributionsDocument, SceneCommand,
-    SceneComponentDocument, SceneDocument, SceneDocumentResult,
+    SceneCommand, SceneComponentDocument, SceneDocument, SceneDocumentResult,
     SceneEntityLifecycleOverride, SceneVectorShapeKindComponentDocument,
     ScriptComponentSceneCommand, Sprite2dSceneCommand, StaticCollider2dSceneCommand,
     Text2dAlignDocument, Text2dAlignSceneCommand, Text2dBlendModeDocument,
@@ -56,7 +54,27 @@ use crate::{
     Text3dSceneCommand, TileMap2dSceneCommand, TileMapMarker2dSceneCommand, Trigger2dSceneCommand,
     UiModelBindingsSceneCommand, UiSceneCommand, UiThemeSetSceneCommand, VectorShape2dSceneCommand,
     VectorShapeKind2dSceneCommand, VectorStyle2dSceneCommand, Velocity2dSceneCommand,
-    VisualMaps2dDocument, VisualMaps2dSceneCommand,
+    VisualMaps2dDocument, VisualMaps2dSceneCommand, aabb_collider_2d_plugin_scene_command,
+    audio_cue_plugin_scene_command, beacon_light_2d_plugin_scene_command,
+    behavior_plugin_scene_command, bounds_2d_plugin_scene_command, camera_2d_plugin_scene_command,
+    camera_follow_2d_plugin_scene_command, circle_collider_2d_plugin_scene_command,
+    collision_event_rule_2d_plugin_scene_command, depth_aux_map_2d_plugin_scene_command,
+    depth_map_2d_plugin_scene_command, entity_pool_plugin_scene_command,
+    event_pipeline_plugin_scene_command, freeflight_motion_2d_plugin_scene_command,
+    global_light_2d_plugin_scene_command, input_action_map_plugin_scene_command,
+    kinematic_body_2d_plugin_scene_command, layered_image_2d_plugin_scene_command,
+    lifetime_plugin_scene_command, light_group_2d_plugin_scene_command,
+    light_route_2d_plugin_scene_command, lightmap_2d_source_plugin_scene_command,
+    material_3d_plugin_scene_command, mesh_3d_plugin_scene_command,
+    motion_controller_2d_plugin_scene_command, parallax_2d_plugin_scene_command,
+    particle_emitter_2d_plugin_scene_command, projectile_emitter_2d_plugin_scene_command,
+    render_layer_2d_plugin_scene_command, script_component_plugin_scene_command,
+    sprite_2d_plugin_scene_command, static_collider_2d_plugin_scene_command,
+    text_2d_plugin_scene_command, text_3d_plugin_scene_command, tilemap_2d_plugin_scene_command,
+    tilemap_marker_2d_plugin_scene_command, trigger_2d_plugin_scene_command,
+    ui_document_plugin_scene_command, ui_model_bindings_plugin_scene_command,
+    ui_theme_set_plugin_scene_command, vector_shape_2d_plugin_scene_command,
+    velocity_2d_plugin_scene_command, visual2d_spatial_plugin_scene_command,
 };
 
 #[derive(Debug, Clone, PartialEq)]
@@ -93,7 +111,7 @@ pub fn build_scene_hydration_plan_with_component_hydrators(
     schemas: Option<&crate::ComponentSchemaRegistry>,
 ) -> SceneDocumentResult<SceneHydrationPlan> {
     // Architectural stop-point:
-    // Hydration still consumes SceneDocument directly for compatibility.
+    // Hydration still consumes SceneDocument directly until typed graph hydration lands.
     // New object/reference semantics live in graph::SemanticSceneGraph.
     // Do not add more ad-hoc string resolution here.
     // New features that need object/layer/effect references should first add
@@ -160,21 +178,23 @@ pub fn build_scene_hydration_plan_with_component_hydrators(
     }
 
     for rule in &document.collision_events {
-        commands.push(SceneCommand::QueueCollisionEventRule2d {
-            command: CollisionEventRule2dSceneCommand::new(
-                source_mod.to_owned(),
-                rule.id.clone(),
-                entity_selector_from_document(&rule.source),
-                entity_selector_from_document(&rule.target),
-                rule.event.clone(),
-                rule.once_per_overlap,
+        commands.push(SceneCommand::Plugin {
+            command: collision_event_rule_2d_plugin_scene_command(
+                CollisionEventRule2dSceneCommand::new(
+                    source_mod.to_owned(),
+                    rule.id.clone(),
+                    entity_selector_from_document(&rule.source),
+                    entity_selector_from_document(&rule.target),
+                    rule.event.clone(),
+                    rule.once_per_overlap,
+                ),
             ),
         });
     }
 
     for cue in &document.audio_cues {
-        commands.push(SceneCommand::QueueAudioCue {
-            command: AudioCueSceneCommand {
+        commands.push(SceneCommand::Plugin {
+            command: audio_cue_plugin_scene_command(AudioCueSceneCommand {
                 source_mod: source_mod.to_owned(),
                 name: cue.name.clone(),
                 clip: AssetKey::new(resolve_scene_audio_clip(source_mod, &cue.clip)),
@@ -182,12 +202,12 @@ pub fn build_scene_hydration_plan_with_component_hydrators(
                     .min_interval
                     .filter(|value| value.is_finite())
                     .map(|value| value.max(0.0)),
-            },
+            }),
         });
     }
 
     for set in &document.activation_sets {
-        commands.push(SceneCommand::QueueActivationSet {
+        commands.push(SceneCommand::ConfigureActivationSet {
             command: ActivationSetSceneCommand {
                 source_mod: source_mod.to_owned(),
                 id: set.id.clone(),
@@ -235,11 +255,7 @@ fn hydrate_plugin_component_payload(
     let (Some(hydrators), Some(schemas)) = (hydrators, schemas) else {
         return Ok(false);
     };
-    let SceneComponentDocument::Plugin {
-        component_type,
-        payload,
-    } = component
-    else {
+    let Some((component_type, payload)) = component.plugin_payload() else {
         return Ok(false);
     };
     let Some(payload) = schemas.parse_typed_plugin_payload(component_type, payload) else {
@@ -247,14 +263,14 @@ fn hydrate_plugin_component_payload(
     };
     let payload = payload?;
     hydrators.hydrate_plugin_payload(
-        component_type,
+        payload.component_type(),
         crate::PluginComponentHydrationContext {
             source_mod,
             document,
             entity,
             entity_name,
             component_index,
-            component_type,
+            component_type: payload.component_type(),
             payload: payload.as_ref(),
             commands,
         },
@@ -270,8 +286,8 @@ fn hydrate_visual2d(
     commands: &mut Vec<SceneCommand>,
 ) -> SceneDocumentResult<()> {
     let depth_space = document.visual2d.spatial.depth_space.to_runtime();
-    commands.push(SceneCommand::SetVisual2dSpatial {
-        depth_space: DepthSpace2dSceneCommand {
+    commands.push(SceneCommand::Plugin {
+        command: visual2d_spatial_plugin_scene_command(DepthSpace2dSceneCommand {
             near_m: depth_space.near_m,
             far_m: depth_space.far_m,
             curve: match depth_space.curve {
@@ -280,11 +296,11 @@ fn hydrate_visual2d(
                     DepthCurve2dSceneCommand::Logarithmic
                 }
             },
-        },
+        }),
     });
     for layer in &document.visual2d.render_layers {
-        commands.push(SceneCommand::QueueRenderLayer2d {
-            command: RenderLayer2dSceneCommand {
+        commands.push(SceneCommand::Plugin {
+            command: render_layer_2d_plugin_scene_command(RenderLayer2dSceneCommand {
                 source_mod: source_mod.to_owned(),
                 id: layer.id.clone(),
                 label: layer.label.clone(),
@@ -293,23 +309,23 @@ fn hydrate_visual2d(
                 opacity: layer.opacity.clamp(0.0, 1.0),
                 depth: render_depth_from_document(&layer.depth, depth_space),
                 optical_role: optical_layer_role_from_document(layer.optical_role),
-            },
+            }),
         });
     }
 
     for route in &document.visual2d.light_routes {
-        commands.push(SceneCommand::QueueLightRoute2d {
-            command: LightRoute2dSceneCommand {
+        commands.push(SceneCommand::Plugin {
+            command: light_route_2d_plugin_scene_command(LightRoute2dSceneCommand {
                 source_mod: source_mod.to_owned(),
                 receiver_layer: route.receiver_layer.clone(),
                 groups: route.groups.clone(),
-            },
+            }),
         });
     }
 
     for group in &document.visual2d.light_groups {
-        commands.push(SceneCommand::QueueLightGroup2d {
-            command: LightGroup2dSceneCommand {
+        commands.push(SceneCommand::Plugin {
+            command: light_group_2d_plugin_scene_command(LightGroup2dSceneCommand {
                 source_mod: source_mod.to_owned(),
                 id: group.id.clone(),
                 label: group.label.clone(),
@@ -330,7 +346,7 @@ fn hydrate_visual2d(
                     .iter()
                     .map(light_group_source_from_document)
                     .collect(),
-            },
+            }),
         });
     }
 
@@ -449,7 +465,6 @@ fn light_group_render_contribution_defaults(
     ])
 }
 
-
 fn optical_layer_role_from_document(
     role: OpticalLayerRole2dDocument,
 ) -> OpticalLayerRole2dSceneCommand {
@@ -497,35 +512,13 @@ fn render_depth_from_document(
 }
 
 fn component_post_fx_documents(component: &SceneComponentDocument) -> Option<&[PostFx2dDocument]> {
-    match component {
-        SceneComponentDocument::Sprite2d { post_fx, .. }
-        | SceneComponentDocument::LayeredImage2d { post_fx, .. }
-        | SceneComponentDocument::TileMap2d { post_fx, .. }
-        | SceneComponentDocument::Text2d { post_fx, .. }
-        | SceneComponentDocument::VectorShape2d { post_fx, .. }
-        | SceneComponentDocument::ParticleEmitter2d { post_fx, .. }
-        | SceneComponentDocument::BeaconLight2d { post_fx, .. } => Some(post_fx.as_slice()),
-        SceneComponentDocument::Plugin { .. } => None,
-        _ => None,
-    }
+    component.post_fx_documents()
 }
 
 fn layered_image_part_post_fx_documents(
     component: &SceneComponentDocument,
 ) -> Option<Vec<(&str, &[PostFx2dDocument])>> {
-    match component {
-        SceneComponentDocument::LayeredImage2d {
-            layer_overrides, ..
-        } => Some(
-            layer_overrides
-                .iter()
-                .filter(|override_doc| !override_doc.post_fx.is_empty())
-                .map(|override_doc| (override_doc.id.as_str(), override_doc.post_fx.as_slice()))
-                .collect(),
-        ),
-        SceneComponentDocument::Plugin { .. } => None,
-        _ => None,
-    }
+    component.layered_image_part_post_fx_documents()
 }
 
 fn light_group_source_from_document(

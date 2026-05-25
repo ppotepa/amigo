@@ -26,140 +26,11 @@ pub enum SceneCommand {
     },
     ReloadActiveScene,
     ClearEntities,
-    QueueSprite2d {
-        command: Sprite2dSceneCommand,
-    },
-    QueueLayeredImage2d {
-        command: LayeredImage2dSceneCommand,
-    },
-    QueueDepthMap2d {
-        command: DepthMap2dSceneCommand,
-    },
-    QueueDepthAuxMap2d {
-        command: DepthAuxMap2dSceneCommand,
-    },
-    QueueRenderLayer2d {
-        command: RenderLayer2dSceneCommand,
-    },
-    SetVisual2dSpatial {
-        depth_space: DepthSpace2dSceneCommand,
-    },
-    QueueLightRoute2d {
-        command: LightRoute2dSceneCommand,
-    },
     SetPostFx2dStacks {
         stacks: Vec<amigo_render_api::ScopedPostFx2dStack>,
         lens_certification_reports: Vec<amigo_render_api::LensDroplets2dCertificationReport>,
     },
-    QueueLightGroup2d {
-        command: LightGroup2dSceneCommand,
-    },
-    QueueGlobalLight2d {
-        command: GlobalLight2dSceneCommand,
-    },
-    QueueLightMap2dSource {
-        command: LightMap2dSourceSceneCommand,
-    },
-    QueueTileMap2d {
-        command: TileMap2dSceneCommand,
-    },
-    QueueText2d {
-        command: Text2dSceneCommand,
-    },
-    QueueVectorShape2d {
-        command: VectorShape2dSceneCommand,
-    },
-    QueueBeaconLight2d {
-        command: BeaconLight2dSceneCommand,
-    },
-    QueueEntityPool {
-        command: EntityPoolSceneCommand,
-    },
-    QueueLifetime {
-        command: LifetimeSceneCommand,
-    },
-    QueueProjectileEmitter2d {
-        command: ProjectileEmitter2dSceneCommand,
-    },
-    QueueInputActionMap {
-        command: InputActionMapSceneCommand,
-    },
-    QueueBehavior {
-        command: BehaviorSceneCommand,
-    },
-    QueueEventPipeline {
-        command: EventPipelineSceneCommand,
-    },
-    QueueUiModelBindings {
-        command: UiModelBindingsSceneCommand,
-    },
-    QueueScriptComponent {
-        command: ScriptComponentSceneCommand,
-    },
-    QueueParticleEmitter2d {
-        command: ParticleEmitter2dSceneCommand,
-    },
-    QueueVelocity2d {
-        command: Velocity2dSceneCommand,
-    },
-    QueueBounds2d {
-        command: Bounds2dSceneCommand,
-    },
-    QueueFreeflightMotion2d {
-        command: FreeflightMotion2dSceneCommand,
-    },
-    QueueKinematicBody2d {
-        command: KinematicBody2dSceneCommand,
-    },
-    QueueAabbCollider2d {
-        command: AabbCollider2dSceneCommand,
-    },
-    QueueStaticCollider2d {
-        command: StaticCollider2dSceneCommand,
-    },
-    QueueCircleCollider2d {
-        command: CircleCollider2dSceneCommand,
-    },
-    QueueTrigger2d {
-        command: Trigger2dSceneCommand,
-    },
-    QueueCollisionEventRule2d {
-        command: CollisionEventRule2dSceneCommand,
-    },
-    QueueMotionController2d {
-        command: MotionController2dSceneCommand,
-    },
-    QueueCamera2d {
-        command: Camera2dSceneCommand,
-    },
-    QueueCameraFollow2d {
-        command: CameraFollow2dSceneCommand,
-    },
-    QueueParallax2d {
-        command: Parallax2dSceneCommand,
-    },
-    QueueTileMapMarker2d {
-        command: TileMapMarker2dSceneCommand,
-    },
-    QueueMesh3d {
-        command: Mesh3dSceneCommand,
-    },
-    QueueMaterial3d {
-        command: Material3dSceneCommand,
-    },
-    QueueText3d {
-        command: Text3dSceneCommand,
-    },
-    QueueUi {
-        command: UiSceneCommand,
-    },
-    QueueUiThemeSet {
-        command: UiThemeSetSceneCommand,
-    },
-    QueueAudioCue {
-        command: AudioCueSceneCommand,
-    },
-    QueueActivationSet {
+    ConfigureActivationSet {
         command: ActivationSetSceneCommand,
     },
     ActivateSet {
@@ -177,21 +48,6 @@ impl SceneCommand {
             Self::Plugin { command } => Some(command),
             _ => None,
         }
-    }
-
-    pub fn queue_motion_controller(command: MotionController2dSceneCommand) -> Self {
-        Self::QueueMotionController2d { command }
-    }
-
-    pub fn motion_controller_command(&self) -> Option<&MotionController2dSceneCommand> {
-        match self {
-            Self::QueueMotionController2d { command } => Some(command),
-            _ => None,
-        }
-    }
-
-    pub fn is_motion_controller_command(&self) -> bool {
-        self.motion_controller_command().is_some()
     }
 }
 

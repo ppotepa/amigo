@@ -5,6 +5,12 @@ use amigo_math::{ColorRgba, Transform3, Vec2};
 
 use crate::*;
 
+pub const UI_DOCUMENT_PLUGIN_SCENE_COMMAND_TYPE: &str = "amigo.ui.scene-command.UiDocument";
+pub const UI_THEME_SET_PLUGIN_SCENE_COMMAND_TYPE: &str = "amigo.ui.scene-command.UiThemeSet";
+pub const UI_MODEL_BINDINGS_PLUGIN_SCENE_COMMAND_TYPE: &str =
+    "amigo.ui.scene-command.UiModelBindings";
+pub const AUDIO_CUE_PLUGIN_SCENE_COMMAND_TYPE: &str = "amigo.audio.scene-command.AudioCue";
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum SceneUiTarget {
     ScreenSpace {
@@ -267,6 +273,84 @@ pub struct AudioCueSceneCommand {
     pub name: String,
     pub clip: AssetKey,
     pub min_interval: Option<f32>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct UiSceneCommandPluginPayload(pub UiSceneCommand);
+
+impl crate::PluginSceneCommandPayload for UiSceneCommandPluginPayload {
+    fn command_type(&self) -> &'static str {
+        UI_DOCUMENT_PLUGIN_SCENE_COMMAND_TYPE
+    }
+
+    fn command_as_any(&self) -> &dyn std::any::Any {
+        &self.0
+    }
+
+    fn eq_payload(&self, other: &dyn crate::PluginSceneCommandPayload) -> bool {
+        other
+            .command_as_any()
+            .downcast_ref::<UiSceneCommand>()
+            .is_some_and(|command| command == &self.0)
+    }
+}
+
+pub fn ui_document_plugin_scene_command(command: UiSceneCommand) -> crate::PluginSceneCommand {
+    crate::PluginSceneCommand::new(std::sync::Arc::new(UiSceneCommandPluginPayload(command)))
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct UiThemeSetSceneCommandPluginPayload(pub UiThemeSetSceneCommand);
+
+impl crate::PluginSceneCommandPayload for UiThemeSetSceneCommandPluginPayload {
+    fn command_type(&self) -> &'static str {
+        UI_THEME_SET_PLUGIN_SCENE_COMMAND_TYPE
+    }
+
+    fn command_as_any(&self) -> &dyn std::any::Any {
+        &self.0
+    }
+
+    fn eq_payload(&self, other: &dyn crate::PluginSceneCommandPayload) -> bool {
+        other
+            .command_as_any()
+            .downcast_ref::<UiThemeSetSceneCommand>()
+            .is_some_and(|command| command == &self.0)
+    }
+}
+
+pub fn ui_theme_set_plugin_scene_command(
+    command: UiThemeSetSceneCommand,
+) -> crate::PluginSceneCommand {
+    crate::PluginSceneCommand::new(std::sync::Arc::new(UiThemeSetSceneCommandPluginPayload(
+        command,
+    )))
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct AudioCueSceneCommandPluginPayload(pub AudioCueSceneCommand);
+
+impl crate::PluginSceneCommandPayload for AudioCueSceneCommandPluginPayload {
+    fn command_type(&self) -> &'static str {
+        AUDIO_CUE_PLUGIN_SCENE_COMMAND_TYPE
+    }
+
+    fn command_as_any(&self) -> &dyn std::any::Any {
+        &self.0
+    }
+
+    fn eq_payload(&self, other: &dyn crate::PluginSceneCommandPayload) -> bool {
+        other
+            .command_as_any()
+            .downcast_ref::<AudioCueSceneCommand>()
+            .is_some_and(|command| command == &self.0)
+    }
+}
+
+pub fn audio_cue_plugin_scene_command(command: AudioCueSceneCommand) -> crate::PluginSceneCommand {
+    crate::PluginSceneCommand::new(std::sync::Arc::new(AudioCueSceneCommandPluginPayload(
+        command,
+    )))
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]

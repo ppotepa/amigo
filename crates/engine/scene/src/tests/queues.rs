@@ -1,254 +1,251 @@
-    
-    
+use crate::{
+    AabbCollider2dSceneCommand, KinematicBody2dSceneCommand, Material3dSceneCommand,
+    Mesh3dSceneCommand, MotionController2dSceneCommand, SceneCommand, SceneCommandQueue,
+    SceneEvent, SceneEventQueue, SceneKey, SceneSelectionCommandContext,
+    SceneSelectionCommandOutcome, SceneService, SceneTransitionService, Sprite2dSceneCommand,
+    Text2dSceneCommand, TileMap2dSceneCommand, TileMapMarker2dSceneCommand, Trigger2dSceneCommand,
+    aabb_collider_2d_plugin_scene_command, can_handle_scene_selection_scene_command,
+    handle_scene_selection_scene_command, kinematic_body_2d_plugin_scene_command,
+    material_3d_plugin_scene_command, mesh_3d_plugin_scene_command,
+    motion_controller_2d_plugin_scene_command, sprite_2d_plugin_scene_command,
+    text_2d_plugin_scene_command, tilemap_2d_plugin_scene_command,
+    tilemap_marker_2d_plugin_scene_command, trigger_2d_plugin_scene_command,
+};
+use amigo_assets::AssetKey;
+use amigo_math::{Transform3, Vec2};
 
-    use crate::{
-        AabbCollider2dSceneCommand,
-        KinematicBody2dSceneCommand, Material3dSceneCommand, Mesh3dSceneCommand,
-        MotionController2dSceneCommand,
-        SceneCommand, SceneCommandQueue, SceneEvent, SceneEventQueue,
-        SceneKey, SceneSelectionCommandContext, SceneSelectionCommandOutcome, SceneService,
-        SceneTransitionService, Sprite2dSceneCommand,
-        Text2dSceneCommand, TileMap2dSceneCommand, TileMapMarker2dSceneCommand,
-        Trigger2dSceneCommand, can_handle_scene_selection_scene_command,
-        handle_scene_selection_scene_command,
+#[test]
+fn queues_placeholder_scene_commands_and_events() {
+    let commands = SceneCommandQueue::default();
+    let events = SceneEventQueue::default();
+
+    commands.submit(SceneCommand::SelectScene {
+        scene: SceneKey::new("mesh-lab"),
+    });
+    commands.submit(SceneCommand::ReloadActiveScene);
+    events.publish(SceneEvent::SceneSelected {
+        scene: SceneKey::new("mesh-lab"),
+    });
+    events.publish(SceneEvent::SceneReloadRequested {
+        scene: SceneKey::new("mesh-lab"),
+    });
+
+    assert_eq!(commands.pending().len(), 2);
+    assert_eq!(events.pending().len(), 2);
+    assert_eq!(commands.drain().len(), 2);
+    assert_eq!(events.drain().len(), 2);
+}
+
+#[test]
+fn scene_plugin_transition_service_defaults_to_empty() {
+    let transitions = SceneTransitionService::default();
+    assert_eq!(transitions.snapshot().transition_ids.len(), 0);
+}
+
+#[test]
+fn queues_domain_scene_commands() {
+    let commands = SceneCommandQueue::default();
+
+    commands.submit(SceneCommand::SpawnNamedEntity {
+        name: "playground-2d-sprite".to_owned(),
+        transform: Some(Transform3::default()),
+    });
+
+    commands.submit(SceneCommand::plugin(sprite_2d_plugin_scene_command(
+        Sprite2dSceneCommand::new(
+            "playground-2d",
+            "playground-2d-sprite",
+            AssetKey::new("playground-2d/spritesheets/sprite-lab"),
+            Vec2::new(128.0, 128.0),
+        ),
+    )));
+    commands.submit(SceneCommand::plugin(text_2d_plugin_scene_command(
+        Text2dSceneCommand::new(
+            "playground-2d",
+            "playground-2d-label",
+            "AMIGO 2D",
+            AssetKey::new("playground-2d/fonts/debug-ui"),
+            Vec2::new(320.0, 64.0),
+        ),
+    )));
+    commands.submit(SceneCommand::plugin(tilemap_2d_plugin_scene_command(
+        TileMap2dSceneCommand::new(
+            "playground-sidescroller",
+            "playground-sidescroller-tilemap",
+            AssetKey::new("playground-sidescroller/spritesheets/platformer/tilesets/platform/base"),
+            Vec2::new(16.0, 16.0),
+            vec!["....".to_owned(), "####".to_owned()],
+        ),
+    )));
+    commands.submit(SceneCommand::plugin(
+        kinematic_body_2d_plugin_scene_command(KinematicBody2dSceneCommand::new(
+            "playground-sidescroller",
+            "playground-sidescroller-player",
+            Vec2::ZERO,
+            1.0,
+            720.0,
+        )),
+    ));
+    commands.submit(SceneCommand::plugin(aabb_collider_2d_plugin_scene_command(
+        AabbCollider2dSceneCommand::new(
+            "playground-sidescroller",
+            "playground-sidescroller-player",
+            Vec2::new(20.0, 30.0),
+            Vec2::new(0.0, 1.0),
+            "player",
+            vec!["world".to_owned(), "trigger".to_owned()],
+        ),
+    )));
+    commands.submit(SceneCommand::plugin(trigger_2d_plugin_scene_command(
+        Trigger2dSceneCommand::new(
+            "playground-sidescroller",
+            "playground-sidescroller-coin",
+            Vec2::new(16.0, 16.0),
+            Vec2::ZERO,
+            "trigger",
+            vec!["player".to_owned()],
+            Some("coin.collected".to_owned()),
+        ),
+    )));
+    commands.submit(SceneCommand::plugin(
+        motion_controller_2d_plugin_scene_command(MotionController2dSceneCommand::new(
+            "playground-sidescroller",
+            "playground-sidescroller-player",
+            180.0,
+            900.0,
+            1200.0,
+            500.0,
+            900.0,
+            -360.0,
+            720.0,
+        )),
+    ));
+    commands.submit(SceneCommand::plugin(
+        tilemap_marker_2d_plugin_scene_command(TileMapMarker2dSceneCommand::new(
+            "playground-sidescroller",
+            "playground-sidescroller-player",
+            Some("playground-sidescroller-tilemap".to_owned()),
+            "P",
+            0,
+            Vec2::new(0.0, 8.0),
+        )),
+    ));
+    commands.submit(SceneCommand::plugin(mesh_3d_plugin_scene_command(
+        Mesh3dSceneCommand::new(
+            "playground-3d",
+            "playground-3d-probe",
+            AssetKey::new("playground-3d/meshes/probe"),
+        ),
+    )));
+    commands.submit(SceneCommand::plugin(material_3d_plugin_scene_command(
+        Material3dSceneCommand::new(
+            "playground-3d",
+            "playground-3d-probe",
+            "debug-surface",
+            Some(AssetKey::new("playground-3d/materials/debug-surface")),
+        ),
+    )));
+
+    assert_eq!(commands.pending().len(), 11);
+    assert_eq!(commands.drain().len(), 11);
+}
+
+#[test]
+fn handles_scene_selection_command_in_scene_crate() {
+    let scene_service = SceneService::default();
+    let events = SceneEventQueue::default();
+    let commands = SceneCommandQueue::default();
+    let scene = SceneKey::new("mesh-lab");
+    let command = SceneCommand::SelectScene {
+        scene: scene.clone(),
     };
-    use amigo_assets::AssetKey;
-    use amigo_math::{Transform3, Vec2};
 
-    #[test]
-    fn queues_placeholder_scene_commands_and_events() {
-        let commands = SceneCommandQueue::default();
-        let events = SceneEventQueue::default();
+    assert!(can_handle_scene_selection_scene_command(&command));
 
-        commands.submit(SceneCommand::SelectScene {
-            scene: SceneKey::new("mesh-lab"),
-        });
-        commands.submit(SceneCommand::ReloadActiveScene);
-        events.publish(SceneEvent::SceneSelected {
-            scene: SceneKey::new("mesh-lab"),
-        });
-        events.publish(SceneEvent::SceneReloadRequested {
-            scene: SceneKey::new("mesh-lab"),
-        });
+    let outcome = handle_scene_selection_scene_command(
+        SceneSelectionCommandContext {
+            scene_service: &scene_service,
+            scene_event_queue: &events,
+            scene_command_queue: &commands,
+        },
+        command,
+    )
+    .expect("scene selection command should be handled");
 
-        assert_eq!(commands.pending().len(), 2);
-        assert_eq!(events.pending().len(), 2);
-        assert_eq!(commands.drain().len(), 2);
-        assert_eq!(events.drain().len(), 2);
-    }
+    assert_eq!(
+        outcome,
+        SceneSelectionCommandOutcome::Selected {
+            scene: scene.clone()
+        }
+    );
+    assert_eq!(scene_service.selected_scene(), Some(scene.clone()));
+    assert_eq!(
+        events.pending(),
+        [SceneEvent::SceneSelected {
+            scene: scene.clone()
+        }]
+    );
+    assert!(commands.pending().is_empty());
+}
 
-    #[test]
-    fn scene_plugin_transition_service_defaults_to_empty() {
-        let transitions = SceneTransitionService::default();
-        assert_eq!(transitions.snapshot().transition_ids.len(), 0);
-    }
+#[test]
+fn handles_reload_active_scene_by_publishing_event_and_queueing_selection() {
+    let scene_service = SceneService::default();
+    let events = SceneEventQueue::default();
+    let commands = SceneCommandQueue::default();
+    let scene = SceneKey::new("mesh-lab");
+    scene_service.select_scene(scene.clone());
 
-    #[test]
-    fn queues_domain_scene_commands() {
-        let commands = SceneCommandQueue::default();
+    let outcome = handle_scene_selection_scene_command(
+        SceneSelectionCommandContext {
+            scene_service: &scene_service,
+            scene_event_queue: &events,
+            scene_command_queue: &commands,
+        },
+        SceneCommand::ReloadActiveScene,
+    )
+    .expect("reload command should be handled");
 
-        commands.submit(SceneCommand::SpawnNamedEntity {
-            name: "playground-2d-sprite".to_owned(),
-            transform: Some(Transform3::default()),
-        });
+    assert_eq!(
+        outcome,
+        SceneSelectionCommandOutcome::ReloadQueued {
+            scene: scene.clone()
+        }
+    );
+    assert_eq!(
+        events.pending(),
+        [SceneEvent::SceneReloadRequested {
+            scene: scene.clone()
+        }]
+    );
+    assert_eq!(
+        commands.pending(),
+        [SceneCommand::SelectScene {
+            scene: scene.clone()
+        }]
+    );
+}
 
-        commands.submit(SceneCommand::QueueSprite2d {
-            command: Sprite2dSceneCommand::new(
-                "playground-2d",
-                "playground-2d-sprite",
-                AssetKey::new("playground-2d/spritesheets/sprite-lab"),
-                Vec2::new(128.0, 128.0),
-            ),
-        });
-        commands.submit(SceneCommand::QueueText2d {
-            command: Text2dSceneCommand::new(
-                "playground-2d",
-                "playground-2d-label",
-                "AMIGO 2D",
-                AssetKey::new("playground-2d/fonts/debug-ui"),
-                Vec2::new(320.0, 64.0),
-            ),
-        });
-        commands.submit(SceneCommand::QueueTileMap2d {
-            command: TileMap2dSceneCommand::new(
-                "playground-sidescroller",
-                "playground-sidescroller-tilemap",
-                AssetKey::new("playground-sidescroller/spritesheets/platformer/tilesets/platform/base"),
-                Vec2::new(16.0, 16.0),
-                vec!["....".to_owned(), "####".to_owned()],
-            ),
-        });
-        commands.submit(SceneCommand::QueueKinematicBody2d {
-            command: KinematicBody2dSceneCommand::new(
-                "playground-sidescroller",
-                "playground-sidescroller-player",
-                Vec2::ZERO,
-                1.0,
-                720.0,
-            ),
-        });
-        commands.submit(SceneCommand::QueueAabbCollider2d {
-            command: AabbCollider2dSceneCommand::new(
-                "playground-sidescroller",
-                "playground-sidescroller-player",
-                Vec2::new(20.0, 30.0),
-                Vec2::new(0.0, 1.0),
-                "player",
-                vec!["world".to_owned(), "trigger".to_owned()],
-            ),
-        });
-        commands.submit(SceneCommand::QueueTrigger2d {
-            command: Trigger2dSceneCommand::new(
-                "playground-sidescroller",
-                "playground-sidescroller-coin",
-                Vec2::new(16.0, 16.0),
-                Vec2::ZERO,
-                "trigger",
-                vec!["player".to_owned()],
-                Some("coin.collected".to_owned()),
-            ),
-        });
-        commands.submit(SceneCommand::queue_motion_controller(
-            MotionController2dSceneCommand::new(
-                "playground-sidescroller",
-                "playground-sidescroller-player",
-                180.0,
-                900.0,
-                1200.0,
-                500.0,
-                900.0,
-                -360.0,
-                720.0,
-            ),
-        ));
-        commands.submit(SceneCommand::QueueTileMapMarker2d {
-            command: TileMapMarker2dSceneCommand::new(
-                "playground-sidescroller",
-                "playground-sidescroller-player",
-                Some("playground-sidescroller-tilemap".to_owned()),
-                "P",
-                0,
-                Vec2::new(0.0, 8.0),
-            ),
-        });
-        commands.submit(SceneCommand::QueueMesh3d {
-            command: Mesh3dSceneCommand::new(
-                "playground-3d",
-                "playground-3d-probe",
-                AssetKey::new("playground-3d/meshes/probe"),
-            ),
-        });
-        commands.submit(SceneCommand::QueueMaterial3d {
-            command: Material3dSceneCommand::new(
-                "playground-3d",
-                "playground-3d-probe",
-                "debug-surface",
-                Some(AssetKey::new("playground-3d/materials/debug-surface")),
-            ),
-        });
+#[test]
+fn reload_active_scene_reports_missing_active_scene() {
+    let scene_service = SceneService::default();
+    let events = SceneEventQueue::default();
+    let commands = SceneCommandQueue::default();
 
-        assert_eq!(commands.pending().len(), 11);
-        assert_eq!(commands.drain().len(), 11);
-    }
+    let outcome = handle_scene_selection_scene_command(
+        SceneSelectionCommandContext {
+            scene_service: &scene_service,
+            scene_event_queue: &events,
+            scene_command_queue: &commands,
+        },
+        SceneCommand::ReloadActiveScene,
+    )
+    .expect("missing active scene should be reported as non-fatal outcome");
 
-    #[test]
-    fn handles_scene_selection_command_in_scene_crate() {
-        let scene_service = SceneService::default();
-        let events = SceneEventQueue::default();
-        let commands = SceneCommandQueue::default();
-        let scene = SceneKey::new("mesh-lab");
-        let command = SceneCommand::SelectScene {
-            scene: scene.clone(),
-        };
-
-        assert!(can_handle_scene_selection_scene_command(&command));
-
-        let outcome = handle_scene_selection_scene_command(
-            SceneSelectionCommandContext {
-                scene_service: &scene_service,
-                scene_event_queue: &events,
-                scene_command_queue: &commands,
-            },
-            command,
-        )
-        .expect("scene selection command should be handled");
-
-        assert_eq!(
-            outcome,
-            SceneSelectionCommandOutcome::Selected {
-                scene: scene.clone()
-            }
-        );
-        assert_eq!(scene_service.selected_scene(), Some(scene.clone()));
-        assert_eq!(
-            events.pending(),
-            [SceneEvent::SceneSelected {
-                scene: scene.clone()
-            }]
-        );
-        assert!(commands.pending().is_empty());
-    }
-
-    #[test]
-    fn handles_reload_active_scene_by_publishing_event_and_queueing_selection() {
-        let scene_service = SceneService::default();
-        let events = SceneEventQueue::default();
-        let commands = SceneCommandQueue::default();
-        let scene = SceneKey::new("mesh-lab");
-        scene_service.select_scene(scene.clone());
-
-        let outcome = handle_scene_selection_scene_command(
-            SceneSelectionCommandContext {
-                scene_service: &scene_service,
-                scene_event_queue: &events,
-                scene_command_queue: &commands,
-            },
-            SceneCommand::ReloadActiveScene,
-        )
-        .expect("reload command should be handled");
-
-        assert_eq!(
-            outcome,
-            SceneSelectionCommandOutcome::ReloadQueued {
-                scene: scene.clone()
-            }
-        );
-        assert_eq!(
-            events.pending(),
-            [SceneEvent::SceneReloadRequested {
-                scene: scene.clone()
-            }]
-        );
-        assert_eq!(
-            commands.pending(),
-            [SceneCommand::SelectScene {
-                scene: scene.clone()
-            }]
-        );
-    }
-
-    #[test]
-    fn reload_active_scene_reports_missing_active_scene() {
-        let scene_service = SceneService::default();
-        let events = SceneEventQueue::default();
-        let commands = SceneCommandQueue::default();
-
-        let outcome = handle_scene_selection_scene_command(
-            SceneSelectionCommandContext {
-                scene_service: &scene_service,
-                scene_event_queue: &events,
-                scene_command_queue: &commands,
-            },
-            SceneCommand::ReloadActiveScene,
-        )
-        .expect("missing active scene should be reported as non-fatal outcome");
-
-        assert_eq!(
-            outcome,
-            SceneSelectionCommandOutcome::ReloadSkippedNoActiveScene
-        );
-        assert!(events.pending().is_empty());
-        assert!(commands.pending().is_empty());
-    }
-
-
+    assert_eq!(
+        outcome,
+        SceneSelectionCommandOutcome::ReloadSkippedNoActiveScene
+    );
+    assert!(events.pending().is_empty());
+    assert!(commands.pending().is_empty());
+}

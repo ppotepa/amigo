@@ -1,6 +1,38 @@
 use std::collections::BTreeMap;
+use std::sync::Arc;
 
 use amigo_camera::CameraOpticalResponse2dSceneCommand;
+
+use crate::{PluginSceneCommand, PluginSceneCommandPayload};
+
+pub const VISUAL2D_SPATIAL_PLUGIN_SCENE_COMMAND_TYPE: &str =
+    "amigo.rendering.composition-2d.scene-command.Visual2dSpatial";
+pub const RENDER_LAYER_2D_PLUGIN_SCENE_COMMAND_TYPE: &str =
+    "amigo.rendering.composition-2d.scene-command.RenderLayer2d";
+pub const LIGHT_ROUTE_2D_PLUGIN_SCENE_COMMAND_TYPE: &str =
+    "amigo.rendering.composition-2d.scene-command.LightRoute2d";
+pub const LAYERED_IMAGE_2D_PLUGIN_SCENE_COMMAND_TYPE: &str =
+    "amigo.gfx.layered-image-2d.scene-command.LayeredImage2d";
+pub const TILEMAP_2D_PLUGIN_SCENE_COMMAND_TYPE: &str =
+    "amigo.gfx.tilemap-2d.scene-command.TileMap2d";
+pub const SPRITE_2D_PLUGIN_SCENE_COMMAND_TYPE: &str = "amigo.gfx.sprite-2d.scene-command.Sprite2D";
+pub const TEXT_2D_PLUGIN_SCENE_COMMAND_TYPE: &str = "amigo.gfx.text-2d.scene-command.Text2D";
+pub const VECTOR_SHAPE_2D_PLUGIN_SCENE_COMMAND_TYPE: &str =
+    "amigo.gfx.vector-2d.scene-command.VectorShape2D";
+pub const BEACON_LIGHT_2D_PLUGIN_SCENE_COMMAND_TYPE: &str =
+    "amigo.lighting.beacon-light-2d.scene-command.BeaconLight2d";
+pub const GLOBAL_LIGHT_2D_PLUGIN_SCENE_COMMAND_TYPE: &str =
+    "amigo.lighting.light-2d.scene-command.GlobalLight2d";
+pub const LIGHTMAP_2D_SOURCE_PLUGIN_SCENE_COMMAND_TYPE: &str =
+    "amigo.lighting.light-2d.scene-command.LightMap2dSource";
+pub const LIGHT_GROUP_2D_PLUGIN_SCENE_COMMAND_TYPE: &str =
+    "amigo.lighting.light-2d.scene-command.LightGroup2d";
+pub const CAMERA_2D_PLUGIN_SCENE_COMMAND_TYPE: &str =
+    "amigo.camera.camera-core.scene-command.Camera2d";
+pub const DEPTH_MAP_2D_PLUGIN_SCENE_COMMAND_TYPE: &str =
+    "amigo.camera.focus-depth.scene-command.DepthMap2d";
+pub const DEPTH_AUX_MAP_2D_PLUGIN_SCENE_COMMAND_TYPE: &str =
+    "amigo.camera.focus-depth.scene-command.DepthAuxMap2d";
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct DepthSpace2dSceneCommand {
@@ -29,6 +61,34 @@ impl DepthSpace2dSceneCommand {
         }
         .normalized()
     }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct Visual2dSpatialPluginSceneCommandPayload(pub DepthSpace2dSceneCommand);
+
+impl PluginSceneCommandPayload for Visual2dSpatialPluginSceneCommandPayload {
+    fn command_type(&self) -> &'static str {
+        VISUAL2D_SPATIAL_PLUGIN_SCENE_COMMAND_TYPE
+    }
+
+    fn command_as_any(&self) -> &dyn std::any::Any {
+        &self.0
+    }
+
+    fn eq_payload(&self, other: &dyn PluginSceneCommandPayload) -> bool {
+        other
+            .command_as_any()
+            .downcast_ref::<DepthSpace2dSceneCommand>()
+            .is_some_and(|command| command == &self.0)
+    }
+}
+
+pub fn visual2d_spatial_plugin_scene_command(
+    depth_space: DepthSpace2dSceneCommand,
+) -> PluginSceneCommand {
+    PluginSceneCommand::new(Arc::new(Visual2dSpatialPluginSceneCommandPayload(
+        depth_space,
+    )))
 }
 #[derive(Debug, Clone, PartialEq)]
 pub struct SpriteSheet2dSceneCommand {
@@ -97,6 +157,32 @@ pub struct LayeredImage2dSceneCommand {
     pub layer_overrides: Vec<LayeredImageLayerOverrideSceneCommand>,
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub struct LayeredImage2dPluginSceneCommandPayload(pub LayeredImage2dSceneCommand);
+
+impl PluginSceneCommandPayload for LayeredImage2dPluginSceneCommandPayload {
+    fn command_type(&self) -> &'static str {
+        LAYERED_IMAGE_2D_PLUGIN_SCENE_COMMAND_TYPE
+    }
+
+    fn command_as_any(&self) -> &dyn std::any::Any {
+        &self.0
+    }
+
+    fn eq_payload(&self, other: &dyn PluginSceneCommandPayload) -> bool {
+        other
+            .command_as_any()
+            .downcast_ref::<LayeredImage2dSceneCommand>()
+            .is_some_and(|command| command == &self.0)
+    }
+}
+
+pub fn layered_image_2d_plugin_scene_command(
+    command: LayeredImage2dSceneCommand,
+) -> PluginSceneCommand {
+    PluginSceneCommand::new(Arc::new(LayeredImage2dPluginSceneCommandPayload(command)))
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DepthMapViewportFit2dSceneCommand {
     Fixed,
@@ -116,6 +202,30 @@ pub struct DepthMap2dSceneCommand {
     pub white_is_near: bool,
     pub z_index: f32,
     pub transform: Transform2,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct DepthMap2dPluginSceneCommandPayload(pub DepthMap2dSceneCommand);
+
+impl PluginSceneCommandPayload for DepthMap2dPluginSceneCommandPayload {
+    fn command_type(&self) -> &'static str {
+        DEPTH_MAP_2D_PLUGIN_SCENE_COMMAND_TYPE
+    }
+
+    fn command_as_any(&self) -> &dyn std::any::Any {
+        &self.0
+    }
+
+    fn eq_payload(&self, other: &dyn PluginSceneCommandPayload) -> bool {
+        other
+            .command_as_any()
+            .downcast_ref::<DepthMap2dSceneCommand>()
+            .is_some_and(|command| command == &self.0)
+    }
+}
+
+pub fn depth_map_2d_plugin_scene_command(command: DepthMap2dSceneCommand) -> PluginSceneCommand {
+    PluginSceneCommand::new(Arc::new(DepthMap2dPluginSceneCommandPayload(command)))
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -149,6 +259,32 @@ pub struct DepthAuxMap2dSceneCommand {
     pub channels: DepthAuxMap2dChannelsSceneCommand,
     pub z_index: f32,
     pub transform: Transform2,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct DepthAuxMap2dPluginSceneCommandPayload(pub DepthAuxMap2dSceneCommand);
+
+impl PluginSceneCommandPayload for DepthAuxMap2dPluginSceneCommandPayload {
+    fn command_type(&self) -> &'static str {
+        DEPTH_AUX_MAP_2D_PLUGIN_SCENE_COMMAND_TYPE
+    }
+
+    fn command_as_any(&self) -> &dyn std::any::Any {
+        &self.0
+    }
+
+    fn eq_payload(&self, other: &dyn PluginSceneCommandPayload) -> bool {
+        other
+            .command_as_any()
+            .downcast_ref::<DepthAuxMap2dSceneCommand>()
+            .is_some_and(|command| command == &self.0)
+    }
+}
+
+pub fn depth_aux_map_2d_plugin_scene_command(
+    command: DepthAuxMap2dSceneCommand,
+) -> PluginSceneCommand {
+    PluginSceneCommand::new(Arc::new(DepthAuxMap2dPluginSceneCommandPayload(command)))
 }
 
 impl LayeredImage2dSceneCommand {
@@ -210,6 +346,58 @@ pub struct GlobalLight2dSceneCommand {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+pub struct GlobalLight2dPluginSceneCommandPayload(pub GlobalLight2dSceneCommand);
+
+impl PluginSceneCommandPayload for GlobalLight2dPluginSceneCommandPayload {
+    fn command_type(&self) -> &'static str {
+        GLOBAL_LIGHT_2D_PLUGIN_SCENE_COMMAND_TYPE
+    }
+
+    fn command_as_any(&self) -> &dyn std::any::Any {
+        &self.0
+    }
+
+    fn eq_payload(&self, other: &dyn PluginSceneCommandPayload) -> bool {
+        other
+            .command_as_any()
+            .downcast_ref::<GlobalLight2dSceneCommand>()
+            .is_some_and(|command| command == &self.0)
+    }
+}
+
+pub fn global_light_2d_plugin_scene_command(
+    command: GlobalLight2dSceneCommand,
+) -> PluginSceneCommand {
+    PluginSceneCommand::new(Arc::new(GlobalLight2dPluginSceneCommandPayload(command)))
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct LightMap2dSourcePluginSceneCommandPayload(pub LightMap2dSourceSceneCommand);
+
+impl PluginSceneCommandPayload for LightMap2dSourcePluginSceneCommandPayload {
+    fn command_type(&self) -> &'static str {
+        LIGHTMAP_2D_SOURCE_PLUGIN_SCENE_COMMAND_TYPE
+    }
+
+    fn command_as_any(&self) -> &dyn std::any::Any {
+        &self.0
+    }
+
+    fn eq_payload(&self, other: &dyn PluginSceneCommandPayload) -> bool {
+        other
+            .command_as_any()
+            .downcast_ref::<LightMap2dSourceSceneCommand>()
+            .is_some_and(|command| command == &self.0)
+    }
+}
+
+pub fn lightmap_2d_source_plugin_scene_command(
+    command: LightMap2dSourceSceneCommand,
+) -> PluginSceneCommand {
+    PluginSceneCommand::new(Arc::new(LightMap2dSourcePluginSceneCommandPayload(command)))
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub struct Camera2dSceneCommand {
     pub source_mod: String,
     pub entity_name: String,
@@ -223,6 +411,30 @@ pub struct Camera2dSceneCommand {
     pub film: CameraFilm2dSceneCommand,
     pub look: CameraLook2dSceneCommand,
     pub aperture: CameraAperture2dSceneCommand,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct Camera2dPluginSceneCommandPayload(pub Camera2dSceneCommand);
+
+impl PluginSceneCommandPayload for Camera2dPluginSceneCommandPayload {
+    fn command_type(&self) -> &'static str {
+        CAMERA_2D_PLUGIN_SCENE_COMMAND_TYPE
+    }
+
+    fn command_as_any(&self) -> &dyn std::any::Any {
+        &self.0
+    }
+
+    fn eq_payload(&self, other: &dyn PluginSceneCommandPayload) -> bool {
+        other
+            .command_as_any()
+            .downcast_ref::<Camera2dSceneCommand>()
+            .is_some_and(|command| command == &self.0)
+    }
+}
+
+pub fn camera_2d_plugin_scene_command(command: Camera2dSceneCommand) -> PluginSceneCommand {
+    PluginSceneCommand::new(Arc::new(Camera2dPluginSceneCommandPayload(command)))
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
@@ -376,6 +588,32 @@ pub struct RenderLayer2dSceneCommand {
     pub optical_role: OpticalLayerRole2dSceneCommand,
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub struct RenderLayer2dPluginSceneCommandPayload(pub RenderLayer2dSceneCommand);
+
+impl PluginSceneCommandPayload for RenderLayer2dPluginSceneCommandPayload {
+    fn command_type(&self) -> &'static str {
+        RENDER_LAYER_2D_PLUGIN_SCENE_COMMAND_TYPE
+    }
+
+    fn command_as_any(&self) -> &dyn std::any::Any {
+        &self.0
+    }
+
+    fn eq_payload(&self, other: &dyn PluginSceneCommandPayload) -> bool {
+        other
+            .command_as_any()
+            .downcast_ref::<RenderLayer2dSceneCommand>()
+            .is_some_and(|command| command == &self.0)
+    }
+}
+
+pub fn render_layer_2d_plugin_scene_command(
+    command: RenderLayer2dSceneCommand,
+) -> PluginSceneCommand {
+    PluginSceneCommand::new(Arc::new(RenderLayer2dPluginSceneCommandPayload(command)))
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum OpticalLayerRole2dSceneCommand {
     WorldSurface,
@@ -424,6 +662,32 @@ pub struct LightRoute2dSceneCommand {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+pub struct LightRoute2dPluginSceneCommandPayload(pub LightRoute2dSceneCommand);
+
+impl PluginSceneCommandPayload for LightRoute2dPluginSceneCommandPayload {
+    fn command_type(&self) -> &'static str {
+        LIGHT_ROUTE_2D_PLUGIN_SCENE_COMMAND_TYPE
+    }
+
+    fn command_as_any(&self) -> &dyn std::any::Any {
+        &self.0
+    }
+
+    fn eq_payload(&self, other: &dyn PluginSceneCommandPayload) -> bool {
+        other
+            .command_as_any()
+            .downcast_ref::<LightRoute2dSceneCommand>()
+            .is_some_and(|command| command == &self.0)
+    }
+}
+
+pub fn light_route_2d_plugin_scene_command(
+    command: LightRoute2dSceneCommand,
+) -> PluginSceneCommand {
+    PluginSceneCommand::new(Arc::new(LightRoute2dPluginSceneCommandPayload(command)))
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub struct LightGroup2dSceneCommand {
     pub source_mod: String,
     pub id: String,
@@ -433,6 +697,32 @@ pub struct LightGroup2dSceneCommand {
     pub render_contributions: RenderContributions2dSceneCommand,
     pub camera_response: CameraOpticalResponse2dSceneCommand,
     pub sources: Vec<LightGroup2dSourceSceneCommand>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct LightGroup2dPluginSceneCommandPayload(pub LightGroup2dSceneCommand);
+
+impl PluginSceneCommandPayload for LightGroup2dPluginSceneCommandPayload {
+    fn command_type(&self) -> &'static str {
+        LIGHT_GROUP_2D_PLUGIN_SCENE_COMMAND_TYPE
+    }
+
+    fn command_as_any(&self) -> &dyn std::any::Any {
+        &self.0
+    }
+
+    fn eq_payload(&self, other: &dyn PluginSceneCommandPayload) -> bool {
+        other
+            .command_as_any()
+            .downcast_ref::<LightGroup2dSceneCommand>()
+            .is_some_and(|command| command == &self.0)
+    }
+}
+
+pub fn light_group_2d_plugin_scene_command(
+    command: LightGroup2dSceneCommand,
+) -> PluginSceneCommand {
+    PluginSceneCommand::new(Arc::new(LightGroup2dPluginSceneCommandPayload(command)))
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -494,6 +784,30 @@ pub struct Sprite2dSceneCommand {
     pub transform: Transform2,
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub struct Sprite2dPluginSceneCommandPayload(pub Sprite2dSceneCommand);
+
+impl PluginSceneCommandPayload for Sprite2dPluginSceneCommandPayload {
+    fn command_type(&self) -> &'static str {
+        SPRITE_2D_PLUGIN_SCENE_COMMAND_TYPE
+    }
+
+    fn command_as_any(&self) -> &dyn std::any::Any {
+        &self.0
+    }
+
+    fn eq_payload(&self, other: &dyn PluginSceneCommandPayload) -> bool {
+        other
+            .command_as_any()
+            .downcast_ref::<Sprite2dSceneCommand>()
+            .is_some_and(|command| command == &self.0)
+    }
+}
+
+pub fn sprite_2d_plugin_scene_command(command: Sprite2dSceneCommand) -> PluginSceneCommand {
+    PluginSceneCommand::new(Arc::new(Sprite2dPluginSceneCommandPayload(command)))
+}
+
 impl Sprite2dSceneCommand {
     pub fn new(
         source_mod: impl Into<String>,
@@ -528,6 +842,30 @@ pub struct TileMap2dSceneCommand {
     pub grid: Vec<String>,
     pub depth_fill_rows: usize,
     pub z_index: f32,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct TileMap2dPluginSceneCommandPayload(pub TileMap2dSceneCommand);
+
+impl PluginSceneCommandPayload for TileMap2dPluginSceneCommandPayload {
+    fn command_type(&self) -> &'static str {
+        TILEMAP_2D_PLUGIN_SCENE_COMMAND_TYPE
+    }
+
+    fn command_as_any(&self) -> &dyn std::any::Any {
+        &self.0
+    }
+
+    fn eq_payload(&self, other: &dyn PluginSceneCommandPayload) -> bool {
+        other
+            .command_as_any()
+            .downcast_ref::<TileMap2dSceneCommand>()
+            .is_some_and(|command| command == &self.0)
+    }
+}
+
+pub fn tilemap_2d_plugin_scene_command(command: TileMap2dSceneCommand) -> PluginSceneCommand {
+    PluginSceneCommand::new(Arc::new(TileMap2dPluginSceneCommandPayload(command)))
 }
 
 impl TileMap2dSceneCommand {
@@ -565,6 +903,30 @@ pub struct Text2dSceneCommand {
     pub z_index: f32,
     pub material: Option<Material2dSceneCommand>,
     pub transform: Transform2,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct Text2dPluginSceneCommandPayload(pub Text2dSceneCommand);
+
+impl PluginSceneCommandPayload for Text2dPluginSceneCommandPayload {
+    fn command_type(&self) -> &'static str {
+        TEXT_2D_PLUGIN_SCENE_COMMAND_TYPE
+    }
+
+    fn command_as_any(&self) -> &dyn std::any::Any {
+        &self.0
+    }
+
+    fn eq_payload(&self, other: &dyn PluginSceneCommandPayload) -> bool {
+        other
+            .command_as_any()
+            .downcast_ref::<Text2dSceneCommand>()
+            .is_some_and(|command| command == &self.0)
+    }
+}
+
+pub fn text_2d_plugin_scene_command(command: Text2dSceneCommand) -> PluginSceneCommand {
+    PluginSceneCommand::new(Arc::new(Text2dPluginSceneCommandPayload(command)))
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -711,6 +1073,32 @@ pub struct VectorShape2dSceneCommand {
     pub transform: Transform2,
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub struct VectorShape2dPluginSceneCommandPayload(pub VectorShape2dSceneCommand);
+
+impl PluginSceneCommandPayload for VectorShape2dPluginSceneCommandPayload {
+    fn command_type(&self) -> &'static str {
+        VECTOR_SHAPE_2D_PLUGIN_SCENE_COMMAND_TYPE
+    }
+
+    fn command_as_any(&self) -> &dyn std::any::Any {
+        &self.0
+    }
+
+    fn eq_payload(&self, other: &dyn PluginSceneCommandPayload) -> bool {
+        other
+            .command_as_any()
+            .downcast_ref::<VectorShape2dSceneCommand>()
+            .is_some_and(|command| command == &self.0)
+    }
+}
+
+pub fn vector_shape_2d_plugin_scene_command(
+    command: VectorShape2dSceneCommand,
+) -> PluginSceneCommand {
+    PluginSceneCommand::new(Arc::new(VectorShape2dPluginSceneCommandPayload(command)))
+}
+
 impl VectorShape2dSceneCommand {
     pub fn new(
         source_mod: impl Into<String>,
@@ -766,4 +1154,30 @@ pub struct BeaconLight2dSceneCommand {
     pub transform: Transform2,
     pub viewport_fit: LayeredImageViewportFit2dSceneCommand,
     pub viewport_canvas_size: Option<Vec2>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct BeaconLight2dPluginSceneCommandPayload(pub BeaconLight2dSceneCommand);
+
+impl PluginSceneCommandPayload for BeaconLight2dPluginSceneCommandPayload {
+    fn command_type(&self) -> &'static str {
+        BEACON_LIGHT_2D_PLUGIN_SCENE_COMMAND_TYPE
+    }
+
+    fn command_as_any(&self) -> &dyn std::any::Any {
+        &self.0
+    }
+
+    fn eq_payload(&self, other: &dyn PluginSceneCommandPayload) -> bool {
+        other
+            .command_as_any()
+            .downcast_ref::<BeaconLight2dSceneCommand>()
+            .is_some_and(|command| command == &self.0)
+    }
+}
+
+pub fn beacon_light_2d_plugin_scene_command(
+    command: BeaconLight2dSceneCommand,
+) -> PluginSceneCommand {
+    PluginSceneCommand::new(Arc::new(BeaconLight2dPluginSceneCommandPayload(command)))
 }

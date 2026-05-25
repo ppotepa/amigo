@@ -1,3 +1,10 @@
+fn plugin_payload<T: 'static>(command: &crate::SceneCommand) -> Option<&T> {
+    match command {
+        crate::SceneCommand::Plugin { command } => command.payload_as::<T>(),
+        _ => None,
+    }
+}
+
 mod sidescroller {
     include!("behavior/sidescroller.rs");
 }

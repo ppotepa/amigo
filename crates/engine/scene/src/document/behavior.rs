@@ -185,10 +185,10 @@ pub struct SceneParticleProfileScalarDocument {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct SceneParticleProfileCurve4Document {
-    pub v0: SceneParticleProfileScalarDocument,
-    pub v1: SceneParticleProfileScalarDocument,
-    pub v2: SceneParticleProfileScalarDocument,
-    pub v3: SceneParticleProfileScalarDocument,
+    pub point0: SceneParticleProfileScalarDocument,
+    pub point1: SceneParticleProfileScalarDocument,
+    pub point2: SceneParticleProfileScalarDocument,
+    pub point3: SceneParticleProfileScalarDocument,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]

@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use super::super::build_scene_hydration_plan;
-use crate::{SceneCommand, load_scene_document_from_path, load_scene_document_from_str};
+use crate::{load_scene_document_from_path, load_scene_document_from_str};
 
 #[test]
 fn hydrates_ui_theme_set_and_style_class() {
@@ -50,19 +50,19 @@ entities:
     let plan = build_scene_hydration_plan("playground-hud-ui", &document)
         .expect("ui theme plan should build");
 
-    assert!(plan.commands.iter().any(|command| matches!(
-        command,
-        SceneCommand::QueueUiThemeSet { command }
-            if command.entity_name == "playground-hud-ui"
+    assert!(plan.commands.iter().any(|command| {
+        super::plugin_payload::<crate::UiThemeSetSceneCommand>(command).is_some_and(|command| {
+            command.entity_name == "playground-hud-ui"
                 && command.active.as_deref() == Some("space_dark")
                 && command.themes.len() == 1
-    )));
-    assert!(plan.commands.iter().any(|command| matches!(
-        command,
-        SceneCommand::QueueUi { command }
-            if command.document.root.style_class.as_deref() == Some("root")
+        })
+    }));
+    assert!(plan.commands.iter().any(|command| {
+        super::plugin_payload::<crate::UiSceneCommand>(command).is_some_and(|command| {
+            command.document.root.style_class.as_deref() == Some("root")
                 && command.document.root.children[0].style_class.as_deref() == Some("text_title")
-    )));
+        })
+    }));
 }
 
 #[test]
@@ -107,10 +107,7 @@ entities:
     let ui = plan
         .commands
         .iter()
-        .find_map(|command| match command {
-            SceneCommand::QueueUi { command } => Some(command),
-            _ => None,
-        })
+        .find_map(super::plugin_payload::<crate::UiSceneCommand>)
         .expect("ui command should be queued");
     match &ui.document.root.kind {
         crate::SceneUiNodeKind::TabView { selected, tabs, .. } => {
@@ -159,10 +156,7 @@ entities:
     let ui = plan
         .commands
         .iter()
-        .find_map(|command| match command {
-            SceneCommand::QueueUi { command } => Some(command),
-            _ => None,
-        })
+        .find_map(super::plugin_payload::<crate::UiSceneCommand>)
         .expect("ui command should be queued");
     let curve = &ui.document.root.children[0];
 
@@ -199,16 +193,15 @@ fn builds_hydration_plan_for_hud_ui_showcase() {
     let plan = build_scene_hydration_plan("playground-hud-ui", &document)
         .expect("hud ui showcase plan should build");
 
-    assert!(plan.commands.iter().any(|command| matches!(
-        command,
-        SceneCommand::QueueUiThemeSet { command }
-            if command.active.as_deref() == Some("space_dark") && command.themes.len() == 2
-    )));
-    assert!(plan.commands.iter().any(|command| matches!(
-        command,
-        SceneCommand::QueueUi { command }
-            if command.entity_name == "playground-hud-ui-showcase"
-    )));
+    assert!(plan.commands.iter().any(|command| {
+        super::plugin_payload::<crate::UiThemeSetSceneCommand>(command).is_some_and(|command| {
+            command.active.as_deref() == Some("space_dark") && command.themes.len() == 2
+        })
+    }));
+    assert!(plan.commands.iter().any(|command| {
+        super::plugin_payload::<crate::UiSceneCommand>(command)
+            .is_some_and(|command| command.entity_name == "playground-hud-ui-showcase")
+    }));
 }
 
 #[test]
@@ -222,7 +215,7 @@ entities:
   - id: actor
     name: test-actor
     components:
-      - type: VectorShape2D
+      - type: amigo.gfx.vector-2d.VectorShape2D
         kind: polygon
         points:
           - { x: 0.0, y: -6.0 }
@@ -243,13 +236,12 @@ entities:
     let plan = build_scene_hydration_plan("test-mod", &document)
         .expect("vector arcade scene plan should build");
 
-    assert!(plan.commands.iter().any(|command| matches!(
-        command,
-        SceneCommand::QueueVectorShape2d { command }
-            if command.entity_name == "test-actor"
-    )));
-    assert!(plan.commands.iter().any(|command| matches!(
-        command,
-        SceneCommand::QueueEntityPool { command } if command.pool == "targets"
-    )));
+    assert!(plan.commands.iter().any(|command| {
+        super::plugin_payload::<crate::VectorShape2dSceneCommand>(command)
+            .is_some_and(|command| command.entity_name == "test-actor")
+    }));
+    assert!(plan.commands.iter().any(|command| {
+        super::plugin_payload::<crate::EntityPoolSceneCommand>(command)
+            .is_some_and(|command| command.pool == "targets")
+    }));
 }

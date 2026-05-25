@@ -7,11 +7,16 @@ use serde_yaml::{Mapping, Value};
 use super::{
     Camera2dModeDocument, CameraFocus2dDocument, Material2dOpticalModeDocument,
     RenderDepthMode2dDocument, SceneComponentDocument, SceneEntitySelectorDocument,
-    SceneEntitySelectorKindDocument, compile_scene_document_from_path, load_scene_document_from_path,
-    load_scene_document_from_str, load_scene_document_from_str_with_component_schemas,
+    SceneEntitySelectorKindDocument, compile_scene_document_from_path,
+    load_scene_document_from_path, load_scene_document_from_str,
+    load_scene_document_from_str_with_component_schemas,
 };
 use crate::SceneDocumentError;
-use crate::{ComponentSchemaRegistry, SceneComponentSchemaProvider, ScenePluginComponentDescriptor};
+use crate::{
+    ComponentSchemaRegistry, SceneComponentSchemaProvider, ScenePluginComponentDescriptor,
+};
+
+type ComponentDocument = SceneComponentDocument;
 
 static TEST_DIR_COUNTER: AtomicUsize = AtomicUsize::new(0);
 
@@ -26,7 +31,7 @@ entities:
   - id: title
     name: title
     components:
-      - type: Text2D
+      - type: amigo.gfx.text-2d.Text2D
         content: ROTTEN CLUB
         font: rotten-club/fonts/game
         bounds: { x: 1180.0, y: 240.0 }
@@ -44,12 +49,15 @@ entities:
         .iter()
         .flat_map(|entity| &entity.components)
         .find_map(|component| match component {
-            SceneComponentDocument::Text2d { material, .. } => *material,
+            ComponentDocument::Text2d { material, .. } => *material,
             _ => None,
         })
         .expect("text material should parse");
 
-    assert_eq!(material.optical.mode, Material2dOpticalModeDocument::Refractive);
+    assert_eq!(
+        material.optical.mode,
+        Material2dOpticalModeDocument::Refractive
+    );
     assert_eq!(material.optical.transmission, 0.58);
     assert_eq!(material.optical.refraction_px, 4.5);
 }
@@ -66,7 +74,7 @@ entities:
   - id: poster
     name: poster
     components:
-      - type: Sprite2D
+      - type: amigo.gfx.sprite-2d.Sprite2D
         render_layer: foreground.props
         texture: test/poster
         size: [128, 128]
@@ -89,16 +97,22 @@ entities:
         .iter()
         .flat_map(|entity| &entity.components)
         .find_map(|component| match component {
-            SceneComponentDocument::Sprite2d {
+            ComponentDocument::Sprite2d {
                 material,
                 render_contributions,
                 ..
-            } => Some((material.expect("sprite material should parse"), render_contributions)),
+            } => Some((
+                material.expect("sprite material should parse"),
+                render_contributions,
+            )),
             _ => None,
         })
         .expect("sprite component should exist");
 
-    assert_eq!(material.optical.mode, Material2dOpticalModeDocument::Refractive);
+    assert_eq!(
+        material.optical.mode,
+        Material2dOpticalModeDocument::Refractive
+    );
     assert_eq!(material.optical.transmission, 0.45);
     assert_eq!(material.optical.refraction_px, 7.0);
     assert_eq!(contributions.get("world.color"), Some(true));
@@ -119,7 +133,7 @@ entities:
   - id: vector-glass
     name: vector-glass
     components:
-      - type: VectorShape2D
+      - type: amigo.gfx.vector-2d.VectorShape2D
         render_layer: foreground.props
         kind: circle
         radius: 48.0
@@ -144,16 +158,22 @@ entities:
         .iter()
         .flat_map(|entity| &entity.components)
         .find_map(|component| match component {
-            SceneComponentDocument::VectorShape2d {
+            ComponentDocument::VectorShape2d {
                 material,
                 render_contributions,
                 ..
-            } => Some((material.expect("vector material should parse"), render_contributions)),
+            } => Some((
+                material.expect("vector material should parse"),
+                render_contributions,
+            )),
             _ => None,
         })
         .expect("vector component should exist");
 
-    assert_eq!(material.optical.mode, Material2dOpticalModeDocument::Refractive);
+    assert_eq!(
+        material.optical.mode,
+        Material2dOpticalModeDocument::Refractive
+    );
     assert_eq!(material.optical.transmission, 0.35);
     assert_eq!(material.optical.refraction_px, 5.0);
     assert_eq!(contributions.get("world.color"), Some(true));
@@ -184,7 +204,7 @@ entities:
     transform2:
       translation: { x: 12.0, y: -4.0 }
     components:
-      - type: Sprite2D
+      - type: amigo.gfx.sprite-2d.Sprite2D
         texture: playground-2d/spritesheets/sprite-lab
         size: { x: 128.0, y: 128.0 }
 "#,
@@ -196,12 +216,14 @@ entities:
     assert_eq!(document.entities.len(), 2);
     assert_eq!(document.entity_names()[1], "playground-2d-sprite");
     assert_eq!(
-        document.component_kind_counts().get("Sprite2D"),
+        document
+            .component_kind_counts()
+            .get("amigo.gfx.sprite-2d.Sprite2D"),
         Some(&1usize)
     );
     assert!(matches!(
         document.entities[1].components[0],
-        SceneComponentDocument::Sprite2d { .. }
+        ComponentDocument::Sprite2d { .. }
     ));
 }
 
@@ -215,7 +237,7 @@ scene:
 entities:
   - id: plugin-entity
     components:
-      - type: amigo.gfx.sprite-2d.Sprite2D
+      - type: amigo.test.Sprite2D
         texture: plugin/sprite
         size: { x: 64.0, y: 64.0 }
 "#,
@@ -223,12 +245,14 @@ entities:
     .expect("scene document should parse");
 
     match &document.entities[0].components[0] {
-        SceneComponentDocument::Plugin {
+        ComponentDocument::Plugin {
             component_type,
             payload,
         } => {
-            assert_eq!(component_type, "amigo.gfx.sprite-2d.Sprite2D");
-            let mapping = payload.as_mapping().expect("plugin payload should be a mapping");
+            assert_eq!(component_type, "amigo.test.Sprite2D");
+            let mapping = payload
+                .as_mapping()
+                .expect("plugin payload should be a mapping");
             assert!(mapping.contains_key(Value::String("texture".to_owned())));
             assert!(mapping.contains_key(Value::String("size".to_owned())));
         }
@@ -238,7 +262,7 @@ entities:
 
 #[test]
 fn scene_document_uses_registered_component_schema_for_sprite2d_runtime_path() {
-    let mut component_schemas = ComponentSchemaRegistry::default();
+    let component_schemas = ComponentSchemaRegistry::default();
     component_schemas.register_descriptor(ScenePluginComponentDescriptor::new(
         "amigo.gfx.sprite-2d.Sprite2D",
         "gfx",
@@ -253,7 +277,7 @@ scene:
 entities:
   - id: sprite
     components:
-      - type: Sprite2D
+      - type: amigo.gfx.sprite-2d.Sprite2D
         texture: plugin/sprite
         size: { x: 64.0, y: 64.0 }
 "#,
@@ -262,7 +286,7 @@ entities:
     .expect("scene document should parse");
 
     match &document.entities[0].components[0] {
-        SceneComponentDocument::Plugin { component_type, .. } => {
+        ComponentDocument::Plugin { component_type, .. } => {
             assert_eq!(component_type, "amigo.gfx.sprite-2d.Sprite2D");
         }
         other => panic!("expected plugin envelope, got {other:?}"),
@@ -328,7 +352,7 @@ scene:
 entities:
   - id: sprite
     components:
-      - type: Sprite2D
+      - type: amigo.gfx.sprite-2d.Sprite2D
         texture: plugin/sprite
         size: { x: 64.0, y: 64.0 }
 "#,
@@ -337,12 +361,53 @@ entities:
     .expect("scene document should parse");
 
     match &document.entities[0].components[0] {
-        SceneComponentDocument::Plugin {
+        ComponentDocument::Plugin {
             component_type,
             payload,
         } => {
             assert_eq!(component_type, "amigo.gfx.sprite-2d.Sprite2D");
-            let mapping = payload.as_mapping().expect("plugin payload should be a mapping");
+            let mapping = payload
+                .as_mapping()
+                .expect("plugin payload should be a mapping");
+            assert_eq!(
+                mapping.get(Value::String("schema_marker".to_owned())),
+                Some(&Value::String("plugin-owned".to_owned()))
+            );
+        }
+        other => panic!("expected plugin envelope, got {other:?}"),
+    }
+}
+
+#[test]
+fn scene_document_routes_schema_alias_without_descriptor_lookup() {
+    let component_schemas = ComponentSchemaRegistry::default();
+    component_schemas.register_schema_provider(TestSpriteSchemaProvider);
+
+    let document = load_scene_document_from_str_with_component_schemas(
+        r#"
+version: 1
+scene:
+  id: plugin-schema-alias-only
+entities:
+  - id: sprite
+    components:
+      - type: amigo.gfx.sprite-2d.Sprite2D
+        texture: plugin/sprite
+        size: { x: 64.0, y: 64.0 }
+"#,
+        Some(&component_schemas),
+    )
+    .expect("scene document should parse");
+
+    match &document.entities[0].components[0] {
+        ComponentDocument::Plugin {
+            component_type,
+            payload,
+        } => {
+            assert_eq!(component_type, "amigo.gfx.sprite-2d.Sprite2D");
+            let mapping = payload
+                .as_mapping()
+                .expect("plugin payload should be a mapping");
             assert_eq!(
                 mapping.get(Value::String("schema_marker".to_owned())),
                 Some(&Value::String("plugin-owned".to_owned()))
@@ -374,7 +439,7 @@ entities:
         .iter()
         .flat_map(|entity| &entity.components)
         .find_map(|component| match component {
-            SceneComponentDocument::Camera2d {
+            ComponentDocument::Camera2d {
                 render_contributions,
                 ..
             } => Some(render_contributions),
@@ -411,7 +476,7 @@ entities:
         .iter()
         .flat_map(|entity| &entity.components)
         .find_map(|component| match component {
-            SceneComponentDocument::Camera2d {
+            ComponentDocument::Camera2d {
                 render_contributions,
                 ..
             } => Some(render_contributions),
@@ -451,7 +516,7 @@ entities:
         .iter()
         .flat_map(|entity| &entity.components)
         .find_map(|component| match component {
-            SceneComponentDocument::BeaconLight2d {
+            ComponentDocument::BeaconLight2d {
                 render_contributions,
                 ..
             } => Some(render_contributions),
@@ -625,7 +690,11 @@ fn parses_playground_scene_documents_from_disk() {
 
     assert_eq!(sprite_doc.scene.id, "sprite-lab");
     assert_eq!(material_doc.scene.id, "material-lab");
-    assert!(sprite_doc.component_kind_counts().contains_key("Sprite2D"));
+    assert!(
+        sprite_doc
+            .component_kind_counts()
+            .contains_key("amigo.gfx.sprite-2d.Sprite2D")
+    );
     assert!(
         material_doc
             .component_kind_counts()
@@ -649,8 +718,16 @@ fn parses_playground_2d_main_scene_from_disk() {
 
     assert_eq!(document.scene.id, "hello-world-spritesheet");
     assert_eq!(document.transitions.len(), 1);
-    assert!(document.component_kind_counts().contains_key("Sprite2D"));
-    assert!(document.component_kind_counts().contains_key("Text2D"));
+    assert!(
+        document
+            .component_kind_counts()
+            .contains_key("amigo.gfx.sprite-2d.Sprite2D")
+    );
+    assert!(
+        document
+            .component_kind_counts()
+            .contains_key("amigo.gfx.text-2d.Text2D")
+    );
 }
 
 #[test]
@@ -688,7 +765,11 @@ fn parses_playground_2d_screen_space_preview_from_disk() {
     .expect("screen-space preview scene should parse");
 
     assert_eq!(document.scene.id, "screen-space-preview");
-    assert!(document.component_kind_counts().contains_key("Sprite2D"));
+    assert!(
+        document
+            .component_kind_counts()
+            .contains_key("amigo.gfx.sprite-2d.Sprite2D")
+    );
     assert!(document.component_kind_counts().contains_key("UiDocument"));
 }
 
@@ -710,7 +791,7 @@ entities:
   - id: tilemap
     name: playground-sidescroller-tilemap
     components:
-      - type: TileMap2D
+      - type: amigo.gfx.tilemap-2d.TileMap2D
         tileset: playground-sidescroller/spritesheets/platformer/tilesets/platform/base
         ruleset: playground-sidescroller/spritesheets/platformer/rulesets/platform/rules
         tile_size: { x: 16.0, y: 16.0 }
@@ -745,7 +826,7 @@ entities:
   - id: coin
     name: playground-sidescroller-coin
     components:
-      - type: Sprite2D
+      - type: amigo.gfx.sprite-2d.Sprite2D
         texture: playground-sidescroller/spritesheets/coin
         size: { x: 16.0, y: 16.0 }
         animation:
@@ -761,7 +842,11 @@ entities:
     .expect("sidescroller scene document should parse");
 
     assert_eq!(document.scene.id, "vertical-slice");
-    assert!(document.component_kind_counts().contains_key("TileMap2D"));
+    assert!(
+        document
+            .component_kind_counts()
+            .contains_key("amigo.gfx.tilemap-2d.TileMap2D")
+    );
     let tilemap_component = document
         .entities
         .iter()
@@ -770,11 +855,11 @@ entities:
             entity
                 .components
                 .iter()
-                .find(|component| matches!(component, SceneComponentDocument::TileMap2d { .. }))
+                .find(|component| matches!(component, ComponentDocument::TileMap2d { .. }))
         })
         .expect("tilemap component should exist");
     match tilemap_component {
-        SceneComponentDocument::TileMap2d { ruleset, .. } => {
+        ComponentDocument::TileMap2d { ruleset, .. } => {
             assert_eq!(
                 ruleset.as_deref(),
                 Some("playground-sidescroller/spritesheets/platformer/rulesets/platform/rules")
@@ -798,7 +883,11 @@ entities:
             .component_kind_counts()
             .contains_key("MotionController2D")
     );
-    assert!(document.component_kind_counts().contains_key("Sprite2D"));
+    assert!(
+        document
+            .component_kind_counts()
+            .contains_key("amigo.gfx.sprite-2d.Sprite2D")
+    );
     assert!(
         document
             .component_kind_counts()
@@ -1027,7 +1116,7 @@ entities:
 
     let component = &document.entities[0].components[0];
     match component {
-        SceneComponentDocument::Camera2d {
+        ComponentDocument::Camera2d {
             id,
             mode,
             exposure,
@@ -1071,8 +1160,7 @@ entities:
 "#;
 
     let document = load_scene_document_from_str(distance_yaml).unwrap();
-    let SceneComponentDocument::Camera2d { aperture, .. } = &document.entities[0].components[0]
-    else {
+    let ComponentDocument::Camera2d { aperture, .. } = &document.entities[0].components[0] else {
         panic!("expected Camera2D component");
     };
     assert!(matches!(
@@ -1097,8 +1185,7 @@ entities:
 "#;
 
     let document = load_scene_document_from_str(depth_yaml).unwrap();
-    let SceneComponentDocument::Camera2d { aperture, .. } = &document.entities[0].components[0]
-    else {
+    let ComponentDocument::Camera2d { aperture, .. } = &document.entities[0].components[0] else {
         panic!("expected Camera2D component");
     };
     assert!(matches!(
@@ -1441,7 +1528,7 @@ bindings:
     let kinds = compiled.document.entities[0]
         .components
         .iter()
-        .map(SceneComponentDocument::kind)
+        .map(ComponentDocument::kind)
         .collect::<Vec<_>>();
     assert_eq!(kinds, ["UiDocument", "UiThemeSet", "UiModelBindings"]);
 }
@@ -1546,7 +1633,7 @@ fn scene_compiler_compiles_rotten_club_main_menu_from_disk() {
             && entity
                 .components
                 .iter()
-                .any(|component| component.kind() == "Text2D")
+                .any(|component| component.kind() == "amigo.gfx.text-2d.Text2D")
     }));
     assert!(
         compiled

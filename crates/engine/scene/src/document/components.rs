@@ -3,8 +3,6 @@ use std::collections::BTreeMap;
 use serde::{Deserialize, Serialize};
 use serde_yaml::Value;
 
-use crate::ComponentKind;
-
 use super::behavior::*;
 use super::camera::*;
 use super::core::*;
@@ -29,9 +27,32 @@ impl SceneEntityDocument {
     }
 }
 
+const COMPONENT_TYPE_SPRITE_2D: &str = "amigo.gfx.sprite-2d.Sprite2D";
+const COMPONENT_TYPE_TILE_MAP_2D: &str = "amigo.gfx.tilemap-2d.TileMap2D";
+const COMPONENT_TYPE_TEXT_2D: &str = "amigo.gfx.text-2d.Text2D";
+const COMPONENT_TYPE_VECTOR_SHAPE_2D: &str = "amigo.gfx.vector-2d.VectorShape2D";
+const COMPONENT_TYPE_PARTICLE_EMITTER_2D: &str = "amigo.vfx.particles-2d.ParticleEmitter2D";
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SceneComponentSemanticClass {
+    Sprite2d,
+    LayeredImage2d,
+    TileMap2d,
+    Text2d,
+    VectorShape2d,
+    ParticleEmitter2d,
+    BeaconLight2d,
+    Camera2d,
+    Motion2d,
+    Physics2d,
+    Script,
+    Plugin,
+    Generic2d,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(tag = "type")]
-pub enum SceneComponentDocument {
+pub enum SceneComponentDocumentModel {
     #[serde(rename = "Camera2D")]
     Camera2d {
         #[serde(default = "default_camera2d_id")]
@@ -71,7 +92,7 @@ pub enum SceneComponentDocument {
         #[serde(default)]
         kind: String,
     },
-    #[serde(rename = "Sprite2D")]
+    #[serde(rename = "amigo.gfx.sprite-2d.Sprite2D")]
     Sprite2d {
         #[serde(default = "default_render_layer")]
         render_layer: String,
@@ -152,7 +173,7 @@ pub enum SceneComponentDocument {
         #[serde(default)]
         channels: Vec<LightMap2dChannelDocument>,
     },
-    #[serde(rename = "TileMap2D")]
+    #[serde(rename = "amigo.gfx.tilemap-2d.TileMap2D")]
     TileMap2d {
         #[serde(default = "default_render_layer")]
         render_layer: String,
@@ -170,7 +191,7 @@ pub enum SceneComponentDocument {
         #[serde(default, skip_serializing_if = "Vec::is_empty")]
         post_fx: Vec<PostFx2dDocument>,
     },
-    #[serde(rename = "Text2D")]
+    #[serde(rename = "amigo.gfx.text-2d.Text2D")]
     Text2d {
         #[serde(default = "default_render_layer")]
         render_layer: String,
@@ -188,7 +209,7 @@ pub enum SceneComponentDocument {
         #[serde(default, skip_serializing_if = "Vec::is_empty")]
         post_fx: Vec<PostFx2dDocument>,
     },
-    #[serde(rename = "VectorShape2D")]
+    #[serde(rename = "amigo.gfx.vector-2d.VectorShape2D")]
     VectorShape2d {
         #[serde(default = "default_render_layer")]
         render_layer: String,
@@ -333,7 +354,7 @@ pub enum SceneComponentDocument {
         #[serde(default)]
         params: BTreeMap<String, ScenePropertyValueDocument>,
     },
-    #[serde(rename = "ParticleEmitter2D")]
+    #[serde(rename = "amigo.vfx.particles-2d.ParticleEmitter2D")]
     ParticleEmitter2d {
         #[serde(default = "default_render_layer")]
         render_layer: String,
@@ -562,117 +583,81 @@ pub enum SceneComponentDocument {
     },
 }
 
+pub type SceneComponentDocument = SceneComponentDocumentModel;
+
+pub fn is_builtin_component_type(kind: &str) -> bool {
+    matches!(
+        kind,
+        "Camera2D"
+            | "Camera3D"
+            | "Light3D"
+            | COMPONENT_TYPE_SPRITE_2D
+            | "LayeredImage2D"
+            | "DepthMap2D"
+            | "DepthAuxMap2D"
+            | "GlobalLight2D"
+            | "LightMap2DSource"
+            | COMPONENT_TYPE_TILE_MAP_2D
+            | COMPONENT_TYPE_TEXT_2D
+            | COMPONENT_TYPE_VECTOR_SHAPE_2D
+            | "BeaconLight2D"
+            | "EntityPool"
+            | "Lifetime"
+            | "ProjectileEmitter2D"
+            | "InputActionMap"
+            | "Behavior"
+            | "EventPipeline"
+            | "UiModelBindings"
+            | "ScriptComponent"
+            | COMPONENT_TYPE_PARTICLE_EMITTER_2D
+            | "Velocity2D"
+            | "Bounds2D"
+            | "FreeflightMotion2D"
+            | "KinematicBody2D"
+            | "AabbCollider2D"
+            | "StaticCollider2D"
+            | "CircleCollider2D"
+            | "Trigger2D"
+            | "MotionController2D"
+            | "CameraFollow2D"
+            | "Parallax2D"
+            | "TileMapMarker2D"
+            | "Mesh3D"
+            | "Material3D"
+            | "Text3D"
+            | "UiDocument"
+            | "UiThemeSet"
+    )
+}
+
+pub fn is_rejected_retired_component_type(kind: &str) -> bool {
+    matches!(kind, "PlatformerController2D")
+}
+
+pub fn plugin_component_document(component_type: String, payload: Value) -> SceneComponentDocument {
+    type ComponentDocument = SceneComponentDocument;
+
+    ComponentDocument::Plugin {
+        component_type,
+        payload,
+    }
+}
+
 impl SceneComponentDocument {
-    pub fn is_builtin_type(kind: &str) -> bool {
-        matches!(
-            kind,
-            "Camera2D"
-                | "Camera3D"
-                | "Light3D"
-                | "Sprite2D"
-                | "LayeredImage2D"
-                | "DepthMap2D"
-                | "DepthAuxMap2D"
-                | "GlobalLight2D"
-                | "LightMap2DSource"
-                | "TileMap2D"
-                | "Text2D"
-                | "VectorShape2D"
-                | "BeaconLight2D"
-                | "EntityPool"
-                | "Lifetime"
-                | "ProjectileEmitter2D"
-                | "InputActionMap"
-                | "Behavior"
-                | "EventPipeline"
-                | "UiModelBindings"
-                | "ScriptComponent"
-                | "ParticleEmitter2D"
-                | "Velocity2D"
-                | "Bounds2D"
-                | "FreeflightMotion2D"
-                | "KinematicBody2D"
-                | "AabbCollider2D"
-                | "StaticCollider2D"
-                | "CircleCollider2D"
-                | "Trigger2D"
-                | "MotionController2D"
-                | "CameraFollow2D"
-                | "Parallax2D"
-                | "TileMapMarker2D"
-                | "Mesh3D"
-                | "Material3D"
-                | "Text3D"
-                | "UiDocument"
-                | "UiThemeSet"
-        )
-    }
-
-    pub fn is_rejected_legacy_type(kind: &str) -> bool {
-        matches!(kind, "PlatformerController2D")
-    }
-
-    pub fn component_kind(&self) -> ComponentKind {
-        match self {
-            Self::Camera2d { .. } => ComponentKind::Camera2D,
-            Self::Camera3d => ComponentKind::Camera3D,
-            Self::Light3d { .. } => ComponentKind::Light3D,
-            Self::Sprite2d { .. } => ComponentKind::Sprite2D,
-            Self::LayeredImage2d { .. } => ComponentKind::LayeredImage2D,
-            Self::DepthMap2d { .. } => ComponentKind::DepthMap2D,
-            Self::DepthAuxMap2d { .. } => ComponentKind::DepthAuxMap2D,
-            Self::GlobalLight2d { .. } => ComponentKind::GlobalLight2D,
-            Self::LightMap2dSource { .. } => ComponentKind::LightMap2DSource,
-            Self::TileMap2d { .. } => ComponentKind::TileMap2D,
-            Self::Text2d { .. } => ComponentKind::Text2D,
-            Self::VectorShape2d { .. } => ComponentKind::VectorShape2D,
-            Self::BeaconLight2d { .. } => ComponentKind::BeaconLight2D,
-            Self::EntityPool { .. } => ComponentKind::EntityPool,
-            Self::Lifetime { .. } => ComponentKind::Lifetime,
-            Self::ProjectileEmitter2d { .. } => ComponentKind::ProjectileEmitter2D,
-            Self::InputActionMap { .. } => ComponentKind::InputActionMap,
-            Self::Behavior { .. } => ComponentKind::Behavior,
-            Self::EventPipeline { .. } => ComponentKind::EventPipeline,
-            Self::UiModelBindings { .. } => ComponentKind::UiModelBindings,
-            Self::ScriptComponent { .. } => ComponentKind::ScriptComponent,
-            Self::ParticleEmitter2d { .. } => ComponentKind::ParticleEmitter2D,
-            Self::Velocity2d { .. } => ComponentKind::Velocity2D,
-            Self::Bounds2d { .. } => ComponentKind::Bounds2D,
-            Self::FreeflightMotion2d { .. } => ComponentKind::FreeflightMotion2D,
-            Self::KinematicBody2d { .. } => ComponentKind::KinematicBody2D,
-            Self::AabbCollider2d { .. } => ComponentKind::AabbCollider2D,
-            Self::StaticCollider2d { .. } => ComponentKind::StaticCollider2D,
-            Self::CircleCollider2d { .. } => ComponentKind::CircleCollider2D,
-            Self::Trigger2d { .. } => ComponentKind::Trigger2D,
-            Self::MotionController2d { .. } => ComponentKind::MotionController2D,
-            Self::CameraFollow2d { .. } => ComponentKind::CameraFollow2D,
-            Self::Parallax2d { .. } => ComponentKind::Parallax2D,
-            Self::TileMapMarker2d { .. } => ComponentKind::TileMapMarker2D,
-            Self::Mesh3d { .. } => ComponentKind::Mesh3D,
-            Self::Material3d { .. } => ComponentKind::Material3D,
-            Self::Text3d { .. } => ComponentKind::Text3D,
-            Self::UiDocument { .. } => ComponentKind::UiDocument,
-            Self::UiThemeSet { .. } => ComponentKind::UiThemeSet,
-            Self::Plugin { component_type, .. } => {
-                panic!("plugin scene component `{component_type}` has no core ComponentKind")
-            }
-        }
-    }
-
     pub fn kind(&self) -> &str {
         match self {
             Self::Camera2d { .. } => "Camera2D",
             Self::Camera3d => "Camera3D",
             Self::Light3d { .. } => "Light3D",
-            Self::Sprite2d { .. } => "Sprite2D",
+            Self::Sprite2d { .. } => COMPONENT_TYPE_SPRITE_2D,
             Self::LayeredImage2d { .. } => "LayeredImage2D",
             Self::DepthMap2d { .. } => "DepthMap2D",
             Self::DepthAuxMap2d { .. } => "DepthAuxMap2D",
             Self::GlobalLight2d { .. } => "GlobalLight2D",
             Self::LightMap2dSource { .. } => "LightMap2DSource",
-            Self::TileMap2d { .. } => "TileMap2D",
-            Self::Text2d { .. } => "Text2D",
-            Self::VectorShape2d { .. } => "VectorShape2D",
+            Self::TileMap2d { .. } => COMPONENT_TYPE_TILE_MAP_2D,
+            Self::Text2d { .. } => COMPONENT_TYPE_TEXT_2D,
+            Self::VectorShape2d { .. } => COMPONENT_TYPE_VECTOR_SHAPE_2D,
             Self::BeaconLight2d { .. } => "BeaconLight2D",
             Self::EntityPool { .. } => "EntityPool",
             Self::Lifetime { .. } => "Lifetime",
@@ -682,7 +667,7 @@ impl SceneComponentDocument {
             Self::EventPipeline { .. } => "EventPipeline",
             Self::UiModelBindings { .. } => "UiModelBindings",
             Self::ScriptComponent { .. } => "ScriptComponent",
-            Self::ParticleEmitter2d { .. } => "ParticleEmitter2D",
+            Self::ParticleEmitter2d { .. } => COMPONENT_TYPE_PARTICLE_EMITTER_2D,
             Self::Velocity2d { .. } => "Velocity2D",
             Self::Bounds2d { .. } => "Bounds2D",
             Self::FreeflightMotion2d { .. } => "FreeflightMotion2D",
@@ -701,6 +686,86 @@ impl SceneComponentDocument {
             Self::UiDocument { .. } => "UiDocument",
             Self::UiThemeSet { .. } => "UiThemeSet",
             Self::Plugin { component_type, .. } => component_type.as_str(),
+        }
+    }
+
+    pub fn primary_render_layer(&self) -> Option<&str> {
+        match self {
+            Self::ParticleEmitter2d { render_layer, .. }
+            | Self::LayeredImage2d { render_layer, .. }
+            | Self::BeaconLight2d { render_layer, .. } => Some(render_layer.as_str()),
+            Self::Plugin { .. } => None,
+            _ => None,
+        }
+    }
+
+    pub fn plugin_payload(&self) -> Option<(&str, &Value)> {
+        match self {
+            Self::Plugin {
+                component_type,
+                payload,
+            } => Some((component_type.as_str(), payload)),
+            _ => None,
+        }
+    }
+
+    pub fn post_fx_documents(&self) -> Option<&[PostFx2dDocument]> {
+        match self {
+            Self::Sprite2d { post_fx, .. }
+            | Self::LayeredImage2d { post_fx, .. }
+            | Self::TileMap2d { post_fx, .. }
+            | Self::Text2d { post_fx, .. }
+            | Self::VectorShape2d { post_fx, .. }
+            | Self::ParticleEmitter2d { post_fx, .. }
+            | Self::BeaconLight2d { post_fx, .. } => Some(post_fx.as_slice()),
+            Self::Plugin { .. } => None,
+            _ => None,
+        }
+    }
+
+    pub fn layered_image_part_post_fx_documents(&self) -> Option<Vec<(&str, &[PostFx2dDocument])>> {
+        match self {
+            Self::LayeredImage2d {
+                layer_overrides, ..
+            } => Some(
+                layer_overrides
+                    .iter()
+                    .filter(|override_doc| !override_doc.post_fx.is_empty())
+                    .map(|override_doc| (override_doc.id.as_str(), override_doc.post_fx.as_slice()))
+                    .collect(),
+            ),
+            Self::Plugin { .. } => None,
+            _ => None,
+        }
+    }
+
+    pub fn is_particle_emitter_2d(&self) -> bool {
+        matches!(self, Self::ParticleEmitter2d { .. })
+    }
+
+    pub fn semantic_class(&self) -> SceneComponentSemanticClass {
+        match self {
+            Self::Sprite2d { .. } => SceneComponentSemanticClass::Sprite2d,
+            Self::LayeredImage2d { .. } => SceneComponentSemanticClass::LayeredImage2d,
+            Self::TileMap2d { .. } => SceneComponentSemanticClass::TileMap2d,
+            Self::Text2d { .. } => SceneComponentSemanticClass::Text2d,
+            Self::VectorShape2d { .. } => SceneComponentSemanticClass::VectorShape2d,
+            Self::ParticleEmitter2d { .. } => SceneComponentSemanticClass::ParticleEmitter2d,
+            Self::BeaconLight2d { .. } => SceneComponentSemanticClass::BeaconLight2d,
+            Self::Camera2d { .. } | Self::CameraFollow2d { .. } => {
+                SceneComponentSemanticClass::Camera2d
+            }
+            Self::Velocity2d { .. }
+            | Self::FreeflightMotion2d { .. }
+            | Self::MotionController2d { .. } => SceneComponentSemanticClass::Motion2d,
+            Self::KinematicBody2d { .. }
+            | Self::AabbCollider2d { .. }
+            | Self::StaticCollider2d { .. }
+            | Self::CircleCollider2d { .. }
+            | Self::Trigger2d { .. } => SceneComponentSemanticClass::Physics2d,
+            Self::ScriptComponent { .. } => SceneComponentSemanticClass::Script,
+            Self::Plugin { .. } => SceneComponentSemanticClass::Plugin,
+            _ => SceneComponentSemanticClass::Generic2d,
         }
     }
 }
