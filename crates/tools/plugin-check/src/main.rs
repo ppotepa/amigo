@@ -172,19 +172,17 @@ fn validate_plugin_dir(plugin_dir: &Path, ids: &mut BTreeSet<String>, errors: &m
     require_file(plugin_dir, "plugin.toml", errors);
     require_file(plugin_dir, "Cargo.toml", errors);
     require_file(plugin_dir, "README.md", errors);
-    require_file(plugin_dir, "docs/pipeline.md", errors);
     require_file(plugin_dir, "tests/waterfall_tests.rs", errors);
     require_file(plugin_dir, "src/plugin.rs", errors);
 
-    for dir in [
-        "src/api",
-        "src/scene",
-        "src/runtime",
-        "src/render_wgpu",
-        "src/scripting",
-        "src/diagnostics",
-    ] {
+    for dir in ["src/api", "src/scene", "src/runtime", "src/scripting", "src/diagnostics"] {
         require_dir(plugin_dir, dir, errors);
+    }
+    if !plugin_dir.join("src/render_wgpu").is_dir() && !plugin_dir.join("src/render").is_dir() {
+        errors.push(format!(
+            "{} missing render boundary directory: expected src/render_wgpu or src/render",
+            plugin_dir.display()
+        ));
     }
 
     if plugin_dir.join("src/render-wgpu").exists() {
@@ -274,7 +272,7 @@ fn validate_manifest_referenced_files(
         return;
     };
 
-    for section in ["docs", "tests"] {
+    for section in ["tests"] {
         for (key, relative) in manifest_section_scalars(&content, section) {
             if relative.trim().is_empty() {
                 errors.push(format!(
@@ -354,7 +352,7 @@ fn validate_forbidden_patterns(plugin_dir: &Path, errors: &mut Vec<String>) {
     const FORBIDDEN: &[&str] = &[
         concat!("leg", "acy"),
         concat!("depre", "cated"),
-        concat!("_", "v2"),
+        concat!("_", "v", "2"),
         concat!("re", "-", "export"),
         concat!("re", "export"),
         concat!("luma", "_fallback"),

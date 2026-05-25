@@ -110,15 +110,9 @@ fn parse_scene_component_serde_renames(source: &str) -> Result<Vec<String>> {
 }
 
 fn parse_component_kind_variants(source: &str) -> Result<Vec<String>> {
-    let enum_body = source
-        .split("pub enum ComponentKind {")
-        .nth(1)
-        .and_then(|tail| tail.split("}\n").next())
-        .unwrap_or("");
-
-    let re = regex::Regex::new(r#"(?m)^\s*([A-Z][A-Za-z0-9_]*),"#)?;
+    let re = regex::Regex::new(r#"kind_id:\s*"([^"]+)""#)?;
     let mut values = re
-        .captures_iter(enum_body)
+        .captures_iter(source)
         .map(|cap| cap[1].to_string())
         .collect::<Vec<_>>();
     values.sort();
@@ -127,7 +121,7 @@ fn parse_component_kind_variants(source: &str) -> Result<Vec<String>> {
 }
 
 fn parse_descriptor_kinds(source: &str) -> Result<Vec<String>> {
-    let re = regex::Regex::new(r#"kind:\s*ComponentKind::([A-Za-z0-9_]+)"#)?;
+    let re = regex::Regex::new(r#"kind_id:\s*"([^"]+)""#)?;
     let mut values = re
         .captures_iter(source)
         .map(|cap| cap[1].to_string())

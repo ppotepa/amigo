@@ -4,7 +4,7 @@ pub fn print_descriptor_skeleton(component_kind: &str) -> Result<()> {
     let function_name = to_snake_case(component_kind);
     println!("pub fn {function_name}_descriptor() -> ComponentTypeDescriptor {{");
     println!("    ComponentTypeDescriptor {{");
-    println!("        kind: ComponentKind::{component_kind},");
+    println!("        kind_id: \"{component_kind}\",");
     println!("        type_name: \"{component_kind}\",");
     println!("        label: \"{component_kind}\",");
     println!("        domains: &[ComponentDomain::Data],");
