@@ -41,7 +41,7 @@ mod emergency_overlay_tests {
 mod focus_blur_layer_plan_tests {
     use super::*;
 
-    fn layer(id: &str, mode: amigo_2d_composition::RenderDepthMode2d) -> RenderLayer2dCommand {
+    fn layer(id: &str, mode: amigo_render_api::RenderDepthMode2d) -> RenderLayer2dCommand {
         RenderLayer2dCommand {
             source_mod: "test-mod".to_owned(),
             id: id.to_owned(),
@@ -49,7 +49,7 @@ mod focus_blur_layer_plan_tests {
             order: 0.0,
             visible: true,
             opacity: 1.0,
-            depth: amigo_2d_composition::RenderDepth2d {
+            depth: amigo_render_api::RenderDepth2d {
                 mode,
                 distance_m: None,
                 z_depth: 0.5,
@@ -69,11 +69,11 @@ mod focus_blur_layer_plan_tests {
             &[
                 layer(
                     "background.city",
-                    amigo_2d_composition::RenderDepthMode2d::DepthMap,
+                    amigo_render_api::RenderDepthMode2d::DepthMap,
                 ),
                 layer(
                     "weather.rain.front",
-                    amigo_2d_composition::RenderDepthMode2d::Overlay,
+                    amigo_render_api::RenderDepthMode2d::Overlay,
                 ),
             ],
             None,
@@ -91,21 +91,21 @@ mod focus_blur_layer_plan_tests {
             &[
                 layer(
                     "background.city",
-                    amigo_2d_composition::RenderDepthMode2d::DepthMap,
+                    amigo_render_api::RenderDepthMode2d::DepthMap,
                 ),
                 RenderLayer2dCommand {
-                    depth: amigo_2d_composition::RenderDepth2d {
-                        mode: amigo_2d_composition::RenderDepthMode2d::ZDepth,
+                    depth: amigo_render_api::RenderDepth2d {
+                        mode: amigo_render_api::RenderDepthMode2d::ZDepth,
                         distance_m: None,
                         z_depth: 0.34,
                         blur_scale: 0.12,
                     },
                     ..layer(
                         "weather.rain.near",
-                        amigo_2d_composition::RenderDepthMode2d::ZDepth,
+                        amigo_render_api::RenderDepthMode2d::ZDepth,
                     )
                 },
-                layer("ui", amigo_2d_composition::RenderDepthMode2d::Overlay),
+                layer("ui", amigo_render_api::RenderDepthMode2d::Overlay),
             ],
             None,
         );
@@ -125,41 +125,41 @@ mod focus_blur_layer_plan_tests {
             &[
                 RenderLayer2dCommand {
                     order: -18.0,
-                    depth: amigo_2d_composition::RenderDepth2d {
-                        mode: amigo_2d_composition::RenderDepthMode2d::ZDepth,
+                    depth: amigo_render_api::RenderDepth2d {
+                        mode: amigo_render_api::RenderDepthMode2d::ZDepth,
                         distance_m: None,
                         z_depth: 0.68,
                         blur_scale: 0.45,
                     },
                     ..layer(
                         "weather.rain.far",
-                        amigo_2d_composition::RenderDepthMode2d::ZDepth,
+                        amigo_render_api::RenderDepthMode2d::ZDepth,
                     )
                 },
                 RenderLayer2dCommand {
                     order: -16.0,
-                    depth: amigo_2d_composition::RenderDepth2d {
-                        mode: amigo_2d_composition::RenderDepthMode2d::ZDepth,
+                    depth: amigo_render_api::RenderDepth2d {
+                        mode: amigo_render_api::RenderDepthMode2d::ZDepth,
                         distance_m: None,
                         z_depth: 0.52,
                         blur_scale: 0.25,
                     },
                     ..layer(
                         "weather.rain.mid",
-                        amigo_2d_composition::RenderDepthMode2d::ZDepth,
+                        amigo_render_api::RenderDepthMode2d::ZDepth,
                     )
                 },
                 RenderLayer2dCommand {
                     order: -14.0,
-                    depth: amigo_2d_composition::RenderDepth2d {
-                        mode: amigo_2d_composition::RenderDepthMode2d::ZDepth,
+                    depth: amigo_render_api::RenderDepth2d {
+                        mode: amigo_render_api::RenderDepthMode2d::ZDepth,
                         distance_m: None,
                         z_depth: 0.34,
                         blur_scale: 0.12,
                     },
                     ..layer(
                         "weather.rain.near",
-                        amigo_2d_composition::RenderDepthMode2d::ZDepth,
+                        amigo_render_api::RenderDepthMode2d::ZDepth,
                     )
                 },
             ],
@@ -180,15 +180,15 @@ mod focus_blur_layer_plan_tests {
         let plan = build_focus_blur_layer_plan(
             amigo_render_api::FocusBlur2d::default(),
             &[RenderLayer2dCommand {
-                depth: amigo_2d_composition::RenderDepth2d {
-                    mode: amigo_2d_composition::RenderDepthMode2d::Distance,
+                depth: amigo_render_api::RenderDepth2d {
+                    mode: amigo_render_api::RenderDepthMode2d::Distance,
                     distance_m: Some(75.0),
                     z_depth: 0.41,
                     blur_scale: 0.25,
                 },
                 ..layer(
                     "weather.rain.mid",
-                    amigo_2d_composition::RenderDepthMode2d::Distance,
+                    amigo_render_api::RenderDepthMode2d::Distance,
                 )
             }],
             None,
@@ -203,10 +203,7 @@ mod focus_blur_layer_plan_tests {
     fn focus_blur_plan_treats_infinity_as_far_z_depth() {
         let plan = build_focus_blur_layer_plan(
             amigo_render_api::FocusBlur2d::default(),
-            &[layer(
-                "sky",
-                amigo_2d_composition::RenderDepthMode2d::Infinity,
-            )],
+            &[layer("sky", amigo_render_api::RenderDepthMode2d::Infinity)],
             None,
         );
         assert_eq!(plan.z_depth_layers.len(), 1);

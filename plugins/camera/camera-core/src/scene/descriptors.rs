@@ -2,11 +2,7 @@ use amigo_plugin_api::PluginSceneComponentDescriptor;
 use amigo_scene::{ScenePluginDescriptorProvider, ScenePluginDescriptorRegistry};
 
 pub fn camera_2d_scene_descriptor() -> PluginSceneComponentDescriptor {
-    PluginSceneComponentDescriptor::new(
-        "amigo.camera.camera-core.Camera2D",
-        "camera",
-        "Camera2D",
-    )
+    PluginSceneComponentDescriptor::new("amigo.camera.camera-core.Camera2D", "camera", "Camera2D")
 }
 
 pub struct Camera2dSceneDescriptorProvider;

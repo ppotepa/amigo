@@ -1,6 +1,7 @@
 use amigo_assets::AssetKey;
 use amigo_camera::camera_optical_response_from_document;
 use amigo_math::{ColorRgba, Transform2, Vec2};
+use amigo_scene::SceneComponentDocument as ComponentDocument;
 use amigo_scene::{
     ComponentHydrationContext, ComponentHydrator, Material2dDocument,
     Material2dLightingSceneCommand, Material2dOpticalModeDocument,
@@ -9,8 +10,8 @@ use amigo_scene::{
     SceneComponentDocument, SceneDocumentError, SceneDocumentResult, SceneTransform2Document,
     SceneTransform3Document, SceneVec2Document, Text2dAlignDocument, Text2dAlignSceneCommand,
     Text2dBlendModeDocument, Text2dBlendModeSceneCommand, Text2dGlowSceneCommand,
-    Text2dOutlineSceneCommand, Text2dSceneCommand, Text2dShadowSceneCommand,
-    Text2dStyleDocument, Text2dStyleSceneCommand,
+    Text2dOutlineSceneCommand, Text2dSceneCommand, Text2dShadowSceneCommand, Text2dStyleDocument,
+    Text2dStyleSceneCommand,
 };
 
 use super::Text2dDocument;
@@ -24,25 +25,17 @@ impl ComponentHydrator for Text2dComponentHydrator {
     }
 
     fn can_hydrate(&self, component: &SceneComponentDocument) -> bool {
-        matches!(component, SceneComponentDocument::Text2d { .. })
-            || matches!(
-                component,
-                SceneComponentDocument::Plugin { component_type, .. }
-                    if component_type == "amigo.gfx.text-2d.Text2D"
-                        || component_type == "Text2D"
-            )
+        matches!(component, ComponentDocument::Text2d { .. })
+            || component
+                .plugin_payload()
+                .is_some_and(|(component_type, _)| {
+                    component_type == "amigo.gfx.text-2d.Text2D" || component_type == "Text2D"
+                })
     }
 
     fn hydrate(&self, ctx: ComponentHydrationContext<'_>) -> SceneDocumentResult<()> {
-        let document = match ctx.component {
-            SceneComponentDocument::Text2d { .. } => {
-                let Some(document) = Text2dDocument::from_component(ctx.component) else {
-                    return Ok(());
-                };
-                document
-            }
-            SceneComponentDocument::Plugin { .. } => return Ok(()),
-            _ => return Ok(()),
+        let Some(document) = Text2dDocument::from_component(ctx.component) else {
+            return Ok(());
         };
 
         ctx.commands.push(amigo_scene::SceneCommand::plugin(
@@ -274,12 +267,7 @@ fn text2d_style_from_document(
             .as_ref()
             .map(|glow| {
                 Ok(Text2dGlowSceneCommand {
-                    color: parse_color_rgba_hex(
-                        &glow.color,
-                        scene_id,
-                        entity_id,
-                        component_kind,
-                    )?,
+                    color: parse_color_rgba_hex(&glow.color, scene_id, entity_id, component_kind)?,
                     radius: glow.radius.max(0.0),
                     intensity: glow.intensity.max(0.0),
                     passes: glow.passes.max(1),
@@ -289,7 +277,9 @@ fn text2d_style_from_document(
     })
 }
 
-fn material2d_scene_command(material: Option<Material2dDocument>) -> Option<Material2dSceneCommand> {
+fn material2d_scene_command(
+    material: Option<Material2dDocument>,
+) -> Option<Material2dSceneCommand> {
     material.map(|material| Material2dSceneCommand {
         optical: Material2dOpticalSceneCommand {
             mode: match material.optical.mode {

@@ -275,14 +275,21 @@ fn icon_for_node(node: &AuthoringNode) -> AuthoringTreeIcon {
 }
 
 fn component_icon(node: &AuthoringNode) -> AuthoringTreeIcon {
-    match node.semantic.component_type.as_deref() {
-        Some("LayeredImage2D") | Some("Sprite2D") => AuthoringTreeIcon::Image,
-        Some("ParticleEmitter2D") => AuthoringTreeIcon::Particle,
-        Some("BeaconLight2D") | Some("GlobalLight2D") => AuthoringTreeIcon::Light,
-        Some("Text2D") => AuthoringTreeIcon::Text,
-        Some("Camera2D") => AuthoringTreeIcon::Camera,
-        Some("UiDocument") => AuthoringTreeIcon::Ui,
-        _ => AuthoringTreeIcon::Component,
+    let semantic = &node.semantic;
+    if semantic.uses_image_icon() {
+        AuthoringTreeIcon::Image
+    } else if semantic.is_particle_emitter_2d() {
+        AuthoringTreeIcon::Particle
+    } else if semantic.uses_light_icon() {
+        AuthoringTreeIcon::Light
+    } else if semantic.is_text_2d() {
+        AuthoringTreeIcon::Text
+    } else if semantic.is_camera_2d() {
+        AuthoringTreeIcon::Camera
+    } else if semantic.is_ui_document() {
+        AuthoringTreeIcon::Ui
+    } else {
+        AuthoringTreeIcon::Component
     }
 }
 
@@ -297,12 +304,12 @@ fn tags_for_node(node: &AuthoringNode) -> Vec<AuthoringTreeTag> {
 }
 
 fn component_status_tag(node: &AuthoringNode) -> Vec<AuthoringTreeTag> {
-    match node.semantic.component_type.as_deref() {
-        Some("LayeredImage2D") | Some("ParticleEmitter2D") | Some("BeaconLight2D") => {
-            vec![tag("Live")]
-        }
-        Some(_) if node.editable => Vec::new(),
-        _ => vec![tag("Readonly")],
+    if node.semantic.is_live_component_binding_target() {
+        vec![tag("Live")]
+    } else if node.semantic.component_type.is_some() && node.editable {
+        Vec::new()
+    } else {
+        vec![tag("Readonly")]
     }
 }
 

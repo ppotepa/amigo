@@ -11,14 +11,16 @@ impl WgpuPostFxPipelineProvider for ShutterBlurPipelineProvider {
     }
 
     fn create_pipeline(&self, ctx: &WgpuPostFxPipelineCreateContext<'_>) -> wgpu::RenderPipeline {
-        let shader = ctx.device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("amigo-scene-shutter-blur-shader"),
-            source: wgpu::ShaderSource::Wgsl(SHUTTER_BLUR_SHADER.into()),
-        });
+        let shader = ctx
+            .device
+            .create_shader_module(wgpu::ShaderModuleDescriptor {
+                label: Some("amigo-render-shutter-blur-shader"),
+                source: wgpu::ShaderSource::Wgsl(SHUTTER_BLUR_SHADER.into()),
+            });
         let layout = ctx
             .device
             .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                label: Some("amigo-scene-shutter-blur-pipeline-layout"),
+                label: Some("amigo-render-shutter-blur-pipeline-layout"),
                 bind_group_layouts: &[
                     Some(ctx.shutter_blur_texture_bind_group_layout),
                     Some(ctx.wet_reflections_uniform_bind_group_layout),
@@ -30,7 +32,7 @@ impl WgpuPostFxPipelineProvider for ShutterBlurPipelineProvider {
             &shader,
             &layout,
             ctx.format,
-            "amigo-scene-shutter-blur-pipeline",
+            "amigo-render-shutter-blur-pipeline",
         )
     }
 }

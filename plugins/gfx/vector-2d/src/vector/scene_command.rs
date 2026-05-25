@@ -48,12 +48,11 @@ pub struct VectorSceneCommandOutcome {
 }
 
 pub fn can_handle_vector_scene_command(command: &SceneCommand) -> bool {
-    matches!(command, SceneCommand::QueueVectorShape2d { .. })
-        || matches!(
-            command,
-            SceneCommand::Plugin { command }
-                if command.command_type == "amigo.gfx.vector-2d.scene-command.VectorShape2D"
-        )
+    matches!(
+        command,
+        SceneCommand::Plugin { command }
+            if command.command_type == "amigo.gfx.vector-2d.scene-command.VectorShape2D"
+    )
 }
 
 pub fn handle_vector_scene_command(
@@ -61,9 +60,6 @@ pub fn handle_vector_scene_command(
     command: SceneCommand,
 ) -> AmigoResult<VectorSceneCommandOutcome> {
     match command {
-        SceneCommand::QueueVectorShape2d { command } => {
-            Ok(handle_queue_vector_shape_scene_command(ctx, command))
-        }
         SceneCommand::Plugin { command } => {
             let Some(command) = command.payload_as::<VectorShape2dSceneCommand>().cloned() else {
                 return Err(AmigoError::Message(format!(

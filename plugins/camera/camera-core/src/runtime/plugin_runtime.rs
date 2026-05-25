@@ -2,13 +2,16 @@ use amigo_assets::AssetCatalog;
 use amigo_core::AmigoResult;
 use amigo_runtime::{RuntimePlugin, ServiceRegistry, SystemPhase, SystemRegistry};
 use amigo_runtime_control::RuntimeControlService;
-use amigo_scene::{RuntimeSceneCommandHandlerRegistry, register_runtime_scene_command_handler};
+use amigo_scene::{
+    register_runtime_scene_command_handler, RuntimeSceneCommandHandlerRegistry,
+    ScenePluginCommandHandlerRegistry,
+};
 use std::sync::Arc;
 
 use crate::{
+    tick_camera_focus_transition_2d_system, tick_camera_follow_2d_system, tick_parallax_2d_system,
     AssetCatalogControlProvider, Camera2dControlProvider, CameraFocusTarget2dService,
     CameraFollow2dSceneService, CameraSceneCommandHandler, CameraService, Parallax2dSceneService,
-    tick_camera_focus_transition_2d_system, tick_camera_follow_2d_system, tick_parallax_2d_system,
 };
 
 pub struct CameraPlugin;
@@ -50,6 +53,21 @@ impl RuntimePlugin for CameraPlugin {
 
         let scene_handlers = registry.required::<RuntimeSceneCommandHandlerRegistry>()?;
         register_runtime_scene_command_handler(scene_handlers.as_ref(), CameraSceneCommandHandler);
+        if let Some(plugin_scene_handlers) = registry.resolve::<ScenePluginCommandHandlerRegistry>()
+        {
+            plugin_scene_handlers.register(
+                amigo_scene::CAMERA_2D_PLUGIN_SCENE_COMMAND_TYPE,
+                Arc::new(CameraSceneCommandHandler),
+            );
+            plugin_scene_handlers.register(
+                amigo_scene::CAMERA_FOLLOW_2D_PLUGIN_SCENE_COMMAND_TYPE,
+                Arc::new(CameraSceneCommandHandler),
+            );
+            plugin_scene_handlers.register(
+                amigo_scene::PARALLAX_2D_PLUGIN_SCENE_COMMAND_TYPE,
+                Arc::new(CameraSceneCommandHandler),
+            );
+        }
 
         registry.required::<SystemRegistry>()?.register_fn(
             SystemPhase::Update,

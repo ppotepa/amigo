@@ -1,14 +1,11 @@
 use amigo_scene::SceneService;
 
 use crate::{Text3dDrawCommand, Text3dSceneService};
+pub use amigo_render_api::Text3dRenderOutput;
 
 pub struct Text3dRenderExtractionContext<'a> {
     pub scene_service: &'a SceneService,
     pub text3d_scene_service: &'a Text3dSceneService,
-}
-
-pub trait Text3dRenderOutput {
-    fn push_text3d_render_command(&mut self, command: Text3dDrawCommand);
 }
 
 pub struct Text3dRenderExtractor;

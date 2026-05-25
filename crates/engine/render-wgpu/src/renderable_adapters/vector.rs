@@ -1,9 +1,7 @@
 use amigo_render_api::{RenderPrimitive2d, RenderPrimitive2dKind};
 
-use crate::{
-    WgpuRenderable2dAdapter, WgpuRenderable2dAdapterContext,
-};
 use crate::renderer::collect_material_candidate_2d;
+use crate::{WgpuRenderable2dAdapter, WgpuRenderable2dAdapterContext};
 
 pub struct VectorMesh2dRenderableAdapter;
 
@@ -23,7 +21,9 @@ impl WgpuRenderable2dAdapter for VectorMesh2dRenderableAdapter {
 
         let vertices = crate::renderer::color_batch_vertices(
             ctx.color_batches,
-            crate::renderer::particle_blend_mode(amigo_render_api::ParticleBlendMode2dPrimitive::Alpha),
+            crate::renderer::particle_blend_mode(
+                amigo_render_api::ParticleBlendMode2dPrimitive::Alpha,
+            ),
         );
         crate::renderer::append_vector_primitive_vertices(
             vertices,

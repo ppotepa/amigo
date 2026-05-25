@@ -5,7 +5,10 @@ use crate::{
 use amigo_assets::AssetKey;
 use amigo_math::{Transform2, Vec2};
 use amigo_render_api::RenderContributionSet;
-use amigo_scene::{SceneCommand, SceneEvent, SceneEventQueue, SceneService, Text2dSceneCommand};
+use amigo_scene::{
+    SceneCommand, SceneEvent, SceneEventQueue, SceneService, Text2dSceneCommand,
+    text_2d_plugin_scene_command,
+};
 
 #[test]
 fn stores_text_draw_commands() {
@@ -62,15 +65,15 @@ fn queues_text2d_scene_command() {
 
 #[test]
 fn can_handle_text_scene_command_returns_true_for_text_command() {
-    let command = SceneCommand::QueueText2d {
-        command: Text2dSceneCommand::new(
+    let command = SceneCommand::plugin(text_2d_plugin_scene_command(
+        Text2dSceneCommand::new(
             "playground-2d",
             "playground-2d-label",
             "AMIGO 2D",
             AssetKey::new("playground-2d/fonts/debug-ui"),
             Vec2::new(320.0, 64.0),
         ),
-    };
+    ));
 
     assert!(can_handle_text_scene_command(&command));
 }
@@ -80,15 +83,15 @@ fn handle_text_scene_command_queues_text_and_publishes_event() {
     let scene_service = SceneService::default();
     let text_scene_service = Text2dSceneService::default();
     let scene_event_queue = SceneEventQueue::default();
-    let command = SceneCommand::QueueText2d {
-        command: Text2dSceneCommand::new(
+    let command = SceneCommand::plugin(text_2d_plugin_scene_command(
+        Text2dSceneCommand::new(
             "playground-2d",
             "playground-2d-label",
             "AMIGO 2D",
             AssetKey::new("playground-2d/fonts/debug-ui"),
             Vec2::new(320.0, 64.0),
         ),
-    };
+    ));
 
     let outcome = handle_text_scene_command(
         TextSceneCommandContext {

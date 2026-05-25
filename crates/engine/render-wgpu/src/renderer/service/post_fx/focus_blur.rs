@@ -1,10 +1,10 @@
-use amigo_render_api::{FocusBlur2d, FocusTarget2d};
 use amigo_core::AmigoResult;
-use amigo_math::{ColorRgba, Transform2, Vec2};
+use amigo_math::{ColorRgba, Vec2};
+use amigo_render_api::{FocusBlur2d, FocusTarget2d};
 use amigo_render_api::{
-    RenderDepthMap2d, RenderDepthMapViewportFit2d, RenderPrimitive2d, Renderable2dItem,
+    RenderDepthMap2d, RenderDepthMapViewportFit2d, RenderPrimitive2d, RenderSceneView,
+    Renderable2dItem,
 };
-use amigo_scene::SceneService;
 use wgpu::util::DeviceExt;
 
 use crate::WgpuOffscreenTarget;
@@ -210,9 +210,9 @@ pub(crate) fn execute_focus_blur_with_depth_source(
             timestamp_writes: None,
             multiview_mask: None,
         });
-        pass.set_pipeline(renderer.post_fx_pipeline(
-            crate::renderer::service::POST_FX_EXECUTOR_FOCUS_BLUR,
-        ));
+        pass.set_pipeline(
+            renderer.post_fx_pipeline(crate::renderer::service::POST_FX_EXECUTOR_FOCUS_BLUR),
+        );
         pass.set_bind_group(0, &texture_bind_group, &[]);
         pass.set_bind_group(1, &uniform_bind_group, &[]);
         pass.set_vertex_buffer(0, vertex_buffer.slice(..));
@@ -232,15 +232,11 @@ fn resolve_depth_map_command<'a>(
         return None;
     }
 
-    request
-        .world_2d
-        .depth_maps
-        .into_iter()
-        .find(|command| {
-            command.id == depth_map
-                || command.owner_entity == depth_map
-                || command.asset.as_str() == depth_map
-        })
+    request.world_2d.depth_maps.into_iter().find(|command| {
+        command.id == depth_map
+            || command.owner_entity == depth_map
+            || command.asset.as_str() == depth_map
+    })
 }
 
 fn render_depth_map_texture(
@@ -281,22 +277,12 @@ fn render_depth_map_texture(
     });
     let depth_view = depth_texture.create_view(&wgpu::TextureViewDescriptor::default());
     let viewport = Viewport::from_offscreen(output);
-    let camera = resolve_camera2d_transform(request.scene, request.active_camera_2d_entity);
+    let camera = resolve_camera2d_transform(request.scene_view);
     let transform = request
-        .scene
-        .transform_of(&command.owner_entity)
-        .map(|value| Transform2 {
-            translation: Vec2::new(value.translation.x, value.translation.y),
-            rotation_radians: value.rotation_euler.z,
-            scale: Vec2::new(value.scale.x, value.scale.y),
-        })
+        .scene_view
+        .transform2_of(&command.owner_entity)
         .unwrap_or(command.transform);
-    let size = depth_map_render_size(
-        &viewport,
-        command.size,
-        source_size,
-        command.viewport_fit,
-    );
+    let size = depth_map_render_size(&viewport, command.size, source_size, command.viewport_fit);
     let mut vertices = Vec::with_capacity(6);
     append_tinted_textured_sprite_vertices(
         &mut vertices,
@@ -317,11 +303,7 @@ fn render_depth_map_texture(
         contents: bytes_of_slice(&vertices),
         usage: wgpu::BufferUsages::VERTEX,
     });
-    let clear = if command.white_is_near {
-        0.0
-    } else {
-        1.0
-    };
+    let clear = if command.white_is_near { 0.0 } else { 1.0 };
     let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
         label: Some("amigo-focus-blur-depth-map-encoder"),
     });
@@ -410,18 +392,12 @@ fn resolve_focus_uv(request: &WgpuFrameRenderRequest<'_>, effect: &FocusBlur2d) 
             ),
         )),
         FocusTarget2d::SceneObject { object } => {
-            let transform = request.scene.transform_of(object)?;
+            let transform = request.scene_view.transform2_of(object)?;
             Some(world_to_uv(
-                request.scene,
-                request.active_camera_2d_entity,
+                request.scene_view,
                 request.target.width() as f32,
                 request.target.height() as f32,
-                Transform2 {
-                    translation: Vec2::new(transform.translation.x, transform.translation.y),
-                    rotation_radians: transform.rotation_euler.z,
-                    scale: Vec2::new(transform.scale.x, transform.scale.y),
-                }
-                .translation,
+                transform.translation,
             ))
         }
         FocusTarget2d::RenderLayer { layer } => average_render_layer_uv(request, layer),
@@ -461,8 +437,7 @@ fn average_render_layer_uv(request: &WgpuFrameRenderRequest<'_>, layer: &str) ->
     sample_renderable_positions(
         request.world_2d.renderables,
         layer,
-        request.scene,
-        request.active_camera_2d_entity,
+        request.scene_view,
         request.target.width() as f32,
         request.target.height() as f32,
         &mut samples,
@@ -480,13 +455,15 @@ fn average_render_layer_uv(request: &WgpuFrameRenderRequest<'_>, layer: &str) ->
 fn sample_renderable_positions(
     renderables: &[Renderable2dItem],
     layer: &str,
-    scene: &SceneService,
-    active_camera_2d_entity: Option<&str>,
+    scene_view: &RenderSceneView,
     width: f32,
     height: f32,
     out: &mut Vec<Vec2>,
 ) {
-    for renderable in renderables.iter().filter(|item| item.render_layer() == layer) {
+    for renderable in renderables
+        .iter()
+        .filter(|item| item.render_layer() == layer)
+    {
         let world = match &renderable.primitive {
             RenderPrimitive2d::TexturedQuad(primitive) => primitive.transform.translation,
             RenderPrimitive2d::GlyphRun(primitive) => primitive.transform.translation,
@@ -494,24 +471,12 @@ fn sample_renderable_positions(
             RenderPrimitive2d::ParticleBatch(primitive) => primitive.position,
             _ => continue,
         };
-        out.push(world_to_uv(
-            scene,
-            active_camera_2d_entity,
-            width,
-            height,
-            world,
-        ));
+        out.push(world_to_uv(scene_view, width, height, world));
     }
 }
 
-fn world_to_uv(
-    scene: &SceneService,
-    active_camera_2d_entity: Option<&str>,
-    width: f32,
-    height: f32,
-    world: Vec2,
-) -> Vec2 {
-    let camera = resolve_camera2d_transform(scene, active_camera_2d_entity);
+fn world_to_uv(scene_view: &RenderSceneView, width: f32, height: f32, world: Vec2) -> Vec2 {
+    let camera = resolve_camera2d_transform(scene_view);
     Vec2::new(
         ((world.x - camera.translation.x) / width + 0.5).clamp(0.0, 1.0),
         (0.5 - (world.y - camera.translation.y) / height).clamp(0.0, 1.0),

@@ -3,12 +3,12 @@ use std::any::Any;
 use serde::{Deserialize, Serialize};
 use serde_yaml::Value;
 
+use amigo_scene::SceneComponentDocument as ComponentDocument;
 use amigo_scene::{
-    CameraAperture2dDocument, CameraExposure2dDocument, CameraFilm2dDocument,
+    Camera2dModeDocument, CameraAperture2dDocument, CameraExposure2dDocument, CameraFilm2dDocument,
     CameraLens2dDocument, CameraLensSurface2dDocument, CameraLook2dDocument,
-    CameraShutter2dDocument, Camera2dModeDocument, RenderContributionsDocument,
-    SceneComponentDocument, SceneComponentPayload, SceneComponentSchemaProvider,
-    SceneDocumentError, SceneDocumentResult,
+    CameraShutter2dDocument, RenderContributionsDocument, SceneComponentDocument,
+    SceneComponentPayload, SceneComponentSchemaProvider, SceneDocumentError, SceneDocumentResult,
 };
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
@@ -55,7 +55,7 @@ impl Default for Camera2dDocument {
 impl Camera2dDocument {
     pub fn from_component(component: &SceneComponentDocument) -> Option<Self> {
         match component {
-            SceneComponentDocument::Camera2d {
+            ComponentDocument::Camera2d {
                 id,
                 mode,
                 render_contributions,
@@ -111,7 +111,9 @@ impl SceneComponentSchemaProvider for Camera2dSceneSchemaProvider {
     }
 
     fn parse_yaml(&self, payload: serde_yaml::Mapping) -> Result<Value, serde_yaml::Error> {
-        serde_yaml::to_value(serde_yaml::from_value::<Camera2dDocument>(Value::Mapping(payload))?)
+        serde_yaml::to_value(serde_yaml::from_value::<Camera2dDocument>(Value::Mapping(
+            payload,
+        ))?)
     }
 
     fn parse_payload_value(

@@ -1,17 +1,19 @@
 use amigo_core::{AmigoError, AmigoResult};
 use amigo_render_api::{render_contribution_roles as roles, RenderContributionSet};
 use amigo_scene::{
-    CameraExposureMode2dSceneCommand, CameraFocus2dSceneCommand, CameraFollow2dSceneCommand,
-    Parallax2dSceneCommand, RuntimeSceneCommandHandler, SceneCommand, SceneEvent, SceneEventQueue,
-    SceneService, format_scene_command,
+    format_scene_command, Camera2dSceneCommand, CameraExposureMode2dSceneCommand,
+    CameraFocus2dSceneCommand, CameraFollow2dSceneCommand, Parallax2dSceneCommand,
+    RuntimeSceneCommandHandler, SceneCommand, SceneEvent, SceneEventQueue, SceneService,
+    CAMERA_2D_PLUGIN_SCENE_COMMAND_TYPE, CAMERA_FOLLOW_2D_PLUGIN_SCENE_COMMAND_TYPE,
+    PARALLAX_2D_PLUGIN_SCENE_COMMAND_TYPE,
 };
 
+use crate::{CameraFollow2dSceneService, CameraId, CameraService, Parallax2dSceneService};
 use amigo_camera_optics_plugin::runtime::{
     Camera2dRuntimeState, CameraAperture2d, CameraAutoExposure2d, CameraDepthOfField2d,
     CameraExposure2d, CameraExposureMode2d, CameraFilm2d, CameraFocus2d, CameraLens2d,
     CameraLensSurface2d, CameraLook2d, CameraShutter2d,
 };
-use crate::{CameraFollow2dSceneService, CameraId, CameraService, Parallax2dSceneService};
 
 pub struct CameraSceneCommandHandler;
 
@@ -33,9 +35,13 @@ impl RuntimeSceneCommandHandler for CameraSceneCommandHandler {
     fn can_handle(&self, command: &SceneCommand) -> bool {
         matches!(
             command,
-            SceneCommand::QueueCamera2d { .. }
-                | SceneCommand::QueueCameraFollow2d { .. }
-                | SceneCommand::QueueParallax2d { .. }
+            SceneCommand::Plugin { command }
+                if matches!(
+                    command.command_type.as_str(),
+                    CAMERA_2D_PLUGIN_SCENE_COMMAND_TYPE
+                        | CAMERA_FOLLOW_2D_PLUGIN_SCENE_COMMAND_TYPE
+                        | PARALLAX_2D_PLUGIN_SCENE_COMMAND_TYPE
+                )
         )
     }
 
@@ -47,7 +53,17 @@ impl RuntimeSceneCommandHandler for CameraSceneCommandHandler {
         let scene_event_queue = runtime.required::<SceneEventQueue>()?;
 
         match command {
-            SceneCommand::QueueCamera2d { command } => {
+            SceneCommand::Plugin { command }
+                if command.command_type == CAMERA_2D_PLUGIN_SCENE_COMMAND_TYPE =>
+            {
+                let command = command
+                    .payload_as::<Camera2dSceneCommand>()
+                    .ok_or_else(|| {
+                        AmigoError::Message(
+                            "camera 2d plugin scene command payload type mismatch".to_owned(),
+                        )
+                    })?
+                    .clone();
                 let entity = scene_service.find_or_spawn_named_entity(command.entity_name.clone());
                 let mut render_contributions =
                     RenderContributionSet::from_pairs(command.render_contributions.roles.clone());
@@ -206,7 +222,18 @@ impl RuntimeSceneCommandHandler for CameraSceneCommandHandler {
 
                 Ok(())
             }
-            SceneCommand::QueueCameraFollow2d { command } => {
+            SceneCommand::Plugin { command }
+                if command.command_type == CAMERA_FOLLOW_2D_PLUGIN_SCENE_COMMAND_TYPE =>
+            {
+                let command = command
+                    .payload_as::<CameraFollow2dSceneCommand>()
+                    .ok_or_else(|| {
+                        AmigoError::Message(
+                            "camera follow 2d plugin scene command payload type mismatch"
+                                .to_owned(),
+                        )
+                    })?
+                    .clone();
                 let entity = scene_service.find_or_spawn_named_entity(command.entity_name.clone());
                 camera_follow_scene_service.queue(CameraFollow2dSceneCommand {
                     source_mod: command.source_mod.clone(),
@@ -226,7 +253,17 @@ impl RuntimeSceneCommandHandler for CameraSceneCommandHandler {
                 });
                 Ok(())
             }
-            SceneCommand::QueueParallax2d { command } => {
+            SceneCommand::Plugin { command }
+                if command.command_type == PARALLAX_2D_PLUGIN_SCENE_COMMAND_TYPE =>
+            {
+                let command = command
+                    .payload_as::<Parallax2dSceneCommand>()
+                    .ok_or_else(|| {
+                        AmigoError::Message(
+                            "parallax 2d plugin scene command payload type mismatch".to_owned(),
+                        )
+                    })?
+                    .clone();
                 let entity = scene_service.find_or_spawn_named_entity(command.entity_name.clone());
                 parallax_scene_service.queue(Parallax2dSceneCommand {
                     source_mod: command.source_mod.clone(),

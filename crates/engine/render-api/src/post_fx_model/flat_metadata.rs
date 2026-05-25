@@ -61,7 +61,7 @@ pub fn post_fx_from_flat_metadata(
     match kind.trim().to_ascii_lowercase().as_str() {
         "blur" | "gaussian_blur" | "lens_blur" => {
             let defaults = PostFxBlur2d::default();
-            Some(PostFx2d::Blur(
+            Some(post_fx_blur(
                 PostFxBlur2d {
                     radius: metadata_f32(metadata, &format!("{prefix}.radius"))
                         .unwrap_or(defaults.radius),
@@ -75,7 +75,7 @@ pub fn post_fx_from_flat_metadata(
         }
         "embossed_edges" | "emboss_edges" | "emboss" => {
             let defaults = PostFxEmbossEdges2d::default();
-            Some(PostFx2d::EmbossEdges(
+            Some(post_fx_emboss_edges(
                 PostFxEmbossEdges2d {
                     mode: metadata_string(metadata, &format!("{prefix}.mode"))
                         .as_deref()
@@ -107,7 +107,7 @@ pub fn post_fx_from_flat_metadata(
         }
         "dirty_bloom" | "dirtybloom" => {
             let defaults = DirtyBloom2d::default();
-            Some(PostFx2d::DirtyBloom(
+            Some(post_fx_dirty_bloom(
                 DirtyBloom2d {
                     threshold: metadata_f32(metadata, &format!("{prefix}.threshold"))
                         .unwrap_or(defaults.threshold),
@@ -144,7 +144,7 @@ pub fn post_fx_from_flat_metadata(
         }
         "color_quantize" | "quantize" | "palette_dither" | "gif_dither" => {
             let defaults = ColorQuantize2d::default();
-            Some(PostFx2d::ColorQuantize(
+            Some(post_fx_color_quantize(
                 ColorQuantize2d {
                     palette_size: metadata_u32(metadata, &format!("{prefix}.palette_size"))
                         .or_else(|| metadata_u32(metadata, &format!("{prefix}.colors")))
@@ -183,7 +183,7 @@ pub fn post_fx_from_flat_metadata(
         }
         "color_ramp" | "palette_grade" | "lofi_grade" | "look_ramp" => {
             let defaults = ColorRamp2d::default();
-            Some(PostFx2d::ColorRamp(
+            Some(post_fx_color_ramp(
                 ColorRamp2d {
                     palette_size: metadata_u32(metadata, &format!("{prefix}.palette_size"))
                         .or_else(|| metadata_u32(metadata, &format!("{prefix}.colors")))
@@ -224,7 +224,7 @@ pub fn post_fx_from_flat_metadata(
         }
         "downscale" | "pixelate" | "pixel_scale" => {
             let defaults = Downscale2d::default();
-            Some(PostFx2d::Downscale(
+            Some(post_fx_downscale(
                 Downscale2d {
                     factor: metadata_f32(metadata, &format!("{prefix}.factor"))
                         .or_else(|| metadata_f32(metadata, &format!("{prefix}.scale")))
@@ -237,7 +237,7 @@ pub fn post_fx_from_flat_metadata(
         }
         "shutter_blur" | "shutter" | "temporal_blur" | "motion_blur_24fps" => {
             let defaults = ShutterBlur2d::default();
-            Some(PostFx2d::ShutterBlur(
+            Some(post_fx_shutter_blur(
                 ShutterBlur2d {
                     exposure_seconds: metadata_f32(metadata, &format!("{prefix}.exposure_seconds"))
                         .or_else(|| metadata_f32(metadata, &format!("{prefix}.speed_s")))
@@ -268,7 +268,7 @@ pub fn post_fx_from_flat_metadata(
         }
         "crt" | "crt_screen" => {
             let defaults = Crt2d::default();
-            Some(PostFx2d::Crt(
+            Some(post_fx_crt(
                 Crt2d {
                     scanline_opacity: metadata_f32(metadata, &format!("{prefix}.scanline_opacity"))
                         .unwrap_or(defaults.scanline_opacity),
@@ -296,7 +296,7 @@ pub fn post_fx_from_flat_metadata(
         }
         "film_noise" | "film_grain" | "noise_overlay" => {
             let defaults = FilmNoise2d::default();
-            Some(PostFx2d::FilmNoise(
+            Some(post_fx_film_noise(
                 FilmNoise2d {
                     iso: metadata_f32(metadata, &format!("{prefix}.iso")).unwrap_or(defaults.iso),
                     grain_size: metadata_f32(metadata, &format!("{prefix}.grain_size"))
@@ -344,7 +344,7 @@ pub fn post_fx_from_flat_metadata(
         }
         "lens_droplets" | "lens_drops" | "droplets" => {
             let defaults = PostFxLensDroplets2d::default();
-            Some(PostFx2d::LensDroplets(
+            Some(post_fx_lens_droplets(
                 PostFxLensDroplets2d {
                     enabled: metadata_bool(metadata, &format!("{prefix}.enabled"))
                         .unwrap_or(defaults.enabled),
@@ -431,7 +431,7 @@ pub fn post_fx_from_flat_metadata(
         }
         "rain_glass" | "rainglass" | "rain_drops" => {
             let defaults = RainGlass2d::default();
-            Some(PostFx2d::RainGlass(
+            Some(post_fx_rain_glass(
                 RainGlass2d {
                     enabled: metadata_bool(metadata, &format!("{prefix}.enabled"))
                         .unwrap_or(defaults.enabled),
@@ -506,7 +506,7 @@ pub fn post_fx_from_flat_metadata(
         }
         "wet_reflections" | "wet_reflection" | "wet_surface" => {
             let defaults = PostFxWetReflections2d::default();
-            Some(PostFx2d::WetReflections(
+            Some(post_fx_wet_reflections(
                 PostFxWetReflections2d {
                     enabled: metadata_bool(metadata, &format!("{prefix}.enabled"))
                         .unwrap_or(defaults.enabled),
@@ -678,7 +678,7 @@ mod tests {
             .expect("stack should parse");
 
         assert_eq!(stack.effects.len(), 1);
-        assert!(matches!(stack.effects[0], PostFx2d::Blur(_)));
+        assert_eq!(stack.effects[0].kind(), "blur");
     }
 
     #[test]
@@ -690,7 +690,7 @@ mod tests {
         let stack = post_fx_stack_from_flat_metadata(&metadata, "layer.post_fx")
             .expect("stack should parse");
         assert_eq!(stack.effects.len(), 1);
-        assert!(matches!(stack.effects[0], PostFx2d::EmbossEdges(_)));
+        assert_eq!(stack.effects[0].kind(), "embossed_edges");
     }
 
     #[test]
@@ -706,7 +706,7 @@ mod tests {
         ]);
 
         let effect = post_fx_from_flat_metadata(&metadata, "fx").expect("effect should parse");
-        let PostFx2d::ColorQuantize(effect) = effect else {
+        let Some(effect) = effect.into_color_quantize() else {
             panic!("expected color quantize effect");
         };
         assert_eq!(effect.palette_size, 32);
@@ -757,7 +757,7 @@ mod tests {
         ]);
 
         let effect = post_fx_from_flat_metadata(&metadata, "fx").expect("effect should parse");
-        let PostFx2d::Downscale(effect) = effect else {
+        let Some(effect) = effect.into_downscale() else {
             panic!("expected downscale effect");
         };
         assert_eq!(effect.factor, 2.0);
@@ -853,12 +853,10 @@ mod tests {
         .certify();
 
         assert!(!report.accepted);
-        assert!(
-            report
-                .issues
-                .iter()
-                .any(|issue| issue.code == "lens_droplets_debug_ui_forbidden")
-        );
+        assert!(report
+            .issues
+            .iter()
+            .any(|issue| issue.code == "lens_droplets_debug_ui_forbidden"));
     }
 
     #[test]
@@ -871,7 +869,7 @@ mod tests {
         ]);
 
         let effect = post_fx_from_flat_metadata(&metadata, "fx").expect("effect should parse");
-        assert!(matches!(effect, PostFx2d::LensDroplets(_)));
+        assert_eq!(effect.kind(), "lens_droplets");
     }
 
     #[test]
@@ -908,7 +906,7 @@ mod tests {
         ]);
 
         let effect = post_fx_from_flat_metadata(&metadata, "fx").expect("effect should parse");
-        let PostFx2d::ShutterBlur(effect) = effect else {
+        let Some(effect) = effect.into_shutter_blur() else {
             panic!("expected shutter_blur");
         };
         assert_eq!(effect.fps, 24.0);
@@ -919,7 +917,7 @@ mod tests {
     #[test]
     fn wet_reflections_kind_is_stable() {
         assert_eq!(
-            PostFx2d::WetReflections(PostFxWetReflections2d::default()).kind(),
+            post_fx_wet_reflections(PostFxWetReflections2d::default()).kind(),
             "wet_reflections"
         );
     }
@@ -987,6 +985,6 @@ mod tests {
         ]);
 
         let effect = post_fx_from_flat_metadata(&metadata, "fx").expect("effect should parse");
-        assert!(matches!(effect, PostFx2d::WetReflections(_)));
+        assert_eq!(effect.kind(), "wet_reflections");
     }
 }

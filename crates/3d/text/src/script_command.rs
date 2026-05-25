@@ -22,14 +22,14 @@ pub fn handle_text3d_script_command(
     match (command.name.as_str(), command.arguments.as_slice()) {
         ("spawn", [source_mod, entity_name, content, font_key, size]) => {
             match size.parse::<f32>() {
-                Ok(size) => Text3dScriptCommandOutcome::Submit(SceneCommand::QueueText3d {
-                    command: Text3dSceneCommand::new(
+                Ok(size) => Text3dScriptCommandOutcome::Submit(SceneCommand::Plugin {
+                    command: amigo_scene::text_3d_plugin_scene_command(Text3dSceneCommand::new(
                         source_mod.clone(),
                         entity_name.clone(),
                         content.clone(),
                         AssetKey::new(font_key.clone()),
                         size,
-                    ),
+                    )),
                 }),
                 Err(error) => Text3dScriptCommandOutcome::ParseError(format!(
                     "failed to parse 3d text size `{size}` as f32: {error}"
@@ -37,14 +37,14 @@ pub fn handle_text3d_script_command(
             }
         }
         ("spawn", [entity_name, content, font_key, size]) => match size.parse::<f32>() {
-            Ok(size) => Text3dScriptCommandOutcome::Submit(SceneCommand::QueueText3d {
-                command: Text3dSceneCommand::new(
+            Ok(size) => Text3dScriptCommandOutcome::Submit(SceneCommand::Plugin {
+                command: amigo_scene::text_3d_plugin_scene_command(Text3dSceneCommand::new(
                     ctx.selected_mod.to_owned(),
                     entity_name.clone(),
                     content.clone(),
                     AssetKey::new(font_key.clone()),
                     size,
-                ),
+                )),
             }),
             Err(error) => Text3dScriptCommandOutcome::ParseError(format!(
                 "failed to parse 3d text size `{size}` as f32: {error}"

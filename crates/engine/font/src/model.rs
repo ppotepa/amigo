@@ -15,7 +15,7 @@ pub struct Font2dAsset {
     pub source: Font2dSource,
     pub glyphs: FontGlyphSet,
     pub metrics: Font2dMetrics,
-    pub fallback: FontFallbackPolicy,
+    pub missing_glyph_policy: FontMissingGlyphPolicy,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -93,25 +93,25 @@ impl Default for Font2dMetrics {
 }
 
 impl Font2dMetrics {
-    pub fn line_height_for(&self, requested_size: f32, fallback_line_height: f32) -> f32 {
+    pub fn line_height_for(&self, requested_size: f32, default_line_height: f32) -> f32 {
         let requested_size = requested_size.max(1.0);
         match self.line_height {
             Some(line_height) if self.default_size > 0.0 => {
                 line_height * (requested_size / self.default_size)
             }
             Some(line_height) => line_height,
-            None => fallback_line_height,
+            None => default_line_height,
         }
         .max(requested_size)
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct FontFallbackPolicy {
+pub struct FontMissingGlyphPolicy {
     pub missing_glyph: char,
 }
 
-impl Default for FontFallbackPolicy {
+impl Default for FontMissingGlyphPolicy {
     fn default() -> Self {
         Self { missing_glyph: '?' }
     }

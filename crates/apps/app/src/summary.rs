@@ -76,7 +76,7 @@ fn summarize_runtime_state_with_loaded_document(
             if info.automatic_notifications {
                 info.backend_name.to_owned()
             } else {
-                format!("{} (polling fallback)", info.backend_name)
+                format!("{} (polling mode)", info.backend_name)
             }
         })
         .unwrap_or_else(|| "polling".to_owned());

@@ -11,7 +11,7 @@ use amigo_scripting_api::{
 use crate::{
     ConsoleCommandDescriptor, ConsoleCommandRegistry, ConsoleCommandResult, ConsoleCommandSchema,
     ConsoleCommandSpec, ConsoleInputRoute, ParsedConsoleCommand, parse_console_command,
-    route_console_input, should_try_rhai_fallback,
+    route_console_input, should_try_rhai_route,
 };
 
 pub trait RuntimeConsoleCommandHandler: Send + Sync {
@@ -92,12 +92,12 @@ pub fn dispatch_console_command(runtime: &Runtime, command: DevConsoleCommand) {
         ConsoleInputRoute::Empty => return,
         ConsoleInputRoute::Rhai => {
             console.write_console_log(format!(
-                "route=prefer_rhai fallback=eval_console source={:?}",
+                "route=prefer_rhai next=eval_console source={:?}",
                 routed.source
             ));
             write_console_result(
                 console.as_ref(),
-                eval_console_fallback(runtime, routed.source),
+                eval_console_route(runtime, routed.source),
             );
             return;
         }
@@ -123,11 +123,11 @@ pub fn dispatch_console_command(runtime: &Runtime, command: DevConsoleCommand) {
         .unwrap_or_else(|| ConsoleCommandResult::unknown(parsed.raw.clone()));
 
     let result = match result {
-        ConsoleCommandResult::Unknown(raw) if should_try_rhai_fallback(&raw) => {
+        ConsoleCommandResult::Unknown(raw) if should_try_rhai_route(&raw) => {
             console.write_console_log(format!(
-                "route=unknown_command fallback=eval_console raw={raw:?}"
+                "route=unknown_command next=eval_console raw={raw:?}"
             ));
-            eval_console_fallback(runtime, &raw)
+            eval_console_route(runtime, &raw)
         }
         other => other,
     };
@@ -135,7 +135,7 @@ pub fn dispatch_console_command(runtime: &Runtime, command: DevConsoleCommand) {
     write_console_result(console.as_ref(), result);
 }
 
-fn eval_console_fallback(runtime: &Runtime, source: &str) -> ConsoleCommandResult {
+fn eval_console_route(runtime: &Runtime, source: &str) -> ConsoleCommandResult {
     let Some(script_runtime) = runtime.resolve::<ScriptRuntimeService>() else {
         return ConsoleCommandResult::unknown(source.to_owned());
     };

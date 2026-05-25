@@ -62,7 +62,7 @@ impl RuntimePlugin for SpritePlugin {
             super::scene_command::Sprite2dSceneCommandHandler,
         );
         if let Some(plugin_scene_handlers) =
-            registry.resolve::<amigo_scene::PluginSceneCommandHandlerRegistry>()
+            registry.resolve::<amigo_scene::ScenePluginCommandHandlerRegistry>()
         {
             plugin_scene_handlers.register(
                 "amigo.gfx.sprite-2d.scene-command.Sprite2D",

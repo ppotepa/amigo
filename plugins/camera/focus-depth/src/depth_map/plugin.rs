@@ -1,6 +1,7 @@
 use amigo_capabilities::{DEFAULT_CAPABILITY_VERSION, register_domain_plugin};
 use amigo_core::AmigoResult;
 use amigo_runtime::{RuntimePlugin, ServiceRegistry};
+use std::sync::Arc;
 
 use crate::DepthMap2dSceneService;
 
@@ -41,6 +42,18 @@ impl RuntimePlugin for DepthMap2dPlugin {
             scene_handlers.as_ref(),
             crate::DepthMap2dSceneCommandHandler,
         );
+        if let Some(plugin_scene_handlers) =
+            registry.resolve::<amigo_scene::ScenePluginCommandHandlerRegistry>()
+        {
+            plugin_scene_handlers.register(
+                amigo_scene::DEPTH_MAP_2D_PLUGIN_SCENE_COMMAND_TYPE,
+                Arc::new(crate::DepthMap2dSceneCommandHandler),
+            );
+            plugin_scene_handlers.register(
+                amigo_scene::DEPTH_AUX_MAP_2D_PLUGIN_SCENE_COMMAND_TYPE,
+                Arc::new(crate::DepthMap2dSceneCommandHandler),
+            );
+        }
         Ok(())
     }
 }

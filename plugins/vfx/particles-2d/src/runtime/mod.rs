@@ -124,11 +124,11 @@ pub(crate) fn sample_particle_shape(
 
 pub(crate) fn sample_particle_shape_over_lifetime(
     keyframes: &[ParticleShapeKeyframe2d],
-    fallback: ParticleShape2d,
+    default_shape: ParticleShape2d,
     age_t: f32,
 ) -> ParticleShape2d {
     if keyframes.is_empty() {
-        return fallback;
+        return default_shape;
     }
     let age_t = age_t.clamp(0.0, 1.0);
     let mut first = keyframes[0];

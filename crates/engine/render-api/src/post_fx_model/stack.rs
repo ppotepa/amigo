@@ -21,8 +21,8 @@ impl PostFx2dStack {
             effects: self
                 .effects
                 .into_iter()
-                .map(PostFx2d::normalized)
-                .filter(PostFx2d::is_active)
+                .map(|effect| effect.normalized())
+                .filter(|effect| effect.is_active())
                 .collect(),
         }
     }

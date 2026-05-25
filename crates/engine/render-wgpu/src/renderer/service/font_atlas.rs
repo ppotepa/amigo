@@ -1,10 +1,11 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use amigo_assets::{AssetCatalog, AssetKey};
-use amigo_font::{Font2dAsset, Font2dFormat, Font2dSource, font2d_asset_from_catalog};
+use amigo_assets::AssetKey;
+use amigo_font::{Font2dAsset, Font2dFormat, Font2dSource, font2d_asset_from_prepared};
 use amigo_math::{ColorRgba, Vec2};
+use amigo_render_api::RenderAssetSource;
 use fontdue::{Font, FontSettings};
 use image::{Rgba, RgbaImage};
 
@@ -14,7 +15,7 @@ use crate::renderer::*;
 /// @codemap(P1): render-wgpu-font-atlas
 /// Runtime TTF/OTF atlas cache for screen-space UI text.
 /// This is used by generated overlays, runtime UI documents, and the dev console.
-/// Keep this separate from the emergency 5x7 glyph fallback.
+/// Keep this separate from the emergency 5x7 missing-glyph path.
 pub(crate) struct CachedFontAtlas {
     pub(crate) texture: CachedTextureResource,
     pub(crate) glyphs: BTreeMap<char, CachedFontGlyph>,
@@ -40,10 +41,10 @@ impl CachedFontAtlas {
 }
 
 impl WgpuSceneRenderer {
-    pub(crate) fn warn_font_fallback_once(&mut self, reason: impl Into<String>) {
+    pub(crate) fn warn_font_missing_glyph_once(&mut self, reason: impl Into<String>) {
         let reason = reason.into();
-        if self.font_fallback_warnings.insert(reason.clone()) {
-            eprintln!("font fallback: {reason}");
+        if self.font_missing_glyph_warnings.insert(reason.clone()) {
+            eprintln!("font missing glyph path: {reason}");
         }
     }
 
@@ -53,7 +54,7 @@ impl WgpuSceneRenderer {
         batches: &mut Vec<TextureBatch>,
         device: &wgpu::Device,
         queue: &wgpu::Queue,
-        assets: &AssetCatalog,
+        assets: &dyn RenderAssetSource,
         viewport: &Viewport,
         font: &AssetKey,
         content: &str,
@@ -64,12 +65,12 @@ impl WgpuSceneRenderer {
         word_wrap: bool,
         fit_to_width: bool,
     ) -> bool {
-        let Some(asset) = font2d_asset_from_catalog(assets, font) else {
-            self.warn_font_fallback_once(format!("asset missing: {}", font.as_str()));
+        let Some(asset) = font2d_asset_from_source(assets, font) else {
+            self.warn_font_missing_glyph_once(format!("asset missing: {}", font.as_str()));
             return false;
         };
         if !asset.format.is_vector_font() {
-            self.warn_font_fallback_once(format!("not a vector font: {}", font.as_str()));
+            self.warn_font_missing_glyph_once(format!("not a vector font: {}", font.as_str()));
             return false;
         }
 
@@ -78,7 +79,7 @@ impl WgpuSceneRenderer {
 
         let Some(atlas) = self.ensure_ttf_font_atlas(device, queue, &asset, effective_font_size)
         else {
-            self.warn_font_fallback_once(format!("atlas build failed: {}", font.as_str()));
+            self.warn_font_missing_glyph_once(format!("atlas build failed: {}", font.as_str()));
             return false;
         };
 
@@ -112,7 +113,7 @@ impl WgpuSceneRenderer {
         batches: &mut Vec<TextureBatch>,
         device: &wgpu::Device,
         queue: &wgpu::Queue,
-        assets: &AssetCatalog,
+        assets: &dyn RenderAssetSource,
         viewport: &Viewport,
         camera: Transform2,
         font: &AssetKey,
@@ -122,12 +123,12 @@ impl WgpuSceneRenderer {
         font_size: Option<f32>,
         color: ColorRgba,
     ) -> bool {
-        let Some(asset) = font2d_asset_from_catalog(assets, font) else {
-            self.warn_font_fallback_once(format!("asset missing: {}", font.as_str()));
+        let Some(asset) = font2d_asset_from_source(assets, font) else {
+            self.warn_font_missing_glyph_once(format!("asset missing: {}", font.as_str()));
             return false;
         };
         if !asset.format.is_vector_font() || bounds.x <= 0.0 || bounds.y <= 0.0 {
-            self.warn_font_fallback_once(format!(
+            self.warn_font_missing_glyph_once(format!(
                 "invalid text2d font/bounds: {} bounds=({}, {})",
                 font.as_str(),
                 bounds.x,
@@ -148,7 +149,7 @@ impl WgpuSceneRenderer {
         });
         let lines = content.split('\n').map(str::to_owned).collect::<Vec<_>>();
         let Some(atlas) = self.ensure_ttf_font_atlas(device, queue, &asset, requested_size) else {
-            self.warn_font_fallback_once(format!("atlas build failed: {}", font.as_str()));
+            self.warn_font_missing_glyph_once(format!("atlas build failed: {}", font.as_str()));
             return false;
         };
 
@@ -181,7 +182,7 @@ impl WgpuSceneRenderer {
         batches: &mut Vec<TextureBatch>,
         device: &wgpu::Device,
         queue: &wgpu::Queue,
-        assets: &AssetCatalog,
+        assets: &dyn RenderAssetSource,
         viewport: &Viewport,
         camera: Transform3,
         font: &AssetKey,
@@ -190,12 +191,12 @@ impl WgpuSceneRenderer {
         size: f32,
         color: ColorRgba,
     ) -> bool {
-        let Some(asset) = font2d_asset_from_catalog(assets, font) else {
-            self.warn_font_fallback_once(format!("asset missing: {}", font.as_str()));
+        let Some(asset) = font2d_asset_from_source(assets, font) else {
+            self.warn_font_missing_glyph_once(format!("asset missing: {}", font.as_str()));
             return false;
         };
         if !asset.format.is_vector_font() {
-            self.warn_font_fallback_once(format!("not a vector font: {}", font.as_str()));
+            self.warn_font_missing_glyph_once(format!("not a vector font: {}", font.as_str()));
             return false;
         }
 
@@ -209,7 +210,7 @@ impl WgpuSceneRenderer {
         .max(1.0);
         let lines = content.split('\n').map(str::to_owned).collect::<Vec<_>>();
         let Some(atlas) = self.ensure_ttf_font_atlas(device, queue, &asset, requested_size) else {
-            self.warn_font_fallback_once(format!("atlas build failed: {}", font.as_str()));
+            self.warn_font_missing_glyph_once(format!("atlas build failed: {}", font.as_str()));
             return false;
         };
 
@@ -321,20 +322,22 @@ fn build_ttf_font_atlas(
 
     let font_size = font_size.max(1.0);
     let line_metrics = font.horizontal_line_metrics(font_size);
-    let fallback_line_height = line_metrics
+    let default_line_height = line_metrics
         .as_ref()
         .map(|metrics| metrics.new_line_size)
         .unwrap_or(font_size * 1.2)
         .max(font_size);
     let line_height = asset
         .metrics
-        .line_height_for(font_size, fallback_line_height);
+        .line_height_for(font_size, default_line_height);
     let ascent = line_metrics
         .as_ref()
         .map(|metrics| metrics.ascent)
         .unwrap_or(font_size * 0.85);
 
-    let chars = asset.glyphs.characters(asset.fallback.missing_glyph);
+    let chars = asset
+        .glyphs
+        .characters(asset.missing_glyph_policy.missing_glyph);
     let mut rasterized = Vec::new();
 
     for ch in chars {
@@ -372,7 +375,7 @@ fn build_ttf_font_atlas(
             continue;
         }
         if glyph.width.saturating_add(padding.saturating_mul(2)) > atlas_width {
-            renderer.warn_font_fallback_once(format!(
+            renderer.warn_font_missing_glyph_once(format!(
                 "font atlas glyph too wide: font={} glyph={} width={} atlas_width={}",
                 asset.key.as_str(),
                 glyph.ch,
@@ -400,7 +403,7 @@ fn build_ttf_font_atlas(
     let atlas_height = next_power_of_two_u32(required_height);
 
     if atlas_height == 0 || atlas_height > atlas_height_limit {
-        renderer.warn_font_fallback_once(format!(
+        renderer.warn_font_missing_glyph_once(format!(
             "font atlas too tall: font={} required_height={} atlas_height={} limit={}",
             asset.key.as_str(),
             required_height,
@@ -439,7 +442,7 @@ fn build_ttf_font_atlas(
         if x.saturating_add(glyph.width) > atlas_width
             || y.saturating_add(glyph.height) > atlas_height
         {
-            renderer.warn_font_fallback_once(format!(
+            renderer.warn_font_missing_glyph_once(format!(
                 "font atlas placement out of bounds: font={} glyph={} pos=({}, {}) size=({}, {}) atlas=({}, {})",
                 asset.key.as_str(),
                 glyph.ch,
@@ -505,7 +508,7 @@ fn build_ttf_font_atlas(
         texture,
         glyphs,
         line_height,
-        missing_glyph: asset.fallback.missing_glyph,
+        missing_glyph: asset.missing_glyph_policy.missing_glyph,
     })
 }
 
@@ -708,4 +711,34 @@ fn next_power_of_two_u32(value: u32) -> u32 {
         return 1;
     }
     value.next_power_of_two()
+}
+
+fn font2d_asset_from_source(
+    assets: &dyn RenderAssetSource,
+    font: &AssetKey,
+) -> Option<Font2dAsset> {
+    let mut visited = BTreeSet::new();
+    font2d_asset_from_source_inner(assets, font, &mut visited, 0)
+}
+
+fn font2d_asset_from_source_inner(
+    assets: &dyn RenderAssetSource,
+    font: &AssetKey,
+    visited: &mut BTreeSet<AssetKey>,
+    depth: usize,
+) -> Option<Font2dAsset> {
+    if depth > 4 || !visited.insert(font.clone()) {
+        return None;
+    }
+
+    let prepared = assets.prepared_asset(font)?;
+    let mut asset = font2d_asset_from_prepared(&prepared)?;
+    let Font2dSource::AssetRef { key: source_key } = asset.source.clone() else {
+        return Some(asset);
+    };
+
+    let mut resolved = font2d_asset_from_source_inner(assets, &source_key, visited, depth + 1)?;
+    resolved.key = asset.key.clone();
+    resolved.label = asset.label.take().or(resolved.label);
+    Some(resolved)
 }

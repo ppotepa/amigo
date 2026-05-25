@@ -685,6 +685,9 @@ mod tests {
     use super::*;
     use crate::{ControlRange, ControlValueType, RuntimeControlTarget};
 
+    const MOCK_COMPONENT: &str = "Emitter";
+    const MOCK_COMPONENT_PATH: &str = "world.weather.rain.front.Emitter";
+
     struct MockProvider {
         last_set: Mutex<Option<(String, ControlValue)>>,
         current_value: Mutex<ControlValue>,
@@ -712,14 +715,14 @@ mod tests {
                 console_path: "world.weather.rain.front".to_owned(),
                 source_id: None,
                 label: "rain-front".to_owned(),
-                components: vec!["ParticleEmitter2D".to_owned()],
+                components: vec![MOCK_COMPONENT.to_owned()],
                 aliases: Vec::new(),
                 source_file: None,
             });
             registry.register_property(RuntimeControlProperty {
-                console_path: "world.weather.rain.front.ParticleEmitter2D.spawn_rate".to_owned(),
+                console_path: format!("{MOCK_COMPONENT_PATH}.spawn_rate"),
                 target_path: "world.weather.rain.front".to_owned(),
-                component: Some("ParticleEmitter2D".to_owned()),
+                component: Some(MOCK_COMPONENT.to_owned()),
                 property_path: "spawn_rate".to_owned(),
                 value_type: ControlValueType::F32,
                 range: Some(ControlRange {
@@ -761,10 +764,7 @@ mod tests {
     fn set_unknown_property_returns_error() {
         let service = RuntimeControlService::default();
         let error = service
-            .set(
-                "world.weather.rain.front.ParticleEmitter2D.unknown",
-                ControlValue::F64(1.0),
-            )
+            .set("world.weather.rain.front.Emitter.unknown", ControlValue::F64(1.0))
             .expect_err("unknown property should error");
         assert!(matches!(error, RuntimeControlError::UnknownProperty { .. }));
     }
@@ -778,8 +778,8 @@ mod tests {
         assert!(root.iter().any(|entry| entry.label == "weather"));
 
         let nested = service.complete(
-            "world.weather.rain.front.ParticleEmitter2D.",
-            "world.weather.rain.front.ParticleEmitter2D.".len(),
+            "world.weather.rain.front.Emitter.",
+            "world.weather.rain.front.Emitter.".len(),
         );
         assert!(nested.iter().any(|entry| entry.label == "spawn_rate"));
     }
@@ -806,7 +806,7 @@ mod tests {
             let mut registry = service.registry.write().expect("registry lock");
             let mut property = registry
                 .properties_by_path
-                .get("world.weather.rain.front.ParticleEmitter2D.spawn_rate")
+                .get("world.weather.rain.front.Emitter.spawn_rate")
                 .expect("mock property should exist")
                 .clone();
             property.console_path = "world.camera.main.Camera2D.exposure.iso".to_owned();
@@ -864,7 +864,7 @@ mod tests {
             let mut registry = service.registry.write().expect("registry lock");
             let mut property = registry
                 .properties_by_path
-                .get("world.weather.rain.front.ParticleEmitter2D.spawn_rate")
+                .get("world.weather.rain.front.Emitter.spawn_rate")
                 .expect("mock property should exist")
                 .clone();
             property.console_path = "world.camera.main.Camera2D.exposure.iso".to_owned();

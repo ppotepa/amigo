@@ -2,7 +2,12 @@ use super::*;
 use crate::PostFxRole2d;
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum PostFx2d {
+pub struct PostFx2d {
+    payload: EffectPayload,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+enum EffectPayload {
     Blur(PostFxBlur2d),
     CameraExposure(CameraExposure2d),
     CameraOptics(CameraOptics2d),
@@ -22,65 +27,331 @@ pub enum PostFx2d {
     WetReflections(PostFxWetReflections2d),
 }
 
+pub fn post_fx_blur(effect: PostFxBlur2d) -> PostFx2d {
+    PostFx2d {
+        payload: EffectPayload::Blur(effect),
+    }
+}
+
+pub fn post_fx_camera_exposure(effect: CameraExposure2d) -> PostFx2d {
+    PostFx2d {
+        payload: EffectPayload::CameraExposure(effect),
+    }
+}
+
+pub fn post_fx_camera_optics(effect: CameraOptics2d) -> PostFx2d {
+    PostFx2d {
+        payload: EffectPayload::CameraOptics(effect),
+    }
+}
+
+pub fn post_fx_color_quantize(effect: ColorQuantize2d) -> PostFx2d {
+    PostFx2d {
+        payload: EffectPayload::ColorQuantize(effect),
+    }
+}
+
+pub fn post_fx_color_ramp(effect: ColorRamp2d) -> PostFx2d {
+    PostFx2d {
+        payload: EffectPayload::ColorRamp(effect),
+    }
+}
+
+pub fn post_fx_crt(effect: Crt2d) -> PostFx2d {
+    PostFx2d {
+        payload: EffectPayload::Crt(effect),
+    }
+}
+
+pub fn post_fx_downscale(effect: Downscale2d) -> PostFx2d {
+    PostFx2d {
+        payload: EffectPayload::Downscale(effect),
+    }
+}
+
+pub fn post_fx_dirty_bloom(effect: DirtyBloom2d) -> PostFx2d {
+    PostFx2d {
+        payload: EffectPayload::DirtyBloom(effect),
+    }
+}
+
+pub fn post_fx_emboss_edges(effect: PostFxEmbossEdges2d) -> PostFx2d {
+    PostFx2d {
+        payload: EffectPayload::EmbossEdges(effect),
+    }
+}
+
+pub fn post_fx_film_emulsion(effect: FilmEmulsion2d) -> PostFx2d {
+    PostFx2d {
+        payload: EffectPayload::FilmEmulsion(effect),
+    }
+}
+
+pub fn post_fx_film_noise(effect: FilmNoise2d) -> PostFx2d {
+    PostFx2d {
+        payload: EffectPayload::FilmNoise(effect),
+    }
+}
+
+pub fn post_fx_focus_blur(effect: FocusBlur2d) -> PostFx2d {
+    PostFx2d {
+        payload: EffectPayload::FocusBlur(effect),
+    }
+}
+
+pub fn post_fx_lens_droplets(effect: PostFxLensDroplets2d) -> PostFx2d {
+    PostFx2d {
+        payload: EffectPayload::LensDroplets(effect),
+    }
+}
+
+pub fn post_fx_rain_glass(effect: RainGlass2d) -> PostFx2d {
+    PostFx2d {
+        payload: EffectPayload::RainGlass(effect),
+    }
+}
+
+pub fn post_fx_scan_output(effect: ScanOutput2d) -> PostFx2d {
+    PostFx2d {
+        payload: EffectPayload::ScanOutput(effect),
+    }
+}
+
+pub fn post_fx_shutter_blur(effect: ShutterBlur2d) -> PostFx2d {
+    PostFx2d {
+        payload: EffectPayload::ShutterBlur(effect),
+    }
+}
+
+pub fn post_fx_wet_reflections(effect: PostFxWetReflections2d) -> PostFx2d {
+    PostFx2d {
+        payload: EffectPayload::WetReflections(effect),
+    }
+}
+
 impl PostFx2d {
-    pub fn kind(&self) -> &'static str {
-        match self {
-            Self::Blur(_) => "blur",
-            Self::CameraExposure(_) => "camera_exposure",
-            Self::CameraOptics(_) => "camera_optics",
-            Self::ColorQuantize(_) => "color_quantize",
-            Self::ColorRamp(_) => "color_ramp",
-            Self::Crt(_) => "crt",
-            Self::Downscale(_) => "downscale",
-            Self::DirtyBloom(_) => "dirty_bloom",
-            Self::EmbossEdges(_) => "embossed_edges",
-            Self::FilmEmulsion(_) => "film_emulsion",
-            Self::FilmNoise(_) => "film_noise",
-            Self::FocusBlur(_) => "focus_blur",
-            Self::LensDroplets(_) => "lens_droplets",
-            Self::RainGlass(_) => "rain_glass",
-            Self::ScanOutput(_) => "scan_output",
-            Self::ShutterBlur(_) => "shutter_blur",
-            Self::WetReflections(_) => "wet_reflections",
-        }
-    }
-
-    pub fn default_role(&self) -> PostFxRole2d {
-        match self {
-            Self::CameraExposure(_)
-            | Self::CameraOptics(_)
-            | Self::FocusBlur(_)
-            | Self::RainGlass(_)
-            | Self::ShutterBlur(_)
-            | Self::FilmEmulsion(_)
-            | Self::ScanOutput(_) => PostFxRole2d::CameraCapture,
-            Self::ColorRamp(_) | Self::Crt(_) | Self::Downscale(_) | Self::ColorQuantize(_) => {
-                PostFxRole2d::Presentation
-            }
-            Self::Blur(_)
-            | Self::DirtyBloom(_)
-            | Self::EmbossEdges(_)
-            | Self::LensDroplets(_)
-            | Self::WetReflections(_) => PostFxRole2d::SceneLocal,
-            Self::FilmNoise(_) => PostFxRole2d::Legacy,
-        }
-    }
-
-    pub fn photographic_family(&self) -> Option<&'static str> {
-        match self {
-            Self::CameraExposure(_) => Some("exposure"),
-            Self::CameraOptics(_) => Some("lens"),
-            Self::FocusBlur(_) => Some("dof"),
-            Self::RainGlass(_) | Self::LensDroplets(_) => Some("lens_surface"),
-            Self::ShutterBlur(_) => Some("shutter"),
-            Self::FilmEmulsion(_) | Self::FilmNoise(_) | Self::ScanOutput(_) => Some("film_scan"),
-            Self::ColorRamp(_) | Self::ColorQuantize(_) => Some("look"),
-            Self::DirtyBloom(_) => Some("highlight_response"),
+    pub fn into_blur(self) -> Option<PostFxBlur2d> {
+        match self.payload {
+            EffectPayload::Blur(effect) => Some(effect),
             _ => None,
         }
     }
 
-    pub fn is_cached_image_compatible(&self) -> bool {
+    pub fn into_emboss_edges(self) -> Option<PostFxEmbossEdges2d> {
+        match self.payload {
+            EffectPayload::EmbossEdges(effect) => Some(effect),
+            _ => None,
+        }
+    }
+
+    pub fn into_camera_exposure(self) -> Option<CameraExposure2d> {
+        match self.payload {
+            EffectPayload::CameraExposure(effect) => Some(effect),
+            _ => None,
+        }
+    }
+
+    pub fn into_camera_optics(self) -> Option<CameraOptics2d> {
+        match self.payload {
+            EffectPayload::CameraOptics(effect) => Some(effect),
+            _ => None,
+        }
+    }
+
+    pub fn into_color_quantize(self) -> Option<ColorQuantize2d> {
+        match self.payload {
+            EffectPayload::ColorQuantize(effect) => Some(effect),
+            _ => None,
+        }
+    }
+
+    pub fn into_color_ramp(self) -> Option<ColorRamp2d> {
+        match self.payload {
+            EffectPayload::ColorRamp(effect) => Some(effect),
+            _ => None,
+        }
+    }
+
+    pub fn into_crt(self) -> Option<Crt2d> {
+        match self.payload {
+            EffectPayload::Crt(effect) => Some(effect),
+            _ => None,
+        }
+    }
+
+    pub fn into_downscale(self) -> Option<Downscale2d> {
+        match self.payload {
+            EffectPayload::Downscale(effect) => Some(effect),
+            _ => None,
+        }
+    }
+
+    pub fn into_dirty_bloom(self) -> Option<DirtyBloom2d> {
+        match self.payload {
+            EffectPayload::DirtyBloom(effect) => Some(effect),
+            _ => None,
+        }
+    }
+
+    pub fn into_film_emulsion(self) -> Option<FilmEmulsion2d> {
+        match self.payload {
+            EffectPayload::FilmEmulsion(effect) => Some(effect),
+            _ => None,
+        }
+    }
+
+    pub fn into_film_noise(self) -> Option<FilmNoise2d> {
+        match self.payload {
+            EffectPayload::FilmNoise(effect) => Some(effect),
+            _ => None,
+        }
+    }
+
+    pub fn into_focus_blur(self) -> Option<FocusBlur2d> {
+        match self.payload {
+            EffectPayload::FocusBlur(effect) => Some(effect),
+            _ => None,
+        }
+    }
+
+    pub fn into_lens_droplets(self) -> Option<PostFxLensDroplets2d> {
+        match self.payload {
+            EffectPayload::LensDroplets(effect) => Some(effect),
+            _ => None,
+        }
+    }
+
+    pub fn into_rain_glass(self) -> Option<RainGlass2d> {
+        match self.payload {
+            EffectPayload::RainGlass(effect) => Some(effect),
+            _ => None,
+        }
+    }
+
+    pub fn into_scan_output(self) -> Option<ScanOutput2d> {
+        match self.payload {
+            EffectPayload::ScanOutput(effect) => Some(effect),
+            _ => None,
+        }
+    }
+
+    pub fn into_shutter_blur(self) -> Option<ShutterBlur2d> {
+        match self.payload {
+            EffectPayload::ShutterBlur(effect) => Some(effect),
+            _ => None,
+        }
+    }
+
+    pub fn into_wet_reflections(self) -> Option<PostFxWetReflections2d> {
+        match self.payload {
+            EffectPayload::WetReflections(effect) => Some(effect),
+            _ => None,
+        }
+    }
+
+    pub fn as_wet_reflections(&self) -> Option<&PostFxWetReflections2d> {
+        match &self.payload {
+            EffectPayload::WetReflections(effect) => Some(effect),
+            _ => None,
+        }
+    }
+
+    pub fn as_rain_glass(&self) -> Option<&RainGlass2d> {
+        match &self.payload {
+            EffectPayload::RainGlass(effect) => Some(effect),
+            _ => None,
+        }
+    }
+
+    pub fn as_color_ramp(&self) -> Option<&ColorRamp2d> {
+        match &self.payload {
+            EffectPayload::ColorRamp(effect) => Some(effect),
+            _ => None,
+        }
+    }
+
+    pub fn as_color_quantize(&self) -> Option<&ColorQuantize2d> {
+        match &self.payload {
+            EffectPayload::ColorQuantize(effect) => Some(effect),
+            _ => None,
+        }
+    }
+
+    pub fn as_focus_blur(&self) -> Option<&FocusBlur2d> {
+        match &self.payload {
+            EffectPayload::FocusBlur(effect) => Some(effect),
+            _ => None,
+        }
+    }
+
+    pub fn as_shutter_blur(&self) -> Option<&ShutterBlur2d> {
+        match &self.payload {
+            EffectPayload::ShutterBlur(effect) => Some(effect),
+            _ => None,
+        }
+    }
+
+    pub fn kind(&self) -> &'static str {
+        match &self.payload {
+            EffectPayload::Blur(_) => "blur",
+            EffectPayload::CameraExposure(_) => "camera_exposure",
+            EffectPayload::CameraOptics(_) => "camera_optics",
+            EffectPayload::ColorQuantize(_) => "color_quantize",
+            EffectPayload::ColorRamp(_) => "color_ramp",
+            EffectPayload::Crt(_) => "crt",
+            EffectPayload::Downscale(_) => "downscale",
+            EffectPayload::DirtyBloom(_) => "dirty_bloom",
+            EffectPayload::EmbossEdges(_) => "embossed_edges",
+            EffectPayload::FilmEmulsion(_) => "film_emulsion",
+            EffectPayload::FilmNoise(_) => "film_noise",
+            EffectPayload::FocusBlur(_) => "focus_blur",
+            EffectPayload::LensDroplets(_) => "lens_droplets",
+            EffectPayload::RainGlass(_) => "rain_glass",
+            EffectPayload::ScanOutput(_) => "scan_output",
+            EffectPayload::ShutterBlur(_) => "shutter_blur",
+            EffectPayload::WetReflections(_) => "wet_reflections",
+        }
+    }
+
+    pub fn default_role(&self) -> PostFxRole2d {
+        match &self.payload {
+            EffectPayload::CameraExposure(_)
+            | EffectPayload::CameraOptics(_)
+            | EffectPayload::FocusBlur(_)
+            | EffectPayload::RainGlass(_)
+            | EffectPayload::ShutterBlur(_)
+            | EffectPayload::FilmEmulsion(_)
+            | EffectPayload::ScanOutput(_) => PostFxRole2d::CameraCapture,
+            EffectPayload::ColorRamp(_)
+            | EffectPayload::Crt(_)
+            | EffectPayload::Downscale(_)
+            | EffectPayload::ColorQuantize(_) => PostFxRole2d::Presentation,
+            EffectPayload::Blur(_)
+            | EffectPayload::DirtyBloom(_)
+            | EffectPayload::EmbossEdges(_)
+            | EffectPayload::LensDroplets(_)
+            | EffectPayload::WetReflections(_) => PostFxRole2d::SceneLocal,
+            EffectPayload::FilmNoise(_) => PostFxRole2d::Legacy,
+        }
+    }
+
+    pub fn photographic_family(&self) -> Option<&'static str> {
+        match &self.payload {
+            EffectPayload::CameraExposure(_) => Some("exposure"),
+            EffectPayload::CameraOptics(_) => Some("lens"),
+            EffectPayload::FocusBlur(_) => Some("dof"),
+            EffectPayload::RainGlass(_) | EffectPayload::LensDroplets(_) => Some("lens_surface"),
+            EffectPayload::ShutterBlur(_) => Some("shutter"),
+            EffectPayload::FilmEmulsion(_)
+            | EffectPayload::FilmNoise(_)
+            | EffectPayload::ScanOutput(_) => Some("film_scan"),
+            EffectPayload::ColorRamp(_) | EffectPayload::ColorQuantize(_) => Some("look"),
+            EffectPayload::DirtyBloom(_) => Some("highlight_response"),
+            _ => None,
+        }
+    }
+
+    pub fn uses_cached_image_pipeline(&self) -> bool {
         matches!(
             self.render_descriptor().cached_image_policy,
             PostFxCachedImagePolicy::RasterEffect
@@ -88,51 +359,51 @@ impl PostFx2d {
         )
     }
 
-    pub fn is_frame_graph_compatible(&self) -> bool {
-        self.render_descriptor().frame_graph_compatible
+    pub fn uses_frame_graph_pipeline(&self) -> bool {
+        self.render_descriptor().frame_graph_enabled
     }
 
     pub fn normalized(self) -> Self {
-        match self {
-            Self::Blur(blur) => Self::Blur(blur.normalized()),
-            Self::CameraExposure(effect) => Self::CameraExposure(effect.normalized()),
-            Self::CameraOptics(effect) => Self::CameraOptics(effect.normalized()),
-            Self::ColorQuantize(effect) => Self::ColorQuantize(effect.normalized()),
-            Self::ColorRamp(effect) => Self::ColorRamp(effect.normalized()),
-            Self::Crt(crt) => Self::Crt(crt.normalized()),
-            Self::Downscale(effect) => Self::Downscale(effect.normalized()),
-            Self::DirtyBloom(bloom) => Self::DirtyBloom(bloom.normalized()),
-            Self::EmbossEdges(emboss) => Self::EmbossEdges(emboss.normalized()),
-            Self::FilmEmulsion(effect) => Self::FilmEmulsion(effect.normalized()),
-            Self::FilmNoise(noise) => Self::FilmNoise(noise.normalized()),
-            Self::FocusBlur(effect) => Self::FocusBlur(effect.normalized()),
-            Self::LensDroplets(lens) => Self::LensDroplets(lens.normalized()),
-            Self::RainGlass(rain) => Self::RainGlass(rain.normalized()),
-            Self::ScanOutput(effect) => Self::ScanOutput(effect.normalized()),
-            Self::ShutterBlur(effect) => Self::ShutterBlur(effect.normalized()),
-            Self::WetReflections(effect) => Self::WetReflections(effect.normalized()),
+        match self.payload {
+            EffectPayload::Blur(blur) => post_fx_blur(blur.normalized()),
+            EffectPayload::CameraExposure(effect) => post_fx_camera_exposure(effect.normalized()),
+            EffectPayload::CameraOptics(effect) => post_fx_camera_optics(effect.normalized()),
+            EffectPayload::ColorQuantize(effect) => post_fx_color_quantize(effect.normalized()),
+            EffectPayload::ColorRamp(effect) => post_fx_color_ramp(effect.normalized()),
+            EffectPayload::Crt(crt) => post_fx_crt(crt.normalized()),
+            EffectPayload::Downscale(effect) => post_fx_downscale(effect.normalized()),
+            EffectPayload::DirtyBloom(bloom) => post_fx_dirty_bloom(bloom.normalized()),
+            EffectPayload::EmbossEdges(emboss) => post_fx_emboss_edges(emboss.normalized()),
+            EffectPayload::FilmEmulsion(effect) => post_fx_film_emulsion(effect.normalized()),
+            EffectPayload::FilmNoise(noise) => post_fx_film_noise(noise.normalized()),
+            EffectPayload::FocusBlur(effect) => post_fx_focus_blur(effect.normalized()),
+            EffectPayload::LensDroplets(lens) => post_fx_lens_droplets(lens.normalized()),
+            EffectPayload::RainGlass(rain) => post_fx_rain_glass(rain.normalized()),
+            EffectPayload::ScanOutput(effect) => post_fx_scan_output(effect.normalized()),
+            EffectPayload::ShutterBlur(effect) => post_fx_shutter_blur(effect.normalized()),
+            EffectPayload::WetReflections(effect) => post_fx_wet_reflections(effect.normalized()),
         }
     }
 
     pub fn is_active(&self) -> bool {
-        match self {
-            Self::Blur(blur) => blur.is_active(),
-            Self::CameraExposure(effect) => effect.is_active(),
-            Self::CameraOptics(effect) => effect.is_active(),
-            Self::ColorQuantize(effect) => effect.is_active(),
-            Self::ColorRamp(effect) => effect.is_active(),
-            Self::Crt(crt) => crt.is_active(),
-            Self::Downscale(effect) => effect.is_active(),
-            Self::DirtyBloom(bloom) => bloom.is_active(),
-            Self::EmbossEdges(emboss) => emboss.is_active(),
-            Self::FilmEmulsion(effect) => effect.is_active(),
-            Self::FilmNoise(noise) => noise.is_active(),
-            Self::FocusBlur(effect) => effect.is_active(),
-            Self::LensDroplets(lens) => lens.is_active(),
-            Self::RainGlass(rain) => rain.is_active(),
-            Self::ScanOutput(effect) => effect.is_active(),
-            Self::ShutterBlur(effect) => effect.is_active(),
-            Self::WetReflections(effect) => effect.is_active(),
+        match &self.payload {
+            EffectPayload::Blur(blur) => blur.is_active(),
+            EffectPayload::CameraExposure(effect) => effect.is_active(),
+            EffectPayload::CameraOptics(effect) => effect.is_active(),
+            EffectPayload::ColorQuantize(effect) => effect.is_active(),
+            EffectPayload::ColorRamp(effect) => effect.is_active(),
+            EffectPayload::Crt(crt) => crt.is_active(),
+            EffectPayload::Downscale(effect) => effect.is_active(),
+            EffectPayload::DirtyBloom(bloom) => bloom.is_active(),
+            EffectPayload::EmbossEdges(emboss) => emboss.is_active(),
+            EffectPayload::FilmEmulsion(effect) => effect.is_active(),
+            EffectPayload::FilmNoise(noise) => noise.is_active(),
+            EffectPayload::FocusBlur(effect) => effect.is_active(),
+            EffectPayload::LensDroplets(lens) => lens.is_active(),
+            EffectPayload::RainGlass(rain) => rain.is_active(),
+            EffectPayload::ScanOutput(effect) => effect.is_active(),
+            EffectPayload::ShutterBlur(effect) => effect.is_active(),
+            EffectPayload::WetReflections(effect) => effect.is_active(),
         }
     }
 }

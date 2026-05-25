@@ -9,6 +9,7 @@ use amigo_scene::{
     SceneDocumentError, SceneDocumentResult, SceneTransform2Document, SceneTransform3Document,
     SceneVec2Document, VisualMaps2dDocument, VisualMaps2dSceneCommand,
 };
+use amigo_scene::SceneComponentDocument as ComponentDocument;
 
 use super::LayeredImage2dDocument;
 
@@ -21,12 +22,12 @@ impl ComponentHydrator for LayeredImage2dComponentHydrator {
     }
 
     fn can_hydrate(&self, component: &SceneComponentDocument) -> bool {
-        matches!(component, SceneComponentDocument::LayeredImage2d { .. })
+        matches!(component, ComponentDocument::LayeredImage2d { .. })
     }
 
     fn hydrate(&self, ctx: ComponentHydrationContext<'_>) -> SceneDocumentResult<()> {
         let document = match ctx.component {
-            SceneComponentDocument::LayeredImage2d { .. } => {
+            ComponentDocument::LayeredImage2d { .. } => {
                 let Some(document) = LayeredImage2dDocument::from_component(ctx.component) else {
                     return Ok(());
                 };
@@ -88,8 +89,8 @@ fn push_layered_image_command(
     entity_name: &str,
     commands: &mut Vec<amigo_scene::SceneCommand>,
 ) {
-    commands.push(amigo_scene::SceneCommand::QueueLayeredImage2d {
-            command: LayeredImage2dSceneCommand {
+    commands.push(amigo_scene::SceneCommand::Plugin {
+            command: amigo_scene::layered_image_2d_plugin_scene_command(LayeredImage2dSceneCommand {
                 source_mod: source_mod.to_owned(),
                 entity_name: entity_name.to_owned(),
                 render_layer: document.render_layer.clone(),
@@ -105,7 +106,7 @@ fn push_layered_image_command(
                     .iter()
                     .map(layer_override_from_document)
                     .collect(),
-            },
+            }),
         });
 }
 

@@ -8,6 +8,7 @@ use amigo_scene::{
     SceneComponentPayload, SceneComponentSchemaProvider, SceneDocumentError,
     SceneDocumentResult, SceneVec2Document,
 };
+use amigo_scene::SceneComponentDocument as ComponentDocument;
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct FocusDepthResponse2dDocument {
@@ -44,7 +45,7 @@ pub struct DepthMap2dDocument {
 impl DepthMap2dDocument {
     pub fn from_component(component: &SceneComponentDocument) -> Option<Self> {
         match component {
-            SceneComponentDocument::DepthMap2d {
+            ComponentDocument::DepthMap2d {
                 id,
                 asset,
                 size,
@@ -92,7 +93,7 @@ pub struct DepthAuxMap2dDocument {
 impl DepthAuxMap2dDocument {
     pub fn from_component(component: &SceneComponentDocument) -> Option<Self> {
         match component {
-            SceneComponentDocument::DepthAuxMap2d {
+            ComponentDocument::DepthAuxMap2d {
                 id,
                 asset,
                 surface_asset,

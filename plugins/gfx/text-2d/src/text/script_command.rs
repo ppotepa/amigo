@@ -31,14 +31,14 @@ fn parse_text_spawn(command: ScriptCommand) -> Option<SceneCommand> {
         return None;
     };
     let bounds = parse_vec2(width, height)?;
-    Some(SceneCommand::QueueText2d {
-        command: Text2dSceneCommand::new(
+    Some(SceneCommand::Plugin {
+        command: super::scene_command::text_plugin_scene_command(Text2dSceneCommand::new(
             source_mod.clone(),
             entity_name.clone(),
             content.clone(),
             AssetKey::new(font_key.clone()),
             bounds,
-        ),
+        )),
     })
 }
 

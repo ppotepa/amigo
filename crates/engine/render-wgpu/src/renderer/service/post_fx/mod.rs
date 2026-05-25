@@ -16,8 +16,8 @@ pub(crate) mod pipelines;
 pub(crate) mod rain_glass;
 mod registry;
 pub(crate) mod runtime_key;
-pub(crate) mod shaders;
 mod scan_output;
+pub(crate) mod shaders;
 pub(crate) mod shutter_blur;
 pub(crate) mod wet_reflections;
 
@@ -26,45 +26,44 @@ use image::RgbaImage;
 
 pub(crate) use executor::{WgpuPostFxExecutionContext, WgpuPostFxExecutor};
 pub(crate) use executor_registry::WgpuPostFxExecutorRegistry;
-pub(crate) use registry::default_post_fx_executor_registry;
+pub(crate) use registry::default_wgpu_screen_effect_executors;
 pub(crate) use registry::execute_screen_space_post_fx;
 
-pub(crate) fn apply_cached_image_post_fx_rgba(source: RgbaImage, effect: PostFx2d) -> RgbaImage {
-    match effect {
-        PostFx2d::Blur(blur) => blur::apply_blur(source, blur),
-        PostFx2d::EmbossEdges(emboss) => match emboss.mode {
-            PostFxEmbossMode2d::PrebakedImage | PostFxEmbossMode2d::LightAwareRuntime => {
-                // Runtime light-aware pass is not wired into the frame graph yet.
-                // For now this mode falls back to prebaked application.
-                emboss_edges::apply_emboss_edges(source, emboss)
+pub(crate) fn apply_cached_raster_effect_rgba(source: RgbaImage, effect: PostFx2d) -> RgbaImage {
+    match effect.kind() {
+        "blur" => {
+            let Some(blur) = effect.into_blur() else {
+                return source;
+            };
+            blur::apply_blur(source, blur)
+        }
+        "embossed_edges" => {
+            let Some(emboss) = effect.into_emboss_edges() else {
+                return source;
+            };
+            match emboss.mode {
+                PostFxEmbossMode2d::PrebakedImage | PostFxEmbossMode2d::LightAwareRuntime => {
+                    // Runtime light-aware pass is not wired into the frame graph yet.
+                    // For now this mode uses prebaked application.
+                    emboss_edges::apply_emboss_edges(source, emboss)
+                }
             }
-        },
-        PostFx2d::ColorQuantize(_)
-        | PostFx2d::CameraExposure(_)
-        | PostFx2d::CameraOptics(_)
-        | PostFx2d::ColorRamp(_)
-        | PostFx2d::Crt(_)
-        | PostFx2d::Downscale(_)
-        | PostFx2d::DirtyBloom(_)
-        | PostFx2d::FilmEmulsion(_)
-        | PostFx2d::FilmNoise(_)
-        | PostFx2d::FocusBlur(_)
-        | PostFx2d::ScanOutput(_)
-        | PostFx2d::ShutterBlur(_) => source,
-        PostFx2d::LensDroplets(_) => {
+        }
+        "lens_droplets" => {
             // LensDroplets is a screen-space frame post-fx and is intentionally not applied to
             // cached layered images.
             source
         }
-        PostFx2d::RainGlass(_) => {
+        "rain_glass" => {
             // RainGlass is a screen-space frame post-fx and is intentionally not applied to
             // cached layered images.
             source
         }
-        PostFx2d::WetReflections(_) => {
+        "wet_reflections" => {
             // WetReflections is a screen-space frame post-fx and is intentionally not applied
             // to cached layered images.
             source
         }
+        _ => source,
     }
 }

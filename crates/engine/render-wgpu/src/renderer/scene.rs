@@ -1,71 +1,22 @@
 use crate::renderer::*;
+use amigo_render_api::RenderSceneView;
 
 pub(crate) fn resolve_transform3(
-    scene: &SceneService,
+    scene_view: &RenderSceneView,
     entity_name: &str,
-    fallback: Transform3,
+    default_transform: Transform3,
 ) -> Transform3 {
-    scene.transform_of(entity_name).unwrap_or(fallback)
+    scene_view
+        .transform3_of(entity_name)
+        .unwrap_or(default_transform)
 }
 
-pub(crate) fn resolve_camera_transform(scene: &SceneService) -> Transform3 {
-    scene
-        .entities()
-        .into_iter()
-        .find(|entity| {
-            entity.name.contains("3d-camera")
-                || (entity.name.contains("camera") && entity.transform.translation.z.abs() > 0.01)
-        })
-        .map(|entity| entity.transform)
-        .unwrap_or(Transform3 {
-            translation: Vec3::new(0.0, 0.0, 6.0),
-            ..Transform3::default()
-        })
+pub(crate) fn resolve_camera_transform(scene_view: &RenderSceneView) -> Transform3 {
+    scene_view.camera_3d()
 }
 
-pub(crate) fn resolve_camera2d_transform(
-    scene: &SceneService,
-    active_camera_entity: Option<&str>,
-) -> Transform2 {
-    if let Some(active_camera_entity) = active_camera_entity {
-        if let Some(entity) = scene
-            .entities()
-            .into_iter()
-            .find(|entity| entity.name == active_camera_entity)
-        {
-            return Transform2 {
-                translation: Vec2 {
-                    x: entity.transform.translation.x,
-                    y: entity.transform.translation.y,
-                },
-                rotation_radians: entity.transform.rotation_euler.z,
-                scale: Vec2 {
-                    x: entity.transform.scale.x,
-                    y: entity.transform.scale.y,
-                },
-            };
-        }
-    }
-
-    scene
-        .entities()
-        .into_iter()
-        .find(|entity| {
-            entity.name.contains("2d-camera")
-                || (entity.name.contains("camera") && entity.transform.translation.z.abs() <= 0.01)
-        })
-        .map(|entity| Transform2 {
-            translation: Vec2 {
-                x: entity.transform.translation.x,
-                y: entity.transform.translation.y,
-            },
-            rotation_radians: entity.transform.rotation_euler.z,
-            scale: Vec2 {
-                x: entity.transform.scale.x,
-                y: entity.transform.scale.y,
-            },
-        })
-        .unwrap_or_default()
+pub(crate) fn resolve_camera2d_transform(scene_view: &RenderSceneView) -> Transform2 {
+    scene_view.camera_2d()
 }
 
 pub(crate) fn material_lookup_from_commands(
@@ -141,7 +92,7 @@ mod tests {
         Renderable2dItem::new(
             Renderable2dCommon {
                 owner_entity: format!("sprite-{render_layer}"),
-                component_kind: "Sprite2D".to_owned(),
+                component_kind: "component".to_owned(),
                 render_space: RenderSpace2d::World,
                 render_layer: render_layer.to_owned(),
                 z_index,
@@ -163,7 +114,7 @@ mod tests {
         Renderable2dItem::new(
             Renderable2dCommon {
                 owner_entity: format!("text-{render_layer}"),
-                component_kind: "Text2D".to_owned(),
+                component_kind: "component".to_owned(),
                 render_space: RenderSpace2d::World,
                 render_layer: render_layer.to_owned(),
                 z_index,
@@ -195,7 +146,7 @@ mod tests {
                 order: -100.0,
                 visible: true,
                 opacity: 1.0,
-                depth: amigo_2d_composition::RenderDepth2d::default(),
+                depth: amigo_render_api::RenderDepth2d::default(),
                 optical_role: amigo_2d_spatial::OpticalLayerRole2d::WorldSurface,
             },
             RenderLayer2dCommand {
@@ -205,7 +156,7 @@ mod tests {
                 order: -14.0,
                 visible: true,
                 opacity: 1.0,
-                depth: amigo_2d_composition::RenderDepth2d::default(),
+                depth: amigo_render_api::RenderDepth2d::default(),
                 optical_role: amigo_2d_spatial::OpticalLayerRole2d::WorldSurface,
             },
         ]);
@@ -226,7 +177,7 @@ mod tests {
                 order: 20.0,
                 visible: true,
                 opacity: 1.0,
-                depth: amigo_2d_composition::RenderDepth2d::default(),
+                depth: amigo_render_api::RenderDepth2d::default(),
                 optical_role: amigo_2d_spatial::OpticalLayerRole2d::WorldSurface,
             },
             RenderLayer2dCommand {
@@ -236,7 +187,7 @@ mod tests {
                 order: 35.0,
                 visible: true,
                 opacity: 1.0,
-                depth: amigo_2d_composition::RenderDepth2d::default(),
+                depth: amigo_render_api::RenderDepth2d::default(),
                 optical_role: amigo_2d_spatial::OpticalLayerRole2d::WorldSurface,
             },
         ]);

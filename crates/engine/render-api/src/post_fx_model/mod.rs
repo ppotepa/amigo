@@ -1,5 +1,9 @@
-pub fn finite_or(value: f32, fallback: f32) -> f32 {
-    if value.is_finite() { value } else { fallback }
+pub fn finite_or(value: f32, default_value: f32) -> f32 {
+    if value.is_finite() {
+        value
+    } else {
+        default_value
+    }
 }
 
 pub fn quantize_milli(value: f32) -> u32 {
@@ -17,9 +21,9 @@ mod dirty_bloom;
 mod downscale;
 mod effect;
 mod emboss_edges;
-mod flat_metadata;
 mod film_emulsion;
 mod film_noise;
+mod flat_metadata;
 mod focus_blur;
 mod lens_droplets;
 mod rain_glass;
@@ -41,9 +45,9 @@ pub use dirty_bloom::*;
 pub use downscale::*;
 pub use effect::*;
 pub use emboss_edges::*;
-pub use flat_metadata::*;
 pub use film_emulsion::*;
 pub use film_noise::*;
+pub use flat_metadata::*;
 pub use focus_blur::*;
 pub use lens_droplets::*;
 pub use rain_glass::*;

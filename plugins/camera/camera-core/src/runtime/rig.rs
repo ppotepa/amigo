@@ -1,15 +1,15 @@
-use amigo_composite_plugin::{ColorRamp2d, RainGlass2d};
-use amigo_2d_spatial::{DepthSpace2d, distance_to_z_depth};
-use amigo_assets::AssetCatalog;
 use crate::api::CameraDepthMotion2d;
+use amigo_2d_spatial::{distance_to_z_depth, DepthSpace2d};
+use amigo_assets::AssetCatalog;
+use amigo_composite_plugin::{ColorRamp2d, RainGlass2d};
 
 use crate::CameraId;
 use amigo_camera_optics_plugin::runtime::{
     Camera2dRuntimeState, CameraAperture2d, CameraAutoExposure2d, CameraDepthOfField2d,
     CameraExposureMode2d, CameraFilm2d, CameraFocus2d, CameraLensSurface2d, CameraShutter2d,
 };
-use amigo_camera_profiles_plugin::runtime::{FilmStockProfile2d, LensProfile2d};
 use amigo_camera_profiles_plugin::api::{CameraQualityProfile2d, CameraQualitySettings2d};
+use amigo_camera_profiles_plugin::runtime::{FilmStockProfile2d, LensProfile2d};
 
 /// Fully resolved 2D camera rig used by render/camera-owned post-fx construction.
 /// Do not build camera-owned effects from raw Camera2dRuntimeState when a rig is available.
@@ -199,7 +199,11 @@ pub fn apply_camera_depth_motion_to_rig(
 }
 
 fn finite_or_zero(value: f32) -> f32 {
-    if value.is_finite() { value } else { 0.0 }
+    if value.is_finite() {
+        value
+    } else {
+        0.0
+    }
 }
 
 #[cfg(test)]
@@ -326,5 +330,4 @@ mod tests {
         assert_eq!(rig.aperture.base_focus_distance_m, Some(6.0));
         assert_eq!(rig.aperture.effective_focus_distance_m, Some(6.0));
     }
-
 }

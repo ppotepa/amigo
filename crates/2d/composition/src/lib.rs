@@ -15,6 +15,7 @@ pub use plugin::*;
 pub use render_extraction::*;
 pub use reset::*;
 pub use runtime_capabilities::*;
+pub use scene_bridge::*;
 pub use scene_command::*;
 pub use script_command::*;
 pub use service::*;

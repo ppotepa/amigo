@@ -20,7 +20,11 @@ pub struct LayeredImageSceneCommandOutcome {
 }
 
 pub fn can_handle_layered_image_scene_command(command: &SceneCommand) -> bool {
-    matches!(command, SceneCommand::QueueLayeredImage2d { .. })
+    matches!(
+        command,
+        SceneCommand::Plugin { command }
+            if command.command_type == amigo_scene::LAYERED_IMAGE_2D_PLUGIN_SCENE_COMMAND_TYPE
+    )
 }
 
 pub fn handle_layered_image_scene_command(
@@ -28,7 +32,17 @@ pub fn handle_layered_image_scene_command(
     command: SceneCommand,
 ) -> AmigoResult<LayeredImageSceneCommandOutcome> {
     match command {
-        SceneCommand::QueueLayeredImage2d { command } => {
+        SceneCommand::Plugin { command }
+            if command.command_type == amigo_scene::LAYERED_IMAGE_2D_PLUGIN_SCENE_COMMAND_TYPE =>
+        {
+            let command = command
+                .payload_as::<amigo_scene::LayeredImage2dSceneCommand>()
+                .ok_or_else(|| {
+                    AmigoError::Message(
+                        "layered image plugin scene command payload type mismatch".to_owned(),
+                    )
+                })?
+                .clone();
             let entity = queue_layered_image_scene_command(
                 ctx.scene_service,
                 ctx.layered_image_scene_service,

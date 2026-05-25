@@ -8,9 +8,8 @@ use color::{
     ColorScreenPipelineProvider,
 };
 use texture::{
-    TextureAdditivePipelineProvider, TextureAlphaPipelineProvider,
-    TextureLightenPipelineProvider, TextureMultiplyPipelineProvider,
-    TextureOpaquePipelineProvider, TextureScreenPipelineProvider,
+    TextureAdditivePipelineProvider, TextureAlphaPipelineProvider, TextureLightenPipelineProvider,
+    TextureMultiplyPipelineProvider, TextureOpaquePipelineProvider, TextureScreenPipelineProvider,
 };
 
 pub(crate) const CORE_COLOR_ALPHA_PIPELINE: &str = "core.color.alpha";

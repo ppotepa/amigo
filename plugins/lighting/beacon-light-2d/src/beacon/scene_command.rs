@@ -8,7 +8,11 @@ use super::scene_bridge::queue_beacon_light2d_scene_command;
 pub struct Beacon2dSceneCommandHandler;
 
 pub fn can_handle_beacon_scene_command(command: &SceneCommand) -> bool {
-    matches!(command, SceneCommand::QueueBeaconLight2d { .. })
+    matches!(
+        command,
+        SceneCommand::Plugin { command }
+            if command.command_type == amigo_scene::BEACON_LIGHT_2D_PLUGIN_SCENE_COMMAND_TYPE
+    )
 }
 
 impl amigo_scene::RuntimeSceneCommandHandler for Beacon2dSceneCommandHandler {
@@ -21,7 +25,17 @@ impl amigo_scene::RuntimeSceneCommandHandler for Beacon2dSceneCommandHandler {
         let beacon_service = runtime.required::<BeaconLight2dSceneService>()?;
         let scene_event_queue = runtime.required::<SceneEventQueue>()?;
         match command {
-            SceneCommand::QueueBeaconLight2d { command } => {
+            SceneCommand::Plugin { command }
+                if command.command_type == amigo_scene::BEACON_LIGHT_2D_PLUGIN_SCENE_COMMAND_TYPE =>
+            {
+                let command = command
+                    .payload_as::<amigo_scene::BeaconLight2dSceneCommand>()
+                    .ok_or_else(|| {
+                        AmigoError::Message(
+                            "beacon light plugin scene command payload type mismatch".to_owned(),
+                        )
+                    })?
+                    .clone();
                 let entity = queue_beacon_light2d_scene_command(
                     scene_service.as_ref(),
                     beacon_service.as_ref(),

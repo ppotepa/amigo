@@ -1,12 +1,11 @@
-use amigo_assets::AssetCatalog;
 use amigo_material_api::MaterialCandidateDecision2d;
 use amigo_math::Transform2;
-use amigo_2d_composition::LightRoute2dCommand;
-use amigo_render_api::{LightSource2dCommon, RenderPrimitive2dKind};
+use amigo_render_api::LightRoute2dCommand;
+use amigo_render_api::{LightSource2dCommon, RenderAssetSource, RenderPrimitive2dKind};
 use std::collections::BTreeSet;
 
-use crate::renderer::{ColorBatch, LightMap2dSampler, ParticleRenderLight, TextureBatch, Viewport};
 use crate::renderer::WgpuMaterialCandidate2d;
+use crate::renderer::{ColorBatch, LightMap2dSampler, ParticleRenderLight, TextureBatch, Viewport};
 use crate::{Renderable2dItem, WgpuSceneRenderer};
 
 pub(crate) trait WgpuRenderable2dAdapter: Send + Sync {
@@ -43,7 +42,7 @@ pub(crate) struct WgpuRenderable2dAdapterContext<'a> {
     pub color_batches: &'a mut Vec<ColorBatch>,
     pub device: &'a wgpu::Device,
     pub queue: &'a wgpu::Queue,
-    pub assets: &'a AssetCatalog,
+    pub assets: &'a dyn RenderAssetSource,
     pub viewport: &'a Viewport,
     pub layer_camera: Transform2,
     pub layer_opacity: f32,

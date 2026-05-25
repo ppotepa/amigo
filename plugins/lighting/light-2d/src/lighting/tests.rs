@@ -145,9 +145,7 @@ fn lighting_scene_command_handler_queues_global_light_and_event() {
     };
 
     assert!(can_handle_lighting_scene_command(
-        &SceneCommand::QueueGlobalLight2d {
-            command: command.clone()
-        }
+        &SceneCommand::plugin(amigo_scene::global_light_2d_plugin_scene_command(command.clone()))
     ));
 
     let outcome = handle_lighting_scene_command(
@@ -159,7 +157,7 @@ fn lighting_scene_command_handler_queues_global_light_and_event() {
             scene_event_queue: &events,
             resolve_lightmap_source_layers: &|_| None,
         },
-        SceneCommand::QueueGlobalLight2d { command },
+        SceneCommand::plugin(amigo_scene::global_light_2d_plugin_scene_command(command)),
     )
     .expect("global light scene command should be handled");
 

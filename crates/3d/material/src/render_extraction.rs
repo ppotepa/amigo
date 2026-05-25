@@ -1,14 +1,11 @@
 use amigo_scene::SceneService;
 
 use crate::{MaterialDrawCommand, MaterialSceneService};
+pub use amigo_render_api::Material3dRenderOutput;
 
 pub struct Material3dRenderExtractionContext<'a> {
     pub scene_service: &'a SceneService,
     pub material_scene_service: &'a MaterialSceneService,
-}
-
-pub trait Material3dRenderOutput {
-    fn push_material3d_render_command(&mut self, command: MaterialDrawCommand);
 }
 
 pub struct Material3dRenderExtractor;

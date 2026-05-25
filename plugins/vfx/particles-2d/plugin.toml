@@ -31,11 +31,6 @@ channels = [
   "particles-2d.contributions"
 ]
 
-[docs]
-pipeline = "docs/pipeline.md"
-contributions = "docs/contributions.md"
-diagnostics = "docs/diagnostics.md"
-
 [tests]
 waterfall = "tests/waterfall_tests.rs"
 diagnostics = "tests/diagnostics_tests.rs"

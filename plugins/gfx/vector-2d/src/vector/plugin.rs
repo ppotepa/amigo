@@ -55,7 +55,7 @@ impl RuntimePlugin for Vector2dPlugin {
             super::scene_command::Vector2dSceneCommandHandler,
         );
         if let Some(plugin_scene_handlers) =
-            registry.resolve::<amigo_scene::PluginSceneCommandHandlerRegistry>()
+            registry.resolve::<amigo_scene::ScenePluginCommandHandlerRegistry>()
         {
             plugin_scene_handlers.register(
                 "amigo.gfx.vector-2d.scene-command.VectorShape2D",

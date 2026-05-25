@@ -1,9 +1,9 @@
-use crate::renderer::service::post_fx::apply_cached_image_post_fx_rgba;
+use crate::renderer::service::post_fx::apply_cached_raster_effect_rgba;
 use crate::renderer::*;
 use std::collections::BTreeSet;
 
 use amigo_render_api::{
-    LayeredImageAsset, LayeredImageBlendMode2d, LayeredImageViewportFit2d,
+    LayeredImageAsset, LayeredImageBlendMode2d, LayeredImageViewportFit2d, RenderAssetSource,
 };
 
 impl WgpuSceneRenderer {
@@ -12,7 +12,7 @@ impl WgpuSceneRenderer {
         batches: &mut Vec<TextureBatch>,
         device: &wgpu::Device,
         queue: &wgpu::Queue,
-        assets: &AssetCatalog,
+        assets: &dyn RenderAssetSource,
         viewport: &Viewport,
         camera: Transform2,
         quad: &amigo_render_api::TexturedQuad2dPrimitive,
@@ -23,11 +23,7 @@ impl WgpuSceneRenderer {
         let Some(texture) = self.ensure_texture(device, queue, &prepared) else {
             return false;
         };
-        let uv = textured_quad_uv_rect(
-            texture.dimensions(),
-            quad.sheet.as_ref(),
-            quad.frame_index,
-        );
+        let uv = textured_quad_uv_rect(texture.dimensions(), quad.sheet.as_ref(), quad.frame_index);
         let mut vertices = Vec::with_capacity(6);
         append_textured_sprite_vertices(
             &mut vertices,
@@ -77,7 +73,7 @@ impl WgpuSceneRenderer {
         batches: &mut Vec<TextureBatch>,
         device: &wgpu::Device,
         queue: &wgpu::Queue,
-        assets: &AssetCatalog,
+        assets: &dyn RenderAssetSource,
         viewport: &Viewport,
         camera: Transform2,
         transform: Transform2,
@@ -125,7 +121,7 @@ impl WgpuSceneRenderer {
         batches: &mut Vec<TextureBatch>,
         device: &wgpu::Device,
         queue: &wgpu::Queue,
-        assets: &AssetCatalog,
+        assets: &dyn RenderAssetSource,
         viewport: &Viewport,
         camera: Transform2,
         command: &amigo_render_api::LayeredImage2dPrimitive,
@@ -154,7 +150,7 @@ impl WgpuSceneRenderer {
         batches: &mut Vec<TextureBatch>,
         device: &wgpu::Device,
         queue: &wgpu::Queue,
-        assets: &AssetCatalog,
+        assets: &dyn RenderAssetSource,
         viewport: &Viewport,
         camera: Transform2,
         command: &amigo_render_api::LayeredImage2dPrimitive,
@@ -487,7 +483,7 @@ impl WgpuSceneRenderer {
                     return None;
                 }
             };
-            let rgba = apply_cached_image_post_fx_rgba(image.to_rgba8(), effect);
+            let rgba = apply_cached_raster_effect_rgba(image.to_rgba8(), effect);
             let resource = self.create_cached_texture_resource(
                 device,
                 queue,
@@ -534,7 +530,7 @@ impl WgpuSceneRenderer {
     ) -> CachedTextureResource {
         let (width, height) = rgba.dimensions();
         let texture = device.create_texture(&wgpu::TextureDescriptor {
-            label: Some("amigo-scene-texture"),
+            label: Some("amigo-render-texture"),
             size: wgpu::Extent3d {
                 width,
                 height,
@@ -581,7 +577,7 @@ impl WgpuSceneRenderer {
             )
         };
         let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
-            label: Some("amigo-scene-texture-sampler"),
+            label: Some("amigo-render-texture-sampler"),
             address_mode_u: wgpu::AddressMode::ClampToEdge,
             address_mode_v: wgpu::AddressMode::ClampToEdge,
             address_mode_w: wgpu::AddressMode::ClampToEdge,
@@ -591,7 +587,7 @@ impl WgpuSceneRenderer {
             ..wgpu::SamplerDescriptor::default()
         });
         let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("amigo-scene-texture-bind-group"),
+            label: Some("amigo-render-texture-bind-group"),
             layout: &self.texture_bind_group_layout,
             entries: &[
                 wgpu::BindGroupEntry {
@@ -622,10 +618,18 @@ pub(crate) fn primitive_layered_image_viewport_fit(
     fit: amigo_render_api::LayeredImageViewportFit2dPrimitive,
 ) -> LayeredImageViewportFit2d {
     match fit {
-        amigo_render_api::LayeredImageViewportFit2dPrimitive::Fixed => LayeredImageViewportFit2d::Fixed,
-        amigo_render_api::LayeredImageViewportFit2dPrimitive::Stretch => LayeredImageViewportFit2d::Stretch,
-        amigo_render_api::LayeredImageViewportFit2dPrimitive::Contain => LayeredImageViewportFit2d::Contain,
-        amigo_render_api::LayeredImageViewportFit2dPrimitive::Cover => LayeredImageViewportFit2d::Cover,
+        amigo_render_api::LayeredImageViewportFit2dPrimitive::Fixed => {
+            LayeredImageViewportFit2d::Fixed
+        }
+        amigo_render_api::LayeredImageViewportFit2dPrimitive::Stretch => {
+            LayeredImageViewportFit2d::Stretch
+        }
+        amigo_render_api::LayeredImageViewportFit2dPrimitive::Contain => {
+            LayeredImageViewportFit2d::Contain
+        }
+        amigo_render_api::LayeredImageViewportFit2dPrimitive::Cover => {
+            LayeredImageViewportFit2d::Cover
+        }
     }
 }
 
@@ -634,7 +638,11 @@ pub(crate) fn apply_primitive_layer_overrides(
     overrides: &[amigo_render_api::LayeredImageLayerOverride2dPrimitive],
 ) {
     for override_entry in overrides {
-        let Some(layer) = asset.layers.iter_mut().find(|layer| layer.id == override_entry.id) else {
+        let Some(layer) = asset
+            .layers
+            .iter_mut()
+            .find(|layer| layer.id == override_entry.id)
+        else {
             continue;
         };
         if let Some(opacity) = override_entry.opacity {
@@ -645,11 +653,21 @@ pub(crate) fn apply_primitive_layer_overrides(
         }
         if let Some(blend_mode) = override_entry.blend_mode {
             layer.blend_mode = match blend_mode {
-                amigo_render_api::LayeredImageBlendMode2dPrimitive::Alpha => LayeredImageBlendMode2d::Alpha,
-                amigo_render_api::LayeredImageBlendMode2dPrimitive::Additive => LayeredImageBlendMode2d::Additive,
-                amigo_render_api::LayeredImageBlendMode2dPrimitive::Screen => LayeredImageBlendMode2d::Screen,
-                amigo_render_api::LayeredImageBlendMode2dPrimitive::Multiply => LayeredImageBlendMode2d::Multiply,
-                amigo_render_api::LayeredImageBlendMode2dPrimitive::Lighten => LayeredImageBlendMode2d::Lighten,
+                amigo_render_api::LayeredImageBlendMode2dPrimitive::Alpha => {
+                    LayeredImageBlendMode2d::Alpha
+                }
+                amigo_render_api::LayeredImageBlendMode2dPrimitive::Additive => {
+                    LayeredImageBlendMode2d::Additive
+                }
+                amigo_render_api::LayeredImageBlendMode2dPrimitive::Screen => {
+                    LayeredImageBlendMode2d::Screen
+                }
+                amigo_render_api::LayeredImageBlendMode2dPrimitive::Multiply => {
+                    LayeredImageBlendMode2d::Multiply
+                }
+                amigo_render_api::LayeredImageBlendMode2dPrimitive::Lighten => {
+                    LayeredImageBlendMode2d::Lighten
+                }
             };
         }
     }
@@ -718,7 +736,7 @@ fn layered_image_layer_render_size(
     {
         return size;
     }
-    let PostFx2d::Blur(blur) = effect else {
+    let Some(blur) = effect.into_blur() else {
         return size;
     };
     let blur = blur.normalized();
@@ -731,12 +749,15 @@ fn post_fx_effect(stack: &amigo_render_api::PostFx2dStack) -> Option<PostFx2d> {
 }
 
 fn cached_image_post_fx_cache_key(effect: &PostFx2d, source_id: &str) -> Option<PostFx2dCacheKey> {
-    match effect {
-        PostFx2d::Blur(blur) => Some(PostFx2dCacheKey::blur(source_id.to_owned(), blur.clone())),
-        PostFx2d::EmbossEdges(emboss) => Some(PostFx2dCacheKey::embossed_edges(
-            source_id.to_owned(),
-            emboss.clone(),
-        )),
+    match effect.kind() {
+        "blur" => effect
+            .clone()
+            .into_blur()
+            .map(|blur| PostFx2dCacheKey::blur(source_id.to_owned(), blur)),
+        "embossed_edges" => effect
+            .clone()
+            .into_emboss_edges()
+            .map(|emboss| PostFx2dCacheKey::embossed_edges(source_id.to_owned(), emboss)),
         _ => None,
     }
 }
@@ -770,7 +791,7 @@ impl WgpuSceneRenderer {
         batches: &mut Vec<TextureBatch>,
         device: &wgpu::Device,
         queue: &wgpu::Queue,
-        assets: &AssetCatalog,
+        assets: &dyn RenderAssetSource,
         viewport: &Viewport,
         font: &amigo_assets::AssetKey,
         content: &str,
@@ -858,8 +879,12 @@ fn layered_image_render_size(
     match fit {
         LayeredImageViewportFit2d::Fixed => fixed_size,
         LayeredImageViewportFit2d::Stretch => viewport_size,
-        LayeredImageViewportFit2d::Contain => scaled_to_viewport(canvas_size, viewport_size, f32::min),
-        LayeredImageViewportFit2d::Cover => scaled_to_viewport(canvas_size, viewport_size, f32::max),
+        LayeredImageViewportFit2d::Contain => {
+            scaled_to_viewport(canvas_size, viewport_size, f32::min)
+        }
+        LayeredImageViewportFit2d::Cover => {
+            scaled_to_viewport(canvas_size, viewport_size, f32::max)
+        }
     }
 }
 

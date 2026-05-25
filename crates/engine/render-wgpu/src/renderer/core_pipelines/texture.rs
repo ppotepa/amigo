@@ -3,12 +3,12 @@ use super::{
     CORE_TEXTURE_MULTIPLY_PIPELINE, CORE_TEXTURE_OPAQUE_PIPELINE, CORE_TEXTURE_SCREEN_PIPELINE,
     WgpuCorePipelineCreateContext, WgpuCorePipelineProvider,
 };
+use crate::renderer::TextureVertex;
 use crate::renderer::pipelines::{
     additive_blend_state, create_color_pipeline, lighten_blend_state, multiply_blend_state,
     screen_blend_state,
 };
 use crate::renderer::shaders::TEXTURE_SHADER;
-use crate::renderer::TextureVertex;
 
 pub(crate) struct TextureAlphaPipelineProvider;
 pub(crate) struct TextureOpaquePipelineProvider;
@@ -17,21 +17,21 @@ pub(crate) struct TextureMultiplyPipelineProvider;
 pub(crate) struct TextureScreenPipelineProvider;
 pub(crate) struct TextureLightenPipelineProvider;
 
-fn texture_pipeline_layout(
-    ctx: &WgpuCorePipelineCreateContext<'_>,
-) -> wgpu::PipelineLayout {
-    ctx.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-        label: Some("amigo-scene-texture-pipeline-layout"),
-        bind_group_layouts: &[Some(ctx.texture_bind_group_layout)],
-        immediate_size: 0,
-    })
+fn texture_pipeline_layout(ctx: &WgpuCorePipelineCreateContext<'_>) -> wgpu::PipelineLayout {
+    ctx.device
+        .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: Some("amigo-render-texture-pipeline-layout"),
+            bind_group_layouts: &[Some(ctx.texture_bind_group_layout)],
+            immediate_size: 0,
+        })
 }
 
 fn texture_shader(ctx: &WgpuCorePipelineCreateContext<'_>) -> wgpu::ShaderModule {
-    ctx.device.create_shader_module(wgpu::ShaderModuleDescriptor {
-        label: Some("amigo-scene-texture-shader"),
-        source: wgpu::ShaderSource::Wgsl(TEXTURE_SHADER.into()),
-    })
+    ctx.device
+        .create_shader_module(wgpu::ShaderModuleDescriptor {
+            label: Some("amigo-render-texture-shader"),
+            source: wgpu::ShaderSource::Wgsl(TEXTURE_SHADER.into()),
+        })
 }
 
 impl WgpuCorePipelineProvider for TextureAlphaPipelineProvider {
@@ -47,7 +47,7 @@ impl WgpuCorePipelineProvider for TextureAlphaPipelineProvider {
             &shader,
             &layout,
             ctx.surface_format,
-            "amigo-scene-texture-alpha-pipeline",
+            "amigo-render-texture-alpha-pipeline",
             wgpu::BlendState::ALPHA_BLENDING,
             &[TextureVertex::layout()],
         )
@@ -67,7 +67,7 @@ impl WgpuCorePipelineProvider for TextureOpaquePipelineProvider {
             &shader,
             &layout,
             ctx.surface_format,
-            "amigo-scene-texture-opaque-pipeline",
+            "amigo-render-texture-opaque-pipeline",
             wgpu::BlendState {
                 color: wgpu::BlendComponent {
                     src_factor: wgpu::BlendFactor::One,
@@ -98,7 +98,7 @@ impl WgpuCorePipelineProvider for TextureAdditivePipelineProvider {
             &shader,
             &layout,
             ctx.surface_format,
-            "amigo-scene-texture-additive-pipeline",
+            "amigo-render-texture-additive-pipeline",
             additive_blend_state(),
             &[TextureVertex::layout()],
         )
@@ -118,7 +118,7 @@ impl WgpuCorePipelineProvider for TextureMultiplyPipelineProvider {
             &shader,
             &layout,
             ctx.surface_format,
-            "amigo-scene-texture-multiply-pipeline",
+            "amigo-render-texture-multiply-pipeline",
             multiply_blend_state(),
             &[TextureVertex::layout()],
         )
@@ -138,7 +138,7 @@ impl WgpuCorePipelineProvider for TextureScreenPipelineProvider {
             &shader,
             &layout,
             ctx.surface_format,
-            "amigo-scene-texture-screen-pipeline",
+            "amigo-render-texture-screen-pipeline",
             screen_blend_state(),
             &[TextureVertex::layout()],
         )
@@ -158,7 +158,7 @@ impl WgpuCorePipelineProvider for TextureLightenPipelineProvider {
             &shader,
             &layout,
             ctx.surface_format,
-            "amigo-scene-texture-lighten-pipeline",
+            "amigo-render-texture-lighten-pipeline",
             lighten_blend_state(),
             &[TextureVertex::layout()],
         )

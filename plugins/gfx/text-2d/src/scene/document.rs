@@ -9,6 +9,7 @@ use amigo_scene::{
     SceneComponentSchemaProvider, SceneDocumentError, SceneDocumentResult, SceneVec2Document,
     Text2dStyleDocument,
 };
+use amigo_scene::SceneComponentDocument as ComponentDocument;
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct Text2dDocument {
@@ -32,7 +33,7 @@ pub struct Text2dDocument {
 impl Text2dDocument {
     pub fn from_component(component: &SceneComponentDocument) -> Option<Self> {
         match component {
-            SceneComponentDocument::Text2d {
+            ComponentDocument::Text2d {
                 render_layer,
                 content,
                 font,
@@ -53,6 +54,12 @@ impl Text2dDocument {
                 z_index: *z_index,
                 material: *material,
             }),
+            ComponentDocument::Plugin {
+                component_type,
+                payload,
+            } if component_type == "amigo.gfx.text-2d.Text2D" || component_type == "Text2D" => {
+                parse_text_2d_plugin_payload(payload).ok()
+            }
             _ => None,
         }
     }

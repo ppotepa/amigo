@@ -1,6 +1,6 @@
-use amigo_render_api::DirtyBloom2d;
 use amigo_core::AmigoResult;
 use amigo_math::{ColorRgba, Vec2};
+use amigo_render_api::DirtyBloom2d;
 use std::time::{SystemTime, UNIX_EPOCH};
 use wgpu::util::DeviceExt;
 
@@ -133,9 +133,9 @@ pub(crate) fn execute_dirty_bloom(
             timestamp_writes: None,
             multiview_mask: None,
         });
-        pass.set_pipeline(renderer.post_fx_pipeline(
-            crate::renderer::service::POST_FX_EXECUTOR_DIRTY_BLOOM,
-        ));
+        pass.set_pipeline(
+            renderer.post_fx_pipeline(crate::renderer::service::POST_FX_EXECUTOR_DIRTY_BLOOM),
+        );
         pass.set_bind_group(0, &texture_bind_group, &[]);
         pass.set_bind_group(1, &uniform_bind_group, &[]);
         pass.set_vertex_buffer(0, vertex_buffer.slice(..));
@@ -226,9 +226,9 @@ pub(crate) fn execute_luma_extract_debug(
             timestamp_writes: None,
             multiview_mask: None,
         });
-        pass.set_pipeline(renderer.post_fx_pipeline(
-            crate::renderer::service::POST_FX_AUX_HIGHLIGHT_EXTRACT,
-        ));
+        pass.set_pipeline(
+            renderer.post_fx_pipeline(crate::renderer::service::POST_FX_AUX_HIGHLIGHT_EXTRACT),
+        );
         pass.set_bind_group(0, &texture_bind_group, &[]);
         pass.set_bind_group(1, &uniform_bind_group, &[]);
         pass.set_vertex_buffer(0, vertex_buffer.slice(..));

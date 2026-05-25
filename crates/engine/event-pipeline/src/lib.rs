@@ -5,7 +5,7 @@ mod runtime_capabilities;
 mod reset;
 mod scene_command;
 
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 
 use amigo_core::AmigoResult;
 use amigo_runtime::{RuntimePlugin, ServiceRegistry};
@@ -87,11 +87,11 @@ impl RuntimePlugin for EventPipelinePlugin {
     fn register(&self, registry: &mut ServiceRegistry) -> AmigoResult<()> {
         registry.register(EventPipelineService::default())?;
         amigo_scene::register_scene_reset_handler(registry, EventPipelineSceneResetHandler)?;
-        let scene_handlers =
-            registry.required::<amigo_scene::RuntimeSceneCommandHandlerRegistry>()?;
-        amigo_scene::register_runtime_scene_command_handler(
-            scene_handlers.as_ref(),
-            crate::scene_command::EventPipelineSceneCommandHandler,
+        let plugin_scene_handlers =
+            registry.required::<amigo_scene::ScenePluginCommandHandlerRegistry>()?;
+        plugin_scene_handlers.register(
+            amigo_scene::EVENT_PIPELINE_PLUGIN_SCENE_COMMAND_TYPE,
+            Arc::new(crate::scene_command::EventPipelineSceneCommandHandler),
         );
         Ok(())
     }

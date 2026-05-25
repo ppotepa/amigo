@@ -4,6 +4,7 @@ use amigo_math::Vec2;
 use amigo_scene::{
     SceneCommand, SceneEntityId, SceneEvent, SceneEventQueue, SceneService,
     TileMap2dSceneCommand as SceneTileMap2dSceneCommand, TileMapMarker2dSceneCommand,
+    tilemap_2d_plugin_scene_command, tilemap_marker_2d_plugin_scene_command,
 };
 
 use crate::{
@@ -96,8 +97,8 @@ fn queues_tilemap_scene_command_and_static_colliders() {
 
 #[test]
 fn can_handle_tilemap_scene_command_returns_true_for_tilemap_command() {
-    let command = SceneCommand::QueueTileMap2d {
-        command: SceneTileMap2dSceneCommand {
+    let command = SceneCommand::plugin(tilemap_2d_plugin_scene_command(
+        SceneTileMap2dSceneCommand {
             source_mod: "playground-2d".to_owned(),
             entity_name: "arena".to_owned(),
             tileset: AssetKey::new("playground-2d/tilesets/basic"),
@@ -108,7 +109,7 @@ fn can_handle_tilemap_scene_command_returns_true_for_tilemap_command() {
             render_layer: "world".to_owned(),
             z_index: 0.0,
         },
-    };
+    ));
 
     assert!(crate::can_handle_tilemap_scene_command(&command));
 }
@@ -122,8 +123,8 @@ fn handle_tilemap_scene_command_queues_tilemap_and_publishes_event() {
     let physics_scene_service = Physics2dSceneService::default();
     let scene_event_queue = SceneEventQueue::default();
     let asset_catalog = AssetCatalog::default();
-    let command = SceneCommand::QueueTileMap2d {
-        command: SceneTileMap2dSceneCommand {
+    let command = SceneCommand::plugin(tilemap_2d_plugin_scene_command(
+        SceneTileMap2dSceneCommand {
             source_mod: "playground-2d".to_owned(),
             entity_name: "arena".to_owned(),
             tileset: AssetKey::new("playground-2d/tilesets/basic"),
@@ -134,7 +135,7 @@ fn handle_tilemap_scene_command_queues_tilemap_and_publishes_event() {
             render_layer: "world".to_owned(),
             z_index: 0.0,
         },
-    };
+    ));
 
     let outcome = crate::handle_tilemap_scene_command(
         crate::TileMapSceneCommandContext {
@@ -195,8 +196,8 @@ fn handle_tilemap_marker_scene_command_anchors_entity_and_publishes_event() {
         z_index: 0.0,
     });
 
-    let command = SceneCommand::QueueTileMapMarker2d {
-        command: TileMapMarker2dSceneCommand::new(
+    let command = SceneCommand::plugin(tilemap_marker_2d_plugin_scene_command(
+        TileMapMarker2dSceneCommand::new(
             "playground-2d",
             "player",
             Some("arena".to_owned()),
@@ -204,7 +205,7 @@ fn handle_tilemap_marker_scene_command_anchors_entity_and_publishes_event() {
             0,
             Vec2::new(1.0, 2.0),
         ),
-    };
+    ));
 
     assert!(crate::can_handle_tilemap_marker_scene_command(&command));
 
@@ -261,8 +262,8 @@ fn handle_tilemap_marker_scene_command_reports_missing_tilemap() {
             tilemap_scene_service: &tilemap_scene_service,
             scene_event_queue: &scene_event_queue,
         },
-        SceneCommand::QueueTileMapMarker2d {
-            command: TileMapMarker2dSceneCommand::new(
+        SceneCommand::plugin(tilemap_marker_2d_plugin_scene_command(
+            TileMapMarker2dSceneCommand::new(
                 "playground-2d",
                 "player",
                 Some("arena".to_owned()),
@@ -270,7 +271,7 @@ fn handle_tilemap_marker_scene_command_reports_missing_tilemap() {
                 0,
                 Vec2::ZERO,
             ),
-        },
+        )),
     )
     .expect("missing tilemap should be reported as non-fatal outcome");
 

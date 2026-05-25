@@ -210,7 +210,7 @@ impl RuntimePlugin for Text2dPlugin {
             self::scene_command::Text2dSceneCommandHandler,
         );
         if let Some(plugin_scene_handlers) =
-            registry.resolve::<amigo_scene::PluginSceneCommandHandlerRegistry>()
+            registry.resolve::<amigo_scene::ScenePluginCommandHandlerRegistry>()
         {
             plugin_scene_handlers.register(
                 "amigo.gfx.text-2d.scene-command.Text2D",

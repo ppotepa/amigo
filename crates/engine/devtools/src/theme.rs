@@ -5,8 +5,8 @@ use crate::DebugOverlayLayoutMode;
 
 #[derive(Debug, Clone, Copy)]
 pub struct DebugOverlayViewportTheme {
-    pub fallback_width: f32,
-    pub fallback_height: f32,
+    pub default_width: f32,
+    pub default_height: f32,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -52,8 +52,8 @@ impl Default for DebugOverlayTheme {
     fn default() -> Self {
         Self {
             viewport: DebugOverlayViewportTheme {
-                fallback_width: 1280.0,
-                fallback_height: 720.0,
+                default_width: 1280.0,
+                default_height: 720.0,
             },
             compact: DebugOverlayLayoutTheme {
                 margin: 12.0,

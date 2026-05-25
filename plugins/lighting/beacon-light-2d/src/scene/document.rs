@@ -9,6 +9,7 @@ use amigo_scene::{
     SceneComponentDocument, SceneComponentPayload, SceneComponentSchemaProvider, SceneDocumentError,
     SceneDocumentResult, SceneVec2Document,
 };
+use amigo_scene::SceneComponentDocument as ComponentDocument;
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct BeaconLight2dDocument {
@@ -74,7 +75,7 @@ pub struct BeaconLight2dDocument {
 impl BeaconLight2dDocument {
     pub fn from_component(component: &SceneComponentDocument) -> Option<Self> {
         match component {
-            SceneComponentDocument::BeaconLight2d {
+            ComponentDocument::BeaconLight2d {
                 id,
                 render_layer,
                 color,

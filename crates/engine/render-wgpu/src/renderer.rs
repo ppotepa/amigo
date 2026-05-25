@@ -1,29 +1,26 @@
 use std::cmp::Ordering;
-use std::fs;
 pub(crate) use std::collections::{BTreeMap, BTreeSet};
+use std::fs;
 pub(crate) use std::path::PathBuf;
 pub(crate) use std::sync::Arc;
 pub(crate) use std::time::SystemTime;
 
-use amigo_2d_composition::{LightRoute2dCommand, RenderLayer2dCommand};
-use amigo_3d_material::MaterialDrawCommand;
-use amigo_3d_mesh::MeshDrawCommand;
-use amigo_3d_text::Text3dDrawCommand;
-use amigo_assets::{AssetCatalog, PreparedAsset, PreparedAssetKind};
+use amigo_assets::{PreparedAsset, PreparedAssetKind};
 use amigo_core::AmigoResult;
 pub(crate) use amigo_math::ColorRgba;
 use amigo_math::{Transform2, Transform3, Vec2, Vec3};
-use amigo_render_api::{
-    LayeredImageAssetSource, PostFx2d, PostFx2dCacheKey,
-};
-use amigo_scene::SceneService;
+use amigo_render_api::MaterialDrawCommand;
+use amigo_render_api::MeshDrawCommand;
+use amigo_render_api::Text3dDrawCommand;
+use amigo_render_api::{LightRoute2dCommand, RenderLayer2dCommand};
+use amigo_render_api::{PostFx2d, PostFx2dCacheKey};
 use image::{GenericImageView, RgbaImage};
 use wgpu::util::DeviceExt;
 
+use crate::Renderable2dItem;
 use crate::ui_overlay::{
     UiDrawPrimitive, UiOverlayDocument, UiViewportSize, build_ui_overlay_primitives,
 };
-use crate::Renderable2dItem;
 use crate::{WgpuOffscreenTarget, WgpuSurfaceState};
 
 impl WgpuSceneRenderer {
@@ -76,19 +73,19 @@ use world_2d::*;
 use world_3d::*;
 
 pub(crate) use cached_resources::*;
-pub(crate) use particles::color_batch_vertices;
+pub(crate) use math::sprite_color;
 pub(crate) use particles::append_particle_light_primitive_vertices;
 pub(crate) use particles::append_particle_primitive_vertices;
+pub(crate) use particles::color_batch_vertices;
 pub(crate) use particles::particle_blend_mode;
 pub(crate) use particles::particle_render_lights_from_renderables;
-pub(crate) use math::sprite_color;
 pub(crate) use render_types::*;
-pub(crate) use service::{collect_material_candidate_2d, WgpuMaterialCandidate2d};
-pub(crate) use world_2d::append_textured_quad_debug_vertices;
-pub(crate) use world_2d::append_tilemap_primitive_fallback_vertices;
-pub(crate) use world_2d::append_beacon_vfx_primitive_vertices;
-pub(crate) use world_2d::append_vector_primitive_vertices;
+pub(crate) use service::{WgpuMaterialCandidate2d, collect_material_candidate_2d};
 pub(crate) use viewport::*;
+pub(crate) use world_2d::append_beacon_vfx_primitive_vertices;
+pub(crate) use world_2d::append_textured_quad_debug_vertices;
+pub(crate) use world_2d::append_tilemap_primitive_color_vertices;
+pub(crate) use world_2d::append_vector_primitive_vertices;
 
 pub use service::{
     WgpuEmergencyOverlayLevel, WgpuEmergencyOverlayLine, WgpuFrameRenderRequest,

@@ -4,8 +4,8 @@ use std::path::{Component, Path, PathBuf};
 use amigo_assets::{AssetCatalog, AssetKey, PreparedAsset, PreparedAssetKind};
 
 use crate::{
-    Font2dAsset, Font2dFormat, Font2dMetrics, Font2dSource, FontFallbackPolicy, FontGlyphPreset,
-    FontGlyphSet,
+    Font2dAsset, Font2dFormat, Font2dMetrics, Font2dSource, FontGlyphPreset, FontGlyphSet,
+    FontMissingGlyphPolicy,
 };
 
 pub fn font2d_asset_from_prepared(prepared: &PreparedAsset) -> Option<Font2dAsset> {
@@ -56,10 +56,10 @@ pub fn font2d_asset_from_prepared(prepared: &PreparedAsset) -> Option<Font2dAsse
             .max(1),
     };
 
-    let fallback = FontFallbackPolicy {
+    let missing_glyph_policy = FontMissingGlyphPolicy {
         missing_glyph: prepared
             .metadata
-            .get("fallback.missing_glyph")
+            .get("missing_glyph.policy")
             .or_else(|| prepared.metadata.get("missing_glyph"))
             .and_then(|value| value.chars().next())
             .unwrap_or('?'),
@@ -72,7 +72,7 @@ pub fn font2d_asset_from_prepared(prepared: &PreparedAsset) -> Option<Font2dAsse
         source,
         glyphs,
         metrics,
-        fallback,
+        missing_glyph_policy,
     })
 }
 

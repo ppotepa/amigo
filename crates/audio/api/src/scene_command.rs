@@ -16,7 +16,11 @@ pub struct AudioSceneCommandOutcome {
 }
 
 pub fn can_handle_audio_scene_command(command: &SceneCommand) -> bool {
-    matches!(command, SceneCommand::QueueAudioCue { .. })
+    matches!(
+        command,
+        SceneCommand::Plugin { command }
+            if command.command_type == amigo_scene::AUDIO_CUE_PLUGIN_SCENE_COMMAND_TYPE
+    )
 }
 
 pub fn handle_audio_scene_command(
@@ -24,7 +28,17 @@ pub fn handle_audio_scene_command(
     command: SceneCommand,
 ) -> AmigoResult<AudioSceneCommandOutcome> {
     match command {
-        SceneCommand::QueueAudioCue { command } => {
+        SceneCommand::Plugin { command }
+            if command.command_type == amigo_scene::AUDIO_CUE_PLUGIN_SCENE_COMMAND_TYPE =>
+        {
+            let command = command
+                .payload_as::<amigo_scene::AudioCueSceneCommand>()
+                .ok_or_else(|| {
+                    AmigoError::Message(
+                        "audio plugin scene command payload type mismatch".to_owned(),
+                    )
+                })?
+                .clone();
             ctx.audio_scene_service.register_cue(AudioCue::new(
                 command.name.clone(),
                 AudioClipKey::new(command.clip.as_str().to_owned()),

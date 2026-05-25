@@ -3,8 +3,8 @@ use amigo_material_api::{
     Material2d, MaterialCandidate2dCommon, MaterialCandidateDecision2d, MaterialCoverageKind2d,
 };
 use amigo_render_api::{
-    render_contribution_roles as roles, RenderContributionSet, RenderMaterialBinding2d,
-    RenderPrimitive2d, RenderPrimitive2dKind,
+    RenderContributionSet, RenderMaterialBinding2d, RenderPrimitive2d, RenderPrimitive2dKind,
+    render_contribution_roles as roles,
 };
 
 #[allow(dead_code)]
@@ -63,13 +63,15 @@ pub(crate) fn collect_material_candidate_2d(
                 "material_pipeline_out_of_scope_v1",
             ))
         }
-        RenderPrimitive2dKind::ParticleBatch => decisions.push(MaterialCandidateDecision2d::skipped(
-            item.owner_entity(),
-            item.component_kind(),
-            item.render_layer(),
-            MaterialCoverageKind2d::ParticleCoverage,
-            "particle_material_not_mapped_to_material2d",
-        )),
+        RenderPrimitive2dKind::ParticleBatch => {
+            decisions.push(MaterialCandidateDecision2d::skipped(
+                item.owner_entity(),
+                item.component_kind(),
+                item.render_layer(),
+                MaterialCoverageKind2d::ParticleCoverage,
+                "particle_material_not_mapped_to_material2d",
+            ))
+        }
         _ => {}
     }
 }
@@ -176,10 +178,10 @@ mod tests {
     use amigo_render_api::{
         GlyphRun2dBlendMode, GlyphRun2dPrimitive, LayeredImage2dPrimitive,
         LayeredImageViewportFit2dPrimitive, Particle2dPrimitive, ParticleBlendMode2dPrimitive,
-        ParticleLineAnchor2dPrimitive, ParticleShape2dPrimitive, RenderPrimitive2d,
-        RenderSpace2d, Renderable2dCommon, Renderable2dItem, Renderable2dKind,
-        TexturedQuad2dPrimitive, VectorShape2dKindPrimitive, VectorShape2dPrimitive,
-        VectorShape2dStylePrimitive, VectorShape2dViewportFit,
+        ParticleLineAnchor2dPrimitive, ParticleShape2dPrimitive, RenderPrimitive2d, RenderSpace2d,
+        Renderable2dCommon, Renderable2dItem, Renderable2dKind, TexturedQuad2dPrimitive,
+        VectorShape2dKindPrimitive, VectorShape2dPrimitive, VectorShape2dStylePrimitive,
+        VectorShape2dViewportFit,
     };
 
     #[test]
@@ -198,7 +200,10 @@ mod tests {
     fn sprite_material_candidate_uses_same_role_gating_as_text() {
         let mut item = sprite_item();
         if let RenderPrimitive2d::TexturedQuad(primitive) = &mut item.primitive {
-            primitive.material.contributions.set(roles::OPTICS_REFRACT, true);
+            primitive
+                .material
+                .contributions
+                .set(roles::OPTICS_REFRACT, true);
         }
         let mut out = Vec::new();
         let mut decisions = Vec::new();
@@ -213,7 +218,10 @@ mod tests {
     fn vector_material_candidate_uses_same_role_gating_as_text() {
         let mut item = vector_item();
         if let RenderPrimitive2d::VectorMesh(primitive) = &mut item.primitive {
-            primitive.material.contributions.set(roles::MATERIAL_MASK, true);
+            primitive
+                .material
+                .contributions
+                .set(roles::MATERIAL_MASK, true);
         }
         let mut out = Vec::new();
         let mut decisions = Vec::new();
@@ -255,7 +263,7 @@ mod tests {
     #[test]
     fn particle_material_path_reports_not_mapped_to_material2d() {
         let item = Renderable2dItem::new(
-            common("rain", "ParticleEmitter2D", Renderable2dKind::Particle),
+            common("rain", "component", Renderable2dKind::Particle),
             RenderPrimitive2d::ParticleBatch(Particle2dPrimitive {
                 emitter_entity_name: "rain".to_owned(),
                 render_layer: "default".to_owned(),
@@ -269,8 +277,7 @@ mod tests {
                 blend_mode: ParticleBlendMode2dPrimitive::Alpha,
                 motion_stretch: None,
                 material: amigo_render_api::ParticleMaterial2dPrimitive {
-                    lighting_mode:
-                        amigo_render_api::ParticleMaterialLightingMode2dPrimitive::Unlit,
+                    lighting_mode: amigo_render_api::ParticleMaterialLightingMode2dPrimitive::Unlit,
                     receives_light: false,
                     light_response: 0.0,
                     light_receiver: None,
@@ -295,7 +302,7 @@ mod tests {
 
     fn text_item() -> Renderable2dItem {
         Renderable2dItem::new(
-            common("title", "Text2D", Renderable2dKind::Text),
+            common("title", "component", Renderable2dKind::Text),
             RenderPrimitive2d::GlyphRun(GlyphRun2dPrimitive {
                 font: AssetKey::new("test/font"),
                 text: "ROTTEN CLUB".to_owned(),
@@ -318,7 +325,7 @@ mod tests {
 
     fn sprite_item() -> Renderable2dItem {
         Renderable2dItem::new(
-            common("poster", "Sprite2D", Renderable2dKind::Sprite),
+            common("poster", "component", Renderable2dKind::Sprite),
             RenderPrimitive2d::TexturedQuad(TexturedQuad2dPrimitive {
                 texture: AssetKey::new("test/poster"),
                 size: Vec2::new(32.0, 32.0),
@@ -337,7 +344,7 @@ mod tests {
 
     fn vector_item() -> Renderable2dItem {
         Renderable2dItem::new(
-            common("glass", "VectorShape2D", Renderable2dKind::Vector),
+            common("glass", "component", Renderable2dKind::Vector),
             RenderPrimitive2d::VectorMesh(VectorShape2dPrimitive {
                 shape: VectorShape2dKindPrimitive::Circle {
                     radius: 10.0,
@@ -346,7 +353,7 @@ mod tests {
                 style: VectorShape2dStylePrimitive {
                     stroke_color: ColorRgba::WHITE,
                     stroke_width: 0.0,
-                fill_color: Some(ColorRgba::WHITE),
+                    fill_color: Some(ColorRgba::WHITE),
                 },
                 transform: Transform2::default(),
                 viewport_fit: VectorShape2dViewportFit::Fixed,

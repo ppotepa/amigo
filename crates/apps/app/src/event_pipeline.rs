@@ -1,123 +1,36 @@
-use amigo_assets::AssetKey;
 use amigo_core::AmigoResult;
 use amigo_runtime::Runtime;
-use amigo_runtime_bundles::{
-    AudioClipKey, AudioCommand, AudioCommandQueue, AudioPlaybackMode, AudioSceneService,
-    EventPipelineService, EventPipelineStep, Particle2dSceneService, UiStateService,
-};
-use amigo_scene::{SceneCommand, SceneCommandQueue, SceneKey};
-use amigo_scripting_api::{ScriptEvent, ScriptEventQueue};
-use amigo_state::SceneStateService;
+use amigo_scripting_api::ScriptEvent;
 
-use crate::LaunchSelection;
 use crate::runtime_context::RuntimeContext;
+use crate::LaunchSelection;
 
 pub(crate) fn run_event_pipelines_for_event(
     runtime: &Runtime,
     event: &ScriptEvent,
 ) -> AmigoResult<()> {
     let ctx = RuntimeContext::new(runtime);
-    let pipelines = ctx.required::<EventPipelineService>()?;
-    let state = ctx.required::<SceneStateService>()?;
-    let ui = ctx.optional::<UiStateService>();
-    let particles = ctx.optional::<Particle2dSceneService>();
-    let audio_commands = ctx.optional::<AudioCommandQueue>();
-    let scene_commands = ctx.optional::<SceneCommandQueue>();
-    let script_events = ctx.optional::<ScriptEventQueue>();
-    let script_runtime = ctx.optional::<amigo_scripting_api::ScriptRuntimeService>();
     let launch_selection = ctx.optional::<LaunchSelection>();
-    let asset_catalog = ctx.optional::<amigo_assets::AssetCatalog>();
-    let audio_scene = ctx.optional::<AudioSceneService>();
 
-    for pipeline in pipelines.pipelines_for_topic(&event.topic) {
-        for step in pipeline.steps {
-            match step {
-                EventPipelineStep::PlayAudio { clip } => {
-                    if let Some(audio_commands) = audio_commands.as_ref() {
-                        let asset_key = launch_selection
-                            .as_ref()
-                            .map(|selection| {
-                                crate::app_helpers::resolve_mod_audio_asset_key(selection, &clip)
-                            })
-                            .unwrap_or_else(|| AssetKey::new(clip.clone()));
-                        if let (Some(asset_catalog), Some(audio_scene)) =
-                            (asset_catalog.as_ref(), audio_scene.as_ref())
-                        {
-                            crate::app_helpers::register_audio_clip_reference(
-                                asset_catalog.as_ref(),
-                                audio_scene.as_ref(),
-                                &asset_key,
-                                AudioPlaybackMode::OneShot,
-                            );
-                        }
-                        audio_commands.push(AudioCommand::PlayOnce {
-                            clip: AudioClipKey::new(asset_key.as_str()),
-                        });
-                    }
-                }
-                EventPipelineStep::SetState { key, value } => {
-                    set_state_from_string(state.as_ref(), key, value);
-                }
-                EventPipelineStep::IncrementState { key, by } => {
-                    let current = state.get_float(&key).unwrap_or(0.0);
-                    state.set_float(key, current + by);
-                }
-                EventPipelineStep::ShowUi { path } => {
-                    if let Some(ui) = ui.as_ref() {
-                        ui.show(path);
-                    }
-                }
-                EventPipelineStep::HideUi { path } => {
-                    if let Some(ui) = ui.as_ref() {
-                        ui.hide(path);
-                    }
-                }
-                EventPipelineStep::BurstParticles { emitter, count } => {
-                    if let Some(particles) = particles.as_ref() {
-                        particles.burst(&emitter, count);
-                    }
-                }
-                EventPipelineStep::TransitionScene { scene } => {
-                    if let Some(scene_commands) = scene_commands.as_ref() {
-                        scene_commands.submit(SceneCommand::SelectScene {
-                            scene: SceneKey::new(scene),
-                        });
-                    }
-                }
-                EventPipelineStep::EmitEvent { topic, payload } => {
-                    if let Some(script_events) = script_events.as_ref() {
-                        script_events.publish(ScriptEvent::new(topic, payload));
-                    }
-                }
-                EventPipelineStep::Script { function } => {
-                    if let Some(script_runtime) = script_runtime.as_ref() {
-                        for script in crate::scripting_runtime::current_executed_scripts(runtime)? {
-                            script_runtime.call_event_function(
-                                &script.source_name,
-                                &function,
-                                &event.topic,
-                                &event.payload,
-                            )?;
-                        }
-                    }
-                }
+    amigo_runtime_bundles::run_event_pipelines_for_event(
+        runtime,
+        event,
+        |clip| {
+            launch_selection
+                .as_ref()
+                .map(|selection| crate::app_helpers::resolve_mod_audio_asset_key(selection, clip))
+                .unwrap_or_else(|| amigo_assets::AssetKey::new(clip.to_owned()))
+        },
+        |script_runtime, function, event| {
+            for script in crate::scripting_runtime::current_executed_scripts(runtime)? {
+                script_runtime.call_event_function(
+                    &script.source_name,
+                    function,
+                    &event.topic,
+                    &event.payload,
+                )?;
             }
-        }
-    }
-
-    Ok(())
-}
-
-fn set_state_from_string(state: &SceneStateService, key: String, value: String) {
-    if value.eq_ignore_ascii_case("true") {
-        state.set_bool(key, true);
-    } else if value.eq_ignore_ascii_case("false") {
-        state.set_bool(key, false);
-    } else if let Ok(value) = value.parse::<i64>() {
-        state.set_int(key, value);
-    } else if let Ok(value) = value.parse::<f64>() {
-        state.set_float(key, value);
-    } else {
-        state.set_string(key, value);
-    };
+            Ok(())
+        },
+    )
 }

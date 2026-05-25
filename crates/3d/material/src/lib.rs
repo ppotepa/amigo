@@ -3,37 +3,22 @@
 
 use std::sync::Mutex;
 
-use amigo_assets::AssetKey;
-use amigo_capabilities::{DEFAULT_CAPABILITY_VERSION, register_domain_plugin};
-use amigo_math::ColorRgba;
+use amigo_capabilities::{register_domain_plugin, DEFAULT_CAPABILITY_VERSION};
+pub use amigo_render_api::{Material3d, MaterialDrawCommand};
 use amigo_runtime::{RuntimePlugin, ServiceRegistry};
 use amigo_scene::{Material3dSceneCommand, SceneEntityId, SceneService};
 mod editor_capability;
-mod reset;
 mod render_extraction;
+mod reset;
 mod runtime_capabilities;
 mod scene_command;
 mod script_command;
 pub use editor_capability::*;
-pub use reset::*;
 pub use render_extraction::*;
+pub use reset::*;
 pub use runtime_capabilities::*;
 pub use scene_command::*;
 pub use script_command::*;
-
-#[derive(Debug, Clone)]
-pub struct Material3d {
-    pub label: String,
-    pub albedo: ColorRgba,
-    pub source: Option<AssetKey>,
-}
-
-#[derive(Debug, Clone)]
-pub struct MaterialDrawCommand {
-    pub entity_id: SceneEntityId,
-    pub entity_name: String,
-    pub material: Material3d,
-}
 
 #[derive(Debug, Default)]
 pub struct MaterialSceneService {
@@ -100,11 +85,11 @@ impl RuntimePlugin for MaterialPlugin {
             &[],
             DEFAULT_CAPABILITY_VERSION,
         )?;
-        let scene_handlers =
-            registry.required::<amigo_scene::RuntimeSceneCommandHandlerRegistry>()?;
-        amigo_scene::register_runtime_scene_command_handler(
-            scene_handlers.as_ref(),
-            crate::scene_command::Material3dSceneCommandHandler,
+        let plugin_scene_handlers =
+            registry.required::<amigo_scene::ScenePluginCommandHandlerRegistry>()?;
+        plugin_scene_handlers.register(
+            amigo_scene::MATERIAL_3D_PLUGIN_SCENE_COMMAND_TYPE,
+            std::sync::Arc::new(crate::scene_command::Material3dSceneCommandHandler),
         );
         let script_handlers =
             registry.required::<amigo_scripting_api::RuntimeScriptCommandHandlerRegistry>()?;
@@ -123,7 +108,7 @@ pub fn queue_material_scene_command(
 ) -> SceneEntityId {
     let entity = scene_service.find_or_spawn_named_entity(command.entity_name.clone());
     material_scene_service.queue(MaterialDrawCommand {
-        entity_id: entity,
+        entity_id: entity.raw(),
         entity_name: command.entity_name.clone(),
         material: Material3d {
             label: command.label.clone(),
@@ -137,20 +122,20 @@ pub fn queue_material_scene_command(
 #[cfg(test)]
 mod tests {
     use super::{
-        Material3d, Material3dEditorCapability, MaterialDrawCommand, MaterialSceneService,
-        queue_material_scene_command,
+        queue_material_scene_command, Material3d, Material3dEditorCapability, MaterialDrawCommand,
+        MaterialSceneService,
     };
     use amigo_assets::AssetKey;
     use amigo_editor_api::EditorCapability;
     use amigo_math::ColorRgba;
-    use amigo_scene::{Material3dSceneCommand, SceneEntityId, SceneService};
+    use amigo_scene::{Material3dSceneCommand, SceneService};
 
     #[test]
     fn stores_material_draw_commands() {
         let service = MaterialSceneService::default();
 
         service.queue(MaterialDrawCommand {
-            entity_id: SceneEntityId::new(13),
+            entity_id: 13,
             entity_name: "playground-3d-probe".to_owned(),
             material: Material3d {
                 label: "debug-surface".to_owned(),

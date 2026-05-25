@@ -51,12 +51,11 @@ pub struct SpriteSceneCommandOutcome {
 }
 
 pub fn can_handle_sprite_scene_command(command: &SceneCommand) -> bool {
-    matches!(command, SceneCommand::QueueSprite2d { .. })
-        || matches!(
-            command,
-            SceneCommand::Plugin { command }
-                if command.command_type == "amigo.gfx.sprite-2d.scene-command.Sprite2D"
-        )
+    matches!(
+        command,
+        SceneCommand::Plugin { command }
+            if command.command_type == "amigo.gfx.sprite-2d.scene-command.Sprite2D"
+    )
 }
 
 pub fn handle_sprite_scene_command(
@@ -64,27 +63,6 @@ pub fn handle_sprite_scene_command(
     command: SceneCommand,
 ) -> AmigoResult<SpriteSceneCommandOutcome> {
     match command {
-        SceneCommand::QueueSprite2d { command } => {
-            let resolved_sheet = resolve_sprite_sheet_for_command(ctx.asset_catalog, &command);
-            let entity = queue_sprite_scene_command(
-                ctx.scene_service,
-                ctx.sprite_scene_service,
-                &command,
-                resolved_sheet,
-            );
-
-            ctx.scene_event_queue.publish(SceneEvent::SpriteQueued {
-                entity_id: entity.raw(),
-                entity_name: command.entity_name.clone(),
-                texture: command.texture.clone(),
-            });
-
-            Ok(SpriteSceneCommandOutcome {
-                entity_name: command.entity_name,
-                source_mod: command.source_mod,
-                texture: command.texture,
-            })
-        }
         SceneCommand::Plugin { command } => {
             let Some(command) = command.payload_as::<Sprite2dSceneCommand>().cloned() else {
                 return Err(AmigoError::Message(

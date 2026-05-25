@@ -12,13 +12,11 @@ mod renderer;
 /// Immediate overlay model, layout, and drawing primitives for tools.
 mod ui_overlay;
 
+pub use amigo_render_api::{RenderSpace2d, Renderable2dItem};
 pub use backend::WgpuRenderBackend;
 pub use backend::WgpuRenderPlugin;
 pub use backend::{WgpuHeadlessContext, WgpuOffscreenTarget, WgpuSurfaceState};
-pub use amigo_render_api::{RenderSpace2d, Renderable2dItem};
-pub use frame_packet::{
-    WgpuRenderFramePacket, WgpuVisualSourceFlags2d, supported_renderable_2d_component_kinds,
-};
+pub use frame_packet::{WgpuRenderFramePacket, WgpuVisualSourceFlags2d};
 pub use plugin_pass::*;
 pub(crate) use renderable_adapter::*;
 pub(crate) use renderable_adapters::*;

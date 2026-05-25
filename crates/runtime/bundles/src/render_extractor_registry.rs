@@ -91,7 +91,8 @@ mod tests {
             .with_service(WgpuRenderExtractorBridgeRegistry::default())
             .expect("should register bridge registry")
             .build();
-        let baseline_len = default_wgpu_render_extractor_registry_for_runtime(&baseline_runtime).len();
+        let baseline_len =
+            default_wgpu_render_extractor_registry_for_runtime(&baseline_runtime).len();
 
         let ids = RuntimeRenderExtractorIdRegistry::default();
         ids.register("test.extractor");

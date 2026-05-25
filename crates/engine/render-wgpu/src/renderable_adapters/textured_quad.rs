@@ -1,8 +1,8 @@
-use crate::{
-    WgpuRenderable2dAdapter, WgpuRenderable2dAdapterContext,
+use crate::renderer::{
+    append_textured_quad_debug_vertices, collect_material_candidate_2d, sprite_color,
 };
+use crate::{WgpuRenderable2dAdapter, WgpuRenderable2dAdapterContext};
 use amigo_render_api::{RenderPrimitive2d, RenderPrimitive2dKind};
-use crate::renderer::{append_textured_quad_debug_vertices, collect_material_candidate_2d, sprite_color};
 
 pub struct TexturedQuad2dRenderableAdapter;
 
@@ -31,7 +31,9 @@ impl WgpuRenderable2dAdapter for TexturedQuad2dRenderableAdapter {
         if !appended {
             let vertices = crate::renderer::color_batch_vertices(
                 ctx.color_batches,
-                crate::renderer::particle_blend_mode(amigo_render_api::ParticleBlendMode2dPrimitive::Alpha),
+                crate::renderer::particle_blend_mode(
+                    amigo_render_api::ParticleBlendMode2dPrimitive::Alpha,
+                ),
             );
             append_textured_quad_debug_vertices(
                 vertices,

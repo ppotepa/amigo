@@ -133,14 +133,7 @@ pub(super) fn execute_post_fx_graph_node(
     }
 
     if let Some(scoped_target) = ScopedPostFxTarget::from_scope(post_fx.scope, post_fx.pipeline) {
-        return execute_scoped_post_fx(
-            renderer,
-            request,
-            target,
-            &source,
-            scoped_target,
-            &post_fx,
-        );
+        return execute_scoped_post_fx(renderer, request, target, &source, scoped_target, &post_fx);
     }
 
     let visual_sources = request.camera_capture_input_2d.as_ref().map(|input| {
@@ -151,10 +144,9 @@ pub(super) fn execute_post_fx_graph_node(
         request.camera_debug_view.as_str(),
         "camera.scene_depth" | "camera.computed_z_depth"
     ) {
-        let supports_depth_debug = amigo_render_api::PostFxRenderDescriptor::for_kind(
-            post_fx.feature_id.as_str(),
-        )
-        .is_some_and(|descriptor| descriptor.debug_policy.supports_depth_debug_view);
+        let supports_depth_debug =
+            amigo_render_api::PostFxRenderDescriptor::for_kind(post_fx.feature_id.as_str())
+                .is_some_and(|descriptor| descriptor.debug_policy.supports_depth_debug_view);
         if !supports_depth_debug {
             return renderer.copy_offscreen_to_offscreen(target, &source);
         }
@@ -162,8 +154,7 @@ pub(super) fn execute_post_fx_graph_node(
             request.post_fx_stacks,
             post_fx.host_id,
             post_fx.effect_id,
-        )
-        {
+        ) {
             effect.debug_view = amigo_render_api::FocusBlurDebugView2d::Depth;
             return crate::renderer::service::post_fx::focus_blur::execute_focus_blur(
                 renderer, request, effect, &source, target,
@@ -203,12 +194,11 @@ pub(super) fn execute_post_fx_graph_node(
         target,
     )?;
 
-    let replays_scoped_layers = amigo_render_api::PostFxRenderDescriptor::for_kind(
-        post_fx.feature_id.as_str(),
-    )
-    .is_some_and(|descriptor| {
-        descriptor.output == amigo_render_api::PostFxRenderOutput::ReplayScopedLayers
-    });
+    let replays_scoped_layers =
+        amigo_render_api::PostFxRenderDescriptor::for_kind(post_fx.feature_id.as_str())
+            .is_some_and(|descriptor| {
+                descriptor.output == amigo_render_api::PostFxRenderOutput::ReplayScopedLayers
+            });
     if !replays_scoped_layers {
         return Ok(());
     }
@@ -258,7 +248,7 @@ pub(super) fn execute_post_fx_graph_node(
                     post_fx.host_id,
                     post_fx.effect_id,
                 )
-                    .expect("focus blur effect should exist for explicit layer plan"),
+                .expect("focus blur effect should exist for explicit layer plan"),
                 &z_depth_source.view,
                 highlight_view.as_ref(),
                 &mut z_depth_blurred,
@@ -338,7 +328,7 @@ fn execute_scoped_post_fx(
 
 fn render_scoped_source(
     renderer: &mut WgpuSceneRenderer,
-    assets: &AssetCatalog,
+    assets: &dyn amigo_render_api::RenderAssetSource,
     target: &mut WgpuOffscreenTarget,
     world_ctx: WorldRenderContext<'_>,
     scoped_target: ScopedPostFxTarget<'_>,

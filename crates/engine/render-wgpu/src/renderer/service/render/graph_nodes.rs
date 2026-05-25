@@ -76,8 +76,11 @@ pub(super) fn execute_world_graph_node(
             .as_str()
             .starts_with("relight.plate.")
     {
-        let overlay_selection =
-            OwnedWorldRenderSelection::include_layers(visible_beacon_layers, false, WorldPassLoad::Load);
+        let overlay_selection = OwnedWorldRenderSelection::include_layers(
+            visible_beacon_layers,
+            false,
+            WorldPassLoad::Load,
+        );
         world::execute_world_to_offscreen(
             renderer,
             target,

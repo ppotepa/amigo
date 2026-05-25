@@ -163,15 +163,15 @@ impl BoundsProvider for DescriptorBoundsProvider<'_> {
             BoundsPolicy::SpawnArea2D {
                 field,
                 size_field,
-                fallback_width,
-                fallback_height,
+                default_width,
+                default_height,
             } => particle_emitter_bounds(
                 node,
                 graph,
                 field,
                 size_field,
-                fallback_width,
-                fallback_height,
+                default_width,
+                default_height,
             ),
             BoundsPolicy::EntityTransformPoint => entity_point_bounds(node, graph),
             _ => None,
@@ -200,12 +200,12 @@ fn particle_emitter_bounds(
     graph: &AuthoringSceneGraph,
     field: &str,
     size_field: &str,
-    fallback_width: u32,
-    fallback_height: u32,
+    default_width: u32,
+    default_height: u32,
 ) -> Option<EditorRect> {
     let (width, height) = mapping_get(&node.value, field)
         .and_then(|spawn_area| vec2_field(spawn_area, size_field))
-        .unwrap_or((fallback_width as f32, fallback_height as f32));
+        .unwrap_or((default_width as f32, default_height as f32));
     let (entity_x, entity_y) = entity_translation(node, graph).unwrap_or((0.0, 0.0));
     Some(EditorRect {
         x: entity_x - width * 0.5,

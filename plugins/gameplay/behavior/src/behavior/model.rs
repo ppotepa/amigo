@@ -112,10 +112,10 @@ pub struct ParticleProfileScalar {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct ParticleProfileCurve4 {
-    pub v0: ParticleProfileScalar,
-    pub v1: ParticleProfileScalar,
-    pub v2: ParticleProfileScalar,
-    pub v3: ParticleProfileScalar,
+    pub point0: ParticleProfileScalar,
+    pub point1: ParticleProfileScalar,
+    pub point2: ParticleProfileScalar,
+    pub point3: ParticleProfileScalar,
 }
 
 #[derive(Debug, Clone, PartialEq)]

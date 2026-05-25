@@ -47,7 +47,7 @@ pub struct WgpuSceneRenderer {
     pub(crate) texture_cache: BTreeMap<String, CachedTextureResource>,
     pub(crate) lightmap_2d_image_cache: BTreeMap<String, CachedLightMap2dImage>,
     pub(crate) font_atlas_cache: BTreeMap<String, CachedFontAtlas>,
-    pub(crate) font_fallback_warnings: BTreeSet<String>,
+    pub(crate) font_missing_glyph_warnings: BTreeSet<String>,
     pub(crate) frame_graph_executor: crate::renderer::graph::WgpuFrameGraphExecutor,
     pub(crate) emergency_overlay_lines: Vec<WgpuEmergencyOverlayLine>,
     pub(crate) visual_source_targets_2d: crate::renderer::service::WgpuVisualSourceTargets2d,

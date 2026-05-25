@@ -2,8 +2,8 @@ use amigo_render_api::RenderFrameExtractor;
 use amigo_render_wgpu::WgpuRenderFramePacket;
 use amigo_runtime::Runtime;
 
-use crate::render_extractor_bridges::context::WgpuRenderExtractorRegistry;
 use super::common::optional;
+use crate::render_extractor_bridges::context::WgpuRenderExtractorRegistry;
 
 pub fn register(registry: &mut WgpuRenderExtractorRegistry) {
     registry.register(WgpuComposition2dRenderExtractorBridge);

@@ -11,14 +11,16 @@ impl WgpuPostFxPipelineProvider for DirtyBloomPipelineProvider {
     }
 
     fn create_pipeline(&self, ctx: &WgpuPostFxPipelineCreateContext<'_>) -> wgpu::RenderPipeline {
-        let shader = ctx.device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("amigo-scene-dirty-bloom-shader"),
-            source: wgpu::ShaderSource::Wgsl(DIRTY_BLOOM_SHADER.into()),
-        });
+        let shader = ctx
+            .device
+            .create_shader_module(wgpu::ShaderModuleDescriptor {
+                label: Some("amigo-render-dirty-bloom-shader"),
+                source: wgpu::ShaderSource::Wgsl(DIRTY_BLOOM_SHADER.into()),
+            });
         let layout = ctx
             .device
             .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                label: Some("amigo-scene-dirty-bloom-pipeline-layout"),
+                label: Some("amigo-render-dirty-bloom-pipeline-layout"),
                 bind_group_layouts: &[
                     Some(ctx.texture_bind_group_layout),
                     Some(ctx.wet_reflections_uniform_bind_group_layout),
@@ -30,7 +32,7 @@ impl WgpuPostFxPipelineProvider for DirtyBloomPipelineProvider {
             &shader,
             &layout,
             ctx.format,
-            "amigo-scene-dirty-bloom-pipeline",
+            "amigo-render-dirty-bloom-pipeline",
         )
     }
 }

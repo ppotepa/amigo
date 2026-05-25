@@ -97,7 +97,9 @@ impl RuntimePlugin for WgpuRenderExtractorBridgeRegistryPlugin {
     }
 
     fn register(&self, registry: &mut ServiceRegistry) -> AmigoResult<()> {
-        registry.register(crate::render_extractor_registry::WgpuRenderExtractorBridgeRegistry::default())?;
+        registry.register(
+            crate::render_extractor_registry::WgpuRenderExtractorBridgeRegistry::default(),
+        )?;
         Ok(())
     }
 }

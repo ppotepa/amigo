@@ -538,160 +538,105 @@ fn register_scene_command_asset_references(
                     "fonts",
                     "font-2d",
                 );
-            }
-        }
-        SceneCommand::QueueSprite2d { command } => {
-            crate::app_helpers::register_mod_asset_reference(
-                asset_catalog,
-                &command.source_mod,
-                &command.texture,
-                "spritesheets",
-                "sprite-sheet-2d",
-            );
-        }
-        SceneCommand::QueueLayeredImage2d { command } => {
-            crate::app_helpers::register_mod_asset_reference(
-                asset_catalog,
-                &command.source_mod,
-                &command.asset,
-                "layered-images",
-                "layered-image-2d",
-            );
-        }
-        SceneCommand::QueueDepthMap2d { command } => {
-            crate::app_helpers::register_mod_asset_reference(
-                asset_catalog,
-                &command.source_mod,
-                &command.asset,
-                "depth-maps",
-                "depth-map-2d",
-            );
-        }
-        SceneCommand::QueueTileMap2d { command } => {
-            crate::app_helpers::register_mod_asset_reference(
-                asset_catalog,
-                &command.source_mod,
-                &command.tileset,
-                "tilemaps",
-                "tilemap-2d",
-            );
-            if let Some(ruleset) = &command.ruleset {
+            } else if let Some(command) = command.payload_as::<amigo_scene::Mesh3dSceneCommand>() {
                 crate::app_helpers::register_mod_asset_reference(
                     asset_catalog,
                     &command.source_mod,
-                    ruleset,
-                    "tilemaps",
-                    "tile-ruleset-2d",
+                    &command.mesh_asset,
+                    "meshes",
+                    "mesh-3d",
                 );
-            }
-            if let Some(sprite_sheet) = command
-                .tileset
-                .as_str()
-                .split_once("/tilesets/")
-                .map(|(sprite_sheet, _)| amigo_assets::AssetKey::new(sprite_sheet.to_owned()))
+            } else if let Some(command) =
+                command.payload_as::<amigo_scene::Material3dSceneCommand>()
+            {
+                if let Some(source) = &command.source {
+                    crate::app_helpers::register_mod_asset_reference(
+                        asset_catalog,
+                        &command.source_mod,
+                        source,
+                        "materials",
+                        "material-3d",
+                    );
+                }
+            } else if let Some(command) = command.payload_as::<amigo_scene::Text3dSceneCommand>() {
+                crate::app_helpers::register_mod_asset_reference(
+                    asset_catalog,
+                    &command.source_mod,
+                    &command.font,
+                    "fonts",
+                    "font-3d",
+                );
+            } else if let Some(command) = command.payload_as::<amigo_scene::LayeredImage2dSceneCommand>() {
+                crate::app_helpers::register_mod_asset_reference(
+                    asset_catalog,
+                    &command.source_mod,
+                    &command.asset,
+                    "layered-images",
+                    "layered-image-2d",
+                );
+            } else if let Some(command) = command.payload_as::<amigo_scene::TileMap2dSceneCommand>() {
+                crate::app_helpers::register_mod_asset_reference(
+                    asset_catalog,
+                    &command.source_mod,
+                    &command.tileset,
+                    "tilemaps",
+                    "tilemap-2d",
+                );
+                if let Some(ruleset) = &command.ruleset {
+                    crate::app_helpers::register_mod_asset_reference(
+                        asset_catalog,
+                        &command.source_mod,
+                        ruleset,
+                        "tilemaps",
+                        "tile-ruleset-2d",
+                    );
+                }
+                if let Some(sprite_sheet) = command
+                    .tileset
+                    .as_str()
+                    .split_once("/tilesets/")
+                    .map(|(sprite_sheet, _)| amigo_assets::AssetKey::new(sprite_sheet.to_owned()))
+                {
+                    crate::app_helpers::register_mod_asset_reference(
+                        asset_catalog,
+                        &command.source_mod,
+                        &sprite_sheet,
+                        "spritesheets",
+                        "sprite-sheet-2d",
+                    );
+                }
+            } else if let Some(command) = command.payload_as::<amigo_scene::Sprite2dSceneCommand>() {
+                crate::app_helpers::register_mod_asset_reference(
+                    asset_catalog,
+                    &command.source_mod,
+                    &command.texture,
+                    "spritesheets",
+                    "sprite-sheet-2d",
+                );
+            } else if let Some(command) = command.payload_as::<amigo_scene::Text2dSceneCommand>() {
+                crate::app_helpers::register_mod_asset_reference(
+                    asset_catalog,
+                    &command.source_mod,
+                    &command.font,
+                    "fonts",
+                    "font-2d",
+                );
+            } else if let Some(command) = command.payload_as::<amigo_scene::AudioCueSceneCommand>()
             {
                 crate::app_helpers::register_mod_asset_reference(
                     asset_catalog,
                     &command.source_mod,
-                    &sprite_sheet,
-                    "spritesheets",
-                    "sprite-sheet-2d",
+                    &command.clip,
+                    "audio",
+                    "audio",
                 );
-            }
-        }
-        SceneCommand::QueueCamera2d { command } => {
-            if command.lens.profile.contains('/') {
-                crate::app_helpers::register_mod_asset_reference(
+            } else if let Some(command) = command.payload_as::<amigo_scene::UiSceneCommand>() {
+                ui_support::register_ui_font_asset_references(
                     asset_catalog,
                     &command.source_mod,
-                    &amigo_assets::AssetKey::new(command.lens.profile.clone()),
-                    "camera",
-                    "lens-profile-2d",
+                    &command.document,
                 );
             }
-            if command.film.profile.contains('/') {
-                crate::app_helpers::register_mod_asset_reference(
-                    asset_catalog,
-                    &command.source_mod,
-                    &amigo_assets::AssetKey::new(command.film.profile.clone()),
-                    "camera",
-                    "film-stock-2d",
-                );
-            }
-            if command.look.profile.contains('/') {
-                crate::app_helpers::register_mod_asset_reference(
-                    asset_catalog,
-                    &command.source_mod,
-                    &amigo_assets::AssetKey::new(command.look.profile.clone()),
-                    "camera",
-                    "camera-look-profile-2d",
-                );
-            }
-            if let Some(rain_profile) = &command.lens_surface.rain_profile {
-                if rain_profile.contains('/') {
-                    crate::app_helpers::register_mod_asset_reference(
-                        asset_catalog,
-                        &command.source_mod,
-                        &amigo_assets::AssetKey::new(rain_profile.clone()),
-                        "camera",
-                        "camera-rain-glass-profile-2d",
-                    );
-                }
-            }
-        }
-        SceneCommand::QueueText2d { command } => {
-            crate::app_helpers::register_mod_asset_reference(
-                asset_catalog,
-                &command.source_mod,
-                &command.font,
-                "fonts",
-                "font-2d",
-            );
-        }
-        SceneCommand::QueueMesh3d { command } => {
-            crate::app_helpers::register_mod_asset_reference(
-                asset_catalog,
-                &command.source_mod,
-                &command.mesh_asset,
-                "meshes",
-                "mesh-3d",
-            );
-        }
-        SceneCommand::QueueMaterial3d { command } => {
-            if let Some(source) = &command.source {
-                crate::app_helpers::register_mod_asset_reference(
-                    asset_catalog,
-                    &command.source_mod,
-                    source,
-                    "materials",
-                    "material-3d",
-                );
-            }
-        }
-        SceneCommand::QueueText3d { command } => {
-            crate::app_helpers::register_mod_asset_reference(
-                asset_catalog,
-                &command.source_mod,
-                &command.font,
-                "fonts",
-                "font-3d",
-            );
-        }
-        SceneCommand::QueueAudioCue { command } => {
-            crate::app_helpers::register_mod_asset_reference(
-                asset_catalog,
-                &command.source_mod,
-                &command.clip,
-                "audio",
-                "audio",
-            );
-        }
-        SceneCommand::QueueUi { command } => {
-            ui_support::register_ui_font_asset_references(
-                asset_catalog,
-                &command.source_mod,
-                &command.document,
-            );
         }
         _ => {}
     }
@@ -852,7 +797,7 @@ pub(crate) fn apply_scene_command(runtime: &Runtime, command: SceneCommand) -> A
     }
     let command_label = amigo_scene::format_scene_command(&command);
     if matches!(&command, SceneCommand::Plugin { .. }) {
-        let plugin_registry = runtime.required::<amigo_scene::PluginSceneCommandHandlerRegistry>()?;
+        let plugin_registry = runtime.required::<amigo_scene::ScenePluginCommandHandlerRegistry>()?;
         let result = plugin_registry
             .dispatch(runtime, command.clone())
             .map(|handled| handled.unwrap_or(()));

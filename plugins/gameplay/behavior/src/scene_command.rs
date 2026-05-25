@@ -30,7 +30,11 @@ pub struct BehaviorSceneCommandOutcome {
 }
 
 pub fn can_handle_behavior_scene_command(command: &SceneCommand) -> bool {
-    matches!(command, SceneCommand::QueueBehavior { .. })
+    matches!(
+        command,
+        SceneCommand::Plugin { command }
+            if command.command_type == amigo_scene::BEHAVIOR_PLUGIN_SCENE_COMMAND_TYPE
+    )
 }
 
 pub fn handle_behavior_scene_command(
@@ -38,40 +42,57 @@ pub fn handle_behavior_scene_command(
     command: SceneCommand,
 ) -> AmigoResult<BehaviorSceneCommandOutcome> {
     match command {
-        SceneCommand::QueueBehavior { command } => {
-            let entity = ctx
-                .scene_service
-                .find_or_spawn_named_entity(command.entity_name.clone());
-            ctx.behavior_scene_service.queue(BehaviorCommand {
-                source_mod: command.source_mod.clone(),
-                entity_name: command.entity_name.clone(),
-                condition: command.condition.map(|condition| BehaviorCondition {
-                    state_key: condition.state_key,
-                    equals: condition.equals,
-                    not_equals: condition.not_equals,
-                    greater_than: condition.greater_than,
-                    greater_or_equal: condition.greater_or_equal,
-                    less_than: condition.less_than,
-                    less_or_equal: condition.less_or_equal,
-                    is_true: condition.is_true,
-                    is_false: condition.is_false,
-                }),
-                behavior: behavior_from_scene_command(command.behavior),
-            });
-            ctx.scene_event_queue.publish(SceneEvent::BehaviorQueued {
-                entity_id: entity.raw(),
-                entity_name: command.entity_name.clone(),
-            });
-            Ok(BehaviorSceneCommandOutcome {
-                entity_name: command.entity_name,
-                source_mod: command.source_mod,
-            })
+        SceneCommand::Plugin { command }
+            if command.command_type == amigo_scene::BEHAVIOR_PLUGIN_SCENE_COMMAND_TYPE =>
+        {
+            let command = command
+                .payload_as::<amigo_scene::BehaviorSceneCommand>()
+                .ok_or_else(|| {
+                    AmigoError::Message(
+                        "behavior plugin scene command payload type mismatch".to_owned(),
+                    )
+                })?
+                .clone();
+            handle_behavior_command(ctx, command)
         }
         other => Err(AmigoError::Message(format!(
             "behavior scene command handler cannot handle {}",
             format_scene_command(&other)
         ))),
     }
+}
+
+fn handle_behavior_command(
+    ctx: BehaviorSceneCommandContext<'_>,
+    command: amigo_scene::BehaviorSceneCommand,
+) -> AmigoResult<BehaviorSceneCommandOutcome> {
+    let entity = ctx
+        .scene_service
+        .find_or_spawn_named_entity(command.entity_name.clone());
+    ctx.behavior_scene_service.queue(BehaviorCommand {
+        source_mod: command.source_mod.clone(),
+        entity_name: command.entity_name.clone(),
+        condition: command.condition.map(|condition| BehaviorCondition {
+            state_key: condition.state_key,
+            equals: condition.equals,
+            not_equals: condition.not_equals,
+            greater_than: condition.greater_than,
+            greater_or_equal: condition.greater_or_equal,
+            less_than: condition.less_than,
+            less_or_equal: condition.less_or_equal,
+            is_true: condition.is_true,
+            is_false: condition.is_false,
+        }),
+        behavior: behavior_from_scene_command(command.behavior),
+    });
+    ctx.scene_event_queue.publish(SceneEvent::BehaviorQueued {
+        entity_id: entity.raw(),
+        entity_name: command.entity_name.clone(),
+    });
+    Ok(BehaviorSceneCommandOutcome {
+        entity_name: command.entity_name,
+        source_mod: command.source_mod,
+    })
 }
 
 fn behavior_from_scene_command(command: BehaviorKindSceneCommand) -> BehaviorKind {
@@ -302,10 +323,10 @@ fn particle_profile_curve4_from_scene_command(
     curve: ParticleProfileCurve4SceneCommand,
 ) -> ParticleProfileCurve4 {
     ParticleProfileCurve4 {
-        v0: particle_profile_scalar_from_scene_command(curve.v0),
-        v1: particle_profile_scalar_from_scene_command(curve.v1),
-        v2: particle_profile_scalar_from_scene_command(curve.v2),
-        v3: particle_profile_scalar_from_scene_command(curve.v3),
+        point0: particle_profile_scalar_from_scene_command(curve.point0),
+        point1: particle_profile_scalar_from_scene_command(curve.point1),
+        point2: particle_profile_scalar_from_scene_command(curve.point2),
+        point3: particle_profile_scalar_from_scene_command(curve.point3),
     }
 }
 

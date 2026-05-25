@@ -183,14 +183,14 @@ pub(super) fn build_camera_capture_input(
         builder = builder.with_emissive_produced("world.emissive");
     }
     if should_produce_scene_normal(runtime, packet) {
-        // V1 limitation: produced by authored visual maps and wet-reflection asset fallback.
+        // Current limitation: produced by authored visual maps and wet-reflection asset placeholder.
         // Final target: dedicated material pass writes this buffer before camera post-fx.
         builder = builder.with_normal_produced("world.normal");
     } else if let Some(normal) = wetness_normal_source(packet.post_fx_stacks()) {
         builder = builder.with_normal_asset(normal);
     }
     if should_produce_scene_wetness(runtime, packet) {
-        // V1 limitation: produced by authored visual maps and wet-reflection asset fallback.
+        // Current limitation: produced by authored visual maps and wet-reflection asset placeholder.
         // Final target: dedicated material pass writes this buffer before camera post-fx.
         builder = builder.with_wetness_produced("world.wetness");
     } else if let Some(mask) = wetness_mask_source(packet.post_fx_stacks()) {
@@ -209,7 +209,10 @@ fn targets_scene_highlight_buffer(
     camera_optical_candidates: &[amigo_camera_optics_plugin::api::CameraOpticalCandidate2d],
 ) -> bool {
     amigo_camera_optics_plugin::render::targets_scene_highlight_buffer(
-        has_visual_map(runtime, amigo_render_api::VisualSourceKind2d::SceneHighlight),
+        has_visual_map(
+            runtime,
+            amigo_render_api::VisualSourceKind2d::SceneHighlight,
+        ),
         camera_optical_candidates,
     )
 }
@@ -234,10 +237,7 @@ fn should_produce_scene_wetness(runtime: &Runtime, packet: &WgpuRenderFramePacke
         || wetness_mask_source(packet.post_fx_stacks()).is_some()
 }
 
-fn has_visual_map(
-    runtime: &Runtime,
-    kind: amigo_render_api::VisualSourceKind2d,
-) -> bool {
+fn has_visual_map(runtime: &Runtime, kind: amigo_render_api::VisualSourceKind2d) -> bool {
     runtime
         .resolve::<amigo_sprite_2d_plugin::SpriteSceneService>()
         .map(|service| service.commands())
@@ -289,17 +289,15 @@ fn wetness_normal_source(stacks: &[amigo_composite_plugin::ScopedPostFx2dStack])
     stacks
         .iter()
         .flat_map(|stack| stack.effects.iter())
-        .find_map(|effect| match &effect.effect {
-            amigo_composite_plugin::PostFx2d::WetReflections(wet)
-                if wet.is_active()
-                    && wet
-                        .noise_normal
-                        .as_deref()
-                        .is_some_and(|path| !path.trim().is_empty()) =>
-            {
-                wet.noise_normal.as_deref()
-            }
-            _ => None,
+        .find_map(|effect| {
+            let wet = effect.effect.as_wet_reflections()?;
+            (wet.is_active()
+                && wet
+                    .noise_normal
+                    .as_deref()
+                    .is_some_and(|path| !path.trim().is_empty()))
+            .then(|| wet.noise_normal.as_deref())
+            .flatten()
         })
 }
 
@@ -307,13 +305,10 @@ fn wetness_mask_source(stacks: &[amigo_composite_plugin::ScopedPostFx2dStack]) -
     stacks
         .iter()
         .flat_map(|stack| stack.effects.iter())
-        .find_map(|effect| match &effect.effect {
-            amigo_composite_plugin::PostFx2d::WetReflections(wet)
-                if wet.is_active() && !wet.reflection_mask.trim().is_empty() =>
-            {
-                Some(wet.reflection_mask.as_str())
-            }
-            _ => None,
+        .find_map(|effect| {
+            let wet = effect.effect.as_wet_reflections()?;
+            (wet.is_active() && !wet.reflection_mask.trim().is_empty())
+                .then_some(wet.reflection_mask.as_str())
         })
 }
 
@@ -321,11 +316,12 @@ fn motion_source(stacks: &[amigo_composite_plugin::ScopedPostFx2dStack]) -> Opti
     stacks
         .iter()
         .flat_map(|stack| stack.effects.iter())
-        .find_map(|effect| match &effect.effect {
-            amigo_composite_plugin::PostFx2d::ShutterBlur(shutter) if shutter.is_active() => {
-                Some("camera.shutter_history.motion")
-            }
-            _ => None,
+        .find_map(|effect| {
+            effect
+                .effect
+                .as_shutter_blur()
+                .filter(|shutter| shutter.is_active())
+                .map(|_| "camera.shutter_history.motion")
         })
 }
 
@@ -338,4 +334,3 @@ fn depth_mode_label(mode: amigo_2d_composition::RenderDepthMode2d) -> &'static s
         amigo_2d_composition::RenderDepthMode2d::Overlay => "overlay",
     }
 }
-

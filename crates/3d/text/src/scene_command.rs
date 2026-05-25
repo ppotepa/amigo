@@ -1,8 +1,8 @@
 use amigo_assets::AssetKey;
 use amigo_core::{AmigoError, AmigoResult};
-use amigo_scene::{SceneCommand, SceneEvent, SceneEventQueue, SceneService, format_scene_command};
+use amigo_scene::{format_scene_command, SceneCommand, SceneEvent, SceneEventQueue, SceneService};
 
-use crate::{Text3dSceneService, queue_text3d_scene_command};
+use crate::{queue_text3d_scene_command, Text3dSceneService};
 
 pub struct Text3dSceneCommandHandler;
 
@@ -20,7 +20,11 @@ pub struct Text3dSceneCommandOutcome {
 }
 
 pub fn can_handle_text3d_scene_command(command: &SceneCommand) -> bool {
-    matches!(command, SceneCommand::QueueText3d { .. })
+    matches!(
+        command,
+        SceneCommand::Plugin { command }
+            if command.command_type == amigo_scene::TEXT_3D_PLUGIN_SCENE_COMMAND_TYPE
+    )
 }
 
 pub fn handle_text3d_scene_command(
@@ -28,7 +32,17 @@ pub fn handle_text3d_scene_command(
     command: SceneCommand,
 ) -> AmigoResult<Text3dSceneCommandOutcome> {
     match command {
-        SceneCommand::QueueText3d { command } => {
+        SceneCommand::Plugin { command }
+            if command.command_type == amigo_scene::TEXT_3D_PLUGIN_SCENE_COMMAND_TYPE =>
+        {
+            let Some(command) = command
+                .payload_as::<amigo_scene::Text3dSceneCommand>()
+                .cloned()
+            else {
+                return Err(AmigoError::Message(
+                    "text-3d plugin command payload mismatch".to_owned(),
+                ));
+            };
             let entity =
                 queue_text3d_scene_command(ctx.scene_service, ctx.text3d_scene_service, &command);
             ctx.scene_event_queue.publish(SceneEvent::Text3dQueued {

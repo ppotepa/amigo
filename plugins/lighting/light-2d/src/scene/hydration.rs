@@ -1,4 +1,5 @@
 use amigo_math::ColorRgba;
+use amigo_scene::SceneComponentDocument as ComponentDocument;
 use amigo_scene::{
     ComponentHydrationContext, ComponentHydrator, GlobalLight2dSceneCommand,
     PluginComponentHydrationContext, PluginComponentHydrator, SceneComponentDocument,
@@ -16,12 +17,12 @@ impl ComponentHydrator for GlobalLight2dComponentHydrator {
     }
 
     fn can_hydrate(&self, component: &SceneComponentDocument) -> bool {
-        matches!(component, SceneComponentDocument::GlobalLight2d { .. })
+        matches!(component, ComponentDocument::GlobalLight2d { .. })
     }
 
     fn hydrate(&self, ctx: ComponentHydrationContext<'_>) -> SceneDocumentResult<()> {
         let document = match ctx.component {
-            SceneComponentDocument::GlobalLight2d { .. } => {
+            ComponentDocument::GlobalLight2d { .. } => {
                 let Some(document) = GlobalLight2dDocument::from_component(ctx.component) else {
                     return Ok(());
                 };
@@ -83,20 +84,15 @@ fn push_global_light_command(
     commands: &mut Vec<amigo_scene::SceneCommand>,
     document: &GlobalLight2dDocument,
 ) -> SceneDocumentResult<()> {
-    commands.push(amigo_scene::SceneCommand::QueueGlobalLight2d {
-            command: GlobalLight2dSceneCommand {
-                source_mod: source_mod.to_owned(),
-                entity_name: entity_name.to_owned(),
-                id: document.id.clone(),
-                color: parse_color_rgba_hex(
-                    &document.color,
-                    scene_id,
-                    entity_id,
-                    "GlobalLight2D",
-                )?,
-                intensity: document.intensity.max(0.0),
-            },
-        });
+    commands.push(amigo_scene::SceneCommand::Plugin {
+        command: amigo_scene::global_light_2d_plugin_scene_command(GlobalLight2dSceneCommand {
+            source_mod: source_mod.to_owned(),
+            entity_name: entity_name.to_owned(),
+            id: document.id.clone(),
+            color: parse_color_rgba_hex(&document.color, scene_id, entity_id, "GlobalLight2D")?,
+            intensity: document.intensity.max(0.0),
+        }),
+    });
     Ok(())
 }
 

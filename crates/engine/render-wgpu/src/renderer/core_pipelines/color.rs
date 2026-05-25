@@ -2,11 +2,11 @@ use super::{
     CORE_COLOR_ADDITIVE_PIPELINE, CORE_COLOR_ALPHA_PIPELINE, CORE_COLOR_MULTIPLY_PIPELINE,
     CORE_COLOR_SCREEN_PIPELINE, WgpuCorePipelineCreateContext, WgpuCorePipelineProvider,
 };
+use crate::renderer::ColorVertex;
 use crate::renderer::pipelines::{
     additive_blend_state, create_color_pipeline, multiply_blend_state, screen_blend_state,
 };
 use crate::renderer::shaders::COLOR_SHADER;
-use crate::renderer::ColorVertex;
 
 pub(crate) struct ColorAlphaPipelineProvider;
 pub(crate) struct ColorAdditivePipelineProvider;
@@ -19,14 +19,16 @@ impl WgpuCorePipelineProvider for ColorAlphaPipelineProvider {
     }
 
     fn create_pipeline(&self, ctx: &WgpuCorePipelineCreateContext<'_>) -> wgpu::RenderPipeline {
-        let shader = ctx.device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("amigo-scene-color-shader"),
-            source: wgpu::ShaderSource::Wgsl(COLOR_SHADER.into()),
-        });
+        let shader = ctx
+            .device
+            .create_shader_module(wgpu::ShaderModuleDescriptor {
+                label: Some("amigo-render-color-shader"),
+                source: wgpu::ShaderSource::Wgsl(COLOR_SHADER.into()),
+            });
         let layout = ctx
             .device
             .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                label: Some("amigo-scene-color-pipeline-layout"),
+                label: Some("amigo-render-color-pipeline-layout"),
                 bind_group_layouts: &[],
                 immediate_size: 0,
             });
@@ -35,7 +37,7 @@ impl WgpuCorePipelineProvider for ColorAlphaPipelineProvider {
             &shader,
             &layout,
             ctx.surface_format,
-            "amigo-scene-color-alpha-pipeline",
+            "amigo-render-color-alpha-pipeline",
             wgpu::BlendState::ALPHA_BLENDING,
             &[ColorVertex::layout()],
         )
@@ -48,14 +50,16 @@ impl WgpuCorePipelineProvider for ColorAdditivePipelineProvider {
     }
 
     fn create_pipeline(&self, ctx: &WgpuCorePipelineCreateContext<'_>) -> wgpu::RenderPipeline {
-        let shader = ctx.device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("amigo-scene-color-shader"),
-            source: wgpu::ShaderSource::Wgsl(COLOR_SHADER.into()),
-        });
+        let shader = ctx
+            .device
+            .create_shader_module(wgpu::ShaderModuleDescriptor {
+                label: Some("amigo-render-color-shader"),
+                source: wgpu::ShaderSource::Wgsl(COLOR_SHADER.into()),
+            });
         let layout = ctx
             .device
             .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                label: Some("amigo-scene-color-pipeline-layout"),
+                label: Some("amigo-render-color-pipeline-layout"),
                 bind_group_layouts: &[],
                 immediate_size: 0,
             });
@@ -64,7 +68,7 @@ impl WgpuCorePipelineProvider for ColorAdditivePipelineProvider {
             &shader,
             &layout,
             ctx.surface_format,
-            "amigo-scene-color-additive-pipeline",
+            "amigo-render-color-additive-pipeline",
             additive_blend_state(),
             &[ColorVertex::layout()],
         )
@@ -77,14 +81,16 @@ impl WgpuCorePipelineProvider for ColorMultiplyPipelineProvider {
     }
 
     fn create_pipeline(&self, ctx: &WgpuCorePipelineCreateContext<'_>) -> wgpu::RenderPipeline {
-        let shader = ctx.device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("amigo-scene-color-shader"),
-            source: wgpu::ShaderSource::Wgsl(COLOR_SHADER.into()),
-        });
+        let shader = ctx
+            .device
+            .create_shader_module(wgpu::ShaderModuleDescriptor {
+                label: Some("amigo-render-color-shader"),
+                source: wgpu::ShaderSource::Wgsl(COLOR_SHADER.into()),
+            });
         let layout = ctx
             .device
             .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                label: Some("amigo-scene-color-pipeline-layout"),
+                label: Some("amigo-render-color-pipeline-layout"),
                 bind_group_layouts: &[],
                 immediate_size: 0,
             });
@@ -93,7 +99,7 @@ impl WgpuCorePipelineProvider for ColorMultiplyPipelineProvider {
             &shader,
             &layout,
             ctx.surface_format,
-            "amigo-scene-color-multiply-pipeline",
+            "amigo-render-color-multiply-pipeline",
             multiply_blend_state(),
             &[ColorVertex::layout()],
         )
@@ -106,14 +112,16 @@ impl WgpuCorePipelineProvider for ColorScreenPipelineProvider {
     }
 
     fn create_pipeline(&self, ctx: &WgpuCorePipelineCreateContext<'_>) -> wgpu::RenderPipeline {
-        let shader = ctx.device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("amigo-scene-color-shader"),
-            source: wgpu::ShaderSource::Wgsl(COLOR_SHADER.into()),
-        });
+        let shader = ctx
+            .device
+            .create_shader_module(wgpu::ShaderModuleDescriptor {
+                label: Some("amigo-render-color-shader"),
+                source: wgpu::ShaderSource::Wgsl(COLOR_SHADER.into()),
+            });
         let layout = ctx
             .device
             .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                label: Some("amigo-scene-color-pipeline-layout"),
+                label: Some("amigo-render-color-pipeline-layout"),
                 bind_group_layouts: &[],
                 immediate_size: 0,
             });
@@ -122,7 +130,7 @@ impl WgpuCorePipelineProvider for ColorScreenPipelineProvider {
             &shader,
             &layout,
             ctx.surface_format,
-            "amigo-scene-color-screen-pipeline",
+            "amigo-render-color-screen-pipeline",
             screen_blend_state(),
             &[ColorVertex::layout()],
         )

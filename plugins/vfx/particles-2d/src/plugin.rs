@@ -27,6 +27,10 @@ impl RuntimePlugin for Particle2dPlugin {
             schemas.register_provider(&crate::scene::ParticleEmitter2dSceneDescriptorProvider);
             schemas.register_schema_provider(crate::scene::ParticleEmitter2dSceneSchemaProvider);
         }
+        if let Some(metadata) = registry.resolve::<amigo_scene::ComponentMetadataProviderRegistry>()
+        {
+            metadata.register(crate::scene::ParticleEmitter2dComponentMetadataProvider);
+        }
         if let Some(hydrators) = registry.resolve::<amigo_scene::ComponentHydratorRegistry>() {
             hydrators.register(crate::scene::ParticleEmitter2dComponentHydrator);
             hydrators.register_plugin(crate::scene::ParticleEmitter2dPluginComponentHydrator);
@@ -72,6 +76,14 @@ impl RuntimePlugin for Particle2dPlugin {
             scene_handlers.as_ref(),
             crate::scene_command::Particles2dSceneCommandHandler,
         );
+        if let Some(plugin_scene_handlers) =
+            registry.resolve::<amigo_scene::ScenePluginCommandHandlerRegistry>()
+        {
+            plugin_scene_handlers.register(
+                amigo_scene::PARTICLE_EMITTER_2D_PLUGIN_SCENE_COMMAND_TYPE,
+                Arc::new(crate::scene_command::Particles2dSceneCommandHandler),
+            );
+        }
         if !registry.has::<amigo_devtools::RuntimeConsoleCommandRegistry>() {
             registry.register(amigo_devtools::RuntimeConsoleCommandRegistry::default())?;
         }

@@ -2,7 +2,7 @@ use amigo_scene::*;
 
 pub fn vector_shape_2d_descriptor() -> ComponentTypeDescriptor {
     ComponentTypeDescriptor {
-        kind: ComponentKind::VectorShape2D,
+        kind_id: "VectorShape2D",
         type_name: "VectorShape2D",
         label: "Vector Shape 2D",
         domains: &[ComponentDomain::Render2D],

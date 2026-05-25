@@ -48,12 +48,16 @@ pub enum PhysicsSceneCommandOutcome {
 pub fn can_handle_physics_scene_command(command: &SceneCommand) -> bool {
     matches!(
         command,
-        SceneCommand::QueueKinematicBody2d { .. }
-            | SceneCommand::QueueAabbCollider2d { .. }
-            | SceneCommand::QueueStaticCollider2d { .. }
-            | SceneCommand::QueueCircleCollider2d { .. }
-            | SceneCommand::QueueTrigger2d { .. }
-            | SceneCommand::QueueCollisionEventRule2d { .. }
+        SceneCommand::Plugin { command }
+            if matches!(
+                command.command_type.as_str(),
+                amigo_scene::KINEMATIC_BODY_2D_PLUGIN_SCENE_COMMAND_TYPE
+                    | amigo_scene::AABB_COLLIDER_2D_PLUGIN_SCENE_COMMAND_TYPE
+                    | amigo_scene::STATIC_COLLIDER_2D_PLUGIN_SCENE_COMMAND_TYPE
+                    | amigo_scene::CIRCLE_COLLIDER_2D_PLUGIN_SCENE_COMMAND_TYPE
+                    | amigo_scene::TRIGGER_2D_PLUGIN_SCENE_COMMAND_TYPE
+                    | amigo_scene::COLLISION_EVENT_RULE_2D_PLUGIN_SCENE_COMMAND_TYPE
+            )
     )
 }
 
@@ -62,7 +66,17 @@ pub fn handle_physics_scene_command(
     command: SceneCommand,
 ) -> AmigoResult<PhysicsSceneCommandOutcome> {
     match command {
-        SceneCommand::QueueKinematicBody2d { command } => {
+        SceneCommand::Plugin { command }
+            if command.command_type == amigo_scene::KINEMATIC_BODY_2D_PLUGIN_SCENE_COMMAND_TYPE =>
+        {
+            let Some(command) = command
+                .payload_as::<amigo_scene::KinematicBody2dSceneCommand>()
+                .cloned()
+            else {
+                return Err(AmigoError::Message(
+                    "physics-2d kinematic body plugin command payload mismatch".to_owned(),
+                ));
+            };
             let entity = queue_kinematic_body_scene_command(
                 ctx.scene_service,
                 ctx.physics_scene_service,
@@ -78,7 +92,17 @@ pub fn handle_physics_scene_command(
                 source_mod: command.source_mod,
             })
         }
-        SceneCommand::QueueAabbCollider2d { command } => {
+        SceneCommand::Plugin { command }
+            if command.command_type == amigo_scene::AABB_COLLIDER_2D_PLUGIN_SCENE_COMMAND_TYPE =>
+        {
+            let Some(command) = command
+                .payload_as::<amigo_scene::AabbCollider2dSceneCommand>()
+                .cloned()
+            else {
+                return Err(AmigoError::Message(
+                    "physics-2d aabb collider plugin command payload mismatch".to_owned(),
+                ));
+            };
             let entity = queue_aabb_collider_scene_command(
                 ctx.scene_service,
                 ctx.physics_scene_service,
@@ -94,7 +118,17 @@ pub fn handle_physics_scene_command(
                 source_mod: command.source_mod,
             })
         }
-        SceneCommand::QueueStaticCollider2d { command } => {
+        SceneCommand::Plugin { command }
+            if command.command_type == amigo_scene::STATIC_COLLIDER_2D_PLUGIN_SCENE_COMMAND_TYPE =>
+        {
+            let Some(command) = command
+                .payload_as::<amigo_scene::StaticCollider2dSceneCommand>()
+                .cloned()
+            else {
+                return Err(AmigoError::Message(
+                    "physics-2d static collider plugin command payload mismatch".to_owned(),
+                ));
+            };
             let entity = queue_static_collider_scene_command(
                 ctx.scene_service,
                 ctx.physics_scene_service,
@@ -110,7 +144,17 @@ pub fn handle_physics_scene_command(
                 source_mod: command.source_mod,
             })
         }
-        SceneCommand::QueueCircleCollider2d { command } => {
+        SceneCommand::Plugin { command }
+            if command.command_type == amigo_scene::CIRCLE_COLLIDER_2D_PLUGIN_SCENE_COMMAND_TYPE =>
+        {
+            let Some(command) = command
+                .payload_as::<amigo_scene::CircleCollider2dSceneCommand>()
+                .cloned()
+            else {
+                return Err(AmigoError::Message(
+                    "physics-2d circle collider plugin command payload mismatch".to_owned(),
+                ));
+            };
             let entity = queue_circle_collider_scene_command(
                 ctx.scene_service,
                 ctx.physics_scene_service,
@@ -126,7 +170,17 @@ pub fn handle_physics_scene_command(
                 source_mod: command.source_mod,
             })
         }
-        SceneCommand::QueueTrigger2d { command } => {
+        SceneCommand::Plugin { command }
+            if command.command_type == amigo_scene::TRIGGER_2D_PLUGIN_SCENE_COMMAND_TYPE =>
+        {
+            let Some(command) = command
+                .payload_as::<amigo_scene::Trigger2dSceneCommand>()
+                .cloned()
+            else {
+                return Err(AmigoError::Message(
+                    "physics-2d trigger plugin command payload mismatch".to_owned(),
+                ));
+            };
             let entity =
                 queue_trigger_scene_command(ctx.scene_service, ctx.physics_scene_service, &command);
             ctx.scene_event_queue.publish(SceneEvent::TriggerQueued {
@@ -140,7 +194,18 @@ pub fn handle_physics_scene_command(
                 topic: command.event,
             })
         }
-        SceneCommand::QueueCollisionEventRule2d { command } => {
+        SceneCommand::Plugin { command }
+            if command.command_type
+                == amigo_scene::COLLISION_EVENT_RULE_2D_PLUGIN_SCENE_COMMAND_TYPE =>
+        {
+            let Some(command) = command
+                .payload_as::<amigo_scene::CollisionEventRule2dSceneCommand>()
+                .cloned()
+            else {
+                return Err(AmigoError::Message(
+                    "physics-2d collision event rule plugin command payload mismatch".to_owned(),
+                ));
+            };
             queue_collision_event_rule_scene_command(ctx.physics_scene_service, &command);
             ctx.scene_event_queue
                 .publish(SceneEvent::CollisionEventRuleQueued {

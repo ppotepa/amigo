@@ -135,11 +135,11 @@ impl RuntimePlugin for RhaiScriptingPlugin {
             &[],
             DEFAULT_CAPABILITY_VERSION,
         )?;
-        let scene_handlers =
-            registry.required::<amigo_scene::RuntimeSceneCommandHandlerRegistry>()?;
-        amigo_scene::register_runtime_scene_command_handler(
-            scene_handlers.as_ref(),
-            crate::scene_command::RhaiSceneCommandHandler,
+        let plugin_scene_handlers =
+            registry.required::<amigo_scene::ScenePluginCommandHandlerRegistry>()?;
+        plugin_scene_handlers.register(
+            amigo_scene::SCRIPT_COMPONENT_PLUGIN_SCENE_COMMAND_TYPE,
+            Arc::new(crate::scene_command::RhaiSceneCommandHandler),
         );
         registry
             .required::<amigo_runtime::SystemRegistry>()?

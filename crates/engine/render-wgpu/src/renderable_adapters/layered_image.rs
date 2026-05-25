@@ -1,8 +1,6 @@
-use crate::{
-    WgpuRenderable2dAdapter, WgpuRenderable2dAdapterContext,
-};
-use amigo_render_api::{RenderPrimitive2d, RenderPrimitive2dKind};
 use crate::renderer::collect_material_candidate_2d;
+use crate::{WgpuRenderable2dAdapter, WgpuRenderable2dAdapterContext};
+use amigo_render_api::{RenderPrimitive2d, RenderPrimitive2dKind};
 
 pub struct LayeredTexturedQuads2dRenderableAdapter;
 
@@ -20,18 +18,19 @@ impl WgpuRenderable2dAdapter for LayeredTexturedQuads2dRenderableAdapter {
             return false;
         };
 
-        ctx.renderer.append_layered_image_primitive_texture_batches_filtered(
-            ctx.texture_batches,
-            ctx.device,
-            ctx.queue,
-            ctx.assets,
-            ctx.viewport,
-            ctx.layer_camera,
-            command,
-            ctx.included_layered_image_parts,
-            ctx.excluded_layered_image_parts,
-            ctx.include_base_layered_image,
-        );
+        ctx.renderer
+            .append_layered_image_primitive_texture_batches_filtered(
+                ctx.texture_batches,
+                ctx.device,
+                ctx.queue,
+                ctx.assets,
+                ctx.viewport,
+                ctx.layer_camera,
+                command,
+                ctx.included_layered_image_parts,
+                ctx.excluded_layered_image_parts,
+                ctx.include_base_layered_image,
+            );
         collect_material_candidate_2d(
             item,
             ctx.layer_camera,

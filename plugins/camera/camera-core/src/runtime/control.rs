@@ -1,15 +1,15 @@
 use std::sync::Arc;
 
-use amigo_composite_plugin::RainGlass2d;
 use amigo_assets::{AssetCatalog, PreparedAsset, PreparedAssetKind};
+use amigo_composite_plugin::RainGlass2d;
 use amigo_runtime_control::{
     ControlRange, ControlValue, ControlValueType, RuntimeControlError, RuntimeControlProperty,
     RuntimeControlProvider, RuntimeControlRegistry, RuntimeControlTarget,
 };
 
 use crate::{
-    BUILTIN_FILM_STOCKS_2D, BUILTIN_LENS_PROFILES_2D, Camera2dRuntimeState, CameraDebugView2d,
-    CameraExposureMode2d, CameraId, CameraQualityProfile2d, CameraService,
+    Camera2dRuntimeState, CameraExposureMode2d, CameraId, CameraQualityProfile2d, CameraService,
+    BUILTIN_FILM_STOCKS_2D, BUILTIN_LENS_PROFILES_2D,
 };
 
 pub struct Camera2dControlProvider {
@@ -280,9 +280,7 @@ impl RuntimeControlProvider for Camera2dControlProvider {
             )),
             "shutter.opacity" => Ok(ControlValue::F64(camera.shutter.opacity as f64)),
             "shutter.history_mix" => Ok(ControlValue::F64(camera.shutter.history_mix as f64)),
-            "shutter.edge_rejection" => {
-                Ok(ControlValue::F64(camera.shutter.edge_rejection as f64))
-            }
+            "shutter.edge_rejection" => Ok(ControlValue::F64(camera.shutter.edge_rejection as f64)),
             "aperture.dof.max_blur_px" => Ok(ControlValue::F64(
                 camera.aperture.depth_of_field.max_blur_px as f64,
             )),
@@ -378,9 +376,10 @@ impl RuntimeControlProvider for Camera2dControlProvider {
                     return false;
                 };
                 state.aperture.focus_distance_m = focus_distance_m.clamp(0.2, 1000.0);
-                state.aperture.focus = amigo_camera_optics_plugin::runtime::CameraFocus2d::Distance {
-                    meters: state.aperture.focus_distance_m,
-                };
+                state.aperture.focus =
+                    amigo_camera_optics_plugin::runtime::CameraFocus2d::Distance {
+                        meters: state.aperture.focus_distance_m,
+                    };
                 true
             }),
             "rig.camera_z_m" => {
@@ -551,7 +550,7 @@ impl RuntimeControlProvider for Camera2dControlProvider {
                         reason: "debug.view expects string".to_owned(),
                     });
                 };
-                let debug_view = CameraDebugView2d::parse(raw);
+                let debug_view = amigo_render_api::CameraDebugView2d::parse(raw);
                 self.service.set_debug_view_2d(&camera.id, debug_view)
             }
             _ => false,

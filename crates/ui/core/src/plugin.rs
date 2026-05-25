@@ -13,11 +13,19 @@ impl RuntimePlugin for UiPlugin {
     fn register(&self, registry: &mut ServiceRegistry) -> AmigoResult<()> {
         register_ui_services(registry)?;
         amigo_scene::register_scene_reset_handler(registry, crate::UiSceneResetHandler)?;
-        let scene_handlers =
-            registry.required::<amigo_scene::RuntimeSceneCommandHandlerRegistry>()?;
-        amigo_scene::register_runtime_scene_command_handler(
-            scene_handlers.as_ref(),
-            crate::scene_command::UiSceneCommandHandler,
+        let plugin_scene_handlers =
+            registry.required::<amigo_scene::ScenePluginCommandHandlerRegistry>()?;
+        plugin_scene_handlers.register(
+            amigo_scene::UI_DOCUMENT_PLUGIN_SCENE_COMMAND_TYPE,
+            std::sync::Arc::new(crate::scene_command::UiSceneCommandHandler),
+        );
+        plugin_scene_handlers.register(
+            amigo_scene::UI_THEME_SET_PLUGIN_SCENE_COMMAND_TYPE,
+            std::sync::Arc::new(crate::scene_command::UiSceneCommandHandler),
+        );
+        plugin_scene_handlers.register(
+            amigo_scene::UI_MODEL_BINDINGS_PLUGIN_SCENE_COMMAND_TYPE,
+            std::sync::Arc::new(crate::scene_command::UiSceneCommandHandler),
         );
         let script_handlers =
             registry.required::<amigo_scripting_api::RuntimeScriptCommandHandlerRegistry>()?;

@@ -121,12 +121,12 @@ fn optical_coverage_for_source(source: &CameraOpticalSource2d) -> CameraOpticalC
                     render_layer,
                 },
                 _ => CameraOpticalCoverage2d::Unsupported {
-                    reason: "emissive_material_component_coverage_unsupported_v1".to_owned(),
+                    reason: "emissive_material_component_coverage_unsupported".to_owned(),
                 },
             }
         }
         CameraOpticalEmitterKind2d::Unsupported => CameraOpticalCoverage2d::Unsupported {
-            reason: "coverage_not_mapped_for_optical_candidate_v1".to_owned(),
+            reason: "coverage_not_mapped_for_optical_candidate".to_owned(),
         },
     }
 }
@@ -163,6 +163,72 @@ fn light_group_coverage(source: &CameraOpticalSource2d) -> CameraOpticalCoverage
     }
 
     CameraOpticalCoverage2d::Unsupported {
-        reason: format!("light_group_source_not_optical_v1:{source_id}"),
+        reason: format!("light_group_source_not_optical:{source_id}"),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use amigo_plugin_api::{RenderContributionSet, render_contributions::roles};
+
+    use super::*;
+    use crate::api::CameraOpticalResponse2d;
+
+    fn optical_source() -> CameraOpticalSource2d {
+        CameraOpticalSource2d {
+            owner: "sprite".to_owned(),
+            component_kind: "Sprite2D".to_owned(),
+            emitter_kind: CameraOpticalEmitterKind2d::EmissiveMaterial,
+            source_id: None,
+            render_layer: Some("world".to_owned()),
+            color_rgba: Some([1.0, 1.0, 1.0, 1.0]),
+            intensity: Some(2.0),
+            effective_intensity: None,
+            response: CameraOpticalResponse2d {
+                enabled: true,
+                intensity: 1.0,
+                bloom: 1.0,
+                glare: 1.0,
+                ghosting: 0.0,
+                streaks: 0.0,
+                chromatic_smear: 0.0,
+                dirt_response: 0.0,
+                halation: 0.0,
+                threshold: 0.0,
+            },
+            status: CameraOpticalSourceStatus2d::Active,
+            reason: String::new(),
+            position_px: Some([10.0, 20.0]),
+            radius_px: None,
+            roles: RenderContributionSet::from_pairs([
+                (roles::CAMERA_FX_SOURCE, true),
+                (roles::BLOOM_SOURCE, true),
+            ]),
+        }
+    }
+
+    #[test]
+    fn active_source_declares_highlight_and_emissive_targets() {
+        let candidate = resolve_camera_optical_candidate_2d(&optical_source()).unwrap();
+
+        assert_eq!(candidate.status, CameraOpticalCandidateStatus2d::Active);
+        assert!(candidate.targets_scene_highlight());
+        assert!(candidate.targets_scene_emissive());
+        assert_eq!(candidate.target_ids.len(), 2);
+    }
+
+    #[test]
+    fn unsupported_coverage_skips_candidate_with_canonical_reason() {
+        let mut source = optical_source();
+        source.component_kind = "Mesh2D".to_owned();
+
+        let candidate = resolve_camera_optical_candidate_2d(&source).unwrap();
+
+        assert_eq!(candidate.status, CameraOpticalCandidateStatus2d::Skipped);
+        assert_eq!(
+            candidate.reason,
+            "camera_optical_coverage_unsupported:emissive_material_component_coverage_unsupported"
+        );
+        assert!(candidate.target_ids.is_empty());
     }
 }

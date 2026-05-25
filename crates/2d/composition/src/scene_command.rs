@@ -1,5 +1,5 @@
 use amigo_core::{AmigoError, AmigoResult};
-use amigo_scene::{SceneCommand, format_scene_command};
+use amigo_scene::{format_scene_command, SceneCommand};
 
 use crate::{LightRoute2dSceneService, RenderLayer2dSceneService};
 
@@ -25,9 +25,13 @@ pub enum CompositionSceneCommandOutcome {
 pub fn can_handle_composition_scene_command(command: &SceneCommand) -> bool {
     matches!(
         command,
-        SceneCommand::QueueRenderLayer2d { .. }
-            | SceneCommand::SetVisual2dSpatial { .. }
-            | SceneCommand::QueueLightRoute2d { .. }
+        SceneCommand::Plugin { command }
+            if matches!(
+                command.command_type.as_str(),
+                amigo_scene::RENDER_LAYER_2D_PLUGIN_SCENE_COMMAND_TYPE
+                    | amigo_scene::VISUAL2D_SPATIAL_PLUGIN_SCENE_COMMAND_TYPE
+                    | amigo_scene::LIGHT_ROUTE_2D_PLUGIN_SCENE_COMMAND_TYPE
+            )
     )
 }
 
@@ -36,22 +40,54 @@ pub fn handle_composition_scene_command(
     command: SceneCommand,
 ) -> AmigoResult<CompositionSceneCommandOutcome> {
     match command {
-        SceneCommand::QueueRenderLayer2d { command } => {
+        SceneCommand::Plugin { command }
+            if command.command_type == amigo_scene::RENDER_LAYER_2D_PLUGIN_SCENE_COMMAND_TYPE =>
+        {
+            let Some(command) = command
+                .payload_as::<amigo_scene::RenderLayer2dSceneCommand>()
+                .cloned()
+            else {
+                return Err(AmigoError::Message(
+                    "composition-2d render layer plugin command payload mismatch".to_owned(),
+                ));
+            };
             let id = command.id.clone();
             let source_mod = command.source_mod.clone();
-            ctx.render_layer2d_scene_service.queue(command.into());
+            ctx.render_layer2d_scene_service
+                .queue(crate::render_layer_2d_command_from_scene(command));
             Ok(CompositionSceneCommandOutcome::RenderLayer { id, source_mod })
         }
-        SceneCommand::QueueLightRoute2d { command } => {
+        SceneCommand::Plugin { command }
+            if command.command_type == amigo_scene::LIGHT_ROUTE_2D_PLUGIN_SCENE_COMMAND_TYPE =>
+        {
+            let Some(command) = command
+                .payload_as::<amigo_scene::LightRoute2dSceneCommand>()
+                .cloned()
+            else {
+                return Err(AmigoError::Message(
+                    "composition-2d light route plugin command payload mismatch".to_owned(),
+                ));
+            };
             let receiver_layer = command.receiver_layer.clone();
             let source_mod = command.source_mod.clone();
-            ctx.light_route2d_scene_service.queue(command.into());
+            ctx.light_route2d_scene_service
+                .queue(crate::light_route_2d_command_from_scene(command));
             Ok(CompositionSceneCommandOutcome::LightRoute {
                 receiver_layer,
                 source_mod,
             })
         }
-        SceneCommand::SetVisual2dSpatial { depth_space } => {
+        SceneCommand::Plugin { command }
+            if command.command_type == amigo_scene::VISUAL2D_SPATIAL_PLUGIN_SCENE_COMMAND_TYPE =>
+        {
+            let Some(depth_space) = command
+                .payload_as::<amigo_scene::DepthSpace2dSceneCommand>()
+                .copied()
+            else {
+                return Err(AmigoError::Message(
+                    "composition-2d visual2d spatial plugin command payload mismatch".to_owned(),
+                ));
+            };
             ctx.render_layer2d_scene_service
                 .set_depth_space(depth_space.to_runtime());
             Ok(CompositionSceneCommandOutcome::RenderLayer {

@@ -1,6 +1,6 @@
 use crate::{
-    FrameCompositionPlan, FrameGraph, FrameGraphNodeKind, FrameResourceKind, RenderPassPlan,
-    resource_for_input, resource_for_output,
+    resource_for_input, resource_for_output, FrameCompositionPlan, FrameGraph, FrameGraphNodeKind,
+    FrameResourceKind, RenderPassPlan,
 };
 
 #[derive(Debug, Clone, Copy)]

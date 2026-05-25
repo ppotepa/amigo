@@ -89,9 +89,7 @@ pub fn resolve_layered_image_base(
     node: &AuthoringNode,
     property_path: &str,
 ) -> Option<AuthoringRuntimeBinding> {
-    if node.semantic.component_type.as_deref() != Some("LayeredImage2D")
-        || property_path != "base_opacity"
-    {
+    if !node.semantic.is_layered_image_2d() || property_path != "base_opacity" {
         return None;
     }
     Some(AuthoringRuntimeBinding::LayeredImageBaseOpacity {
@@ -103,7 +101,7 @@ pub fn resolve_image_part_field(
     node: &AuthoringNode,
     property_path: &str,
 ) -> Option<AuthoringRuntimeBinding> {
-    if node.semantic.component_type.as_deref() != Some("LayeredImage2D") {
+    if !node.semantic.is_layered_image_2d() {
         return None;
     }
     let entity_name = node.semantic.owner_entity_name.clone()?;
@@ -135,9 +133,7 @@ pub fn resolve_particle_field(
     property_path: &str,
     yaml_value: Option<&Value>,
 ) -> Option<AuthoringRuntimeBinding> {
-    if node.semantic.component_type.as_deref() != Some("ParticleEmitter2D")
-        || !is_live_particle_field(property_path)
-    {
+    if !node.semantic.is_particle_emitter_2d() || !is_live_particle_field(property_path) {
         return None;
     }
     match yaml_value {

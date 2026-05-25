@@ -31,7 +31,11 @@ pub struct RhaiSceneCommandOutcome {
 }
 
 pub fn can_handle_rhai_scene_command(command: &SceneCommand) -> bool {
-    matches!(command, SceneCommand::QueueScriptComponent { .. })
+    matches!(
+        command,
+        SceneCommand::Plugin { command }
+            if command.command_type == amigo_scene::SCRIPT_COMPONENT_PLUGIN_SCENE_COMMAND_TYPE
+    )
 }
 
 pub fn handle_rhai_scene_command(
@@ -39,7 +43,17 @@ pub fn handle_rhai_scene_command(
     command: SceneCommand,
 ) -> AmigoResult<RhaiSceneCommandOutcome> {
     match command {
-        SceneCommand::QueueScriptComponent { command } => {
+        SceneCommand::Plugin { command }
+            if command.command_type == amigo_scene::SCRIPT_COMPONENT_PLUGIN_SCENE_COMMAND_TYPE =>
+        {
+            let command = command
+                .payload_as::<amigo_scene::ScriptComponentSceneCommand>()
+                .ok_or_else(|| {
+                    AmigoError::Message(
+                        "script component plugin scene command payload type mismatch".to_owned(),
+                    )
+                })?
+                .clone();
             let pending_source_name = script_component_source_name(
                 &command.source_mod,
                 &command.entity_name,

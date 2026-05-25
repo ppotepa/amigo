@@ -4,8 +4,8 @@ mod tests {
     };
     use amigo_render_api::{
         LightContributionKind2d, LightEmitterKind2d, LightSource2dCommon,
-        LightSource2dCommonParams, RenderContribution2d, VisualSourceKind2d,
-        VisualSourceOrigin2d, VisualSourceRef2d,
+        LightSource2dCommonParams, RenderContribution2d, VisualSourceKind2d, VisualSourceOrigin2d,
+        VisualSourceRef2d,
     };
 
     use super::super::{
@@ -20,7 +20,7 @@ mod tests {
             &[],
             Some(&amigo_render_api::CameraCaptureInput2d {
                 depth_space: amigo_2d_spatial::DepthSpace2d::default(),
-                color: VisualSourceRef2d::fallback(VisualSourceKind2d::SceneColor, "scene"),
+                color: VisualSourceRef2d::debug_missing(VisualSourceKind2d::SceneColor, "scene"),
                 depth: None,
                 layer_mask: None,
                 normal: None,
@@ -118,11 +118,13 @@ mod tests {
             color: amigo_math::ColorRgba::new(1.0, 0.9, 0.8, 1.0),
             intensity: 0.5,
         };
-        contributions.extend(amigo_light_2d_plugin::light_group_commands_to_render_contributions(
-            std::slice::from_ref(&group),
-            &[global_command],
-            &[],
-        ));
+        contributions.extend(
+            amigo_light_2d_plugin::light_group_commands_to_render_contributions(
+                std::slice::from_ref(&group),
+                &[global_command],
+                &[],
+            ),
+        );
         let sources = collect_light_sources_2d(&[], &contributions, None);
         let group_source = sources
             .iter()
@@ -183,13 +185,16 @@ mod tests {
             }],
         };
 
-        let mut contributions =
-            amigo_light_2d_plugin::lightmap_commands_to_render_contributions(std::slice::from_ref(&lightmap));
-        contributions.extend(amigo_light_2d_plugin::light_group_commands_to_render_contributions(
-            std::slice::from_ref(&group),
-            &[],
+        let mut contributions = amigo_light_2d_plugin::lightmap_commands_to_render_contributions(
             std::slice::from_ref(&lightmap),
-        ));
+        );
+        contributions.extend(
+            amigo_light_2d_plugin::light_group_commands_to_render_contributions(
+                std::slice::from_ref(&group),
+                &[],
+                std::slice::from_ref(&lightmap),
+            ),
+        );
         let light_sources = collect_light_sources_2d(&[], &contributions, None);
         let candidates = collect_camera_optical_candidates_from_light_sources_2d(&light_sources);
         let summary = amigo_camera_optics_plugin::diagnostics::format_camera_optical_candidates_2d(

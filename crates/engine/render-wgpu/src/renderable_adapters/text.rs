@@ -1,10 +1,8 @@
 use amigo_math::Vec2;
 use amigo_render_api::{GlyphRun2dBlendMode, RenderPrimitive2d, RenderPrimitive2dKind};
 
-use crate::{
-    WgpuRenderable2dAdapter, WgpuRenderable2dAdapterContext,
-};
 use crate::renderer::collect_material_candidate_2d;
+use crate::{WgpuRenderable2dAdapter, WgpuRenderable2dAdapterContext};
 
 pub struct Text2dRenderableAdapter;
 
@@ -56,8 +54,7 @@ impl WgpuRenderable2dAdapter for Text2dRenderableAdapter {
             let width = outline.width.max(0.0);
             if width > 0.0 {
                 for (dx, dy) in text2d_effect_offsets(width) {
-                    let outline_transform =
-                        translated_transform2(ctx.transform, Vec2::new(dx, dy));
+                    let outline_transform = translated_transform2(ctx.transform, Vec2::new(dx, dy));
                     let _ = ctx.renderer.append_text2d_ttf_font_texture_batch(
                         ctx.texture_batches,
                         ctx.device,
@@ -126,7 +123,10 @@ impl WgpuRenderable2dAdapter for Text2dRenderableAdapter {
     }
 }
 
-fn translated_transform2(transform: amigo_math::Transform2, offset: Vec2) -> amigo_math::Transform2 {
+fn translated_transform2(
+    transform: amigo_math::Transform2,
+    offset: Vec2,
+) -> amigo_math::Transform2 {
     amigo_math::Transform2 {
         translation: Vec2::new(
             transform.translation.x + offset.x,

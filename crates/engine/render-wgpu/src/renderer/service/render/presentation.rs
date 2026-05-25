@@ -1,5 +1,6 @@
 use super::offscreen_ops::append_fullscreen_texture_vertices;
 use crate::renderer::*;
+use amigo_render_api::RenderAssetSource;
 
 fn append_surface_texture_rect_vertices(
     vertices: &mut Vec<TextureVertex>,
@@ -58,7 +59,7 @@ impl WgpuSceneRenderer {
         &mut self,
         surface: &mut WgpuSurfaceState,
         source_view: &wgpu::TextureView,
-        assets: &AssetCatalog,
+        assets: &dyn RenderAssetSource,
         surface_overlay_ui: &[UiOverlayDocument],
         game_viewport: Option<WgpuGameViewportPlacement>,
         emergency_overlay: &[WgpuEmergencyOverlayLine],
@@ -147,7 +148,7 @@ impl WgpuSceneRenderer {
         let mut encoder = surface
             .device
             .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("amigo-scene-render-encoder"),
+                label: Some("amigo-render-render-encoder"),
             });
 
         let color_vertex_buffers = color_batches
@@ -156,7 +157,7 @@ impl WgpuSceneRenderer {
                 surface
                     .device
                     .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                        label: Some("amigo-scene-color-vertices"),
+                        label: Some("amigo-render-color-vertices"),
                         contents: vertices_as_bytes(&batch.vertices),
                         usage: wgpu::BufferUsages::VERTEX,
                     })
@@ -168,7 +169,7 @@ impl WgpuSceneRenderer {
                 surface
                     .device
                     .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                        label: Some("amigo-scene-texture-vertices"),
+                        label: Some("amigo-render-texture-vertices"),
                         contents: texture_vertices_as_bytes(&batch.vertices),
                         usage: wgpu::BufferUsages::VERTEX,
                     })
@@ -180,7 +181,7 @@ impl WgpuSceneRenderer {
                 surface
                     .device
                     .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                        label: Some("amigo-scene-ui-texture-vertices"),
+                        label: Some("amigo-render-ui-texture-vertices"),
                         contents: texture_vertices_as_bytes(&batch.vertices),
                         usage: wgpu::BufferUsages::VERTEX,
                     })
@@ -189,7 +190,7 @@ impl WgpuSceneRenderer {
 
         {
             let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                label: Some("amigo-scene-render-pass"),
+                label: Some("amigo-render-render-pass"),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                     view: &view,
                     resolve_target: None,

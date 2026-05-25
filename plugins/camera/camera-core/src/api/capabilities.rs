@@ -1,8 +1,8 @@
 use amigo_session::{
-    RuntimeSession,
     runtime_capabilities::{
         RuntimeCapability, RuntimeCapabilityDescriptor, RuntimeCapabilityKind, RuntimeDomainId,
     },
+    RuntimeSession,
 };
 
 pub const CAMERA_DOMAIN_ID: &str = "amigo.camera";

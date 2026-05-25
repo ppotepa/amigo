@@ -148,7 +148,7 @@ mod tests {
     fn common_uses_camera_pipeline_from_space() {
         let common = Renderable2dCommon {
             owner_entity: "title".to_owned(),
-            component_kind: "Text2D".to_owned(),
+            component_kind: "component".to_owned(),
             render_space: RenderSpace2d::World,
             render_layer: "title.depth2d".to_owned(),
             z_index: 0.0,

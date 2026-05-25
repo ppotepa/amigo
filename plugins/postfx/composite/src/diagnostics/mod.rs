@@ -205,23 +205,5 @@ pub fn diagnose_post_fx_stacks(stacks: &[ScopedPostFx2dStack]) -> Vec<PostFxDiag
 }
 
 fn effect_kind_label(effect: &PostFx2d) -> &'static str {
-    match effect {
-        PostFx2d::Blur(_) => "blur",
-        PostFx2d::DirtyBloom(_) => "dirty_bloom",
-        PostFx2d::EmbossEdges(_) => "emboss_edges",
-        PostFx2d::Crt(_) => "crt",
-        PostFx2d::Downscale(_) => "downscale",
-        PostFx2d::LensDroplets(_) => "lens_droplets",
-        PostFx2d::WetReflections(_) => "wet_reflections",
-        PostFx2d::CameraExposure(_) => "camera_exposure",
-        PostFx2d::CameraOptics(_) => "camera_optics",
-        PostFx2d::FocusBlur(_) => "focus_blur",
-        PostFx2d::RainGlass(_) => "rain_glass",
-        PostFx2d::ShutterBlur(_) => "shutter_blur",
-        PostFx2d::FilmEmulsion(_) => "film_emulsion",
-        PostFx2d::FilmNoise(_) => "film_noise",
-        PostFx2d::ScanOutput(_) => "scan_output",
-        PostFx2d::ColorRamp(_) => "color_ramp",
-        PostFx2d::ColorQuantize(_) => "color_quantize",
-    }
+    effect.kind()
 }

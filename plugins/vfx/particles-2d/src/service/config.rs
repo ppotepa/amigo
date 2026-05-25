@@ -175,31 +175,35 @@ impl Particle2dSceneService {
         &self,
         entity_name: &str,
         curve_name: &str,
-        v0: f32,
-        v1: f32,
-        v2: f32,
-        v3: f32,
+        point0: f32,
+        point1: f32,
+        point2: f32,
+        point3: f32,
     ) -> bool {
-        if !v0.is_finite() || !v1.is_finite() || !v2.is_finite() || !v3.is_finite() {
+        if !point0.is_finite()
+            || !point1.is_finite()
+            || !point2.is_finite()
+            || !point3.is_finite()
+        {
             return false;
         }
         let curve = Curve1d::Custom {
             points: vec![
                 CurvePoint1d {
                     t: 0.0,
-                    value: v0.clamp(0.0, 1.0),
+                    value: point0.clamp(0.0, 1.0),
                 },
                 CurvePoint1d {
                     t: 1.0 / 3.0,
-                    value: v1.clamp(0.0, 1.0),
+                    value: point1.clamp(0.0, 1.0),
                 },
                 CurvePoint1d {
                     t: 2.0 / 3.0,
-                    value: v2.clamp(0.0, 1.0),
+                    value: point2.clamp(0.0, 1.0),
                 },
                 CurvePoint1d {
                     t: 1.0,
-                    value: v3.clamp(0.0, 1.0),
+                    value: point3.clamp(0.0, 1.0),
                 },
             ],
         };

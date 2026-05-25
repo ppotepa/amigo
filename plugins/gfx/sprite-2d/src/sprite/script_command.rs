@@ -30,13 +30,13 @@ fn parse_sprite_spawn(command: ScriptCommand) -> Option<SceneCommand> {
         return None;
     };
     let size = parse_vec2(width, height)?;
-    Some(SceneCommand::QueueSprite2d {
-        command: Sprite2dSceneCommand::new(
+    Some(SceneCommand::Plugin {
+        command: super::scene_command::sprite_plugin_scene_command(Sprite2dSceneCommand::new(
             source_mod.clone(),
             entity_name.clone(),
             AssetKey::new(texture_key.clone()),
             size,
-        ),
+        )),
     })
 }
 

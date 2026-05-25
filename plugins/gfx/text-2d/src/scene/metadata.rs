@@ -2,7 +2,7 @@ use amigo_scene::*;
 
 pub fn text_2d_descriptor() -> ComponentTypeDescriptor {
     ComponentTypeDescriptor {
-        kind: ComponentKind::Text2D,
+        kind_id: "Text2D",
         type_name: "Text2D",
         label: "Text 2D",
         domains: &[ComponentDomain::Render2D],

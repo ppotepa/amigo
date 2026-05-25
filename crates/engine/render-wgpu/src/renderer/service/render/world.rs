@@ -1,12 +1,12 @@
 use super::material_candidates::WgpuMaterialCandidate2d;
 use super::*;
-use amigo_render_api::{LightSource2dCommon, RenderLightMap2dSource};
 use amigo_material_api::MaterialCandidateDecision2d;
+use amigo_render_api::{LightSource2dCommon, RenderAssetSource, RenderLightMap2dSource};
 
 #[derive(Clone, Copy)]
 pub(super) struct WorldRenderContext<'a> {
-    pub scene: &'a SceneService,
-    pub assets: &'a AssetCatalog,
+    pub scene_view: &'a amigo_render_api::RenderSceneView,
+    pub assets: &'a dyn RenderAssetSource,
     pub renderables: &'a [Renderable2dItem],
     pub light_sources: &'a [LightSource2dCommon],
     pub lightmaps: &'a [RenderLightMap2dSource],
@@ -15,13 +15,12 @@ pub(super) struct WorldRenderContext<'a> {
     pub text3d: Option<&'a [Text3dDrawCommand]>,
     pub render_layers: &'a [RenderLayer2dCommand],
     pub light_routes: &'a [LightRoute2dCommand],
-    pub active_camera_2d_entity: Option<&'a str>,
 }
 
 impl<'a> WorldRenderContext<'a> {
     pub(super) fn from_request(request: &'a WgpuFrameRenderRequest<'a>) -> Self {
         Self {
-            scene: request.scene,
+            scene_view: request.scene_view,
             assets: request.assets,
             renderables: request.world_2d.renderables,
             light_sources: request.world_2d.light_sources,
@@ -31,7 +30,6 @@ impl<'a> WorldRenderContext<'a> {
             text3d: request.world_3d.text3d,
             render_layers: request.world_2d.render_layers,
             light_routes: request.world_2d.light_routes,
-            active_camera_2d_entity: request.active_camera_2d_entity,
         }
     }
 }
@@ -42,7 +40,7 @@ fn renderable_adapter_context<'a>(
     texture_batches: &'a mut Vec<TextureBatch>,
     color_batches: &'a mut Vec<ColorBatch>,
     target: &'a WgpuOffscreenTarget,
-    assets: &'a AssetCatalog,
+    assets: &'a dyn RenderAssetSource,
     viewport: &'a Viewport,
     layer_camera: Transform2,
     layer_opacity: f32,
@@ -163,15 +161,11 @@ pub(super) fn execute_world_to_offscreen(
     let mut color_batches = Vec::new();
     let mut texture_batches = Vec::new();
     let mut ui_texture_batches = Vec::new();
-    let camera2d = resolve_camera2d_transform(ctx.scene, ctx.active_camera_2d_entity);
+    let camera2d = resolve_camera2d_transform(ctx.scene_view);
     let particle_lights = particle_render_lights_from_renderables(ctx.renderables);
     let render_layer_lookup = render_layer_lookup(ctx.render_layers);
-    let lightmap_samplers = renderer.lightmap_2d_samplers(
-        ctx.assets,
-        &viewport,
-        ctx.renderables,
-        ctx.lightmaps,
-    );
+    let lightmap_samplers =
+        renderer.lightmap_2d_samplers(ctx.assets, &viewport, ctx.renderables, ctx.lightmaps);
     let mut world2d_items = ctx.renderables.to_vec();
     world2d_items.retain(|item| {
         selection.layer_filter.allows(item.render_layer())
@@ -206,14 +200,14 @@ pub(super) fn execute_world_to_offscreen(
         );
     }
 
-    let camera = resolve_camera_transform(ctx.scene);
+    let camera = resolve_camera_transform(ctx.scene_view);
     let material_lookup = material_lookup_from_commands(ctx.materials);
     let mut projected_triangles = Vec::new();
 
     if selection.layer_filter.allows_layerless() {
         for command in ctx.meshes {
             let transform =
-                resolve_transform3(ctx.scene, &command.entity_name, command.mesh.transform);
+                resolve_transform3(ctx.scene_view, &command.entity_name, command.mesh.transform);
             let color = material_lookup
                 .get(&command.entity_name)
                 .copied()
@@ -246,7 +240,7 @@ pub(super) fn execute_world_to_offscreen(
     {
         for command in text3d {
             let transform =
-                resolve_transform3(ctx.scene, &command.entity_name, command.text.transform);
+                resolve_transform3(ctx.scene_view, &command.entity_name, command.text.transform);
             if renderer.append_text3d_ttf_font_texture_batch(
                 &mut ui_texture_batches,
                 &target.device,
@@ -347,7 +341,6 @@ pub(super) fn execute_world_to_offscreen(
         target,
         ctx.assets,
         &viewport,
-        ctx.scene,
         &material_candidates,
         &material_decisions,
     )

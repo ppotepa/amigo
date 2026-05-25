@@ -10,6 +10,7 @@ authors.workspace = true
 amigo-editor-api.workspace = true
 amigo-assets.workspace = true
 amigo-math.workspace = true
+amigo-render-api.workspace = true
 amigo-capabilities.workspace = true
 amigo-runtime.workspace = true
 amigo-scene.workspace = true

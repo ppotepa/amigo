@@ -2,9 +2,10 @@ use std::collections::BTreeSet;
 use std::sync::RwLock;
 
 use crate::{
-    LensDroplets2dCertificationReport, PostFx2d, PostFx2dStack, PostFxBlur2d, PostFxDiagnostic2d,
+    LensDroplets2dCertificationReport, PostFx2dStack, PostFxBlur2d, PostFxDiagnostic2d,
     PostFxScope2d, ScopedPostFx2dStack, diagnose_post_fx_stacks,
 };
+use amigo_render_api::{PostFx2d, post_fx_blur};
 
 #[derive(Debug, Default)]
 pub struct PostFx2dService {
@@ -31,7 +32,7 @@ impl PostFx2dService {
     }
 
     pub fn default_blur_stack(&self) -> PostFx2dStack {
-        PostFx2dStack::single(PostFx2d::Blur(self.default_blur()))
+        PostFx2dStack::single(post_fx_blur(self.default_blur()))
     }
 
     pub fn set_scoped_stacks(&self, stacks: Vec<ScopedPostFx2dStack>) {

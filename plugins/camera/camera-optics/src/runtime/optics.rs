@@ -451,7 +451,7 @@ mod tests {
     }
 
     #[test]
-    fn shutter_angle_fps_remain_previous_exposure_fallback() {
+    fn shutter_angle_fps_define_exposure_when_speed_is_unset() {
         let shutter = shutter_with(None, 24.0, 180.0);
 
         assert!((shutter.exposure_seconds() - (1.0 / 48.0)).abs() < 0.0001);

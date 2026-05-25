@@ -1,8 +1,11 @@
 use std::sync::Arc;
 
 use crate::{
-    ColorQuantize2d, ColorRamp2d, PostFx2d, PostFx2dService, RainGlass2d, RainGlassPatch,
+    ColorQuantize2d, ColorRamp2d, PostFx2dService, RainGlass2d, RainGlassPatch,
     ScopedPostFx2dStack,
+};
+use amigo_render_api::{
+    PostFx2d, post_fx_color_quantize, post_fx_color_ramp, post_fx_rain_glass,
 };
 
 #[derive(Clone)]
@@ -60,9 +63,10 @@ impl PostFxApi {
                 service
                     .frame_effects()
                     .into_iter()
-                    .find_map(|effect| match effect {
-                        PostFx2d::ColorQuantize(effect) => Some(effect.palette_size as rhai::INT),
-                        _ => None,
+                    .find_map(|effect| {
+                        effect
+                            .as_color_quantize()
+                            .map(|effect| effect.palette_size as rhai::INT)
                     })
             })
             .unwrap_or(0)
@@ -101,9 +105,10 @@ impl PostFxApi {
                 service
                     .frame_effects()
                     .into_iter()
-                    .find_map(|effect| match effect {
-                        PostFx2d::ColorRamp(effect) => Some(effect.palette_size as rhai::INT),
-                        _ => None,
+                    .find_map(|effect| {
+                        effect
+                            .as_color_ramp()
+                            .map(|effect| effect.palette_size as rhai::INT)
                     })
             })
             .unwrap_or(0)
@@ -208,20 +213,20 @@ impl PostFxApi {
         let index = stack
             .effects
             .iter()
-            .position(|effect| matches!(effect, PostFx2d::RainGlass(_)))
+            .position(|effect| effect.kind() == "rain_glass")
             .unwrap_or_else(|| {
                 stack
                     .effects
-                    .push(PostFx2d::RainGlass(RainGlass2d::default()));
+                    .push(post_fx_rain_glass(RainGlass2d::default()));
                 stack.effects.len() - 1
             });
 
-        let mut rain = match stack.effects[index] {
-            PostFx2d::RainGlass(rain) => rain,
-            _ => RainGlass2d::default(),
-        };
+        let mut rain = stack.effects[index]
+            .clone()
+            .into_rain_glass()
+            .unwrap_or_default();
         update(&mut rain);
-        stack.effects[index] = PostFx2d::RainGlass(rain.normalized());
+        stack.effects[index] = post_fx_rain_glass(rain.normalized());
         service.set_scoped_stacks(vec![
             ScopedPostFx2dStack::from_frame_stack(stack.normalized()),
         ]);
@@ -237,22 +242,22 @@ impl PostFxApi {
         let index = stack
             .effects
             .iter()
-            .position(|effect| matches!(effect, PostFx2d::ColorQuantize(_)))
+            .position(|effect| effect.kind() == "color_quantize")
             .unwrap_or_else(|| {
                 stack
                     .effects
-                    .push(PostFx2d::ColorQuantize(ColorQuantize2d::default()));
+                    .push(post_fx_color_quantize(ColorQuantize2d::default()));
                 stack.effects.len() - 1
             });
 
-        let mut effect = match stack.effects[index] {
-            PostFx2d::ColorQuantize(effect) => effect,
-            _ => ColorQuantize2d::default(),
-        };
+        let mut effect = stack.effects[index]
+            .clone()
+            .into_color_quantize()
+            .unwrap_or_default();
         update(&mut effect);
         let effect = effect.normalized();
         let palette_size = effect.palette_size as rhai::INT;
-        stack.effects[index] = PostFx2d::ColorQuantize(effect);
+        stack.effects[index] = post_fx_color_quantize(effect);
         service.set_scoped_stacks(vec![
             ScopedPostFx2dStack::from_frame_stack(stack.normalized()),
         ]);
@@ -268,22 +273,22 @@ impl PostFxApi {
         let index = stack
             .effects
             .iter()
-            .position(|effect| matches!(effect, PostFx2d::ColorRamp(_)))
+            .position(|effect| effect.kind() == "color_ramp")
             .unwrap_or_else(|| {
                 stack
                     .effects
-                    .push(PostFx2d::ColorRamp(ColorRamp2d::default()));
+                    .push(post_fx_color_ramp(ColorRamp2d::default()));
                 stack.effects.len() - 1
             });
 
-        let mut effect = match stack.effects[index] {
-            PostFx2d::ColorRamp(effect) => effect,
-            _ => ColorRamp2d::default(),
-        };
+        let mut effect = stack.effects[index]
+            .clone()
+            .into_color_ramp()
+            .unwrap_or_default();
         update(&mut effect);
         let effect = effect.normalized();
         let palette_size = effect.palette_size as rhai::INT;
-        stack.effects[index] = PostFx2d::ColorRamp(effect);
+        stack.effects[index] = post_fx_color_ramp(effect);
         service.set_scoped_stacks(vec![
             ScopedPostFx2dStack::from_frame_stack(stack.normalized()),
         ]);

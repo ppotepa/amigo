@@ -21,7 +21,11 @@ pub struct EventPipelineSceneCommandOutcome {
 }
 
 pub fn can_handle_event_pipeline_scene_command(command: &SceneCommand) -> bool {
-    matches!(command, SceneCommand::QueueEventPipeline { .. })
+    matches!(
+        command,
+        SceneCommand::Plugin { command }
+            if command.command_type == amigo_scene::EVENT_PIPELINE_PLUGIN_SCENE_COMMAND_TYPE
+    )
 }
 
 pub fn handle_event_pipeline_scene_command(
@@ -29,34 +33,50 @@ pub fn handle_event_pipeline_scene_command(
     command: SceneCommand,
 ) -> AmigoResult<EventPipelineSceneCommandOutcome> {
     match command {
-        SceneCommand::QueueEventPipeline { command } => {
-            let entity = ctx
-                .scene_service
-                .find_or_spawn_named_entity(command.entity_name.clone());
-            ctx.event_pipeline_service.queue(EventPipeline {
-                id: command.id.clone(),
-                topic: command.topic,
-                steps: command
-                    .steps
-                    .into_iter()
-                    .map(event_pipeline_step_from_scene_command)
-                    .collect(),
-            });
-            ctx.scene_event_queue
-                .publish(SceneEvent::EventPipelineQueued {
-                    entity_id: entity.raw(),
-                    entity_name: command.entity_name,
-                });
-            Ok(EventPipelineSceneCommandOutcome {
-                id: command.id,
-                source_mod: command.source_mod,
-            })
+        SceneCommand::Plugin { command }
+            if command.command_type == amigo_scene::EVENT_PIPELINE_PLUGIN_SCENE_COMMAND_TYPE =>
+        {
+            let command = command
+                .payload_as::<amigo_scene::EventPipelineSceneCommand>()
+                .ok_or_else(|| {
+                    AmigoError::Message(
+                        "event pipeline plugin scene command payload type mismatch".to_owned(),
+                    )
+                })?
+                .clone();
+            handle_event_pipeline_command(ctx, command)
         }
         _ => Err(AmigoError::Message(format!(
             "event-pipeline cannot handle command {}",
             format_scene_command(&command)
         ))),
     }
+}
+
+fn handle_event_pipeline_command(
+    ctx: EventPipelineSceneCommandContext<'_>,
+    command: amigo_scene::EventPipelineSceneCommand,
+) -> AmigoResult<EventPipelineSceneCommandOutcome> {
+    let entity = ctx
+        .scene_service
+        .find_or_spawn_named_entity(command.entity_name.clone());
+    ctx.event_pipeline_service.queue(EventPipeline {
+        id: command.id.clone(),
+        topic: command.topic,
+        steps: command
+            .steps
+            .into_iter()
+            .map(event_pipeline_step_from_scene_command)
+            .collect(),
+    });
+    ctx.scene_event_queue.publish(SceneEvent::EventPipelineQueued {
+        entity_id: entity.raw(),
+        entity_name: command.entity_name,
+    });
+    Ok(EventPipelineSceneCommandOutcome {
+        id: command.id,
+        source_mod: command.source_mod,
+    })
 }
 
 fn event_pipeline_step_from_scene_command(

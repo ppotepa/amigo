@@ -1,26 +1,14 @@
-use amigo_2d_composition::{LightRoute2dCommand, RenderLayer2dCommand};
-use amigo_3d_material::MaterialDrawCommand;
-use amigo_3d_mesh::MeshDrawCommand;
-use amigo_3d_text::Text3dDrawCommand;
+use amigo_render_api::MaterialDrawCommand;
+use amigo_render_api::MeshDrawCommand;
+use amigo_render_api::Text3dDrawCommand;
 use amigo_render_api::{
     CameraCaptureInput2d, CameraDebugView2d, LightSource2dCommon, RenderContribution2d,
     RenderDepthAuxMap2d, RenderDepthMap2d, RenderExtractionOutput2d, RenderLightGroup2d,
-    RenderLightMap2dSource, Renderable2dItem, ScopedPostFx2dStack,
+    RenderLightMap2dSource, Renderable2dItem, Renderable2dKind, ScopedPostFx2dStack,
 };
+use amigo_render_api::{LightRoute2dCommand, RenderLayer2dCommand};
 
 use crate::UiOverlayDocument;
-
-pub fn supported_renderable_2d_component_kinds() -> &'static [&'static str] {
-    &[
-        "TileMap2D",
-        "LayeredImage2D",
-        "VectorShape2D",
-        "BeaconLight2D",
-        "Sprite2D",
-        "Text2D",
-        "ParticleEmitter2D",
-    ]
-}
 
 #[derive(Debug, Clone, Default)]
 pub struct WgpuVisualSourceFlags2d {
@@ -180,6 +168,13 @@ impl WgpuRenderFramePacket {
             .count()
     }
 
+    pub fn renderable_2d_count_by_kind(&self, kind: Renderable2dKind) -> usize {
+        self.renderables_2d
+            .iter()
+            .filter(|item| item.common.kind == kind)
+            .count()
+    }
+
     pub fn light_source_2d_contribution_count(&self) -> usize {
         self.render_contributions_2d
             .iter()
@@ -315,7 +310,7 @@ impl RenderExtractionOutput2d for WgpuRenderFramePacket {
     }
 }
 
-impl amigo_2d_composition::Composition2dRenderOutput for WgpuRenderFramePacket {
+impl amigo_render_api::Composition2dRenderOutput for WgpuRenderFramePacket {
     fn push_render_layer2d_command(&mut self, command: RenderLayer2dCommand) {
         self.push_world_2d_render_layer(command);
     }
@@ -331,19 +326,19 @@ impl amigo_render_api::PostFx2dRenderOutput for WgpuRenderFramePacket {
     }
 }
 
-impl amigo_3d_mesh::Mesh3dRenderOutput for WgpuRenderFramePacket {
+impl amigo_render_api::Mesh3dRenderOutput for WgpuRenderFramePacket {
     fn push_mesh3d_render_command(&mut self, command: MeshDrawCommand) {
         self.push_world_3d_mesh(command);
     }
 }
 
-impl amigo_3d_material::Material3dRenderOutput for WgpuRenderFramePacket {
+impl amigo_render_api::Material3dRenderOutput for WgpuRenderFramePacket {
     fn push_material3d_render_command(&mut self, command: MaterialDrawCommand) {
         self.push_world_3d_material(command);
     }
 }
 
-impl amigo_3d_text::Text3dRenderOutput for WgpuRenderFramePacket {
+impl amigo_render_api::Text3dRenderOutput for WgpuRenderFramePacket {
     fn push_text3d_render_command(&mut self, command: Text3dDrawCommand) {
         self.push_world_3d_text(command);
     }

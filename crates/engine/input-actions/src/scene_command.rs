@@ -26,7 +26,11 @@ pub struct InputActionsSceneCommandOutcome {
 }
 
 pub fn can_handle_input_actions_scene_command(command: &SceneCommand) -> bool {
-    matches!(command, SceneCommand::QueueInputActionMap { .. })
+    matches!(
+        command,
+        SceneCommand::Plugin { command }
+            if command.command_type == amigo_scene::INPUT_ACTION_MAP_PLUGIN_SCENE_COMMAND_TYPE
+    )
 }
 
 pub fn handle_input_actions_scene_command(
@@ -34,41 +38,58 @@ pub fn handle_input_actions_scene_command(
     command: SceneCommand,
 ) -> AmigoResult<InputActionsSceneCommandOutcome> {
     match command {
-        SceneCommand::QueueInputActionMap { command } => {
-            let entity = ctx
-                .scene_service
-                .find_or_spawn_named_entity(command.entity_name.clone());
-            let map = InputActionMap {
-                id: command.id.clone(),
-                actions: command
-                    .actions
-                    .iter()
-                    .map(|(id, binding)| {
-                        (
-                            InputActionId::new(id.clone()),
-                            input_action_binding_from_scene_command(binding),
-                        )
-                    })
-                    .collect::<BTreeMap<_, _>>(),
-            };
-            ctx.input_action_service.register_map(map, command.active);
-            ctx.scene_event_queue
-                .publish(SceneEvent::InputActionMapQueued {
-                    entity_id: entity.raw(),
-                    entity_name: command.entity_name,
-                    map_id: command.id.clone(),
-                });
-            Ok(InputActionsSceneCommandOutcome {
-                id: command.id,
-                source_mod: command.source_mod,
-                action_count: command.actions.len(),
-            })
+        SceneCommand::Plugin { command }
+            if command.command_type == amigo_scene::INPUT_ACTION_MAP_PLUGIN_SCENE_COMMAND_TYPE =>
+        {
+            let command = command
+                .payload_as::<amigo_scene::InputActionMapSceneCommand>()
+                .ok_or_else(|| {
+                    AmigoError::Message(
+                        "input action map plugin scene command payload type mismatch".to_owned(),
+                    )
+                })?
+                .clone();
+            handle_input_action_map_command(ctx, command)
         }
         _ => Err(AmigoError::Message(format!(
             "input-actions cannot handle command {}",
             format_scene_command(&command)
         ))),
     }
+}
+
+fn handle_input_action_map_command(
+    ctx: InputActionsSceneCommandContext<'_>,
+    command: amigo_scene::InputActionMapSceneCommand,
+) -> AmigoResult<InputActionsSceneCommandOutcome> {
+    let entity = ctx
+        .scene_service
+        .find_or_spawn_named_entity(command.entity_name.clone());
+    let map = InputActionMap {
+        id: command.id.clone(),
+        actions: command
+            .actions
+            .iter()
+            .map(|(id, binding)| {
+                (
+                    InputActionId::new(id.clone()),
+                    input_action_binding_from_scene_command(binding),
+                )
+            })
+            .collect::<BTreeMap<_, _>>(),
+    };
+    ctx.input_action_service.register_map(map, command.active);
+    ctx.scene_event_queue
+        .publish(SceneEvent::InputActionMapQueued {
+            entity_id: entity.raw(),
+            entity_name: command.entity_name,
+            map_id: command.id.clone(),
+        });
+    Ok(InputActionsSceneCommandOutcome {
+        id: command.id,
+        source_mod: command.source_mod,
+        action_count: command.actions.len(),
+    })
 }
 
 fn input_action_binding_from_scene_command(

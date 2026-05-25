@@ -22,7 +22,7 @@ pub use light_sources_2d::{
 };
 pub use visual_2d_items::{
     RenderSpace2d, Renderable2dCommon, Renderable2dItem, Renderable2dKind,
-    render_contribution_decisions_summary, supported_renderable_2d_component_kinds,
+    render_contribution_decisions_summary,
 };
 pub(crate) use world_2d::{
     available_world_2d_plugin_bridge_installers, register_world_2d_builtin_render_extractors,

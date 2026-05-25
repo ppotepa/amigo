@@ -3,8 +3,8 @@ use std::path::Path;
 
 use amigo_runtime::Runtime;
 use amigo_scene::{
-    ComponentKind, ComponentRegistry, EditorPropertyValueKind, SceneComponentDocument,
-    SceneDocument, SceneEntityDocument, component_registry_for_runtime, default_component_registry,
+    ComponentRegistry, EditorPropertyValueKind, SceneComponentDocument, SceneDocument,
+    SceneEntityDocument, component_registry_for_runtime, default_component_registry,
 };
 
 use crate::{ControlRange, ControlValueType, path::sanitize_console_segment};
@@ -76,15 +76,15 @@ pub fn build_scene_metadata_with_registry(
 
     for entity in &document.entities {
         let preferred_target = preferred_target_alias(entity);
-        let fallback_target = fallback_target_alias(entity);
+        let display_target = display_target_alias(entity);
         let canonical_target = preferred_target
             .clone()
-            .unwrap_or_else(|| fallback_target.clone());
+            .unwrap_or_else(|| display_target.clone());
         let source_file = Some(relative_document_path.display().to_string());
         let source_pointer = Some(entity_source_pointer(document, entity));
         let mut aliases = vec![canonical_target.clone()];
-        if canonical_target != fallback_target {
-            aliases.push(fallback_target);
+        if canonical_target != display_target {
+            aliases.push(display_target);
         }
         aliases.push(sanitize_entity_lookup(entity.id.as_str()));
         aliases.push(sanitize_entity_lookup(entity.display_name().as_str()));
@@ -143,10 +143,7 @@ fn component_property_metadata(
     component: &SceneComponentDocument,
     source_pointer: String,
 ) -> Vec<RuntimeControlPropertyMetadata> {
-    let Some(kind) = component_kind(component.kind()) else {
-        return Vec::new();
-    };
-    let Some(descriptor) = registry.descriptor(kind) else {
+    let Some(descriptor) = registry.descriptor_by_type_name(component.kind()) else {
         return Vec::new();
     };
     descriptor
@@ -178,16 +175,6 @@ fn control_value_type(value_kind: EditorPropertyValueKind) -> Option<ControlValu
     }
 }
 
-fn component_kind(kind: &str) -> Option<ComponentKind> {
-    match kind {
-        "Camera2D" => Some(ComponentKind::Camera2D),
-        "BeaconLight2D" => Some(ComponentKind::BeaconLight2D),
-        "LayeredImage2D" => Some(ComponentKind::LayeredImage2D),
-        "ParticleEmitter2D" => Some(ComponentKind::ParticleEmitter2D),
-        _ => None,
-    }
-}
-
 fn entity_source_pointer(document: &SceneDocument, entity: &SceneEntityDocument) -> String {
     let index = document
         .entities
@@ -197,7 +184,7 @@ fn entity_source_pointer(document: &SceneDocument, entity: &SceneEntityDocument)
     format!("/entities/{index}")
 }
 
-fn fallback_target_alias(entity: &SceneEntityDocument) -> String {
+fn display_target_alias(entity: &SceneEntityDocument) -> String {
     sanitize_entity_lookup(entity.display_name().as_str())
 }
 
@@ -210,7 +197,7 @@ fn sanitize_entity_lookup(value: &str) -> String {
 }
 
 fn preferred_target_alias(entity: &SceneEntityDocument) -> Option<String> {
-    let fallback = sanitize_entity_lookup(entity.id.as_str());
+    let id_target = sanitize_entity_lookup(entity.id.as_str());
     if let Some(layer) = primary_render_layer(entity) {
         if layer.contains('.') {
             return Some(layer);
@@ -222,24 +209,14 @@ fn preferred_target_alias(entity: &SceneEntityDocument) -> Option<String> {
             sanitize_console_segment(suffix)
         ));
     }
-    Some(fallback)
+    Some(id_target)
 }
 
 fn primary_render_layer(entity: &SceneEntityDocument) -> Option<String> {
     entity
         .components
         .iter()
-        .find_map(|component| match component {
-            SceneComponentDocument::ParticleEmitter2d { render_layer, .. }
-            | SceneComponentDocument::LayeredImage2d { render_layer, .. } => {
-                Some(render_layer.clone())
-            }
-            SceneComponentDocument::BeaconLight2d { render_layer, .. } => {
-                Some(render_layer.clone())
-            }
-            SceneComponentDocument::Plugin { .. } => None,
-            _ => None,
-        })
+        .find_map(|component| component.primary_render_layer().map(str::to_owned))
 }
 
 fn console_component_name(kind: &str) -> String {

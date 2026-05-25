@@ -1,10 +1,9 @@
 use crate::renderer::*;
 use amigo_render_api::{
-    LightSource2dCommon,
-    Particle2dPrimitive, ParticleBlendMode2dPrimitive, ParticleLightMode2dPrimitive,
-    ParticleLineAnchor2dPrimitive, ParticleShape2dPrimitive, RenderPrimitive2d, Renderable2dItem,
-    VectorShape2dKindPrimitive, VectorShape2dPrimitive, VectorShape2dStylePrimitive,
-    VectorShape2dViewportFit,
+    LightSource2dCommon, Particle2dPrimitive, ParticleBlendMode2dPrimitive,
+    ParticleLightMode2dPrimitive, ParticleLineAnchor2dPrimitive, ParticleShape2dPrimitive,
+    RenderPrimitive2d, Renderable2dItem, VectorShape2dKindPrimitive, VectorShape2dPrimitive,
+    VectorShape2dStylePrimitive, VectorShape2dViewportFit,
 };
 
 fn with_alpha_scale(color: ColorRgba, scale: f32) -> ColorRgba {
@@ -174,15 +173,7 @@ pub(crate) fn append_particle_primitive_vertices(
             );
         }
     };
-    append_vector_primitive_vertices(
-        vertices,
-        viewport,
-        camera,
-        &shape,
-        None,
-        None,
-        None,
-    );
+    append_vector_primitive_vertices(vertices, viewport, camera, &shape, None, None, None);
 }
 
 pub(crate) fn particle_render_lights_from_renderables(
@@ -277,15 +268,7 @@ pub(crate) fn append_particle_light_primitive_vertices(
         ),
     };
 
-    append_vector_primitive_vertices(
-        vertices,
-        viewport,
-        camera,
-        &shape,
-        None,
-        None,
-        None,
-    );
+    append_vector_primitive_vertices(vertices, viewport, camera, &shape, None, None, None);
 }
 
 fn particle_line_anchor(anchor: ParticleLineAnchor2dPrimitive) -> ParticleLineAnchor2d {

@@ -289,11 +289,11 @@ fn camera_capture_input_sets_wetness_from_active_wet_reflections_mask() {
         amigo_composite_plugin::PostFxScope2d::Frame,
         vec![amigo_composite_plugin::PostFx2dInstance::new(
             "wetness",
-            amigo_composite_plugin::PostFx2d::WetReflections(
+            amigo_render_api::post_fx_wet_reflections(
                 amigo_composite_plugin::PostFxWetReflections2d {
                     enabled: true,
-                    reflection_mask:
-                        "rotten-club/layered-images/neon-alley/reflection_mask.png".to_owned(),
+                    reflection_mask: "rotten-club/layered-images/neon-alley/reflection_mask.png"
+                        .to_owned(),
                     ..Default::default()
                 },
             ),
@@ -331,11 +331,11 @@ fn camera_capture_input_sets_normal_from_wet_reflections_noise_normal() {
         amigo_composite_plugin::PostFxScope2d::Frame,
         vec![amigo_composite_plugin::PostFx2dInstance::new(
             "wetness",
-            amigo_composite_plugin::PostFx2d::WetReflections(
+            amigo_render_api::post_fx_wet_reflections(
                 amigo_composite_plugin::PostFxWetReflections2d {
                     enabled: true,
-                    reflection_mask:
-                        "rotten-club/layered-images/neon-alley/reflection_mask.png".to_owned(),
+                    reflection_mask: "rotten-club/layered-images/neon-alley/reflection_mask.png"
+                        .to_owned(),
                     noise_normal: Some(
                         "rotten-club/layered-images/neon-alley/rain-normal.png".to_owned(),
                     ),
@@ -376,7 +376,7 @@ fn camera_capture_input_sets_motion_from_active_shutter_blur() {
         amigo_composite_plugin::PostFxScope2d::Frame,
         vec![amigo_composite_plugin::PostFx2dInstance::new(
             "motion",
-            amigo_composite_plugin::PostFx2d::ShutterBlur(amigo_composite_plugin::ShutterBlur2d {
+            amigo_render_api::post_fx_shutter_blur(amigo_composite_plugin::ShutterBlur2d {
                 exposure_seconds: 1.0 / 48.0,
                 opacity: 0.8,
                 shutter_angle: 180.0,

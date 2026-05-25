@@ -1,6 +1,7 @@
 use crate::{
     LightRoute2dCommand, LightRoute2dSceneService, RenderLayer2dCommand, RenderLayer2dSceneService,
 };
+pub use amigo_render_api::Composition2dRenderOutput;
 
 pub const COMPOSITION_2D_EXTRACTOR_ID: &str = "composition_2d";
 
@@ -13,11 +14,6 @@ pub struct Composition2dRenderExtractionContext<'a> {
 pub struct Composition2dRenderCommands {
     pub render_layers: Vec<RenderLayer2dCommand>,
     pub light_routes: Vec<LightRoute2dCommand>,
-}
-
-pub trait Composition2dRenderOutput {
-    fn push_render_layer2d_command(&mut self, command: RenderLayer2dCommand);
-    fn push_light_route2d_command(&mut self, command: LightRoute2dCommand);
 }
 
 pub struct Composition2dRenderExtractor;

@@ -1,15 +1,13 @@
-use amigo_2d_composition::{LightRoute2dCommand, RenderLayer2dCommand};
 use amigo_camera::CameraOpticalCandidate2d;
-use amigo_3d_material::MaterialDrawCommand;
-use amigo_3d_mesh::MeshDrawCommand;
-use amigo_3d_text::Text3dDrawCommand;
-use amigo_assets::AssetCatalog;
+use amigo_render_api::MaterialDrawCommand;
+use amigo_render_api::MeshDrawCommand;
+use amigo_render_api::Text3dDrawCommand;
 use amigo_render_api::{
-    CameraCaptureInput2d, CameraDebugView2d, FrameCompositionPlan, FrameGraph,
-    LightSource2dCommon, RenderDepthAuxMap2d, RenderDepthMap2d, RenderLightMap2dSource,
-    ScopedPostFx2dStack,
+    CameraCaptureInput2d, CameraDebugView2d, FrameCompositionPlan, FrameGraph, LightSource2dCommon,
+    RenderAssetSource, RenderDepthAuxMap2d, RenderDepthMap2d, RenderLightMap2dSource,
+    RenderSceneView, ScopedPostFx2dStack,
 };
-use amigo_scene::SceneService;
+use amigo_render_api::{LightRoute2dCommand, RenderLayer2dCommand};
 
 use crate::{
     Renderable2dItem, UiOverlayDocument, WgpuOffscreenTarget, WgpuSurfaceState,
@@ -101,14 +99,13 @@ impl WgpuFrameRenderTarget<'_> {
 
 pub struct WgpuFrameRenderRequest<'a> {
     pub target: WgpuFrameRenderTarget<'a>,
-    pub scene: &'a SceneService,
-    pub assets: &'a AssetCatalog,
+    pub scene_view: &'a RenderSceneView,
+    pub assets: &'a dyn RenderAssetSource,
     pub world_2d: WgpuWorld2dRenderInput<'a>,
     pub world_3d: WgpuWorld3dRenderInput<'a>,
     pub game_ui: &'a [UiOverlayDocument],
     pub debug_ui: &'a [UiOverlayDocument],
     pub post_fx_stacks: &'a [ScopedPostFx2dStack],
-    pub active_camera_2d_entity: Option<&'a str>,
     pub camera_capture_input_2d: Option<&'a CameraCaptureInput2d>,
     pub visual_source_flags_2d: Option<&'a WgpuVisualSourceFlags2d>,
     pub camera_debug_view: CameraDebugView2d,

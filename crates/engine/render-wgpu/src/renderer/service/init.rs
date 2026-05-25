@@ -21,7 +21,7 @@ impl WgpuSceneRenderer {
         let wet_reflections_uniform_bind_group_layout = common_layouts.wet_reflections_uniform;
         let wet_reflections_pipeline_layout =
             device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                label: Some("amigo-scene-wet-reflections-pipeline-layout"),
+                label: Some("amigo-render-wet-reflections-pipeline-layout"),
                 bind_group_layouts: &[
                     Some(&wet_reflections_texture_bind_group_layout),
                     Some(&wet_reflections_uniform_bind_group_layout),
@@ -30,7 +30,7 @@ impl WgpuSceneRenderer {
             });
         let focus_blur_pipeline_layout =
             device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                label: Some("amigo-scene-focus-blur-pipeline-layout"),
+                label: Some("amigo-render-focus-blur-pipeline-layout"),
                 bind_group_layouts: &[
                     Some(&focus_blur_texture_bind_group_layout),
                     Some(&wet_reflections_uniform_bind_group_layout),
@@ -45,11 +45,13 @@ impl WgpuSceneRenderer {
                 camera_visual_source_bind_group_layout: &camera_visual_source_bind_group_layout,
                 focus_blur_texture_bind_group_layout: &focus_blur_texture_bind_group_layout,
                 shutter_blur_texture_bind_group_layout: &shutter_blur_texture_bind_group_layout,
-                wet_reflections_uniform_bind_group_layout: &wet_reflections_uniform_bind_group_layout,
+                wet_reflections_uniform_bind_group_layout:
+                    &wet_reflections_uniform_bind_group_layout,
                 wet_reflections_pipeline_layout: &wet_reflections_pipeline_layout,
                 focus_blur_pipeline_layout: &focus_blur_pipeline_layout,
             };
-        let mut pipelines = crate::renderer::service::pipeline_registry::WgpuPipelineRegistry::default();
+        let mut pipelines =
+            crate::renderer::service::pipeline_registry::WgpuPipelineRegistry::default();
         let core_pipeline_ctx = WgpuCorePipelineCreateContext {
             device,
             surface_format: format,
@@ -70,13 +72,14 @@ impl WgpuSceneRenderer {
             wet_reflections_texture_bind_group_layout,
             wet_reflections_uniform_bind_group_layout,
             pipelines,
-            post_fx_executors: crate::renderer::service::post_fx::default_post_fx_executor_registry(),
+            post_fx_executors:
+                crate::renderer::service::post_fx::default_wgpu_screen_effect_executors(),
             shutter_blur_runtimes: BTreeMap::new(),
             rain_glass_runtimes: BTreeMap::new(),
             texture_cache: BTreeMap::new(),
             lightmap_2d_image_cache: BTreeMap::new(),
             font_atlas_cache: BTreeMap::new(),
-            font_fallback_warnings: BTreeSet::new(),
+            font_missing_glyph_warnings: BTreeSet::new(),
             frame_graph_executor: crate::renderer::graph::WgpuFrameGraphExecutor::default(),
             emergency_overlay_lines: Vec::new(),
             visual_source_targets_2d: crate::renderer::service::WgpuVisualSourceTargets2d::default(
@@ -87,4 +90,3 @@ impl WgpuSceneRenderer {
         }
     }
 }
-

@@ -32,7 +32,6 @@ pub(super) fn visual_source_availability_label(
         VisualSourceAvailability2d::Produced => "produced",
         VisualSourceAvailability2d::Derived => "derived",
         VisualSourceAvailability2d::Asset => "asset",
-        VisualSourceAvailability2d::Fallback => "fallback",
         VisualSourceAvailability2d::Missing => "missing",
     }
 }

@@ -1,8 +1,9 @@
-use crate::{
-    WgpuRenderable2dAdapter, WgpuRenderable2dAdapterContext,
-};
-use amigo_render_api::{ParticleBlendMode2dPrimitive, ParticleLightMode2dPrimitive, RenderPrimitive2d, RenderPrimitive2dKind};
 use crate::renderer::collect_material_candidate_2d;
+use crate::{WgpuRenderable2dAdapter, WgpuRenderable2dAdapterContext};
+use amigo_render_api::{
+    ParticleBlendMode2dPrimitive, ParticleLightMode2dPrimitive, RenderPrimitive2d,
+    RenderPrimitive2dKind,
+};
 
 pub struct ParticleBatch2dRenderableAdapter;
 
@@ -20,10 +21,9 @@ impl WgpuRenderable2dAdapter for ParticleBatch2dRenderableAdapter {
             return false;
         };
 
-        if primitive
-            .light
-            .is_some_and(|light| light.glow && matches!(light.mode, ParticleLightMode2dPrimitive::Particle))
-        {
+        if primitive.light.is_some_and(|light| {
+            light.glow && matches!(light.mode, ParticleLightMode2dPrimitive::Particle)
+        }) {
             let vertices = crate::renderer::color_batch_vertices(
                 ctx.color_batches,
                 crate::renderer::particle_blend_mode(ParticleBlendMode2dPrimitive::Additive),

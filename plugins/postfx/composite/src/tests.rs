@@ -1,16 +1,20 @@
 use amigo_core::AmigoResult;
+use amigo_render_api::{
+    post_fx_blur, post_fx_camera_optics, post_fx_color_quantize, post_fx_color_ramp,
+    post_fx_film_emulsion, post_fx_film_noise, post_fx_focus_blur, post_fx_lens_droplets,
+    post_fx_rain_glass,
+};
 
 use crate::{
-    CameraOptics2d, FilmNoise2d, FocusBlur2d, PostFx2d, PostFx2dInstance, PostFx2dService,
-    PostFx2dStack, PostFxBlur2d, PostFxRole2d, PostFxSceneCommandContext, PostFxScope2d,
-    PostFxPipelineKind, RainGlass2d, ScopedPostFx2dStack, diagnose_post_fx_stacks,
-    handle_post_fx_scoped_stacks,
+    CameraOptics2d, FilmNoise2d, FocusBlur2d, PostFx2dInstance, PostFx2dService, PostFx2dStack,
+    PostFxBlur2d, PostFxPipelineKind, PostFxRole2d, PostFxSceneCommandContext, PostFxScope2d,
+    RainGlass2d, ScopedPostFx2dStack, diagnose_post_fx_stacks, handle_post_fx_scoped_stacks,
 };
 
 #[test]
 fn post_fx_scoped_stacks_handler_updates_service() -> AmigoResult<()> {
     let service = PostFx2dService::default();
-    let stack = PostFx2dStack::single(PostFx2d::Blur(PostFxBlur2d::default()));
+    let stack = PostFx2dStack::single(post_fx_blur(PostFxBlur2d::default()));
 
     let outcome = handle_post_fx_scoped_stacks(
         PostFxSceneCommandContext {
@@ -31,8 +35,8 @@ fn frame_effect_toggle_disables_rendering_without_removing_slot() {
     let service = PostFx2dService::default();
     let stack = PostFx2dStack {
         effects: vec![
-            PostFx2d::Blur(PostFxBlur2d::default()),
-            PostFx2d::Blur(PostFxBlur2d::default()),
+            post_fx_blur(PostFxBlur2d::default()),
+            post_fx_blur(PostFxBlur2d::default()),
         ],
     };
 
@@ -57,11 +61,11 @@ fn frame_effect_toggle_disables_rendering_without_removing_slot() {
 #[test]
 fn camera_capture_effects_have_camera_capture_role() {
     assert_eq!(
-        PostFx2d::CameraOptics(CameraOptics2d::default()).default_role(),
+        post_fx_camera_optics(CameraOptics2d::default()).default_role(),
         PostFxRole2d::CameraCapture
     );
     assert_eq!(
-        PostFx2d::FocusBlur(FocusBlur2d::default()).photographic_family(),
+        post_fx_focus_blur(FocusBlur2d::default()).photographic_family(),
         Some("dof")
     );
 }
@@ -73,7 +77,7 @@ fn duplicate_film_scan_reports_warning() {
         PostFxScope2d::Frame,
         vec![PostFx2dInstance::new(
             "film",
-            PostFx2d::FilmEmulsion(Default::default()),
+            post_fx_film_emulsion(Default::default()),
         )],
     );
     let scene_stack = ScopedPostFx2dStack::new(
@@ -81,7 +85,7 @@ fn duplicate_film_scan_reports_warning() {
         PostFxScope2d::Frame,
         vec![PostFx2dInstance::new(
             "noise",
-            PostFx2d::FilmNoise(FilmNoise2d::default()),
+            post_fx_film_noise(FilmNoise2d::default()),
         )],
     );
 
@@ -99,7 +103,7 @@ fn duplicate_lens_surface_reports_specific_warning() {
         PostFxScope2d::Frame,
         vec![PostFx2dInstance::new(
             "rain",
-            PostFx2d::RainGlass(RainGlass2d::default()),
+            post_fx_rain_glass(RainGlass2d::default()),
         )],
     );
     let scene_stack = ScopedPostFx2dStack::new(
@@ -107,7 +111,7 @@ fn duplicate_lens_surface_reports_specific_warning() {
         PostFxScope2d::Frame,
         vec![PostFx2dInstance::new(
             "droplets",
-            PostFx2d::LensDroplets(Default::default()),
+            post_fx_lens_droplets(Default::default()),
         )],
     );
 
@@ -126,7 +130,7 @@ fn duplicate_look_reports_specific_warning() {
         PostFxScope2d::Frame,
         vec![PostFx2dInstance::new(
             "look",
-            PostFx2d::ColorRamp(Default::default()),
+            post_fx_color_ramp(Default::default()),
         )],
     );
     let scene_stack = ScopedPostFx2dStack::new(
@@ -134,7 +138,7 @@ fn duplicate_look_reports_specific_warning() {
         PostFxScope2d::Frame,
         vec![PostFx2dInstance::new(
             "quantize",
-            PostFx2d::ColorQuantize(Default::default()),
+            post_fx_color_quantize(Default::default()),
         )],
     );
 
@@ -154,7 +158,7 @@ fn non_frame_scoped_post_fx_reports_unsupported_warning() {
         },
         vec![PostFx2dInstance::new(
             "blur",
-            PostFx2d::Blur(PostFxBlur2d::default()),
+            post_fx_blur(PostFxBlur2d::default()),
         )],
     );
     object_stack.pipeline = PostFxPipelineKind::Unsupported;

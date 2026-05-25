@@ -9,6 +9,7 @@ use amigo_scene::{
     SceneSpriteAnimationDocument, SceneSpriteSheetDocument, SceneVec2Document,
     VisualMaps2dDocument,
 };
+use amigo_scene::SceneComponentDocument as ComponentDocument;
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct Sprite2dDocument {
@@ -39,7 +40,7 @@ pub struct Sprite2dDocument {
 impl Sprite2dDocument {
     pub fn from_component(component: &SceneComponentDocument) -> Option<Self> {
         match component {
-            SceneComponentDocument::Sprite2d {
+            ComponentDocument::Sprite2d {
                 render_layer,
                 texture,
                 size,
@@ -64,6 +65,12 @@ impl Sprite2dDocument {
                 opacity: 1.0,
                 visible: true,
             }),
+            ComponentDocument::Plugin {
+                component_type,
+                payload,
+            } if component_type == "amigo.gfx.sprite-2d.Sprite2D" || component_type == "Sprite2D" => {
+                parse_sprite_2d_plugin_payload(payload).ok()
+            }
             _ => None,
         }
     }

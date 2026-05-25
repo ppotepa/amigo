@@ -1,9 +1,9 @@
 use amigo_session::{
-    RuntimeSession,
     runtime_capabilities::{
         DevConsoleCommandContribution, DevConsoleCommandDescriptor, RuntimeCapability,
         RuntimeCapabilityDescriptor, RuntimeCapabilityKind, RuntimeDomainId,
     },
+    RuntimeSession,
 };
 
 const DOMAIN_ID: &str = "amigo.engine.render-api";

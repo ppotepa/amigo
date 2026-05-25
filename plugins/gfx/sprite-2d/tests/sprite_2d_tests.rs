@@ -2,7 +2,7 @@ use amigo_plugin_api::CandidateStatus;
 use amigo_runtime::{RuntimePlugin, ServiceRegistry, SystemRegistry};
 use amigo_scene::{
     ComponentGraphProviderRegistry, ComponentHydratorRegistry, ComponentSchemaRegistry,
-    PluginSceneCommandHandlerRegistry, RuntimeSceneCommandHandlerRegistry, ScenePlugin,
+    ScenePluginCommandHandlerRegistry, RuntimeSceneCommandHandlerRegistry, ScenePlugin,
 };
 use amigo_sprite_2d_plugin::participation::adapters::{
     camera_optics::sprite_coverage_to_camera_optics,
@@ -104,7 +104,7 @@ fn sprite_plugin_registers_schema_provider_and_hydrator() {
         .resolve::<ComponentGraphProviderRegistry>()
         .expect("component graph provider registry should exist");
     let plugin_scene_handlers = registry
-        .resolve::<PluginSceneCommandHandlerRegistry>()
+        .resolve::<ScenePluginCommandHandlerRegistry>()
         .expect("plugin scene command handler registry should exist");
 
     assert!(schemas

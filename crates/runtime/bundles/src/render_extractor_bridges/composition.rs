@@ -223,12 +223,14 @@ fn active_post_fx(stacks: &[ScopedPostFx2dStack]) -> Vec<ActivePostFxPass> {
 mod tests {
     use super::*;
     use amigo_composite_plugin::{
-        PostFx2d, PostFx2dInstance, PostFxBlur2d, PostFxPipelineKind, PostFxScope2d,
-        ScopedPostFx2dStack,
+        PostFx2dInstance, PostFxBlur2d, PostFxPipelineKind, PostFxScope2d, ScopedPostFx2dStack,
     };
 
     fn effect_item() -> PostFx2dInstance {
-        PostFx2dInstance::new("blur", PostFx2d::Blur(PostFxBlur2d::default()))
+        PostFx2dInstance::new(
+            "blur",
+            amigo_render_api::post_fx_blur(PostFxBlur2d::default()),
+        )
     }
 
     #[test]

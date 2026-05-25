@@ -107,7 +107,7 @@ pub(crate) fn append_textured_tilemap_vertices(
     }
 }
 
-pub(crate) fn append_tilemap_primitive_fallback_vertices(
+pub(crate) fn append_tilemap_primitive_color_vertices(
     vertices: &mut Vec<ColorVertex>,
     viewport: &Viewport,
     camera: Transform2,

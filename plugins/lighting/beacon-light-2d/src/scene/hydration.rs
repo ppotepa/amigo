@@ -10,6 +10,7 @@ use amigo_scene::{
     SceneDocumentError, SceneDocumentResult, SceneTransform2Document, SceneTransform3Document,
     SceneVec2Document,
 };
+use amigo_scene::SceneComponentDocument as ComponentDocument;
 
 use super::BeaconLight2dDocument;
 
@@ -22,12 +23,12 @@ impl ComponentHydrator for BeaconLight2dComponentHydrator {
     }
 
     fn can_hydrate(&self, component: &SceneComponentDocument) -> bool {
-        matches!(component, SceneComponentDocument::BeaconLight2d { .. })
+        matches!(component, ComponentDocument::BeaconLight2d { .. })
     }
 
     fn hydrate(&self, ctx: ComponentHydrationContext<'_>) -> SceneDocumentResult<()> {
         let document = match ctx.component {
-            SceneComponentDocument::BeaconLight2d { .. } => {
+            ComponentDocument::BeaconLight2d { .. } => {
                 let Some(document) = BeaconLight2dDocument::from_component(ctx.component) else {
                     return Ok(());
                 };
@@ -98,8 +99,8 @@ fn push_beacon_light_command(
         .map(|depth| depth.z_depth)
         .or_else(|| document.z_depth.map(|value| value.clamp(0.0, 1.0)));
 
-    commands.push(amigo_scene::SceneCommand::QueueBeaconLight2d {
-        command: BeaconLight2dSceneCommand {
+    commands.push(amigo_scene::SceneCommand::Plugin {
+        command: amigo_scene::beacon_light_2d_plugin_scene_command(BeaconLight2dSceneCommand {
             source_mod: source_mod.to_owned(),
             entity_name: entity_name.to_owned(),
             id: document.id.clone(),
@@ -143,7 +144,7 @@ fn push_beacon_light_command(
             transform: transform2_for_entity(entity),
             viewport_fit: viewport_fit_from_document(document.viewport_fit),
             viewport_canvas_size: document.viewport_canvas_size.map(vec2_from_document),
-        },
+        }),
     });
 
     Ok(())

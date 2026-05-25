@@ -237,7 +237,7 @@ fn lifecycle_hooks_can_use_world_time_and_dev_domains() {
 }
 
 #[test]
-fn can_call_named_event_pipeline_fallback_function() {
+fn can_call_named_event_pipeline_handler_function() {
     let console_queue = Arc::new(DevConsoleQueue::default());
     let runtime = RhaiScriptRuntime::new(
         None,
@@ -254,7 +254,7 @@ fn can_call_named_event_pipeline_fallback_function() {
 
     runtime
         .execute(
-            "pipeline-fallback-test",
+            "pipeline-handler-test",
             r#"
                 fn on_custom_pipeline_step(topic, payload) {
                     if topic != "demo.pipeline" { throw("unexpected pipeline topic"); }
@@ -267,7 +267,7 @@ fn can_call_named_event_pipeline_fallback_function() {
 
     runtime
         .call_event_function(
-            "pipeline-fallback-test",
+            "pipeline-handler-test",
             "on_custom_pipeline_step",
             "demo.pipeline",
             &["ok".to_owned()],

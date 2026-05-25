@@ -1,6 +1,6 @@
 use crate::renderer::*;
 use amigo_render_api::{
-    LayeredImageAsset, LayeredImageBlendMode2d, LayeredImageViewportFit2d,
+    LayeredImageAsset, LayeredImageBlendMode2d, LayeredImageViewportFit2d, RenderAssetSource,
     RenderLightMap2dSource, RenderLightMap2dSourceKind, RenderPrimitive2d,
 };
 #[cfg(test)]
@@ -13,7 +13,7 @@ use amigo_render_api::{
 impl WgpuSceneRenderer {
     pub(crate) fn lightmap_2d_samplers(
         &mut self,
-        assets: &AssetCatalog,
+        assets: &dyn RenderAssetSource,
         viewport: &Viewport,
         renderables: &[Renderable2dItem],
         sources: &[RenderLightMap2dSource],
@@ -21,36 +21,28 @@ impl WgpuSceneRenderer {
         sources
             .iter()
             .filter_map(|source| {
-                self.lightmap_2d_sampler_from_source(
-                    assets,
-                    viewport,
-                    renderables,
-                    source,
-                )
+                self.lightmap_2d_sampler_from_source(assets, viewport, renderables, source)
             })
             .collect()
     }
 
     fn lightmap_2d_sampler_from_source(
         &mut self,
-        assets: &AssetCatalog,
+        assets: &dyn RenderAssetSource,
         viewport: &Viewport,
         renderables: &[Renderable2dItem],
         source: &RenderLightMap2dSource,
     ) -> Option<LightMap2dSampler> {
         match source.source.kind {
-            RenderLightMap2dSourceKind::LayeredImage2d => self.lightmap_2d_sampler_from_layered_image(
-                assets,
-                viewport,
-                renderables,
-                source,
-            ),
+            RenderLightMap2dSourceKind::LayeredImage2d => {
+                self.lightmap_2d_sampler_from_layered_image(assets, viewport, renderables, source)
+            }
         }
     }
 
     fn lightmap_2d_sampler_from_layered_image(
         &mut self,
-        assets: &AssetCatalog,
+        assets: &dyn RenderAssetSource,
         viewport: &Viewport,
         renderables: &[Renderable2dItem],
         source: &RenderLightMap2dSource,
@@ -118,10 +110,18 @@ impl WgpuSceneRenderer {
         fit: amigo_render_api::LayeredImageViewportFit2dPrimitive,
     ) -> LayeredImageViewportFit2d {
         match fit {
-            amigo_render_api::LayeredImageViewportFit2dPrimitive::Fixed => LayeredImageViewportFit2d::Fixed,
-            amigo_render_api::LayeredImageViewportFit2dPrimitive::Stretch => LayeredImageViewportFit2d::Stretch,
-            amigo_render_api::LayeredImageViewportFit2dPrimitive::Contain => LayeredImageViewportFit2d::Contain,
-            amigo_render_api::LayeredImageViewportFit2dPrimitive::Cover => LayeredImageViewportFit2d::Cover,
+            amigo_render_api::LayeredImageViewportFit2dPrimitive::Fixed => {
+                LayeredImageViewportFit2d::Fixed
+            }
+            amigo_render_api::LayeredImageViewportFit2dPrimitive::Stretch => {
+                LayeredImageViewportFit2d::Stretch
+            }
+            amigo_render_api::LayeredImageViewportFit2dPrimitive::Contain => {
+                LayeredImageViewportFit2d::Contain
+            }
+            amigo_render_api::LayeredImageViewportFit2dPrimitive::Cover => {
+                LayeredImageViewportFit2d::Cover
+            }
         }
     }
 
@@ -130,7 +130,10 @@ impl WgpuSceneRenderer {
         overrides: &[amigo_render_api::LayeredImageLayerOverride2dPrimitive],
     ) {
         for override_entry in overrides {
-            let Some(layer) = asset.layers.iter_mut().find(|layer| layer.id == override_entry.id)
+            let Some(layer) = asset
+                .layers
+                .iter_mut()
+                .find(|layer| layer.id == override_entry.id)
             else {
                 continue;
             };
@@ -142,11 +145,21 @@ impl WgpuSceneRenderer {
             }
             if let Some(blend_mode) = override_entry.blend_mode {
                 layer.blend_mode = match blend_mode {
-                    amigo_render_api::LayeredImageBlendMode2dPrimitive::Alpha => LayeredImageBlendMode2d::Alpha,
-                    amigo_render_api::LayeredImageBlendMode2dPrimitive::Additive => LayeredImageBlendMode2d::Additive,
-                    amigo_render_api::LayeredImageBlendMode2dPrimitive::Screen => LayeredImageBlendMode2d::Screen,
-                    amigo_render_api::LayeredImageBlendMode2dPrimitive::Multiply => LayeredImageBlendMode2d::Multiply,
-                    amigo_render_api::LayeredImageBlendMode2dPrimitive::Lighten => LayeredImageBlendMode2d::Lighten,
+                    amigo_render_api::LayeredImageBlendMode2dPrimitive::Alpha => {
+                        LayeredImageBlendMode2d::Alpha
+                    }
+                    amigo_render_api::LayeredImageBlendMode2dPrimitive::Additive => {
+                        LayeredImageBlendMode2d::Additive
+                    }
+                    amigo_render_api::LayeredImageBlendMode2dPrimitive::Screen => {
+                        LayeredImageBlendMode2d::Screen
+                    }
+                    amigo_render_api::LayeredImageBlendMode2dPrimitive::Multiply => {
+                        LayeredImageBlendMode2d::Multiply
+                    }
+                    amigo_render_api::LayeredImageBlendMode2dPrimitive::Lighten => {
+                        LayeredImageBlendMode2d::Lighten
+                    }
                 };
             }
         }
@@ -156,7 +169,7 @@ impl WgpuSceneRenderer {
         &mut self,
         image_path: PathBuf,
     ) -> Option<LightMap2dImageData> {
-        let key = format!("lightmap:{}", image_path.display());
+        let key = format!("image-cache:{}", image_path.display());
         let modified_at = fs::metadata(&image_path)
             .ok()
             .and_then(|metadata| metadata.modified().ok());
@@ -302,7 +315,10 @@ fn light_group_particle_color(
                 .map(|[r, g, b, a]| ColorRgba::new(r, g, b, a))
                 .unwrap_or(ColorRgba::WHITE);
             match parse_light_group_source_ref(group_id, source.emitter_id.as_deref()) {
-                Some(LightGroupSourceRef::LightMapChannel { source: lightmap_id, channel }) => {
+                Some(LightGroupSourceRef::LightMapChannel {
+                    source: lightmap_id,
+                    channel,
+                }) => {
                     let source_scale = source.effective_intensity.unwrap_or_default().max(0.0);
                     if source_scale <= 0.0 {
                         continue;
@@ -350,13 +366,8 @@ fn light_group_particle_color(
 
 #[cfg(test)]
 enum LightGroupSourceRef<'a> {
-    GlobalLight {
-        id: &'a str,
-    },
-    LightMapChannel {
-        source: &'a str,
-        channel: &'a str,
-    },
+    GlobalLight,
+    LightMapChannel { source: &'a str, channel: &'a str },
 }
 
 #[cfg(test)]
@@ -366,8 +377,8 @@ fn parse_light_group_source_ref<'a>(
 ) -> Option<LightGroupSourceRef<'a>> {
     let emitter_id = emitter_id?;
     let global_prefix = format!("{group_id}:global:");
-    if let Some(id) = emitter_id.strip_prefix(&global_prefix) {
-        return Some(LightGroupSourceRef::GlobalLight { id });
+    if emitter_id.strip_prefix(&global_prefix).is_some() {
+        return Some(LightGroupSourceRef::GlobalLight);
     }
 
     let lightmap_prefix = format!("{group_id}:lightmap:");
@@ -547,8 +558,12 @@ fn lightmap_2d_render_size(
     match fit {
         LayeredImageViewportFit2d::Fixed => fixed_size,
         LayeredImageViewportFit2d::Stretch => viewport_size,
-        LayeredImageViewportFit2d::Contain => scaled_lightmap_2d_size(canvas_size, viewport_size, f32::min),
-        LayeredImageViewportFit2d::Cover => scaled_lightmap_2d_size(canvas_size, viewport_size, f32::max),
+        LayeredImageViewportFit2d::Contain => {
+            scaled_lightmap_2d_size(canvas_size, viewport_size, f32::min)
+        }
+        LayeredImageViewportFit2d::Cover => {
+            scaled_lightmap_2d_size(canvas_size, viewport_size, f32::max)
+        }
     }
 }
 
@@ -723,14 +738,13 @@ fn inverse_transform_point_2d(point: Vec2, transform: Transform2) -> Vec2 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use amigo_2d_composition::LightRoute2dCommand;
+    use amigo_render_api::LightRoute2dCommand;
     use amigo_render_api::{
         LightContributionKind2d, LightReceiver2dBindingPrimitive,
         LightReceiverDarkPolicy2dPrimitive, LightReceiverGlobalLight2dPrimitive,
         LightSampleStrategy2dPrimitive, LightSource2dCommonParams, Particle2dPrimitive,
-        ParticleBlendMode2dPrimitive, ParticleLineAnchor2dPrimitive,
-        ParticleMaterial2dPrimitive, ParticleMaterialLightingMode2dPrimitive,
-        ParticleShape2dPrimitive,
+        ParticleBlendMode2dPrimitive, ParticleLineAnchor2dPrimitive, ParticleMaterial2dPrimitive,
+        ParticleMaterialLightingMode2dPrimitive, ParticleShape2dPrimitive,
     };
 
     fn particle_with_binding(binding: LightReceiver2dBindingPrimitive) -> Particle2dPrimitive {
@@ -828,7 +842,8 @@ mod tests {
         let mut receiver = binding("near");
         receiver.groups = groups;
         let mut particle = particle_with_binding(receiver);
-        particle.material.lighting_mode = ParticleMaterialLightingMode2dPrimitive::LightGroupSampled;
+        particle.material.lighting_mode =
+            ParticleMaterialLightingMode2dPrimitive::LightGroupSampled;
         particle
     }
 
@@ -855,13 +870,7 @@ mod tests {
 
     #[test]
     fn transparent_dark_policy_returns_black_particle_color_in_darkness() {
-        let color = lit_particle_color(
-            &particle_with_binding(binding("near")),
-            &[],
-            &[],
-            &[],
-            &[],
-        );
+        let color = lit_particle_color(&particle_with_binding(binding("near")), &[], &[], &[], &[]);
 
         assert_eq!(color, ColorRgba::new(0.0, 0.0, 0.0, 0.25));
     }

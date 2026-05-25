@@ -1,10 +1,11 @@
 use crate::renderer::*;
+use amigo_render_api::RenderAssetSource;
 
 impl WgpuSceneRenderer {
     pub(super) fn surface_ui_batches(
         &mut self,
         surface: &WgpuSurfaceState,
-        assets: &AssetCatalog,
+        assets: &dyn RenderAssetSource,
         ui_documents: &[UiOverlayDocument],
     ) -> (Vec<ColorBatch>, Vec<TextureBatch>) {
         if ui_documents.is_empty() {
@@ -82,7 +83,7 @@ impl WgpuSceneRenderer {
     pub(super) fn render_ui_documents_to_offscreen(
         &mut self,
         target: &mut WgpuOffscreenTarget,
-        assets: &AssetCatalog,
+        assets: &dyn RenderAssetSource,
         ui_documents: &[UiOverlayDocument],
         load_op: wgpu::LoadOp<wgpu::Color>,
     ) -> AmigoResult<()> {

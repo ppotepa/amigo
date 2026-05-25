@@ -50,8 +50,8 @@ pub fn build_debug_overlay_document(
     let theme = DebugOverlayTheme::default();
     let viewport = viewport.unwrap_or_else(|| {
         UiViewportSize::new(
-            theme.viewport.fallback_width,
-            theme.viewport.fallback_height,
+            theme.viewport.default_width,
+            theme.viewport.default_height,
         )
     });
     let layout = theme.layout(snapshot.settings.layout_mode);

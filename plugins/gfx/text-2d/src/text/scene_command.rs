@@ -50,12 +50,11 @@ pub struct TextSceneCommandOutcome {
 }
 
 pub fn can_handle_text_scene_command(command: &SceneCommand) -> bool {
-    matches!(command, SceneCommand::QueueText2d { .. })
-        || matches!(
-            command,
-            SceneCommand::Plugin { command }
-                if command.command_type == "amigo.gfx.text-2d.scene-command.Text2D"
-        )
+    matches!(
+        command,
+        SceneCommand::Plugin { command }
+            if command.command_type == "amigo.gfx.text-2d.scene-command.Text2D"
+    )
 }
 
 pub fn handle_text_scene_command(
@@ -63,7 +62,6 @@ pub fn handle_text_scene_command(
     command: SceneCommand,
 ) -> AmigoResult<TextSceneCommandOutcome> {
     match command {
-        SceneCommand::QueueText2d { command } => Ok(handle_queue_text_scene_command(ctx, command)),
         SceneCommand::Plugin { command } => {
             let Some(command) = command.payload_as::<Text2dSceneCommand>().cloned() else {
                 return Err(AmigoError::Message(format!(

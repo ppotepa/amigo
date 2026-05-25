@@ -20,22 +20,26 @@ pub fn handle_material3d_script_command(
 ) -> Material3dScriptCommandOutcome {
     match (command.name.as_str(), command.arguments.as_slice()) {
         ("bind", [source_mod, entity_name, label, material_key]) => {
-            Material3dScriptCommandOutcome::Submit(SceneCommand::QueueMaterial3d {
-                command: Material3dSceneCommand::new(
-                    source_mod.clone(),
-                    entity_name.clone(),
-                    label.clone(),
-                    Some(AssetKey::new(material_key.clone())),
+            Material3dScriptCommandOutcome::Submit(SceneCommand::Plugin {
+                command: amigo_scene::material_3d_plugin_scene_command(
+                    Material3dSceneCommand::new(
+                        source_mod.clone(),
+                        entity_name.clone(),
+                        label.clone(),
+                        Some(AssetKey::new(material_key.clone())),
+                    ),
                 ),
             })
         }
         ("bind", [entity_name, label, material_key]) => {
-            Material3dScriptCommandOutcome::Submit(SceneCommand::QueueMaterial3d {
-                command: Material3dSceneCommand::new(
-                    ctx.selected_mod.to_owned(),
-                    entity_name.clone(),
-                    label.clone(),
-                    Some(AssetKey::new(material_key.clone())),
+            Material3dScriptCommandOutcome::Submit(SceneCommand::Plugin {
+                command: amigo_scene::material_3d_plugin_scene_command(
+                    Material3dSceneCommand::new(
+                        ctx.selected_mod.to_owned(),
+                        entity_name.clone(),
+                        label.clone(),
+                        Some(AssetKey::new(material_key.clone())),
+                    ),
                 ),
             })
         }

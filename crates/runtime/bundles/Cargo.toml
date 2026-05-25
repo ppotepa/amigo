@@ -58,3 +58,4 @@ amigo-material-api.workspace = true
 amigo-core.workspace = true
 amigo-math.workspace = true
 amigo-plugin-api.workspace = true
+serde_yaml.workspace = true

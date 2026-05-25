@@ -10,20 +10,17 @@ impl WgpuPostFxPipelineProvider for FocusBlurPipelineProvider {
         crate::renderer::service::POST_FX_EXECUTOR_FOCUS_BLUR
     }
 
-    fn create_pipeline(
-        &self,
-        ctx: &WgpuPostFxPipelineCreateContext<'_>,
-    ) -> wgpu::RenderPipeline {
+    fn create_pipeline(&self, ctx: &WgpuPostFxPipelineCreateContext<'_>) -> wgpu::RenderPipeline {
         let shader = ctx
             .device
             .create_shader_module(wgpu::ShaderModuleDescriptor {
-                label: Some("amigo-scene-focus-blur-shader"),
+                label: Some("amigo-render-focus-blur-shader"),
                 source: wgpu::ShaderSource::Wgsl(FOCUS_BLUR_SHADER.into()),
             });
         let layout = ctx
             .device
             .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                label: Some("amigo-scene-focus-blur-pipeline-layout"),
+                label: Some("amigo-render-focus-blur-pipeline-layout"),
                 bind_group_layouts: &[
                     Some(ctx.focus_blur_texture_bind_group_layout),
                     Some(ctx.wet_reflections_uniform_bind_group_layout),
@@ -35,7 +32,7 @@ impl WgpuPostFxPipelineProvider for FocusBlurPipelineProvider {
             &shader,
             &layout,
             ctx.format,
-            "amigo-scene-focus-blur-pipeline",
+            "amigo-render-focus-blur-pipeline",
         )
     }
 }

@@ -1,14 +1,11 @@
 use amigo_scene::SceneService;
 
 use crate::{MeshDrawCommand, MeshSceneService};
+pub use amigo_render_api::Mesh3dRenderOutput;
 
 pub struct Mesh3dRenderExtractionContext<'a> {
     pub scene_service: &'a SceneService,
     pub mesh_scene_service: &'a MeshSceneService,
-}
-
-pub trait Mesh3dRenderOutput {
-    fn push_mesh3d_render_command(&mut self, command: MeshDrawCommand);
 }
 
 pub struct Mesh3dRenderExtractor;

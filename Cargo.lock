@@ -147,6 +147,7 @@ dependencies = [
  "amigo-core",
  "amigo-editor-api",
  "amigo-math",
+ "amigo-render-api",
  "amigo-runtime",
  "amigo-scene",
  "amigo-scripting-api",
@@ -160,8 +161,6 @@ dependencies = [
  "amigo-app-host-api",
  "amigo-app-host-winit",
  "amigo-assets",
- "amigo-camera-core-plugin",
- "amigo-camera-optics-plugin",
  "amigo-capabilities",
  "amigo-core",
  "amigo-devtools",
@@ -865,11 +864,7 @@ dependencies = [
 name = "amigo-render-wgpu"
 version = "0.1.0"
 dependencies = [
- "amigo-2d-composition",
  "amigo-2d-spatial",
- "amigo-3d-material",
- "amigo-3d-mesh",
- "amigo-3d-text",
  "amigo-assets",
  "amigo-camera",
  "amigo-core",
@@ -881,7 +876,6 @@ dependencies = [
  "amigo-plugin-api",
  "amigo-render-api",
  "amigo-runtime",
- "amigo-scene",
  "amigo-ui-layout",
  "amigo-window-api",
  "fontdue",
@@ -950,6 +944,7 @@ dependencies = [
  "amigo-ui",
  "amigo-vector-2d-plugin",
  "amigo-window-winit",
+ "serde_yaml",
 ]
 
 [[package]]

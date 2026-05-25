@@ -1,16 +1,16 @@
 use amigo_assets::AssetKey;
 use amigo_camera::camera_optical_response_from_document;
 use amigo_math::{Transform2, Vec2};
+use amigo_scene::SceneComponentDocument as ComponentDocument;
 use amigo_scene::{
     ComponentHydrationContext, ComponentHydrator, Material2dDocument,
     Material2dLightingSceneCommand, Material2dOpticalModeDocument,
     Material2dOpticalModeSceneCommand, Material2dOpticalSceneCommand, Material2dSceneCommand,
     PluginComponentHydrationContext, PluginComponentHydrator, RenderContributions2dSceneCommand,
-    SceneComponentDocument, SceneDocumentError, SceneDocumentResult,
-    SceneSpriteAnimationDocument, SceneSpriteSheetDocument, SceneTransform2Document,
-    SceneTransform3Document, SceneVec2Document, Sprite2dSceneCommand,
-    SpriteAnimation2dSceneOverride, SpriteSheet2dSceneCommand, VisualMaps2dDocument,
-    VisualMaps2dSceneCommand,
+    SceneComponentDocument, SceneDocumentError, SceneDocumentResult, SceneSpriteAnimationDocument,
+    SceneSpriteSheetDocument, SceneTransform2Document, SceneTransform3Document, SceneVec2Document,
+    Sprite2dSceneCommand, SpriteAnimation2dSceneOverride, SpriteSheet2dSceneCommand,
+    VisualMaps2dDocument, VisualMaps2dSceneCommand,
 };
 
 use crate::api::{Sprite2dRenderResponse, Sprite2dRenderableCandidate};
@@ -37,25 +37,17 @@ impl ComponentHydrator for Sprite2dComponentHydrator {
     }
 
     fn can_hydrate(&self, component: &SceneComponentDocument) -> bool {
-        matches!(component, SceneComponentDocument::Sprite2d { .. })
-            || matches!(
-                component,
-                SceneComponentDocument::Plugin { component_type, .. }
-                    if component_type == "amigo.gfx.sprite-2d.Sprite2D"
-                        || component_type == "Sprite2D"
-            )
+        matches!(component, ComponentDocument::Sprite2d { .. })
+            || component
+                .plugin_payload()
+                .is_some_and(|(component_type, _)| {
+                    component_type == "amigo.gfx.sprite-2d.Sprite2D" || component_type == "Sprite2D"
+                })
     }
 
     fn hydrate(&self, ctx: ComponentHydrationContext<'_>) -> SceneDocumentResult<()> {
-        let document = match ctx.component {
-            SceneComponentDocument::Sprite2d { .. } => {
-                let Some(document) = Sprite2dDocument::from_component(ctx.component) else {
-                    return Ok(());
-                };
-                document
-            }
-            SceneComponentDocument::Plugin { .. } => return Ok(()),
-            _ => return Ok(()),
+        let Some(document) = Sprite2dDocument::from_component(ctx.component) else {
+            return Ok(());
         };
 
         ctx.commands.push(amigo_scene::SceneCommand::plugin(
@@ -204,7 +196,9 @@ fn visual_maps_from_document(maps: &VisualMaps2dDocument) -> VisualMaps2dSceneCo
     }
 }
 
-fn material2d_scene_command(material: Option<Material2dDocument>) -> Option<Material2dSceneCommand> {
+fn material2d_scene_command(
+    material: Option<Material2dDocument>,
+) -> Option<Material2dSceneCommand> {
     material.map(|material| Material2dSceneCommand {
         optical: Material2dOpticalSceneCommand {
             mode: match material.optical.mode {
@@ -238,17 +232,18 @@ fn material2d_scene_command(material: Option<Material2dDocument>) -> Option<Mate
 mod tests {
     use super::*;
     use amigo_scene::{
-        ComponentHydrationContext, RenderContributionsDocument, SceneCommand, SceneDocument,
-        SceneEntityDocument, SceneMetadataDocument, SceneVisual2dDocument,
+        plugin_component_document, ComponentHydrationContext, RenderContributionsDocument,
+        SceneCommand, SceneDocument, SceneEntityDocument, SceneMetadataDocument,
+        SceneVisual2dDocument,
     };
     use std::collections::BTreeMap;
 
     #[test]
     fn sprite_hydrator_converts_plugin_envelope_into_plugin_scene_command() {
         let hydrator = Sprite2dComponentHydrator;
-        let component = SceneComponentDocument::Plugin {
-            component_type: "amigo.gfx.sprite-2d.Sprite2D".to_owned(),
-            payload: serde_yaml::to_value(Sprite2dDocument {
+        let component = plugin_component_document(
+            "amigo.gfx.sprite-2d.Sprite2D".to_owned(),
+            serde_yaml::to_value(Sprite2dDocument {
                 entity_name: String::new(),
                 render_layer: "world".to_owned(),
                 texture: "test/sprite".to_owned(),
@@ -263,7 +258,7 @@ mod tests {
                 visible: true,
             })
             .expect("sprite document should serialize"),
-        };
+        );
         let entity = SceneEntityDocument {
             id: "sprite".to_owned(),
             name: "sprite".to_owned(),
@@ -312,7 +307,10 @@ mod tests {
         assert_eq!(commands.len(), 1);
         match &commands[0] {
             SceneCommand::Plugin { command } => {
-                assert_eq!(command.command_type, "amigo.gfx.sprite-2d.scene-command.Sprite2D");
+                assert_eq!(
+                    command.command_type,
+                    "amigo.gfx.sprite-2d.scene-command.Sprite2D"
+                );
                 let payload = command
                     .payload_as::<Sprite2dSceneCommand>()
                     .expect("plugin scene payload should downcast");

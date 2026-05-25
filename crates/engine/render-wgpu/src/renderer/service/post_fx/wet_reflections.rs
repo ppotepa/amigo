@@ -1,6 +1,6 @@
-use amigo_render_api::PostFxWetReflections2d;
 use amigo_assets::AssetKey;
 use amigo_core::{AmigoError, AmigoResult};
+use amigo_render_api::{PostFxWetReflections2d, RenderAssetSource};
 use wgpu::util::DeviceExt;
 
 use crate::WgpuOffscreenTarget;
@@ -99,7 +99,7 @@ pub(crate) fn execute_wet_reflections(
             TextureRef::Owned(create_solid_texture(
                 device,
                 queue,
-                "amigo-wet-reflections-edge-fallback",
+                "amigo-wet-reflections-edge-placeholder",
                 [0.0, 0.0, 0.0, 0.0],
             ))
         });
@@ -121,7 +121,7 @@ pub(crate) fn execute_wet_reflections(
             TextureRef::Owned(create_solid_texture(
                 device,
                 queue,
-                "amigo-wet-reflections-color-fallback",
+                "amigo-wet-reflections-color-placeholder",
                 [0.0, 0.0, 0.0, 0.0],
             ))
         });
@@ -225,9 +225,9 @@ pub(crate) fn execute_wet_reflections(
             timestamp_writes: None,
             multiview_mask: None,
         });
-        pass.set_pipeline(renderer.post_fx_pipeline(
-            crate::renderer::service::POST_FX_EXECUTOR_WET_REFLECTIONS,
-        ));
+        pass.set_pipeline(
+            renderer.post_fx_pipeline(crate::renderer::service::POST_FX_EXECUTOR_WET_REFLECTIONS),
+        );
         pass.set_bind_group(0, &texture_bind_group, &[]);
         pass.set_bind_group(1, &uniform_bind_group, &[]);
         pass.set_vertex_buffer(0, vertex_buffer.slice(..));
@@ -240,10 +240,10 @@ pub(crate) fn execute_wet_reflections(
 
 pub(crate) fn render_texture_asset_debug(
     renderer: &mut WgpuSceneRenderer,
-    assets: &amigo_assets::AssetCatalog,
+    assets: &dyn RenderAssetSource,
     output: &mut WgpuOffscreenTarget,
     asset_path: &str,
-    fallback: [f32; 4],
+    placeholder: [f32; 4],
     label: &str,
 ) -> AmigoResult<()> {
     let texture = load_texture_ref(
@@ -252,7 +252,7 @@ pub(crate) fn render_texture_asset_debug(
         &output.queue,
         assets,
         asset_path,
-        fallback,
+        placeholder,
     )?;
     renderer.clear_offscreen_to_color(output, wgpu::Color::BLACK)?;
     renderer.composite_offscreen_over_offscreen(output, texture.view())?;
@@ -264,25 +264,25 @@ fn load_texture_ref(
     renderer: &mut WgpuSceneRenderer,
     device: &wgpu::Device,
     queue: &wgpu::Queue,
-    assets: &amigo_assets::AssetCatalog,
+    assets: &dyn RenderAssetSource,
     asset_path: &str,
-    fallback: [f32; 4],
+    placeholder: [f32; 4],
 ) -> AmigoResult<TextureRef> {
     let key = AssetKey::new(asset_path);
     let Some(prepared) = assets.prepared_asset(&key) else {
         return Ok(TextureRef::Owned(create_solid_texture(
             device,
             queue,
-            format!("amigo-wet-reflections-fallback:{asset_path}"),
-            fallback,
+            format!("amigo-wet-reflections-placeholder:{asset_path}"),
+            placeholder,
         )));
     };
     let Some(image_path) = resolve_image_path(&prepared) else {
         return Ok(TextureRef::Owned(create_solid_texture(
             device,
             queue,
-            format!("amigo-wet-reflections-fallback:{asset_path}"),
-            fallback,
+            format!("amigo-wet-reflections-placeholder:{asset_path}"),
+            placeholder,
         )));
     };
     let Some(texture) = renderer.ensure_texture_from_path(

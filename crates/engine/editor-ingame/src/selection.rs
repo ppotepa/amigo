@@ -44,7 +44,7 @@ pub fn select_viewport_target(
     else {
         state.clear_selection();
         state.set_status(format!(
-            "viewport miss @ {logical_x:.1},{logical_y:.1}; picking uses logical fallback"
+            "viewport miss @ {logical_x:.1},{logical_y:.1}; picking uses logical bounds"
         ));
         return false;
     };

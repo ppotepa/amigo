@@ -182,7 +182,6 @@ pub(crate) fn rotate_z(point: Vec3, angle: f32) -> Vec3 {
     )
 }
 
-
 pub(crate) fn sprite_color(asset_key: &str) -> ColorRgba {
     if asset_key.contains("square") {
         ColorRgba::new(0.18, 0.74, 1.0, 1.0)

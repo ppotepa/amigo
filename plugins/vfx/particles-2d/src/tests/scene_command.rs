@@ -5,6 +5,7 @@ use amigo_scene::{
     ParticleLineAnchor2dSceneCommand, ParticleMaterial2dSceneCommand, ParticleShape2dSceneCommand,
     ParticleSimulationSpace2dSceneCommand, ParticleSpawnArea2dSceneCommand,
     ParticleVelocityMode2dSceneCommand, SceneCommand, SceneEvent, SceneEventQueue, SceneService,
+    particle_emitter_2d_plugin_scene_command,
 };
 
 use super::*;
@@ -19,9 +20,7 @@ fn particles_scene_command_handler_queues_emitter_and_event() {
     let command = particle_emitter_command();
 
     assert!(can_handle_particles_scene_command(
-        &SceneCommand::QueueParticleEmitter2d {
-            command: command.clone()
-        }
+        &SceneCommand::plugin(particle_emitter_2d_plugin_scene_command(command.clone()))
     ));
 
     let outcome = handle_particles_scene_command(
@@ -32,7 +31,7 @@ fn particles_scene_command_handler_queues_emitter_and_event() {
             lightmap2d_scene_service: &lightmaps,
             scene_event_queue: &events,
         },
-        SceneCommand::QueueParticleEmitter2d { command },
+        SceneCommand::plugin(particle_emitter_2d_plugin_scene_command(command)),
     )
     .expect("particle scene command should be handled");
 

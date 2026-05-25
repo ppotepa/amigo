@@ -14,6 +14,7 @@ use amigo_scene::{
     SceneComponentPayload, SceneComponentSchemaProvider, SceneDocumentError,
     SceneDocumentResult, SceneVec2Document,
 };
+use amigo_scene::SceneComponentDocument as ComponentDocument;
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct ParticleEmitter2dDocument {
@@ -143,7 +144,7 @@ impl Default for ParticleEmitter2dDocument {
 impl ParticleEmitter2dDocument {
     pub fn from_component(component: &SceneComponentDocument) -> Option<Self> {
         match component {
-            SceneComponentDocument::ParticleEmitter2d {
+            ComponentDocument::ParticleEmitter2d {
                 render_layer,
                 attached_to,
                 local_offset,
@@ -221,6 +222,14 @@ impl ParticleEmitter2dDocument {
                 forces: forces.clone(),
                 post_fx: post_fx.clone(),
             }),
+            ComponentDocument::Plugin {
+                component_type,
+                payload,
+            } if component_type == "amigo.vfx.particles-2d.ParticleEmitter2D"
+                || component_type == "ParticleEmitter2D" =>
+            {
+                parse_particle_emitter_2d_plugin_payload(payload).ok()
+            }
             _ => None,
         }
     }

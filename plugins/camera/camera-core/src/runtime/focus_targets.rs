@@ -185,7 +185,9 @@ impl CameraFocusTarget2dService {
                 CameraFocusTargetDepth2d::Distance { meters, z_depth } => {
                     format!("distance {meters:.2}m z_depth={z_depth:.3}")
                 }
-                CameraFocusTargetDepth2d::Depth { z_depth } => format!("depth z_depth={z_depth:.3}"),
+                CameraFocusTargetDepth2d::Depth { z_depth } => {
+                    format!("depth z_depth={z_depth:.3}")
+                }
             };
             lines.push(format!(
                 "{} component={} layer={} {} visible={} aliases=[{}]",

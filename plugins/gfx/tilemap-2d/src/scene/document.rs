@@ -7,6 +7,7 @@ use amigo_scene::{
     SceneComponentDocument, SceneComponentPayload, SceneComponentSchemaProvider,
     SceneDocumentError, SceneDocumentResult, SceneVec2Document, TileMap2dEditorDocument,
 };
+use amigo_scene::SceneComponentDocument as ComponentDocument;
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct Tilemap2dDocument {
@@ -47,7 +48,7 @@ impl Default for Tilemap2dDocument {
 impl Tilemap2dDocument {
     pub fn from_component(component: &SceneComponentDocument) -> Option<Self> {
         match component {
-            SceneComponentDocument::TileMap2d {
+            ComponentDocument::TileMap2d {
                 render_layer,
                 tileset,
                 ruleset,
@@ -68,6 +69,14 @@ impl Tilemap2dDocument {
                 depth_fill_rows: *depth_fill_rows,
                 z_index: *z_index,
             }),
+            ComponentDocument::Plugin {
+                component_type,
+                payload,
+            } if component_type == "amigo.gfx.tilemap-2d.TileMap2D"
+                || component_type == "TileMap2D" =>
+            {
+                parse_tilemap_2d_plugin_payload(payload).ok()
+            }
             _ => None,
         }
     }

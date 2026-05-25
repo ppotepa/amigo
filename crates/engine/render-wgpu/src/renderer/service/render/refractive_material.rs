@@ -1,10 +1,8 @@
 use super::material_candidates::WgpuMaterialCandidate2d;
 use super::offscreen_ops::{append_fullscreen_texture_vertices, compatible_offscreen_target};
 use super::*;
-use amigo_material_api::{
-    Material2d, MaterialCandidateDecision2d, MaterialCandidateStatus2d,
-};
-use amigo_render_api::RenderPrimitive2d;
+use amigo_material_api::{Material2d, MaterialCandidateDecision2d, MaterialCandidateStatus2d};
+use amigo_render_api::{RenderAssetSource, RenderPrimitive2d};
 use wgpu::util::DeviceExt;
 
 #[repr(C)]
@@ -24,9 +22,8 @@ struct RefractiveMaterialUniform {
 pub(super) fn execute_refractive_material_2d(
     renderer: &mut WgpuSceneRenderer,
     target: &mut WgpuOffscreenTarget,
-    assets: &AssetCatalog,
+    assets: &dyn RenderAssetSource,
     viewport: &Viewport,
-    _scene: &SceneService,
     candidates: &[WgpuMaterialCandidate2d],
     decisions: &[MaterialCandidateDecision2d],
 ) -> AmigoResult<()> {
@@ -49,7 +46,7 @@ pub(super) fn execute_refractive_material_2d(
     let mut mask_target = compatible_offscreen_target(target, "amigo-refractive-material-mask");
     let mut mask_batches = Vec::new();
     let mut mask_color_batches = Vec::new();
-    let mut fallback_masks = 0usize;
+    let mut generated_masks = 0usize;
     let mut mask_sources = Vec::new();
 
     for candidate in &active_candidates {
@@ -81,8 +78,8 @@ pub(super) fn execute_refractive_material_2d(
                         glyph.bounds,
                         ColorRgba::new(1.0, 1.0, 1.0, alpha),
                     );
-                    fallback_masks += 1;
-                    mask_sources.push("fallback_geometry");
+                    generated_masks += 1;
+                    mask_sources.push("generated_geometry");
                 } else {
                     mask_sources.push("ttf_font");
                 }
@@ -220,9 +217,9 @@ pub(super) fn execute_refractive_material_2d(
             timestamp_writes: None,
             multiview_mask: None,
         });
-        pass.set_pipeline(renderer.post_fx_pipeline(
-            crate::renderer::service::POST_FX_AUX_REFRACTIVE_MATERIAL,
-        ));
+        pass.set_pipeline(
+            renderer.post_fx_pipeline(crate::renderer::service::POST_FX_AUX_REFRACTIVE_MATERIAL),
+        );
         pass.set_bind_group(0, &texture_bind_group, &[]);
         pass.set_bind_group(1, &uniform_bind_group, &[]);
         pass.set_vertex_buffer(0, vertex_buffer.slice(..));
@@ -235,7 +232,7 @@ pub(super) fn execute_refractive_material_2d(
         decisions,
         MaterialPassState::Active {
             candidates: active_candidates.len(),
-            fallback_masks,
+            generated_masks,
             mask_sources,
         },
     ));
@@ -295,14 +292,17 @@ fn aggregate_uniform(
             .iter()
             .map(|candidate| candidate.common.layer_opacity)
             .fold(0.0, f32::max),
-        highlight: material.camera_response.glare.max(material.camera_response.intensity),
+        highlight: material
+            .camera_response
+            .glare
+            .max(material.camera_response.intensity),
     }
 }
 
 enum MaterialPassState {
     Active {
         candidates: usize,
-        fallback_masks: usize,
+        generated_masks: usize,
         mask_sources: Vec<&'static str>,
     },
     Inactive(&'static str),
@@ -325,12 +325,12 @@ fn refractive_material_summary(
     match &state {
         MaterialPassState::Active {
             candidates,
-            fallback_masks,
+            generated_masks,
             mask_sources,
         } => {
             lines.push("active=true".to_owned());
             lines.push(format!("candidates={candidates}"));
-            lines.push(format!("fallback_masks={fallback_masks}"));
+            lines.push(format!("generated_masks={generated_masks}"));
             lines.push("mask=input_ok".to_owned());
             lines.push(format!("mask_source={}", mask_sources.join("+")));
             lines.push("scene_color=input_ok".to_owned());
@@ -429,44 +429,42 @@ mod tests {
     use super::*;
     use amigo_assets::AssetKey;
     use amigo_camera::CameraOpticalResponse2d;
-    use amigo_math::Transform2;
     use amigo_material_api::{
-        Material2dOptical, Material2dOpticalMode, MaterialCandidate2dCommon,
-        MaterialCoverageKind2d,
+        Material2dOptical, Material2dOpticalMode, MaterialCandidate2dCommon, MaterialCoverageKind2d,
     };
-    use amigo_scene::SceneEntityId;
+    use amigo_math::Transform2;
 
     #[test]
     fn refractive_material_summary_reports_real_composite_inputs() {
         let summary = refractive_material_summary(
             &[candidate(
                 "title",
-                "Text2D",
+                "component",
                 "title.depth2d",
                 MaterialCoverageKind2d::Glyphs,
             )],
             &[MaterialCandidateDecision2d::active(
                 "title",
-                "Text2D",
+                "component",
                 "title.depth2d",
                 MaterialCoverageKind2d::Glyphs,
                 "material_pipeline_enabled",
             )],
             MaterialPassState::Active {
                 candidates: 1,
-                fallback_masks: 0,
+                generated_masks: 0,
                 mask_sources: vec!["ttf_font"],
             },
         );
 
         assert!(summary.contains("active=true"));
         assert!(summary.contains("candidates=1"));
-        assert!(summary.contains("fallback_masks=0"));
+        assert!(summary.contains("generated_masks=0"));
         assert!(summary.contains("mask=input_ok"));
         assert!(summary.contains("mask_source=ttf_font"));
         assert!(summary.contains("scene_color=input_ok"));
         assert!(summary.contains("output=composited_scene_color"));
-        assert!(summary.contains("entity=title component=Text2D layer=title.depth2d"));
+        assert!(summary.contains("entity=title component=component layer=title.depth2d"));
         assert!(summary.contains("highlight=0.46"));
     }
 
@@ -487,25 +485,25 @@ mod tests {
         let summary = refractive_material_summary(
             &[candidate(
                 "poster",
-                "Sprite2D",
+                "component",
                 "foreground.props",
                 MaterialCoverageKind2d::TextureAlpha,
             )],
             &[MaterialCandidateDecision2d::active(
                 "poster",
-                "Sprite2D",
+                "component",
                 "foreground.props",
                 MaterialCoverageKind2d::TextureAlpha,
                 "material_pipeline_enabled",
             )],
             MaterialPassState::Active {
                 candidates: 1,
-                fallback_masks: 0,
+                generated_masks: 0,
                 mask_sources: vec!["texture_alpha"],
             },
         );
 
-        assert!(summary.contains("entity=poster component=Sprite2D layer=foreground.props"));
+        assert!(summary.contains("entity=poster component=component layer=foreground.props"));
         assert!(summary.contains("coverage_source=texture_alpha"));
     }
 
@@ -514,27 +512,25 @@ mod tests {
         let summary = refractive_material_summary(
             &[candidate(
                 "vector-glass",
-                "VectorShape2D",
+                "component",
                 "foreground.props",
                 MaterialCoverageKind2d::VectorCoverage,
             )],
             &[MaterialCandidateDecision2d::active(
                 "vector-glass",
-                "VectorShape2D",
+                "component",
                 "foreground.props",
                 MaterialCoverageKind2d::VectorCoverage,
                 "material_pipeline_enabled",
             )],
             MaterialPassState::Active {
                 candidates: 1,
-                fallback_masks: 0,
+                generated_masks: 0,
                 mask_sources: vec!["vector_coverage"],
             },
         );
 
-        assert!(
-            summary.contains("entity=vector-glass component=VectorShape2D layer=foreground.props")
-        );
+        assert!(summary.contains("entity=vector-glass component=component layer=foreground.props"));
         assert!(summary.contains("coverage_source=vector_coverage"));
     }
 
@@ -544,7 +540,7 @@ mod tests {
             &[],
             &[MaterialCandidateDecision2d::skipped(
                 "title",
-                "Text2D",
+                "component",
                 "title.depth2d",
                 MaterialCoverageKind2d::Glyphs,
                 "material_pipeline_role_disabled",
@@ -552,7 +548,7 @@ mod tests {
             MaterialPassState::Inactive("no_refractive_candidates"),
         );
 
-        assert!(summary.contains("entity=title component=Text2D layer=title.depth2d"));
+        assert!(summary.contains("entity=title component=component layer=title.depth2d"));
         assert!(summary.contains("pass=skipped"));
         assert!(summary.contains("reason=material_pipeline_role_disabled"));
     }
@@ -563,7 +559,7 @@ mod tests {
             &[],
             &[MaterialCandidateDecision2d::skipped(
                 "poster-stack",
-                "LayeredImage2D",
+                "component",
                 "foreground.props",
                 MaterialCoverageKind2d::LayeredImageAlpha,
                 "material_pipeline_out_of_scope_v1",
@@ -571,9 +567,7 @@ mod tests {
             MaterialPassState::Inactive("no_refractive_candidates"),
         );
 
-        assert!(
-            summary.contains("entity=poster-stack component=LayeredImage2D layer=foreground.props")
-        );
+        assert!(summary.contains("entity=poster-stack component=component layer=foreground.props"));
         assert!(summary.contains("coverage_source=layered_image_alpha"));
         assert!(summary.contains("reason=material_pipeline_out_of_scope_v1"));
     }
@@ -584,7 +578,7 @@ mod tests {
             &[],
             &[MaterialCandidateDecision2d::skipped(
                 "rain",
-                "ParticleEmitter2D",
+                "component",
                 "weather.rain.near",
                 MaterialCoverageKind2d::ParticleCoverage,
                 "particle_material_not_mapped_to_material2d",
@@ -592,7 +586,7 @@ mod tests {
             MaterialPassState::Inactive("no_refractive_candidates"),
         );
 
-        assert!(summary.contains("entity=rain component=ParticleEmitter2D layer=weather.rain.near"));
+        assert!(summary.contains("entity=rain component=component layer=weather.rain.near"));
         assert!(summary.contains("coverage_source=particle_coverage"));
         assert!(summary.contains("reason=particle_material_not_mapped_to_material2d"));
     }

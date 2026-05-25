@@ -1,6 +1,10 @@
 use amigo_assets::AssetKey;
 use amigo_core::{AmigoError, AmigoResult};
-use amigo_scene::{SceneCommand, SceneEvent, SceneEventQueue, SceneService, format_scene_command};
+use amigo_scene::{
+    DEPTH_AUX_MAP_2D_PLUGIN_SCENE_COMMAND_TYPE, DEPTH_MAP_2D_PLUGIN_SCENE_COMMAND_TYPE,
+    DepthAuxMap2dSceneCommand, DepthMap2dSceneCommand, SceneCommand, SceneEvent, SceneEventQueue,
+    SceneService, format_scene_command,
+};
 
 use crate::{
     DepthMap2dSceneService, queue_depth_aux_map2d_scene_command, queue_depth_map2d_scene_command,
@@ -24,7 +28,11 @@ pub struct DepthMap2dSceneCommandOutcome {
 pub fn can_handle_depth_map2d_scene_command(command: &SceneCommand) -> bool {
     matches!(
         command,
-        SceneCommand::QueueDepthMap2d { .. } | SceneCommand::QueueDepthAuxMap2d { .. }
+        SceneCommand::Plugin { command }
+            if matches!(
+                command.command_type.as_str(),
+                DEPTH_MAP_2D_PLUGIN_SCENE_COMMAND_TYPE | DEPTH_AUX_MAP_2D_PLUGIN_SCENE_COMMAND_TYPE
+            )
     )
 }
 
@@ -33,7 +41,17 @@ pub fn handle_depth_map2d_scene_command(
     command: SceneCommand,
 ) -> AmigoResult<DepthMap2dSceneCommandOutcome> {
     match command {
-        SceneCommand::QueueDepthMap2d { command } => {
+        SceneCommand::Plugin { command }
+            if command.command_type == DEPTH_MAP_2D_PLUGIN_SCENE_COMMAND_TYPE =>
+        {
+            let command = command
+                .payload_as::<DepthMap2dSceneCommand>()
+                .ok_or_else(|| {
+                    AmigoError::Message(
+                        "depth map 2d plugin scene command payload type mismatch".to_owned(),
+                    )
+                })?
+                .clone();
             let entity = queue_depth_map2d_scene_command(
                 ctx.scene_service,
                 ctx.depth_map_scene_service,
@@ -51,7 +69,17 @@ pub fn handle_depth_map2d_scene_command(
                 asset: command.asset,
             })
         }
-        SceneCommand::QueueDepthAuxMap2d { command } => {
+        SceneCommand::Plugin { command }
+            if command.command_type == DEPTH_AUX_MAP_2D_PLUGIN_SCENE_COMMAND_TYPE =>
+        {
+            let command = command
+                .payload_as::<DepthAuxMap2dSceneCommand>()
+                .ok_or_else(|| {
+                    AmigoError::Message(
+                        "depth aux map 2d plugin scene command payload type mismatch".to_owned(),
+                    )
+                })?
+                .clone();
             let entity = queue_depth_aux_map2d_scene_command(
                 ctx.scene_service,
                 ctx.depth_map_scene_service,

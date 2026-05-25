@@ -1,6 +1,7 @@
 use amigo_capabilities::{DEFAULT_CAPABILITY_VERSION, register_domain_plugin};
 use amigo_core::AmigoResult;
 use amigo_runtime::{RuntimePlugin, ServiceRegistry};
+use std::sync::Arc;
 
 use super::{
     GlobalLight2dSceneService, LIGHTING_2D_CAPABILITY, LIGHTING_2D_PLUGIN_LABEL,
@@ -48,6 +49,22 @@ impl RuntimePlugin for Lighting2dPlugin {
             scene_handlers.as_ref(),
             super::scene_command::Lighting2dSceneCommandHandler,
         );
+        if let Some(plugin_scene_handlers) =
+            registry.resolve::<amigo_scene::ScenePluginCommandHandlerRegistry>()
+        {
+            plugin_scene_handlers.register(
+                amigo_scene::GLOBAL_LIGHT_2D_PLUGIN_SCENE_COMMAND_TYPE,
+                Arc::new(super::scene_command::Lighting2dSceneCommandHandler),
+            );
+            plugin_scene_handlers.register(
+                amigo_scene::LIGHTMAP_2D_SOURCE_PLUGIN_SCENE_COMMAND_TYPE,
+                Arc::new(super::scene_command::Lighting2dSceneCommandHandler),
+            );
+            plugin_scene_handlers.register(
+                amigo_scene::LIGHT_GROUP_2D_PLUGIN_SCENE_COMMAND_TYPE,
+                Arc::new(super::scene_command::Lighting2dSceneCommandHandler),
+            );
+        }
         let script_handlers =
             registry.required::<amigo_scripting_api::RuntimeScriptCommandHandlerRegistry>()?;
         amigo_scripting_api::register_runtime_script_command_handler(

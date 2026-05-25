@@ -1,8 +1,6 @@
 use amigo_render_api::{RenderPrimitive2d, RenderPrimitive2dKind};
 
-use crate::{
-    WgpuRenderable2dAdapter, WgpuRenderable2dAdapterContext,
-};
+use crate::{WgpuRenderable2dAdapter, WgpuRenderable2dAdapterContext};
 
 pub struct RadialLightVisual2dRenderableAdapter;
 
@@ -22,7 +20,9 @@ impl WgpuRenderable2dAdapter for RadialLightVisual2dRenderableAdapter {
 
         let vertices = crate::renderer::color_batch_vertices(
             ctx.color_batches,
-            crate::renderer::particle_blend_mode(amigo_render_api::ParticleBlendMode2dPrimitive::Additive),
+            crate::renderer::particle_blend_mode(
+                amigo_render_api::ParticleBlendMode2dPrimitive::Additive,
+            ),
         );
         crate::renderer::append_beacon_vfx_primitive_vertices(
             vertices,

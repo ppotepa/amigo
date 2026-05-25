@@ -6,7 +6,7 @@ use amigo_render_api::{
 };
 
 // WGPU-side runtime interpretation of CameraCaptureInput2d.
-// Keep wgpu handles out of render-api. This module is allowed to know about debug/fallback behavior.
+// Keep wgpu handles out of render-api. This module is allowed to know about debug missing-source behavior.
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum WgpuVisualSourceRuntimeKind2d {
@@ -20,7 +20,7 @@ pub(crate) enum WgpuVisualSourceRuntimeKind2d {
     ProducedSceneMotion,
     DerivedDebug,
     AssetTexture,
-    MissingFallback,
+    MissingDebugColor,
 }
 
 impl WgpuVisualSourceRuntimeKind2d {
@@ -41,7 +41,7 @@ impl WgpuVisualSourceRuntimeKind2d {
 pub(crate) struct WgpuVisualSourceRuntime2d {
     pub source: VisualSourceRef2d,
     pub runtime_kind: WgpuVisualSourceRuntimeKind2d,
-    pub fallback_color: ColorRgba,
+    pub missing_debug_color: ColorRgba,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -57,7 +57,7 @@ impl WgpuCameraVisualSources2d {
             WgpuVisualSourceRuntime2d {
                 source: input.color.clone(),
                 runtime_kind: WgpuVisualSourceRuntimeKind2d::WorldColor,
-                fallback_color: fallback_color_for(VisualSourceKind2d::SceneColor),
+                missing_debug_color: missing_debug_color_for(VisualSourceKind2d::SceneColor),
             },
         );
         if let Some(source) = &input.depth {
@@ -66,7 +66,7 @@ impl WgpuCameraVisualSources2d {
                 WgpuVisualSourceRuntime2d {
                     source: source.clone(),
                     runtime_kind: WgpuVisualSourceRuntimeKind2d::WorldDepth,
-                    fallback_color: fallback_color_for(VisualSourceKind2d::SceneDepth),
+                    missing_debug_color: missing_debug_color_for(VisualSourceKind2d::SceneDepth),
                 },
             );
         }
@@ -76,7 +76,7 @@ impl WgpuCameraVisualSources2d {
                 WgpuVisualSourceRuntime2d {
                     source: source.clone(),
                     runtime_kind: WgpuVisualSourceRuntimeKind2d::ProducedLayerMask,
-                    fallback_color: fallback_color_for(VisualSourceKind2d::LayerMask),
+                    missing_debug_color: missing_debug_color_for(VisualSourceKind2d::LayerMask),
                 },
             );
         }
@@ -107,12 +107,12 @@ impl WgpuCameraVisualSources2d {
                     VisualSourceKind2d::SceneMotion => {
                         WgpuVisualSourceRuntimeKind2d::ProducedSceneMotion
                     }
-                    _ => WgpuVisualSourceRuntimeKind2d::MissingFallback,
+                    _ => WgpuVisualSourceRuntimeKind2d::MissingDebugColor,
                 },
                 VisualSourceAvailability2d::Derived => WgpuVisualSourceRuntimeKind2d::DerivedDebug,
                 VisualSourceAvailability2d::Asset => WgpuVisualSourceRuntimeKind2d::AssetTexture,
-                VisualSourceAvailability2d::Fallback | VisualSourceAvailability2d::Missing => {
-                    WgpuVisualSourceRuntimeKind2d::MissingFallback
+                VisualSourceAvailability2d::Missing => {
+                    WgpuVisualSourceRuntimeKind2d::MissingDebugColor
                 }
             };
             sources.insert(
@@ -120,7 +120,7 @@ impl WgpuCameraVisualSources2d {
                 WgpuVisualSourceRuntime2d {
                     source,
                     runtime_kind,
-                    fallback_color: fallback_color_for(kind),
+                    missing_debug_color: missing_debug_color_for(kind),
                 },
             );
         }
@@ -132,7 +132,7 @@ impl WgpuCameraVisualSources2d {
     }
 }
 
-pub(crate) fn fallback_color_for(kind: VisualSourceKind2d) -> ColorRgba {
+pub(crate) fn missing_debug_color_for(kind: VisualSourceKind2d) -> ColorRgba {
     match kind {
         VisualSourceKind2d::SceneNormal => ColorRgba::new(0.5, 0.5, 1.0, 1.0),
         VisualSourceKind2d::SceneWetness => ColorRgba::new(0.0, 0.22, 0.28, 1.0),

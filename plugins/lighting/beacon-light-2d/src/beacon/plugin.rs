@@ -48,6 +48,14 @@ impl RuntimePlugin for Beacon2dPlugin {
             scene_handlers.as_ref(),
             crate::Beacon2dSceneCommandHandler,
         );
+        if let Some(plugin_scene_handlers) =
+            registry.resolve::<amigo_scene::ScenePluginCommandHandlerRegistry>()
+        {
+            plugin_scene_handlers.register(
+                amigo_scene::BEACON_LIGHT_2D_PLUGIN_SCENE_COMMAND_TYPE,
+                Arc::new(crate::Beacon2dSceneCommandHandler),
+            );
+        }
         let script_handlers =
             registry.required::<amigo_scripting_api::RuntimeScriptCommandHandlerRegistry>()?;
         amigo_scripting_api::register_runtime_script_command_handler(

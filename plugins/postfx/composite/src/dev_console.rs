@@ -2,6 +2,9 @@ use crate::{
     Crt2d, DirtyBloom2d, PostFx2d, PostFx2dService, PostFx2dStack, PostFxBlur2d, PostFxScope2d,
     RainGlass2d, RainGlassDebugView, RainGlassRaindropCompose, ShutterBlur2d,
 };
+use amigo_render_api::{
+    post_fx_blur, post_fx_crt, post_fx_dirty_bloom, post_fx_rain_glass, post_fx_shutter_blur,
+};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PostFxDevConsoleCommandOutcome {
@@ -103,31 +106,31 @@ pub fn handle_post_fx_dev_console_command(
             let dirty_bloom_active = stack
                 .effects
                 .iter()
-                .any(|effect| matches!(effect, PostFx2d::DirtyBloom(_)));
+                .any(|effect| effect.kind() == "dirty_bloom");
             let crt_active = stack
                 .effects
                 .iter()
-                .any(|effect| matches!(effect, PostFx2d::Crt(_)));
+                .any(|effect| effect.kind() == "crt");
             let film_noise_active = stack
                 .effects
                 .iter()
-                .any(|effect| matches!(effect, PostFx2d::FilmNoise(_)));
+                .any(|effect| effect.kind() == "film_noise");
             let lens_active = stack
                 .effects
                 .iter()
-                .any(|effect| matches!(effect, PostFx2d::LensDroplets(_)));
+                .any(|effect| effect.kind() == "lens_droplets");
             let wet_active = stack
                 .effects
                 .iter()
-                .any(|effect| matches!(effect, PostFx2d::WetReflections(_)));
+                .any(|effect| effect.kind() == "wet_reflections");
             let rain_glass_active = stack
                 .effects
                 .iter()
-                .any(|effect| matches!(effect, PostFx2d::RainGlass(_)));
+                .any(|effect| effect.kind() == "rain_glass");
             let shutter_blur_active = stack
                 .effects
                 .iter()
-                .any(|effect| matches!(effect, PostFx2d::ShutterBlur(_)));
+                .any(|effect| effect.kind() == "shutter_blur");
             PostFxDevConsoleCommandOutcome::Handled(format!(
                 "postfx.effects={} dirty_bloom_active={} crt_active={} film_noise_active={} lens_droplets_active={} wet_reflections_active={} rain_glass_active={} shutter_blur_active={} role.camera_capture={} role.scene_local={} role.presentation={} role.debug={} role.previous={} draw_layer_stacks={} unsupported_scoped_stacks={} renderer_mode={} overlay_supported={} blur_supported={} world_offscreen_post_fx_supported={}",
                 stack.effects.len(),
@@ -218,7 +221,7 @@ fn postfx_items_add(
     match kind {
         "blur" => {
             ctx.post_fx_service
-                .push_frame_effect(PostFx2d::Blur(PostFxBlur2d::default()));
+                .push_frame_effect(post_fx_blur(PostFxBlur2d::default()));
             PostFxDevConsoleCommandOutcome::Handled("postfx.items added blur".to_owned())
         }
         _ => PostFxDevConsoleCommandOutcome::Error(format!(
@@ -261,10 +264,10 @@ fn handle_dirty_bloom(
 ) -> PostFxDevConsoleCommandOutcome {
     let mut stack = service.frame_stack().unwrap_or_default();
     let index = ensure_dirty_bloom(&mut stack);
-    let mut bloom = match stack.effects[index] {
-        PostFx2d::DirtyBloom(bloom) => bloom,
-        _ => DirtyBloom2d::default(),
-    };
+    let mut bloom = stack.effects[index]
+        .clone()
+        .into_dirty_bloom()
+        .unwrap_or_default();
 
     let updates = match parse_updates(args) {
         Ok(updates) => updates,
@@ -295,7 +298,7 @@ fn handle_dirty_bloom(
     }
 
     bloom = bloom.normalized();
-    stack.effects[index] = PostFx2d::DirtyBloom(bloom);
+    stack.effects[index] = post_fx_dirty_bloom(bloom);
     service.set_scoped_stacks(vec![crate::ScopedPostFx2dStack::from_frame_stack(
         stack.normalized(),
     )]);
@@ -318,10 +321,7 @@ fn handle_dirty_bloom(
 fn handle_crt(service: &PostFx2dService, args: &[String]) -> PostFxDevConsoleCommandOutcome {
     let mut stack = service.frame_stack().unwrap_or_default();
     let index = ensure_crt(&mut stack);
-    let mut crt = match stack.effects[index] {
-        PostFx2d::Crt(crt) => crt,
-        _ => Crt2d::default(),
-    };
+    let mut crt = stack.effects[index].clone().into_crt().unwrap_or_default();
 
     let updates = match parse_updates(args) {
         Ok(updates) => updates,
@@ -349,7 +349,7 @@ fn handle_crt(service: &PostFx2dService, args: &[String]) -> PostFxDevConsoleCom
     }
 
     crt = crt.normalized();
-    stack.effects[index] = PostFx2d::Crt(crt);
+    stack.effects[index] = post_fx_crt(crt);
     service.set_scoped_stacks(vec![crate::ScopedPostFx2dStack::from_frame_stack(
         stack.normalized(),
     )]);
@@ -369,10 +369,10 @@ fn handle_crt(service: &PostFx2dService, args: &[String]) -> PostFxDevConsoleCom
 fn handle_rain_glass(service: &PostFx2dService, args: &[String]) -> PostFxDevConsoleCommandOutcome {
     let mut stack = service.frame_stack().unwrap_or_default();
     let index = ensure_rain_glass(&mut stack);
-    let mut rain = match stack.effects[index].clone() {
-        PostFx2d::RainGlass(rain) => rain,
-        _ => RainGlass2d::default(),
-    };
+    let mut rain = stack.effects[index]
+        .clone()
+        .into_rain_glass()
+        .unwrap_or_default();
 
     let updates = match parse_updates(args) {
         Ok(updates) => updates,
@@ -582,7 +582,7 @@ fn handle_rain_glass(service: &PostFx2dService, args: &[String]) -> PostFxDevCon
         rain.debug_view,
         rain.seed
     );
-    stack.effects[index] = PostFx2d::RainGlass(rain);
+    stack.effects[index] = post_fx_rain_glass(rain);
     service.set_scoped_stacks(vec![crate::ScopedPostFx2dStack::from_frame_stack(
         stack.normalized(),
     )]);
@@ -596,10 +596,10 @@ fn handle_shutter_blur(
 ) -> PostFxDevConsoleCommandOutcome {
     let mut stack = service.frame_stack().unwrap_or_default();
     let index = ensure_shutter_blur(&mut stack);
-    let mut effect = match stack.effects[index] {
-        PostFx2d::ShutterBlur(effect) => effect,
-        _ => ShutterBlur2d::default(),
-    };
+    let mut effect = stack.effects[index]
+        .clone()
+        .into_shutter_blur()
+        .unwrap_or_default();
 
     let updates = match parse_updates(args) {
         Ok(updates) => updates,
@@ -640,7 +640,7 @@ fn handle_shutter_blur(
     }
 
     effect = effect.normalized();
-    stack.effects[index] = PostFx2d::ShutterBlur(effect);
+    stack.effects[index] = post_fx_shutter_blur(effect);
     service.set_scoped_stacks(vec![crate::ScopedPostFx2dStack::from_frame_stack(
         stack.normalized(),
     )]);
@@ -664,7 +664,7 @@ fn ensure_dirty_bloom(stack: &mut PostFx2dStack) -> usize {
     if let Some(index) = stack
         .effects
         .iter()
-        .position(|effect| matches!(effect, PostFx2d::DirtyBloom(_)))
+        .position(|effect| effect.kind() == "dirty_bloom")
     {
         return index;
     }
@@ -672,11 +672,11 @@ fn ensure_dirty_bloom(stack: &mut PostFx2dStack) -> usize {
     let insert_at = stack
         .effects
         .iter()
-        .position(|effect| matches!(effect, PostFx2d::Crt(_) | PostFx2d::FilmNoise(_)))
+        .position(|effect| matches!(effect.kind(), "crt" | "film_noise"))
         .unwrap_or(stack.effects.len());
     stack
         .effects
-        .insert(insert_at, PostFx2d::DirtyBloom(DirtyBloom2d::default()));
+        .insert(insert_at, post_fx_dirty_bloom(DirtyBloom2d::default()));
     insert_at
 }
 
@@ -684,12 +684,12 @@ fn ensure_crt(stack: &mut PostFx2dStack) -> usize {
     if let Some(index) = stack
         .effects
         .iter()
-        .position(|effect| matches!(effect, PostFx2d::Crt(_)))
+        .position(|effect| effect.kind() == "crt")
     {
         return index;
     }
 
-    stack.effects.push(PostFx2d::Crt(Crt2d::default()));
+    stack.effects.push(post_fx_crt(Crt2d::default()));
     stack.effects.len() - 1
 }
 
@@ -697,14 +697,14 @@ fn ensure_rain_glass(stack: &mut PostFx2dStack) -> usize {
     if let Some(index) = stack
         .effects
         .iter()
-        .position(|effect| matches!(effect, PostFx2d::RainGlass(_)))
+        .position(|effect| effect.kind() == "rain_glass")
     {
         return index;
     }
 
     stack
         .effects
-        .push(PostFx2d::RainGlass(RainGlass2d::default()));
+        .push(post_fx_rain_glass(RainGlass2d::default()));
     stack.effects.len() - 1
 }
 
@@ -712,7 +712,7 @@ fn ensure_shutter_blur(stack: &mut PostFx2dStack) -> usize {
     if let Some(index) = stack
         .effects
         .iter()
-        .position(|effect| matches!(effect, PostFx2d::ShutterBlur(_)))
+        .position(|effect| effect.kind() == "shutter_blur")
     {
         return index;
     }
@@ -720,11 +720,11 @@ fn ensure_shutter_blur(stack: &mut PostFx2dStack) -> usize {
     let insert_at = stack
         .effects
         .iter()
-        .position(|effect| matches!(effect, PostFx2d::Crt(_) | PostFx2d::Downscale(_)))
+        .position(|effect| matches!(effect.kind(), "crt" | "downscale"))
         .unwrap_or(stack.effects.len());
     stack
         .effects
-        .insert(insert_at, PostFx2d::ShutterBlur(ShutterBlur2d::default()));
+        .insert(insert_at, post_fx_shutter_blur(ShutterBlur2d::default()));
     insert_at
 }
 

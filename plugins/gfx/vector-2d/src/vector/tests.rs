@@ -313,8 +313,8 @@ fn queues_vector_shape_scene_command_with_material_and_render_contributions() {
 
 #[test]
 fn can_handle_vector_scene_command() {
-    let command = SceneCommand::QueueVectorShape2d {
-        command: VectorShape2dSceneCommand {
+    let command = SceneCommand::plugin(amigo_scene::vector_shape_2d_plugin_scene_command(
+        VectorShape2dSceneCommand {
             source_mod: "test-mod".to_owned(),
             entity_name: "test-shape".to_owned(),
             render_layer: "world".to_owned(),
@@ -332,7 +332,7 @@ fn can_handle_vector_scene_command() {
             material: None,
             transform: Transform2::default(),
         },
-    };
+    ));
 
     assert!(crate::can_handle_vector_scene_command(&command));
 }
@@ -342,8 +342,8 @@ fn handles_vector_scene_command_and_publishes_event() {
     let scene_service = SceneService::default();
     let vector_scene_service = VectorSceneService::default();
     let scene_event_queue = SceneEventQueue::default();
-    let command = SceneCommand::QueueVectorShape2d {
-        command: VectorShape2dSceneCommand {
+    let command = SceneCommand::plugin(amigo_scene::vector_shape_2d_plugin_scene_command(
+        VectorShape2dSceneCommand {
             source_mod: "test-mod".to_owned(),
             entity_name: "test-shape".to_owned(),
             render_layer: "world".to_owned(),
@@ -365,7 +365,7 @@ fn handles_vector_scene_command_and_publishes_event() {
             material: None,
             transform: Transform2::default(),
         },
-    };
+    ));
 
     let outcome = crate::handle_vector_scene_command(
         crate::VectorSceneCommandContext {

@@ -1,5 +1,5 @@
-pub mod capture;
 pub mod capabilities;
+pub mod capture;
 pub mod frame_context;
 pub mod model;
 pub mod motion;

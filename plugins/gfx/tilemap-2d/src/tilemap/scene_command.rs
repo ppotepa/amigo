@@ -24,7 +24,11 @@ pub struct TileMapSceneCommandOutcome {
 }
 
 pub fn can_handle_tilemap_scene_command(command: &SceneCommand) -> bool {
-    matches!(command, SceneCommand::QueueTileMap2d { .. })
+    matches!(
+        command,
+        SceneCommand::Plugin { command }
+            if command.command_type == amigo_scene::TILEMAP_2D_PLUGIN_SCENE_COMMAND_TYPE
+    )
 }
 
 pub fn handle_tilemap_scene_command(
@@ -32,7 +36,17 @@ pub fn handle_tilemap_scene_command(
     command: SceneCommand,
 ) -> AmigoResult<TileMapSceneCommandOutcome> {
     match command {
-        SceneCommand::QueueTileMap2d { command } => {
+        SceneCommand::Plugin { command }
+            if command.command_type == amigo_scene::TILEMAP_2D_PLUGIN_SCENE_COMMAND_TYPE =>
+        {
+            let command = command
+                .payload_as::<amigo_scene::TileMap2dSceneCommand>()
+                .ok_or_else(|| {
+                    AmigoError::Message(
+                        "tilemap plugin scene command payload type mismatch".to_owned(),
+                    )
+                })?
+                .clone();
             let entity = queue_tilemap_scene_command(
                 ctx.scene_service,
                 ctx.tilemap_scene_service,
@@ -91,7 +105,11 @@ pub enum TileMapMarkerSceneCommandOutcome {
 }
 
 pub fn can_handle_tilemap_marker_scene_command(command: &SceneCommand) -> bool {
-    matches!(command, SceneCommand::QueueTileMapMarker2d { .. })
+    matches!(
+        command,
+        SceneCommand::Plugin { command }
+            if command.command_type == amigo_scene::TILEMAP_MARKER_2D_PLUGIN_SCENE_COMMAND_TYPE
+    )
 }
 
 pub fn handle_tilemap_marker_scene_command(
@@ -99,7 +117,17 @@ pub fn handle_tilemap_marker_scene_command(
     command: SceneCommand,
 ) -> AmigoResult<TileMapMarkerSceneCommandOutcome> {
     match command {
-        SceneCommand::QueueTileMapMarker2d { command } => {
+        SceneCommand::Plugin { command }
+            if command.command_type == amigo_scene::TILEMAP_MARKER_2D_PLUGIN_SCENE_COMMAND_TYPE =>
+        {
+            let command = command
+                .payload_as::<amigo_scene::TileMapMarker2dSceneCommand>()
+                .ok_or_else(|| {
+                    AmigoError::Message(
+                        "tilemap marker plugin scene command payload type mismatch".to_owned(),
+                    )
+                })?
+                .clone();
             let entity = ctx
                 .scene_service
                 .find_or_spawn_named_entity(command.entity_name.clone());

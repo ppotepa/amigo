@@ -50,10 +50,7 @@ pub(crate) struct WgpuPostFxPipelineCreateContext<'a> {
 pub(crate) trait WgpuPostFxPipelineProvider {
     fn pipeline_id(&self) -> &'static str;
 
-    fn create_pipeline(
-        &self,
-        ctx: &WgpuPostFxPipelineCreateContext<'_>,
-    ) -> wgpu::RenderPipeline;
+    fn create_pipeline(&self, ctx: &WgpuPostFxPipelineCreateContext<'_>) -> wgpu::RenderPipeline;
 }
 
 #[derive(Default)]

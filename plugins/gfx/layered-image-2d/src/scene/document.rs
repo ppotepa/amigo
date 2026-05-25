@@ -10,6 +10,7 @@ use amigo_scene::{
     SceneComponentPayload, SceneComponentSchemaProvider, SceneDocumentError,
     SceneDocumentResult, SceneVec2Document, VisualMaps2dDocument,
 };
+use amigo_scene::SceneComponentDocument as ComponentDocument;
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct LayeredImage2dDocument {
@@ -53,7 +54,7 @@ impl Default for LayeredImage2dDocument {
 impl LayeredImage2dDocument {
     pub fn from_component(component: &SceneComponentDocument) -> Option<Self> {
         match component {
-            SceneComponentDocument::LayeredImage2d {
+            ComponentDocument::LayeredImage2d {
                 render_layer,
                 asset,
                 size,

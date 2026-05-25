@@ -295,6 +295,9 @@ mod tests {
         collect_console_rhai_symbols_from_source, compute_console_completion_from_descriptors,
     };
 
+    const MOCK_COMPONENT: &str = "Emitter";
+    const MOCK_COMPONENT_PATH: &str = "world.weather.rain.front.Emitter";
+
     struct MockRuntimeControlProvider;
 
     impl RuntimeControlProvider for MockRuntimeControlProvider {
@@ -310,14 +313,14 @@ mod tests {
                 console_path: "world.weather.rain.front".to_owned(),
                 source_id: None,
                 label: "rain-front".to_owned(),
-                components: vec!["ParticleEmitter2D".to_owned()],
+                components: vec![MOCK_COMPONENT.to_owned()],
                 aliases: Vec::new(),
                 source_file: None,
             });
             registry.register_property(RuntimeControlProperty {
-                console_path: "world.weather.rain.front.ParticleEmitter2D.spawn_rate".to_owned(),
+                console_path: format!("{MOCK_COMPONENT_PATH}.spawn_rate"),
                 target_path: "world.weather.rain.front".to_owned(),
-                component: Some("ParticleEmitter2D".to_owned()),
+                component: Some(MOCK_COMPONENT.to_owned()),
                 property_path: "spawn_rate".to_owned(),
                 value_type: ControlValueType::F32,
                 range: None,
@@ -825,8 +828,8 @@ mod tests {
     #[test]
     fn completes_component_properties_from_runtime_control() {
         let completion = compute_console_completion_from_descriptors(
-            "world.weather.rain.front.ParticleEmitter2D.",
-            "world.weather.rain.front.ParticleEmitter2D.".len(),
+            &format!("{MOCK_COMPONENT_PATH}."),
+            format!("{MOCK_COMPONENT_PATH}.").len(),
             &[],
             &[],
             &runtime_control_context(),

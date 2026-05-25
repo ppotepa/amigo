@@ -244,10 +244,10 @@ fn apply_profile_curve4(
         let _ = particles.set_curve4(
             emitter,
             name,
-            sample_profile_scalar(&curve.v0, phase_t, intensity, noise),
-            sample_profile_scalar(&curve.v1, phase_t, intensity, noise),
-            sample_profile_scalar(&curve.v2, phase_t, intensity, noise),
-            sample_profile_scalar(&curve.v3, phase_t, intensity, noise),
+            sample_profile_scalar(&curve.point0, phase_t, intensity, noise),
+            sample_profile_scalar(&curve.point1, phase_t, intensity, noise),
+            sample_profile_scalar(&curve.point2, phase_t, intensity, noise),
+            sample_profile_scalar(&curve.point3, phase_t, intensity, noise),
         );
     }
 }

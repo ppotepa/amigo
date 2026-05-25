@@ -29,9 +29,6 @@ impl WgpuPluginPassDescriptor {
     }
 
     pub fn is_valid(&self) -> bool {
-        !self.id.trim().is_empty()
-            && !self.owner.0.trim().is_empty()
-            && !self.writes.is_empty()
+        !self.id.trim().is_empty() && !self.owner.0.trim().is_empty() && !self.writes.is_empty()
     }
 }
-

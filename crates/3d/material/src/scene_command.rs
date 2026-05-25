@@ -1,8 +1,8 @@
 use amigo_assets::AssetKey;
 use amigo_core::{AmigoError, AmigoResult};
-use amigo_scene::{SceneCommand, SceneEvent, SceneEventQueue, SceneService, format_scene_command};
+use amigo_scene::{format_scene_command, SceneCommand, SceneEvent, SceneEventQueue, SceneService};
 
-use crate::{MaterialSceneService, queue_material_scene_command};
+use crate::{queue_material_scene_command, MaterialSceneService};
 
 pub struct Material3dSceneCommandHandler;
 
@@ -21,7 +21,11 @@ pub struct MaterialSceneCommandOutcome {
 }
 
 pub fn can_handle_material_scene_command(command: &SceneCommand) -> bool {
-    matches!(command, SceneCommand::QueueMaterial3d { .. })
+    matches!(
+        command,
+        SceneCommand::Plugin { command }
+            if command.command_type == amigo_scene::MATERIAL_3D_PLUGIN_SCENE_COMMAND_TYPE
+    )
 }
 
 pub fn handle_material_scene_command(
@@ -29,7 +33,17 @@ pub fn handle_material_scene_command(
     command: SceneCommand,
 ) -> AmigoResult<MaterialSceneCommandOutcome> {
     match command {
-        SceneCommand::QueueMaterial3d { command } => {
+        SceneCommand::Plugin { command }
+            if command.command_type == amigo_scene::MATERIAL_3D_PLUGIN_SCENE_COMMAND_TYPE =>
+        {
+            let Some(command) = command
+                .payload_as::<amigo_scene::Material3dSceneCommand>()
+                .cloned()
+            else {
+                return Err(AmigoError::Message(
+                    "material-3d plugin command payload mismatch".to_owned(),
+                ));
+            };
             let entity = queue_material_scene_command(
                 ctx.scene_service,
                 ctx.material_scene_service,

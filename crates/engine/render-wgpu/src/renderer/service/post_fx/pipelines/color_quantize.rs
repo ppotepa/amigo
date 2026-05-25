@@ -10,18 +10,17 @@ impl WgpuPostFxPipelineProvider for ColorQuantizePipelineProvider {
         crate::renderer::service::POST_FX_EXECUTOR_COLOR_QUANTIZE
     }
 
-    fn create_pipeline(
-        &self,
-        ctx: &WgpuPostFxPipelineCreateContext<'_>,
-    ) -> wgpu::RenderPipeline {
-        let shader = ctx.device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("amigo-scene-color-quantize-shader"),
-            source: wgpu::ShaderSource::Wgsl(COLOR_QUANTIZE_SHADER.into()),
-        });
+    fn create_pipeline(&self, ctx: &WgpuPostFxPipelineCreateContext<'_>) -> wgpu::RenderPipeline {
+        let shader = ctx
+            .device
+            .create_shader_module(wgpu::ShaderModuleDescriptor {
+                label: Some("amigo-render-color-quantize-shader"),
+                source: wgpu::ShaderSource::Wgsl(COLOR_QUANTIZE_SHADER.into()),
+            });
         let layout = ctx
             .device
             .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                label: Some("amigo-scene-color-quantize-pipeline-layout"),
+                label: Some("amigo-render-color-quantize-pipeline-layout"),
                 bind_group_layouts: &[
                     Some(ctx.texture_bind_group_layout),
                     Some(ctx.wet_reflections_uniform_bind_group_layout),
@@ -34,7 +33,7 @@ impl WgpuPostFxPipelineProvider for ColorQuantizePipelineProvider {
             &shader,
             &layout,
             ctx.format,
-            "amigo-scene-color-quantize-pipeline",
+            "amigo-render-color-quantize-pipeline",
         )
     }
 }

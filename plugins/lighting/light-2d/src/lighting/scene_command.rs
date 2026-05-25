@@ -1,8 +1,10 @@
 use amigo_layered_image_2d_plugin::LayeredImageAssetSource;
 use amigo_core::{AmigoError, AmigoResult};
 use amigo_scene::{
-    LightMap2dSourceSceneCommand, SceneCommand, SceneEvent, SceneEventQueue, SceneService,
-    format_scene_command,
+    GLOBAL_LIGHT_2D_PLUGIN_SCENE_COMMAND_TYPE, GlobalLight2dSceneCommand,
+    LIGHT_GROUP_2D_PLUGIN_SCENE_COMMAND_TYPE, LIGHTMAP_2D_SOURCE_PLUGIN_SCENE_COMMAND_TYPE,
+    LightGroup2dSceneCommand, LightMap2dSourceSceneCommand, SceneCommand, SceneEvent,
+    SceneEventQueue, SceneService, format_scene_command,
 };
 
 use super::{
@@ -51,9 +53,13 @@ pub enum LightingSceneCommandOutcome {
 pub fn can_handle_lighting_scene_command(command: &SceneCommand) -> bool {
     matches!(
         command,
-        SceneCommand::QueueGlobalLight2d { .. }
-            | SceneCommand::QueueLightMap2dSource { .. }
-            | SceneCommand::QueueLightGroup2d { .. }
+        SceneCommand::Plugin { command }
+            if matches!(
+                command.command_type.as_str(),
+                GLOBAL_LIGHT_2D_PLUGIN_SCENE_COMMAND_TYPE
+                    | LIGHTMAP_2D_SOURCE_PLUGIN_SCENE_COMMAND_TYPE
+                    | LIGHT_GROUP_2D_PLUGIN_SCENE_COMMAND_TYPE
+            )
     )
 }
 
@@ -62,7 +68,17 @@ pub fn handle_lighting_scene_command(
     command: SceneCommand,
 ) -> AmigoResult<LightingSceneCommandOutcome> {
     match command {
-        SceneCommand::QueueGlobalLight2d { command } => {
+        SceneCommand::Plugin { command }
+            if command.command_type == GLOBAL_LIGHT_2D_PLUGIN_SCENE_COMMAND_TYPE =>
+        {
+            let command = command
+                .payload_as::<GlobalLight2dSceneCommand>()
+                .ok_or_else(|| {
+                    AmigoError::Message(
+                        "global light 2d plugin scene command payload type mismatch".to_owned(),
+                    )
+                })?
+                .clone();
             let entity = queue_global_light_2d_scene_command(
                 ctx.scene_service,
                 ctx.global_light2d_scene_service,
@@ -78,7 +94,17 @@ pub fn handle_lighting_scene_command(
                 source_mod: command.source_mod,
             })
         }
-        SceneCommand::QueueLightMap2dSource { command } => {
+        SceneCommand::Plugin { command }
+            if command.command_type == LIGHTMAP_2D_SOURCE_PLUGIN_SCENE_COMMAND_TYPE =>
+        {
+            let command = command
+                .payload_as::<LightMap2dSourceSceneCommand>()
+                .ok_or_else(|| {
+                    AmigoError::Message(
+                        "lightmap 2d source plugin scene command payload type mismatch".to_owned(),
+                    )
+                })?
+                .clone();
             let warnings =
                 collect_lightmap_source_warnings(&command, ctx.resolve_lightmap_source_layers);
             let entity = queue_lightmap_2d_source_scene_command(
@@ -98,7 +124,17 @@ pub fn handle_lighting_scene_command(
                 warnings,
             })
         }
-        SceneCommand::QueueLightGroup2d { command } => {
+        SceneCommand::Plugin { command }
+            if command.command_type == LIGHT_GROUP_2D_PLUGIN_SCENE_COMMAND_TYPE =>
+        {
+            let command = command
+                .payload_as::<LightGroup2dSceneCommand>()
+                .ok_or_else(|| {
+                    AmigoError::Message(
+                        "light group 2d plugin scene command payload type mismatch".to_owned(),
+                    )
+                })?
+                .clone();
             let id = command.id.clone();
             let source_mod = command.source_mod.clone();
             queue_light_group_2d_scene_command(ctx.light_group2d_scene_service, command);

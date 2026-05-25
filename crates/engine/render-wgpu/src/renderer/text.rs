@@ -467,10 +467,10 @@ fn bitmap_font_cell_rect(
     frame: u32,
     column: usize,
     row: usize,
-    fallback_origin_x: f32,
-    fallback_origin_y: f32,
-    fallback_cell_width: f32,
-    fallback_cell_height: f32,
+    default_origin_x: f32,
+    default_origin_y: f32,
+    default_cell_width: f32,
+    default_cell_height: f32,
     inset: f32,
 ) -> (f32, f32, f32, f32) {
     if let (Some(x_lines), Some(y_lines)) = (
@@ -486,10 +486,10 @@ fn bitmap_font_cell_rect(
         return (x0, y0, x1, y1);
     }
 
-    let x0 = fallback_origin_x + column as f32 * fallback_cell_width + inset;
-    let y0 = fallback_origin_y + row as f32 * fallback_cell_height + inset;
-    let x1 = x0 + fallback_cell_width - inset * 2.0;
-    let y1 = y0 + fallback_cell_height - inset * 2.0;
+    let x0 = default_origin_x + column as f32 * default_cell_width + inset;
+    let y0 = default_origin_y + row as f32 * default_cell_height + inset;
+    let x1 = x0 + default_cell_width - inset * 2.0;
+    let y1 = y0 + default_cell_height - inset * 2.0;
     (x0, y0, x1, y1)
 }
 
@@ -520,7 +520,7 @@ fn parse_f32_list(value: &str) -> Option<Vec<f32>> {
 fn bitmap_font_animation_frame(
     prepared: &PreparedAsset,
     frame_count: u32,
-    fallback_frame: u32,
+    default_frame: u32,
 ) -> u32 {
     let frame_count = frame_count.max(1);
     let animated = prepared
@@ -529,7 +529,7 @@ fn bitmap_font_animation_frame(
         .map(|value| value.eq_ignore_ascii_case("true") || value == "1")
         .unwrap_or(false);
     if !animated {
-        return fallback_frame.min(frame_count - 1);
+        return default_frame.min(frame_count - 1);
     }
 
     let fps = metadata_f32_or(prepared, "animation.fps", 6.0).max(0.1) as f64;
@@ -558,18 +558,18 @@ fn bitmap_font_glyph_frame(
     base_frame % frame_count
 }
 
-fn metadata_f32_or(prepared: &PreparedAsset, key: &str, fallback: f32) -> f32 {
+fn metadata_f32_or(prepared: &PreparedAsset, key: &str, default_value: f32) -> f32 {
     prepared
         .metadata
         .get(key)
         .and_then(|value| value.parse::<f32>().ok())
-        .unwrap_or(fallback)
+        .unwrap_or(default_value)
 }
 
-fn metadata_u32_or(prepared: &PreparedAsset, key: &str, fallback: u32) -> u32 {
+fn metadata_u32_or(prepared: &PreparedAsset, key: &str, default_value: u32) -> u32 {
     prepared
         .metadata
         .get(key)
         .and_then(|value| value.parse::<u32>().ok())
-        .unwrap_or(fallback)
+        .unwrap_or(default_value)
 }

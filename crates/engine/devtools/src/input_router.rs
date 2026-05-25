@@ -66,7 +66,7 @@ pub fn classify_console_input(line: &str) -> ConsoleInputKind {
     }
 }
 
-pub fn should_try_rhai_fallback(line: &str) -> bool {
+pub fn should_try_rhai_route(line: &str) -> bool {
     !line.trim().is_empty()
 }
 

@@ -5,6 +5,7 @@ use amigo_scene::{
     PluginComponentHydrator, SceneComponentDocument, SceneDocumentResult, SceneVec2Document,
     TileMap2dSceneCommand,
 };
+use amigo_scene::SceneComponentDocument as ComponentDocument;
 
 use super::Tilemap2dDocument;
 
@@ -17,12 +18,12 @@ impl ComponentHydrator for TileMap2dComponentHydrator {
     }
 
     fn can_hydrate(&self, component: &SceneComponentDocument) -> bool {
-        matches!(component, SceneComponentDocument::TileMap2d { .. })
+        matches!(component, ComponentDocument::TileMap2d { .. })
     }
 
     fn hydrate(&self, ctx: ComponentHydrationContext<'_>) -> SceneDocumentResult<()> {
         let document = match ctx.component {
-            SceneComponentDocument::TileMap2d { .. } => {
+            ComponentDocument::TileMap2d { .. } => {
                 let Some(document) = Tilemap2dDocument::from_component(ctx.component) else {
                     return Ok(());
                 };
@@ -71,8 +72,8 @@ fn push_tilemap_command(
     commands: &mut Vec<amigo_scene::SceneCommand>,
     document: &Tilemap2dDocument,
 ) -> SceneDocumentResult<()> {
-    commands.push(amigo_scene::SceneCommand::QueueTileMap2d {
-        command: TileMap2dSceneCommand {
+    commands.push(amigo_scene::SceneCommand::Plugin {
+        command: amigo_scene::tilemap_2d_plugin_scene_command(TileMap2dSceneCommand {
             source_mod: source_mod.to_owned(),
             entity_name: entity_name.to_owned(),
             render_layer: document.render_layer.clone(),
@@ -82,7 +83,7 @@ fn push_tilemap_command(
             grid: document.grid.clone(),
             depth_fill_rows: document.depth_fill_rows,
             z_index: document.z_index,
-        },
+        }),
     });
 
     Ok(())

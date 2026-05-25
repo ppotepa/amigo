@@ -14,6 +14,14 @@ impl RuntimePlugin for BehaviorPlugin {
             scene_handlers.as_ref(),
             crate::scene_command::BehaviorSceneCommandHandler,
         );
+        if let Some(plugin_scene_handlers) =
+            registry.resolve::<amigo_scene::ScenePluginCommandHandlerRegistry>()
+        {
+            plugin_scene_handlers.register(
+                amigo_scene::BEHAVIOR_PLUGIN_SCENE_COMMAND_TYPE,
+                std::sync::Arc::new(crate::scene_command::BehaviorSceneCommandHandler),
+            );
+        }
         registry
             .required::<amigo_runtime::SystemRegistry>()?
             .register_fn(

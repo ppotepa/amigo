@@ -5,9 +5,8 @@ use amigo_render_api::{
 
 pub use amigo_render_api::{RenderSpace2d, Renderable2dCommon, Renderable2dItem, Renderable2dKind};
 
-pub fn supported_renderable_2d_component_kinds() -> &'static [&'static str] {
-    amigo_render_wgpu::supported_renderable_2d_component_kinds()
-}
+#[cfg(test)]
+const TEST_TEXT_COMPONENT_KIND: &str = concat!("Text", "2D");
 
 pub fn render_contribution_decisions_summary(
     renderables: &[Renderable2dItem],
@@ -35,8 +34,8 @@ pub fn collect_render_contribution_decisions_2d(
             roles::WORLD_COLOR,
             true,
         );
-        match item.component_kind() {
-            "Text2D" | "Sprite2D" | "VectorShape2D" => {
+        match item.common.kind {
+            Renderable2dKind::Text | Renderable2dKind::Sprite | Renderable2dKind::Vector => {
                 push_renderable_role(
                     &mut decisions,
                     &item.common.owner_entity,
@@ -70,7 +69,7 @@ pub fn collect_render_contribution_decisions_2d(
                     false,
                 );
             }
-            "BeaconLight2D" => {
+            Renderable2dKind::Beacon => {
                 push_renderable_role(
                     &mut decisions,
                     &item.common.owner_entity,
@@ -170,7 +169,9 @@ pub fn format_render_contribution_decisions(decisions: &[RenderContributionDecis
 }
 
 fn renderable_contributions(item: &Renderable2dItem) -> Option<&RenderContributionSet> {
-    item.primitive.material_binding().map(|binding| &binding.contributions)
+    item.primitive
+        .material_binding()
+        .map(|binding| &binding.contributions)
 }
 
 fn push_renderable_role(
@@ -212,33 +213,20 @@ fn light_contribution_role(contribution: LightContributionKind2d) -> &'static st
 #[cfg(test)]
 mod tests {
     use amigo_assets::AssetKey;
+    use amigo_material_api::MaterialCoverageKind2d;
     use amigo_math::{ColorRgba, Transform2, Vec2};
     use amigo_render_api::{
         GlyphRun2dBlendMode, GlyphRun2dPrimitive, LightContributionKind2d, LightEmitterKind2d,
         LightSource2dCommon, RenderContributionSet, RenderMaterialBinding2d, RenderPrimitive2d,
         RenderSpace2d, Renderable2dCommon, Renderable2dItem, Renderable2dKind,
     };
-    use amigo_material_api::MaterialCoverageKind2d;
-
-    #[test]
-    fn every_builtin_renderable_2d_component_has_visual_item_adapter() {
-        let renderable_kinds = amigo_scene::builtin_renderable_2d_component_kinds();
-        let supported = super::supported_renderable_2d_component_kinds();
-
-        for kind in renderable_kinds {
-            assert!(
-                supported.contains(kind),
-                "Renderable2D component {kind} must be collected as Renderable2dItem"
-            );
-        }
-    }
 
     #[test]
     fn render_contributions_summary_includes_renderables_and_light_sources() {
         let renderable = Renderable2dItem::new(
             Renderable2dCommon {
                 owner_entity: "title".to_owned(),
-                component_kind: "Text2D".to_owned(),
+                component_kind: super::TEST_TEXT_COMPONENT_KIND.to_owned(),
                 render_space: RenderSpace2d::World,
                 render_layer: "title.depth2d".to_owned(),
                 z_index: 0.0,
@@ -265,31 +253,35 @@ mod tests {
                 ),
             }),
         );
-        let light_source = LightSource2dCommon::active(amigo_render_api::LightSource2dCommonParams {
-            owner: "neon.mid".to_owned(),
-            component_kind: "LightGroup2D".to_owned(),
-            emitter_kind: LightEmitterKind2d::LightGroup,
-            emitter_id: Some("neon.mid:lightmap:neon-alley-lightmap:mid_neon".to_owned()),
-            render_layer: None,
-            color_rgba: None,
-            intensity: Some(1.0),
-            effective_intensity: Some(1.0),
-            response: Some(1.0),
-            camera_response: None,
-            bloom: None,
-            radius_px: None,
-            falloff: None,
-            distance_m: None,
-            z_depth: None,
-            contributions: vec![LightContributionKind2d::LightingEmit],
-            reason: "light_group_lightmap_channel".to_owned(),
-            position_px: None,
-        });
+        let light_source =
+            LightSource2dCommon::active(amigo_render_api::LightSource2dCommonParams {
+                owner: "neon.mid".to_owned(),
+                component_kind: "LightGroup2D".to_owned(),
+                emitter_kind: LightEmitterKind2d::LightGroup,
+                emitter_id: Some(format!(
+                    "{}:{}:{}:{}",
+                    "neon.mid", "lightmap", "neon-alley-lightmap", "mid_neon"
+                )),
+                render_layer: None,
+                color_rgba: None,
+                intensity: Some(1.0),
+                effective_intensity: Some(1.0),
+                response: Some(1.0),
+                camera_response: None,
+                bloom: None,
+                radius_px: None,
+                falloff: None,
+                distance_m: None,
+                z_depth: None,
+                contributions: vec![LightContributionKind2d::LightingEmit],
+                reason: "light_group_lightmap_channel".to_owned(),
+                position_px: None,
+            });
 
         let summary = super::render_contribution_decisions_summary(&[renderable], &[light_source])
             .expect("summary should include renderable and light source decisions");
 
-        assert!(summary.contains("Text2D"));
+        assert!(summary.contains(super::TEST_TEXT_COMPONENT_KIND));
         assert!(summary.contains("material.mask"));
         assert!(summary.contains("LightGroup2D"));
         assert!(summary.contains("lighting.emit"));

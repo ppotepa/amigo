@@ -2,11 +2,13 @@ use std::collections::BTreeMap;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use amigo_composite_plugin::PostFx2d;
 use amigo_assets::{AssetCatalog, AssetKey, AssetSourceKind, PreparedAsset, PreparedAssetKind};
 use amigo_math::{Transform2, Vec2};
 use amigo_runtime_control::{ControlValue, RuntimeControlService};
-use amigo_scene::{SceneCommand, SceneEntityId, SceneEvent, SceneEventQueue, SceneService};
+use amigo_scene::{
+    SceneCommand, SceneEntityId, SceneEvent, SceneEventQueue, SceneService,
+    layered_image_2d_plugin_scene_command,
+};
 
 use super::{
     LayeredImageBlendMode2d, LayeredImageDrawCommand, LayeredImageInstance,
@@ -67,23 +69,12 @@ fn infers_layered_image_asset_from_prepared_metadata() {
         panic!("layer should infer post-fx stack");
     };
     assert_eq!(post_fx.effects.len(), 1);
-    match post_fx.effects[0] {
-        PostFx2d::Blur(blur) => {
-            assert_eq!(blur.radius, 18.0);
-            assert_eq!(blur.downsample, 0.5);
-            assert_eq!(blur.intensity, 1.2);
-        }
-        PostFx2d::EmbossEdges(_) => panic!("expected blur effect for this fixture"),
-        PostFx2d::ColorQuantize(_)
-        | PostFx2d::Crt(_)
-        | PostFx2d::DirtyBloom(_)
-        | PostFx2d::FilmNoise(_)
-        | PostFx2d::LensDroplets(_)
-        | PostFx2d::WetReflections(_) => {
-            panic!("expected blur effect for this fixture")
-        }
-        _ => panic!("expected blur effect for this fixture"),
-    }
+    let Some(blur) = post_fx.effects[0].clone().into_blur() else {
+        panic!("expected blur effect for this fixture");
+    };
+    assert_eq!(blur.radius, 18.0);
+    assert_eq!(blur.downsample, 0.5);
+    assert_eq!(blur.intensity, 1.2);
 }
 
 #[test]
@@ -114,8 +105,8 @@ fn scene_service_updates_base_opacity() {
 
 #[test]
 fn can_handle_layered_image_scene_command_returns_true_for_layered_image_command() {
-    let command = SceneCommand::QueueLayeredImage2d {
-        command: amigo_scene::LayeredImage2dSceneCommand {
+    let command = SceneCommand::plugin(layered_image_2d_plugin_scene_command(
+        amigo_scene::LayeredImage2dSceneCommand {
             source_mod: "test-mod".to_owned(),
             entity_name: "background".to_owned(),
             asset: AssetKey::new("test-mod/layered-images/test-scene"),
@@ -128,7 +119,7 @@ fn can_handle_layered_image_scene_command_returns_true_for_layered_image_command
             z_index: -100.0,
             transform: Transform2::default(),
         },
-    };
+    ));
 
     assert!(can_handle_layered_image_scene_command(&command));
 }
@@ -138,8 +129,8 @@ fn handle_layered_image_scene_command_queues_image_and_publishes_event() {
     let scene_service = SceneService::default();
     let layered_image_scene_service = LayeredImageSceneService::default();
     let scene_event_queue = SceneEventQueue::default();
-    let command = SceneCommand::QueueLayeredImage2d {
-        command: amigo_scene::LayeredImage2dSceneCommand {
+    let command = SceneCommand::plugin(layered_image_2d_plugin_scene_command(
+        amigo_scene::LayeredImage2dSceneCommand {
             source_mod: "test-mod".to_owned(),
             entity_name: "background".to_owned(),
             asset: AssetKey::new("test-mod/layered-images/test-scene"),
@@ -152,7 +143,7 @@ fn handle_layered_image_scene_command_queues_image_and_publishes_event() {
             z_index: -100.0,
             transform: Transform2::default(),
         },
-    };
+    ));
 
     let outcome = handle_layered_image_scene_command(
         LayeredImageSceneCommandContext {

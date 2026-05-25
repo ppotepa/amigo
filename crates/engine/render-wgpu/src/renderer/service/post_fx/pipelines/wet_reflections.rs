@@ -11,16 +11,18 @@ impl WgpuPostFxPipelineProvider for WetReflectionsPipelineProvider {
     }
 
     fn create_pipeline(&self, ctx: &WgpuPostFxPipelineCreateContext<'_>) -> wgpu::RenderPipeline {
-        let shader = ctx.device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("amigo-scene-wet-reflections-shader"),
-            source: wgpu::ShaderSource::Wgsl(WET_REFLECTIONS_SHADER.into()),
-        });
+        let shader = ctx
+            .device
+            .create_shader_module(wgpu::ShaderModuleDescriptor {
+                label: Some("amigo-render-wet-reflections-shader"),
+                source: wgpu::ShaderSource::Wgsl(WET_REFLECTIONS_SHADER.into()),
+            });
         create_copy_blend_pipeline(
             ctx.device,
             &shader,
             ctx.wet_reflections_pipeline_layout,
             ctx.format,
-            "amigo-scene-wet-reflections-pipeline",
+            "amigo-render-wet-reflections-pipeline",
         )
     }
 }

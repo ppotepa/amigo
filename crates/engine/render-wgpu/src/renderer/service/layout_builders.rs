@@ -11,7 +11,7 @@ pub(crate) fn create_common_bind_group_layouts(
     device: &wgpu::Device,
 ) -> WgpuCommonBindGroupLayouts {
     let texture = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-        label: Some("amigo-scene-texture-bind-group-layout"),
+        label: Some("amigo-render-texture-bind-group-layout"),
         entries: &[
             wgpu::BindGroupLayoutEntry {
                 binding: 0,
@@ -93,7 +93,7 @@ pub(crate) fn create_common_bind_group_layouts(
         ],
     });
     let focus_blur_texture = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-        label: Some("amigo-scene-focus-blur-texture-bind-group-layout"),
+        label: Some("amigo-render-focus-blur-texture-bind-group-layout"),
         entries: &[
             wgpu::BindGroupLayoutEntry {
                 binding: 0,
@@ -134,7 +134,7 @@ pub(crate) fn create_common_bind_group_layouts(
         ],
     });
     let shutter_blur_texture = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-        label: Some("amigo-scene-shutter-blur-texture-bind-group-layout"),
+        label: Some("amigo-render-shutter-blur-texture-bind-group-layout"),
         entries: &[
             wgpu::BindGroupLayoutEntry {
                 binding: 0,
@@ -176,7 +176,7 @@ pub(crate) fn create_common_bind_group_layouts(
     });
     let wet_reflections_texture =
         device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("amigo-scene-wet-reflections-texture-bind-group-layout"),
+            label: Some("amigo-render-wet-reflections-texture-bind-group-layout"),
             entries: &[
                 wgpu::BindGroupLayoutEntry {
                     binding: 0,
@@ -228,7 +228,7 @@ pub(crate) fn create_common_bind_group_layouts(
         });
     let wet_reflections_uniform =
         device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("amigo-scene-wet-reflections-uniform-bind-group-layout"),
+            label: Some("amigo-render-wet-reflections-uniform-bind-group-layout"),
             entries: &[wgpu::BindGroupLayoutEntry {
                 binding: 0,
                 visibility: wgpu::ShaderStages::FRAGMENT,

@@ -5,7 +5,9 @@ use amigo_editor_api::{
 };
 use amigo_runtime::Runtime;
 
-use crate::{PostFx2d, PostFx2dService, RainGlass2d, RainGlassDebugView};
+use amigo_render_api::post_fx_rain_glass;
+
+use crate::{PostFx2dService, RainGlass2d, RainGlassDebugView};
 
 pub struct CompositeEditorRuntimeApplyProvider;
 
@@ -71,14 +73,18 @@ fn apply_postfx_frame_field(
     value: serde_yaml::Value,
 ) -> AmigoResult<EditorRuntimeApplyOutcome> {
     let service = runtime.required::<PostFx2dService>()?;
-    let applied = service.update_frame_effect(index, |effect| match effect {
-        PostFx2d::RainGlass(mut rain) => {
+    let applied = service.update_frame_effect(index, |effect| {
+        if effect.kind() == "rain_glass" {
+            let Some(mut rain) = effect.into_rain_glass() else {
+                return None;
+            };
             if !apply_rain_glass_field(&mut rain, field, &value) {
                 return None;
             }
-            Some(PostFx2d::RainGlass(rain.normalized()))
+            Some(post_fx_rain_glass(rain.normalized()))
+        } else {
+            Some(effect)
         }
-        other => Some(other),
     });
     if applied {
         Ok(EditorRuntimeApplyOutcome::Applied(format!(

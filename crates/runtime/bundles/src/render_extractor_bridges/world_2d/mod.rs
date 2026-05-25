@@ -30,8 +30,8 @@ pub fn register_world_2d_render_extractors(
     particles::register(registry);
 }
 
-pub(crate) fn available_world_2d_plugin_bridge_installers(
-) -> Vec<crate::render_extractor_registry::WgpuRenderExtractorBridgeInstaller> {
+pub(crate) fn available_world_2d_plugin_bridge_installers()
+-> Vec<crate::render_extractor_registry::WgpuRenderExtractorBridgeInstaller> {
     vec![
         tilemap::installer(),
         sprite::installer(),

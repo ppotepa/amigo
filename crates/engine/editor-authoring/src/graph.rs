@@ -87,6 +87,65 @@ pub struct AuthoringNodeSemantic {
     pub light_route_receiver_layer: Option<String>,
 }
 
+impl AuthoringNodeSemantic {
+    pub const COMPONENT_LAYERED_IMAGE_2D: &'static str = "LayeredImage2D";
+    pub const COMPONENT_SPRITE_2D: &'static str = concat!("Sprite", "2D");
+    pub const COMPONENT_PARTICLE_EMITTER_2D: &'static str = concat!("ParticleEmitter", "2D");
+    pub const COMPONENT_BEACON_LIGHT_2D: &'static str = "BeaconLight2D";
+    pub const COMPONENT_GLOBAL_LIGHT_2D: &'static str = "GlobalLight2D";
+    pub const COMPONENT_TEXT_2D: &'static str = concat!("Text", "2D");
+    pub const COMPONENT_CAMERA_2D: &'static str = "Camera2D";
+    pub const COMPONENT_UI_DOCUMENT: &'static str = "UiDocument";
+
+    pub fn component_type_is(&self, wanted: &str) -> bool {
+        self.component_type.as_deref() == Some(wanted)
+    }
+
+    pub fn is_layered_image_2d(&self) -> bool {
+        self.component_type_is(Self::COMPONENT_LAYERED_IMAGE_2D)
+    }
+
+    pub fn is_sprite_2d(&self) -> bool {
+        self.component_type_is(Self::COMPONENT_SPRITE_2D)
+    }
+
+    pub fn is_particle_emitter_2d(&self) -> bool {
+        self.component_type_is(Self::COMPONENT_PARTICLE_EMITTER_2D)
+    }
+
+    pub fn is_beacon_light_2d(&self) -> bool {
+        self.component_type_is(Self::COMPONENT_BEACON_LIGHT_2D)
+    }
+
+    pub fn is_global_light_2d(&self) -> bool {
+        self.component_type_is(Self::COMPONENT_GLOBAL_LIGHT_2D)
+    }
+
+    pub fn is_text_2d(&self) -> bool {
+        self.component_type_is(Self::COMPONENT_TEXT_2D)
+    }
+
+    pub fn is_camera_2d(&self) -> bool {
+        self.component_type_is(Self::COMPONENT_CAMERA_2D)
+    }
+
+    pub fn is_ui_document(&self) -> bool {
+        self.component_type_is(Self::COMPONENT_UI_DOCUMENT)
+    }
+
+    pub fn uses_image_icon(&self) -> bool {
+        self.is_layered_image_2d() || self.is_sprite_2d()
+    }
+
+    pub fn uses_light_icon(&self) -> bool {
+        self.is_beacon_light_2d() || self.is_global_light_2d()
+    }
+
+    pub fn is_live_component_binding_target(&self) -> bool {
+        self.is_layered_image_2d() || self.is_particle_emitter_2d() || self.is_beacon_light_2d()
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct AuthoringSceneGraph {
     pub source_mod: String,

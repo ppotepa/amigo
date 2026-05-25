@@ -90,9 +90,7 @@ pub(crate) fn vector_primitive_viewport_fit_transform(
 fn vector_shape_points(shape: &VectorShape2dPrimitive) -> Vec<Vec2> {
     match &shape.shape {
         VectorShape2dKindPrimitive::Polyline { points, .. }
-        | VectorShape2dKindPrimitive::Polygon { points } => {
-            points.clone()
-        }
+        | VectorShape2dKindPrimitive::Polygon { points } => points.clone(),
         VectorShape2dKindPrimitive::Circle { radius, segments } => {
             let segment_count = (*segments).max(3) as usize;
             let mut points = Vec::with_capacity(segment_count);
@@ -119,7 +117,11 @@ mod tests {
         };
         let primitive = VectorShape2dPrimitive {
             shape: VectorShape2dKindPrimitive::Polygon {
-                points: vec![Vec2::new(0.0, 0.0), Vec2::new(1.0, 0.0), Vec2::new(0.0, 1.0)],
+                points: vec![
+                    Vec2::new(0.0, 0.0),
+                    Vec2::new(1.0, 0.0),
+                    Vec2::new(0.0, 1.0),
+                ],
             },
             style: amigo_render_api::VectorShape2dStylePrimitive {
                 stroke_color: ColorRgba::WHITE,
@@ -150,7 +152,11 @@ mod tests {
         };
         let primitive = VectorShape2dPrimitive {
             shape: VectorShape2dKindPrimitive::Polygon {
-                points: vec![Vec2::new(0.0, 0.0), Vec2::new(1.0, 0.0), Vec2::new(0.0, 1.0)],
+                points: vec![
+                    Vec2::new(0.0, 0.0),
+                    Vec2::new(1.0, 0.0),
+                    Vec2::new(0.0, 1.0),
+                ],
             },
             style: amigo_render_api::VectorShape2dStylePrimitive {
                 stroke_color: ColorRgba::WHITE,

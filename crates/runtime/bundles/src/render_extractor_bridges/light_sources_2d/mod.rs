@@ -11,10 +11,6 @@ use amigo_render_api::{
 
 use crate::render_extractor_bridges::visual_2d_items::Renderable2dItem;
 
-const MAX_GLOBAL_LIGHT_SOURCES: usize = 16;
-const MAX_LIGHTMAP_SOURCES: usize = 16;
-const MAX_LIGHT_GROUP_SOURCES: usize = 16;
-const MAX_PARTICLE_LIGHT_SOURCES: usize = 64;
 const MAX_MATERIAL_EMISSIVE_LIGHT_SOURCES: usize = 64;
 
 macro_rules! light_source_params {
@@ -80,8 +76,8 @@ mod roles;
 #[cfg(test)]
 mod tests;
 
-pub use format::format_light_sources_2d;
 pub use camera_optical::collect_camera_optical_candidates_from_light_sources_2d;
+pub use format::format_light_sources_2d;
 
 use roles::{color_rgba, light_source_roles, visual_source_availability_label};
 
@@ -208,10 +204,12 @@ fn collect_light_group_contribution_sources(
             amigo_render_api::RenderLightGroupSourceKind2d::GlobalLight { id } => {
                 Some(format!("{}:global:{}", group.id, id))
             }
-            amigo_render_api::RenderLightGroupSourceKind2d::LightMapChannel {
-                source,
-                channel,
-            } => Some(format!("{}:lightmap:{}:{}", group.id, source, channel)),
+            amigo_render_api::RenderLightGroupSourceKind2d::LightMapChannel { source, channel } => {
+                Some(format!(
+                    "{}:{}:{}:{}",
+                    group.id, "lightmap", source, channel
+                ))
+            }
         };
         let effective_intensity = group.intensity * source.response.max(0.0);
         sources.push(active_light_source!(
@@ -241,22 +239,22 @@ fn light_group_contribution_roles(
     group: &amigo_render_api::RenderLightGroup2d,
 ) -> Vec<LightContributionKind2d> {
     let mut contributions = Vec::new();
-    if group
-        .contributions
-        .enabled_or(amigo_render_api::render_contribution_roles::LIGHTING_EMIT, true)
-    {
+    if group.contributions.enabled_or(
+        amigo_render_api::render_contribution_roles::LIGHTING_EMIT,
+        true,
+    ) {
         contributions.push(LightContributionKind2d::LightingEmit);
     }
-    if group
-        .contributions
-        .enabled_or(amigo_render_api::render_contribution_roles::BLOOM_SOURCE, false)
-    {
+    if group.contributions.enabled_or(
+        amigo_render_api::render_contribution_roles::BLOOM_SOURCE,
+        false,
+    ) {
         contributions.push(LightContributionKind2d::BloomSource);
     }
-    if group
-        .contributions
-        .enabled_or(amigo_render_api::render_contribution_roles::CAMERA_FX_SOURCE, false)
-    {
+    if group.contributions.enabled_or(
+        amigo_render_api::render_contribution_roles::CAMERA_FX_SOURCE,
+        false,
+    ) {
         contributions.push(LightContributionKind2d::CameraFxSource);
     }
     contributions

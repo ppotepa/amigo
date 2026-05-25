@@ -70,6 +70,14 @@ impl RuntimePlugin for LayeredImagePlugin {
             scene_handlers.as_ref(),
             super::scene_command::LayeredImage2dSceneCommandHandler,
         );
+        if let Some(plugin_scene_handlers) =
+            registry.resolve::<amigo_scene::ScenePluginCommandHandlerRegistry>()
+        {
+            plugin_scene_handlers.register(
+                amigo_scene::LAYERED_IMAGE_2D_PLUGIN_SCENE_COMMAND_TYPE,
+                Arc::new(super::scene_command::LayeredImage2dSceneCommandHandler),
+            );
+        }
         let script_handlers =
             registry.required::<amigo_scripting_api::RuntimeScriptCommandHandlerRegistry>()?;
         amigo_scripting_api::register_runtime_script_command_handler(

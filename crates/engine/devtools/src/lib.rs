@@ -50,7 +50,7 @@ pub use editor_capability::*;
 pub use emergency_notice::{EmergencyNotice, EmergencyNoticeLevel, EmergencyNoticeService};
 pub use input_router::{
     ConsoleInputKind, ConsoleInputRoute, RoutedConsoleInput, classify_console_input,
-    looks_like_rhai, route_console_input, should_try_rhai_fallback,
+    looks_like_rhai, route_console_input, should_try_rhai_route,
 };
 pub use model::{
     DebugOverlayCorner, DebugOverlayLayoutMode, DebugOverlayPanel, DebugOverlaySettings,

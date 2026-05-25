@@ -21,13 +21,13 @@ pub(super) fn try_execute_camera_debug_view(
 
     match request.camera_debug_view.as_str() {
         "camera.layer_optical_roles" => {
-            if !copy_layer_roles_target_or_fallback(renderer, target)? {
+            if !copy_layer_roles_target_or_debug_color(renderer, target)? {
                 render_layer_roles_debug_source(renderer, request, target)?;
             }
             Ok(true)
         }
         "camera.layer_mask" => {
-            if !copy_visual_source_target_or_fallback(
+            if !copy_visual_source_target_or_debug_color(
                 renderer,
                 target,
                 amigo_render_api::VisualSourceKind2d::LayerMask,
@@ -130,7 +130,7 @@ pub(super) fn render_layer_roles_debug_source(
     {
         return renderer.clear_offscreen_to_color(
             target,
-            color_to_wgpu(crate::renderer::service::fallback_color_for(
+            color_to_wgpu(crate::renderer::service::missing_debug_color_for(
                 amigo_render_api::VisualSourceKind2d::Debug,
             )),
         );
@@ -178,20 +178,20 @@ pub(super) fn render_layer_mask_visual_source(
         .visual_source_flags_2d
         .is_some_and(|flags| !flags.layer_mask_generated)
     {
-        // Missing/fallback visual source: draw the canonical fallback color instead of pretending a buffer exists.
+        // Missing visual source: draw the canonical debug color instead of pretending a buffer exists.
         return renderer.clear_offscreen_to_color(
             target,
-            color_to_wgpu(crate::renderer::service::fallback_color_for(
+            color_to_wgpu(crate::renderer::service::missing_debug_color_for(
                 amigo_render_api::VisualSourceKind2d::LayerMask,
             )),
         );
     }
     renderer.clear_offscreen_to_color(target, wgpu::Color::BLACK)?;
     let Some(layers) = camera_capture_layers(request) else {
-        // Missing/fallback visual source: draw the canonical fallback color instead of pretending a buffer exists.
+        // Missing visual source: draw the canonical debug color instead of pretending a buffer exists.
         return renderer.clear_offscreen_to_color(
             target,
-            color_to_wgpu(crate::renderer::service::fallback_color_for(
+            color_to_wgpu(crate::renderer::service::missing_debug_color_for(
                 amigo_render_api::VisualSourceKind2d::LayerMask,
             )),
         );
@@ -240,10 +240,10 @@ fn render_visual_source_debug_view(
     _feature_id: &str,
 ) -> AmigoResult<()> {
     let Some(runtime) = visual_sources.and_then(|sources| sources.get(kind)) else {
-        // Missing/fallback visual source: draw the canonical fallback color instead of pretending a buffer exists.
+        // Missing visual source: draw the canonical debug color instead of pretending a buffer exists.
         return renderer.clear_offscreen_to_color(
             target,
-            color_to_wgpu(crate::renderer::service::fallback_color_for(kind)),
+            color_to_wgpu(crate::renderer::service::missing_debug_color_for(kind)),
         );
     };
 
@@ -255,10 +255,10 @@ fn render_visual_source_debug_view(
                 target,
                 &runtime.source.id.0,
                 [
-                    runtime.fallback_color.r,
-                    runtime.fallback_color.g,
-                    runtime.fallback_color.b,
-                    runtime.fallback_color.a,
+                    runtime.missing_debug_color.r,
+                    runtime.missing_debug_color.g,
+                    runtime.missing_debug_color.b,
+                    runtime.missing_debug_color.a,
                 ],
                 "amigo-debug-visual-source-asset",
             )
@@ -267,21 +267,21 @@ fn render_visual_source_debug_view(
             renderer.copy_offscreen_to_offscreen(target, source)
         }
         crate::renderer::service::WgpuVisualSourceRuntimeKind2d::WorldDepth => {
-            // Missing/fallback visual source: draw the canonical fallback color instead of pretending a buffer exists.
-            renderer.clear_offscreen_to_color(target, color_to_wgpu(runtime.fallback_color))
+            // Missing visual source: draw the canonical debug color instead of pretending a buffer exists.
+            renderer.clear_offscreen_to_color(target, color_to_wgpu(runtime.missing_debug_color))
         }
-        crate::renderer::service::WgpuVisualSourceRuntimeKind2d::MissingFallback => {
-            // Missing/fallback visual source: draw the canonical fallback color instead of pretending a buffer exists.
-            renderer.clear_offscreen_to_color(target, color_to_wgpu(runtime.fallback_color))
+        crate::renderer::service::WgpuVisualSourceRuntimeKind2d::MissingDebugColor => {
+            // Missing visual source: draw the canonical debug color instead of pretending a buffer exists.
+            renderer.clear_offscreen_to_color(target, color_to_wgpu(runtime.missing_debug_color))
         }
         runtime_kind if runtime_kind.is_real_target() => {
-            copy_visual_source_target_or_fallback(renderer, target, kind).map(|_| ())
+            copy_visual_source_target_or_debug_color(renderer, target, kind).map(|_| ())
         }
-        _ => renderer.clear_offscreen_to_color(target, color_to_wgpu(runtime.fallback_color)),
+        _ => renderer.clear_offscreen_to_color(target, color_to_wgpu(runtime.missing_debug_color)),
     }
 }
 
-fn copy_visual_source_target_or_fallback(
+fn copy_visual_source_target_or_debug_color(
     renderer: &mut WgpuSceneRenderer,
     target: &mut WgpuOffscreenTarget,
     kind: amigo_render_api::VisualSourceKind2d,
@@ -294,15 +294,15 @@ fn copy_visual_source_target_or_fallback(
         renderer.copy_offscreen_to_offscreen(target, &source_view)?;
         return Ok(true);
     }
-    // Missing/fallback visual source: draw the canonical fallback color instead of pretending a buffer exists.
+    // Missing visual source: draw the canonical debug color instead of pretending a buffer exists.
     renderer.clear_offscreen_to_color(
         target,
-        color_to_wgpu(crate::renderer::service::fallback_color_for(kind)),
+        color_to_wgpu(crate::renderer::service::missing_debug_color_for(kind)),
     )?;
     Ok(false)
 }
 
-fn copy_layer_roles_target_or_fallback(
+fn copy_layer_roles_target_or_debug_color(
     renderer: &mut WgpuSceneRenderer,
     target: &mut WgpuOffscreenTarget,
 ) -> AmigoResult<bool> {
@@ -354,7 +354,7 @@ pub(super) fn optical_role_debug_color(role: amigo_2d_spatial::OpticalLayerRole2
 
 #[cfg(test)]
 pub(super) fn optical_debug_missing_color(kind: amigo_render_api::VisualSourceKind2d) -> ColorRgba {
-    crate::renderer::service::fallback_color_for(kind)
+    crate::renderer::service::missing_debug_color_for(kind)
 }
 
 fn color_to_wgpu(color: ColorRgba) -> wgpu::Color {

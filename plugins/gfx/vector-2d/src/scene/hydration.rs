@@ -9,6 +9,7 @@ use amigo_scene::{
     SceneTransform3Document, SceneVectorShapeKindComponentDocument, SceneVec2Document,
     VectorShape2dSceneCommand, VectorShapeKind2dSceneCommand, VectorStyle2dSceneCommand,
 };
+use amigo_scene::SceneComponentDocument as ComponentDocument;
 
 use super::Vector2dDocument;
 
@@ -21,12 +22,12 @@ impl ComponentHydrator for VectorShape2dComponentHydrator {
     }
 
     fn can_hydrate(&self, component: &SceneComponentDocument) -> bool {
-        matches!(component, SceneComponentDocument::VectorShape2d { .. })
+        matches!(component, ComponentDocument::VectorShape2d { .. })
     }
 
     fn hydrate(&self, ctx: ComponentHydrationContext<'_>) -> SceneDocumentResult<()> {
         let document = match ctx.component {
-            SceneComponentDocument::VectorShape2d { .. } => {
+            ComponentDocument::VectorShape2d { .. } => {
                 let Some(document) = Vector2dDocument::from_component(ctx.component) else {
                     return Ok(());
                 };

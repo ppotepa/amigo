@@ -183,26 +183,3 @@ pub fn light_group_commands_to_render_contributions(
         })
         .collect()
 }
-
-fn light_group_contributions(group: &LightGroup2dCommand) -> Vec<LightContributionKind2d> {
-    let mut contributions = Vec::new();
-    if group
-        .render_contributions
-        .enabled_or(amigo_render_api::render_contribution_roles::LIGHTING_EMIT, true)
-    {
-        contributions.push(LightContributionKind2d::LightingEmit);
-    }
-    if group
-        .render_contributions
-        .enabled_or(amigo_render_api::render_contribution_roles::BLOOM_SOURCE, false)
-    {
-        contributions.push(LightContributionKind2d::BloomSource);
-    }
-    if group
-        .render_contributions
-        .enabled_or(amigo_render_api::render_contribution_roles::CAMERA_FX_SOURCE, false)
-    {
-        contributions.push(LightContributionKind2d::CameraFxSource);
-    }
-    contributions
-}

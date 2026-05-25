@@ -3,36 +3,22 @@
 
 use std::sync::Mutex;
 
-use amigo_assets::AssetKey;
-use amigo_capabilities::{DEFAULT_CAPABILITY_VERSION, register_domain_plugin};
-use amigo_math::Transform3;
+use amigo_capabilities::{register_domain_plugin, DEFAULT_CAPABILITY_VERSION};
+pub use amigo_render_api::{Mesh3d, MeshDrawCommand};
 use amigo_runtime::{RuntimePlugin, ServiceRegistry};
 use amigo_scene::{Mesh3dSceneCommand, SceneEntityId, SceneService};
 mod editor_capability;
-mod reset;
 mod render_extraction;
+mod reset;
 mod runtime_capabilities;
 mod scene_command;
 mod script_command;
 pub use editor_capability::*;
-pub use reset::*;
 pub use render_extraction::*;
+pub use reset::*;
 pub use runtime_capabilities::*;
 pub use scene_command::*;
 pub use script_command::*;
-
-#[derive(Debug, Clone)]
-pub struct Mesh3d {
-    pub mesh_asset: AssetKey,
-    pub transform: Transform3,
-}
-
-#[derive(Debug, Clone)]
-pub struct MeshDrawCommand {
-    pub entity_id: SceneEntityId,
-    pub entity_name: String,
-    pub mesh: Mesh3d,
-}
 
 #[derive(Debug, Default)]
 pub struct MeshSceneService {
@@ -99,11 +85,11 @@ impl RuntimePlugin for MeshPlugin {
             &[],
             DEFAULT_CAPABILITY_VERSION,
         )?;
-        let scene_handlers =
-            registry.required::<amigo_scene::RuntimeSceneCommandHandlerRegistry>()?;
-        amigo_scene::register_runtime_scene_command_handler(
-            scene_handlers.as_ref(),
-            crate::scene_command::Mesh3dSceneCommandHandler,
+        let plugin_scene_handlers =
+            registry.required::<amigo_scene::ScenePluginCommandHandlerRegistry>()?;
+        plugin_scene_handlers.register(
+            amigo_scene::MESH_3D_PLUGIN_SCENE_COMMAND_TYPE,
+            std::sync::Arc::new(crate::scene_command::Mesh3dSceneCommandHandler),
         );
         let script_handlers =
             registry.required::<amigo_scripting_api::RuntimeScriptCommandHandlerRegistry>()?;
@@ -122,7 +108,7 @@ pub fn queue_mesh_scene_command(
 ) -> SceneEntityId {
     let entity = scene_service.find_or_spawn_named_entity(command.entity_name.clone());
     mesh_scene_service.queue(MeshDrawCommand {
-        entity_id: entity,
+        entity_id: entity.raw(),
         entity_name: command.entity_name.clone(),
         mesh: Mesh3d {
             mesh_asset: command.mesh_asset.clone(),
@@ -135,19 +121,19 @@ pub fn queue_mesh_scene_command(
 #[cfg(test)]
 mod tests {
     use super::{
-        Mesh3d, Mesh3dEditorCapability, MeshDrawCommand, MeshSceneService, queue_mesh_scene_command,
+        queue_mesh_scene_command, Mesh3d, Mesh3dEditorCapability, MeshDrawCommand, MeshSceneService,
     };
     use amigo_assets::AssetKey;
     use amigo_editor_api::EditorCapability;
     use amigo_math::Transform3;
-    use amigo_scene::{Mesh3dSceneCommand, SceneEntityId, SceneService};
+    use amigo_scene::{Mesh3dSceneCommand, SceneService};
 
     #[test]
     fn stores_mesh_draw_commands() {
         let service = MeshSceneService::default();
 
         service.queue(MeshDrawCommand {
-            entity_id: SceneEntityId::new(11),
+            entity_id: 11,
             entity_name: "playground-3d-probe".to_owned(),
             mesh: Mesh3d {
                 mesh_asset: AssetKey::new("playground-3d/meshes/probe"),

@@ -2,9 +2,8 @@ use super::policy::VisualSourceBufferPolicySet;
 use super::*;
 use amigo_render_api::{RenderPrimitive2d, Renderable2dItem};
 
-// V1 SceneMotionBuffer.
-// This estimates screen-space motion from previous per-draw transform positions.
-// It is a produced renderer buffer, but not yet a full material/motion-vector pass.
+// Estimates screen-space motion from previous per-draw transform positions.
+// This is a produced renderer buffer, not a material-owned motion-vector pass.
 pub(super) fn produce_motion_buffer(
     renderer: &mut WgpuSceneRenderer,
     request: &WgpuFrameRenderRequest<'_>,
@@ -24,7 +23,7 @@ pub(super) fn produce_motion_buffer(
     );
 
     if !render_per_draw_motion_buffer(renderer, request, &mut target)? {
-        render_shutter_motion_fallback(
+        render_shutter_motion_debug_replay(
             renderer,
             request,
             &source_view,
@@ -39,7 +38,7 @@ pub(super) fn produce_motion_buffer(
     Ok(())
 }
 
-fn render_shutter_motion_fallback(
+fn render_shutter_motion_debug_replay(
     renderer: &mut WgpuSceneRenderer,
     request: &WgpuFrameRenderRequest<'_>,
     source: &wgpu::TextureView,
@@ -54,7 +53,7 @@ fn render_shutter_motion_fallback(
     {
         return renderer.clear_offscreen_to_color(
             target,
-            util::color_to_wgpu(crate::renderer::service::fallback_color_for(
+            util::color_to_wgpu(crate::renderer::service::missing_debug_color_for(
                 amigo_render_api::VisualSourceKind2d::SceneMotion,
             )),
         );
@@ -72,7 +71,7 @@ fn render_shutter_motion_fallback(
     }
     for stack in request.post_fx_stacks {
         for instance in &stack.effects {
-            if let amigo_render_api::PostFx2d::ShutterBlur(effect) = &instance.effect {
+            if let Some(effect) = instance.effect.as_shutter_blur() {
                 if effect.is_active() {
                     return crate::renderer::service::post_fx::shutter_blur::execute_motion_debug(
                         renderer,
@@ -88,7 +87,7 @@ fn render_shutter_motion_fallback(
     }
     renderer.clear_offscreen_to_color(
         target,
-        util::color_to_wgpu(crate::renderer::service::fallback_color_for(
+        util::color_to_wgpu(crate::renderer::service::missing_debug_color_for(
             amigo_render_api::VisualSourceKind2d::SceneMotion,
         )),
     )
@@ -100,10 +99,7 @@ fn render_per_draw_motion_buffer(
     target: &mut WgpuOffscreenTarget,
 ) -> AmigoResult<bool> {
     let viewport = Viewport::from_offscreen(target);
-    let camera = crate::renderer::scene::resolve_camera2d_transform(
-        request.scene,
-        request.active_camera_2d_entity,
-    );
+    let camera = crate::renderer::scene::resolve_camera2d_transform(request.scene_view);
     let mut current_positions = std::collections::BTreeMap::new();
     let mut color_batches = Vec::new();
     let target_size = (target.width, target.height);
@@ -130,7 +126,7 @@ fn render_per_draw_motion_buffer(
     renderer.render_offscreen_batches(
         target,
         wgpu::LoadOp::Clear(util::color_to_wgpu(
-            crate::renderer::service::fallback_color_for(
+            crate::renderer::service::missing_debug_color_for(
                 amigo_render_api::VisualSourceKind2d::SceneMotion,
             ),
         )),
@@ -159,31 +155,46 @@ fn append_renderable_motion(
             RenderPrimitive2d::TileBatch(_) => {
                 let key = format!("tilemap:{}", item.owner_entity());
                 let current = transform.translation;
-                let previous = renderer.visual_source_previous_positions_2d.get(&key).copied();
+                let previous = renderer
+                    .visual_source_previous_positions_2d
+                    .get(&key)
+                    .copied();
                 (key, current, previous)
             }
             RenderPrimitive2d::TexturedQuad(_) => {
                 let key = format!("quad:{}:{}", item.component_kind(), item.owner_entity());
                 let current = transform.translation;
-                let previous = renderer.visual_source_previous_positions_2d.get(&key).copied();
+                let previous = renderer
+                    .visual_source_previous_positions_2d
+                    .get(&key)
+                    .copied();
                 (key, current, previous)
             }
             RenderPrimitive2d::LayeredTexturedQuads(_) => {
                 let key = format!("layered_image:{}", item.owner_entity());
                 let current = transform.translation;
-                let previous = renderer.visual_source_previous_positions_2d.get(&key).copied();
+                let previous = renderer
+                    .visual_source_previous_positions_2d
+                    .get(&key)
+                    .copied();
                 (key, current, previous)
             }
             RenderPrimitive2d::GlyphRun(_) => {
                 let key = format!("text2d:{}", item.owner_entity());
                 let current = transform.translation;
-                let previous = renderer.visual_source_previous_positions_2d.get(&key).copied();
+                let previous = renderer
+                    .visual_source_previous_positions_2d
+                    .get(&key)
+                    .copied();
                 (key, current, previous)
             }
             RenderPrimitive2d::RadialLightVisual(_) => {
                 let key = format!("beacon:{}", item.owner_entity());
                 let current = transform.translation;
-                let previous = renderer.visual_source_previous_positions_2d.get(&key).copied();
+                let previous = renderer
+                    .visual_source_previous_positions_2d
+                    .get(&key)
+                    .copied();
                 (key, current, previous)
             }
             RenderPrimitive2d::ParticleBatch(primitive) => {
@@ -206,12 +217,16 @@ fn append_renderable_motion(
 
     match &item.primitive {
         RenderPrimitive2d::VectorMesh(primitive) => {
-            let transform =
-                crate::renderer::world_2d::vector_primitive_viewport_fit_transform(viewport, primitive);
+            let transform = crate::renderer::world_2d::vector_primitive_viewport_fit_transform(
+                viewport, primitive,
+            );
             let key = format!("vector:{}", item.owner_entity());
             current_positions.insert(key.clone(), transform.translation);
             let color = motion_vector_color(
-                renderer.visual_source_previous_positions_2d.get(&key).copied(),
+                renderer
+                    .visual_source_previous_positions_2d
+                    .get(&key)
+                    .copied(),
                 transform.translation,
                 target_size,
             );

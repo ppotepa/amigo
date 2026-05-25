@@ -20,21 +20,21 @@ pub fn handle_mesh3d_script_command(
 ) -> Mesh3dScriptCommandOutcome {
     match (command.name.as_str(), command.arguments.as_slice()) {
         ("spawn", [source_mod, entity_name, mesh_key]) => {
-            Mesh3dScriptCommandOutcome::Submit(SceneCommand::QueueMesh3d {
-                command: Mesh3dSceneCommand::new(
+            Mesh3dScriptCommandOutcome::Submit(SceneCommand::Plugin {
+                command: amigo_scene::mesh_3d_plugin_scene_command(Mesh3dSceneCommand::new(
                     source_mod.clone(),
                     entity_name.clone(),
                     AssetKey::new(mesh_key.clone()),
-                ),
+                )),
             })
         }
         ("spawn", [entity_name, mesh_key]) => {
-            Mesh3dScriptCommandOutcome::Submit(SceneCommand::QueueMesh3d {
-                command: Mesh3dSceneCommand::new(
+            Mesh3dScriptCommandOutcome::Submit(SceneCommand::Plugin {
+                command: amigo_scene::mesh_3d_plugin_scene_command(Mesh3dSceneCommand::new(
                     ctx.selected_mod.to_owned(),
                     entity_name.clone(),
                     AssetKey::new(mesh_key.clone()),
-                ),
+                )),
             })
         }
         _ => Mesh3dScriptCommandOutcome::Unhandled,

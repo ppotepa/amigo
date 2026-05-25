@@ -1,7 +1,7 @@
 use amigo_assets::{AssetCatalog, AssetKey, PreparedAsset, PreparedAssetKind};
 use amigo_math::{ColorRgba, Vec2};
 
-use crate::{PostFx2dStack, cached_image_post_fx_stack_from_flat_metadata};
+use crate::{cached_image_post_fx_stack_from_flat_metadata, PostFx2dStack};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LayeredImageBlendMode2d {
@@ -60,6 +60,10 @@ pub trait LayeredImageAssetSource {
     fn layered_image_asset(&self, key: &AssetKey) -> Option<LayeredImageAsset>;
 }
 
+pub trait RenderAssetSource: LayeredImageAssetSource {
+    fn prepared_asset(&self, key: &AssetKey) -> Option<PreparedAsset>;
+}
+
 impl LayeredImageAssetSource for AssetCatalog {
     fn layered_image_asset(&self, key: &AssetKey) -> Option<LayeredImageAsset> {
         self.prepared_asset(key)
@@ -67,7 +71,15 @@ impl LayeredImageAssetSource for AssetCatalog {
     }
 }
 
-pub fn infer_layered_image_asset_from_prepared(prepared: &PreparedAsset) -> Option<LayeredImageAsset> {
+impl RenderAssetSource for AssetCatalog {
+    fn prepared_asset(&self, key: &AssetKey) -> Option<PreparedAsset> {
+        AssetCatalog::prepared_asset(self, key)
+    }
+}
+
+pub fn infer_layered_image_asset_from_prepared(
+    prepared: &PreparedAsset,
+) -> Option<LayeredImageAsset> {
     if !matches!(prepared.kind, PreparedAssetKind::LayeredImage2d) {
         return None;
     }
@@ -86,8 +98,8 @@ pub fn infer_layered_image_asset_from_prepared(prepared: &PreparedAsset) -> Opti
         let Some(image) = metadata_string(prepared, &format!("{prefix}.image")) else {
             continue;
         };
-        let label = metadata_string(prepared, &format!("{prefix}.label"))
-            .unwrap_or_else(|| id.clone());
+        let label =
+            metadata_string(prepared, &format!("{prefix}.label")).unwrap_or_else(|| id.clone());
         let blend_mode = metadata_string(prepared, &format!("{prefix}.blend"))
             .map(|value| LayeredImageBlendMode2d::parse(&value))
             .unwrap_or(LayeredImageBlendMode2d::Additive);

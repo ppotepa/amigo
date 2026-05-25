@@ -61,12 +61,12 @@ pub fn mapping_get<'a>(value: &'a Value, key: &str) -> Option<&'a Value> {
 pub fn resolve_reference(base_path: &Path, mod_root: &Path, value: &str) -> AmigoResult<PathBuf> {
     if let Some(rest) = value.strip_prefix("mod:") {
         reject_unsafe_relative(rest)?;
-        return Ok(resolve_with_yaml_fallback(&mod_root.join(rest)));
+        return Ok(resolve_with_yaml_default_extension(&mod_root.join(rest)));
     }
 
     reject_unsafe_relative(value)?;
     let base = base_path.parent().unwrap_or_else(|| Path::new(""));
-    Ok(resolve_with_yaml_fallback(&base.join(value)))
+    Ok(resolve_with_yaml_default_extension(&base.join(value)))
 }
 
 fn reject_unsafe_relative(value: &str) -> AmigoResult<()> {
@@ -91,7 +91,7 @@ fn reject_unsafe_relative(value: &str) -> AmigoResult<()> {
     Ok(())
 }
 
-fn resolve_with_yaml_fallback(path: &Path) -> PathBuf {
+fn resolve_with_yaml_default_extension(path: &Path) -> PathBuf {
     if path.extension().is_some() {
         return path.to_path_buf();
     }

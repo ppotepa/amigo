@@ -1,15 +1,16 @@
 use std::collections::{BTreeMap, BTreeSet};
 
-use amigo_core::AmigoResult;
+use super::WorldPassLoadExt;
 use super::world_filters::WorldPassLoad;
 use super::*;
-use super::WorldPassLoadExt;
+use amigo_core::AmigoResult;
+use amigo_render_api::RenderAssetSource;
 
 pub(super) fn execute_layered_image_parts_to_offscreen(
     renderer: &mut WgpuSceneRenderer,
     target: &mut WgpuOffscreenTarget,
     renderables: &[Renderable2dItem],
-    assets: &AssetCatalog,
+    assets: &dyn RenderAssetSource,
     render_layers: &[RenderLayer2dCommand],
     part_targets: &BTreeMap<String, BTreeSet<String>>,
     pass_load: WorldPassLoad,
@@ -32,7 +33,10 @@ pub(super) fn execute_layered_image_parts_to_offscreen(
             .get(item.render_layer())
             .map(|layer| layer.order)
             .unwrap_or(0.0);
-        ((layer_order * 1000.0).round() as i32, (item.z_index() * 1000.0).round() as i32)
+        (
+            (layer_order * 1000.0).round() as i32,
+            (item.z_index() * 1000.0).round() as i32,
+        )
     });
 
     for (item, layered) in items {

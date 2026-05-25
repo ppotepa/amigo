@@ -2,7 +2,7 @@ use amigo_scene::*;
 
 pub fn layered_image_2d_descriptor() -> ComponentTypeDescriptor {
     ComponentTypeDescriptor {
-        kind: ComponentKind::LayeredImage2D,
+        kind_id: "LayeredImage2D",
         type_name: "LayeredImage2D",
         label: "Layered Image 2D",
         domains: &[ComponentDomain::Render2D],

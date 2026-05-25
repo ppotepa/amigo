@@ -25,7 +25,11 @@ pub struct ParticlesSceneCommandOutcome {
 }
 
 pub fn can_handle_particles_scene_command(command: &SceneCommand) -> bool {
-    matches!(command, SceneCommand::QueueParticleEmitter2d { .. })
+    matches!(
+        command,
+        SceneCommand::Plugin { command }
+            if command.command_type == amigo_scene::PARTICLE_EMITTER_2D_PLUGIN_SCENE_COMMAND_TYPE
+    )
 }
 
 pub fn handle_particles_scene_command(
@@ -33,7 +37,17 @@ pub fn handle_particles_scene_command(
     command: SceneCommand,
 ) -> AmigoResult<ParticlesSceneCommandOutcome> {
     match command {
-        SceneCommand::QueueParticleEmitter2d { command } => {
+        SceneCommand::Plugin { command }
+            if command.command_type == amigo_scene::PARTICLE_EMITTER_2D_PLUGIN_SCENE_COMMAND_TYPE =>
+        {
+            let Some(command) = command
+                .payload_as::<amigo_scene::ParticleEmitter2dSceneCommand>()
+                .cloned()
+            else {
+                return Err(AmigoError::Message(
+                    "particles-2d plugin command payload mismatch".to_owned(),
+                ));
+            };
             let warnings = collect_particle_lightmap_warnings(
                 &command,
                 ctx.lightmap2d_scene_service,

@@ -24,7 +24,6 @@ pub enum VisualSourceAvailability2d {
     Produced,
     Derived,
     Asset,
-    Fallback,
     Missing,
 }
 
@@ -43,7 +42,7 @@ pub enum VisualSourceOrigin2d {
     PostFxDerived { feature: String },
     Asset { path: String },
     ShutterHistory,
-    DebugFallback,
+    DebugMissing,
 }
 
 impl VisualSourceKind2d {
@@ -109,12 +108,12 @@ impl VisualSourceRef2d {
         }
     }
 
-    pub fn fallback(kind: VisualSourceKind2d, id: impl Into<String>) -> Self {
+    pub fn debug_missing(kind: VisualSourceKind2d, id: impl Into<String>) -> Self {
         Self {
             id: VisualSourceId(id.into()),
             kind,
-            availability: VisualSourceAvailability2d::Fallback,
-            origin: VisualSourceOrigin2d::DebugFallback,
+            availability: VisualSourceAvailability2d::Missing,
+            origin: VisualSourceOrigin2d::DebugMissing,
         }
     }
 }
@@ -454,27 +453,27 @@ impl CameraCaptureInput2d {
             (
                 VisualSourceKind2d::SceneNormal,
                 "camera_capture_missing_scene_normal",
-                "scene normal source is missing; debug views will fall back to a neutral normal color",
+                "scene normal source is missing; debug views will use a neutral normal color",
             ),
             (
                 VisualSourceKind2d::SceneWetness,
                 "camera_capture_missing_scene_wetness",
-                "scene wetness source is missing; debug views will fall back to a wetness placeholder",
+                "scene wetness source is missing; debug views will use a wetness placeholder",
             ),
             (
                 VisualSourceKind2d::SceneHighlight,
                 "camera_capture_missing_scene_highlight",
-                "scene highlight source is missing; highlight debug uses a fallback visualization",
+                "scene highlight source is missing; highlight debug uses a missing-source visualization",
             ),
             (
                 VisualSourceKind2d::SceneEmissive,
                 "camera_capture_missing_scene_emissive",
-                "scene emissive source is missing; emissive debug uses a fallback visualization",
+                "scene emissive source is missing; emissive debug uses a missing-source visualization",
             ),
             (
                 VisualSourceKind2d::SceneMotion,
                 "camera_capture_missing_scene_motion",
-                "scene motion source is missing; motion debug uses a fallback visualization",
+                "scene motion source is missing; motion debug uses a missing-source visualization",
             ),
         ] {
             match self.source(kind) {
@@ -487,7 +486,7 @@ impl CameraCaptureInput2d {
                     diagnostics.push(CameraCaptureInputDiagnostic2d {
                         code: "visual_source_missing",
                         message: format!(
-                            "{} is missing; camera debug falls back until a dedicated source exists",
+                            "{} is missing; camera debug uses a missing-source view until a dedicated source exists",
                             kind.as_str()
                         ),
                         kind,
@@ -533,7 +532,7 @@ impl CameraCaptureInput2d {
                             kind,
                         });
                     }
-                    VisualSourceAvailability2d::Fallback | VisualSourceAvailability2d::Missing => {
+                    VisualSourceAvailability2d::Missing => {
                         diagnostics.push(CameraCaptureInputDiagnostic2d {
                             code: "visual_source_not_produced",
                             message: format!(
@@ -545,7 +544,7 @@ impl CameraCaptureInput2d {
                         diagnostics.push(CameraCaptureInputDiagnostic2d {
                             code: "visual_source_missing",
                             message: format!(
-                                "{} currently resolves to fallback/missing state",
+                                "{} currently resolves to missing state",
                                 kind.as_str()
                             ),
                             kind,
@@ -674,7 +673,6 @@ fn availability_label(value: VisualSourceAvailability2d) -> &'static str {
         VisualSourceAvailability2d::Produced => "produced",
         VisualSourceAvailability2d::Derived => "derived",
         VisualSourceAvailability2d::Asset => "asset",
-        VisualSourceAvailability2d::Fallback => "fallback",
         VisualSourceAvailability2d::Missing => "missing",
     }
 }
@@ -694,7 +692,7 @@ fn origin_label(origin: &VisualSourceOrigin2d) -> String {
         VisualSourceOrigin2d::PostFxDerived { feature } => format!("postfx:{feature}"),
         VisualSourceOrigin2d::Asset { path } => format!("asset:{path}"),
         VisualSourceOrigin2d::ShutterHistory => "shutter_history".to_owned(),
-        VisualSourceOrigin2d::DebugFallback => "debug_fallback".to_owned(),
+        VisualSourceOrigin2d::DebugMissing => "debug_missing".to_owned(),
     }
 }
 
@@ -765,16 +763,12 @@ mod tests {
             input.layer_mask.as_ref().map(|source| source.kind),
             Some(VisualSourceKind2d::LayerMask)
         );
-        assert!(
-            input
-                .missing_source_kinds()
-                .contains(&VisualSourceKind2d::SceneNormal)
-        );
-        assert!(
-            !input
-                .missing_source_kinds()
-                .contains(&VisualSourceKind2d::SceneHighlight)
-        );
+        assert!(input
+            .missing_source_kinds()
+            .contains(&VisualSourceKind2d::SceneNormal));
+        assert!(!input
+            .missing_source_kinds()
+            .contains(&VisualSourceKind2d::SceneHighlight));
         assert_eq!(
             input
                 .source(VisualSourceKind2d::SceneHighlight)

@@ -2,7 +2,7 @@ use amigo_scene::*;
 
 pub fn sprite_2d_descriptor() -> ComponentTypeDescriptor {
     ComponentTypeDescriptor {
-        kind: ComponentKind::Sprite2D,
+        kind_id: "Sprite2D",
         type_name: "Sprite2D",
         label: "Sprite 2D",
         domains: &[ComponentDomain::Render2D],

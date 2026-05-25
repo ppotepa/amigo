@@ -60,7 +60,7 @@ pub(crate) fn infer_sprite_sheet_from_asset(prepared: &PreparedAsset) -> Option<
 pub(crate) fn infer_tileset_from_asset(
     prepared: &PreparedAsset,
     sheet_prepared: Option<&PreparedAsset>,
-    fallback_tile_size: Vec2,
+    default_tile_size: Vec2,
 ) -> Option<TileSetRenderInfo> {
     if !matches!(prepared.kind, PreparedAssetKind::TileSet2d) {
         return None;
@@ -73,8 +73,8 @@ pub(crate) fn infer_tileset_from_asset(
         .or_else(|| sheet_prepared.and_then(|sheet| metadata_u32(sheet, "rows")))?
         .max(1);
     let tile_size = Vec2::new(
-        metadata_f32(prepared, "tile_size.x").unwrap_or(fallback_tile_size.x),
-        metadata_f32(prepared, "tile_size.y").unwrap_or(fallback_tile_size.y),
+        metadata_f32(prepared, "tile_size.x").unwrap_or(default_tile_size.x),
+        metadata_f32(prepared, "tile_size.y").unwrap_or(default_tile_size.y),
     );
     let tile_ids = infer_tileset_tile_ids(prepared);
     Some(TileSetRenderInfo {

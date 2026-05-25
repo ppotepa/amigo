@@ -9,6 +9,7 @@ use amigo_scene::{
     SceneComponentPayload, SceneDocumentError, SceneDocumentResult,
     SceneVectorShapeKindComponentDocument, SceneVec2Document,
 };
+use amigo_scene::SceneComponentDocument as ComponentDocument;
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct Vector2dDocument {
@@ -42,7 +43,7 @@ pub struct Vector2dDocument {
 impl Vector2dDocument {
     pub fn from_component(component: &SceneComponentDocument) -> Option<Self> {
         match component {
-            SceneComponentDocument::VectorShape2d {
+            ComponentDocument::VectorShape2d {
                 render_layer,
                 kind,
                 points,
@@ -71,6 +72,14 @@ impl Vector2dDocument {
                 material: *material,
                 z_index: *z_index,
             }),
+            ComponentDocument::Plugin {
+                component_type,
+                payload,
+            } if component_type == "amigo.gfx.vector-2d.VectorShape2D"
+                || component_type == "VectorShape2D" =>
+            {
+                parse_vector_2d_plugin_payload(payload).ok()
+            }
             _ => None,
         }
     }

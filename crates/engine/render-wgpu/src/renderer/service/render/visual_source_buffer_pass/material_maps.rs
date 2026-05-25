@@ -106,7 +106,7 @@ fn produce_one_material_source(
         ) {
             renderer.clear_offscreen_to_color(
                 &mut target,
-                util::color_to_wgpu(crate::renderer::service::fallback_color_for(kind)),
+                util::color_to_wgpu(crate::renderer::service::missing_debug_color_for(kind)),
             )?;
         } else {
             let scene_color_view = scene_color_target.view.clone();
@@ -152,10 +152,7 @@ fn render_per_draw_visual_map_buffer(
     kind: amigo_render_api::VisualSourceKind2d,
 ) -> AmigoResult<bool> {
     let viewport = Viewport::from_offscreen(target);
-    let camera = crate::renderer::scene::resolve_camera2d_transform(
-        request.scene,
-        request.active_camera_2d_entity,
-    );
+    let camera = crate::renderer::scene::resolve_camera2d_transform(request.scene_view);
     let mut texture_batches = Vec::new();
     let mut color_batches = Vec::new();
 
@@ -192,7 +189,8 @@ fn render_per_draw_visual_map_buffer(
                     );
                 }
                 for override_ in &primitive.layer_overrides {
-                    let Some(asset) = visual_map_for_kind(override_.visual_maps.as_ref(), kind) else {
+                    let Some(asset) = visual_map_for_kind(override_.visual_maps.as_ref(), kind)
+                    else {
                         continue;
                     };
                     append_visual_map_sprite_batch(
@@ -239,7 +237,7 @@ fn render_per_draw_visual_map_buffer(
     renderer.render_offscreen_batches(
         target,
         wgpu::LoadOp::Clear(util::color_to_wgpu(
-            crate::renderer::service::fallback_color_for(kind),
+            crate::renderer::service::missing_debug_color_for(kind),
         )),
         &texture_batches,
         &color_batches,

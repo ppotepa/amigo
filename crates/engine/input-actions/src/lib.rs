@@ -5,7 +5,7 @@ mod runtime_capabilities;
 mod scene_command;
 
 use std::collections::BTreeMap;
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 
 use amigo_core::AmigoResult;
 use amigo_input_api::{InputState, KeyCode};
@@ -234,11 +234,11 @@ impl RuntimePlugin for InputActionPlugin {
 
     fn register(&self, registry: &mut ServiceRegistry) -> AmigoResult<()> {
         registry.register(InputActionService::default())?;
-        let scene_handlers =
-            registry.required::<amigo_scene::RuntimeSceneCommandHandlerRegistry>()?;
-        amigo_scene::register_runtime_scene_command_handler(
-            scene_handlers.as_ref(),
-            crate::scene_command::InputActionsSceneCommandHandler,
+        let plugin_scene_handlers =
+            registry.required::<amigo_scene::ScenePluginCommandHandlerRegistry>()?;
+        plugin_scene_handlers.register(
+            amigo_scene::INPUT_ACTION_MAP_PLUGIN_SCENE_COMMAND_TYPE,
+            Arc::new(crate::scene_command::InputActionsSceneCommandHandler),
         );
         Ok(())
     }

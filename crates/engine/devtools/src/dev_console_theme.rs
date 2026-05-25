@@ -17,8 +17,8 @@ pub struct DevConsoleTheme {
 
 #[derive(Debug, Clone, Copy)]
 pub struct DevConsoleViewportTheme {
-    pub fallback_width: f32,
-    pub fallback_height: f32,
+    pub default_width: f32,
+    pub default_height: f32,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -90,8 +90,8 @@ impl Default for DevConsoleTheme {
     fn default() -> Self {
         Self {
             viewport: DevConsoleViewportTheme {
-                fallback_width: 1280.0,
-                fallback_height: 720.0,
+                default_width: 1280.0,
+                default_height: 720.0,
             },
             layout: DevConsoleLayoutTheme {
                 margin: 16.0,

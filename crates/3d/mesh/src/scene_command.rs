@@ -1,8 +1,8 @@
 use amigo_assets::AssetKey;
 use amigo_core::{AmigoError, AmigoResult};
-use amigo_scene::{SceneCommand, SceneEvent, SceneEventQueue, SceneService, format_scene_command};
+use amigo_scene::{format_scene_command, SceneCommand, SceneEvent, SceneEventQueue, SceneService};
 
-use crate::{MeshSceneService, queue_mesh_scene_command};
+use crate::{queue_mesh_scene_command, MeshSceneService};
 
 pub struct Mesh3dSceneCommandHandler;
 
@@ -20,7 +20,11 @@ pub struct MeshSceneCommandOutcome {
 }
 
 pub fn can_handle_mesh_scene_command(command: &SceneCommand) -> bool {
-    matches!(command, SceneCommand::QueueMesh3d { .. })
+    matches!(
+        command,
+        SceneCommand::Plugin { command }
+            if command.command_type == amigo_scene::MESH_3D_PLUGIN_SCENE_COMMAND_TYPE
+    )
 }
 
 pub fn handle_mesh_scene_command(
@@ -28,7 +32,17 @@ pub fn handle_mesh_scene_command(
     command: SceneCommand,
 ) -> AmigoResult<MeshSceneCommandOutcome> {
     match command {
-        SceneCommand::QueueMesh3d { command } => {
+        SceneCommand::Plugin { command }
+            if command.command_type == amigo_scene::MESH_3D_PLUGIN_SCENE_COMMAND_TYPE =>
+        {
+            let Some(command) = command
+                .payload_as::<amigo_scene::Mesh3dSceneCommand>()
+                .cloned()
+            else {
+                return Err(AmigoError::Message(
+                    "mesh-3d plugin command payload mismatch".to_owned(),
+                ));
+            };
             let entity =
                 queue_mesh_scene_command(ctx.scene_service, ctx.mesh_scene_service, &command);
             ctx.scene_event_queue.publish(SceneEvent::MeshQueued {

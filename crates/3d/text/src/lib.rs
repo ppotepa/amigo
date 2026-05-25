@@ -3,38 +3,22 @@
 
 use std::sync::Mutex;
 
-use amigo_assets::AssetKey;
-use amigo_capabilities::{DEFAULT_CAPABILITY_VERSION, register_domain_plugin};
-use amigo_math::Transform3;
+use amigo_capabilities::{register_domain_plugin, DEFAULT_CAPABILITY_VERSION};
+pub use amigo_render_api::{Text3d, Text3dDrawCommand};
 use amigo_runtime::{RuntimePlugin, ServiceRegistry};
 use amigo_scene::{SceneEntityId, SceneService, Text3dSceneCommand};
 mod editor_capability;
-mod reset;
 mod render_extraction;
+mod reset;
 mod runtime_capabilities;
 mod scene_command;
 mod script_command;
 pub use editor_capability::*;
-pub use reset::*;
 pub use render_extraction::*;
+pub use reset::*;
 pub use runtime_capabilities::*;
 pub use scene_command::*;
 pub use script_command::*;
-
-#[derive(Debug, Clone)]
-pub struct Text3d {
-    pub content: String,
-    pub font: AssetKey,
-    pub size: f32,
-    pub transform: Transform3,
-}
-
-#[derive(Debug, Clone)]
-pub struct Text3dDrawCommand {
-    pub entity_id: SceneEntityId,
-    pub entity_name: String,
-    pub text: Text3d,
-}
 
 #[derive(Debug, Default)]
 pub struct Text3dSceneService {
@@ -101,11 +85,11 @@ impl RuntimePlugin for Text3dPlugin {
             &[],
             DEFAULT_CAPABILITY_VERSION,
         )?;
-        let scene_handlers =
-            registry.required::<amigo_scene::RuntimeSceneCommandHandlerRegistry>()?;
-        amigo_scene::register_runtime_scene_command_handler(
-            scene_handlers.as_ref(),
-            crate::scene_command::Text3dSceneCommandHandler,
+        let plugin_scene_handlers =
+            registry.required::<amigo_scene::ScenePluginCommandHandlerRegistry>()?;
+        plugin_scene_handlers.register(
+            amigo_scene::TEXT_3D_PLUGIN_SCENE_COMMAND_TYPE,
+            std::sync::Arc::new(crate::scene_command::Text3dSceneCommandHandler),
         );
         let script_handlers =
             registry.required::<amigo_scripting_api::RuntimeScriptCommandHandlerRegistry>()?;
@@ -124,7 +108,7 @@ pub fn queue_text3d_scene_command(
 ) -> SceneEntityId {
     let entity = scene_service.find_or_spawn_named_entity(command.entity_name.clone());
     text_scene_service.queue(Text3dDrawCommand {
-        entity_id: entity,
+        entity_id: entity.raw(),
         entity_name: command.entity_name.clone(),
         text: Text3d {
             content: command.content.clone(),
@@ -139,20 +123,20 @@ pub fn queue_text3d_scene_command(
 #[cfg(test)]
 mod tests {
     use super::{
-        Text3d, Text3dDrawCommand, Text3dEditorCapability, Text3dSceneService,
-        queue_text3d_scene_command,
+        queue_text3d_scene_command, Text3d, Text3dDrawCommand, Text3dEditorCapability,
+        Text3dSceneService,
     };
     use amigo_assets::AssetKey;
     use amigo_editor_api::EditorCapability;
     use amigo_math::Transform3;
-    use amigo_scene::{SceneEntityId, SceneService, Text3dSceneCommand};
+    use amigo_scene::{SceneService, Text3dSceneCommand};
 
     #[test]
     fn stores_text3d_draw_commands() {
         let service = Text3dSceneService::default();
 
         service.queue(Text3dDrawCommand {
-            entity_id: SceneEntityId::new(21),
+            entity_id: 21,
             entity_name: "playground-3d-hello".to_owned(),
             text: Text3d {
                 content: "HELLO WORLD".to_owned(),

@@ -8,6 +8,7 @@ use amigo_scene::{
     SceneDocumentError, SceneDocumentResult, SceneTransform2Document, SceneTransform3Document,
     SceneVec2Document,
 };
+use amigo_scene::SceneComponentDocument as ComponentDocument;
 
 use crate::api::FocusDepthResponse2d;
 
@@ -37,20 +38,19 @@ impl ComponentHydrator for DepthMap2dComponentHydrator {
     fn can_hydrate(&self, component: &SceneComponentDocument) -> bool {
         matches!(
             component,
-            SceneComponentDocument::DepthMap2d { .. }
-                | SceneComponentDocument::DepthAuxMap2d { .. }
+            ComponentDocument::DepthMap2d { .. } | ComponentDocument::DepthAuxMap2d { .. }
         )
     }
 
     fn hydrate(&self, ctx: ComponentHydrationContext<'_>) -> SceneDocumentResult<()> {
         match ctx.component {
-            SceneComponentDocument::DepthMap2d { .. } => {
+            ComponentDocument::DepthMap2d { .. } => {
                 let Some(document) = DepthMap2dDocument::from_component(ctx.component) else {
                     return Ok(());
                 };
                 push_depth_map_command(ctx, document);
             }
-            SceneComponentDocument::DepthAuxMap2d { .. } => {
+            ComponentDocument::DepthAuxMap2d { .. } => {
                 let Some(document) = DepthAuxMap2dDocument::from_component(ctx.component) else {
                     return Ok(());
                 };
@@ -144,8 +144,8 @@ fn push_depth_map_plugin_command(
     commands: &mut Vec<amigo_scene::SceneCommand>,
     document: DepthMap2dDocument,
 ) {
-    commands.push(amigo_scene::SceneCommand::QueueDepthMap2d {
-        command: DepthMap2dSceneCommand {
+    commands.push(amigo_scene::SceneCommand::Plugin {
+        command: amigo_scene::depth_map_2d_plugin_scene_command(DepthMap2dSceneCommand {
             source_mod: source_mod.to_owned(),
             entity_name: entity_name.to_owned(),
             id: document.id,
@@ -155,7 +155,7 @@ fn push_depth_map_plugin_command(
             white_is_near: document.white_is_near,
             z_index: document.z_index,
             transform: transform2_for_entity(entity),
-        },
+        }),
     });
 }
 
@@ -179,8 +179,8 @@ fn push_depth_aux_map_plugin_command(
     commands: &mut Vec<amigo_scene::SceneCommand>,
     document: DepthAuxMap2dDocument,
 ) {
-    commands.push(amigo_scene::SceneCommand::QueueDepthAuxMap2d {
-        command: DepthAuxMap2dSceneCommand {
+    commands.push(amigo_scene::SceneCommand::Plugin {
+        command: amigo_scene::depth_aux_map_2d_plugin_scene_command(DepthAuxMap2dSceneCommand {
             source_mod: source_mod.to_owned(),
             entity_name: entity_name.to_owned(),
             id: document.id,
@@ -191,7 +191,7 @@ fn push_depth_aux_map_plugin_command(
             channels: depth_aux_channels_from_document(&document.channels),
             z_index: document.z_index,
             transform: transform2_for_entity(entity),
-        },
+        }),
     });
 }
 

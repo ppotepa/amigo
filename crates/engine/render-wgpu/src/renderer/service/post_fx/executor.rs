@@ -1,5 +1,7 @@
 use amigo_core::AmigoResult;
-use amigo_render_api::{PostFx2d, PostFx2dId, PostFxHost2dId, PostFxRenderDescriptor, RenderFeatureId};
+use amigo_render_api::{
+    PostFx2d, PostFx2dId, PostFxHost2dId, PostFxRenderDescriptor, RenderFeatureId,
+};
 
 use crate::{
     WgpuOffscreenTarget,

@@ -1,6 +1,6 @@
-use amigo_render_api::Downscale2d;
 use amigo_core::AmigoResult;
 use amigo_math::{ColorRgba, Vec2};
+use amigo_render_api::Downscale2d;
 use wgpu::util::DeviceExt;
 
 use crate::WgpuOffscreenTarget;
@@ -99,9 +99,9 @@ pub(crate) fn execute_downscale(
             timestamp_writes: None,
             multiview_mask: None,
         });
-        pass.set_pipeline(renderer.post_fx_pipeline(
-            crate::renderer::service::POST_FX_EXECUTOR_DOWNSCALE,
-        ));
+        pass.set_pipeline(
+            renderer.post_fx_pipeline(crate::renderer::service::POST_FX_EXECUTOR_DOWNSCALE),
+        );
         pass.set_bind_group(0, &texture_bind_group, &[]);
         pass.set_bind_group(1, &uniform_bind_group, &[]);
         pass.set_vertex_buffer(0, vertex_buffer.slice(..));

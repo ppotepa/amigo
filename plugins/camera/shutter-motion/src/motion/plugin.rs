@@ -1,5 +1,6 @@
 use amigo_capabilities::{DEFAULT_CAPABILITY_VERSION, register_domain_plugin};
 use amigo_runtime::{RuntimePlugin, ServiceRegistry, SystemPhase, SystemRegistry};
+use std::sync::Arc;
 
 use super::service::Motion2dSceneService;
 
@@ -89,6 +90,24 @@ impl RuntimePlugin for Motion2dPlugin {
             scene_handlers.as_ref(),
             crate::Motion2dSceneCommandHandler,
         );
+        if let Some(plugin_scene_handlers) =
+            registry.resolve::<amigo_scene::ScenePluginCommandHandlerRegistry>()
+        {
+            for command_type in [
+                amigo_scene::MOTION_CONTROLLER_2D_PLUGIN_SCENE_COMMAND_TYPE,
+                amigo_scene::ENTITY_POOL_PLUGIN_SCENE_COMMAND_TYPE,
+                amigo_scene::LIFETIME_PLUGIN_SCENE_COMMAND_TYPE,
+                amigo_scene::PROJECTILE_EMITTER_2D_PLUGIN_SCENE_COMMAND_TYPE,
+                amigo_scene::VELOCITY_2D_PLUGIN_SCENE_COMMAND_TYPE,
+                amigo_scene::BOUNDS_2D_PLUGIN_SCENE_COMMAND_TYPE,
+                amigo_scene::FREEFLIGHT_MOTION_2D_PLUGIN_SCENE_COMMAND_TYPE,
+            ] {
+                plugin_scene_handlers.register(
+                    command_type,
+                    Arc::new(crate::Motion2dSceneCommandHandler),
+                );
+            }
+        }
         registry.required::<SystemRegistry>()?.register_fn(
             SystemPhase::Update,
             "motion_2d",

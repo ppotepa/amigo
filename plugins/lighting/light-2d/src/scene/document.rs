@@ -7,6 +7,7 @@ use amigo_scene::{
     SceneComponentDocument, SceneComponentPayload, SceneComponentSchemaProvider, SceneDocumentError,
     SceneDocumentResult,
 };
+use amigo_scene::SceneComponentDocument as ComponentDocument;
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct GlobalLight2dDocument {
@@ -20,7 +21,7 @@ pub struct GlobalLight2dDocument {
 impl GlobalLight2dDocument {
     pub fn from_component(component: &SceneComponentDocument) -> Option<Self> {
         match component {
-            SceneComponentDocument::GlobalLight2d {
+            ComponentDocument::GlobalLight2d {
                 id,
                 color,
                 intensity,

@@ -1,8 +1,6 @@
-use crate::{
-    WgpuRenderable2dAdapter, WgpuRenderable2dAdapterContext,
-};
+use crate::renderer::append_tilemap_primitive_color_vertices;
+use crate::{WgpuRenderable2dAdapter, WgpuRenderable2dAdapterContext};
 use amigo_render_api::{RenderPrimitive2d, RenderPrimitive2dKind};
-use crate::renderer::append_tilemap_primitive_fallback_vertices;
 
 pub struct TileBatch2dRenderableAdapter;
 
@@ -35,9 +33,11 @@ impl WgpuRenderable2dAdapter for TileBatch2dRenderableAdapter {
 
         let vertices = crate::renderer::color_batch_vertices(
             ctx.color_batches,
-            crate::renderer::particle_blend_mode(amigo_render_api::ParticleBlendMode2dPrimitive::Alpha),
+            crate::renderer::particle_blend_mode(
+                amigo_render_api::ParticleBlendMode2dPrimitive::Alpha,
+            ),
         );
-        append_tilemap_primitive_fallback_vertices(
+        append_tilemap_primitive_color_vertices(
             vertices,
             ctx.viewport,
             ctx.layer_camera,

@@ -14,7 +14,7 @@ use amigo_scene::{
     Material2dOpticalModeSceneCommand, Material2dOpticalSceneCommand, Material2dSceneCommand,
     Material2dLightingSceneCommand, SceneCommand,
     SceneEntityId, SceneEvent, SceneEventQueue, SceneService, Sprite2dSceneCommand,
-    SpriteAnimation2dSceneOverride,
+    SpriteAnimation2dSceneOverride, sprite_2d_plugin_scene_command,
 };
 use std::path::PathBuf;
 
@@ -343,14 +343,14 @@ looping: true
 
 #[test]
 fn can_handle_sprite_scene_command_returns_true_for_sprite_command() {
-    let command = SceneCommand::QueueSprite2d {
-        command: Sprite2dSceneCommand::new(
+    let command = SceneCommand::plugin(sprite_2d_plugin_scene_command(
+        Sprite2dSceneCommand::new(
             "playground-2d",
             "hero",
             AssetKey::new("playground-2d/sprites/hero"),
             Vec2::new(32.0, 32.0),
         ),
-    };
+    ));
 
     assert!(super::can_handle_sprite_scene_command(&command));
 }
@@ -361,14 +361,14 @@ fn handle_sprite_scene_command_queues_sprite_and_publishes_event() {
     let sprite_scene_service = SpriteSceneService::default();
     let scene_event_queue = SceneEventQueue::default();
     let asset_catalog = AssetCatalog::default();
-    let command = SceneCommand::QueueSprite2d {
-        command: Sprite2dSceneCommand::new(
+    let command = SceneCommand::plugin(sprite_2d_plugin_scene_command(
+        Sprite2dSceneCommand::new(
             "playground-2d",
             "hero",
             AssetKey::new("playground-2d/sprites/hero"),
             Vec2::new(32.0, 32.0),
         ),
-    };
+    ));
 
     let outcome = super::handle_sprite_scene_command(
         super::SpriteSceneCommandContext {

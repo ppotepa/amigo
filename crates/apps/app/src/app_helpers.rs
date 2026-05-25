@@ -1,5 +1,4 @@
 use super::*;
-use amigo_runtime_bundles::{AudioClip, AudioClipKey, AudioPlaybackMode, AudioSceneService};
 
 pub(crate) fn relative_path_within_root(
     root_path: &Path,
@@ -75,29 +74,6 @@ pub(crate) fn register_mod_asset_reference(
         asset_key.clone(),
         AssetLoadPriority::Interactive,
     ));
-}
-
-pub(crate) fn register_audio_clip_reference(
-    asset_catalog: &AssetCatalog,
-    audio_scene_service: &AudioSceneService,
-    asset_key: &AssetKey,
-    mode: AudioPlaybackMode,
-) {
-    let source_mod = asset_key
-        .as_str()
-        .split('/')
-        .next()
-        .unwrap_or_default()
-        .to_owned();
-    if source_mod.is_empty() {
-        return;
-    }
-
-    register_mod_asset_reference(asset_catalog, &source_mod, asset_key, "audio", "generated");
-    audio_scene_service.register_clip(AudioClip {
-        key: AudioClipKey::new(asset_key.as_str().to_owned()),
-        mode,
-    });
 }
 
 pub(crate) fn resolve_mod_audio_asset_key(

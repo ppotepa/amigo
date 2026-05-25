@@ -1,11 +1,11 @@
 use std::sync::Arc;
 
-use amigo_composite_plugin::RainGlassPatch;
-use amigo_assets::AssetCatalog;
 use crate::{
-    CameraDebugView2d, CameraFocus2d, CameraFocusTarget2dService, CameraId,
-    CameraQualityProfile2d, CameraService, Camera2dRuntimeState,
+    Camera2dRuntimeState, CameraFocus2d, CameraFocusTarget2dService, CameraId,
+    CameraQualityProfile2d, CameraService,
 };
+use amigo_assets::AssetCatalog;
+use amigo_composite_plugin::RainGlassPatch;
 
 #[derive(Clone)]
 pub struct CameraApi {
@@ -426,7 +426,10 @@ impl CameraApi {
         if camera_id.is_empty() {
             return false;
         }
-        service.set_debug_view_2d(&CameraId::new(camera_id), CameraDebugView2d::parse(view))
+        service.set_debug_view_2d(
+            &CameraId::new(camera_id),
+            amigo_render_api::CameraDebugView2d::parse(view),
+        )
     }
 
     fn update_camera_2d<F>(&mut self, camera_id: &str, update: F) -> bool

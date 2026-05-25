@@ -1,23 +1,25 @@
 use amigo_scene::{
-    LightRoute2dSceneCommand, OpticalLayerRole2dSceneCommand, RenderDepth2dSceneCommand,
-    RenderDepthMode2dSceneCommand, RenderLayer2dSceneCommand, SceneCommand,
+    light_route_2d_plugin_scene_command, render_layer_2d_plugin_scene_command,
+    visual2d_spatial_plugin_scene_command, LightRoute2dSceneCommand,
+    OpticalLayerRole2dSceneCommand, RenderDepth2dSceneCommand, RenderDepthMode2dSceneCommand,
+    RenderLayer2dSceneCommand, SceneCommand,
 };
 use amigo_scripting_api::ScriptCommand;
 
 use crate::{
+    can_handle_composition_scene_command, handle_composition2d_dev_console_command,
+    handle_composition2d_script_command, handle_composition_scene_command,
     Composition2dDevConsoleCommandContext, Composition2dDevConsoleCommandOutcome,
     Composition2dScriptCommandContext, Composition2dScriptCommandOutcome,
     CompositionSceneCommandContext, CompositionSceneCommandOutcome, LightRoute2dSceneService,
     RenderDepth2d, RenderDepthMode2d, RenderLayer2dCommand, RenderLayer2dSceneService,
-    can_handle_composition_scene_command, handle_composition_scene_command,
-    handle_composition2d_dev_console_command, handle_composition2d_script_command,
 };
 
 #[test]
 fn can_handle_composition_scene_command_returns_true_for_composition_commands() {
     assert!(can_handle_composition_scene_command(
-        &SceneCommand::QueueRenderLayer2d {
-            command: RenderLayer2dSceneCommand {
+        &SceneCommand::Plugin {
+            command: render_layer_2d_plugin_scene_command(RenderLayer2dSceneCommand {
                 source_mod: "test-mod".to_owned(),
                 id: "world".to_owned(),
                 label: Some("World".to_owned()),
@@ -31,16 +33,25 @@ fn can_handle_composition_scene_command_returns_true_for_composition_commands() 
                     blur_scale: 1.0,
                 },
                 optical_role: OpticalLayerRole2dSceneCommand::WorldSurface,
-            },
+            }),
         }
     ));
     assert!(can_handle_composition_scene_command(
-        &SceneCommand::QueueLightRoute2d {
-            command: LightRoute2dSceneCommand {
+        &SceneCommand::Plugin {
+            command: light_route_2d_plugin_scene_command(LightRoute2dSceneCommand {
                 source_mod: "test-mod".to_owned(),
                 receiver_layer: "world".to_owned(),
                 groups: vec!["sun".to_owned()],
-            },
+            }),
+        }
+    ));
+    assert!(can_handle_composition_scene_command(
+        &SceneCommand::Plugin {
+            command: visual2d_spatial_plugin_scene_command(amigo_scene::DepthSpace2dSceneCommand {
+                near_m: 0.25,
+                far_m: 250.0,
+                curve: amigo_scene::DepthCurve2dSceneCommand::Logarithmic,
+            }),
         }
     ));
 }
@@ -54,8 +65,8 @@ fn handle_composition_scene_command_queues_render_layer() {
             render_layer2d_scene_service: &render_layer2d_scene_service,
             light_route2d_scene_service: &light_route2d_scene_service,
         },
-        SceneCommand::QueueRenderLayer2d {
-            command: RenderLayer2dSceneCommand {
+        SceneCommand::Plugin {
+            command: render_layer_2d_plugin_scene_command(RenderLayer2dSceneCommand {
                 source_mod: "test-mod".to_owned(),
                 id: "world".to_owned(),
                 label: Some("World".to_owned()),
@@ -69,7 +80,7 @@ fn handle_composition_scene_command_queues_render_layer() {
                     blur_scale: 9.0,
                 },
                 optical_role: OpticalLayerRole2dSceneCommand::ForegroundMedium,
-            },
+            }),
         },
     )
     .expect("render layer command should be handled");
@@ -111,7 +122,7 @@ fn scene_bridge_preserves_distance_depth_and_computed_z_depth() {
         },
         optical_role: OpticalLayerRole2dSceneCommand::SceneMedium,
     };
-    let command: RenderLayer2dCommand = command.into();
+    let command: RenderLayer2dCommand = crate::render_layer_2d_command_from_scene(command);
     assert!(command.depth.is_distance());
     assert_eq!(command.depth.distance_m, Some(75.0));
     assert_eq!(command.depth.z_depth, 0.41);
@@ -131,12 +142,12 @@ fn handle_composition_scene_command_queues_light_route() {
             render_layer2d_scene_service: &render_layer2d_scene_service,
             light_route2d_scene_service: &light_route2d_scene_service,
         },
-        SceneCommand::QueueLightRoute2d {
-            command: LightRoute2dSceneCommand {
+        SceneCommand::Plugin {
+            command: light_route_2d_plugin_scene_command(LightRoute2dSceneCommand {
                 source_mod: "test-mod".to_owned(),
                 receiver_layer: "world".to_owned(),
                 groups: vec!["sun".to_owned()],
-            },
+            }),
         },
     )
     .expect("light route command should be handled");
@@ -152,6 +163,41 @@ fn handle_composition_scene_command_queues_light_route() {
     assert_eq!(commands.len(), 1);
     assert_eq!(commands[0].receiver_layer, "world");
     assert_eq!(commands[0].groups, vec!["sun".to_owned()]);
+}
+
+#[test]
+fn handle_composition_scene_command_sets_visual2d_depth_space() {
+    let render_layer2d_scene_service = RenderLayer2dSceneService::default();
+    let light_route2d_scene_service = LightRoute2dSceneService::default();
+    let outcome = handle_composition_scene_command(
+        CompositionSceneCommandContext {
+            render_layer2d_scene_service: &render_layer2d_scene_service,
+            light_route2d_scene_service: &light_route2d_scene_service,
+        },
+        SceneCommand::Plugin {
+            command: visual2d_spatial_plugin_scene_command(amigo_scene::DepthSpace2dSceneCommand {
+                near_m: 0.25,
+                far_m: 250.0,
+                curve: amigo_scene::DepthCurve2dSceneCommand::Logarithmic,
+            }),
+        },
+    )
+    .expect("visual2d spatial command should be handled");
+
+    assert_eq!(
+        outcome,
+        CompositionSceneCommandOutcome::RenderLayer {
+            id: "visual2d.spatial".to_owned(),
+            source_mod: "scene".to_owned(),
+        }
+    );
+    let depth_space = render_layer2d_scene_service.depth_space();
+    assert_eq!(depth_space.near_m, 0.25);
+    assert_eq!(depth_space.far_m, 250.0);
+    assert_eq!(
+        depth_space.curve,
+        amigo_2d_spatial::DepthCurve2d::Logarithmic
+    );
 }
 
 #[test]

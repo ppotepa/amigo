@@ -53,8 +53,8 @@ pub fn build_dev_console_overlay_with_theme(
 
     let viewport = viewport.unwrap_or_else(|| {
         UiViewportSize::new(
-            theme.viewport.fallback_width,
-            theme.viewport.fallback_height,
+            theme.viewport.default_width,
+            theme.viewport.default_height,
         )
     });
     let layout = &theme.layout;

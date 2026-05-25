@@ -30,12 +30,21 @@ impl RuntimePlugin for Physics2dPlugin {
             &[],
             DEFAULT_CAPABILITY_VERSION,
         )?;
-        let scene_handlers =
-            registry.required::<amigo_scene::RuntimeSceneCommandHandlerRegistry>()?;
-        amigo_scene::register_runtime_scene_command_handler(
-            scene_handlers.as_ref(),
-            crate::scene_command::Physics2dSceneCommandHandler,
-        );
+        let plugin_scene_handlers =
+            registry.required::<amigo_scene::ScenePluginCommandHandlerRegistry>()?;
+        for command_type in [
+            amigo_scene::KINEMATIC_BODY_2D_PLUGIN_SCENE_COMMAND_TYPE,
+            amigo_scene::AABB_COLLIDER_2D_PLUGIN_SCENE_COMMAND_TYPE,
+            amigo_scene::STATIC_COLLIDER_2D_PLUGIN_SCENE_COMMAND_TYPE,
+            amigo_scene::CIRCLE_COLLIDER_2D_PLUGIN_SCENE_COMMAND_TYPE,
+            amigo_scene::TRIGGER_2D_PLUGIN_SCENE_COMMAND_TYPE,
+            amigo_scene::COLLISION_EVENT_RULE_2D_PLUGIN_SCENE_COMMAND_TYPE,
+        ] {
+            plugin_scene_handlers.register(
+                command_type,
+                std::sync::Arc::new(crate::scene_command::Physics2dSceneCommandHandler),
+            );
+        }
         registry.required::<SystemRegistry>()?.register_fn(
             SystemPhase::Update,
             "collision_events_2d",

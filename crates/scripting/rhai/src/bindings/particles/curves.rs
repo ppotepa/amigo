@@ -73,10 +73,10 @@ impl ParticlesApi {
         &mut self,
         entity_name: &str,
         curve_name: &str,
-        v0: rhai::FLOAT,
-        v1: rhai::FLOAT,
-        v2: rhai::FLOAT,
-        v3: rhai::FLOAT,
+        point0: rhai::FLOAT,
+        point1: rhai::FLOAT,
+        point2: rhai::FLOAT,
+        point3: rhai::FLOAT,
     ) -> bool {
         self.particles
             .as_ref()
@@ -84,10 +84,10 @@ impl ParticlesApi {
                 particles.set_curve4(
                     entity_name,
                     curve_name,
-                    v0 as f32,
-                    v1 as f32,
-                    v2 as f32,
-                    v3 as f32,
+                    point0 as f32,
+                    point1 as f32,
+                    point2 as f32,
+                    point3 as f32,
                 )
             })
             .unwrap_or(false)

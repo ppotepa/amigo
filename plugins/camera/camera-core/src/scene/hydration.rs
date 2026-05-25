@@ -1,3 +1,4 @@
+use amigo_scene::SceneComponentDocument as ComponentDocument;
 use amigo_scene::{
     Camera2dModeDocument, Camera2dSceneCommand, CameraAperture2dSceneCommand,
     CameraAutoExposure2dSceneCommand, CameraDepthOfField2dSceneCommand,
@@ -20,12 +21,12 @@ impl ComponentHydrator for Camera2dComponentHydrator {
     }
 
     fn can_hydrate(&self, component: &SceneComponentDocument) -> bool {
-        matches!(component, SceneComponentDocument::Camera2d { .. })
+        matches!(component, ComponentDocument::Camera2d { .. })
     }
 
     fn hydrate(&self, ctx: ComponentHydrationContext<'_>) -> SceneDocumentResult<()> {
         let document = match ctx.component {
-            SceneComponentDocument::Camera2d { .. } => {
+            ComponentDocument::Camera2d { .. } => {
                 let Some(document) = Camera2dDocument::from_component(ctx.component) else {
                     return Ok(());
                 };
@@ -72,8 +73,8 @@ fn push_camera_command(
     entity_name: &str,
     commands: &mut Vec<SceneCommand>,
 ) {
-    commands.push(SceneCommand::QueueCamera2d {
-        command: Camera2dSceneCommand {
+    commands.push(SceneCommand::Plugin {
+        command: amigo_scene::camera_2d_plugin_scene_command(Camera2dSceneCommand {
             source_mod: source_mod.to_owned(),
             entity_name: entity_name.to_owned(),
             camera_id: document.id.clone(),
@@ -163,14 +164,8 @@ fn push_camera_command(
                     max_blur_px: document.aperture.depth_of_field.max_blur_px,
                     depth_contrast: document.aperture.depth_of_field.depth_contrast,
                     focus_width: document.aperture.depth_of_field.focus_width,
-                    foreground_blur_boost: document
-                        .aperture
-                        .depth_of_field
-                        .foreground_blur_boost,
-                    background_blur_boost: document
-                        .aperture
-                        .depth_of_field
-                        .background_blur_boost,
+                    foreground_blur_boost: document.aperture.depth_of_field.foreground_blur_boost,
+                    background_blur_boost: document.aperture.depth_of_field.background_blur_boost,
                     edge_aware: document.aperture.depth_of_field.edge_aware,
                     invert_depth: document.aperture.depth_of_field.invert_depth,
                     debug_view: document.aperture.depth_of_field.debug_view.clone(),
@@ -184,13 +179,10 @@ fn push_camera_command(
                     highlight_threshold: document.aperture.depth_of_field.highlight_threshold,
                     highlight_knee: document.aperture.depth_of_field.highlight_knee,
                     highlight_gain: document.aperture.depth_of_field.highlight_gain,
-                    highlight_saturation: document
-                        .aperture
-                        .depth_of_field
-                        .highlight_saturation,
+                    highlight_saturation: document.aperture.depth_of_field.highlight_saturation,
                 },
             },
-        },
+        }),
     });
 }
 
@@ -227,6 +219,8 @@ fn camera_focus_from_document(focus: &CameraFocus2dDocument) -> CameraFocus2dSce
         CameraFocus2dDocument::Distance { distance_m } => CameraFocus2dSceneCommand::Distance {
             distance_m: distance_m.max(0.0),
         },
-        CameraFocus2dDocument::Depth { value } => CameraFocus2dSceneCommand::Depth { value: *value },
+        CameraFocus2dDocument::Depth { value } => {
+            CameraFocus2dSceneCommand::Depth { value: *value }
+        }
     }
 }
