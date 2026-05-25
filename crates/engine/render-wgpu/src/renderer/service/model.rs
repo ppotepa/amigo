@@ -54,6 +54,7 @@ pub struct WgpuSceneRenderer {
     pub(crate) visual_source_previous_positions_2d: BTreeMap<String, Vec2>,
     pub(crate) plate_relight_last_summary: String,
     pub(crate) render_materials_last_summary: String,
+    pub(crate) frame_diagnostics: Vec<amigo_render_api::RenderFrameDiagnostic>,
 }
 
 impl WgpuSceneRenderer {

@@ -72,11 +72,26 @@ pub(crate) fn execute_focus_blur_with_depth_source(
     let (depth_view, invert_depth, depth_override) = match depth_source {
         FocusBlurDepthSource::DepthMap => {
             let Some(depth_command) = resolve_depth_map_command(request, &effect) else {
+                renderer.record_frame_diagnostic(
+                    "postfx.focus_blur.depth_map_missing",
+                    format!(
+                        "FocusBlur requested depth_map `{}` but no RenderDepthMap2d contribution matched id, owner entity, or asset key",
+                        effect.depth_map.as_deref().unwrap_or("")
+                    ),
+                );
                 return renderer.copy_offscreen_to_offscreen(output, input_view);
             };
             let Some((_depth_texture, depth_view)) =
                 render_depth_map_texture(renderer, request, output, &depth_command)
             else {
+                renderer.record_frame_diagnostic(
+                    "postfx.focus_blur.depth_map_texture_missing",
+                    format!(
+                        "FocusBlur matched depth_map `{}` but asset `{}` was not prepared or did not resolve to an image",
+                        depth_command.id,
+                        depth_command.asset.as_str()
+                    ),
+                );
                 return renderer.copy_offscreen_to_offscreen(output, input_view);
             };
             (

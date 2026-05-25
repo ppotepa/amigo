@@ -91,6 +91,10 @@ mod tests {
     fn sprite_item(render_layer: &str, z_index: f32) -> Renderable2dItem {
         Renderable2dItem::new(
             Renderable2dCommon {
+                source_id: amigo_render_api::RenderSourceId::for_component(
+                    &format!("sprite-{render_layer}"),
+                    "component",
+                ),
                 owner_entity: format!("sprite-{render_layer}"),
                 component_kind: "component".to_owned(),
                 render_space: RenderSpace2d::World,
@@ -113,6 +117,10 @@ mod tests {
     fn text_item(render_layer: &str, z_index: f32) -> Renderable2dItem {
         Renderable2dItem::new(
             Renderable2dCommon {
+                source_id: amigo_render_api::RenderSourceId::for_component(
+                    &format!("text-{render_layer}"),
+                    "component",
+                ),
                 owner_entity: format!("text-{render_layer}"),
                 component_kind: "component".to_owned(),
                 render_space: RenderSpace2d::World,

@@ -782,7 +782,6 @@ dependencies = [
  "amigo-runtime-control",
  "amigo-scene",
  "amigo-session",
- "amigo-shutter-motion-plugin",
  "serde",
  "serde_yaml",
 ]

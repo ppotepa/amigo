@@ -1,4 +1,3 @@
-use amigo_shutter_motion_plugin::Motion2dSceneService;
 use amigo_core::{AmigoError, AmigoResult};
 use amigo_math::{Transform2, Vec2};
 use amigo_runtime::{
@@ -9,7 +8,10 @@ use amigo_scene::SceneService;
 use amigo_session::{RuntimeSchedulingService, SchedulingOverrideReport};
 use std::time::Instant;
 
-use crate::{Particle2dEmitterRuntimeInput, Particle2dFrameJobResult, Particle2dSceneService};
+use crate::{
+    Particle2dEmitterRuntimeInput, Particle2dFrameJobResult, Particle2dSceneService,
+    Particle2dSourceVelocityProviderRegistry,
+};
 
 fn required<T: Send + Sync + 'static>(runtime: &Runtime) -> AmigoResult<std::sync::Arc<T>> {
     runtime.resolve::<T>().ok_or_else(|| {
@@ -90,8 +92,8 @@ impl ParticleSchedulingTargetResolution {
 
 pub fn tick_particles_2d_world(runtime: &Runtime, delta_seconds: f32) -> AmigoResult<()> {
     let scene_service = required::<SceneService>(runtime)?;
-    let motion_scene_service = required::<Motion2dSceneService>(runtime)?;
     let particle_scene_service = required::<Particle2dSceneService>(runtime)?;
+    let velocity_providers = runtime.resolve::<Particle2dSourceVelocityProviderRegistry>();
     let scheduling = required::<RuntimeSchedulingService>(runtime)?;
     let task_system = required::<EngineTaskSystem>(runtime)?;
 
@@ -121,7 +123,10 @@ pub fn tick_particles_2d_world(runtime: &Runtime, delta_seconds: f32) -> AmigoRe
                     rotation_radians: source_transform.rotation_euler.z,
                     scale: Vec2::new(source_transform.scale.x, source_transform.scale.y),
                 },
-                source_velocity: motion_scene_service.current_velocity(source_name),
+                source_velocity: velocity_providers
+                    .as_ref()
+                    .and_then(|providers| providers.source_velocity(source_name))
+                    .unwrap_or(Vec2::ZERO),
                 source_visible: scene_service.is_visible(source_name),
                 source_simulation_enabled: scene_service.is_simulation_enabled(source_name),
             })

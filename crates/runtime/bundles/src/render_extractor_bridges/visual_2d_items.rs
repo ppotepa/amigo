@@ -225,6 +225,10 @@ mod tests {
     fn render_contributions_summary_includes_renderables_and_light_sources() {
         let renderable = Renderable2dItem::new(
             Renderable2dCommon {
+                source_id: amigo_render_api::RenderSourceId::for_component(
+                    "title",
+                    super::TEST_TEXT_COMPONENT_KIND,
+                ),
                 owner_entity: "title".to_owned(),
                 component_kind: super::TEST_TEXT_COMPONENT_KIND.to_owned(),
                 render_space: RenderSpace2d::World,

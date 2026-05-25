@@ -3,7 +3,9 @@ use amigo_runtime::{RuntimePlugin, ServiceRegistry, SystemPhase, SystemRegistry}
 use amigo_runtime_control::RuntimeControlService;
 use std::sync::Arc;
 
-use crate::model::{PARTICLES_2D_CAPABILITY, PARTICLES_2D_PLUGIN_LABEL};
+use crate::model::{
+    Particle2dSourceVelocityProviderRegistry, PARTICLES_2D_CAPABILITY, PARTICLES_2D_PLUGIN_LABEL,
+};
 use crate::service::{Particle2dSceneService, ParticlePreset2dService};
 
 pub const PLUGIN_ID: &str = "amigo.vfx.particles-2d";
@@ -22,6 +24,7 @@ impl RuntimePlugin for Particle2dPlugin {
 
     fn register(&self, registry: &mut ServiceRegistry) -> amigo_core::AmigoResult<()> {
         registry.register(Particle2dSceneService::default())?;
+        registry.register(Particle2dSourceVelocityProviderRegistry::default())?;
         amigo_scene::register_scene_reset_handler(registry, crate::Particle2dSceneResetHandler)?;
         if let Some(schemas) = registry.resolve::<amigo_scene::ComponentSchemaRegistry>() {
             schemas.register_provider(&crate::scene::ParticleEmitter2dSceneDescriptorProvider);

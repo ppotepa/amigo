@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use amigo_camera::CameraOpticalResponse2dSceneCommand;
 
-use crate::{PluginSceneCommand, PluginSceneCommandPayload};
+use crate::{PluginSceneCommand, PluginSceneCommandPayload, SceneAssetDependency};
 
 pub const VISUAL2D_SPATIAL_PLUGIN_SCENE_COMMAND_TYPE: &str =
     "amigo.rendering.composition-2d.scene-command.Visual2dSpatial";
@@ -175,6 +175,29 @@ impl PluginSceneCommandPayload for LayeredImage2dPluginSceneCommandPayload {
             .downcast_ref::<LayeredImage2dSceneCommand>()
             .is_some_and(|command| command == &self.0)
     }
+
+    fn asset_dependencies(&self) -> Vec<SceneAssetDependency> {
+        let command = &self.0;
+        let mut dependencies = vec![SceneAssetDependency::new(
+            command.source_mod.clone(),
+            command.asset.clone(),
+            "layered-images",
+            "layered-image-2d",
+        )];
+        push_visual_map_dependencies(
+            &mut dependencies,
+            &command.source_mod,
+            command.visual_maps.as_ref(),
+        );
+        for override_ in &command.layer_overrides {
+            push_visual_map_dependencies(
+                &mut dependencies,
+                &command.source_mod,
+                override_.visual_maps.as_ref(),
+            );
+        }
+        dependencies
+    }
 }
 
 pub fn layered_image_2d_plugin_scene_command(
@@ -221,6 +244,16 @@ impl PluginSceneCommandPayload for DepthMap2dPluginSceneCommandPayload {
             .command_as_any()
             .downcast_ref::<DepthMap2dSceneCommand>()
             .is_some_and(|command| command == &self.0)
+    }
+
+    fn asset_dependencies(&self) -> Vec<SceneAssetDependency> {
+        let command = &self.0;
+        vec![SceneAssetDependency::new(
+            command.source_mod.clone(),
+            command.asset.clone(),
+            "depth-maps",
+            "depth-map-2d",
+        )]
     }
 }
 
@@ -278,6 +311,25 @@ impl PluginSceneCommandPayload for DepthAuxMap2dPluginSceneCommandPayload {
             .command_as_any()
             .downcast_ref::<DepthAuxMap2dSceneCommand>()
             .is_some_and(|command| command == &self.0)
+    }
+
+    fn asset_dependencies(&self) -> Vec<SceneAssetDependency> {
+        let command = &self.0;
+        let mut dependencies = vec![SceneAssetDependency::new(
+            command.source_mod.clone(),
+            command.asset.clone(),
+            "depth-maps",
+            "depth-aux-map-2d",
+        )];
+        if let Some(surface_asset) = &command.surface_asset {
+            dependencies.push(SceneAssetDependency::new(
+                command.source_mod.clone(),
+                surface_asset.clone(),
+                "visual-maps",
+                "image-2d",
+            ));
+        }
+        dependencies
     }
 }
 
@@ -430,6 +482,42 @@ impl PluginSceneCommandPayload for Camera2dPluginSceneCommandPayload {
             .command_as_any()
             .downcast_ref::<Camera2dSceneCommand>()
             .is_some_and(|command| command == &self.0)
+    }
+
+    fn asset_dependencies(&self) -> Vec<SceneAssetDependency> {
+        let command = &self.0;
+        let mut dependencies = Vec::new();
+        push_camera_profile_dependency(
+            &mut dependencies,
+            &command.source_mod,
+            &command.lens.profile,
+            "camera/lens",
+            "camera-lens-profile-2d",
+        );
+        if let Some(rain_profile) = command.lens_surface.rain_profile.as_deref() {
+            push_camera_profile_dependency(
+                &mut dependencies,
+                &command.source_mod,
+                rain_profile,
+                "camera/rain",
+                "camera-rain-glass-profile-2d",
+            );
+        }
+        push_camera_profile_dependency(
+            &mut dependencies,
+            &command.source_mod,
+            &command.film.profile,
+            "camera/film",
+            "camera-film-stock-2d",
+        );
+        push_camera_profile_dependency(
+            &mut dependencies,
+            &command.source_mod,
+            &command.look.profile,
+            "camera/look",
+            "camera-look-profile-2d",
+        );
+        dependencies
     }
 }
 
@@ -802,6 +890,22 @@ impl PluginSceneCommandPayload for Sprite2dPluginSceneCommandPayload {
             .downcast_ref::<Sprite2dSceneCommand>()
             .is_some_and(|command| command == &self.0)
     }
+
+    fn asset_dependencies(&self) -> Vec<SceneAssetDependency> {
+        let command = &self.0;
+        let mut dependencies = vec![SceneAssetDependency::new(
+            command.source_mod.clone(),
+            command.texture.clone(),
+            "spritesheets",
+            "sprite-sheet-2d",
+        )];
+        push_visual_map_dependencies(
+            &mut dependencies,
+            &command.source_mod,
+            command.visual_maps.as_ref(),
+        );
+        dependencies
+    }
 }
 
 pub fn sprite_2d_plugin_scene_command(command: Sprite2dSceneCommand) -> PluginSceneCommand {
@@ -861,6 +965,38 @@ impl PluginSceneCommandPayload for TileMap2dPluginSceneCommandPayload {
             .command_as_any()
             .downcast_ref::<TileMap2dSceneCommand>()
             .is_some_and(|command| command == &self.0)
+    }
+
+    fn asset_dependencies(&self) -> Vec<SceneAssetDependency> {
+        let command = &self.0;
+        let mut dependencies = vec![SceneAssetDependency::new(
+            command.source_mod.clone(),
+            command.tileset.clone(),
+            "tilemaps",
+            "tilemap-2d",
+        )];
+        if let Some(ruleset) = &command.ruleset {
+            dependencies.push(SceneAssetDependency::new(
+                command.source_mod.clone(),
+                ruleset.clone(),
+                "tilemaps",
+                "tile-ruleset-2d",
+            ));
+        }
+        if let Some(sprite_sheet) = command
+            .tileset
+            .as_str()
+            .split_once("/tilesets/")
+            .map(|(sprite_sheet, _)| AssetKey::new(sprite_sheet.to_owned()))
+        {
+            dependencies.push(SceneAssetDependency::new(
+                command.source_mod.clone(),
+                sprite_sheet,
+                "spritesheets",
+                "sprite-sheet-2d",
+            ));
+        }
+        dependencies
     }
 }
 
@@ -923,6 +1059,75 @@ impl PluginSceneCommandPayload for Text2dPluginSceneCommandPayload {
             .downcast_ref::<Text2dSceneCommand>()
             .is_some_and(|command| command == &self.0)
     }
+
+    fn asset_dependencies(&self) -> Vec<SceneAssetDependency> {
+        let command = &self.0;
+        vec![SceneAssetDependency::new(
+            command.source_mod.clone(),
+            command.font.clone(),
+            "fonts",
+            "font-2d",
+        )]
+    }
+}
+
+fn push_visual_map_dependencies(
+    dependencies: &mut Vec<SceneAssetDependency>,
+    source_mod: &str,
+    maps: Option<&VisualMaps2dSceneCommand>,
+) {
+    let Some(maps) = maps else {
+        return;
+    };
+    for asset in [
+        maps.normal.as_ref(),
+        maps.wetness.as_ref(),
+        maps.emissive.as_ref(),
+        maps.highlight.as_ref(),
+    ]
+    .into_iter()
+    .flatten()
+    {
+        dependencies.push(SceneAssetDependency::new(
+            source_mod.to_owned(),
+            asset.clone(),
+            "visual-maps",
+            "image-2d",
+        ));
+    }
+}
+
+fn push_camera_profile_dependency(
+    dependencies: &mut Vec<SceneAssetDependency>,
+    source_mod: &str,
+    profile: &str,
+    domain_scope: &'static str,
+    domain_tag: &'static str,
+) {
+    let profile = profile.trim();
+    if profile.is_empty() || !profile.contains('/') {
+        return;
+    }
+
+    let (profile_source_mod, key) = if profile.split('/').nth(1).is_some_and(|part| part == "camera")
+    {
+        (
+            profile.split('/').next().unwrap_or(source_mod).to_owned(),
+            AssetKey::new(profile.to_owned()),
+        )
+    } else {
+        (
+            source_mod.to_owned(),
+            AssetKey::new(format!("{source_mod}/{profile}")),
+        )
+    };
+
+    dependencies.push(SceneAssetDependency::new(
+        profile_source_mod,
+        key,
+        domain_scope,
+        domain_tag,
+    ));
 }
 
 pub fn text_2d_plugin_scene_command(command: Text2dSceneCommand) -> PluginSceneCommand {
@@ -1180,4 +1385,236 @@ pub fn beacon_light_2d_plugin_scene_command(
     command: BeaconLight2dSceneCommand,
 ) -> PluginSceneCommand {
     PluginSceneCommand::new(Arc::new(BeaconLight2dPluginSceneCommandPayload(command)))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn dependency_tuples(
+        dependencies: Vec<SceneAssetDependency>,
+    ) -> Vec<(String, String, &'static str, &'static str)> {
+        dependencies
+            .into_iter()
+            .map(|dependency| {
+                (
+                    dependency.source_mod,
+                    dependency.key.as_str().to_owned(),
+                    dependency.domain_scope,
+                    dependency.domain_tag,
+                )
+            })
+            .collect()
+    }
+
+    #[test]
+    fn sprite_asset_dependencies_include_texture_and_visual_maps() {
+        let mut command = Sprite2dSceneCommand::new(
+            "test-mod",
+            "hero",
+            AssetKey::new("test-mod/spritesheets/hero"),
+            Vec2::new(16.0, 16.0),
+        );
+        command.visual_maps = Some(VisualMaps2dSceneCommand {
+            normal: Some(AssetKey::new("test-mod/visual-maps/hero-normal")),
+            wetness: None,
+            emissive: Some(AssetKey::new("test-mod/visual-maps/hero-emissive")),
+            highlight: None,
+            roughness: None,
+        });
+
+        assert_eq!(
+            dependency_tuples(Sprite2dPluginSceneCommandPayload(command).asset_dependencies()),
+            vec![
+                (
+                    "test-mod".to_owned(),
+                    "test-mod/spritesheets/hero".to_owned(),
+                    "spritesheets",
+                    "sprite-sheet-2d",
+                ),
+                (
+                    "test-mod".to_owned(),
+                    "test-mod/visual-maps/hero-normal".to_owned(),
+                    "visual-maps",
+                    "image-2d",
+                ),
+                (
+                    "test-mod".to_owned(),
+                    "test-mod/visual-maps/hero-emissive".to_owned(),
+                    "visual-maps",
+                    "image-2d",
+                ),
+            ]
+        );
+    }
+
+    #[test]
+    fn tilemap_asset_dependencies_include_ruleset_and_backing_spritesheet() {
+        let mut command = TileMap2dSceneCommand::new(
+            "test-mod",
+            "level",
+            AssetKey::new("test-mod/spritesheets/city/tilesets/base"),
+            Vec2::new(8.0, 8.0),
+            vec!["##".to_owned()],
+        );
+        command.ruleset = Some(AssetKey::new("test-mod/spritesheets/city/rulesets/base"));
+
+        assert_eq!(
+            dependency_tuples(TileMap2dPluginSceneCommandPayload(command).asset_dependencies()),
+            vec![
+                (
+                    "test-mod".to_owned(),
+                    "test-mod/spritesheets/city/tilesets/base".to_owned(),
+                    "tilemaps",
+                    "tilemap-2d",
+                ),
+                (
+                    "test-mod".to_owned(),
+                    "test-mod/spritesheets/city/rulesets/base".to_owned(),
+                    "tilemaps",
+                    "tile-ruleset-2d",
+                ),
+                (
+                    "test-mod".to_owned(),
+                    "test-mod/spritesheets/city".to_owned(),
+                    "spritesheets",
+                    "sprite-sheet-2d",
+                ),
+            ]
+        );
+    }
+
+    #[test]
+    fn camera_asset_dependencies_normalize_profile_keys() {
+        let command = Camera2dSceneCommand {
+            source_mod: "test-mod".to_owned(),
+            entity_name: "camera".to_owned(),
+            camera_id: "main".to_owned(),
+            mode: CameraExposureMode2dSceneCommand::Manual,
+            render_contributions: RenderContributions2dSceneCommand::default(),
+            exposure: CameraExposure2dSceneCommand {
+                iso: 100.0,
+                compensation: 0.0,
+                white_balance: 6500.0,
+                nd_stops: 0.0,
+                auto: CameraAutoExposure2dSceneCommand {
+                    target_luma: 0.5,
+                    adaptation_speed: 1.0,
+                    min_iso: 100.0,
+                    max_iso: 800.0,
+                },
+            },
+            shutter: CameraShutter2dSceneCommand {
+                enabled: false,
+                speed_s: None,
+                fps: 60.0,
+                angle: 180.0,
+                opacity: 1.0,
+                history_mix: 0.0,
+                history_mix_2: 0.0,
+                edge_rejection: 0.0,
+                luma_threshold: 0.0,
+                frame_hold: false,
+            },
+            lens: CameraLens2dSceneCommand {
+                profile: "camera/lens/dirty".to_owned(),
+                intensity: 1.0,
+                aberration_px: None,
+                distortion: None,
+                vignette: None,
+                edge_softness_px: None,
+                glare_strength: None,
+                dirt: None,
+                focal_length_mm: None,
+                lens_bloom: None,
+                flare_ghosts: None,
+                anamorphic_squeeze: None,
+                coma: None,
+                cat_eye_bokeh: None,
+                focus_breathing: None,
+            },
+            lens_surface: CameraLensSurface2dSceneCommand {
+                rain_profile: Some("shared/camera/rain/streaks".to_owned()),
+            },
+            film: CameraFilm2dSceneCommand {
+                profile: "camera/film/print".to_owned(),
+                intensity: 1.0,
+                seed: 7,
+                color_shift: None,
+                contrast: None,
+                saturation: None,
+                flicker: None,
+                vignette: None,
+                toe: None,
+                shoulder: None,
+                black_lift: None,
+                print_fade: None,
+                dust: None,
+                scratches: None,
+                push_pull: None,
+                gate_weave: None,
+                scan_softness: None,
+            },
+            look: CameraLook2dSceneCommand {
+                profile: "camera/look/neon".to_owned(),
+                intensity: 1.0,
+            },
+            aperture: CameraAperture2dSceneCommand {
+                enabled: false,
+                f_stop: 4.0,
+                focus_distance_m: 2.0,
+                focus: CameraFocus2dSceneCommand::None,
+                depth_of_field: CameraDepthOfField2dSceneCommand {
+                    depth_map: None,
+                    affected_layers: Vec::new(),
+                    max_blur_px: 0.0,
+                    depth_contrast: 1.0,
+                    focus_width: 0.1,
+                    foreground_blur_boost: 1.0,
+                    background_blur_boost: 1.0,
+                    edge_aware: false,
+                    invert_depth: false,
+                    debug_view: "none".to_owned(),
+                    aperture_blades: 6,
+                    aperture_roundness: 1.0,
+                    aperture_rotation_degrees: 0.0,
+                    sample_count: 8,
+                    highlight_threshold: 1.0,
+                    highlight_knee: 0.5,
+                    highlight_gain: 1.0,
+                    highlight_saturation: 1.0,
+                },
+            },
+        };
+
+        assert_eq!(
+            dependency_tuples(Camera2dPluginSceneCommandPayload(command).asset_dependencies()),
+            vec![
+                (
+                    "test-mod".to_owned(),
+                    "test-mod/camera/lens/dirty".to_owned(),
+                    "camera/lens",
+                    "camera-lens-profile-2d",
+                ),
+                (
+                    "shared".to_owned(),
+                    "shared/camera/rain/streaks".to_owned(),
+                    "camera/rain",
+                    "camera-rain-glass-profile-2d",
+                ),
+                (
+                    "test-mod".to_owned(),
+                    "test-mod/camera/film/print".to_owned(),
+                    "camera/film",
+                    "camera-film-stock-2d",
+                ),
+                (
+                    "test-mod".to_owned(),
+                    "test-mod/camera/look/neon".to_owned(),
+                    "camera/look",
+                    "camera-look-profile-2d",
+                ),
+            ]
+        );
+    }
 }

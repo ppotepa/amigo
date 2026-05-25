@@ -39,6 +39,23 @@ impl WgpuSceneRenderer {
     pub(crate) fn set_render_materials_last_summary(&mut self, summary: impl Into<String>) {
         self.render_materials_last_summary = summary.into();
     }
+
+    pub fn frame_diagnostics(&self) -> &[amigo_render_api::RenderFrameDiagnostic] {
+        &self.frame_diagnostics
+    }
+
+    pub(crate) fn clear_frame_diagnostics(&mut self) {
+        self.frame_diagnostics.clear();
+    }
+
+    pub(crate) fn record_frame_diagnostic(
+        &mut self,
+        code: impl Into<String>,
+        message: impl Into<String>,
+    ) {
+        self.frame_diagnostics
+            .push(amigo_render_api::RenderFrameDiagnostic::new(code, message));
+    }
 }
 
 mod assets;
@@ -73,6 +90,7 @@ use world_2d::*;
 use world_3d::*;
 
 pub(crate) use cached_resources::*;
+pub(crate) use lightmap2d::lit_particle_color;
 pub(crate) use math::sprite_color;
 pub(crate) use particles::append_particle_light_primitive_vertices;
 pub(crate) use particles::append_particle_primitive_vertices;

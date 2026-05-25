@@ -1,5 +1,6 @@
 use std::fs;
 use std::path::Path;
+use std::sync::Arc;
 
 use amigo_2d_composition::Composition2dPlugin;
 use amigo_2d_physics::Physics2dPlugin;
@@ -9,14 +10,16 @@ use amigo_core::{AmigoError, AmigoResult};
 use amigo_focus_depth_plugin::{DepthMap2dPlugin, FocusTargets2dRuntimePlugin};
 use amigo_layered_image_2d_plugin::LayeredImagePlugin;
 use amigo_light_2d_plugin::Lighting2dPlugin;
-use amigo_particles_2d_plugin::{Particle2dPlugin, ParticleEmitter2d, ParticlePreset2d};
+use amigo_particles_2d_plugin::{
+    Particle2dPlugin, Particle2dSourceVelocityProvider, ParticleEmitter2d, ParticlePreset2d,
+};
 use amigo_runtime::{PluginBundle, RuntimeBuilder, RuntimePlugin, ServiceRegistry};
 use amigo_scene::{
     build_scene_hydration_plan, SceneCommand, SceneComponentDocument, SceneDocument,
     SceneEntityDocument, SceneMetadataDocument,
 };
 use amigo_session::RuntimeSession;
-use amigo_shutter_motion_plugin::MOTION_2D_PLUGIN;
+use amigo_shutter_motion_plugin::{Motion2dSceneService, MOTION_2D_PLUGIN};
 use amigo_sprite_2d_plugin::SpritePlugin;
 use amigo_text_2d_plugin::Text2dPlugin;
 use amigo_tilemap_2d_plugin::TileMap2dPlugin;
@@ -184,6 +187,17 @@ fn string_sequence_field(value: &serde_yaml::Value, key: &str) -> Vec<String> {
 pub struct TwoDRuntimeBundle;
 
 struct WgpuTwoDRenderExtractorBridgePlugin;
+struct Particle2dMotionVelocityBridgePlugin;
+
+struct Motion2dParticleSourceVelocityProvider {
+    motion: std::sync::Arc<Motion2dSceneService>,
+}
+
+impl Particle2dSourceVelocityProvider for Motion2dParticleSourceVelocityProvider {
+    fn source_velocity(&self, entity_name: &str) -> Option<amigo_math::Vec2> {
+        Some(self.motion.current_velocity(entity_name))
+    }
+}
 
 fn two_d_profile_render_extractor_bridge_installers(
 ) -> Vec<crate::render_extractor_registry::WgpuRenderExtractorBridgeInstaller> {
@@ -217,8 +231,27 @@ impl PluginBundle for TwoDRuntimeBundle {
             .with_plugin(Physics2dPlugin)?
             .with_plugin(TileMap2dPlugin)?
             .with_plugin(MOTION_2D_PLUGIN)?
+            .with_plugin(Particle2dMotionVelocityBridgePlugin)?
             .with_plugin(FocusTargets2dRuntimePlugin)?
             .with_plugin(WgpuTwoDRenderExtractorBridgePlugin)
+    }
+}
+
+impl RuntimePlugin for Particle2dMotionVelocityBridgePlugin {
+    fn name(&self) -> &'static str {
+        "amigo-particles-2d-motion-velocity-bridge"
+    }
+
+    fn register(&self, registry: &mut ServiceRegistry) -> AmigoResult<()> {
+        if let (Some(particles), Some(motion)) = (
+            registry.resolve::<amigo_particles_2d_plugin::Particle2dSourceVelocityProviderRegistry>(
+            ),
+            registry.resolve::<Motion2dSceneService>(),
+        ) {
+            particles.register(Arc::new(Motion2dParticleSourceVelocityProvider { motion }));
+        }
+
+        Ok(())
     }
 }
 

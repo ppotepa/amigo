@@ -9,7 +9,6 @@ authors.workspace = true
 [dependencies]
 amigo-plugin-api = { path = "../../../crates/core/plugin-api" }
 amigo-camera-optics-plugin.workspace = true
-amigo-shutter-motion-plugin.workspace = true
 amigo-core.workspace = true
 amigo-devtools.workspace = true
 amigo-editor-api.workspace = true

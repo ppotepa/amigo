@@ -105,6 +105,10 @@ pub fn lightmap_commands_to_render_contributions(
                 owner_entity: lightmap.entity_name.clone(),
                 source_id: lightmap.id.clone(),
                 source: RenderLightMap2dSourceRef {
+                    source_id: amigo_render_api::RenderSourceId::for_component(
+                        &lightmap.source.entity_name,
+                        "LayeredImage2D",
+                    ),
                     kind: match lightmap.source.kind {
                         super::LightMap2dSourceKind::LayeredImage2d => {
                             RenderLightMap2dSourceKind::LayeredImage2d

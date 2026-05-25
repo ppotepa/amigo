@@ -1,5 +1,18 @@
 use crate::{RenderPrimitive2d, RenderPrimitive2dKind};
 
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct RenderSourceId(pub String);
+
+impl RenderSourceId {
+    pub fn for_component(owner_entity: &str, component_kind: &str) -> Self {
+        Self(format!("component:{owner_entity}/{component_kind}"))
+    }
+
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RenderSpace2d {
     World,
@@ -52,6 +65,7 @@ impl Renderable2dKind {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Renderable2dCommon {
+    pub source_id: RenderSourceId,
     pub owner_entity: String,
     pub component_kind: String,
     pub render_space: RenderSpace2d,
@@ -68,9 +82,12 @@ impl Renderable2dCommon {
         z_index: f32,
         kind: Renderable2dKind,
     ) -> Self {
+        let owner_entity = owner_entity.into();
+        let component_kind = component_kind.into();
         Self {
-            owner_entity: owner_entity.into(),
-            component_kind: component_kind.into(),
+            source_id: RenderSourceId::for_component(&owner_entity, &component_kind),
+            owner_entity,
+            component_kind,
             render_space: RenderSpace2d::World,
             render_layer: render_layer.into(),
             z_index,
@@ -104,6 +121,10 @@ impl Renderable2dItem {
 
     pub fn owner_entity(&self) -> &str {
         &self.common.owner_entity
+    }
+
+    pub fn source_id(&self) -> &RenderSourceId {
+        &self.common.source_id
     }
 
     pub fn component_kind(&self) -> &str {
@@ -147,6 +168,7 @@ mod tests {
     #[test]
     fn common_uses_camera_pipeline_from_space() {
         let common = Renderable2dCommon {
+            source_id: RenderSourceId::for_component("title", "component"),
             owner_entity: "title".to_owned(),
             component_kind: "component".to_owned(),
             render_space: RenderSpace2d::World,

@@ -369,6 +369,7 @@ mod tests {
 
     fn common(owner: &str, component_kind: &str, kind: Renderable2dKind) -> Renderable2dCommon {
         Renderable2dCommon {
+            source_id: amigo_render_api::RenderSourceId::for_component(owner, component_kind),
             owner_entity: owner.to_owned(),
             component_kind: component_kind.to_owned(),
             render_space: RenderSpace2d::World,

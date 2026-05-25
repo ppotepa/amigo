@@ -554,6 +554,41 @@ Walidacja:
 
 ## Final acceptance checklist
 
+## Czwarta fala: finalne agenty i domkniecie krytykow
+
+Cel:
+- Domknac ostatnie 8-10% planu krytycznego po `SceneAssetDependency`, PostFX diagnostics, particles decoupling i `RenderSourceId`.
+
+Agenty:
+- C1 Render Heuristics Auditor - read-only audit `owner_entity` / `component_kind` w runtime/render path.
+  - Write set: brak.
+  - Walidacja: narrow `rg` pod `crates/engine/render-wgpu`, `crates/runtime/bundles`, `plugins`.
+  - Wynik: podzial na production execution, diagnostics/stats/debug, tests/support.
+- C2 Staging/Review Auditor - read-only lista plikow aktualnej fali.
+  - Write set: brak.
+  - Walidacja: `git status --short`, `git diff --name-status`.
+  - Wynik: pliki staging tej fali vs pliki starszych zmian/mods/Rotten Club.
+- C3 Particles Validation Auditor - read-only wskazanie najtanszych testow dla velocity provider bridge.
+  - Write set: brak.
+  - Walidacja: wyszukac testy `source_velocity`, `inherit_parent_velocity`, runtime bridge.
+  - Wynik: komendy i test gaps.
+- C0 Local Integrator - implementuje tylko brakujace, male poprawki po wynikach C1-C3.
+  - Write set: `plan.md`, minimalne pliki invariantow/testow.
+  - Nie zmieniac: `mods/**`, cudzych zmian, stagingu.
+
+Status:
+- C1: done - wykryl motion-buffer cache keys po `owner_entity`; C0 przeniosl je na `RenderSourceId` i dodal guard.
+- C2: done - przygotowal staging/review split dla aktualnej fali i listy nie-dotykac.
+- C3: done - wskazal particles validation gap; C0 dodal provider registry test i uruchomil velocity inheritance tests.
+- C0: done - zintegrowal wyniki agentow, uzupelnil guardy i walidacje.
+
+Acceptance tej fali:
+- done - `particles-2d` nie ma zaleznosci Cargo ani importow do `shutter-motion`.
+- done - renderer lightmap i motion-buffer binduja source przez `RenderSourceId`.
+- done - `cargo check -p amigo-app` przechodzi po zmianach.
+- done - dodano integracyjny test `TwoDRuntimeBundle` dla bridge motion velocity -> particle source velocity provider.
+- done - finalny raport oddziela pozostalosci diagnostyczne od blokujacych runtime heuristics.
+
 - `plan.md` jest jedynym aktualnym planem naprawczym.
 - `rg -n "plugin_crates|crate::amigo_|pub use .*plugin" crates/runtime/bundles` nie pokazuje live public facade leakow.
 - `rg -n "amigo-.*-plugin|PostFx2dService|MaterialSceneService|MeshSceneService|Light.*SceneService|Ui.*Service" crates/apps/app` nie pokazuje app-domain leakow.

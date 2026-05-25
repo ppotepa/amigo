@@ -293,6 +293,17 @@ impl crate::PluginSceneCommandPayload for UiSceneCommandPluginPayload {
             .downcast_ref::<UiSceneCommand>()
             .is_some_and(|command| command == &self.0)
     }
+
+    fn asset_dependencies(&self) -> Vec<crate::SceneAssetDependency> {
+        let command = &self.0;
+        let mut dependencies = Vec::new();
+        push_ui_node_font_dependencies(
+            &mut dependencies,
+            &command.source_mod,
+            &command.document.root,
+        );
+        dependencies
+    }
 }
 
 pub fn ui_document_plugin_scene_command(command: UiSceneCommand) -> crate::PluginSceneCommand {
@@ -345,12 +356,53 @@ impl crate::PluginSceneCommandPayload for AudioCueSceneCommandPluginPayload {
             .downcast_ref::<AudioCueSceneCommand>()
             .is_some_and(|command| command == &self.0)
     }
+
+    fn asset_dependencies(&self) -> Vec<crate::SceneAssetDependency> {
+        let command = &self.0;
+        vec![crate::SceneAssetDependency::new(
+            command.source_mod.clone(),
+            command.clip.clone(),
+            "audio",
+            "audio",
+        )]
+    }
 }
 
 pub fn audio_cue_plugin_scene_command(command: AudioCueSceneCommand) -> crate::PluginSceneCommand {
     crate::PluginSceneCommand::new(std::sync::Arc::new(AudioCueSceneCommandPluginPayload(
         command,
     )))
+}
+
+fn push_ui_node_font_dependencies(
+    dependencies: &mut Vec<crate::SceneAssetDependency>,
+    source_mod: &str,
+    node: &SceneUiNode,
+) {
+    if let Some(font) = ui_node_font(&node.kind) {
+        dependencies.push(crate::SceneAssetDependency::new(
+            source_mod.to_owned(),
+            font.clone(),
+            "fonts",
+            "font-2d",
+        ));
+    }
+    for child in &node.children {
+        push_ui_node_font_dependencies(dependencies, source_mod, child);
+    }
+}
+
+fn ui_node_font(kind: &SceneUiNodeKind) -> Option<&AssetKey> {
+    match kind {
+        SceneUiNodeKind::GroupBox { font, .. }
+        | SceneUiNodeKind::Text { font, .. }
+        | SceneUiNodeKind::Button { font, .. }
+        | SceneUiNodeKind::Toggle { font, .. }
+        | SceneUiNodeKind::OptionSet { font, .. }
+        | SceneUiNodeKind::Dropdown { font, .. }
+        | SceneUiNodeKind::TabView { font, .. } => font.as_ref(),
+        _ => None,
+    }
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]

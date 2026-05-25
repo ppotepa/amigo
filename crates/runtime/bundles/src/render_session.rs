@@ -338,6 +338,7 @@ pub fn render_game_frame_to_cache(
             .set_plate_relight_summary(renderer.plate_relight_last_summary().to_owned());
         render_diagnostics
             .set_render_materials_summary(renderer.render_materials_last_summary().to_owned());
+        render_diagnostics.set_frame_diagnostics(renderer.frame_diagnostics().to_vec());
     }
     session.complete_render_submit();
     Ok(())

@@ -46,7 +46,6 @@ pub fn default_wgpu_render_extractor_registry_for_runtime(
     runtime: &Runtime,
 ) -> WgpuRenderExtractorRegistry {
     let mut registry = WgpuRenderExtractorRegistry::new();
-    render_extractor_bridges::register_world_2d_builtin_render_extractors(&mut registry);
 
     if let (Some(ids), Some(bridges)) = (
         runtime.resolve::<RuntimeRenderExtractorIdRegistry>(),
@@ -57,6 +56,7 @@ pub fn default_wgpu_render_extractor_registry_for_runtime(
         }
     }
 
+    render_extractor_bridges::register_world_2d_builtin_render_extractors(&mut registry);
     render_extractor_bridges::register_world_3d_render_extractors(&mut registry);
     render_extractor_bridges::register_host_overlay_render_extractors(&mut registry);
     registry

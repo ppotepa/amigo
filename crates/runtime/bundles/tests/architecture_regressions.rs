@@ -83,3 +83,28 @@ fn runtime_bundles_do_not_reintroduce_manual_world_2d_plugin_calls_in_render_ses
         "render_session should not manually wire world_2d plugin extractor installers",
     );
 }
+
+#[test]
+fn particles_plugin_does_not_depend_on_shutter_motion() {
+    let crate_root = crate_root();
+    let repo_root = crate_root
+        .parent()
+        .and_then(Path::parent)
+        .and_then(Path::parent)
+        .expect("runtime-bundles crate should live under crates/runtime/bundles");
+    let particles_root = repo_root.join("plugins/vfx/particles-2d");
+    let cargo_toml = read(particles_root.join("Cargo.toml"));
+    assert!(
+        !cargo_toml.contains("amigo-shutter-motion-plugin"),
+        "particles-2d must not depend on shutter-motion directly; use runtime bundle bridge"
+    );
+
+    for relative_path in ["src/systems.rs", "src/model.rs", "src/participation/adapters/mod.rs"] {
+        let content = read(particles_root.join(relative_path));
+        assert!(
+            !content.contains("amigo_shutter_motion_plugin")
+                && !content.contains("Motion2dSceneService"),
+            "{relative_path} must not import shutter-motion internals"
+        );
+    }
+}

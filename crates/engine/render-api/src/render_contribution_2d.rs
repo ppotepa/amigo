@@ -74,6 +74,7 @@ pub struct RenderLightMap2dChannel {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RenderLightMap2dSourceRef {
+    pub source_id: crate::RenderSourceId,
     pub kind: RenderLightMap2dSourceKind,
     pub entity_name: String,
 }

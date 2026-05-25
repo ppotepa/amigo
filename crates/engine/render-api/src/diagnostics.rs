@@ -2,6 +2,21 @@ use crate::composition::FrameCompositionPlan;
 use crate::frame_graph::{FrameGraph, FrameGraphNodeKind, FrameResourceKind};
 use std::collections::BTreeSet;
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RenderFrameDiagnostic {
+    pub code: String,
+    pub message: String,
+}
+
+impl RenderFrameDiagnostic {
+    pub fn new(code: impl Into<String>, message: impl Into<String>) -> Self {
+        Self {
+            code: code.into(),
+            message: message.into(),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct RenderCompositionDiagnostics {
     pub composition_summary: String,
@@ -14,6 +29,7 @@ pub struct RenderCompositionDiagnostics {
     pub render_contributions_summary: String,
     pub render_materials_summary: String,
     pub visual_items_summary: String,
+    pub frame_diagnostics: Vec<RenderFrameDiagnostic>,
     pub warnings: Vec<String>,
 }
 
@@ -72,6 +88,7 @@ impl RenderCompositionDiagnostics {
             render_contributions_summary: String::new(),
             render_materials_summary: String::new(),
             visual_items_summary: String::new(),
+            frame_diagnostics: Vec::new(),
             warnings: collect_graph_warnings(graph),
         }
     }
@@ -279,6 +296,19 @@ impl RenderCompositionDiagnosticsService {
             .expect("render composition diagnostics mutex should not be poisoned")
             .visual_items_summary = summary.into();
     }
+
+    pub fn set_frame_diagnostics(&self, diagnostics: Vec<RenderFrameDiagnostic>) {
+        let mut inner = self
+            .inner
+            .lock()
+            .expect("render composition diagnostics mutex should not be poisoned");
+        inner.warnings.extend(
+            diagnostics
+                .iter()
+                .map(|diagnostic| format!("{}: {}", diagnostic.code, diagnostic.message)),
+        );
+        inner.frame_diagnostics = diagnostics;
+    }
 }
 
 #[cfg(test)]
@@ -348,5 +378,33 @@ mod tests {
             service.snapshot().light_sources_summary,
             "render.light.sources ok"
         );
+    }
+
+    #[test]
+    fn render_diagnostics_service_exposes_frame_diagnostics_as_warnings() {
+        let service = RenderCompositionDiagnosticsService::default();
+        service.set_with_update(
+            &FrameCompositionPlan::single_main_view(Vec::new()),
+            &FrameGraph::default(),
+            RenderCompositionDiagnosticsUpdate::default(),
+        );
+
+        service.set_frame_diagnostics(vec![RenderFrameDiagnostic::new(
+            "postfx.focus_blur.depth_map_missing",
+            "Depth map 'main-depth' was requested but not rendered.",
+        )]);
+
+        let snapshot = service.snapshot();
+        assert_eq!(
+            snapshot.frame_diagnostics,
+            vec![RenderFrameDiagnostic::new(
+                "postfx.focus_blur.depth_map_missing",
+                "Depth map 'main-depth' was requested but not rendered."
+            )]
+        );
+        assert!(snapshot.warnings.iter().any(|warning| {
+            warning.contains("postfx.focus_blur.depth_map_missing")
+                && warning.contains("main-depth")
+        }));
     }
 }

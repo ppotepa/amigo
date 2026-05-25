@@ -29,6 +29,16 @@ impl crate::PluginSceneCommandPayload for Mesh3dPluginSceneCommandPayload {
             .downcast_ref::<Mesh3dSceneCommand>()
             .is_some_and(|command| command == &self.0)
     }
+
+    fn asset_dependencies(&self) -> Vec<crate::SceneAssetDependency> {
+        let command = &self.0;
+        vec![crate::SceneAssetDependency::new(
+            command.source_mod.clone(),
+            command.mesh_asset.clone(),
+            "meshes",
+            "mesh-3d",
+        )]
+    }
 }
 
 pub fn mesh_3d_plugin_scene_command(command: Mesh3dSceneCommand) -> crate::PluginSceneCommand {
@@ -79,6 +89,22 @@ impl crate::PluginSceneCommandPayload for Material3dPluginSceneCommandPayload {
             .downcast_ref::<Material3dSceneCommand>()
             .is_some_and(|command| command == &self.0)
     }
+
+    fn asset_dependencies(&self) -> Vec<crate::SceneAssetDependency> {
+        let command = &self.0;
+        command
+            .source
+            .as_ref()
+            .map(|source| {
+                vec![crate::SceneAssetDependency::new(
+                    command.source_mod.clone(),
+                    source.clone(),
+                    "materials",
+                    "material-3d",
+                )]
+            })
+            .unwrap_or_default()
+    }
 }
 
 pub fn material_3d_plugin_scene_command(
@@ -116,6 +142,16 @@ impl crate::PluginSceneCommandPayload for Text3dPluginSceneCommandPayload {
             .command_as_any()
             .downcast_ref::<Text3dSceneCommand>()
             .is_some_and(|command| command == &self.0)
+    }
+
+    fn asset_dependencies(&self) -> Vec<crate::SceneAssetDependency> {
+        let command = &self.0;
+        vec![crate::SceneAssetDependency::new(
+            command.source_mod.clone(),
+            command.font.clone(),
+            "fonts",
+            "font-3d",
+        )]
     }
 }
 

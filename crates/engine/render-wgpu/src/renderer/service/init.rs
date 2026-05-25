@@ -87,6 +87,7 @@ impl WgpuSceneRenderer {
             visual_source_previous_positions_2d: BTreeMap::new(),
             plate_relight_last_summary: "plate_relight: not run yet".to_owned(),
             render_materials_last_summary: "render.materials: not run yet".to_owned(),
+            frame_diagnostics: Vec::new(),
         }
     }
 }

@@ -9,9 +9,58 @@ use amigo_scene::{
     ParticleShapeKeyframe2dSceneCommand, ParticleSimulationSpace2dSceneCommand,
     ParticleSpawnArea2dSceneCommand, ParticleVelocityMode2dSceneCommand, SceneEntityId,
 };
+use std::sync::{Arc, RwLock};
 
 pub const PARTICLES_2D_PLUGIN_LABEL: &str = "amigo-particles-2d-plugin";
 pub const PARTICLES_2D_CAPABILITY: &str = "particles_2d";
+
+pub trait Particle2dSourceVelocityProvider: Send + Sync {
+    fn source_velocity(&self, entity_name: &str) -> Option<Vec2>;
+}
+
+#[derive(Default)]
+pub struct Particle2dSourceVelocityProviderRegistry {
+    providers: RwLock<Vec<Arc<dyn Particle2dSourceVelocityProvider>>>,
+}
+
+impl Particle2dSourceVelocityProviderRegistry {
+    pub fn register(&self, provider: Arc<dyn Particle2dSourceVelocityProvider>) {
+        self.providers
+            .write()
+            .expect("particle source velocity provider registry should not be poisoned")
+            .push(provider);
+    }
+
+    pub fn source_velocity(&self, entity_name: &str) -> Option<Vec2> {
+        self.providers
+            .read()
+            .expect("particle source velocity provider registry should not be poisoned")
+            .iter()
+            .find_map(|provider| provider.source_velocity(entity_name))
+    }
+}
+
+#[cfg(test)]
+mod source_velocity_provider_tests {
+    use super::*;
+
+    struct StaticVelocityProvider;
+
+    impl Particle2dSourceVelocityProvider for StaticVelocityProvider {
+        fn source_velocity(&self, entity_name: &str) -> Option<Vec2> {
+            (entity_name == "ship").then_some(Vec2::new(12.0, -4.0))
+        }
+    }
+
+    #[test]
+    fn source_velocity_provider_registry_resolves_declared_provider_velocity() {
+        let registry = Particle2dSourceVelocityProviderRegistry::default();
+        registry.register(Arc::new(StaticVelocityProvider));
+
+        assert_eq!(registry.source_velocity("ship"), Some(Vec2::new(12.0, -4.0)));
+        assert_eq!(registry.source_velocity("rain"), None);
+    }
+}
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum ParticleShape2d {

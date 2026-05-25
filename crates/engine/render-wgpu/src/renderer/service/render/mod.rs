@@ -34,6 +34,7 @@ use self::world_selection::{WorldPassLoadExt, WorldRenderSelection, base_world_s
 
 impl WgpuSceneRenderer {
     pub fn render_frame_request(&mut self, request: WgpuFrameRenderRequest<'_>) -> AmigoResult<()> {
+        self.clear_frame_diagnostics();
         let mut executor = std::mem::take(&mut self.frame_graph_executor);
         let result = executor.execute(self, request);
         self.frame_graph_executor = executor;

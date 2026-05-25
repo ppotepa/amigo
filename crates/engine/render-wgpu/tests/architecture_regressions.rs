@@ -185,6 +185,47 @@ fn architecture_plate_relight_has_no_renderer_side_beacon_matching() {
 }
 
 #[test]
+fn architecture_lightmap_uses_render_source_id_not_owner_entity_guessing() {
+    let path = crate_root().join("src/renderer/lightmap2d.rs");
+    let content = strip_rust_comments(&read(&path));
+    if let Some(line) = owner_entity_equality_line(&content) {
+        panic!(
+            "lightmap2d should resolve authored sources through RenderSourceId, not owner_entity equality in {}:{}",
+            path.display(),
+            line,
+        );
+    }
+    assert!(
+        content.contains("source_id()") && content.contains("source.source.source_id"),
+        "lightmap2d should bind sources through explicit RenderSourceId"
+    );
+}
+
+#[test]
+fn architecture_motion_buffer_uses_render_source_id_for_temporal_keys() {
+    let path = crate_root().join("src/renderer/service/render/visual_source_buffer_pass/motion.rs");
+    let content = strip_rust_comments(&read(&path));
+    if let Some(line) = first_needle_line(&content, "item.owner_entity()") {
+        panic!(
+            "motion buffer temporal keys should use RenderSourceId, not owner_entity() in {}:{}",
+            path.display(),
+            line,
+        );
+    }
+    if let Some(line) = first_needle_line(&content, "item.component_kind()") {
+        panic!(
+            "motion buffer temporal keys should use RenderSourceId, not component_kind() in {}:{}",
+            path.display(),
+            line,
+        );
+    }
+    assert!(
+        content.contains("item.source_id().as_str()"),
+        "motion buffer should build temporal keys from explicit RenderSourceId"
+    );
+}
+
+#[test]
 fn render_wgpu_does_not_reintroduce_renderable_payload() {
     for path in render_wgpu_rs_files() {
         let content = read(&path);

@@ -133,6 +133,10 @@ fn camera_capture_input_does_not_set_highlight_for_lightmaps_without_candidates(
             owner_entity: "bar.lightmap".to_owned(),
             source_id: "bar.lightmap".to_owned(),
             source: amigo_render_api::RenderLightMap2dSourceRef {
+                source_id: amigo_render_api::RenderSourceId::for_component(
+                    "bar.lightmap",
+                    "LayeredImage2D",
+                ),
                 kind: amigo_render_api::RenderLightMap2dSourceKind::LayeredImage2d,
                 entity_name: "bar.lightmap".to_owned(),
             },

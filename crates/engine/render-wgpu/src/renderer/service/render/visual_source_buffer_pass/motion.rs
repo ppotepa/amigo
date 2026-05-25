@@ -152,44 +152,12 @@ fn append_renderable_motion(
         item.primitive.proxy_quad_size(),
     ) {
         let (key, current, previous) = match &item.primitive {
-            RenderPrimitive2d::TileBatch(_) => {
-                let key = format!("tilemap:{}", item.owner_entity());
-                let current = transform.translation;
-                let previous = renderer
-                    .visual_source_previous_positions_2d
-                    .get(&key)
-                    .copied();
-                (key, current, previous)
-            }
-            RenderPrimitive2d::TexturedQuad(_) => {
-                let key = format!("quad:{}:{}", item.component_kind(), item.owner_entity());
-                let current = transform.translation;
-                let previous = renderer
-                    .visual_source_previous_positions_2d
-                    .get(&key)
-                    .copied();
-                (key, current, previous)
-            }
-            RenderPrimitive2d::LayeredTexturedQuads(_) => {
-                let key = format!("layered_image:{}", item.owner_entity());
-                let current = transform.translation;
-                let previous = renderer
-                    .visual_source_previous_positions_2d
-                    .get(&key)
-                    .copied();
-                (key, current, previous)
-            }
-            RenderPrimitive2d::GlyphRun(_) => {
-                let key = format!("text2d:{}", item.owner_entity());
-                let current = transform.translation;
-                let previous = renderer
-                    .visual_source_previous_positions_2d
-                    .get(&key)
-                    .copied();
-                (key, current, previous)
-            }
-            RenderPrimitive2d::RadialLightVisual(_) => {
-                let key = format!("beacon:{}", item.owner_entity());
+            RenderPrimitive2d::TileBatch(_)
+            | RenderPrimitive2d::TexturedQuad(_)
+            | RenderPrimitive2d::LayeredTexturedQuads(_)
+            | RenderPrimitive2d::GlyphRun(_)
+            | RenderPrimitive2d::RadialLightVisual(_) => {
+                let key = item.source_id().as_str().to_owned();
                 let current = transform.translation;
                 let previous = renderer
                     .visual_source_previous_positions_2d
@@ -220,7 +188,7 @@ fn append_renderable_motion(
             let transform = crate::renderer::world_2d::vector_primitive_viewport_fit_transform(
                 viewport, primitive,
             );
-            let key = format!("vector:{}", item.owner_entity());
+            let key = item.source_id().as_str().to_owned();
             current_positions.insert(key.clone(), transform.translation);
             let color = motion_vector_color(
                 renderer
