@@ -13,7 +13,7 @@ entities:
     rotation_degrees: 0.0
     scale: { x: 1.0, y: 1.0 }
   components:
-  - type: ParticleEmitter2D
+  - type: amigo.vfx.particles-2d.ParticleEmitter2D
     render_layer: weather.rain.10m
     local_direction_degrees: -80.0
     active: true
@@ -88,7 +88,7 @@ entities:
     rotation_degrees: 0.0
     scale: { x: 1.0, y: 1.0 }
   components:
-  - type: ParticleEmitter2D
+  - type: amigo.vfx.particles-2d.ParticleEmitter2D
     render_layer: weather.rain.5m
     local_direction_degrees: -77.0
     active: true
@@ -164,7 +164,7 @@ entities:
     rotation_degrees: 0.0
     scale: { x: 1.0, y: 1.0 }
   components:
-  - type: ParticleEmitter2D
+  - type: amigo.vfx.particles-2d.ParticleEmitter2D
     render_layer: weather.rain.1m
     local_direction_degrees: -74.0
     active: true
@@ -240,7 +240,7 @@ entities:
     rotation_degrees: 0.0
     scale: { x: 1.0, y: 1.0 }
   components:
-  - type: ParticleEmitter2D
+  - type: amigo.vfx.particles-2d.ParticleEmitter2D
     render_layer: weather.rain.super_near
     local_direction_degrees: -70.0
     active: true

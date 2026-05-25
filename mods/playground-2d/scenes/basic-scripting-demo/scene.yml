@@ -65,7 +65,7 @@ entities:
         x: 1.0
         y: 1.0
     components:
-      - type: Text2D
+      - type: amigo.gfx.text-2d.Text2D
         content: BASIC SCRIPTING DEMO
         font: playground-2d/fonts/debug-ui
         bounds:
@@ -83,7 +83,7 @@ entities:
         x: 1.0
         y: 1.0
     components:
-      - type: Sprite2D
+      - type: amigo.gfx.sprite-2d.Sprite2D
         texture: playground-2d/spritesheets/square
         size:
           x: 144.0
@@ -105,7 +105,7 @@ entities:
         x: 1.0
         y: 1.0
     components:
-      - type: Sprite2D
+      - type: amigo.gfx.sprite-2d.Sprite2D
         texture: playground-2d/spritesheets/hello-world-spritesheet
         size:
           x: 256.0
@@ -131,7 +131,7 @@ entities:
         x: 1.0
         y: 1.0
     components:
-      - type: Text2D
+      - type: amigo.gfx.text-2d.Text2D
         content: LEFT / RIGHT  rotate square via EntityRef.rotate_2d()
         font: playground-2d/fonts/debug-ui
         bounds:
@@ -149,7 +149,7 @@ entities:
         x: 1.0
         y: 1.0
     components:
-      - type: Text2D
+      - type: amigo.gfx.text-2d.Text2D
         content: UP / DOWN     advance or reset preview via world.sprite2d
         font: playground-2d/fonts/debug-ui
         bounds:
@@ -167,7 +167,7 @@ entities:
         x: 1.0
         y: 1.0
     components:
-      - type: Text2D
+      - type: amigo.gfx.text-2d.Text2D
         content: W  declarative Behavior transition to hello-world-square
         font: playground-2d/fonts/debug-ui
         bounds:
@@ -185,7 +185,7 @@ entities:
         x: 1.0
         y: 1.0
     components:
-      - type: Text2D
+      - type: amigo.gfx.text-2d.Text2D
         content: S  emit event and let YAML transition jump to spritesheet
         font: playground-2d/fonts/debug-ui
         bounds:
@@ -203,7 +203,7 @@ entities:
         x: 1.0
         y: 1.0
     components:
-      - type: Text2D
+      - type: amigo.gfx.text-2d.Text2D
         content: SPACE  reload scene   |   ENTER  log world.time
         font: playground-2d/fonts/debug-ui
         bounds:
@@ -221,7 +221,7 @@ entities:
         x: 1.0
         y: 1.0
     components:
-      - type: Text2D
+      - type: amigo.gfx.text-2d.Text2D
         content: D  refresh diagnostics for world.mod.current_id()
         font: playground-2d/fonts/debug-ui
         bounds:

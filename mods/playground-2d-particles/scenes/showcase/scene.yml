@@ -79,7 +79,7 @@ entities:
   - id: backdrop
     name: playground-2d-particles-showcase-backdrop
     components:
-      - type: VectorShape2D
+      - type: amigo.gfx.vector-2d.VectorShape2D
         kind: polygon
         points:
           - { x: -2400.0, y: -2400.0 }
@@ -96,7 +96,7 @@ entities:
     transform2:
       translation: { x: -260.0, y: 0.0 }
     components:
-      - type: VectorShape2D
+      - type: amigo.gfx.vector-2d.VectorShape2D
         kind: circle
         radius: 18.0
         segments: 24
@@ -104,7 +104,7 @@ entities:
         stroke_width: 2.0
         fill_color: "#39D7FF18"
         z_index: 6.0
-      - type: ParticleEmitter2D
+      - type: amigo.vfx.particles-2d.ParticleEmitter2D
         local_direction_degrees: -90.0
         active: false
         spawn_rate: 1.0
@@ -122,7 +122,7 @@ entities:
     transform2:
       translation: { x: -260.0, y: 0.0 }
     components:
-      - type: VectorShape2D
+      - type: amigo.gfx.vector-2d.VectorShape2D
         kind: polygon
         points:
           - { x: -260.0, y: -260.0 }
@@ -139,7 +139,7 @@ entities:
     transform2:
       translation: { x: -260.0, y: 0.0 }
     components:
-      - type: VectorShape2D
+      - type: amigo.gfx.vector-2d.VectorShape2D
         kind: polyline
         closed: false
         points:
@@ -154,7 +154,7 @@ entities:
     transform2:
       translation: { x: -260.0, y: 0.0 }
     components:
-      - type: VectorShape2D
+      - type: amigo.gfx.vector-2d.VectorShape2D
         kind: polyline
         closed: false
         points:
@@ -169,7 +169,7 @@ entities:
     transform2:
       translation: { x: -260.0, y: 0.0 }
     components:
-      - type: VectorShape2D
+      - type: amigo.gfx.vector-2d.VectorShape2D
         kind: polyline
         closed: false
         points:
@@ -184,7 +184,7 @@ entities:
     transform2:
       translation: { x: -260.0, y: 0.0 }
     components:
-      - type: VectorShape2D
+      - type: amigo.gfx.vector-2d.VectorShape2D
         kind: polyline
         closed: false
         points:
@@ -199,7 +199,7 @@ entities:
     transform2:
       translation: { x: -260.0, y: 0.0 }
     components:
-      - type: VectorShape2D
+      - type: amigo.gfx.vector-2d.VectorShape2D
         kind: polyline
         closed: false
         points:
@@ -214,7 +214,7 @@ entities:
     transform2:
       translation: { x: -260.0, y: 0.0 }
     components:
-      - type: VectorShape2D
+      - type: amigo.gfx.vector-2d.VectorShape2D
         kind: polyline
         closed: false
         points:
@@ -229,7 +229,7 @@ entities:
     transform2:
       translation: { x: -260.0, y: 0.0 }
     components:
-      - type: VectorShape2D
+      - type: amigo.gfx.vector-2d.VectorShape2D
         kind: polyline
         closed: true
         points:
@@ -246,7 +246,7 @@ entities:
     transform2:
       translation: { x: -260.0, y: 0.0 }
     components:
-      - type: VectorShape2D
+      - type: amigo.gfx.vector-2d.VectorShape2D
         kind: polyline
         closed: false
         points:
@@ -255,7 +255,7 @@ entities:
         stroke_color: "#EAF6FF99"
         stroke_width: 1.4
         z_index: 4.0
-      - type: VectorShape2D
+      - type: amigo.gfx.vector-2d.VectorShape2D
         kind: polyline
         closed: false
         points:

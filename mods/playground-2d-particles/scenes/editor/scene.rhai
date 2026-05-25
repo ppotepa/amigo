@@ -331,7 +331,7 @@ fn export_yaml_text(world_api) {
     yaml += "category: " + export_category(world_api) + "\n";
     yaml += "tags: " + export_tags(world_api) + "\n";
     yaml += "emitter:\n";
-    yaml += "  type: ParticleEmitter2D\n";
+    yaml += "  type: amigo.vfx.particles-2d.ParticleEmitter2D\n";
     yaml += "  active: " + bool_text(active(world_api)) + "\n";
     yaml += "  spawn_rate: " + spawn_rate(world_api) + "\n";
     yaml += "  max_particles: " + max_particles(world_api) + "\n";

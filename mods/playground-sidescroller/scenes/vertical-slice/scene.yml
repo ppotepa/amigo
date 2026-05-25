@@ -30,7 +30,7 @@ entities:
       rotation_radians: 0.0
       scale: { x: 1.0, y: 1.0 }
     components:
-      - type: Sprite2D
+      - type: amigo.gfx.sprite-2d.Sprite2D
         texture: playground-sidescroller/spritesheets/background-layer-01
         size: { x: 15360.0, y: 5120.0 }
         z_index: -40.0
@@ -45,7 +45,7 @@ entities:
       rotation_radians: 0.0
       scale: { x: 1.0, y: 1.0 }
     components:
-      - type: Sprite2D
+      - type: amigo.gfx.sprite-2d.Sprite2D
         texture: playground-sidescroller/spritesheets/background-layer-02
         size: { x: 15360.0, y: 5120.0 }
         z_index: -30.0
@@ -60,7 +60,7 @@ entities:
       rotation_radians: 0.0
       scale: { x: 1.0, y: 1.0 }
     components:
-      - type: Sprite2D
+      - type: amigo.gfx.sprite-2d.Sprite2D
         texture: playground-sidescroller/spritesheets/background-layer-03
         size: { x: 15360.0, y: 5120.0 }
         z_index: -20.0
@@ -75,7 +75,7 @@ entities:
       rotation_radians: 0.0
       scale: { x: 1.0, y: 1.0 }
     components:
-      - type: Sprite2D
+      - type: amigo.gfx.sprite-2d.Sprite2D
         texture: playground-sidescroller/spritesheets/background-layer-04
         size: { x: 15360.0, y: 5120.0 }
         z_index: -10.0
@@ -99,7 +99,7 @@ entities:
   - id: tilemap
     name: playground-sidescroller-tilemap
     components:
-      - type: TileMap2D
+      - type: amigo.gfx.tilemap-2d.TileMap2D
         tileset: playground-sidescroller/spritesheets/platformer/tilesets/platform/base
         ruleset: playground-sidescroller/spritesheets/platformer/rulesets/platform/rules
         tile_size: { x: 16.0, y: 16.0 }
@@ -131,7 +131,7 @@ entities:
         symbol: "P"
         index: 0
         offset: { x: 0.0, y: 8.0 }
-      - type: Sprite2D
+      - type: amigo.gfx.sprite-2d.Sprite2D
         texture: playground-sidescroller/spritesheets/player
         size: { x: 32.0, y: 32.0 }
       - type: KinematicBody2D
@@ -164,7 +164,7 @@ entities:
         symbol: "C"
         index: 0
         offset: { x: 0.0, y: 0.0 }
-      - type: Sprite2D
+      - type: amigo.gfx.sprite-2d.Sprite2D
         texture: playground-sidescroller/spritesheets/coin
         size: { x: 16.0, y: 16.0 }
         animation:
@@ -189,7 +189,7 @@ entities:
         symbol: "C"
         index: 1
         offset: { x: 0.0, y: 0.0 }
-      - type: Sprite2D
+      - type: amigo.gfx.sprite-2d.Sprite2D
         texture: playground-sidescroller/spritesheets/coin
         size: { x: 16.0, y: 16.0 }
         animation:
@@ -214,7 +214,7 @@ entities:
         symbol: "C"
         index: 2
         offset: { x: 0.0, y: 0.0 }
-      - type: Sprite2D
+      - type: amigo.gfx.sprite-2d.Sprite2D
         texture: playground-sidescroller/spritesheets/coin
         size: { x: 16.0, y: 16.0 }
         animation:
@@ -239,7 +239,7 @@ entities:
         symbol: "C"
         index: 3
         offset: { x: 0.0, y: 0.0 }
-      - type: Sprite2D
+      - type: amigo.gfx.sprite-2d.Sprite2D
         texture: playground-sidescroller/spritesheets/coin
         size: { x: 16.0, y: 16.0 }
         animation:
@@ -264,7 +264,7 @@ entities:
         symbol: "C"
         index: 4
         offset: { x: 0.0, y: 0.0 }
-      - type: Sprite2D
+      - type: amigo.gfx.sprite-2d.Sprite2D
         texture: playground-sidescroller/spritesheets/coin
         size: { x: 16.0, y: 16.0 }
         animation:
@@ -289,7 +289,7 @@ entities:
         symbol: "C"
         index: 5
         offset: { x: 0.0, y: 0.0 }
-      - type: Sprite2D
+      - type: amigo.gfx.sprite-2d.Sprite2D
         texture: playground-sidescroller/spritesheets/coin
         size: { x: 16.0, y: 16.0 }
         animation:
@@ -314,7 +314,7 @@ entities:
         symbol: "C"
         index: 6
         offset: { x: 0.0, y: 0.0 }
-      - type: Sprite2D
+      - type: amigo.gfx.sprite-2d.Sprite2D
         texture: playground-sidescroller/spritesheets/coin
         size: { x: 16.0, y: 16.0 }
         animation:
@@ -339,7 +339,7 @@ entities:
         symbol: "C"
         index: 7
         offset: { x: 0.0, y: 0.0 }
-      - type: Sprite2D
+      - type: amigo.gfx.sprite-2d.Sprite2D
         texture: playground-sidescroller/spritesheets/coin
         size: { x: 16.0, y: 16.0 }
         animation:
@@ -364,7 +364,7 @@ entities:
         symbol: "C"
         index: 8
         offset: { x: 0.0, y: 0.0 }
-      - type: Sprite2D
+      - type: amigo.gfx.sprite-2d.Sprite2D
         texture: playground-sidescroller/spritesheets/coin
         size: { x: 16.0, y: 16.0 }
         animation:
@@ -389,7 +389,7 @@ entities:
         symbol: "C"
         index: 9
         offset: { x: 0.0, y: 0.0 }
-      - type: Sprite2D
+      - type: amigo.gfx.sprite-2d.Sprite2D
         texture: playground-sidescroller/spritesheets/coin
         size: { x: 16.0, y: 16.0 }
         animation:
@@ -414,7 +414,7 @@ entities:
         symbol: "C"
         index: 10
         offset: { x: 0.0, y: 0.0 }
-      - type: Sprite2D
+      - type: amigo.gfx.sprite-2d.Sprite2D
         texture: playground-sidescroller/spritesheets/coin
         size: { x: 16.0, y: 16.0 }
         animation:
@@ -439,7 +439,7 @@ entities:
         symbol: "C"
         index: 11
         offset: { x: 0.0, y: 0.0 }
-      - type: Sprite2D
+      - type: amigo.gfx.sprite-2d.Sprite2D
         texture: playground-sidescroller/spritesheets/coin
         size: { x: 16.0, y: 16.0 }
         animation:
@@ -464,7 +464,7 @@ entities:
         symbol: "C"
         index: 12
         offset: { x: 0.0, y: 0.0 }
-      - type: Sprite2D
+      - type: amigo.gfx.sprite-2d.Sprite2D
         texture: playground-sidescroller/spritesheets/coin
         size: { x: 16.0, y: 16.0 }
         animation:
@@ -489,7 +489,7 @@ entities:
         symbol: "C"
         index: 13
         offset: { x: 0.0, y: 0.0 }
-      - type: Sprite2D
+      - type: amigo.gfx.sprite-2d.Sprite2D
         texture: playground-sidescroller/spritesheets/coin
         size: { x: 16.0, y: 16.0 }
         animation:
@@ -514,7 +514,7 @@ entities:
         symbol: "C"
         index: 14
         offset: { x: 0.0, y: 0.0 }
-      - type: Sprite2D
+      - type: amigo.gfx.sprite-2d.Sprite2D
         texture: playground-sidescroller/spritesheets/coin
         size: { x: 16.0, y: 16.0 }
         animation:
@@ -539,7 +539,7 @@ entities:
         symbol: "C"
         index: 15
         offset: { x: 0.0, y: 0.0 }
-      - type: Sprite2D
+      - type: amigo.gfx.sprite-2d.Sprite2D
         texture: playground-sidescroller/spritesheets/coin
         size: { x: 16.0, y: 16.0 }
         animation:
@@ -564,7 +564,7 @@ entities:
         symbol: "C"
         index: 16
         offset: { x: 0.0, y: 0.0 }
-      - type: Sprite2D
+      - type: amigo.gfx.sprite-2d.Sprite2D
         texture: playground-sidescroller/spritesheets/coin
         size: { x: 16.0, y: 16.0 }
         animation:
@@ -589,7 +589,7 @@ entities:
         symbol: "C"
         index: 17
         offset: { x: 0.0, y: 0.0 }
-      - type: Sprite2D
+      - type: amigo.gfx.sprite-2d.Sprite2D
         texture: playground-sidescroller/spritesheets/coin
         size: { x: 16.0, y: 16.0 }
         animation:
@@ -614,7 +614,7 @@ entities:
         symbol: "C"
         index: 18
         offset: { x: 0.0, y: 0.0 }
-      - type: Sprite2D
+      - type: amigo.gfx.sprite-2d.Sprite2D
         texture: playground-sidescroller/spritesheets/coin
         size: { x: 16.0, y: 16.0 }
         animation:
@@ -639,7 +639,7 @@ entities:
         symbol: "C"
         index: 19
         offset: { x: 0.0, y: 0.0 }
-      - type: Sprite2D
+      - type: amigo.gfx.sprite-2d.Sprite2D
         texture: playground-sidescroller/spritesheets/coin
         size: { x: 16.0, y: 16.0 }
         animation:
@@ -664,7 +664,7 @@ entities:
         symbol: "C"
         index: 20
         offset: { x: 0.0, y: 0.0 }
-      - type: Sprite2D
+      - type: amigo.gfx.sprite-2d.Sprite2D
         texture: playground-sidescroller/spritesheets/coin
         size: { x: 16.0, y: 16.0 }
         animation:
@@ -689,7 +689,7 @@ entities:
         symbol: "C"
         index: 21
         offset: { x: 0.0, y: 0.0 }
-      - type: Sprite2D
+      - type: amigo.gfx.sprite-2d.Sprite2D
         texture: playground-sidescroller/spritesheets/coin
         size: { x: 16.0, y: 16.0 }
         animation:
@@ -714,7 +714,7 @@ entities:
         symbol: "C"
         index: 22
         offset: { x: 0.0, y: 0.0 }
-      - type: Sprite2D
+      - type: amigo.gfx.sprite-2d.Sprite2D
         texture: playground-sidescroller/spritesheets/coin
         size: { x: 16.0, y: 16.0 }
         animation:
@@ -739,7 +739,7 @@ entities:
         symbol: "C"
         index: 23
         offset: { x: 0.0, y: 0.0 }
-      - type: Sprite2D
+      - type: amigo.gfx.sprite-2d.Sprite2D
         texture: playground-sidescroller/spritesheets/coin
         size: { x: 16.0, y: 16.0 }
         animation:
@@ -764,7 +764,7 @@ entities:
         symbol: "C"
         index: 24
         offset: { x: 0.0, y: 0.0 }
-      - type: Sprite2D
+      - type: amigo.gfx.sprite-2d.Sprite2D
         texture: playground-sidescroller/spritesheets/coin
         size: { x: 16.0, y: 16.0 }
         animation:
@@ -789,7 +789,7 @@ entities:
         symbol: "F"
         index: 0
         offset: { x: 0.0, y: 8.0 }
-      - type: Sprite2D
+      - type: amigo.gfx.sprite-2d.Sprite2D
         texture: playground-sidescroller/spritesheets/finish
         size: { x: 16.0, y: 32.0 }
       - type: Trigger2D

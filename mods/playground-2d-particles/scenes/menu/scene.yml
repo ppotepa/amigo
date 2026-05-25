@@ -54,7 +54,7 @@ entities:
   - id: backdrop
     name: playground-2d-particles-menu-backdrop
     components:
-      - type: VectorShape2D
+      - type: amigo.gfx.vector-2d.VectorShape2D
         kind: polygon
         points:
           - { x: -2400.0, y: -2400.0 }

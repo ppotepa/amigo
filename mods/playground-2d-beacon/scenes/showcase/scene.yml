@@ -26,7 +26,7 @@ entities:
   - id: backdrop
     name: playground-2d-beacon-backdrop
     components:
-      - type: VectorShape2D
+      - type: amigo.gfx.vector-2d.VectorShape2D
         kind: polygon
         points:
           - { x: -720.0, y: -420.0 }
@@ -41,7 +41,7 @@ entities:
   - id: skyline-base
     name: playground-2d-beacon-skyline-base
     components:
-      - type: VectorShape2D
+      - type: amigo.gfx.vector-2d.VectorShape2D
         kind: polygon
         points:
           - { x: -420.0, y: 170.0 }
@@ -70,7 +70,7 @@ entities:
   - id: tower-spire
     name: playground-2d-beacon-tower-spire
     components:
-      - type: VectorShape2D
+      - type: amigo.gfx.vector-2d.VectorShape2D
         kind: polyline
         points:
           - { x: 10.0, y: -340.0 }

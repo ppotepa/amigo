@@ -48,7 +48,7 @@ label: Plasma
 category: energy
 tags: [continuous, energy]
 emitter:
-  type: ParticleEmitter2D
+  type: amigo.vfx.particles-2d.ParticleEmitter2D
   spawn_rate: 150.0
   max_particles: 140
 ```
@@ -62,7 +62,7 @@ label: Editor Export
 category: custom
 tags: [editor, custom]
 emitter:
-  type: ParticleEmitter2D
+  type: amigo.vfx.particles-2d.ParticleEmitter2D
   active: true
   spawn_rate: 90.0
   max_particles: 160
