@@ -18,7 +18,7 @@ the future editor, headless validation tools, and scene preview tools.
 - window or event-loop control
 - WGPU surface ownership
 - app-specific startup UX
-- duplicate runtime systems or `v2` paths
+- duplicate runtime systems or `second-generation` paths
 
 ## Bootstrap boundary
 `RuntimeSession` is the ownership boundary after host-specific bootstrap.
