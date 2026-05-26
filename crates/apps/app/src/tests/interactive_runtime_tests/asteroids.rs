@@ -375,6 +375,27 @@ fn interactive_host_handler_updates_asteroids_ship_and_bullet_loop() {
         updated_ship.translation.y > initial_ship.translation.y,
         "holding thrust should move the Asteroids ship forward"
     );
+    let packet = amigo_runtime_bundles::default_wgpu_render_extractor_registry_for_runtime(
+        handler.session.runtime(),
+    )
+    .extract_all(handler.session.runtime());
+    let ship_vector = packet
+        .renderables_2d()
+        .iter()
+        .find(|item| {
+            item.owner_entity() == "playground-2d-asteroids-ship"
+                && item.component_kind() == "VectorShape2D"
+        })
+        .expect("ship vector renderable should extract");
+    let ship_vector_transform = ship_vector.primitive.transform();
+    assert_eq!(
+        ship_vector_transform.translation.x, updated_ship.translation.x,
+        "ship vector renderable should use live scene x transform"
+    );
+    assert_eq!(
+        ship_vector_transform.translation.y, updated_ship.translation.y,
+        "ship vector renderable should use live scene y transform"
+    );
 
     handler
         .on_input_event(InputEvent::Key {

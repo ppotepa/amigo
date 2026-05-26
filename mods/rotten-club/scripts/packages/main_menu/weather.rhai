@@ -1,5 +1,5 @@
-import "mod:fx/ids" as ids;
-import "mod:fx/math" as math;
+import "mod:main_menu/ids" as ids;
+import "mod:main_menu/math" as math;
 
 fn reset(world_api) {
     world_api.state.set_float("rain.next_gust", world_api.random.range(8.0, 12.0));
@@ -17,9 +17,28 @@ fn reset(world_api) {
     world_api.particles.set_wind(ids::rain_5m_entity(), 180.0, -2060.0, 0.72);
     world_api.particles.set_wind(ids::rain_1m_entity(), 250.0, -2840.0, 0.84);
     world_api.particles.set_wind(ids::rain_super_near_entity(), 310.0, -3360.0, 0.94);
+    set_emitters_active(world_api, world_api.state.get_bool("rain.enabled"));
+}
+
+fn set_emitters_active(world_api, active) {
+    world_api.particles.set_active(ids::rain_10m_entity(), active);
+    world_api.particles.set_active(ids::rain_5m_entity(), active);
+    world_api.particles.set_active(ids::rain_1m_entity(), active);
+    world_api.particles.set_active(ids::rain_super_near_entity(), active);
 }
 
 fn update(world_api, time, far_light, mid_light, near_light) {
+    if !world_api.state.get_bool("rain.enabled") {
+        world_api.particles.set_intensity(ids::rain_10m_entity(), 0.0);
+        world_api.particles.set_intensity(ids::rain_5m_entity(), 0.0);
+        world_api.particles.set_intensity(ids::rain_1m_entity(), 0.0);
+        world_api.particles.set_intensity(ids::rain_super_near_entity(), 0.0);
+        set_emitters_active(world_api, false);
+        return;
+    }
+
+    set_emitters_active(world_api, true);
+
     if time >= world_api.state.get_float("rain.next_gust") {
         let duration = world_api.random.range(0.8, 2.4);
         let strength = world_api.random.range(0.35, 1.0);
@@ -45,35 +64,14 @@ fn update(world_api, time, far_light, mid_light, near_light) {
         0.0
     };
     let dir = world_api.state.get_float("rain.gust_dir");
-
     let rain_onset = math::clamp01(world_api.state.get_float("intro.rain_intensity"));
 
     world_api.particles.set_intensity(ids::rain_10m_entity(), math::clamp01(((far_light * 0.48 + mid_light * 0.18) + gust * 0.12) * rain_onset));
     world_api.particles.set_intensity(ids::rain_5m_entity(), math::clamp01(((mid_light * 0.36 + near_light * 0.22) + gust * 0.12) * rain_onset));
     world_api.particles.set_intensity(ids::rain_1m_entity(), math::clamp01((0.08 + near_light * 0.34 + gust * 0.10) * rain_onset));
     world_api.particles.set_intensity(ids::rain_super_near_entity(), math::clamp01((0.16 + (far_light + mid_light + near_light) * 0.10 + gust * 0.10) * rain_onset));
-    world_api.particles.set_wind(
-        ids::rain_10m_entity(),
-        126.0 + dir * gust * 920.0,
-        -1560.0 - gust * 210.0,
-        0.56 + gust * 0.68
-    );
-    world_api.particles.set_wind(
-        ids::rain_5m_entity(),
-        180.0 + dir * gust * 1420.0,
-        -2060.0 - gust * 330.0,
-        0.72 + gust * 0.86
-    );
-    world_api.particles.set_wind(
-        ids::rain_1m_entity(),
-        250.0 + dir * gust * 2040.0,
-        -2840.0 - gust * 410.0,
-        0.84 + gust * 0.86
-    );
-    world_api.particles.set_wind(
-        ids::rain_super_near_entity(),
-        310.0 + dir * gust * 2300.0,
-        -3360.0 - gust * 440.0,
-        0.94 + gust * 0.78
-    );
+    world_api.particles.set_wind(ids::rain_10m_entity(), 126.0 + dir * gust * 920.0, -1560.0 - gust * 210.0, 0.56 + gust * 0.68);
+    world_api.particles.set_wind(ids::rain_5m_entity(), 180.0 + dir * gust * 1420.0, -2060.0 - gust * 330.0, 0.72 + gust * 0.86);
+    world_api.particles.set_wind(ids::rain_1m_entity(), 250.0 + dir * gust * 2040.0, -2840.0 - gust * 410.0, 0.84 + gust * 0.86);
+    world_api.particles.set_wind(ids::rain_super_near_entity(), 310.0 + dir * gust * 2300.0, -3360.0 - gust * 440.0, 0.94 + gust * 0.78);
 }

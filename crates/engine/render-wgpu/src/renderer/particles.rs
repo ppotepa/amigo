@@ -75,8 +75,8 @@ pub(crate) fn append_particle_primitive_vertices(
     if size <= f32::EPSILON || particle.color.a <= 0.0 {
         return;
     }
-    let _ = (lights, lightmaps, light_sources, light_routes);
-    let particle_color = particle.color;
+    let particle_color =
+        lit_particle_color(particle, lights, lightmaps, light_sources, light_routes);
     let shape = match particle.shape {
         ParticleShape2dPrimitive::Circle { segments } => VectorShape2dPrimitive {
             shape: VectorShape2dKindPrimitive::Circle {

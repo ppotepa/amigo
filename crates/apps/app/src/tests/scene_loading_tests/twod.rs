@@ -1,5 +1,7 @@
 use super::super::*;
+use amigo_render_api::VisualSourceKind2d;
 use amigo_layered_image_2d_plugin::LayeredImageSceneService;
+use amigo_particles_2d_plugin::Particle2dSceneService;
 use amigo_state::SceneStateService;
 
 #[test]
@@ -140,9 +142,33 @@ fn rotten_club_main_menu_queues_layered_image_background() {
     );
     assert!(
         summary
+            .prepared_assets
+            .iter()
+            .any(|asset| asset == "rotten-club/visual-maps/neon-alley-highlight (image-2d)")
+    );
+    assert!(
+        summary
+            .prepared_assets
+            .iter()
+            .any(|asset| asset == "rotten-club/depth-maps/neon-alley-depth (depth-map-2d)")
+    );
+    assert!(
+        summary
             .registered_assets
             .iter()
             .any(|asset| asset == "rotten-club/layered-images/neon-alley")
+    );
+    assert!(
+        summary
+            .registered_assets
+            .iter()
+            .any(|asset| asset == "rotten-club/visual-maps/neon-alley-highlight")
+    );
+    assert!(
+        summary
+            .registered_assets
+            .iter()
+            .any(|asset| asset == "rotten-club/depth-maps/neon-alley-depth")
     );
     assert!(summary.failed_assets.is_empty());
 
@@ -158,6 +184,15 @@ fn rotten_club_main_menu_queues_layered_image_background() {
     assert_eq!(
         background.image.asset.as_str(),
         "rotten-club/layered-images/neon-alley"
+    );
+    assert_eq!(
+        background
+            .image
+            .visual_maps
+            .as_ref()
+            .and_then(|maps| maps.highlight.as_ref())
+            .map(|key| key.as_str()),
+        Some("rotten-club/visual-maps/neon-alley-highlight")
     );
     assert_eq!(background.image.size, amigo_math::Vec2::new(1280.0, 720.0));
     assert_eq!(background.image.base_opacity, 0.0);
@@ -194,11 +229,41 @@ fn rotten_club_main_menu_script_animates_layered_image_intro() {
         .resolve::<SceneStateService>()
         .expect("scene state service should be registered");
     scene_state.set_float("lightning.next", 99.0);
+    let particles = runtime
+        .resolve::<Particle2dSceneService>()
+        .expect("particle scene service should be registered");
+    runtime
+        .resolve::<amigo_runtime::SystemRegistry>()
+        .expect("system registry should be registered")
+        .run_phase(amigo_runtime::SystemPhase::PreUpdate, &runtime)
+        .expect("focus targets should refresh before script update");
 
     script_runtime
         .call_update("scene:rotten-club:main-menu", 1.0)
         .expect("main menu script update should run");
     process_placeholder_bridges(&runtime).expect("intro update commands should dispatch");
+    assert!(
+        scene_state
+            .get_float("intro.rain_intensity")
+            .is_some_and(|rain| rain <= f64::EPSILON),
+        "main menu rain should stay hidden during the first second"
+    );
+    assert_eq!(particles.intensity("rain-super-near"), 0.0);
+    assert_eq!(
+        scene_state.get_bool("intro.focus_hunt.near_started"),
+        Some(true)
+    );
+    assert_eq!(
+        scene_state.get_bool("intro.focus.skyline_started"),
+        Some(false)
+    );
+    assert!(
+        scene_state
+            .get_float("camera_dof_controls.aperture_f_stop")
+            .is_some_and(|f_stop| f_stop <= 1.8),
+        "intro should keep the main camera in a visibly shallow depth-of-field range"
+    );
+    assert_eq!(particles.intensity("rain-10m"), 0.0);
 
     let layered_images = runtime
         .resolve::<LayeredImageSceneService>()
@@ -247,6 +312,169 @@ fn rotten_club_main_menu_script_animates_layered_image_intro() {
             .layer_overrides
             .iter()
             .any(|override_| override_.id == "club_sign")
+    );
+
+    script_runtime
+        .call_update("scene:rotten-club:main-menu", 5.0)
+        .expect("main menu script update should run");
+    process_placeholder_bridges(&runtime).expect("rain reveal commands should dispatch");
+    assert!(
+        scene_state
+            .get_float("intro.rain_intensity")
+            .is_some_and(|rain| rain > 0.0),
+        "main menu rain timing state should advance for the later weather pass"
+    );
+    assert!(
+        particles.intensity("rain-super-near") > 0.0,
+        "world-space rain should become visible once the intro reaches the weather pass"
+    );
+    assert!(particles.is_active("rain-super-near"));
+}
+
+#[test]
+fn rotten_club_main_menu_camera_capture_sees_world_sources() {
+    let (runtime, summary) = bootstrap_with_options(
+        BootstrapOptions::new(mods_root())
+            .with_active_mods(vec!["core".to_owned(), "rotten-club".to_owned()])
+            .with_startup_mod("rotten-club")
+            .with_startup_scene("main-menu")
+            .with_dev_mode(true),
+    )
+    .expect("they are rotten main menu bootstrap should succeed");
+    assert!(!summary.prepared_assets.iter().any(|asset| asset
+        == "rotten-club/camera/rain/realistic-lens-rain (camera-rain-glass-profile-2d)"));
+
+    runtime
+        .resolve::<amigo_runtime::SystemRegistry>()
+        .expect("system registry should be registered")
+        .run_phase(amigo_runtime::SystemPhase::PreUpdate, &runtime)
+        .expect("focus targets should refresh before script update");
+    runtime
+        .resolve::<amigo_scripting_api::ScriptRuntimeService>()
+        .expect("script runtime should be registered")
+        .call_update("scene:rotten-club:main-menu", 12.0)
+        .expect("main menu script update should run");
+    process_placeholder_bridges(&runtime).expect("intro reveal commands should dispatch");
+    runtime
+        .resolve::<amigo_session::RuntimeSchedulingService>()
+        .expect("runtime scheduling service should be registered")
+        .set_mode(amigo_runtime::EngineSchedulerMode::SingleThread);
+    amigo_particles_2d_plugin::tick_particles_2d_world(&runtime, 0.5)
+        .expect("rain particles should tick before render extraction");
+    let particles = runtime
+        .resolve::<Particle2dSceneService>()
+        .expect("particle scene service should be registered");
+    let emitter_names = particles
+        .emitters()
+        .into_iter()
+        .map(|emitter| emitter.entity_name)
+        .collect::<Vec<_>>();
+    assert!(
+        emitter_names.iter().any(|name| name == "rain-super-near"),
+        "rain emitters should be hydrated, got {emitter_names:?}"
+    );
+    let scene = runtime
+        .resolve::<SceneService>()
+        .expect("scene service should be registered");
+    assert!(scene.is_visible("rain-super-near"));
+    assert!(scene.is_simulation_enabled("rain-super-near"));
+    assert!(
+        particles.intensity("rain-super-near") > 0.0,
+        "intro rain should drive the nearest world-space emitter"
+    );
+    assert!(particles.is_active("rain-super-near"));
+    assert!(
+        particles
+            .effective_max_particles("rain-super-near")
+            .unwrap_or(0)
+            > 0,
+        "rain emitter should have a positive particle budget"
+    );
+    assert!(
+        particles
+            .effective_spawn_rate("rain-super-near")
+            .unwrap_or(0.0)
+            > 0.0,
+        "rain emitter should have a positive spawn rate"
+    );
+    assert!(
+        particles.particle_count("rain-super-near") > 0,
+        "active rain should spawn near-camera particles before extraction"
+    );
+    assert!(
+        particles.particle_count("rain-10m") > 0,
+        "active rain should spawn far lightmap-reactive particles before extraction"
+    );
+
+    let packet =
+        amigo_runtime_bundles::default_wgpu_render_extractor_registry_for_runtime(&runtime)
+            .extract_all(&runtime);
+    let capture = packet
+        .camera_capture_input_2d()
+        .expect("rotten club camera post-fx should publish capture input");
+
+    let focus_blur = packet
+        .post_fx_stacks()
+        .iter()
+        .flat_map(|stack| stack.effects.iter())
+        .find_map(|instance| instance.effect.as_focus_blur())
+        .expect("rotten club main camera should contribute FocusBlur");
+    assert_eq!(focus_blur.depth_map.as_deref(), Some("main-menu-depth"));
+    assert!(focus_blur.max_blur_px >= 30.0);
+    assert!(focus_blur.background_blur_boost >= 1.5);
+    assert!(focus_blur.highlight_threshold <= 0.45);
+    assert!(focus_blur.highlight_gain >= 2.5);
+    assert!(
+        packet.render_depth_maps_2d().any(|depth_map| {
+            depth_map.id == "main-menu-depth"
+                && depth_map.asset.as_str() == "rotten-club/depth-maps/neon-alley-depth"
+        }),
+        "camera depth-map bokeh should bind the authored neon alley depth map"
+    );
+    assert!(
+        !packet.post_fx_stacks().iter().any(|stack| {
+            stack
+                .effects
+                .iter()
+                .any(|instance| instance.effect.as_rain_glass().is_some())
+        }),
+        "lens rain glass is intentionally disabled while bokeh is tuned"
+    );
+    assert!(
+        capture
+            .layers
+            .iter()
+            .any(|layer| layer.layer_id == "background.city")
+    );
+    assert!(
+        capture
+            .layers
+            .iter()
+            .any(|layer| layer.layer_id == "weather.rain.10m")
+    );
+    assert!(
+        capture.source(VisualSourceKind2d::LayerMask).is_some(),
+        "camera capture should see render layers before post-fx extraction"
+    );
+    assert!(
+        capture.source(VisualSourceKind2d::SceneHighlight).is_some(),
+        "camera bokeh should receive an explicit background highlight source"
+    );
+    assert!(
+        packet.renderables_2d().iter().any(|item| {
+            item.owner_entity() == "rain-10m" && item.component_kind() == "ParticleEmitter2D"
+        }),
+        "enabled rain should submit lightmap-reactive particle renderables"
+    );
+    assert!(
+        packet.world_2d_light_sources().iter().any(|source| {
+            source.emitter_kind.as_str() == "lightmap_channel"
+                && source
+                    .emitter_id
+                    .as_deref()
+                    .is_some_and(|id| id.contains("neon-alley-lightmap"))
+        }),
+        "camera post-fx should run after lightmap sources are extracted"
     );
 }
 

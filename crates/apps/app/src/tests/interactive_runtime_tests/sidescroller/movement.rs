@@ -287,6 +287,27 @@ fn interactive_host_handler_moves_sidescroller_player_right() {
         updated.translation.x > initial.translation.x,
         "Right arrow should move the sidescroller player to the right"
     );
+    let packet = amigo_runtime_bundles::default_wgpu_render_extractor_registry_for_runtime(
+        handler.session.runtime(),
+    )
+    .extract_all(handler.session.runtime());
+    let player_sprite = packet
+        .renderables_2d()
+        .iter()
+        .find(|item| {
+            item.owner_entity() == "playground-sidescroller-player"
+                && item.component_kind() == "Sprite2D"
+        })
+        .expect("player sprite renderable should extract");
+    let player_sprite_transform = player_sprite.primitive.transform();
+    assert_eq!(
+        player_sprite_transform.translation.x, updated.translation.x,
+        "player sprite renderable should use live scene x transform"
+    );
+    assert_eq!(
+        player_sprite_transform.translation.y, updated.translation.y,
+        "player sprite renderable should use live scene y transform"
+    );
 }
 
 #[test]

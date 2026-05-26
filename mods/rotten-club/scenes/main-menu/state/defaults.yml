@@ -5,6 +5,7 @@ state:
   camera_lens.distortion_px: 0.0
   camera_lens.chromatic_aberration: 0.12
   camera_lens.edge_warp: 0.0
+  rain.enabled: true
   intro.focus.skyline_started: false
   intro.focus.far_street_started: false
   intro.focus.club_started: false
@@ -23,6 +24,11 @@ state:
   intro.rain_intensity: 0.0
   intro.lightning_intensity: 0.0
   intro.complete: false
+  intro.prompt_shown: false
+  intro.menu_active: false
+  intro.prompt_top_space: 513.0
+  intro.prompt_shown_at: 0.0
+  intro.prompt_input_after: 0.0
   bar.next_flicker: 0.0
   bar.mul: 1.0
   club.next_flicker: 0.0

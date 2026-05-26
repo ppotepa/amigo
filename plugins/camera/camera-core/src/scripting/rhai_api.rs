@@ -59,6 +59,17 @@ impl CameraApi {
         service.set_lens_rain_profile_2d(&CameraId::new(camera_id), profile.to_owned())
     }
 
+    pub fn clear_main_lens_rain_profile(&mut self) -> bool {
+        self.clear_lens_rain_profile("main")
+    }
+
+    pub fn clear_lens_rain_profile(&mut self, camera_id: &str) -> bool {
+        self.update_camera_2d(camera_id, |camera| {
+            camera.lens_surface.rain_profile = None;
+            true
+        })
+    }
+
     pub fn clear_main_lens_rain_override(&mut self) -> bool {
         self.clear_lens_rain_override("main")
     }
@@ -78,6 +89,22 @@ impl CameraApi {
 
     pub fn set_main_focal_length_mm(&mut self, value: rhai::FLOAT) -> bool {
         self.set_focal_length_mm("main", value)
+    }
+
+    pub fn set_main_lens_profile(&mut self, profile: &str) -> bool {
+        self.set_lens_profile("main", profile)
+    }
+
+    pub fn set_lens_profile(&mut self, camera_id: &str, profile: &str) -> bool {
+        let profile = profile.trim();
+        if profile.is_empty() {
+            return false;
+        }
+
+        self.update_camera_2d(camera_id, |camera| {
+            camera.lens.profile = profile.to_owned();
+            true
+        })
     }
 
     pub fn set_main_preset(&mut self, preset: &str) -> bool {
@@ -121,6 +148,139 @@ impl CameraApi {
         self.update_camera_2d(camera_id, |camera| {
             camera.aperture.enabled = true;
             camera.aperture.f_stop = value;
+            true
+        })
+    }
+
+    pub fn set_main_aperture_rotation_degrees(&mut self, value: rhai::FLOAT) -> bool {
+        self.set_aperture_rotation_degrees("main", value)
+    }
+
+    pub fn set_aperture_rotation_degrees(
+        &mut self,
+        camera_id: &str,
+        value: rhai::FLOAT,
+    ) -> bool {
+        let Some(value) = finite_clamped(value, -360.0, 360.0) else {
+            return false;
+        };
+
+        self.update_camera_2d(camera_id, |camera| {
+            camera.aperture.depth_of_field.aperture_rotation_degrees = value;
+            true
+        })
+    }
+
+    pub fn set_main_dof_max_blur_px(&mut self, value: rhai::FLOAT) -> bool {
+        self.set_dof_max_blur_px("main", value)
+    }
+
+    pub fn set_dof_max_blur_px(&mut self, camera_id: &str, value: rhai::FLOAT) -> bool {
+        let Some(value) = finite_clamped(value, 0.0, 90.0) else {
+            return false;
+        };
+
+        self.update_camera_2d(camera_id, |camera| {
+            camera.aperture.depth_of_field.max_blur_px = value;
+            true
+        })
+    }
+
+    pub fn set_main_dof_focus_width(&mut self, value: rhai::FLOAT) -> bool {
+        self.set_dof_focus_width("main", value)
+    }
+
+    pub fn set_dof_focus_width(&mut self, camera_id: &str, value: rhai::FLOAT) -> bool {
+        let Some(value) = finite_clamped(value, 0.005, 0.22) else {
+            return false;
+        };
+
+        self.update_camera_2d(camera_id, |camera| {
+            camera.aperture.depth_of_field.focus_width = value;
+            true
+        })
+    }
+
+    pub fn set_main_dof_blur_boosts(
+        &mut self,
+        foreground: rhai::FLOAT,
+        background: rhai::FLOAT,
+    ) -> bool {
+        self.set_dof_blur_boosts("main", foreground, background)
+    }
+
+    pub fn set_dof_blur_boosts(
+        &mut self,
+        camera_id: &str,
+        foreground: rhai::FLOAT,
+        background: rhai::FLOAT,
+    ) -> bool {
+        let Some(foreground) = finite_clamped(foreground, 0.25, 2.5) else {
+            return false;
+        };
+        let Some(background) = finite_clamped(background, 0.25, 2.5) else {
+            return false;
+        };
+
+        self.update_camera_2d(camera_id, |camera| {
+            camera.aperture.depth_of_field.foreground_blur_boost = foreground;
+            camera.aperture.depth_of_field.background_blur_boost = background;
+            true
+        })
+    }
+
+    pub fn set_main_dof_sample_count(&mut self, sample_count: rhai::FLOAT) -> bool {
+        self.set_dof_sample_count("main", sample_count)
+    }
+
+    pub fn set_dof_sample_count(&mut self, camera_id: &str, sample_count: rhai::FLOAT) -> bool {
+        let Some(sample_count) = finite_clamped(sample_count, 12.0, 96.0) else {
+            return false;
+        };
+        let sample_count = sample_count.round() as u32;
+
+        self.update_camera_2d(camera_id, |camera| {
+            camera.aperture.depth_of_field.sample_count = sample_count;
+            true
+        })
+    }
+
+    pub fn set_main_dof_highlights(
+        &mut self,
+        threshold: rhai::FLOAT,
+        knee: rhai::FLOAT,
+        gain: rhai::FLOAT,
+        saturation: rhai::FLOAT,
+    ) -> bool {
+        self.set_dof_highlights("main", threshold, knee, gain, saturation)
+    }
+
+    pub fn set_dof_highlights(
+        &mut self,
+        camera_id: &str,
+        threshold: rhai::FLOAT,
+        knee: rhai::FLOAT,
+        gain: rhai::FLOAT,
+        saturation: rhai::FLOAT,
+    ) -> bool {
+        let Some(threshold) = finite_clamped(threshold, 0.0, 4.0) else {
+            return false;
+        };
+        let Some(knee) = finite_clamped(knee, 0.001, 2.0) else {
+            return false;
+        };
+        let Some(gain) = finite_clamped(gain, 0.0, 8.0) else {
+            return false;
+        };
+        let Some(saturation) = finite_clamped(saturation, 0.0, 3.0) else {
+            return false;
+        };
+
+        self.update_camera_2d(camera_id, |camera| {
+            camera.aperture.depth_of_field.highlight_threshold = threshold;
+            camera.aperture.depth_of_field.highlight_knee = knee;
+            camera.aperture.depth_of_field.highlight_gain = gain;
+            camera.aperture.depth_of_field.highlight_saturation = saturation;
             true
         })
     }

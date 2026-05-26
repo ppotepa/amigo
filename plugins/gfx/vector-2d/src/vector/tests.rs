@@ -4,7 +4,7 @@ use super::model::{
     VectorShapeKind2d, VectorStyle2d, VectorViewportFit2d, radial_jitter_polygon_points,
 };
 use super::plugin::Vector2dPlugin;
-use amigo_math::{ColorRgba, Transform2, Vec2};
+use amigo_math::{ColorRgba, Transform2, Transform3, Vec2, Vec3};
 use amigo_camera_optics_plugin::scene::CameraOpticalResponse2dSceneCommand;
 use amigo_render_api::{RenderContributionSet, render_contribution_roles as roles};
 use amigo_runtime::RuntimeBuilder;
@@ -250,6 +250,49 @@ fn queues_vector_shape_scene_command() {
     assert_eq!(entity.raw(), 0);
     assert_eq!(service.commands().len(), 1);
     assert_eq!(scene.entity_names(), vec!["test-shape".to_owned()]);
+}
+
+#[test]
+fn vector_render_extraction_uses_live_scene_transform() {
+    let scene = SceneService::default();
+    let service = VectorSceneService::default();
+    let command = VectorShape2dSceneCommand {
+        source_mod: "test-mod".to_owned(),
+        entity_name: "ship".to_owned(),
+        render_layer: "world".to_owned(),
+        kind: VectorShapeKind2dSceneCommand::Polyline {
+            points: vec![Vec2::new(0.0, 12.0), Vec2::new(-8.0, -8.0)],
+            closed: false,
+        },
+        style: VectorStyle2dSceneCommand {
+            stroke_color: ColorRgba::WHITE,
+            stroke_width: 1.0,
+            fill_color: None,
+        },
+        z_index: 1.0,
+        render_contributions: RenderContributions2dSceneCommand::default(),
+        material: None,
+        transform: Transform2::default(),
+    };
+    super::scene_bridge::queue_vector_shape_scene_command(&scene, &service, &command);
+    let live_transform = Transform3 {
+        translation: Vec3::new(42.0, -18.0, 0.0),
+        rotation_euler: Vec3::new(0.0, 0.0, 1.25),
+        scale: Vec3::new(1.4, 0.8, 1.0),
+    };
+    assert!(scene.set_transform("ship", live_transform));
+
+    let commands = crate::render::extract_vector2d_render_commands(
+        crate::render::Vector2dRenderExtractionContext {
+            scene_service: &scene,
+            vector_scene_service: &service,
+        },
+    );
+
+    assert_eq!(commands.len(), 1);
+    assert_eq!(commands[0].transform.translation, Vec2::new(42.0, -18.0));
+    assert_eq!(commands[0].transform.rotation_radians, 1.25);
+    assert_eq!(commands[0].transform.scale, Vec2::new(1.4, 0.8));
 }
 
 #[test]

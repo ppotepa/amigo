@@ -28,7 +28,7 @@ entities:
       camera.shutter: true
       camera.optics: true
       camera.focus_blur: true
-      camera.lens_surface: true
+      camera.lens_surface: false
       camera.film: true
       camera.look: false
       camera.scan_output: true
@@ -47,10 +47,10 @@ entities:
       luma_threshold: 0.018
       frame_hold: false
     lens:
-      profile: clean_modern_35mm
-      intensity: 0.0
+      profile: rotten-club/camera/lens/gritty-club-custom
+      intensity: 1.0
     lens_surface:
-      rain_profile: realistic_lens_rain
+      rain_profile: ""
     film:
       profile: neutral_digital_400
       intensity: 0.42
@@ -67,19 +67,19 @@ entities:
         distance_m: 6.0
       depth_of_field:
         depth_map: main-menu-depth
-        max_blur_px: 16.0
+        max_blur_px: 34.0
         depth_contrast: 1.0
-        focus_width: 0.070
-        foreground_blur_boost: 1.00
-        background_blur_boost: 1.05
+        focus_width: 0.032
+        foreground_blur_boost: 1.20
+        background_blur_boost: 1.85
         edge_aware: true
         invert_depth: false
         debug_view: final
         aperture_blades: 7
         aperture_roundness: 0.78
         aperture_rotation_degrees: 0.0
-        sample_count: 48
-        highlight_threshold: 0.72
-        highlight_knee: 0.18
-        highlight_gain: 1.15
-        highlight_saturation: 1.00
+        sample_count: 64
+        highlight_threshold: 0.42
+        highlight_knee: 0.16
+        highlight_gain: 2.80
+        highlight_saturation: 1.25

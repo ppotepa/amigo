@@ -7,7 +7,7 @@ use amigo_assets::{
     AssetCatalog, AssetKey, AssetLoadPriority, AssetLoadRequest, AssetManifest, AssetSourceKind,
     LoadedAsset, prepare_asset_from_contents,
 };
-use amigo_math::{Transform2, Vec2};
+use amigo_math::{Transform2, Transform3, Vec2, Vec3};
 use amigo_render_api::RenderContributionSet;
 use amigo_camera_optics_plugin::scene::CameraOpticalResponse2dSceneCommand;
 use amigo_scene::{
@@ -174,6 +174,37 @@ fn queues_sprite_scene_command() {
         scene.entity_names(),
         vec!["playground-2d-sprite".to_owned()]
     );
+}
+
+#[test]
+fn sprite_render_extraction_uses_live_scene_transform() {
+    let scene = SceneService::default();
+    let service = SpriteSceneService::default();
+    let command = Sprite2dSceneCommand::new(
+        "test-mod",
+        "hero",
+        AssetKey::new("test-mod/sprites/hero"),
+        Vec2::new(32.0, 32.0),
+    );
+    queue_sprite_scene_command(&scene, &service, &command, None);
+    let live_transform = Transform3 {
+        translation: Vec3::new(96.0, 48.0, 0.0),
+        rotation_euler: Vec3::new(0.0, 0.0, 0.5),
+        scale: Vec3::new(1.25, 0.75, 1.0),
+    };
+    assert!(scene.set_transform("hero", live_transform));
+
+    let commands = crate::render::extract_sprite2d_render_commands(
+        crate::render::Sprite2dRenderExtractionContext {
+            scene_service: &scene,
+            sprite_scene_service: &service,
+        },
+    );
+
+    assert_eq!(commands.len(), 1);
+    assert_eq!(commands[0].transform.translation, Vec2::new(96.0, 48.0));
+    assert_eq!(commands[0].transform.rotation_radians, 0.5);
+    assert_eq!(commands[0].transform.scale, Vec2::new(1.25, 0.75));
 }
 
 #[test]

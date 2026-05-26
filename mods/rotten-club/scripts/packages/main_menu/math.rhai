@@ -1,11 +1,15 @@
-fn clamp01(value) {
-    if value < 0.0 {
-        return 0.0;
+fn clamp(value, min_value, max_value) {
+    if value < min_value {
+        return min_value;
     }
-    if value > 1.0 {
-        return 1.0;
+    if value > max_value {
+        return max_value;
     }
     value
+}
+
+fn clamp01(value) {
+    clamp(value, 0.0, 1.0)
 }
 
 fn smooth01(value) {
@@ -24,18 +28,18 @@ fn maxf(left, right) {
     right
 }
 
-fn ramp(time, start, duration) {
-    smooth01((time - start) / duration)
+fn axis_delta(axis, step) {
+    if axis > 0 {
+        return step;
+    }
+    if axis < 0 {
+        return -step;
+    }
+    0.0
 }
 
-fn window(time, start, duration) {
-    if time < start {
-        return 0.0;
-    }
-    if time > start + duration {
-        return 0.0;
-    }
-    clamp01((time - start) / duration)
+fn ramp(time, start, duration) {
+    smooth01((time - start) / duration)
 }
 
 fn pulse_long(time, start, rise, hold, decay) {
@@ -54,13 +58,4 @@ fn pulse_long(time, start, rise, hold, decay) {
         return 1.0 - smooth01((t - rise - hold) / decay);
     }
     0.0
-}
-
-fn once(world_api, key) {
-    if world_api.state.get_bool(key) {
-        return false;
-    }
-
-    world_api.state.set_bool(key, true);
-    true
 }

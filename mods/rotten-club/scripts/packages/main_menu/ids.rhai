@@ -16,15 +16,9 @@ fn beacon_d_sync_2() { "beacon-d-sync-2" }
 
 fn rain_10m_entity() { "rain-10m" }
 
-fn rain_10m_layer() { "layer:weather.rain.10m" }
-
 fn rain_5m_entity() { "rain-5m" }
 
-fn rain_5m_layer() { "layer:weather.rain.5m" }
-
 fn rain_1m_entity() { "rain-1m" }
-
-fn rain_1m_layer() { "layer:weather.rain.1m" }
 
 fn rain_super_near_entity() { "rain-super-near" }
 
@@ -38,8 +32,6 @@ fn title_layer() { "title.depth2d" }
 
 fn title_focus_target() { "title" }
 
-fn title_layer_focus_target() { "layer:title.depth2d" }
-
 fn menu_ui_root() { "main-menu.root" }
 
 fn press_any_key_ui_root() { "press-any-key.root" }
@@ -47,5 +39,3 @@ fn press_any_key_ui_root() { "press-any-key.root" }
 fn press_any_key_prompt_ui() { "press-any-key.root.prompt" }
 
 fn lightning_id() { "lightning" }
-
-

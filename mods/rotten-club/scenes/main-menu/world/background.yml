@@ -29,6 +29,8 @@ entities:
     base_opacity: 0.0
     viewport_fit: cover
     z_index: -100.0
+    visual_maps:
+      highlight: rotten-club/visual-maps/neon-alley-highlight
     layer_overrides:
     - id: club_sign
       opacity: 0.0
