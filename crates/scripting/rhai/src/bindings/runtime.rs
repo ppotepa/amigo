@@ -88,3 +88,16 @@ pub fn runtime_services(diagnostics: Option<&Arc<RuntimeDiagnostics>>) -> Vec<St
         .map(|diagnostics| diagnostics.service_names.clone())
         .unwrap_or_default()
 }
+
+pub(crate) fn register_api(engine: &mut rhai::Engine) {
+    engine
+        .register_type_with_name::<RuntimeApi>("WorldRuntime")
+        .register_fn("window_backend", RuntimeApi::window_backend)
+        .register_fn("input_backend", RuntimeApi::input_backend)
+        .register_fn("render_backend", RuntimeApi::render_backend)
+        .register_fn("script_backend", RuntimeApi::script_backend)
+        .register_fn("capabilities", RuntimeApi::capabilities)
+        .register_fn("plugins", RuntimeApi::plugins)
+        .register_fn("services", RuntimeApi::services)
+        .register_fn("dev_mode", RuntimeApi::dev_mode);
+}

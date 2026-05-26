@@ -1,6 +1,5 @@
 use super::policy::{VisualSourceBufferPolicySet, VisualSourceBufferResolutionPolicy};
 use super::*;
-use amigo_render_api::RenderPrimitive2d;
 
 pub(super) fn produce_material_map_buffers(
     renderer: &mut WgpuSceneRenderer,
@@ -155,59 +154,19 @@ fn render_per_draw_visual_map_buffer(
     let camera = crate::renderer::scene::resolve_camera2d_transform(request.scene_view);
     let mut texture_batches = Vec::new();
     let mut color_batches = Vec::new();
+    let renderable_adapters = crate::default_renderable_2d_adapter_registry();
 
     for item in request.world_2d.renderables {
-        match &item.primitive {
-            RenderPrimitive2d::TexturedQuad(primitive) => {
-                let Some(asset) = visual_map_for_kind(primitive.visual_maps.as_ref(), kind) else {
-                    continue;
-                };
-                append_visual_map_sprite_batch(
-                    renderer,
-                    &mut texture_batches,
-                    target,
-                    request,
-                    &viewport,
-                    camera,
-                    primitive.transform,
-                    asset,
-                    primitive.size,
-                );
-            }
-            RenderPrimitive2d::LayeredTexturedQuads(primitive) => {
-                if let Some(asset) = visual_map_for_kind(primitive.visual_maps.as_ref(), kind) {
-                    append_visual_map_sprite_batch(
-                        renderer,
-                        &mut texture_batches,
-                        target,
-                        request,
-                        &viewport,
-                        camera,
-                        primitive.transform,
-                        asset,
-                        primitive.size,
-                    );
-                }
-                for override_ in &primitive.layer_overrides {
-                    let Some(asset) = visual_map_for_kind(override_.visual_maps.as_ref(), kind)
-                    else {
-                        continue;
-                    };
-                    append_visual_map_sprite_batch(
-                        renderer,
-                        &mut texture_batches,
-                        target,
-                        request,
-                        &viewport,
-                        camera,
-                        primitive.transform,
-                        asset,
-                        primitive.size,
-                    );
-                }
-            }
-            _ => {}
-        }
+        let mut adapter_ctx = crate::WgpuVisualMapAdapterContext {
+            renderer,
+            texture_batches: &mut texture_batches,
+            target,
+            assets: request.assets,
+            viewport: &viewport,
+            camera,
+            kind,
+        };
+        let _ = renderable_adapters.append_visual_map_batches(&mut adapter_ctx, item);
     }
 
     let candidate_texture_appended =
@@ -244,54 +203,4 @@ fn render_per_draw_visual_map_buffer(
         &[],
     )?;
     Ok(true)
-}
-
-fn append_visual_map_sprite_batch(
-    renderer: &mut WgpuSceneRenderer,
-    texture_batches: &mut Vec<TextureBatch>,
-    target: &WgpuOffscreenTarget,
-    request: &WgpuFrameRenderRequest<'_>,
-    viewport: &Viewport,
-    camera: Transform2,
-    transform: Transform2,
-    asset: &amigo_assets::AssetKey,
-    size: Vec2,
-) {
-    renderer.append_textured_quad_texture_batch(
-        texture_batches,
-        &target.device,
-        &target.queue,
-        request.assets,
-        viewport,
-        camera,
-        &amigo_render_api::TexturedQuad2dPrimitive {
-            texture: asset.clone(),
-            size,
-            transform,
-            visual_maps: None,
-            sheet: None,
-            frame_index: 0,
-            material: amigo_render_api::RenderMaterialBinding2d::none(
-                amigo_material_api::MaterialCoverageKind2d::TextureAlpha,
-            ),
-        },
-    );
-}
-
-fn visual_map_for_kind(
-    maps: Option<&amigo_render_api::VisualMaps2dPrimitive>,
-    kind: amigo_render_api::VisualSourceKind2d,
-) -> Option<&amigo_assets::AssetKey> {
-    let maps = maps?;
-    match kind {
-        amigo_render_api::VisualSourceKind2d::SceneNormal => maps.normal.as_ref(),
-        amigo_render_api::VisualSourceKind2d::SceneWetness => maps.wetness.as_ref(),
-        amigo_render_api::VisualSourceKind2d::SceneEmissive => maps.emissive.as_ref(),
-        amigo_render_api::VisualSourceKind2d::SceneHighlight => maps.highlight.as_ref(),
-        amigo_render_api::VisualSourceKind2d::SceneColor
-        | amigo_render_api::VisualSourceKind2d::SceneDepth
-        | amigo_render_api::VisualSourceKind2d::LayerMask
-        | amigo_render_api::VisualSourceKind2d::SceneMotion
-        | amigo_render_api::VisualSourceKind2d::Debug => None,
-    }
 }

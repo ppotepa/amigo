@@ -50,3 +50,12 @@ impl LayeredImage2dApi {
         queue_layered_image_set_blend(self.command_queue.as_ref(), entity_name, layer_id, blend)
     }
 }
+
+pub(crate) fn register_api(engine: &mut rhai::Engine) {
+    engine
+        .register_type_with_name::<LayeredImage2dApi>("WorldLayeredImage2d")
+        .register_fn("set_base_opacity", LayeredImage2dApi::set_base_opacity)
+        .register_fn("set_opacity", LayeredImage2dApi::set_opacity)
+        .register_fn("set_enabled", LayeredImage2dApi::set_enabled)
+        .register_fn("set_blend", LayeredImage2dApi::set_blend);
+}

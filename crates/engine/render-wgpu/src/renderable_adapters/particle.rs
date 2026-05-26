@@ -59,4 +59,10 @@ impl WgpuRenderable2dAdapter for ParticleBatch2dRenderableAdapter {
         );
         true
     }
+
+    fn focus_sample_world_position(&self, item: &crate::Renderable2dItem) -> Option<amigo_math::Vec2> {
+        item.primitive
+            .particle_batch()
+            .map(|primitive| primitive.position)
+    }
 }

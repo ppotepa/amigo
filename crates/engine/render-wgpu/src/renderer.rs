@@ -101,6 +101,7 @@ pub(crate) use render_types::*;
 pub(crate) use service::{WgpuMaterialCandidate2d, collect_material_candidate_2d};
 pub(crate) use viewport::*;
 pub(crate) use world_2d::append_beacon_vfx_primitive_vertices;
+pub(crate) use world_2d::append_text_2d_vertices;
 pub(crate) use world_2d::append_textured_quad_debug_vertices;
 pub(crate) use world_2d::append_tilemap_primitive_color_vertices;
 pub(crate) use world_2d::append_vector_primitive_vertices;

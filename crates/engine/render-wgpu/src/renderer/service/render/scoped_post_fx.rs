@@ -1,6 +1,7 @@
 use super::world_filters::WorldPassLoad;
 use super::world_selection::OwnedWorldRenderSelection;
 use super::*;
+use amigo_render_api::RenderObjectId;
 
 enum ScopedPostFxTarget<'a> {
     DrawLayer {
@@ -389,7 +390,7 @@ fn render_scoped_source(
         } => {
             let mut part_targets = BTreeMap::new();
             part_targets.insert(
-                owner_scene_object_id.to_owned(),
+                RenderObjectId::for_scene_object(owner_scene_object_id),
                 BTreeSet::from([part_id.to_owned()]),
             );
             super::execute_layered_image_parts_to_offscreen(

@@ -2,6 +2,7 @@ use super::world_filters::{
     LayeredImagePartFilter, WorldLayerFilter, WorldObjectFilter, WorldPassLoad,
 };
 use super::*;
+use amigo_render_api::RenderObjectId;
 
 pub(super) trait WorldPassLoadExt {
     fn to_load_op(self) -> wgpu::LoadOp<wgpu::Color>;
@@ -38,19 +39,19 @@ pub(super) enum OwnedWorldLayerFilter {
 
 pub(super) enum OwnedWorldObjectFilter {
     All,
-    Include(BTreeSet<String>),
-    IncludeSubtrees(BTreeSet<String>),
-    Exclude(BTreeSet<String>),
-    ExcludeSubtrees(BTreeSet<String>),
+    Include(BTreeSet<RenderObjectId>),
+    IncludeSubtrees(BTreeSet<RenderObjectId>),
+    Exclude(BTreeSet<RenderObjectId>),
+    ExcludeSubtrees(BTreeSet<RenderObjectId>),
     ExcludeCombined {
-        objects: BTreeSet<String>,
-        subtrees: BTreeSet<String>,
+        objects: BTreeSet<RenderObjectId>,
+        subtrees: BTreeSet<RenderObjectId>,
     },
 }
 
 pub(super) enum OwnedLayeredImagePartFilter {
     All,
-    Exclude(BTreeMap<String, BTreeSet<String>>),
+    Exclude(BTreeMap<RenderObjectId, BTreeSet<String>>),
 }
 
 pub(super) struct WorldRenderSelection<'a> {
@@ -130,7 +131,7 @@ impl OwnedWorldRenderSelection {
 
     pub(super) fn scene_object(scene_object_id: &str, pass_load: WorldPassLoad) -> Self {
         let mut objects = BTreeSet::new();
-        objects.insert(scene_object_id.to_owned());
+        objects.insert(RenderObjectId::for_scene_object(scene_object_id));
         Self {
             object_filter: OwnedWorldObjectFilter::Include(objects),
             ..Self::all(pass_load)
@@ -139,7 +140,7 @@ impl OwnedWorldRenderSelection {
 
     pub(super) fn group_subtree(root_scene_object_id: &str, pass_load: WorldPassLoad) -> Self {
         let mut roots = BTreeSet::new();
-        roots.insert(root_scene_object_id.to_owned());
+        roots.insert(RenderObjectId::for_scene_object(root_scene_object_id));
         Self {
             object_filter: OwnedWorldObjectFilter::IncludeSubtrees(roots),
             ..Self::all(pass_load)
@@ -276,7 +277,7 @@ pub(super) fn draw_layer_post_fx_layers(
 
 pub(super) fn scene_object_post_fx_objects(
     stacks: &[amigo_render_api::ScopedPostFx2dStack],
-) -> BTreeSet<String> {
+) -> BTreeSet<RenderObjectId> {
     stacks
         .iter()
         .filter_map(|stack| {
@@ -292,7 +293,7 @@ pub(super) fn scene_object_post_fx_objects(
                 return None;
             };
             if stack.effects.iter().any(|effect| effect.effect.is_active()) {
-                Some(scene_object_id.clone())
+                Some(RenderObjectId::for_scene_object(scene_object_id))
             } else {
                 None
             }
@@ -302,7 +303,7 @@ pub(super) fn scene_object_post_fx_objects(
 
 pub(super) fn scene_group_post_fx_roots(
     stacks: &[amigo_render_api::ScopedPostFx2dStack],
-) -> BTreeSet<String> {
+) -> BTreeSet<RenderObjectId> {
     stacks
         .iter()
         .filter_map(|stack| {
@@ -319,7 +320,7 @@ pub(super) fn scene_group_post_fx_roots(
                 return None;
             };
             if stack.effects.iter().any(|effect| effect.effect.is_active()) {
-                Some(root_scene_object_id.clone())
+                Some(RenderObjectId::for_scene_object(root_scene_object_id))
             } else {
                 None
             }
@@ -329,7 +330,7 @@ pub(super) fn scene_group_post_fx_roots(
 
 pub(super) fn image_part_post_fx_targets(
     stacks: &[amigo_render_api::ScopedPostFx2dStack],
-) -> BTreeMap<String, BTreeSet<String>> {
+) -> BTreeMap<RenderObjectId, BTreeSet<String>> {
     let mut targets = BTreeMap::new();
     for stack in stacks {
         if !matches!(
@@ -350,7 +351,7 @@ pub(super) fn image_part_post_fx_targets(
             continue;
         }
         targets
-            .entry(owner_scene_object_id.clone())
+            .entry(RenderObjectId::for_scene_object(owner_scene_object_id))
             .or_insert_with(BTreeSet::new)
             .insert(part_id.clone());
     }

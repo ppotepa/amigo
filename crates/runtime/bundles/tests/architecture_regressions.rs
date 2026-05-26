@@ -25,6 +25,14 @@ fn runtime_bundles_do_not_publicly_reexport_plugin_crates() {
         !crate_root.join("src/plugin_crates.rs").exists(),
         "plugin_crates.rs should not remain after public plugin crate reexports are removed",
     );
+    assert!(
+        !crate_root.join("src/runtime_service_types.rs").exists(),
+        "runtime_service_types.rs should not remain as a public domain type facade",
+    );
+    assert!(
+        !lib_rs.contains("pub use runtime_service_types"),
+        "runtime-bundles should not glob-reexport runtime_service_types",
+    );
 
     for entry in fs::read_dir(crate_root.join("src")).expect("src dir should be readable") {
         let entry = entry.expect("src entry should be readable");

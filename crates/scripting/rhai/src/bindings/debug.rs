@@ -55,3 +55,15 @@ impl DebugApi {
         )
     }
 }
+
+pub(crate) fn register_api(engine: &mut rhai::Engine) {
+    engine
+        .register_type_with_name::<DebugApi>("WorldDebug")
+        .register_fn("event", DebugApi::event)
+        .register_fn("event", DebugApi::event_with_payload)
+        .register_fn("command", DebugApi::command)
+        .register_fn("log", DebugApi::log)
+        .register_fn("warn", DebugApi::warn)
+        .register_fn("write_text", DebugApi::write_text)
+        .register_fn("refresh_diagnostics", DebugApi::refresh_diagnostics);
+}

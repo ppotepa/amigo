@@ -26,7 +26,7 @@ use amigo_render_wgpu::{WgpuRenderBackend, WgpuSceneRenderer, WgpuSurfaceState};
 use amigo_runtime::{Runtime, RuntimePlugin, ServiceRegistry};
 use amigo_scene::{
     HydratedSceneState, SceneCommand, SceneCommandQueue, SceneHydrationPlan, SceneKey,
-    SceneService, SceneTransitionPlan, SceneTransitionService, Sprite2dSceneCommand,
+    SceneService, SceneTransitionPlan, SceneTransitionService,
 };
 use amigo_scripting_api::{
     DevConsoleQueue, DevConsoleState, ScriptCommand, ScriptCommandQueue, ScriptComponentService,

@@ -87,3 +87,20 @@ impl SessionApi {
             .unwrap_or_default()
     }
 }
+
+pub(crate) fn register_api(engine: &mut rhai::Engine) {
+    engine
+        .register_type_with_name::<SessionApi>("WorldSession")
+        .register_fn("set_int", SessionApi::set_int)
+        .register_fn("set_float", SessionApi::set_float)
+        .register_fn("set_bool", SessionApi::set_bool)
+        .register_fn("set_string", SessionApi::set_string)
+        .register_fn("get_int", SessionApi::get_int)
+        .register_fn("get_float", SessionApi::get_float)
+        .register_fn("get_bool", SessionApi::get_bool)
+        .register_fn("get_string", SessionApi::get_string)
+        .register_fn("add_int", SessionApi::add_int)
+        .register_fn("add_float", SessionApi::add_float)
+        .register_fn("add_bool", SessionApi::add_bool)
+        .register_fn("add_string", SessionApi::add_string);
+}

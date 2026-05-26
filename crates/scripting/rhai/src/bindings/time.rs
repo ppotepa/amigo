@@ -61,3 +61,12 @@ impl TimeApi {
         self.state.snapshot().frame as rhai::INT
     }
 }
+
+pub(crate) fn register_api(engine: &mut rhai::Engine) {
+    engine
+        .register_type_with_name::<TimeApi>("WorldTime")
+        .register_fn("delta", TimeApi::delta)
+        .register_fn("elapsed", TimeApi::elapsed)
+        .register_fn("seconds", TimeApi::seconds)
+        .register_fn("frame", TimeApi::frame);
+}

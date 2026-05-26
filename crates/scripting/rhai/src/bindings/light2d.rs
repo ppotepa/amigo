@@ -101,3 +101,20 @@ impl Light2dHandle {
         queue_light2d_set_color(self.command_queue.as_ref(), &self.id, color)
     }
 }
+
+pub(crate) fn register_api(engine: &mut rhai::Engine) {
+    engine
+        .register_type_with_name::<Light2dApi>("WorldLight2d")
+        .register_type_with_name::<Light2dHandle>("WorldLight2dHandle")
+        .register_type_with_name::<LightGroup2dHandle>("WorldLightGroup2dHandle")
+        .register_fn("get_light", Light2dApi::get_light)
+        .register_fn("get_group", Light2dApi::get_group)
+        .register_fn("set_intensity", Light2dApi::set_intensity)
+        .register_fn("set_color", Light2dApi::set_color)
+        .register_fn("id", Light2dHandle::id)
+        .register_fn("set_intensity", Light2dHandle::set_intensity)
+        .register_fn("set_color", Light2dHandle::set_color)
+        .register_fn("id", LightGroup2dHandle::id)
+        .register_fn("set_intensity", LightGroup2dHandle::set_intensity)
+        .register_fn("set_color", LightGroup2dHandle::set_color);
+}

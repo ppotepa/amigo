@@ -229,6 +229,7 @@ mod tests {
                     "title",
                     super::TEST_TEXT_COMPONENT_KIND,
                 ),
+                object_id: amigo_render_api::RenderObjectId::for_scene_object("title"),
                 owner_entity: "title".to_owned(),
                 component_kind: super::TEST_TEXT_COMPONENT_KIND.to_owned(),
                 render_space: RenderSpace2d::World,

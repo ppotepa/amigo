@@ -189,3 +189,26 @@ fn queue_beacon2d_value(
     }
     queue(command_queue, target, (value as f32).clamp(min, max))
 }
+
+pub(crate) fn register_api(engine: &mut rhai::Engine) {
+    engine
+        .register_type_with_name::<Beacon2dApi>("WorldBeacon2d")
+        .register_fn("set_base_intensity", Beacon2dApi::set_base_intensity)
+        .register_fn("set_frequency_hz", Beacon2dApi::set_frequency_hz)
+        .register_fn("set_duty_cycle", Beacon2dApi::set_duty_cycle)
+        .register_fn("set_halo_radius_px", Beacon2dApi::set_halo_radius_px)
+        .register_fn("set_core_radius_px", Beacon2dApi::set_core_radius_px)
+        .register_fn("set_glow_strength", Beacon2dApi::set_glow_strength)
+        .register_fn("set_beam_enabled", Beacon2dApi::set_beam_enabled)
+        .register_fn("set_beam_length_px", Beacon2dApi::set_beam_length_px)
+        .register_fn(
+            "set_beam_width_degrees",
+            Beacon2dApi::set_beam_width_degrees,
+        )
+        .register_fn("set_beam_strength", Beacon2dApi::set_beam_strength)
+        .register_fn("set_aberration_px", Beacon2dApi::set_aberration_px)
+        .register_fn("set_bloom", Beacon2dApi::set_bloom)
+        .register_fn("set_position_2d", Beacon2dApi::set_position_2d)
+        .register_fn("set_distance_m", Beacon2dApi::set_distance_m)
+        .register_fn("set_z_depth", Beacon2dApi::set_z_depth);
+}

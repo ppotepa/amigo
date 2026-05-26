@@ -10,6 +10,8 @@ use amigo_scene::ScenePlugin;
 use amigo_session::RuntimeSession;
 use amigo_state::StatePlugin;
 
+use crate::LoadedAssetDomainPreparerRegistry;
+
 pub use amigo_event_pipeline::{EventPipelineService, EventPipelineStep};
 
 pub struct CoreRuntimeBundle;
@@ -26,6 +28,7 @@ impl PluginBundle for CoreRuntimeBundle {
             .with_plugin(ScriptCommandRegistryPlugin)?
             .with_plugin(RenderExtractorIdRegistryPlugin)?
             .with_plugin(WgpuRenderExtractorBridgeRegistryPlugin)?
+            .with_plugin(LoadedAssetDomainPreparerRegistryPlugin)?
             .with_plugin(AssetsPlugin)?
             .with_plugin(HotReloadPlugin)?
             .with_plugin(NotifyFileWatchPlugin)?
@@ -46,6 +49,8 @@ struct SystemRegistryPlugin;
 struct RenderExtractorIdRegistryPlugin;
 
 struct WgpuRenderExtractorBridgeRegistryPlugin;
+
+struct LoadedAssetDomainPreparerRegistryPlugin;
 
 impl RuntimePlugin for SystemRegistryPlugin {
     fn name(&self) -> &'static str {
@@ -100,6 +105,17 @@ impl RuntimePlugin for WgpuRenderExtractorBridgeRegistryPlugin {
         registry.register(
             crate::render_extractor_registry::WgpuRenderExtractorBridgeRegistry::default(),
         )?;
+        Ok(())
+    }
+}
+
+impl RuntimePlugin for LoadedAssetDomainPreparerRegistryPlugin {
+    fn name(&self) -> &'static str {
+        "amigo-loaded-asset-domain-preparer-registry"
+    }
+
+    fn register(&self, registry: &mut ServiceRegistry) -> AmigoResult<()> {
+        registry.register(LoadedAssetDomainPreparerRegistry::default())?;
         Ok(())
     }
 }

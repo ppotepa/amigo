@@ -20,7 +20,6 @@ pub(crate) use amigo_runtime_bundles::{
     WgpuEditorOverlayOutput,
 };
 pub(crate) use amigo_runtime_bundles::{submit_wgpu_frame_render_request, WgpuFrameSubmitInput};
-pub(crate) use amigo_runtime_bundles::{LightRoute2dSceneService, RenderLayer2dSceneService};
 
 #[cfg(test)]
 pub(crate) use amigo_runtime_bundles::{
@@ -37,8 +36,6 @@ pub(crate) fn build_render_frame_for_session(
     let runtime = session.runtime();
     let scene = required::<SceneService>(runtime)?;
     let assets = required::<AssetCatalog>(runtime)?;
-    let render_layers = required::<RenderLayer2dSceneService>(runtime)?;
-    let light_routes = required::<LightRoute2dSceneService>(runtime)?;
     let debug_overlay_service = required::<crate::debug_overlay::DebugOverlayService>(runtime)?;
 
     let surface_size = surface.size();
@@ -159,8 +156,6 @@ pub(crate) fn build_render_frame_for_session(
 
     update_wgpu_postfx_renderer_mode(runtime, &render_packet);
 
-    let extracted_render_layer_commands = render_layers.commands();
-    let extracted_light_route_commands = light_routes.commands();
     let emergency_overlay = emergency_overlay_lines(runtime);
     submit_wgpu_frame_render_request(
         renderer,
@@ -169,8 +164,8 @@ pub(crate) fn build_render_frame_for_session(
             scene: scene.as_ref(),
             assets: assets.as_ref(),
             render_packet: &render_packet,
-            render_layers: extracted_render_layer_commands.as_slice(),
-            light_routes: extracted_light_route_commands.as_slice(),
+            render_layers: render_packet.world_2d_render_layers(),
+            light_routes: render_packet.world_2d_light_routes(),
             debug_ui: render_packet.debug_overlay(),
             emergency_overlay: emergency_overlay.as_slice(),
             composition_plan: &composition_plan,

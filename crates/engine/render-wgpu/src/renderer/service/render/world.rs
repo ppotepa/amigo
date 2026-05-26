@@ -100,7 +100,7 @@ fn render_renderable_2d_item(
     let layer_opacity = render_layer_opacity(item.render_layer(), render_layer_lookup);
     let included_parts = selection
         .layered_image_part_filter
-        .included_parts(item.owner_entity());
+        .included_parts(item.object_id());
     let mut adapter_ctx = renderable_adapter_context(
         renderer,
         texture_batches,
@@ -116,7 +116,7 @@ fn render_renderable_2d_item(
         included_parts,
         selection
             .layered_image_part_filter
-            .excluded_parts(item.owner_entity()),
+            .excluded_parts(item.object_id()),
         included_parts.is_none(),
         particle_lights,
         lightmap_samplers,
@@ -169,7 +169,7 @@ pub(super) fn execute_world_to_offscreen(
     let mut world2d_items = ctx.renderables.to_vec();
     world2d_items.retain(|item| {
         selection.layer_filter.allows(item.render_layer())
-            && selection.object_filter.allows(item.owner_entity())
+            && selection.object_filter.allows(item.object_id())
     });
     let renderable_adapters = crate::default_renderable_2d_adapter_registry();
     world2d_items.retain(|item| renderable_adapters.supports_kind(item.primitive_kind()));

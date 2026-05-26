@@ -78,3 +78,13 @@ pub fn loaded_mod_ids(mod_catalog: Option<&Arc<ModCatalog>>) -> Vec<String> {
         })
         .unwrap_or_default()
 }
+
+pub(crate) fn register_api(engine: &mut rhai::Engine) {
+    engine
+        .register_type_with_name::<ModApi>("WorldMod")
+        .register_fn("current_id", ModApi::current_id)
+        .register_fn("scenes", ModApi::scenes)
+        .register_fn("has_scene", ModApi::has_scene)
+        .register_fn("capabilities", ModApi::capabilities)
+        .register_fn("loaded", ModApi::loaded);
+}

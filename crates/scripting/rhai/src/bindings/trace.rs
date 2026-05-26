@@ -45,3 +45,15 @@ impl TraceApi {
         })
     }
 }
+
+pub(crate) fn register_api(engine: &mut rhai::Engine) {
+    engine
+        .register_type_with_name::<TraceApi>("WorldTrace")
+        .register_fn("begin", TraceApi::begin)
+        .register_fn("value", TraceApi::value)
+        .register_fn("value", TraceApi::value_int)
+        .register_fn("value", TraceApi::value_float)
+        .register_fn("value", TraceApi::value_bool)
+        .register_fn("end", TraceApi::end)
+        .register_fn("clear", TraceApi::clear);
+}

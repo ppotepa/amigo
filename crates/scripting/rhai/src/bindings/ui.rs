@@ -154,3 +154,21 @@ impl UiApi {
         queue_ui_disable(self.command_queue.as_ref(), path)
     }
 }
+
+pub(crate) fn register_api(engine: &mut rhai::Engine) {
+    engine
+        .register_type_with_name::<UiApi>("WorldUi")
+        .register_fn("set_text", UiApi::set_text)
+        .register_fn("set_many", UiApi::set_many)
+        .register_fn("set_value", UiApi::set_value)
+        .register_fn("set_selected", UiApi::set_selected)
+        .register_fn("set_options", UiApi::set_options)
+        .register_fn("set_color", UiApi::set_color)
+        .register_fn("set_background", UiApi::set_background)
+        .register_fn("show", UiApi::show)
+        .register_fn("hide", UiApi::hide)
+        .register_fn("enable", UiApi::enable)
+        .register_fn("disable", UiApi::disable)
+        .register_fn("set_theme", UiApi::set_theme)
+        .register_fn("theme", UiApi::theme);
+}

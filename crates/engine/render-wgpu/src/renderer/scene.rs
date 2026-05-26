@@ -95,6 +95,9 @@ mod tests {
                     &format!("sprite-{render_layer}"),
                     "component",
                 ),
+                object_id: amigo_render_api::RenderObjectId::for_scene_object(&format!(
+                    "sprite-{render_layer}"
+                )),
                 owner_entity: format!("sprite-{render_layer}"),
                 component_kind: "component".to_owned(),
                 render_space: RenderSpace2d::World,
@@ -121,6 +124,9 @@ mod tests {
                     &format!("text-{render_layer}"),
                     "component",
                 ),
+                object_id: amigo_render_api::RenderObjectId::for_scene_object(&format!(
+                    "text-{render_layer}"
+                )),
                 owner_entity: format!("text-{render_layer}"),
                 component_kind: "component".to_owned(),
                 render_space: RenderSpace2d::World,

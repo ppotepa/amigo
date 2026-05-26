@@ -1,4 +1,4 @@
-use amigo_runtime_bundles::PostFx2dService;
+use amigo_composite_plugin::PostFx2dService;
 use amigo_render_api::{
     post_fx_lens_droplets, PostFx2dStack, PostFxLensDroplets2d, ScopedPostFx2dStack,
 };

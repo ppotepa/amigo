@@ -32,3 +32,9 @@ impl Text3dApi {
         )
     }
 }
+
+pub(crate) fn register_api(engine: &mut rhai::Engine) {
+    engine
+        .register_type_with_name::<Text3dApi>("WorldText3d")
+        .register_fn("queue", Text3dApi::queue);
+}

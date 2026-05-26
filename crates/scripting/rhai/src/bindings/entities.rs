@@ -475,3 +475,41 @@ fn dynamic_from_property(value: ScenePropertyValue) -> rhai::Dynamic {
         ScenePropertyValue::String(value) => rhai::Dynamic::from(value),
     }
 }
+
+pub(crate) fn register_api(engine: &mut rhai::Engine) {
+    engine
+        .register_type_with_name::<EntitiesApi>("WorldEntities")
+        .register_fn("named", EntitiesApi::named)
+        .register_fn("create", EntitiesApi::create)
+        .register_fn("exists", EntitiesApi::exists)
+        .register_fn("count", EntitiesApi::count)
+        .register_fn("names", EntitiesApi::names)
+        .register_fn("distance", EntitiesApi::distance)
+        .register_fn("set_position_2d", EntitiesApi::set_position_2d)
+        .register_fn("position_2d", EntitiesApi::position_2d)
+        .register_fn("set_rotation_2d", EntitiesApi::set_rotation_2d)
+        .register_fn("set_scale_2d", EntitiesApi::set_scale_2d)
+        .register_fn("hide", EntitiesApi::hide)
+        .register_fn("show", EntitiesApi::show)
+        .register_fn("enable", EntitiesApi::enable)
+        .register_fn("disable", EntitiesApi::disable)
+        .register_fn("set_collision_enabled", EntitiesApi::set_collision_enabled)
+        .register_fn("is_visible", EntitiesApi::is_visible)
+        .register_fn("is_enabled", EntitiesApi::is_enabled)
+        .register_fn("collision_enabled", EntitiesApi::collision_enabled)
+        .register_fn("hide_many", EntitiesApi::hide_many)
+        .register_fn("by_tag", EntitiesApi::by_tag)
+        .register_fn("by_group", EntitiesApi::by_group)
+        .register_fn("active_by_tag", EntitiesApi::active_by_tag)
+        .register_fn("has_tag", EntitiesApi::has_tag)
+        .register_fn("has_group", EntitiesApi::has_group)
+        .register_fn("property", EntitiesApi::property)
+        .register_fn("property_int", EntitiesApi::property_int)
+        .register_fn("property_float", EntitiesApi::property_float)
+        .register_fn("property_bool", EntitiesApi::property_bool)
+        .register_fn("property_string", EntitiesApi::property_string)
+        .register_fn("set_property_int", EntitiesApi::set_property_int)
+        .register_fn("set_property_float", EntitiesApi::set_property_float)
+        .register_fn("set_property_bool", EntitiesApi::set_property_bool)
+        .register_fn("set_property_string", EntitiesApi::set_property_string);
+}

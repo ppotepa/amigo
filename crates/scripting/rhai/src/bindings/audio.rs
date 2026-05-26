@@ -69,3 +69,16 @@ impl AudioApi {
         queue_audio_set_volume(self.command_queue.as_ref(), bus, value as f32)
     }
 }
+
+pub(crate) fn register_api(engine: &mut rhai::Engine) {
+    engine
+        .register_type_with_name::<AudioApi>("WorldAudio")
+        .register_fn("play", AudioApi::play)
+        .register_fn("cue", AudioApi::cue)
+        .register_fn("preload", AudioApi::preload)
+        .register_fn("play_asset", AudioApi::play_asset)
+        .register_fn("start_realtime", AudioApi::start_realtime)
+        .register_fn("stop", AudioApi::stop)
+        .register_fn("set_param", AudioApi::set_param)
+        .register_fn("set_volume", AudioApi::set_volume);
+}

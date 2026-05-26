@@ -2,8 +2,7 @@ use amigo_core::AmigoResult;
 use amigo_math::{ColorRgba, Vec2};
 use amigo_render_api::{FocusBlur2d, FocusTarget2d};
 use amigo_render_api::{
-    RenderDepthMap2d, RenderDepthMapViewportFit2d, RenderPrimitive2d, RenderSceneView,
-    Renderable2dItem,
+    RenderDepthMap2d, RenderDepthMapViewportFit2d, RenderSceneView, Renderable2dItem,
 };
 use wgpu::util::DeviceExt;
 
@@ -475,16 +474,13 @@ fn sample_renderable_positions(
     height: f32,
     out: &mut Vec<Vec2>,
 ) {
+    let renderable_adapters = crate::default_renderable_2d_adapter_registry();
     for renderable in renderables
         .iter()
         .filter(|item| item.render_layer() == layer)
     {
-        let world = match &renderable.primitive {
-            RenderPrimitive2d::TexturedQuad(primitive) => primitive.transform.translation,
-            RenderPrimitive2d::GlyphRun(primitive) => primitive.transform.translation,
-            RenderPrimitive2d::LayeredTexturedQuads(primitive) => primitive.transform.translation,
-            RenderPrimitive2d::ParticleBatch(primitive) => primitive.position,
-            _ => continue,
+        let Some(world) = renderable_adapters.focus_sample_world_position(renderable) else {
+            continue;
         };
         out.push(world_to_uv(scene_view, width, height, world));
     }

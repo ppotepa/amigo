@@ -146,3 +146,22 @@ fn dynamic_to_f32(value: Dynamic) -> Option<f32> {
     }
     None
 }
+
+pub(crate) fn register_api(engine: &mut rhai::Engine) {
+    engine
+        .register_type_with_name::<MotionApi>("WorldMotion")
+        .register_type_with_name::<MotionStateView>("MotionState")
+        .register_fn("drive", MotionApi::drive)
+        .register_fn("drive_freeflight", MotionApi::drive_freeflight)
+        .register_fn("set_velocity", MotionApi::set_velocity)
+        .register_fn("reset_freeflight", MotionApi::reset_freeflight)
+        .register_fn("state", MotionApi::state)
+        .register_get("grounded", MotionStateView::grounded)
+        .register_get("facing", MotionStateView::facing)
+        .register_get("animation", MotionStateView::animation)
+        .register_get("velocity_x", MotionStateView::velocity_x)
+        .register_get("velocity_y", MotionStateView::velocity_y)
+        .register_get("velocity_x_int", MotionStateView::velocity_x_int)
+        .register_get("velocity_y_int", MotionStateView::velocity_y_int)
+        .register_get("angle_radians", MotionStateView::angle_radians);
+}

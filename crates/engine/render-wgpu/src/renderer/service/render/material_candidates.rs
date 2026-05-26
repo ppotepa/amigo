@@ -3,17 +3,14 @@ use amigo_material_api::{
     Material2d, MaterialCandidate2dCommon, MaterialCandidateDecision2d, MaterialCoverageKind2d,
 };
 use amigo_render_api::{
-    RenderContributionSet, RenderMaterialBinding2d, RenderPrimitive2d, RenderPrimitive2dKind,
-    render_contribution_roles as roles,
+    render_contribution_roles as roles, RenderContributionSet, RenderMaterialBinding2d,
+    RenderPrimitive2dKind,
 };
 
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub(crate) struct MaterialCandidateSource2d {
-    pub(super) owner_entity: String,
-    pub(super) component_kind: String,
-    pub(super) primitive_kind: RenderPrimitive2dKind,
-    pub(super) primitive: RenderPrimitive2d,
+    pub(super) renderable: Renderable2dItem,
 }
 
 #[derive(Debug, Clone)]
@@ -43,7 +40,6 @@ pub(crate) fn collect_material_candidate_2d(
     if let Some(binding) = item.primitive.material_binding() {
         collect_candidate_from_binding(
             item,
-            &item.primitive,
             binding,
             layer_camera,
             layer_opacity,
@@ -92,7 +88,6 @@ pub(super) fn material_pipeline_enabled(
 
 fn collect_candidate_from_binding(
     item: &Renderable2dItem,
-    primitive: &RenderPrimitive2d,
     binding: &RenderMaterialBinding2d,
     camera: Transform2,
     layer_opacity: f32,
@@ -161,10 +156,7 @@ fn collect_candidate_from_binding(
     out.push(WgpuMaterialCandidate2d {
         common,
         source: MaterialCandidateSource2d {
-            owner_entity: item.owner_entity().to_owned(),
-            component_kind: item.component_kind().to_owned(),
-            primitive_kind: primitive.kind(),
-            primitive: primitive.clone(),
+            renderable: item.clone(),
         },
         camera,
     });
@@ -370,6 +362,7 @@ mod tests {
     fn common(owner: &str, component_kind: &str, kind: Renderable2dKind) -> Renderable2dCommon {
         Renderable2dCommon {
             source_id: amigo_render_api::RenderSourceId::for_component(owner, component_kind),
+            object_id: amigo_render_api::RenderObjectId::for_scene_object(owner),
             owner_entity: owner.to_owned(),
             component_kind: component_kind.to_owned(),
             render_space: RenderSpace2d::World,

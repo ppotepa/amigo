@@ -48,3 +48,13 @@ impl ActionsApi {
             .unwrap_or_default()
     }
 }
+
+pub(crate) fn register_api(engine: &mut rhai::Engine) {
+    engine
+        .register_type_with_name::<ActionsApi>("WorldActions")
+        .register_fn("axis", ActionsApi::axis)
+        .register_fn("down", ActionsApi::down)
+        .register_fn("pressed", ActionsApi::pressed)
+        .register_fn("set_active_map", ActionsApi::set_active_map)
+        .register_fn("active_map", ActionsApi::active_map);
+}

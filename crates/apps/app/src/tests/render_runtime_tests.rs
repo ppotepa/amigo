@@ -1,10 +1,10 @@
 use super::*;
-use amigo_runtime_bundles::RenderLayer2dSceneService;
-use amigo_runtime_bundles::{
+use amigo_2d_composition::RenderLayer2dSceneService;
+use amigo_layered_image_2d_plugin::{
     LayeredImageBlendMode2d, LayeredImageDrawCommand, LayeredImageInstance,
     LayeredImageSceneService, LayeredImageViewportFit2d,
 };
-use amigo_runtime_bundles::{GlobalLight2dSceneService, LightGroup2dSceneService};
+use amigo_light_2d_plugin::{GlobalLight2dSceneService, LightGroup2dSceneService};
 
 #[test]
 fn handle_script_command_asset_reload_requests_load_and_event() {

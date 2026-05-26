@@ -172,3 +172,14 @@ fn dynamic_to_f32(value: Dynamic) -> Option<f32> {
 
     None
 }
+
+pub(crate) fn register_api(engine: &mut rhai::Engine) {
+    engine
+        .register_type_with_name::<Vector2dApi>("WorldVector2d")
+        .register_fn("set_polygon", Vector2dApi::set_polygon)
+        .register_fn("set_polyline", Vector2dApi::set_polyline)
+        .register_fn(
+            "set_radial_jitter_polygon",
+            Vector2dApi::set_radial_jitter_polygon,
+        );
+}

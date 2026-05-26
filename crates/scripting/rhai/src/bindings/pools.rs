@@ -76,3 +76,14 @@ impl PoolsApi {
             .unwrap_or(0)
     }
 }
+
+pub(crate) fn register_api(engine: &mut rhai::Engine) {
+    engine
+        .register_type_with_name::<PoolsApi>("WorldPools")
+        .register_fn("acquire", PoolsApi::acquire)
+        .register_fn("release", PoolsApi::release)
+        .register_fn("release_all", PoolsApi::release_all)
+        .register_fn("members", PoolsApi::members)
+        .register_fn("active_members", PoolsApi::active_members)
+        .register_fn("active_count", PoolsApi::active_count);
+}

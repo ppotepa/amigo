@@ -1,11 +1,11 @@
 use super::*;
-use amigo_runtime_bundles::RenderLayer2dSceneService;
-use amigo_runtime_bundles::{
+use amigo_2d_composition::RenderLayer2dSceneService;
+use amigo_layered_image_2d_plugin::{
     can_handle_layered_image_script_command, handle_layered_image_script_command,
     LayeredImageSceneService, LayeredImageScriptCommandContext, LayeredImageScriptCommandOutcome,
 };
-use amigo_runtime_bundles::{GlobalLight2dSceneService, LightGroup2dSceneService};
-use amigo_runtime_bundles::{handle_ui_script_command, UiScriptCommandContext, UiStateService};
+use amigo_light_2d_plugin::{GlobalLight2dSceneService, LightGroup2dSceneService};
+use amigo_ui::{handle_ui_script_command, UiScriptCommandContext, UiStateService};
 
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn dispatch_script_command(
@@ -16,7 +16,7 @@ pub(crate) fn dispatch_script_command(
     asset_catalog: &amigo_assets::AssetCatalog,
     ui_state: &UiStateService,
     audio_command_queue: &amigo_runtime_bundles::AudioCommandQueue,
-    audio_scene_service: &amigo_runtime_bundles::AudioSceneService,
+    audio_scene_service: &amigo_audio_api::AudioSceneService,
     _diagnostics: &RuntimeDiagnostics,
     launch_selection: &LaunchSelection,
 ) {
@@ -75,7 +75,7 @@ pub(crate) fn dispatch_script_command_with_layered_image_service(
     _light_groups: &LightGroup2dSceneService,
     ui_state: &UiStateService,
     audio_command_queue: &amigo_runtime_bundles::AudioCommandQueue,
-    audio_scene_service: &amigo_runtime_bundles::AudioSceneService,
+    audio_scene_service: &amigo_audio_api::AudioSceneService,
     diagnostics: &RuntimeDiagnostics,
     launch_selection: &LaunchSelection,
 ) {
@@ -117,7 +117,7 @@ pub(crate) fn dispatch_script_command_with_layered_image_service(
 fn dispatch_audio_script_command_for_test(
     command: ScriptCommand,
     audio_command_queue: &amigo_runtime_bundles::AudioCommandQueue,
-    audio_scene_service: &amigo_runtime_bundles::AudioSceneService,
+    audio_scene_service: &amigo_audio_api::AudioSceneService,
     launch_selection: &LaunchSelection,
 ) {
     let outcome = amigo_runtime_bundles::handle_audio_script_command(

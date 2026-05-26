@@ -22,3 +22,9 @@ impl Material3dApi {
         )
     }
 }
+
+pub(crate) fn register_api(engine: &mut rhai::Engine) {
+    engine
+        .register_type_with_name::<Material3dApi>("WorldMaterial3d")
+        .register_fn("bind", Material3dApi::bind);
+}

@@ -2,7 +2,10 @@ use amigo_math::Vec2;
 use amigo_render_api::{GlyphRun2dBlendMode, RenderPrimitive2d, RenderPrimitive2dKind};
 
 use crate::renderer::collect_material_candidate_2d;
-use crate::{WgpuRenderable2dAdapter, WgpuRenderable2dAdapterContext};
+use crate::{
+    WgpuRefractiveMaskAdapterContext, WgpuRefractiveMaskAppendOutcome, WgpuRenderable2dAdapter,
+    WgpuRenderable2dAdapterContext,
+};
 
 pub struct Text2dRenderableAdapter;
 
@@ -120,6 +123,57 @@ impl WgpuRenderable2dAdapter for Text2dRenderableAdapter {
             ctx.material_decisions,
         );
         true
+    }
+
+    fn focus_sample_world_position(&self, item: &crate::Renderable2dItem) -> Option<Vec2> {
+        item.primitive
+            .glyph_run()
+            .map(|primitive| primitive.transform.translation)
+    }
+
+    fn append_refractive_mask_batches(
+        &self,
+        ctx: &mut WgpuRefractiveMaskAdapterContext<'_>,
+        item: &crate::Renderable2dItem,
+        layer_opacity: f32,
+    ) -> WgpuRefractiveMaskAppendOutcome {
+        let Some(glyph) = item.primitive.glyph_run() else {
+            return WgpuRefractiveMaskAppendOutcome::none();
+        };
+        let alpha = (glyph.color.a * layer_opacity).clamp(0.0, 1.0);
+        if ctx.renderer.append_text2d_ttf_font_texture_batch(
+            ctx.texture_batches,
+            &ctx.target.device,
+            &ctx.target.queue,
+            ctx.assets,
+            ctx.viewport,
+            ctx.camera,
+            &glyph.font,
+            &glyph.text,
+            glyph.transform,
+            glyph.bounds,
+            glyph.font_size,
+            amigo_math::ColorRgba::new(1.0, 1.0, 1.0, alpha),
+        ) {
+            return WgpuRefractiveMaskAppendOutcome::appended("ttf_font", false);
+        }
+
+        let vertices = crate::renderer::color_batch_vertices(
+            ctx.color_batches,
+            crate::renderer::particle_blend_mode(
+                amigo_render_api::ParticleBlendMode2dPrimitive::Alpha,
+            ),
+        );
+        crate::renderer::append_text_2d_vertices(
+            vertices,
+            ctx.viewport,
+            ctx.camera,
+            &glyph.text,
+            glyph.transform,
+            glyph.bounds,
+            amigo_math::ColorRgba::new(1.0, 1.0, 1.0, alpha),
+        );
+        WgpuRefractiveMaskAppendOutcome::appended("generated_geometry", true)
     }
 }
 

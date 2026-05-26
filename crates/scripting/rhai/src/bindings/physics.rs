@@ -159,3 +159,21 @@ fn selector_from_parts(kind: &str, value: &str) -> Option<EntitySelector> {
         _ => None,
     }
 }
+
+pub(crate) fn register_api(engine: &mut rhai::Engine) {
+    engine
+        .register_type_with_name::<PhysicsApi>("WorldPhysics")
+        .register_fn("overlaps", PhysicsApi::overlaps)
+        .register_fn("first_overlap", PhysicsApi::first_overlap)
+        .register_fn("first_overlap_index", PhysicsApi::first_overlap_index)
+        .register_fn("first_overlap_by_tag", PhysicsApi::first_overlap_by_tag)
+        .register_fn("first_overlap_by_group", PhysicsApi::first_overlap_by_group)
+        .register_fn(
+            "first_overlap_by_selector",
+            PhysicsApi::first_overlap_by_selector,
+        )
+        .register_fn("overlaps_by_tag", PhysicsApi::overlaps_by_tag)
+        .register_fn("overlaps_by_group", PhysicsApi::overlaps_by_group)
+        .register_fn("selector_candidates", PhysicsApi::selector_candidates)
+        .register_fn("set_circle_radius", PhysicsApi::set_circle_radius);
+}

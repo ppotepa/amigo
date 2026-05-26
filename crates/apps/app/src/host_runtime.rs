@@ -1,9 +1,12 @@
 use super::*;
 use amigo_input_api::InputModifiers;
 use amigo_runtime::SystemPhase;
+use amigo_runtime_bundles::{
+    add_ui_input_mouse_wheel, clear_ui_input_frame_transients, set_ui_input_left_button,
+    set_ui_input_mouse_position,
+};
 use amigo_runtime_bundles::{AudioOutputBackendService, AudioOutputStartStatus};
 use amigo_session::RuntimeSession;
-use amigo_runtime_bundles::UiInputService;
 
 fn start_audio_output(runtime: &Runtime) -> AmigoResult<()> {
     let audio_backend = required::<AudioOutputBackendService>(runtime)?;
@@ -164,9 +167,7 @@ impl InteractiveRuntimeHostHandler {
         if let Some(input_state) = self.runtime().resolve::<InputState>() {
             input_state.clear_frame_transients();
         }
-        if let Some(ui_input) = self.runtime().resolve::<UiInputService>() {
-            ui_input.clear_frame_transients();
-        }
+        clear_ui_input_frame_transients(self.runtime());
     }
 
     fn render_or_present_frame(&mut self) -> AmigoResult<()> {
@@ -429,9 +430,7 @@ impl HostHandler for InteractiveRuntimeHostHandler {
 
         match event {
             InputEvent::CursorMoved { x, y } => {
-                if let Some(ui_input) = self.runtime().resolve::<UiInputService>() {
-                    ui_input.set_mouse_position(x as f32, y as f32);
-                }
+                set_ui_input_mouse_position(self.runtime(), x as f32, y as f32);
                 if let Some(input_state) = self.runtime().resolve::<InputState>() {
                     input_state.set_cursor_position(x as f32, y as f32);
                 }
@@ -440,9 +439,7 @@ impl HostHandler for InteractiveRuntimeHostHandler {
                 button: amigo_input_api::MouseButton::Left,
                 pressed,
             } => {
-                if let Some(ui_input) = self.runtime().resolve::<UiInputService>() {
-                    ui_input.set_left_button(pressed);
-                }
+                set_ui_input_left_button(self.runtime(), pressed);
                 if let Some(input_state) = self.runtime().resolve::<InputState>() {
                     input_state.set_mouse_button(amigo_input_api::MouseButton::Left, pressed);
                 }
@@ -453,9 +450,7 @@ impl HostHandler for InteractiveRuntimeHostHandler {
                 }
             }
             InputEvent::MouseWheel { delta_y } => {
-                if let Some(ui_input) = self.runtime().resolve::<UiInputService>() {
-                    ui_input.add_mouse_wheel(delta_y);
-                }
+                add_ui_input_mouse_wheel(self.runtime(), delta_y);
                 if let Some(input_state) = self.runtime().resolve::<InputState>() {
                     input_state.add_mouse_wheel_delta(delta_y);
                 }

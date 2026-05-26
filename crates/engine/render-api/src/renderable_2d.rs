@@ -13,6 +13,23 @@ impl RenderSourceId {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct RenderObjectId(pub String);
+
+impl RenderObjectId {
+    pub fn for_scene_object(scene_object_id: &str) -> Self {
+        Self(format!("scene-object:{scene_object_id}"))
+    }
+
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+
+    pub fn matches_subtree(&self, root: &RenderObjectId) -> bool {
+        self.0 == root.0 || self.0.starts_with(root.0.as_str())
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RenderSpace2d {
     World,
@@ -66,6 +83,7 @@ impl Renderable2dKind {
 #[derive(Debug, Clone, PartialEq)]
 pub struct Renderable2dCommon {
     pub source_id: RenderSourceId,
+    pub object_id: RenderObjectId,
     pub owner_entity: String,
     pub component_kind: String,
     pub render_space: RenderSpace2d,
@@ -86,6 +104,7 @@ impl Renderable2dCommon {
         let component_kind = component_kind.into();
         Self {
             source_id: RenderSourceId::for_component(&owner_entity, &component_kind),
+            object_id: RenderObjectId::for_scene_object(&owner_entity),
             owner_entity,
             component_kind,
             render_space: RenderSpace2d::World,
@@ -125,6 +144,10 @@ impl Renderable2dItem {
 
     pub fn source_id(&self) -> &RenderSourceId {
         &self.common.source_id
+    }
+
+    pub fn object_id(&self) -> &RenderObjectId {
+        &self.common.object_id
     }
 
     pub fn component_kind(&self) -> &str {
@@ -169,6 +192,7 @@ mod tests {
     fn common_uses_camera_pipeline_from_space() {
         let common = Renderable2dCommon {
             source_id: RenderSourceId::for_component("title", "component"),
+            object_id: RenderObjectId::for_scene_object("title"),
             owner_entity: "title".to_owned(),
             component_kind: "component".to_owned(),
             render_space: RenderSpace2d::World,

@@ -1,18 +1,18 @@
 use super::*;
-use amigo_runtime_bundles::{LightRoute2dSceneService, RenderLayer2dSceneService};
-use amigo_runtime_bundles::MaterialSceneService;
-use amigo_runtime_bundles::MeshSceneService;
-use amigo_runtime_bundles::Text3dSceneService;
-use amigo_runtime_bundles::PostFx2dService;
-use amigo_runtime_bundles::LayeredImageSceneService;
-use amigo_runtime_bundles::{
+use amigo_2d_composition::{LightRoute2dSceneService, RenderLayer2dSceneService};
+use amigo_3d_material::MaterialSceneService;
+use amigo_3d_mesh::MeshSceneService;
+use amigo_3d_text::Text3dSceneService;
+use amigo_composite_plugin::PostFx2dService;
+use amigo_layered_image_2d_plugin::LayeredImageSceneService;
+use amigo_light_2d_plugin::{
     GlobalLight2dSceneService, LightGroup2dSceneService, LightMap2dSceneService,
 };
-use amigo_runtime_bundles::{
-    Particle2dSceneService, ParticlePreset2dService, tick_particles_2d_world,
+use amigo_particles_2d_plugin::{
+    tick_particles_2d_world, Particle2dSceneService, ParticlePreset2dService,
 };
-use amigo_runtime_bundles::{process_ui_input, resolve_ui_overlay_documents, UiInputViewportState};
-use amigo_runtime_bundles::VectorSceneService;
+use amigo_ui::{process_ui_input, resolve_ui_overlay_documents, UiInputViewportState};
+use amigo_vector_2d_plugin::VectorSceneService;
 
 #[test]
 fn particles_playground_menu_bootstraps() {

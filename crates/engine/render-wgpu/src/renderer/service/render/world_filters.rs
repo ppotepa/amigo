@@ -1,5 +1,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 
+use amigo_render_api::RenderObjectId;
+
 #[derive(Clone, Copy)]
 pub(super) enum WorldLayerFilter<'a> {
     All,
@@ -32,33 +34,31 @@ impl WorldLayerFilter<'_> {
 #[derive(Clone, Copy)]
 pub(super) enum WorldObjectFilter<'a> {
     All,
-    Include(&'a BTreeSet<String>),
-    IncludeSubtrees(&'a BTreeSet<String>),
-    Exclude(&'a BTreeSet<String>),
-    ExcludeSubtrees(&'a BTreeSet<String>),
+    Include(&'a BTreeSet<RenderObjectId>),
+    IncludeSubtrees(&'a BTreeSet<RenderObjectId>),
+    Exclude(&'a BTreeSet<RenderObjectId>),
+    ExcludeSubtrees(&'a BTreeSet<RenderObjectId>),
     ExcludeCombined {
-        objects: &'a BTreeSet<String>,
-        subtrees: &'a BTreeSet<String>,
+        objects: &'a BTreeSet<RenderObjectId>,
+        subtrees: &'a BTreeSet<RenderObjectId>,
     },
 }
 
 impl WorldObjectFilter<'_> {
-    pub(super) fn allows(self, entity_name: &str) -> bool {
+    pub(super) fn allows(self, object_id: &RenderObjectId) -> bool {
         match self {
             Self::All => true,
-            Self::Include(objects) => objects.contains(entity_name),
+            Self::Include(objects) => objects.contains(object_id),
             Self::IncludeSubtrees(roots) => roots
                 .iter()
-                .any(|root| entity_matches_subtree(entity_name, root)),
-            Self::Exclude(objects) => !objects.contains(entity_name),
+                .any(|root| object_id.matches_subtree(root)),
+            Self::Exclude(objects) => !objects.contains(object_id),
             Self::ExcludeSubtrees(roots) => !roots
                 .iter()
-                .any(|root| entity_matches_subtree(entity_name, root)),
+                .any(|root| object_id.matches_subtree(root)),
             Self::ExcludeCombined { objects, subtrees } => {
-                !objects.contains(entity_name)
-                    && !subtrees
-                        .iter()
-                        .any(|root| entity_matches_subtree(entity_name, root))
+                !objects.contains(object_id)
+                    && !subtrees.iter().any(|root| object_id.matches_subtree(root))
             }
         }
     }
@@ -67,24 +67,24 @@ impl WorldObjectFilter<'_> {
 #[derive(Clone, Copy)]
 pub(super) enum LayeredImagePartFilter<'a> {
     All,
-    Exclude(&'a BTreeMap<String, BTreeSet<String>>),
+    Exclude(&'a BTreeMap<RenderObjectId, BTreeSet<String>>),
 }
 
 impl<'a> LayeredImagePartFilter<'a> {
     pub(super) fn included_parts(
         &self,
-        owner_scene_object_id: &str,
+        object_id: &RenderObjectId,
     ) -> Option<&'a BTreeSet<String>> {
-        let _ = owner_scene_object_id;
+        let _ = object_id;
         None
     }
 
     pub(super) fn excluded_parts(
         &self,
-        owner_scene_object_id: &str,
+        object_id: &RenderObjectId,
     ) -> Option<&'a BTreeSet<String>> {
         match self {
-            Self::Exclude(parts) => parts.get(owner_scene_object_id),
+            Self::Exclude(parts) => parts.get(object_id),
             _ => None,
         }
     }
@@ -95,8 +95,4 @@ pub(super) enum WorldPassLoad {
     Clear,
     ClearTransparent,
     Load,
-}
-
-pub(super) fn entity_matches_subtree(entity_name: &str, root_scene_object_id: &str) -> bool {
-    entity_name == root_scene_object_id || entity_name.starts_with(root_scene_object_id)
 }

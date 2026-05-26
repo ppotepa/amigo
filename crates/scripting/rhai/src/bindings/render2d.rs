@@ -53,3 +53,13 @@ impl RenderLayer2dHandle {
         queue_render_layer2d_set_visible(self.command_queue.as_ref(), &self.id, visible)
     }
 }
+
+pub(crate) fn register_api(engine: &mut rhai::Engine) {
+    engine
+        .register_type_with_name::<Render2dApi>("WorldRender2d")
+        .register_type_with_name::<RenderLayer2dHandle>("WorldRenderLayer2dHandle")
+        .register_fn("get_layer", Render2dApi::get_layer)
+        .register_fn("id", RenderLayer2dHandle::id)
+        .register_fn("set_opacity", RenderLayer2dHandle::set_opacity)
+        .register_fn("set_visible", RenderLayer2dHandle::set_visible);
+}

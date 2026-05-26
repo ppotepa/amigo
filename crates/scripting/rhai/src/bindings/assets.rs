@@ -205,3 +205,17 @@ pub fn asset_failure_reason(asset_catalog: Option<&Arc<AssetCatalog>>, asset_key
         .map(|asset| asset.reason)
         .unwrap_or_default()
 }
+
+pub(crate) fn register_api(engine: &mut rhai::Engine) {
+    engine
+        .register_type_with_name::<AssetsApi>("WorldAssets")
+        .register_fn("get", AssetsApi::get)
+        .register_fn("has", AssetsApi::has)
+        .register_fn("registered", AssetsApi::registered)
+        .register_fn("by_mod", AssetsApi::by_mod)
+        .register_fn("reload", AssetsApi::reload)
+        .register_fn("pending", AssetsApi::pending)
+        .register_fn("loaded", AssetsApi::loaded)
+        .register_fn("prepared", AssetsApi::prepared)
+        .register_fn("failed", AssetsApi::failed);
+}

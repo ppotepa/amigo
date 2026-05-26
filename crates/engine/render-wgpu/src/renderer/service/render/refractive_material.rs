@@ -2,7 +2,7 @@ use super::material_candidates::WgpuMaterialCandidate2d;
 use super::offscreen_ops::{append_fullscreen_texture_vertices, compatible_offscreen_target};
 use super::*;
 use amigo_material_api::{Material2d, MaterialCandidateDecision2d, MaterialCandidateStatus2d};
-use amigo_render_api::{RenderAssetSource, RenderPrimitive2d};
+use amigo_render_api::RenderAssetSource;
 use wgpu::util::DeviceExt;
 
 #[repr(C)]
@@ -48,69 +48,28 @@ pub(super) fn execute_refractive_material_2d(
     let mut mask_color_batches = Vec::new();
     let mut generated_masks = 0usize;
     let mut mask_sources = Vec::new();
+    let renderable_adapters = crate::default_renderable_2d_adapter_registry();
 
     for candidate in &active_candidates {
-        match &candidate.source.primitive {
-            RenderPrimitive2d::GlyphRun(glyph) => {
-                let alpha = (glyph.color.a * candidate.common.layer_opacity).clamp(0.0, 1.0);
-                if !renderer.append_text2d_ttf_font_texture_batch(
-                    &mut mask_batches,
-                    &mask_target.device,
-                    &mask_target.queue,
-                    assets,
-                    viewport,
-                    candidate.camera,
-                    &glyph.font,
-                    &glyph.text,
-                    glyph.transform,
-                    glyph.bounds,
-                    glyph.font_size,
-                    ColorRgba::new(1.0, 1.0, 1.0, alpha),
-                ) {
-                    let vertices =
-                        color_batch_vertices(&mut mask_color_batches, ParticleBlendMode2d::Alpha);
-                    append_text_2d_vertices(
-                        vertices,
-                        viewport,
-                        candidate.camera,
-                        &glyph.text,
-                        glyph.transform,
-                        glyph.bounds,
-                        ColorRgba::new(1.0, 1.0, 1.0, alpha),
-                    );
-                    generated_masks += 1;
-                    mask_sources.push("generated_geometry");
-                } else {
-                    mask_sources.push("ttf_font");
-                }
+        let mut adapter_ctx = crate::WgpuRefractiveMaskAdapterContext {
+            renderer,
+            texture_batches: &mut mask_batches,
+            color_batches: &mut mask_color_batches,
+            target: &mask_target,
+            assets,
+            viewport,
+            camera: candidate.camera,
+        };
+        let outcome = renderable_adapters.append_refractive_mask_batches(
+            &mut adapter_ctx,
+            &candidate.source.renderable,
+            candidate.common.layer_opacity,
+        );
+        if outcome.appended {
+            if outcome.generated_geometry {
+                generated_masks += 1;
             }
-            RenderPrimitive2d::TexturedQuad(quad) => {
-                let _ = renderer.append_textured_quad_texture_batch(
-                    &mut mask_batches,
-                    &mask_target.device,
-                    &mask_target.queue,
-                    assets,
-                    viewport,
-                    candidate.camera,
-                    quad,
-                );
-                mask_sources.push("texture_alpha");
-            }
-            RenderPrimitive2d::VectorMesh(vector) => {
-                let vertices =
-                    color_batch_vertices(&mut mask_color_batches, ParticleBlendMode2d::Alpha);
-                append_vector_primitive_vertices(
-                    vertices,
-                    viewport,
-                    candidate.camera,
-                    vector,
-                    None,
-                    None,
-                    None,
-                );
-                mask_sources.push("vector_coverage");
-            }
-            _ => {}
+            mask_sources.push(outcome.source);
         }
     }
 
@@ -597,7 +556,9 @@ mod tests {
         render_layer: &str,
         coverage_kind: MaterialCoverageKind2d,
     ) -> WgpuMaterialCandidate2d {
-        let primitive = RenderPrimitive2d::GlyphRun(amigo_render_api::GlyphRun2dPrimitive {
+        use amigo_render_api::RenderPrimitive2d as Primitive;
+
+        let primitive = Primitive::GlyphRun(amigo_render_api::GlyphRun2dPrimitive {
             font: AssetKey::new("test/font"),
             text: owner.to_owned(),
             bounds: amigo_math::Vec2::new(100.0, 40.0),
@@ -626,10 +587,22 @@ mod tests {
                 coverage_kind,
             },
             source: super::material_candidates::MaterialCandidateSource2d {
-                owner_entity: owner.to_owned(),
-                component_kind: component_kind.to_owned(),
-                primitive_kind: primitive.kind(),
-                primitive,
+                renderable: Renderable2dItem::new(
+                    amigo_render_api::Renderable2dCommon {
+                        source_id: amigo_render_api::RenderSourceId::for_component(
+                            owner,
+                            component_kind,
+                        ),
+                        object_id: amigo_render_api::RenderObjectId::for_scene_object(owner),
+                        owner_entity: owner.to_owned(),
+                        component_kind: component_kind.to_owned(),
+                        render_space: amigo_render_api::RenderSpace2d::World,
+                        render_layer: render_layer.to_owned(),
+                        z_index: 40.0,
+                        kind: amigo_render_api::Renderable2dKind::Text,
+                    },
+                    primitive,
+                ),
             },
             camera: Transform2::default(),
         }

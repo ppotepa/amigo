@@ -4,17 +4,14 @@
 use super::*;
 use crate::runtime_context::RuntimeContext;
 use crate::scene_runtime::current_loaded_scene_document_summary;
-use amigo_runtime_bundles::prepare_loaded_asset_domain_metadata;
-use amigo_runtime_bundles::{SpriteSceneService, SpriteSheet};
-use amigo_runtime_bundles::TileMap2dSceneService;
+use amigo_runtime_bundles::LoadedAssetDomainPreparerRegistry;
 
 pub(super) fn process_pending_asset_loads(runtime: &Runtime) -> AmigoResult<()> {
     let ctx = RuntimeContext::new(runtime);
     let asset_catalog = ctx.required::<AssetCatalog>()?;
     let mod_catalog = ctx.required::<ModCatalog>()?;
     let dev_console_state = ctx.required::<DevConsoleState>()?;
-    let sprite_scene_service = ctx.required::<SpriteSceneService>()?;
-    let tilemap_scene_service = ctx.required::<TileMap2dSceneService>()?;
+    let domain_preparers = ctx.required::<LoadedAssetDomainPreparerRegistry>()?;
 
     for request in asset_catalog.drain_pending_loads() {
         let Some(manifest) = asset_catalog.manifest(&request.key) else {
@@ -52,12 +49,7 @@ pub(super) fn process_pending_asset_loads(runtime: &Runtime) -> AmigoResult<()> 
                             request.key.as_str()
                         ));
                     } else {
-                        prepare_loaded_asset_domain_metadata(
-                            asset_catalog.as_ref(),
-                            sprite_scene_service.as_ref(),
-                            tilemap_scene_service.as_ref(),
-                            &loaded_asset.key,
-                        );
+                        domain_preparers.prepare_all(asset_catalog.as_ref(), &loaded_asset.key);
                     }
                 }
                 Ok(_) => {
@@ -94,14 +86,6 @@ pub(super) fn process_pending_asset_loads(runtime: &Runtime) -> AmigoResult<()> 
     }
 
     Ok(())
-}
-
-#[allow(dead_code)]
-pub(super) fn resolve_sprite_sheet_for_command(
-    asset_catalog: &AssetCatalog,
-    command: &Sprite2dSceneCommand,
-) -> Option<SpriteSheet> {
-    amigo_runtime_bundles::resolve_sprite_sheet_for_command(asset_catalog, command)
 }
 
 pub(super) fn sync_hot_reload_watches(runtime: &Runtime) -> AmigoResult<()> {

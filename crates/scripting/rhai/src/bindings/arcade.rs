@@ -79,3 +79,13 @@ impl ArcadeApi {
         (motion_ok, active_ok && intensity_ok)
     }
 }
+
+pub(crate) fn register_api(engine: &mut rhai::Engine) {
+    engine
+        .register_type_with_name::<ArcadeApi>("WorldArcade")
+        .register_fn("drive_freeflight", ArcadeApi::drive_freeflight)
+        .register_fn(
+            "drive_freeflight_with_emitter",
+            ArcadeApi::drive_freeflight_with_emitter,
+        );
+}

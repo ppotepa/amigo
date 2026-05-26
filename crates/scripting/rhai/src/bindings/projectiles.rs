@@ -67,3 +67,10 @@ impl ProjectilesApi {
         pools.release(scene, pool_id, entity_name)
     }
 }
+
+pub(crate) fn register_api(engine: &mut rhai::Engine) {
+    engine
+        .register_type_with_name::<ProjectilesApi>("WorldProjectiles")
+        .register_fn("fire_from", ProjectilesApi::fire_from)
+        .register_fn("release", ProjectilesApi::release);
+}

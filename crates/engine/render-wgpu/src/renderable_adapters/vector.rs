@@ -1,7 +1,10 @@
 use amigo_render_api::{RenderPrimitive2d, RenderPrimitive2dKind};
 
 use crate::renderer::collect_material_candidate_2d;
-use crate::{WgpuRenderable2dAdapter, WgpuRenderable2dAdapterContext};
+use crate::{
+    WgpuRefractiveMaskAdapterContext, WgpuRefractiveMaskAppendOutcome, WgpuRenderable2dAdapter,
+    WgpuRenderable2dAdapterContext,
+};
 
 pub struct VectorMesh2dRenderableAdapter;
 
@@ -42,5 +45,32 @@ impl WgpuRenderable2dAdapter for VectorMesh2dRenderableAdapter {
             ctx.material_decisions,
         );
         true
+    }
+
+    fn append_refractive_mask_batches(
+        &self,
+        ctx: &mut WgpuRefractiveMaskAdapterContext<'_>,
+        item: &crate::Renderable2dItem,
+        _alpha: f32,
+    ) -> WgpuRefractiveMaskAppendOutcome {
+        let Some(vector) = item.primitive.vector_mesh() else {
+            return WgpuRefractiveMaskAppendOutcome::none();
+        };
+        let vertices = crate::renderer::color_batch_vertices(
+            ctx.color_batches,
+            crate::renderer::particle_blend_mode(
+                amigo_render_api::ParticleBlendMode2dPrimitive::Alpha,
+            ),
+        );
+        crate::renderer::append_vector_primitive_vertices(
+            vertices,
+            ctx.viewport,
+            ctx.camera,
+            vector,
+            None,
+            None,
+            None,
+        );
+        WgpuRefractiveMaskAppendOutcome::appended("vector_coverage", false)
     }
 }

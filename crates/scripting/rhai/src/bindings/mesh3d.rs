@@ -21,3 +21,9 @@ impl Mesh3dApi {
         )
     }
 }
+
+pub(crate) fn register_api(engine: &mut rhai::Engine) {
+    engine
+        .register_type_with_name::<Mesh3dApi>("WorldMesh3d")
+        .register_fn("queue", Mesh3dApi::queue);
+}

@@ -92,3 +92,14 @@ pub fn scene_exists_for_selected_mod(
         .into_iter()
         .any(|known_scene| known_scene == scene_id)
 }
+
+pub(crate) fn register_api(engine: &mut rhai::Engine) {
+    engine
+        .register_type_with_name::<SceneApi>("WorldScene")
+        .register_fn("current_id", SceneApi::current_id)
+        .register_fn("available", SceneApi::available)
+        .register_fn("has", SceneApi::has)
+        .register_fn("select", SceneApi::select)
+        .register_fn("reload", SceneApi::reload)
+        .register_fn("activate_set", SceneApi::activate_set);
+}

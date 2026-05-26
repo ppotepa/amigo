@@ -33,3 +33,23 @@ amigo-scripting-api.workspace = true
 amigo-state.workspace = true
 amigo-window-api.workspace = true
 serde_yaml.workspace = true
+
+[dev-dependencies]
+amigo-2d-composition.workspace = true
+amigo-3d-material.workspace = true
+amigo-3d-mesh.workspace = true
+amigo-3d-text.workspace = true
+amigo-audio-api.workspace = true
+amigo-camera-core-plugin.workspace = true
+amigo-composite-plugin.workspace = true
+amigo-focus-depth-plugin.workspace = true
+amigo-layered-image-2d-plugin.workspace = true
+amigo-light-2d-plugin.workspace = true
+amigo-material-api.workspace = true
+amigo-particles-2d-plugin.workspace = true
+amigo-shutter-motion-plugin.workspace = true
+amigo-sprite-2d-plugin.workspace = true
+amigo-text-2d-plugin.workspace = true
+amigo-tilemap-2d-plugin.workspace = true
+amigo-ui.workspace = true
+amigo-vector-2d-plugin.workspace = true

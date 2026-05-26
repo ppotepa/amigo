@@ -46,3 +46,15 @@ impl TimersApi {
         }
     }
 }
+
+pub(crate) fn register_api(engine: &mut rhai::Engine) {
+    engine
+        .register_type_with_name::<TimersApi>("WorldTimers")
+        .register_fn("start", TimersApi::start)
+        .register_fn("ready", TimersApi::ready)
+        .register_fn("active", TimersApi::active)
+        .register_fn("after", TimersApi::after)
+        .register_fn("tick", TimersApi::tick)
+        .register_fn("advance", TimersApi::advance)
+        .register_fn("reset_scene", TimersApi::reset_scene);
+}

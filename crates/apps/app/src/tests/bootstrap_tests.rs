@@ -31,7 +31,7 @@ fn bootstrap_reports_task_003_scaffold_plugins_and_capabilities() {
         "amigo-vector-2d-plugin",
         "amigo-2d-physics",
         "amigo-tilemap-2d-plugin",
-        amigo_runtime_bundles::CANONICAL_MOTION_2D_RUNTIME_REPORT_LABEL,
+        amigo_shutter_motion_plugin::CANONICAL_MOTION_2D_RUNTIME_REPORT_LABEL,
         "amigo-audio-api",
         "amigo-audio-generated",
         "amigo-audio-mixer",

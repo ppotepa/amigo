@@ -251,3 +251,25 @@ fn keys_from_array(keys: rhai::Array) -> Vec<String> {
         .filter(|key| !key.is_empty())
         .collect()
 }
+
+pub(crate) fn register_api(engine: &mut rhai::Engine) {
+    engine
+        .register_type_with_name::<InputApi>("WorldInput")
+        .register_fn("down", InputApi::down)
+        .register_fn("pressed", InputApi::pressed)
+        .register_fn("any_down", InputApi::any_down)
+        .register_fn("any_down", InputApi::any_down_array)
+        .register_fn("any_pressed", InputApi::any_pressed)
+        .register_fn("any_pressed", InputApi::any_pressed_array)
+        .register_fn("axis", InputApi::axis)
+        .register_fn("axis", InputApi::axis_array)
+        .register_fn("keys", InputApi::keys)
+        .register_fn("mouse_down", InputApi::mouse_down)
+        .register_fn("mouse_pressed", InputApi::mouse_pressed)
+        .register_fn("mouse_position", InputApi::mouse_position)
+        .register_fn("mouse_canvas_position", InputApi::mouse_canvas_position)
+        .register_fn("wheel_delta", InputApi::wheel_delta)
+        .register_fn("ctrl_down", InputApi::ctrl_down)
+        .register_fn("shift_down", InputApi::shift_down)
+        .register_fn("alt_down", InputApi::alt_down);
+}

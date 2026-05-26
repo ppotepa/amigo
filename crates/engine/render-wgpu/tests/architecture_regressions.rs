@@ -226,6 +226,48 @@ fn architecture_motion_buffer_uses_render_source_id_for_temporal_keys() {
 }
 
 #[test]
+fn architecture_special_render_passes_use_renderable_adapters_for_primitive_behavior() {
+    for relative in [
+        "src/renderer/service/post_fx/focus_blur.rs",
+        "src/renderer/service/render/visual_source_buffer_pass/material_maps.rs",
+        "src/renderer/service/render/refractive_material.rs",
+    ] {
+        let path = crate_root().join(relative);
+        let content = strip_rust_comments(&read(&path));
+        if let Some(line) = first_needle_line(&content, "RenderPrimitive2d::") {
+            panic!(
+                "special render pass should use renderable adapter contracts instead of branching on RenderPrimitive2d variants in {}:{}",
+                path.display(),
+                line,
+            );
+        }
+    }
+}
+
+#[test]
+fn architecture_world_selection_uses_render_object_id_not_owner_entity_filtering() {
+    for relative in [
+        "src/renderer/service/render/world.rs",
+        "src/renderer/service/render/layered_image_parts_pass.rs",
+    ] {
+        let path = crate_root().join(relative);
+        let content = strip_rust_comments(&read(&path));
+        if let Some(line) = first_needle_line(&content, "item.owner_entity()") {
+            panic!(
+                "world selection and layered-image part targeting should use RenderObjectId, not owner_entity() in {}:{}",
+                path.display(),
+                line,
+            );
+        }
+        assert!(
+            content.contains("item.object_id()"),
+            "{} should filter renderables through explicit object_id()",
+            path.display(),
+        );
+    }
+}
+
+#[test]
 fn render_wgpu_does_not_reintroduce_renderable_payload() {
     for path in render_wgpu_rs_files() {
         let content = read(&path);

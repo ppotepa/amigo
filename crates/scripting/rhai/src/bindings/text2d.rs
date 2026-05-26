@@ -34,3 +34,9 @@ impl Text2dApi {
         )
     }
 }
+
+pub(crate) fn register_api(engine: &mut rhai::Engine) {
+    engine
+        .register_type_with_name::<Text2dApi>("WorldText2d")
+        .register_fn("queue", Text2dApi::queue);
+}

@@ -116,3 +116,10 @@ pub fn parse_key_code(value: &str) -> KeyCode {
         _ => KeyCode::Unknown,
     }
 }
+
+pub(crate) fn register_api(engine: &mut rhai::Engine) {
+    engine
+        .register_fn("to_float", string_to_float)
+        .register_fn("to_int", string_to_int)
+        .register_fn("to_bool", string_to_bool);
+}

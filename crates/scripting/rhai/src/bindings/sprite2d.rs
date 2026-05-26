@@ -83,3 +83,12 @@ pub fn advance_sprite_animation(
         .map(|sprite_scene| sprite_scene.advance_animation(entity_name, delta_seconds))
         .unwrap_or(false)
 }
+
+pub(crate) fn register_api(engine: &mut rhai::Engine) {
+    engine
+        .register_type_with_name::<Sprite2dApi>("WorldSprite2d")
+        .register_fn("frame", Sprite2dApi::frame)
+        .register_fn("set_frame", Sprite2dApi::set_frame)
+        .register_fn("advance", Sprite2dApi::advance)
+        .register_fn("queue", Sprite2dApi::queue);
+}

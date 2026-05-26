@@ -1,3 +1,4 @@
+mod asset_domain_preparers;
 mod audio;
 mod core;
 mod devtools;
@@ -13,12 +14,12 @@ mod render_extractor_registry;
 mod render_packet_services;
 mod render_scene_view;
 mod render_session;
-mod runtime_service_types;
 mod runtime_summary;
 mod scripting;
 mod three_d;
 mod two_d;
 
+pub use asset_domain_preparers::*;
 pub use audio::*;
 pub use core::*;
 pub use devtools::*;
@@ -37,7 +38,6 @@ pub use render_extractor_registry::*;
 pub use render_packet_services::*;
 pub use render_scene_view::*;
 pub use render_session::*;
-pub use runtime_service_types::*;
 pub use runtime_summary::*;
 pub use scripting::*;
 pub use three_d::*;

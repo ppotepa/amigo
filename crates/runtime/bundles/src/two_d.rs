@@ -13,7 +13,7 @@ use amigo_light_2d_plugin::Lighting2dPlugin;
 use amigo_particles_2d_plugin::{
     Particle2dPlugin, Particle2dSourceVelocityProvider, ParticleEmitter2d, ParticlePreset2d,
 };
-use amigo_runtime::{PluginBundle, RuntimeBuilder, RuntimePlugin, ServiceRegistry};
+use amigo_runtime::{PluginBundle, Runtime, RuntimeBuilder, RuntimePlugin, ServiceRegistry};
 use amigo_scene::{
     build_scene_hydration_plan, SceneCommand, SceneComponentDocument, SceneDocument,
     SceneEntityDocument, SceneMetadataDocument,
@@ -26,6 +26,7 @@ use amigo_tilemap_2d_plugin::TileMap2dPlugin;
 use amigo_ui::UiPlugin;
 use amigo_vector_2d_plugin::Vector2dPlugin;
 
+use crate::{LoadedAssetDomainPreparer, LoadedAssetDomainPreparerRegistry};
 use crate::render_extractor_bridges;
 use crate::render_extractor_registry::WgpuRenderExtractorBridgeRegistry;
 
@@ -142,6 +143,30 @@ pub fn load_particle_preset_file(source_mod: &str, path: &Path) -> AmigoResult<P
     })
 }
 
+pub fn load_particle_preset_catalog(runtime: &Runtime) -> AmigoResult<()> {
+    let mod_catalog = runtime.required::<amigo_modding::ModCatalog>()?;
+    let presets = runtime.required::<amigo_particles_2d_plugin::ParticlePreset2dService>()?;
+    presets.clear();
+
+    for discovered_mod in mod_catalog.mods() {
+        let preset_dir = discovered_mod.root_path.join("presets");
+        if !preset_dir.is_dir() {
+            continue;
+        }
+
+        for entry in fs::read_dir(&preset_dir)? {
+            let path = entry?.path();
+            if path.extension().and_then(|extension| extension.to_str()) != Some("yml") {
+                continue;
+            }
+            let preset = load_particle_preset_file(&discovered_mod.manifest.id, &path)?;
+            presets.register(preset);
+        }
+    }
+
+    Ok(())
+}
+
 pub fn tick_ui_bindings(runtime: &amigo_runtime::Runtime) -> AmigoResult<()> {
     amigo_ui::tick_ui_bindings(runtime)
 }
@@ -187,6 +212,7 @@ fn string_sequence_field(value: &serde_yaml::Value, key: &str) -> Vec<String> {
 pub struct TwoDRuntimeBundle;
 
 struct WgpuTwoDRenderExtractorBridgePlugin;
+struct LoadedAssetTwoDMetadataPreparerPlugin;
 struct Particle2dMotionVelocityBridgePlugin;
 
 struct Motion2dParticleSourceVelocityProvider {
@@ -230,10 +256,69 @@ impl PluginBundle for TwoDRuntimeBundle {
             .with_plugin(UiPlugin)?
             .with_plugin(Physics2dPlugin)?
             .with_plugin(TileMap2dPlugin)?
+            .with_plugin(LoadedAssetTwoDMetadataPreparerPlugin)?
             .with_plugin(MOTION_2D_PLUGIN)?
             .with_plugin(Particle2dMotionVelocityBridgePlugin)?
             .with_plugin(FocusTargets2dRuntimePlugin)?
             .with_plugin(WgpuTwoDRenderExtractorBridgePlugin)
+    }
+}
+
+struct SpriteLoadedAssetDomainPreparer {
+    sprites: Arc<amigo_sprite_2d_plugin::SpriteSceneService>,
+}
+
+impl LoadedAssetDomainPreparer for SpriteLoadedAssetDomainPreparer {
+    fn name(&self) -> &'static str {
+        "amigo-sprite-2d-loaded-asset-domain-preparer"
+    }
+
+    fn prepare(&self, asset_catalog: &amigo_assets::AssetCatalog, asset_key: &amigo_assets::AssetKey) {
+        let Some(prepared) = asset_catalog.prepared_asset(asset_key) else {
+            return;
+        };
+        if let Some(sheet) = amigo_sprite_2d_plugin::infer_sprite_sheet_from_prepared_asset(&prepared)
+        {
+            self.sprites.sync_sheet_for_texture(asset_key, sheet);
+        }
+    }
+}
+
+struct TileMapLoadedAssetDomainPreparer {
+    tilemaps: Arc<amigo_tilemap_2d_plugin::TileMap2dSceneService>,
+}
+
+impl LoadedAssetDomainPreparer for TileMapLoadedAssetDomainPreparer {
+    fn name(&self) -> &'static str {
+        "amigo-tilemap-2d-loaded-asset-domain-preparer"
+    }
+
+    fn prepare(&self, asset_catalog: &amigo_assets::AssetCatalog, asset_key: &amigo_assets::AssetKey) {
+        let Some(prepared) = asset_catalog.prepared_asset(asset_key) else {
+            return;
+        };
+        if let Some(ruleset) =
+            amigo_tilemap_2d_plugin::infer_tile_ruleset_from_prepared_asset(&prepared)
+        {
+            self.tilemaps.sync_ruleset_for_asset(asset_key, &ruleset);
+        }
+    }
+}
+
+impl RuntimePlugin for LoadedAssetTwoDMetadataPreparerPlugin {
+    fn name(&self) -> &'static str {
+        "amigo-2d-loaded-asset-domain-preparers"
+    }
+
+    fn register(&self, registry: &mut ServiceRegistry) -> AmigoResult<()> {
+        let preparers = registry.required::<LoadedAssetDomainPreparerRegistry>()?;
+        let sprites = registry.required::<amigo_sprite_2d_plugin::SpriteSceneService>()?;
+        let tilemaps = registry.required::<amigo_tilemap_2d_plugin::TileMap2dSceneService>()?;
+
+        preparers.register(Arc::new(SpriteLoadedAssetDomainPreparer { sprites }));
+        preparers.register(Arc::new(TileMapLoadedAssetDomainPreparer { tilemaps }));
+
+        Ok(())
     }
 }
 

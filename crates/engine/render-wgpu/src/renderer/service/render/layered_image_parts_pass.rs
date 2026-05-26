@@ -4,7 +4,7 @@ use super::WorldPassLoadExt;
 use super::world_filters::WorldPassLoad;
 use super::*;
 use amigo_core::AmigoResult;
-use amigo_render_api::RenderAssetSource;
+use amigo_render_api::{RenderAssetSource, RenderObjectId};
 
 pub(super) fn execute_layered_image_parts_to_offscreen(
     renderer: &mut WgpuSceneRenderer,
@@ -12,7 +12,7 @@ pub(super) fn execute_layered_image_parts_to_offscreen(
     renderables: &[Renderable2dItem],
     assets: &dyn RenderAssetSource,
     render_layers: &[RenderLayer2dCommand],
-    part_targets: &BTreeMap<String, BTreeSet<String>>,
+    part_targets: &BTreeMap<RenderObjectId, BTreeSet<String>>,
     pass_load: WorldPassLoad,
 ) -> AmigoResult<()> {
     let viewport = Viewport::from_offscreen(target);
@@ -24,7 +24,7 @@ pub(super) fn execute_layered_image_parts_to_offscreen(
         .filter_map(|item| {
             item.primitive
                 .layered_textured_quads()
-                .filter(|_| part_targets.contains_key(item.owner_entity()))
+                .filter(|_| part_targets.contains_key(item.object_id()))
                 .map(|layered| (item, layered))
         })
         .collect::<Vec<_>>();
@@ -40,7 +40,7 @@ pub(super) fn execute_layered_image_parts_to_offscreen(
     });
 
     for (item, layered) in items {
-        let Some(parts) = part_targets.get(item.owner_entity()) else {
+        let Some(parts) = part_targets.get(item.object_id()) else {
             continue;
         };
         renderer.append_layered_image_primitive_texture_batches_filtered(

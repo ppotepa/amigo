@@ -1,5 +1,5 @@
 use super::*;
-use amigo_runtime_bundles::{process_ui_input, resolve_ui_overlay_documents, UiInputViewportState};
+use amigo_ui::{process_ui_input, resolve_ui_overlay_documents, UiInputViewportState};
 
 #[test]
 fn playground_hud_ui_click_switches_theme() {

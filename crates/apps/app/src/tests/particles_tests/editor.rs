@@ -1,8 +1,8 @@
 use super::*;
-use amigo_runtime_bundles::{
+use amigo_particles_2d_plugin::{
     Particle2dSceneService, ParticleAlignMode2d, ParticleBlendMode2d, ParticlePreset2dService,
 };
-use amigo_runtime_bundles::{process_ui_input, resolve_ui_overlay_documents, UiInputViewportState};
+use amigo_ui::{process_ui_input, resolve_ui_overlay_documents, UiInputViewportState};
 
 #[test]
 fn particles_editor_applies_registry_preset() {

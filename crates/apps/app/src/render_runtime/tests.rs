@@ -1,7 +1,7 @@
 use amigo_assets::AssetKey;
-use amigo_runtime_bundles::{LightRoute2dSceneService, RenderLayer2dSceneService};
-use amigo_runtime_bundles::LayeredImageSceneService;
-use amigo_runtime_bundles::{
+use amigo_2d_composition::{LightRoute2dSceneService, RenderLayer2dSceneService};
+use amigo_layered_image_2d_plugin::LayeredImageSceneService;
+use amigo_light_2d_plugin::{
     GlobalLight2dSceneService, LightGroup2dSceneService, LightMap2dSceneService,
     Material2dLightingMode,
 };
@@ -11,13 +11,13 @@ use amigo_render_api::{
     post_fx_wet_reflections, Crt2d, DirtyBloom2d, FilmNoise2d, PostFx2dStack, PostFxBlur2d,
     PostFxLensDroplets2d, PostFxWetReflections2d, ScopedPostFx2dStack,
 };
-use amigo_runtime_bundles::MaterialCoverageKind2d;
-use amigo_runtime_bundles::{Material3d, MaterialDrawCommand, MaterialSceneService};
-use amigo_runtime_bundles::{Mesh3d, MeshDrawCommand, MeshSceneService};
-use amigo_runtime_bundles::{Text3d, Text3dDrawCommand, Text3dSceneService};
-use amigo_runtime_bundles::PostFx2dService;
-use amigo_runtime_bundles::DepthMap2dSceneService;
-use amigo_runtime_bundles::{
+use amigo_material_api::MaterialCoverageKind2d;
+use amigo_3d_material::{Material3d, MaterialDrawCommand, MaterialSceneService};
+use amigo_3d_mesh::{Mesh3d, MeshDrawCommand, MeshSceneService};
+use amigo_3d_text::{Text3d, Text3dDrawCommand, Text3dSceneService};
+use amigo_composite_plugin::PostFx2dService;
+use amigo_focus_depth_plugin::DepthMap2dSceneService;
+use amigo_particles_2d_plugin::{
     Particle2dEmitterRuntimeInput, Particle2dSceneService, ParticleAlignMode2d,
     ParticleBlendMode2d, ParticleEmitter2d, ParticleEmitter2dCommand, ParticleLineAnchor2d,
     ParticleMaterial2d, ParticleShape2d, ParticleSimulationSpace2d, ParticleSpawnArea2d,
@@ -25,16 +25,16 @@ use amigo_runtime_bundles::{
 };
 use amigo_scene::SceneEntityId;
 use amigo_scripting_api::DevConsoleState;
-use amigo_runtime_bundles::{Sprite, SpriteDrawCommand, SpriteSceneService, SpriteSheet};
-use amigo_runtime_bundles::{Text2d, Text2dDrawCommand, Text2dSceneService, Text2dStyle};
-use amigo_runtime_bundles::{TileMap2d, TileMap2dDrawCommand, TileMap2dSceneService};
-use amigo_runtime_bundles::{
-    UiDocument as RuntimeUiDocument, UiDrawCommand, UiLayer as RuntimeUiLayer,
-    UiNode as RuntimeUiNode, UiNodeKind as RuntimeUiNodeKind, UiSceneService, UiStateService,
-    UiStyle as RuntimeUiStyle, UiTarget as RuntimeUiTarget, UiTheme, UiThemePalette,
-    UiThemeService, UiInputViewportState,
+use amigo_sprite_2d_plugin::{Sprite, SpriteDrawCommand, SpriteSceneService, SpriteSheet};
+use amigo_text_2d_plugin::{Text2d, Text2dDrawCommand, Text2dSceneService, Text2dStyle};
+use amigo_tilemap_2d_plugin::{TileMap2d, TileMap2dDrawCommand, TileMap2dSceneService};
+use amigo_ui::{
+    UiDocument as RuntimeUiDocument, UiDrawCommand, UiInputViewportState,
+    UiLayer as RuntimeUiLayer, UiNode as RuntimeUiNode, UiNodeKind as RuntimeUiNodeKind,
+    UiSceneService, UiStateService, UiStyle as RuntimeUiStyle, UiTarget as RuntimeUiTarget,
+    UiTheme, UiThemePalette, UiThemeService,
 };
-use amigo_runtime_bundles::{
+use amigo_vector_2d_plugin::{
     VectorSceneService, VectorShape2d, VectorShape2dDrawCommand, VectorShapeKind2d,
     VectorStyle2d, VectorViewportFit2d,
 };

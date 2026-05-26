@@ -1,5 +1,5 @@
 use super::super::*;
-use amigo_runtime_bundles::LayeredImageSceneService;
+use amigo_layered_image_2d_plugin::LayeredImageSceneService;
 use amigo_state::SceneStateService;
 
 #[test]

@@ -58,3 +58,10 @@ impl RandomApi {
         self.state.next_unit() <= probability.clamp(0.0, 1.0) as f32
     }
 }
+
+pub(crate) fn register_api(engine: &mut rhai::Engine) {
+    engine
+        .register_type_with_name::<RandomApi>("WorldRandom")
+        .register_fn("range", RandomApi::range)
+        .register_fn("chance", RandomApi::chance);
+}

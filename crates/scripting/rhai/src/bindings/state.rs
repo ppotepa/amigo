@@ -93,3 +93,21 @@ impl StateApi {
         }
     }
 }
+
+pub(crate) fn register_api(engine: &mut rhai::Engine) {
+    engine
+        .register_type_with_name::<StateApi>("WorldState")
+        .register_fn("set_int", StateApi::set_int)
+        .register_fn("set_float", StateApi::set_float)
+        .register_fn("set_bool", StateApi::set_bool)
+        .register_fn("set_string", StateApi::set_string)
+        .register_fn("get_int", StateApi::get_int)
+        .register_fn("get_float", StateApi::get_float)
+        .register_fn("get_bool", StateApi::get_bool)
+        .register_fn("get_string", StateApi::get_string)
+        .register_fn("add_int", StateApi::add_int)
+        .register_fn("add_float", StateApi::add_float)
+        .register_fn("add_bool", StateApi::add_bool)
+        .register_fn("add_string", StateApi::add_string)
+        .register_fn("reset_scene", StateApi::reset_scene);
+}

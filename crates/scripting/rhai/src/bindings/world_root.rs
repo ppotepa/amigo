@@ -402,3 +402,42 @@ impl WorldApi {
         crate::bindings::runtime::runtime_capabilities(self.runtime.diagnostics.as_ref())
     }
 }
+
+pub(crate) fn register_api(engine: &mut rhai::Engine) {
+    engine
+.register_type_with_name::<WorldApi>("World")
+        .register_get("scene", WorldApi::scene)
+        .register_get("entities", WorldApi::entities)
+        .register_get("input", WorldApi::input)
+        .register_get("layered_image2d", WorldApi::layered_image2d)
+        .register_get("beacon2d", WorldApi::beacon2d)
+        .register_get("render2d", WorldApi::render2d)
+        .register_get("light2d", WorldApi::light2d)
+        .register_get("actions", WorldApi::actions)
+        .register_get("arcade", WorldApi::arcade)
+        .register_get("camera", WorldApi::camera)
+        .register_get("physics", WorldApi::physics)
+        .register_get("postfx", WorldApi::postfx)
+        .register_get("pools", WorldApi::pools)
+        .register_get("projectiles", WorldApi::projectiles)
+        .register_get("random", WorldApi::random)
+        .register_get("time", WorldApi::time)
+        .register_get("assets", WorldApi::assets)
+        .register_get("audio", WorldApi::audio)
+        .register_get("mod", WorldApi::game_mod)
+        .register_get("motion", WorldApi::motion)
+        .register_get("particles", WorldApi::particles)
+        .register_get("sprite2d", WorldApi::sprite2d)
+        .register_get("state", WorldApi::state)
+        .register_get("session", WorldApi::session)
+        .register_get("vector", WorldApi::vector2d)
+        .register_get("text2d", WorldApi::text2d)
+        .register_get("mesh3d", WorldApi::mesh3d)
+        .register_get("material3d", WorldApi::material3d)
+        .register_get("text3d", WorldApi::text3d)
+        .register_get("timers", WorldApi::timers)
+        .register_get("trace", WorldApi::trace)
+        .register_get("ui", WorldApi::ui)
+        .register_get("dev", WorldApi::dev)
+        .register_get("runtime", WorldApi::runtime);
+}
