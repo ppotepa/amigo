@@ -69,6 +69,21 @@ fn runtime_bundle_runtime_exports_do_not_reexport_domain_types() {
 }
 
 #[test]
+fn material_emissive_bridge_does_not_branch_on_render_primitives() {
+    let path = crate_root().join("src/render_extractor_bridges/light_sources_2d/material.rs");
+    let content = read(&path);
+    assert!(
+        !content.contains("RenderPrimitive2d::"),
+        "material emissive bridge should use render-api material payload contracts, not primitive variant matching in {}",
+        path.display()
+    );
+    assert!(
+        content.contains("material_emissive_color_rgba()"),
+        "material emissive bridge should read color through render-api contract"
+    );
+}
+
+#[test]
 fn render_session_extracts_through_runtime_registry() {
     let render_session_rs = crate_root().join("src/render_session.rs");
     let content = read(render_session_rs);

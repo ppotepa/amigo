@@ -503,4 +503,24 @@ impl RenderPrimitive2d {
             _ => None,
         }
     }
+
+    pub fn material_emissive_color_rgba(&self) -> Option<[f32; 4]> {
+        match self {
+            Self::GlyphRun(command) => Some([
+                command.color.r,
+                command.color.g,
+                command.color.b,
+                command.color.a,
+            ]),
+            Self::TexturedQuad(_) => Some([1.0, 1.0, 1.0, 1.0]),
+            Self::VectorMesh(command) => {
+                let color = command
+                    .style
+                    .fill_color
+                    .unwrap_or(command.style.stroke_color);
+                Some([color.r, color.g, color.b, color.a])
+            }
+            _ => None,
+        }
+    }
 }

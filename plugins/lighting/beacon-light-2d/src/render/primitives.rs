@@ -52,6 +52,9 @@ pub fn beacon_draw_command_to_render_primitive(
 pub fn beacon_draw_command_to_renderable_2d(
     command: &BeaconLight2dDrawCommand,
 ) -> Renderable2dItem {
+    let overlay_visible = command
+        .render_contributions
+        .enabled_or(amigo_render_api::render_contribution_roles::OVERLAY_VISIBLE, true);
     Renderable2dItem::new(
         Renderable2dCommon::world(
             command.entity_name.clone(),
@@ -59,7 +62,8 @@ pub fn beacon_draw_command_to_renderable_2d(
             command.render_layer.clone(),
             command.z_index,
             Renderable2dKind::Beacon,
-        ),
+        )
+        .with_overlay_visible(overlay_visible),
         beacon_draw_command_to_render_primitive(command),
     )
 }

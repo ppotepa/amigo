@@ -90,6 +90,7 @@ pub struct Renderable2dCommon {
     pub render_layer: String,
     pub z_index: f32,
     pub kind: Renderable2dKind,
+    pub overlay_visible: bool,
 }
 
 impl Renderable2dCommon {
@@ -111,11 +112,17 @@ impl Renderable2dCommon {
             render_layer: render_layer.into(),
             z_index,
             kind,
+            overlay_visible: false,
         }
     }
 
     pub fn uses_camera_pipeline(&self) -> bool {
         self.render_space.uses_camera_pipeline()
+    }
+
+    pub fn with_overlay_visible(mut self, overlay_visible: bool) -> Self {
+        self.overlay_visible = overlay_visible;
+        self
     }
 }
 
@@ -165,6 +172,10 @@ impl Renderable2dItem {
     pub fn uses_camera_pipeline(&self) -> bool {
         self.common.uses_camera_pipeline()
     }
+
+    pub fn overlay_visible(&self) -> bool {
+        self.common.overlay_visible
+    }
 }
 
 #[cfg(test)]
@@ -199,6 +210,7 @@ mod tests {
             render_layer: "title.depth2d".to_owned(),
             z_index: 0.0,
             kind: Renderable2dKind::Text,
+            overlay_visible: false,
         };
 
         assert!(common.uses_camera_pipeline());

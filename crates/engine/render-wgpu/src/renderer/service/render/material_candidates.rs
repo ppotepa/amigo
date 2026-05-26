@@ -52,7 +52,7 @@ pub(crate) fn collect_material_candidate_2d(
     match item.primitive.kind() {
         RenderPrimitive2dKind::LayeredTexturedQuads => {
             decisions.push(MaterialCandidateDecision2d::skipped(
-                item.owner_entity(),
+                item.source_id().as_str(),
                 item.component_kind(),
                 item.render_layer(),
                 MaterialCoverageKind2d::LayeredImageAlpha,
@@ -61,7 +61,7 @@ pub(crate) fn collect_material_candidate_2d(
         }
         RenderPrimitive2dKind::ParticleBatch => {
             decisions.push(MaterialCandidateDecision2d::skipped(
-                item.owner_entity(),
+                item.source_id().as_str(),
                 item.component_kind(),
                 item.render_layer(),
                 MaterialCoverageKind2d::ParticleCoverage,
@@ -103,7 +103,7 @@ fn collect_candidate_from_binding(
 
     if !material.requires_material_mask() {
         decisions.push(MaterialCandidateDecision2d::skipped(
-            item.owner_entity(),
+            item.source_id().as_str(),
             item.component_kind(),
             item.render_layer(),
             coverage_kind,
@@ -114,7 +114,7 @@ fn collect_candidate_from_binding(
 
     if !material_pipeline_enabled(contributions, material) {
         decisions.push(MaterialCandidateDecision2d::skipped(
-            item.owner_entity(),
+            item.source_id().as_str(),
             item.component_kind(),
             item.render_layer(),
             coverage_kind,
@@ -125,7 +125,7 @@ fn collect_candidate_from_binding(
 
     let visible = layer_opacity > 0.001;
     let common = MaterialCandidate2dCommon {
-        owner: item.owner_entity().to_owned(),
+        owner: item.source_id().as_str().to_owned(),
         component_kind: item.component_kind().to_owned(),
         render_layer: item.render_layer().to_owned(),
         z_index: item.z_index(),
@@ -369,6 +369,7 @@ mod tests {
             render_layer: "foreground.props".to_owned(),
             z_index: 0.0,
             kind,
+            overlay_visible: false,
         }
     }
 

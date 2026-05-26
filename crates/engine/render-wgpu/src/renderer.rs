@@ -104,7 +104,9 @@ pub(crate) use world_2d::append_beacon_vfx_primitive_vertices;
 pub(crate) use world_2d::append_text_2d_vertices;
 pub(crate) use world_2d::append_textured_quad_debug_vertices;
 pub(crate) use world_2d::append_tilemap_primitive_color_vertices;
-pub(crate) use world_2d::append_vector_primitive_vertices;
+pub(crate) use world_2d::{
+    append_vector_primitive_vertices, vector_primitive_viewport_fit_transform,
+};
 
 pub use service::{
     WgpuEmergencyOverlayLevel, WgpuEmergencyOverlayLine, WgpuFrameRenderRequest,

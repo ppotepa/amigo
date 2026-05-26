@@ -600,6 +600,7 @@ mod tests {
                         render_layer: render_layer.to_owned(),
                         z_index: 40.0,
                         kind: amigo_render_api::Renderable2dKind::Text,
+                        overlay_visible: false,
                     },
                     primitive,
                 ),

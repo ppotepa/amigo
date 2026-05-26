@@ -21,10 +21,6 @@ pub(super) fn light_source_roles(source: &LightSource2dCommon) -> RenderContribu
     }))
 }
 
-pub(super) fn color_rgba(color: amigo_math::ColorRgba) -> [f32; 4] {
-    [color.r, color.g, color.b, color.a]
-}
-
 pub(super) fn visual_source_availability_label(
     availability: VisualSourceAvailability2d,
 ) -> &'static str {

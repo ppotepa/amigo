@@ -236,6 +236,7 @@ mod tests {
                 render_layer: "title.depth2d".to_owned(),
                 z_index: 0.0,
                 kind: Renderable2dKind::Text,
+                overlay_visible: false,
             },
             RenderPrimitive2d::GlyphRun(GlyphRun2dPrimitive {
                 font: AssetKey::new("test/font"),

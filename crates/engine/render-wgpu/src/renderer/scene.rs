@@ -104,6 +104,7 @@ mod tests {
                 render_layer: render_layer.to_owned(),
                 z_index,
                 kind: Renderable2dKind::Sprite,
+                overlay_visible: false,
             },
             RenderPrimitive2d::TexturedQuad(TexturedQuad2dPrimitive {
                 texture: AssetKey::new("test/sprite"),
@@ -133,6 +134,7 @@ mod tests {
                 render_layer: render_layer.to_owned(),
                 z_index,
                 kind: Renderable2dKind::Text,
+                overlay_visible: false,
             },
             RenderPrimitive2d::GlyphRun(GlyphRun2dPrimitive {
                 font: AssetKey::new("test/font"),

@@ -1,6 +1,5 @@
 use super::policy::VisualSourceBufferPolicySet;
 use super::*;
-use amigo_render_api::{RenderPrimitive2d, Renderable2dItem};
 
 // Estimates screen-space motion from previous per-draw transform positions.
 // This is a produced renderer buffer, not a material-owned motion-vector pass.
@@ -103,17 +102,20 @@ fn render_per_draw_motion_buffer(
     let mut current_positions = std::collections::BTreeMap::new();
     let mut color_batches = Vec::new();
     let target_size = (target.width, target.height);
+    let renderable_adapters = crate::default_renderable_2d_adapter_registry();
 
-    for (index, item) in request.world_2d.renderables.iter().enumerate() {
-        append_renderable_motion(
-            renderer,
-            &mut current_positions,
-            &mut color_batches,
-            &viewport,
-            camera,
-            target_size,
+    let previous_positions = renderer.visual_source_previous_positions_2d.clone();
+    for item in request.world_2d.renderables {
+        renderable_adapters.append_motion_batches(
+            &mut crate::WgpuMotionAdapterContext {
+                color_batches: &mut color_batches,
+                viewport: &viewport,
+                camera,
+                target_size,
+                current_positions: &mut current_positions,
+                previous_positions: &previous_positions,
+            },
             item,
-            index,
         );
     }
 
@@ -135,100 +137,4 @@ fn render_per_draw_motion_buffer(
         &[],
     )?;
     Ok(true)
-}
-
-fn append_renderable_motion(
-    renderer: &WgpuSceneRenderer,
-    current_positions: &mut std::collections::BTreeMap<String, Vec2>,
-    color_batches: &mut Vec<ColorBatch>,
-    viewport: &Viewport,
-    camera: Transform2,
-    target_size: (u32, u32),
-    item: &Renderable2dItem,
-    index: usize,
-) {
-    if let (Some(transform), Some(size)) = (
-        item.primitive.proxy_quad_transform(),
-        item.primitive.proxy_quad_size(),
-    ) {
-        let (key, current, previous) = match &item.primitive {
-            RenderPrimitive2d::TileBatch(_)
-            | RenderPrimitive2d::TexturedQuad(_)
-            | RenderPrimitive2d::LayeredTexturedQuads(_)
-            | RenderPrimitive2d::GlyphRun(_)
-            | RenderPrimitive2d::RadialLightVisual(_) => {
-                let key = item.source_id().as_str().to_owned();
-                let current = transform.translation;
-                let previous = renderer
-                    .visual_source_previous_positions_2d
-                    .get(&key)
-                    .copied();
-                (key, current, previous)
-            }
-            RenderPrimitive2d::ParticleBatch(primitive) => {
-                let key = format!("particle:{}:{index}", primitive.emitter_entity_name);
-                (key, primitive.position, Some(primitive.previous_position))
-            }
-            RenderPrimitive2d::VectorMesh(_) => unreachable!("vector mesh handled below"),
-        };
-        current_positions.insert(key, current);
-        util::append_visual_quad(
-            color_batches,
-            viewport,
-            camera,
-            transform,
-            size,
-            motion_vector_color(previous, current, target_size),
-        );
-        return;
-    }
-
-    match &item.primitive {
-        RenderPrimitive2d::VectorMesh(primitive) => {
-            let transform = crate::renderer::world_2d::vector_primitive_viewport_fit_transform(
-                viewport, primitive,
-            );
-            let key = item.source_id().as_str().to_owned();
-            current_positions.insert(key.clone(), transform.translation);
-            let color = motion_vector_color(
-                renderer
-                    .visual_source_previous_positions_2d
-                    .get(&key)
-                    .copied(),
-                transform.translation,
-                target_size,
-            );
-            crate::renderer::world_2d::append_vector_primitive_vertices(
-                color_batch_vertices(color_batches, ParticleBlendMode2d::Alpha),
-                viewport,
-                camera,
-                primitive,
-                Some(transform),
-                Some(color),
-                Some(color),
-            );
-        }
-        _ => {}
-    }
-}
-
-fn motion_vector_color(
-    previous: Option<Vec2>,
-    current: Vec2,
-    target_size: (u32, u32),
-) -> ColorRgba {
-    let Some(previous) = previous else {
-        return ColorRgba::new(0.5, 0.5, 0.0, 1.0);
-    };
-    let width = (target_size.0.max(1)) as f32;
-    let height = (target_size.1.max(1)) as f32;
-    let delta = Vec2::new(
-        (current.x - previous.x) / width,
-        (current.y - previous.y) / height,
-    );
-    let scale = 8.0;
-    let x = (0.5 + delta.x * scale).clamp(0.0, 1.0);
-    let y = (0.5 + delta.y * scale).clamp(0.0, 1.0);
-    let magnitude = ((delta.x * delta.x + delta.y * delta.y).sqrt() * scale).clamp(0.0, 1.0);
-    ColorRgba::new(x, y, magnitude, 1.0)
 }

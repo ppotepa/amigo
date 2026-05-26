@@ -79,7 +79,7 @@ mod tests;
 pub use camera_optical::collect_camera_optical_candidates_from_light_sources_2d;
 pub use format::format_light_sources_2d;
 
-use roles::{color_rgba, light_source_roles, visual_source_availability_label};
+use roles::{light_source_roles, visual_source_availability_label};
 
 pub fn collect_light_sources_2d(
     renderables: &[Renderable2dItem],

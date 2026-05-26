@@ -205,6 +205,13 @@ fn architecture_lightmap_uses_render_source_id_not_owner_entity_guessing() {
 fn architecture_motion_buffer_uses_render_source_id_for_temporal_keys() {
     let path = crate_root().join("src/renderer/service/render/visual_source_buffer_pass/motion.rs");
     let content = strip_rust_comments(&read(&path));
+    if let Some(line) = first_needle_line(&content, "RenderPrimitive2d::") {
+        panic!(
+            "motion buffer should use renderable adapter contracts instead of branching on RenderPrimitive2d variants in {}:{}",
+            path.display(),
+            line,
+        );
+    }
     if let Some(line) = first_needle_line(&content, "item.owner_entity()") {
         panic!(
             "motion buffer temporal keys should use RenderSourceId, not owner_entity() in {}:{}",
@@ -219,9 +226,41 @@ fn architecture_motion_buffer_uses_render_source_id_for_temporal_keys() {
             line,
         );
     }
+    let adapter_rs = crate_root().join("src/renderable_adapter.rs");
+    let adapter_content = strip_rust_comments(&read(&adapter_rs));
+    assert!(
+        adapter_content.contains("item.source_id().as_str()"),
+        "motion buffer adapter contract should build temporal keys from explicit RenderSourceId"
+    );
+}
+
+#[test]
+fn architecture_graph_nodes_do_not_branch_on_render_primitive_variants() {
+    let path = crate_root().join("src/renderer/service/render/graph_nodes.rs");
+    let content = strip_rust_comments(&read(&path));
+    if let Some(line) = first_needle_line(&content, "RenderPrimitive2d::") {
+        panic!(
+            "graph nodes should use renderable contracts instead of branching on RenderPrimitive2d variants in {}:{}",
+            path.display(),
+            line,
+        );
+    }
+}
+
+#[test]
+fn architecture_material_candidates_do_not_use_owner_entity_identity() {
+    let path = crate_root().join("src/renderer/service/render/material_candidates.rs");
+    let content = strip_rust_comments(&read(&path));
+    if let Some(line) = first_needle_line(&content, "item.owner_entity()") {
+        panic!(
+            "material candidates should use RenderSourceId/RenderObjectId, not owner_entity() in {}:{}",
+            path.display(),
+            line,
+        );
+    }
     assert!(
         content.contains("item.source_id().as_str()"),
-        "motion buffer should build temporal keys from explicit RenderSourceId"
+        "material candidates should publish explicit RenderSourceId in material diagnostics"
     );
 }
 

@@ -1,5 +1,8 @@
 use crate::renderer::collect_material_candidate_2d;
-use crate::{WgpuRenderable2dAdapter, WgpuRenderable2dAdapterContext};
+use crate::{
+    append_motion_visual_quad, motion_vector_color, WgpuMotionAdapterContext, WgpuRenderable2dAdapter,
+    WgpuRenderable2dAdapterContext,
+};
 use amigo_render_api::{
     ParticleBlendMode2dPrimitive, ParticleLightMode2dPrimitive, RenderPrimitive2d,
     RenderPrimitive2dKind,
@@ -64,5 +67,39 @@ impl WgpuRenderable2dAdapter for ParticleBatch2dRenderableAdapter {
         item.primitive
             .particle_batch()
             .map(|primitive| primitive.position)
+    }
+
+    fn append_motion_batches(
+        &self,
+        ctx: &mut WgpuMotionAdapterContext<'_>,
+        item: &crate::Renderable2dItem,
+    ) -> bool {
+        let Some(primitive) = item.primitive.particle_batch() else {
+            return false;
+        };
+        let Some(transform) = item.primitive.proxy_quad_transform() else {
+            return false;
+        };
+        let Some(size) = item.primitive.proxy_quad_size() else {
+            return false;
+        };
+        let key = format!(
+            "{}:{}:{}",
+            item.source_id().as_str(),
+            primitive.position.x.to_bits(),
+            primitive.position.y.to_bits()
+        );
+        ctx.current_positions.insert(key, primitive.position);
+        append_motion_visual_quad(
+            ctx,
+            transform,
+            size,
+            motion_vector_color(
+                Some(primitive.previous_position),
+                primitive.position,
+                ctx.target_size,
+            ),
+        );
+        true
     }
 }

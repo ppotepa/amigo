@@ -1,5 +1,5 @@
 use amigo_material_api::MaterialCandidateDecision2d;
-use amigo_math::{Transform2, Vec2};
+use amigo_math::{ColorRgba, Transform2, Vec2};
 use amigo_render_api::LightRoute2dCommand;
 use amigo_render_api::{
     LightSource2dCommon, RenderAssetSource, RenderPrimitive2dKind, VisualSourceKind2d,
@@ -59,6 +59,25 @@ pub(crate) trait WgpuRenderable2dAdapter: Send + Sync {
     ) -> WgpuRefractiveMaskAppendOutcome {
         WgpuRefractiveMaskAppendOutcome::none()
     }
+
+    fn append_motion_batches(
+        &self,
+        ctx: &mut WgpuMotionAdapterContext<'_>,
+        item: &Renderable2dItem,
+    ) -> bool {
+        let (Some(transform), Some(size)) = (
+            item.primitive.proxy_quad_transform(),
+            item.primitive.proxy_quad_size(),
+        ) else {
+            return false;
+        };
+        let key = item.source_id().as_str().to_owned();
+        let current = transform.translation;
+        let previous = ctx.previous_positions.get(&key).copied();
+        ctx.current_positions.insert(key, current);
+        append_motion_visual_quad(ctx, transform, size, motion_vector_color(previous, current, ctx.target_size));
+        true
+    }
 }
 
 pub(crate) struct WgpuRenderable2dAdapterContext<'a> {
@@ -101,6 +120,66 @@ pub(crate) struct WgpuRefractiveMaskAdapterContext<'a> {
     pub assets: &'a dyn RenderAssetSource,
     pub viewport: &'a Viewport,
     pub camera: Transform2,
+}
+
+pub(crate) struct WgpuMotionAdapterContext<'a> {
+    pub color_batches: &'a mut Vec<ColorBatch>,
+    pub viewport: &'a Viewport,
+    pub camera: Transform2,
+    pub target_size: (u32, u32),
+    pub current_positions: &'a mut std::collections::BTreeMap<String, Vec2>,
+    pub previous_positions: &'a std::collections::BTreeMap<String, Vec2>,
+}
+
+pub(crate) fn motion_vector_color(
+    previous: Option<Vec2>,
+    current: Vec2,
+    target_size: (u32, u32),
+) -> ColorRgba {
+    let Some(previous) = previous else {
+        return ColorRgba::new(0.5, 0.5, 0.0, 1.0);
+    };
+    let width = (target_size.0.max(1)) as f32;
+    let height = (target_size.1.max(1)) as f32;
+    let delta = Vec2::new(
+        (current.x - previous.x) / width,
+        (current.y - previous.y) / height,
+    );
+    let scale = 8.0;
+    let x = (0.5 + delta.x * scale).clamp(0.0, 1.0);
+    let y = (0.5 + delta.y * scale).clamp(0.0, 1.0);
+    let magnitude = ((delta.x * delta.x + delta.y * delta.y).sqrt() * scale).clamp(0.0, 1.0);
+    ColorRgba::new(x, y, magnitude, 1.0)
+}
+
+pub(crate) fn append_motion_visual_quad(
+    ctx: &mut WgpuMotionAdapterContext<'_>,
+    transform: Transform2,
+    size: Vec2,
+    color: ColorRgba,
+) {
+    crate::renderer::append_textured_quad_debug_vertices(
+        crate::renderer::color_batch_vertices(
+            ctx.color_batches,
+            crate::renderer::particle_blend_mode(
+                amigo_render_api::ParticleBlendMode2dPrimitive::Alpha,
+            ),
+        ),
+        ctx.viewport,
+        ctx.camera,
+        &amigo_render_api::TexturedQuad2dPrimitive {
+            texture: amigo_assets::AssetKey::new("generated://visual-source/quad"),
+            size,
+            transform,
+            sheet: None,
+            frame_index: 0,
+            visual_maps: None,
+            material: amigo_render_api::RenderMaterialBinding2d::none(
+                amigo_material_api::MaterialCoverageKind2d::TextureAlpha,
+            ),
+        },
+        color,
+    );
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -185,5 +264,16 @@ impl WgpuRenderable2dAdapterRegistry {
             .find(|adapter| adapter.kind() == item.primitive_kind())
             .map(|adapter| adapter.append_refractive_mask_batches(ctx, item, alpha))
             .unwrap_or_else(WgpuRefractiveMaskAppendOutcome::none)
+    }
+
+    pub(crate) fn append_motion_batches(
+        &self,
+        ctx: &mut WgpuMotionAdapterContext<'_>,
+        item: &Renderable2dItem,
+    ) -> bool {
+        self.adapters
+            .iter()
+            .find(|adapter| adapter.kind() == item.primitive_kind())
+            .is_some_and(|adapter| adapter.append_motion_batches(ctx, item))
     }
 }
