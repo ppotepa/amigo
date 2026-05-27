@@ -2,30 +2,16 @@ kind: scene-fragment
 schema_version: 1
 
 entities:
-- id: main-menu-depth-map
-  name: main-menu-depth-map
-  tags:
-  - world
-  - depth-map
-  - camera-dof
-  visible: true
-  simulation_enabled: false
-  collision_enabled: false
-  transform2:
-    translation:
-      x: 0.0
-      y: 0.0
-    rotation_degrees: 0.0
-    scale:
-      x: 1.0
-      y: 1.0
-  components:
-  - type: DepthMap2D
-    id: main-menu-depth
-    asset: rotten-club/depth-maps/neon-alley-depth
-    size:
-      x: 1280.0
-      y: 720.0
-    viewport_fit: cover
-    white_is_near: true
-    z_index: -101.0
+  - id: main-depth
+    name: rotten-club-depth
+    tags: [depth, camera]
+    components:
+      - type: amigo.camera.focus-depth.DepthMap2D
+        id: main-depth
+        asset: rotten-club/depth-maps/neon-alley-depth
+        target_camera: main-camera
+        size: { x: 1672.0, y: 941.0 }
+        viewport_fit: cover
+        min_depth_m: 0.2
+        max_depth_m: 60.0
+        invert: false

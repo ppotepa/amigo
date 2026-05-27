@@ -3,8 +3,8 @@ use amigo_core::AmigoResult;
 use amigo_runtime::{RuntimePlugin, ServiceRegistry};
 
 use crate::{
-    CompositePostFx2dRuntimeSceneCommandHandler, PostFx2dService, POST_FX_2D_CAPABILITY,
-    POST_FX_2D_PLUGIN_LABEL,
+    CompositePostFx2dRuntimeSceneCommandHandler, POST_FX_2D_CAPABILITY, POST_FX_2D_PLUGIN_LABEL,
+    PostFx2dService,
 };
 
 pub const PLUGIN_ID: &str = "amigo.postfx.composite";
@@ -77,7 +77,8 @@ impl RuntimePlugin for PostFx2dPlugin {
             crate_name: "amigo-composite-plugin",
             capability: POST_FX_2D_CAPABILITY,
         })?;
-        let scene_handlers = registry.required::<amigo_scene::RuntimeSceneCommandHandlerRegistry>()?;
+        let scene_handlers =
+            registry.required::<amigo_scene::RuntimeSceneCommandHandlerRegistry>()?;
         amigo_scene::register_runtime_scene_command_handler(
             scene_handlers.as_ref(),
             CompositePostFx2dRuntimeSceneCommandHandler,

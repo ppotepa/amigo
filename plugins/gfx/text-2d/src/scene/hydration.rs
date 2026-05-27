@@ -1,70 +1,20 @@
 use amigo_assets::AssetKey;
 use amigo_camera::camera_optical_response_from_document;
 use amigo_math::{ColorRgba, Transform2, Vec2};
-use amigo_scene::SceneComponentDocument as ComponentDocument;
 use amigo_scene::{
-    ComponentHydrationContext, ComponentHydrator, Material2dDocument,
-    Material2dLightingSceneCommand, Material2dOpticalModeDocument,
+    Material2dDocument, Material2dLightingSceneCommand, Material2dOpticalModeDocument,
     Material2dOpticalModeSceneCommand, Material2dOpticalSceneCommand, Material2dSceneCommand,
     PluginComponentHydrationContext, PluginComponentHydrator, RenderContributions2dSceneCommand,
-    SceneComponentDocument, SceneDocumentError, SceneDocumentResult, SceneTransform2Document,
-    SceneTransform3Document, SceneVec2Document, Text2dAlignDocument, Text2dAlignSceneCommand,
-    Text2dBlendModeDocument, Text2dBlendModeSceneCommand, Text2dGlowSceneCommand,
-    Text2dOutlineSceneCommand, Text2dSceneCommand, Text2dShadowSceneCommand, Text2dStyleDocument,
-    Text2dStyleSceneCommand,
+    SceneDocumentError, SceneDocumentResult, SceneTransform2Document, SceneTransform3Document,
+    SceneVec2Document, Text2dAlignDocument, Text2dAlignSceneCommand, Text2dBlendModeDocument,
+    Text2dBlendModeSceneCommand, Text2dGlowSceneCommand, Text2dOutlineSceneCommand,
+    Text2dSceneCommand, Text2dShadowSceneCommand, Text2dStyleDocument, Text2dStyleSceneCommand,
 };
 
 use super::Text2dDocument;
 
-pub struct Text2dComponentHydrator;
+#[derive(Default)]
 pub struct Text2dPluginComponentHydrator;
-
-impl ComponentHydrator for Text2dComponentHydrator {
-    fn provider_id(&self) -> &'static str {
-        "amigo.gfx.text-2d"
-    }
-
-    fn can_hydrate(&self, component: &SceneComponentDocument) -> bool {
-        matches!(component, ComponentDocument::Text2d { .. })
-            || component
-                .plugin_payload()
-                .is_some_and(|(component_type, _)| {
-                    component_type == "amigo.gfx.text-2d.Text2D" || component_type == "Text2D"
-                })
-    }
-
-    fn hydrate(&self, ctx: ComponentHydrationContext<'_>) -> SceneDocumentResult<()> {
-        let Some(document) = Text2dDocument::from_component(ctx.component) else {
-            return Ok(());
-        };
-
-        ctx.commands.push(amigo_scene::SceneCommand::plugin(
-            crate::text_plugin_scene_command(Text2dSceneCommand {
-                source_mod: ctx.source_mod.to_owned(),
-                entity_name: ctx.entity_name.to_owned(),
-                render_layer: document.render_layer.clone(),
-                content: document.content.clone(),
-                font: AssetKey::new(document.font.clone()),
-                bounds: vec2_from_document(document.bounds),
-                style: text2d_style_from_document(
-                    &document.style,
-                    &ctx.document.scene.id,
-                    &ctx.entity.id,
-                    "Text2D",
-                )?,
-                render_contributions: RenderContributions2dSceneCommand {
-                    roles: document.render_contributions.clone().into_roles(),
-                },
-                post_fx_host_id: None,
-                z_index: document.z_index,
-                material: material2d_scene_command(document.material),
-                transform: transform2_for_entity(ctx.entity),
-            }),
-        ));
-
-        Ok(())
-    }
-}
 
 impl PluginComponentHydrator for Text2dPluginComponentHydrator {
     fn provider_id(&self) -> &'static str {
@@ -307,4 +257,140 @@ fn material2d_scene_command(
         },
         camera_response: camera_optical_response_from_document(material.camera_response),
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use amigo_material_api::{Material2dLightingDocument, Material2dOpticalDocument};
+    use amigo_scene::{
+        PluginComponentHydrationContext, RenderContributionsDocument, SceneCommand, SceneDocument,
+        SceneEntityDocument, SceneMetadataDocument, SceneVisual2dDocument,
+    };
+    use std::collections::BTreeMap;
+
+    #[test]
+    fn text_hydrator_carries_material_and_render_contributions() {
+        let hydrator = Text2dPluginComponentHydrator;
+        let mut render_contributions = RenderContributionsDocument::default();
+        render_contributions.set("material.mask", true);
+        render_contributions.set("optics.refract", true);
+        let payload = Text2dDocument {
+            entity_name: String::new(),
+            render_layer: "ui.title".to_owned(),
+            content: "ROTTEN CLUB".to_owned(),
+            font: "rotten-club/fonts/game".to_owned(),
+            bounds: SceneVec2Document {
+                x: 1180.0,
+                y: 240.0,
+            },
+            style: Text2dStyleDocument::default(),
+            render_contributions,
+            z_index: 12.0,
+            material: Some(Material2dDocument {
+                optical: Material2dOpticalDocument {
+                    mode: Material2dOpticalModeDocument::Refractive,
+                    transmission: 0.58,
+                    refraction_px: 4.5,
+                    ..Material2dOpticalDocument::default()
+                },
+                lighting: Material2dLightingDocument {
+                    receives_light: true,
+                    response: 0.35,
+                },
+                camera_response: Default::default(),
+            }),
+        };
+        let entity = test_entity("title");
+        let document = test_document(entity.clone());
+        let mut commands = Vec::new();
+
+        hydrator
+            .hydrate_plugin_payload(PluginComponentHydrationContext {
+                source_mod: "rotten-club",
+                document: &document,
+                entity: &entity,
+                entity_name: "title",
+                component_index: 0,
+                component_type: "amigo.gfx.text-2d.Text2D",
+                payload: &payload,
+                commands: &mut commands,
+            })
+            .expect("text hydrator should accept plugin payload");
+
+        let command = plugin_payload::<Text2dSceneCommand>(&commands);
+        assert_eq!(command.source_mod, "rotten-club");
+        assert_eq!(command.entity_name, "title");
+        assert_eq!(command.render_layer, "ui.title");
+        assert_eq!(command.content, "ROTTEN CLUB");
+        assert_eq!(command.font, AssetKey::new("rotten-club/fonts/game"));
+        assert_eq!(command.bounds, Vec2::new(1180.0, 240.0));
+        assert_eq!(
+            command.render_contributions.roles.get("material.mask"),
+            Some(&true)
+        );
+        assert_eq!(
+            command.render_contributions.roles.get("optics.refract"),
+            Some(&true)
+        );
+        let material = command
+            .material
+            .as_ref()
+            .expect("material should be preserved");
+        assert_eq!(
+            material.optical.mode,
+            Material2dOpticalModeSceneCommand::Refractive
+        );
+        assert_eq!(material.optical.transmission, 0.58);
+        assert_eq!(material.optical.refraction_px, 4.5);
+        assert!(material.lighting.receives_light);
+        assert_eq!(material.lighting.response, 0.35);
+    }
+
+    fn plugin_payload<T: 'static>(commands: &[SceneCommand]) -> &T {
+        assert_eq!(commands.len(), 1);
+        match &commands[0] {
+            SceneCommand::Plugin { command } => command
+                .payload_as::<T>()
+                .expect("plugin scene payload should downcast"),
+            other => panic!("expected plugin scene command, got {other:?}"),
+        }
+    }
+
+    fn test_entity(name: &str) -> SceneEntityDocument {
+        SceneEntityDocument {
+            id: name.to_owned(),
+            name: name.to_owned(),
+            tags: Vec::new(),
+            groups: Vec::new(),
+            visible: true,
+            simulation_enabled: true,
+            collision_enabled: true,
+            properties: BTreeMap::new(),
+            transform2: None,
+            transform3: None,
+            post_fx: Vec::new(),
+            prefab: None,
+            prefab_overrides: Vec::new(),
+            components: Vec::new(),
+        }
+    }
+
+    fn test_document(entity: SceneEntityDocument) -> SceneDocument {
+        SceneDocument {
+            version: 1,
+            scene: SceneMetadataDocument {
+                id: "test-scene".to_owned(),
+                label: String::new(),
+                description: None,
+            },
+            transitions: Vec::new(),
+            collision_events: Vec::new(),
+            audio_cues: Vec::new(),
+            activation_sets: Vec::new(),
+            visual2d: SceneVisual2dDocument::default(),
+            state: BTreeMap::new(),
+            entities: vec![entity],
+        }
+    }
 }

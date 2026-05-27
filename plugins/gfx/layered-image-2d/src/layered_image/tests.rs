@@ -6,15 +6,15 @@ use amigo_assets::{AssetCatalog, AssetKey, AssetSourceKind, PreparedAsset, Prepa
 use amigo_math::{Transform2, Vec2};
 use amigo_runtime_control::{ControlValue, RuntimeControlService};
 use amigo_scene::{
-    SceneCommand, SceneEntityId, SceneEvent, SceneEventQueue, SceneService,
-    layered_image_2d_plugin_scene_command,
+    layered_image_2d_plugin_scene_command, SceneCommand, SceneEntityId, SceneEvent,
+    SceneEventQueue, SceneService,
 };
 
 use super::{
-    LayeredImageBlendMode2d, LayeredImageDrawCommand, LayeredImageInstance,
-    LayeredImageSceneCommandContext, LayeredImageSceneService, LayeredImageViewportFit2d,
     can_handle_layered_image_scene_command, handle_layered_image_scene_command,
-    infer_layered_image_asset_from_prepared,
+    infer_layered_image_asset_from_prepared, LayeredImageBlendMode2d, LayeredImageDrawCommand,
+    LayeredImageInstance, LayeredImageSceneCommandContext, LayeredImageSceneService,
+    LayeredImageViewportFit2d,
 };
 
 fn test_prepared_layered_image() -> PreparedAsset {

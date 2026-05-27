@@ -3,7 +3,6 @@ use std::any::Any;
 use serde::{Deserialize, Serialize};
 use serde_yaml::Value;
 
-use amigo_scene::SceneComponentDocument as ComponentDocument;
 use amigo_scene::{
     Camera2dModeDocument, CameraAperture2dDocument, CameraExposure2dDocument, CameraFilm2dDocument,
     CameraLens2dDocument, CameraLensSurface2dDocument, CameraLook2dDocument,
@@ -55,29 +54,14 @@ impl Default for Camera2dDocument {
 impl Camera2dDocument {
     pub fn from_component(component: &SceneComponentDocument) -> Option<Self> {
         match component {
-            ComponentDocument::Camera2d {
-                id,
-                mode,
-                render_contributions,
-                exposure,
-                shutter,
-                lens,
-                lens_surface,
-                film,
-                look,
-                aperture,
-            } => Some(Self {
-                id: id.clone(),
-                mode: *mode,
-                render_contributions: render_contributions.clone(),
-                exposure: exposure.clone(),
-                shutter: shutter.clone(),
-                lens: lens.clone(),
-                lens_surface: lens_surface.clone(),
-                film: film.clone(),
-                look: look.clone(),
-                aperture: aperture.clone(),
-            }),
+            SceneComponentDocument::Plugin {
+                component_type,
+                payload,
+            } if component_type == "amigo.camera.camera-core.Camera2D"
+                || component_type == "Camera2D" =>
+            {
+                parse_camera_2d_plugin_payload(payload).ok()
+            }
             _ => None,
         }
     }
@@ -98,7 +82,7 @@ pub fn parse_camera_2d_plugin_payload(payload: &Value) -> SceneDocumentResult<Ca
         .map_err(|source| SceneDocumentError::Parse { path: None, source })
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Default)]
 pub struct Camera2dSceneSchemaProvider;
 
 impl SceneComponentSchemaProvider for Camera2dSceneSchemaProvider {

@@ -8,18 +8,18 @@ pub(crate) use amigo_render_api::RenderCompositionDiagnosticsService;
 pub(crate) use amigo_render_api::RenderFrameStats;
 pub(crate) use amigo_render_api::RenderFrameStatsService;
 pub(crate) use amigo_render_api::Renderable2dKind;
-pub(crate) use amigo_render_api::{build_frame_graph_from_plan, FrameGraphBuildInfo};
+pub(crate) use amigo_render_api::{FrameGraphBuildInfo, build_frame_graph_from_plan};
 #[cfg(test)]
 pub(crate) use amigo_render_wgpu::WgpuRenderFramePacket;
 pub(crate) use amigo_runtime_bundles::WgpuFrameCompositionBuilder;
 pub(crate) use amigo_runtime_bundles::WgpuFrameCompositionOptions;
 pub(crate) use amigo_runtime_bundles::{
-    audio_debug_snapshot, extract_live_host_overlay_packet, input_debug_snapshot,
-    particle_debug_snapshot, render_game_frame_to_cache, update_ui_input_viewport_state,
-    update_wgpu_postfx_renderer_mode, update_wgpu_render_composition_diagnostics,
-    WgpuEditorOverlayOutput,
+    WgpuEditorOverlayOutput, audio_debug_snapshot, extract_live_host_overlay_packet,
+    input_debug_snapshot, particle_debug_snapshot, render_game_frame_to_cache,
+    update_ui_input_viewport_state, update_wgpu_postfx_renderer_mode,
+    update_wgpu_render_composition_diagnostics,
 };
-pub(crate) use amigo_runtime_bundles::{submit_wgpu_frame_render_request, WgpuFrameSubmitInput};
+pub(crate) use amigo_runtime_bundles::{WgpuFrameSubmitInput, submit_wgpu_frame_render_request};
 
 #[cfg(test)]
 pub(crate) use amigo_runtime_bundles::{
@@ -37,6 +37,12 @@ pub(crate) fn build_render_frame_for_session(
     let scene = required::<SceneService>(runtime)?;
     let assets = required::<AssetCatalog>(runtime)?;
     let debug_overlay_service = required::<crate::debug_overlay::DebugOverlayService>(runtime)?;
+    let dev_console_open = runtime
+        .resolve::<amigo_scripting_api::DevConsoleState>()
+        .is_some_and(|console| console.is_open());
+    let debug_overlay_enabled = debug_overlay_service.is_enabled();
+    let wants_render_diagnostics =
+        dev_console_open || debug_overlay_service.wants_render_diagnostics();
 
     let surface_size = surface.size();
     update_ui_input_viewport_state(
@@ -87,13 +93,15 @@ pub(crate) fn build_render_frame_for_session(
         graph
     };
 
-    update_wgpu_render_composition_diagnostics(
-        runtime,
-        assets.as_ref(),
-        &render_packet,
-        &composition_plan,
-        &frame_graph,
-    );
+    if wants_render_diagnostics {
+        update_wgpu_render_composition_diagnostics(
+            runtime,
+            assets.as_ref(),
+            &render_packet,
+            &composition_plan,
+            &frame_graph,
+        );
+    }
     if let Ok(stats_service) = required::<RenderFrameStatsService>(runtime) {
         let previous = stats_service.snapshot();
         let stats = RenderFrameStats {
@@ -128,30 +136,34 @@ pub(crate) fn build_render_frame_for_session(
                 .sum(),
         };
         stats_service.set(stats.clone());
-        debug_overlay_service.record_render_frame(stats);
+        if debug_overlay_enabled || dev_console_open {
+            debug_overlay_service.record_render_frame(stats);
+        }
     }
-    if let Ok(scheduling) = required::<amigo_session::RuntimeSchedulingService>(runtime) {
-        debug_overlay_service.record_scheduling_stats(scheduling.stats());
-    }
-    if let Some(audio) = audio_debug_snapshot(runtime) {
-        debug_overlay_service.record_audio_snapshot(
-            audio.backend,
-            audio.master_volume,
-            audio.active_sources,
-            audio.pending_commands,
-            audio.bus_count,
-        );
-    }
-    if let Some(input) = input_debug_snapshot(runtime) {
-        debug_overlay_service.record_input_snapshot(
-            input.backend_name,
-            input.pressed_keys,
-            input.active_map,
-            input.active_actions,
-        );
-    }
-    if let Some((emitters, active_emitters)) = particle_debug_snapshot(runtime) {
-        debug_overlay_service.record_particle_snapshot(emitters, active_emitters);
+    if debug_overlay_enabled || dev_console_open {
+        if let Ok(scheduling) = required::<amigo_session::RuntimeSchedulingService>(runtime) {
+            debug_overlay_service.record_scheduling_stats(scheduling.stats());
+        }
+        if let Some(audio) = audio_debug_snapshot(runtime) {
+            debug_overlay_service.record_audio_snapshot(
+                audio.backend,
+                audio.master_volume,
+                audio.active_sources,
+                audio.pending_commands,
+                audio.bus_count,
+            );
+        }
+        if let Some(input) = input_debug_snapshot(runtime) {
+            debug_overlay_service.record_input_snapshot(
+                input.backend_name,
+                input.pressed_keys,
+                input.active_map,
+                input.active_actions,
+            );
+        }
+        if let Some((emitters, active_emitters)) = particle_debug_snapshot(runtime) {
+            debug_overlay_service.record_particle_snapshot(emitters, active_emitters);
+        }
     }
 
     update_wgpu_postfx_renderer_mode(runtime, &render_packet);
@@ -173,7 +185,8 @@ pub(crate) fn build_render_frame_for_session(
             game_viewport: editor_game_viewport,
         },
     )?;
-    if let Ok(render_diagnostics) = required::<RenderCompositionDiagnosticsService>(runtime) {
+    if wants_render_diagnostics {
+        let render_diagnostics = required::<RenderCompositionDiagnosticsService>(runtime)?;
         render_diagnostics
             .set_plate_relight_summary(renderer.plate_relight_last_summary().to_owned());
         render_diagnostics

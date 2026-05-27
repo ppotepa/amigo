@@ -10,10 +10,10 @@ mod layout;
 mod model;
 /// Runtime plugin wiring for the UI domain.
 mod plugin;
+mod reset;
 /// Runtime contribution descriptors for UI-owned scene handlers and systems.
 mod runtime_capabilities;
 mod runtime_ui;
-mod reset;
 /// Adapters that hydrate scene-authored UI data into runtime state.
 mod scene_bridge;
 /// Scene command execution owned by the UI domain.

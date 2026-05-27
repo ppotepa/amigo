@@ -4,68 +4,106 @@ pub(crate) fn append_mesh_triangles(
     triangles: &mut Vec<ProjectedTriangle>,
     viewport: &Viewport,
     camera: Transform3,
+    camera_settings: amigo_render_api::Camera3dRenderSettings,
+    light_settings: amigo_render_api::Light3dRenderSettings,
     transform: Transform3,
     base_color: ColorRgba,
+    render_order: i32,
 ) {
     let corners = [
-        Vec3::new(-0.75, -0.75, -0.75),
-        Vec3::new(0.75, -0.75, -0.75),
-        Vec3::new(0.75, 0.75, -0.75),
-        Vec3::new(-0.75, 0.75, -0.75),
-        Vec3::new(-0.75, -0.75, 0.75),
-        Vec3::new(0.75, -0.75, 0.75),
-        Vec3::new(0.75, 0.75, 0.75),
-        Vec3::new(-0.75, 0.75, 0.75),
+        Vec3::new(-0.5, -0.5, -0.5),
+        Vec3::new(0.5, -0.5, -0.5),
+        Vec3::new(0.5, 0.5, -0.5),
+        Vec3::new(-0.5, 0.5, -0.5),
+        Vec3::new(-0.5, -0.5, 0.5),
+        Vec3::new(0.5, -0.5, 0.5),
+        Vec3::new(0.5, 0.5, 0.5),
+        Vec3::new(-0.5, 0.5, 0.5),
     ]
     .map(|point| transform_point_3d(point, transform));
     let faces = [
-        (
-            [[0usize, 1usize, 2usize], [0usize, 2usize, 3usize]],
-            ColorRgba::new(0.88, 0.34, 0.22, 1.0),
-        ),
-        (
-            [[4usize, 5usize, 6usize], [4usize, 6usize, 7usize]],
-            ColorRgba::new(0.22, 0.72, 0.96, 1.0),
-        ),
-        (
-            [[0usize, 1usize, 5usize], [0usize, 5usize, 4usize]],
-            ColorRgba::new(0.94, 0.84, 0.28, 1.0),
-        ),
-        (
-            [[2usize, 3usize, 7usize], [2usize, 7usize, 6usize]],
-            ColorRgba::new(0.32, 0.82, 0.54, 1.0),
-        ),
-        (
-            [[1usize, 2usize, 6usize], [1usize, 6usize, 5usize]],
-            ColorRgba::new(0.82, 0.42, 0.94, 1.0),
-        ),
-        (
-            [[3usize, 0usize, 4usize], [3usize, 4usize, 7usize]],
-            ColorRgba::new(0.96, 0.58, 0.18, 1.0),
-        ),
+        [[0usize, 2usize, 1usize], [0usize, 3usize, 2usize]],
+        [[4usize, 5usize, 6usize], [4usize, 6usize, 7usize]],
+        [[0usize, 1usize, 5usize], [0usize, 5usize, 4usize]],
+        [[2usize, 3usize, 7usize], [2usize, 7usize, 6usize]],
+        [[1usize, 2usize, 6usize], [1usize, 6usize, 5usize]],
+        [[3usize, 0usize, 4usize], [3usize, 4usize, 7usize]],
     ];
 
-    for (face_triangles, face_tint) in faces {
+    for face_triangles in faces {
         for [a, b, c] in face_triangles {
             let world = [corners[a], corners[b], corners[c]];
             let projected = [
-                project_point(world[0], camera, *viewport),
-                project_point(world[1], camera, *viewport),
-                project_point(world[2], camera, *viewport),
+                project_point_with_camera(
+                    world[0],
+                    camera,
+                    *viewport,
+                    camera_settings.fov_y_degrees,
+                    camera_settings.near_clip,
+                    camera_settings.far_clip,
+                ),
+                project_point_with_camera(
+                    world[1],
+                    camera,
+                    *viewport,
+                    camera_settings.fov_y_degrees,
+                    camera_settings.near_clip,
+                    camera_settings.far_clip,
+                ),
+                project_point_with_camera(
+                    world[2],
+                    camera,
+                    *viewport,
+                    camera_settings.fov_y_degrees,
+                    camera_settings.near_clip,
+                    camera_settings.far_clip,
+                ),
             ];
             let [Some(a), Some(b), Some(c)] = projected else {
                 continue;
             };
             let normal = normalize(cross(sub(world[1], world[0]), sub(world[2], world[0])));
-            let light_dir = normalize(Vec3::new(0.35, 0.7, 0.6));
-            let brightness: f32 = (0.25 + 0.75 * dot(normal, light_dir).max(0.0)).clamp(0.0, 1.0);
+            let center = triangle_center(world);
+            if dot(normal, sub(camera.translation, center)) <= 0.0 {
+                continue;
+            }
+            if !projected_triangle_is_sane([a.position, b.position, c.position]) {
+                continue;
+            }
+            let light_dir = normalize(Vec3::new(
+                -light_settings.direction.x,
+                -light_settings.direction.y,
+                -light_settings.direction.z,
+            ));
+            let lit = dot(normal, light_dir).max(0.0) * light_settings.intensity.max(0.0);
+            let brightness: f32 = (light_settings.ambient.max(0.0) + lit).clamp(0.0, 1.25);
+            let shaded = force_opaque(modulate_color(base_color, brightness));
             triangles.push(ProjectedTriangle {
                 points: [a.position, b.position, c.position],
-                color: modulate_color(blend_colors(base_color, face_tint), brightness),
+                color: multiply_color(shaded, light_settings.color),
                 depth: (a.depth + b.depth + c.depth) / 3.0,
+                render_order,
             });
         }
     }
+}
+
+fn triangle_center(points: [Vec3; 3]) -> Vec3 {
+    Vec3::new(
+        (points[0].x + points[1].x + points[2].x) / 3.0,
+        (points[0].y + points[1].y + points[2].y) / 3.0,
+        (points[0].z + points[1].z + points[2].z) / 3.0,
+    )
+}
+
+fn projected_triangle_is_sane(points: [Vec2; 3]) -> bool {
+    points.iter().all(|point| {
+        point.x.is_finite() && point.y.is_finite() && point.x.abs() < 8.0 && point.y.abs() < 8.0
+    })
+}
+
+fn force_opaque(color: ColorRgba) -> ColorRgba {
+    ColorRgba::new(color.r, color.g, color.b, 1.0)
 }
 
 pub(crate) fn append_text_3d_vertices(

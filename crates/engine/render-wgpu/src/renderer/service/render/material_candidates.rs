@@ -3,8 +3,8 @@ use amigo_material_api::{
     Material2d, MaterialCandidate2dCommon, MaterialCandidateDecision2d, MaterialCoverageKind2d,
 };
 use amigo_render_api::{
-    render_contribution_roles as roles, RenderContributionSet, RenderMaterialBinding2d,
-    RenderPrimitive2dKind,
+    RenderContributionSet, RenderMaterialBinding2d, RenderPrimitive2dKind,
+    render_contribution_roles as roles,
 };
 
 #[allow(dead_code)]
@@ -38,14 +38,7 @@ pub(crate) fn collect_material_candidate_2d(
     decisions: &mut Vec<MaterialCandidateDecision2d>,
 ) {
     if let Some(binding) = item.primitive.material_binding() {
-        collect_candidate_from_binding(
-            item,
-            binding,
-            layer_camera,
-            layer_opacity,
-            out,
-            decisions,
-        );
+        collect_candidate_from_binding(item, binding, layer_camera, layer_opacity, out, decisions);
         return;
     }
 

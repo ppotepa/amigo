@@ -24,15 +24,26 @@ pub fn depth_aux_map_2d_scene_descriptor() -> PluginSceneComponentDescriptor {
     )
 }
 
-pub struct FocusDepthSceneDescriptorProvider;
+#[derive(Default)]
+pub struct DepthMap2dSceneDescriptorProvider;
 
-impl amigo_scene::ScenePluginDescriptorProvider for FocusDepthSceneDescriptorProvider {
+impl amigo_scene::ScenePluginDescriptorProvider for DepthMap2dSceneDescriptorProvider {
     fn register_scene_descriptors(
         &self,
         registry: &mut amigo_scene::ScenePluginDescriptorRegistry,
     ) {
-        registry.insert(focus_depth_2d_scene_descriptor());
         registry.insert(depth_map_2d_scene_descriptor());
+    }
+}
+
+#[derive(Default)]
+pub struct DepthAuxMap2dSceneDescriptorProvider;
+
+impl amigo_scene::ScenePluginDescriptorProvider for DepthAuxMap2dSceneDescriptorProvider {
+    fn register_scene_descriptors(
+        &self,
+        registry: &mut amigo_scene::ScenePluginDescriptorRegistry,
+    ) {
         registry.insert(depth_aux_map_2d_scene_descriptor());
     }
 }

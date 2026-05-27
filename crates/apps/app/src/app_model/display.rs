@@ -33,6 +33,7 @@ impl Display for BootstrapSummary {
                 .map(|fps| format!("{fps:.1}"))
                 .unwrap_or_else(|| "none".to_owned())
         )?;
+        writeln!(f, "dev mode: {}", self.dev_mode)?;
         writeln!(
             f,
             "active scene: {}",

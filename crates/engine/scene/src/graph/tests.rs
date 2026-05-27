@@ -3,9 +3,9 @@ use amigo_runtime::{RuntimeBuilder, RuntimePlugin, ServiceRegistry, SystemRegist
 use crate::{
     ComponentGraphProviderRegistry, ComponentSchemaRegistry, PluginComponentGraphContext,
     PluginComponentGraphProvider, RuntimeSceneCommandHandlerRegistry, SceneComponentPayload,
-    SceneComponentSchemaProvider, SceneDocument, SceneDocumentError, SceneGraphDiagnosticSeverity,
-    ScenePlugin, ScenePluginComponentDescriptor, SceneReferenceKind, SceneReferenceTargetKind,
-    build_semantic_scene_graph, build_semantic_scene_graph_for_runtime,
+    SceneComponentSchemaProvider, SceneDocumentError, SceneGraphDiagnosticSeverity, ScenePlugin,
+    ScenePluginComponentDescriptor, SceneReferenceKind, SceneReferenceTargetKind,
+    build_semantic_scene_graph_for_runtime,
 };
 use serde_yaml::{Mapping, Value};
 
@@ -265,7 +265,13 @@ fn scene_test_runtime_builder() -> RuntimeBuilder {
 
 #[test]
 fn semantic_graph_builds_draw_layer_and_component_references() {
-    let document: SceneDocument = serde_yaml::from_str(
+    let runtime = scene_test_runtime_builder()
+        .with_plugin(ScenePlugin)
+        .expect("scene plugin should register")
+        .with_plugin(TestSpriteRuntimePlugin)
+        .expect("test sprite plugin should register")
+        .build();
+    let document = crate::load_scene_document_from_str_with_component_schemas(
         r##"
 version: 1
 scene:
@@ -281,15 +287,18 @@ entities:
   - id: player
     name: Player
     components:
-      - type: amigo.gfx.sprite-2d.Sprite2D
+      - type: amigo.test.Sprite2D
         render_layer: world
         texture: player.png
         size: [32, 32]
 "##,
+        runtime
+            .resolve::<crate::ComponentSchemaRegistry>()
+            .as_deref(),
     )
     .expect("scene should parse");
 
-    let graph = build_semantic_scene_graph(&document, "test.yml");
+    let graph = build_semantic_scene_graph_for_runtime(&runtime, &document, "test.yml");
 
     assert!(!graph.has_errors());
     assert!(graph.references.iter().any(|edge| {
@@ -302,7 +311,13 @@ entities:
 
 #[test]
 fn semantic_graph_reports_missing_draw_layer() {
-    let document: SceneDocument = serde_yaml::from_str(
+    let runtime = scene_test_runtime_builder()
+        .with_plugin(ScenePlugin)
+        .expect("scene plugin should register")
+        .with_plugin(TestSpriteRuntimePlugin)
+        .expect("test sprite plugin should register")
+        .build();
+    let document = crate::load_scene_document_from_str_with_component_schemas(
         r##"
 version: 1
 scene:
@@ -313,15 +328,18 @@ visual2d:
 entities:
   - id: player
     components:
-      - type: amigo.gfx.sprite-2d.Sprite2D
+      - type: amigo.test.Sprite2D
         render_layer: missing
         texture: player.png
         size: [32, 32]
 "##,
+        runtime
+            .resolve::<crate::ComponentSchemaRegistry>()
+            .as_deref(),
     )
     .expect("scene should parse");
 
-    let graph = build_semantic_scene_graph(&document, "test.yml");
+    let graph = build_semantic_scene_graph_for_runtime(&runtime, &document, "test.yml");
 
     assert!(graph.diagnostics.iter().any(|diagnostic| {
         diagnostic.severity == SceneGraphDiagnosticSeverity::Error
@@ -349,7 +367,7 @@ visual2d:
 entities:
   - id: player
     components:
-      - type: amigo.gfx.sprite-2d.Sprite2D
+      - type: amigo.test.Sprite2D
         render_layer: world
         texture: player.png
         size: [32, 32]
@@ -390,7 +408,7 @@ visual2d:
 entities:
   - id: title
     components:
-      - type: amigo.gfx.text-2d.Text2D
+      - type: amigo.test.Text2D
         render_layer: ui
         content: Amigo
         font: ui/font

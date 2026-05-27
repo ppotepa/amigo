@@ -1,14 +1,11 @@
 use amigo_assets::AssetKey;
 use amigo_math::{Transform2, Vec2};
 use amigo_scene::{
-    ComponentHydrationContext, ComponentHydrator, DepthAuxMap2dChannelsDocument,
-    DepthAuxMap2dChannelsSceneCommand, DepthAuxMap2dSceneCommand, DepthMap2dSceneCommand,
-    DepthMapViewportFit2dSceneCommand, LayeredImageViewportFit2dDocument,
-    PluginComponentHydrationContext, PluginComponentHydrator, SceneComponentDocument,
-    SceneDocumentError, SceneDocumentResult, SceneTransform2Document, SceneTransform3Document,
-    SceneVec2Document,
+    DepthAuxMap2dChannelsDocument, DepthAuxMap2dChannelsSceneCommand, DepthAuxMap2dSceneCommand,
+    DepthMap2dSceneCommand, DepthMapViewportFit2dSceneCommand, LayeredImageViewportFit2dDocument,
+    PluginComponentHydrationContext, PluginComponentHydrator, SceneDocumentError,
+    SceneDocumentResult, SceneTransform2Document, SceneTransform3Document, SceneVec2Document,
 };
-use amigo_scene::SceneComponentDocument as ComponentDocument;
 
 use crate::api::FocusDepthResponse2d;
 
@@ -26,42 +23,10 @@ pub fn focus_depth_response_from_document(
     .normalized()
 }
 
-pub struct DepthMap2dComponentHydrator;
+#[derive(Default)]
 pub struct DepthMap2dPluginComponentHydrator;
+#[derive(Default)]
 pub struct DepthAuxMap2dPluginComponentHydrator;
-
-impl ComponentHydrator for DepthMap2dComponentHydrator {
-    fn provider_id(&self) -> &'static str {
-        "amigo.camera.focus-depth"
-    }
-
-    fn can_hydrate(&self, component: &SceneComponentDocument) -> bool {
-        matches!(
-            component,
-            ComponentDocument::DepthMap2d { .. } | ComponentDocument::DepthAuxMap2d { .. }
-        )
-    }
-
-    fn hydrate(&self, ctx: ComponentHydrationContext<'_>) -> SceneDocumentResult<()> {
-        match ctx.component {
-            ComponentDocument::DepthMap2d { .. } => {
-                let Some(document) = DepthMap2dDocument::from_component(ctx.component) else {
-                    return Ok(());
-                };
-                push_depth_map_command(ctx, document);
-            }
-            ComponentDocument::DepthAuxMap2d { .. } => {
-                let Some(document) = DepthAuxMap2dDocument::from_component(ctx.component) else {
-                    return Ok(());
-                };
-                push_depth_aux_map_command(ctx, document);
-            }
-            _ => {}
-        }
-
-        Ok(())
-    }
-}
 
 impl PluginComponentHydrator for DepthMap2dPluginComponentHydrator {
     fn provider_id(&self) -> &'static str {
@@ -127,16 +92,6 @@ impl PluginComponentHydrator for DepthAuxMap2dPluginComponentHydrator {
     }
 }
 
-fn push_depth_map_command(ctx: ComponentHydrationContext<'_>, document: DepthMap2dDocument) {
-    push_depth_map_plugin_command(
-        ctx.source_mod,
-        ctx.entity,
-        ctx.entity_name,
-        ctx.commands,
-        document,
-    );
-}
-
 fn push_depth_map_plugin_command(
     source_mod: &str,
     entity: &amigo_scene::SceneEntityDocument,
@@ -157,19 +112,6 @@ fn push_depth_map_plugin_command(
             transform: transform2_for_entity(entity),
         }),
     });
-}
-
-fn push_depth_aux_map_command(
-    ctx: ComponentHydrationContext<'_>,
-    document: DepthAuxMap2dDocument,
-) {
-    push_depth_aux_map_plugin_command(
-        ctx.source_mod,
-        ctx.entity,
-        ctx.entity_name,
-        ctx.commands,
-        document,
-    );
 }
 
 fn push_depth_aux_map_plugin_command(
@@ -242,5 +184,162 @@ fn depth_aux_channels_from_document(
         g: channels.g.clone(),
         b: channels.b.clone(),
         a: channels.a.clone(),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use amigo_scene::{
+        PluginComponentHydrationContext, SceneCommand, SceneDocument, SceneEntityDocument,
+        SceneMetadataDocument, SceneVisual2dDocument,
+    };
+    use std::collections::BTreeMap;
+
+    #[test]
+    fn depth_map_hydrator_carries_asset_size_fit_and_depth_flags() {
+        let hydrator = DepthMap2dPluginComponentHydrator;
+        let payload = DepthMap2dDocument {
+            id: "main-depth".to_owned(),
+            asset: "scene/depth/main".to_owned(),
+            size: SceneVec2Document {
+                x: 1280.0,
+                y: 720.0,
+            },
+            viewport_fit: LayeredImageViewportFit2dDocument::Cover,
+            white_is_near: false,
+            z_index: -100.0,
+        };
+        let entity = test_entity("depth");
+        let document = test_document(entity.clone());
+        let mut commands = Vec::new();
+
+        hydrator
+            .hydrate_plugin_payload(PluginComponentHydrationContext {
+                source_mod: "test-mod",
+                document: &document,
+                entity: &entity,
+                entity_name: "depth",
+                component_index: 0,
+                component_type: "amigo.camera.focus-depth.DepthMap2D",
+                payload: &payload,
+                commands: &mut commands,
+            })
+            .expect("depth map hydrator should accept plugin payload");
+
+        let command = plugin_payload::<DepthMap2dSceneCommand>(&commands);
+        assert_eq!(command.source_mod, "test-mod");
+        assert_eq!(command.entity_name, "depth");
+        assert_eq!(command.id, "main-depth");
+        assert_eq!(command.asset, AssetKey::new("scene/depth/main"));
+        assert_eq!(command.size, Vec2::new(1280.0, 720.0));
+        assert_eq!(
+            command.viewport_fit,
+            DepthMapViewportFit2dSceneCommand::Cover
+        );
+        assert!(!command.white_is_near);
+        assert_eq!(command.z_index, -100.0);
+    }
+
+    #[test]
+    fn depth_aux_hydrator_carries_surface_asset_and_channels() {
+        let hydrator = DepthAuxMap2dPluginComponentHydrator;
+        let payload = DepthAuxMap2dDocument {
+            id: "main-depth-aux".to_owned(),
+            asset: "scene/depth/aux".to_owned(),
+            surface_asset: Some("scene/surface/aux".to_owned()),
+            size: SceneVec2Document { x: 640.0, y: 360.0 },
+            viewport_fit: LayeredImageViewportFit2dDocument::Contain,
+            channels: DepthAuxMap2dChannelsDocument {
+                r: "auxiliary_depth".to_owned(),
+                g: "local_height".to_owned(),
+                b: "occluder_strength".to_owned(),
+                a: "valid_mask".to_owned(),
+            },
+            z_index: -99.5,
+        };
+        let entity = test_entity("depth-aux");
+        let document = test_document(entity.clone());
+        let mut commands = Vec::new();
+
+        hydrator
+            .hydrate_plugin_payload(PluginComponentHydrationContext {
+                source_mod: "test-mod",
+                document: &document,
+                entity: &entity,
+                entity_name: "depth-aux",
+                component_index: 0,
+                component_type: "amigo.camera.focus-depth.DepthAuxMap2D",
+                payload: &payload,
+                commands: &mut commands,
+            })
+            .expect("depth aux hydrator should accept plugin payload");
+
+        let command = plugin_payload::<DepthAuxMap2dSceneCommand>(&commands);
+        assert_eq!(command.source_mod, "test-mod");
+        assert_eq!(command.entity_name, "depth-aux");
+        assert_eq!(command.id, "main-depth-aux");
+        assert_eq!(command.asset, AssetKey::new("scene/depth/aux"));
+        assert_eq!(
+            command.surface_asset,
+            Some(AssetKey::new("scene/surface/aux"))
+        );
+        assert_eq!(command.size, Vec2::new(640.0, 360.0));
+        assert_eq!(
+            command.viewport_fit,
+            DepthMapViewportFit2dSceneCommand::Contain
+        );
+        assert_eq!(command.channels.r, "auxiliary_depth");
+        assert_eq!(command.channels.g, "local_height");
+        assert_eq!(command.channels.b, "occluder_strength");
+        assert_eq!(command.channels.a, "valid_mask");
+        assert_eq!(command.z_index, -99.5);
+    }
+
+    fn plugin_payload<T: 'static>(commands: &[SceneCommand]) -> &T {
+        assert_eq!(commands.len(), 1);
+        match &commands[0] {
+            SceneCommand::Plugin { command } => command
+                .payload_as::<T>()
+                .expect("plugin scene payload should downcast"),
+            other => panic!("expected plugin scene command, got {other:?}"),
+        }
+    }
+
+    fn test_entity(name: &str) -> SceneEntityDocument {
+        SceneEntityDocument {
+            id: name.to_owned(),
+            name: name.to_owned(),
+            tags: Vec::new(),
+            groups: Vec::new(),
+            visible: true,
+            simulation_enabled: true,
+            collision_enabled: true,
+            properties: BTreeMap::new(),
+            transform2: None,
+            transform3: None,
+            post_fx: Vec::new(),
+            prefab: None,
+            prefab_overrides: Vec::new(),
+            components: Vec::new(),
+        }
+    }
+
+    fn test_document(entity: SceneEntityDocument) -> SceneDocument {
+        SceneDocument {
+            version: 1,
+            scene: SceneMetadataDocument {
+                id: "test-scene".to_owned(),
+                label: String::new(),
+                description: None,
+            },
+            transitions: Vec::new(),
+            collision_events: Vec::new(),
+            audio_cues: Vec::new(),
+            activation_sets: Vec::new(),
+            visual2d: SceneVisual2dDocument::default(),
+            state: BTreeMap::new(),
+            entities: vec![entity],
+        }
     }
 }

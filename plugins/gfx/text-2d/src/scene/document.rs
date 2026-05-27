@@ -9,7 +9,6 @@ use amigo_scene::{
     SceneComponentSchemaProvider, SceneDocumentError, SceneDocumentResult, SceneVec2Document,
     Text2dStyleDocument,
 };
-use amigo_scene::SceneComponentDocument as ComponentDocument;
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct Text2dDocument {
@@ -33,28 +32,7 @@ pub struct Text2dDocument {
 impl Text2dDocument {
     pub fn from_component(component: &SceneComponentDocument) -> Option<Self> {
         match component {
-            ComponentDocument::Text2d {
-                render_layer,
-                content,
-                font,
-                bounds,
-                style,
-                render_contributions,
-                z_index,
-                material,
-                post_fx: _,
-            } => Some(Self {
-                entity_name: String::new(),
-                render_layer: render_layer.clone(),
-                content: content.clone(),
-                font: font.clone(),
-                bounds: *bounds,
-                style: style.clone(),
-                render_contributions: render_contributions.clone(),
-                z_index: *z_index,
-                material: *material,
-            }),
-            ComponentDocument::Plugin {
+            SceneComponentDocument::Plugin {
                 component_type,
                 payload,
             } if component_type == "amigo.gfx.text-2d.Text2D" || component_type == "Text2D" => {
@@ -80,7 +58,7 @@ pub fn parse_text_2d_plugin_payload(payload: &Value) -> SceneDocumentResult<Text
         .map_err(|source| SceneDocumentError::Parse { path: None, source })
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Default)]
 pub struct Text2dSceneSchemaProvider;
 
 impl SceneComponentSchemaProvider for Text2dSceneSchemaProvider {
@@ -93,7 +71,9 @@ impl SceneComponentSchemaProvider for Text2dSceneSchemaProvider {
     }
 
     fn parse_yaml(&self, payload: serde_yaml::Mapping) -> Result<Value, serde_yaml::Error> {
-        serde_yaml::to_value(serde_yaml::from_value::<Text2dDocument>(Value::Mapping(payload))?)
+        serde_yaml::to_value(serde_yaml::from_value::<Text2dDocument>(Value::Mapping(
+            payload,
+        ))?)
     }
 
     fn parse_payload_value(

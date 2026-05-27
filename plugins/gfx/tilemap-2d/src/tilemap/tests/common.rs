@@ -2,8 +2,8 @@ use amigo_assets::AssetKey;
 use amigo_math::Vec2;
 
 use crate::{
-    ResolvedTileMap2d, TileCollisionKind2d, TileMap2d, TileRuleSet2d, TileTerrainRule2d,
-    TileVariantSet2d, resolve_tilemap,
+    resolve_tilemap, ResolvedTileMap2d, TileCollisionKind2d, TileMap2d, TileRuleSet2d,
+    TileTerrainRule2d, TileVariantSet2d,
 };
 
 pub fn horizontal_ruleset() -> TileRuleSet2d {

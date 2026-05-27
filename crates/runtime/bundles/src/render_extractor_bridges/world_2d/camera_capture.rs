@@ -56,6 +56,13 @@ fn build_visual_source_flags_2d(
     quality_settings: amigo_camera_core_plugin::CameraQualitySettings2d,
 ) -> amigo_render_wgpu::WgpuVisualSourceFlags2d {
     let capture = packet.camera_capture_input_2d();
+    let camera_debug_view = packet
+        .camera_debug_view_2d()
+        .unwrap_or_else(amigo_render_api::CameraDebugView2d::final_output);
+    let debug_wants_layer_source = matches!(
+        camera_debug_view.as_str(),
+        "camera.layer_mask" | "camera.layer_optical_roles"
+    );
     let generate_visual = quality_settings.debug_buffers
         || quality_settings
             .visual_source_buffer_quality
@@ -65,8 +72,9 @@ fn build_visual_source_flags_2d(
         || quality_settings.motion_source_quality.should_generate()
         || quality_settings.generate_motion_debug_source;
     let generate_layer_mask = quality_settings.debug_buffers
-        || quality_settings.layer_mask_quality.should_generate()
-        || quality_settings.generate_layer_mask_debug_source;
+        || (debug_wants_layer_source
+            && (quality_settings.layer_mask_quality.should_generate()
+                || quality_settings.generate_layer_mask_debug_source));
     amigo_render_wgpu::WgpuVisualSourceFlags2d {
         layer_mask_generated: generate_layer_mask && !packet.world_2d_render_layers().is_empty(),
         layer_roles_generated: generate_layer_mask && !packet.world_2d_render_layers().is_empty(),

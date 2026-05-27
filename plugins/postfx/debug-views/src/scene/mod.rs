@@ -7,4 +7,3 @@ pub fn debug_views_scene_descriptor() -> PluginSceneComponentDescriptor {
         "DebugViews",
     )
 }
-

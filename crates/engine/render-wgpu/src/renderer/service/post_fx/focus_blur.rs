@@ -1,6 +1,6 @@
 use amigo_core::AmigoResult;
 use amigo_math::{ColorRgba, Vec2};
-use amigo_render_api::{FocusBlur2d, FocusTarget2d};
+use amigo_render_api::{FocusBlur2d, FocusBlurDebugView2d, FocusTarget2d};
 use amigo_render_api::{
     RenderDepthMap2d, RenderDepthMapViewportFit2d, RenderSceneView, Renderable2dItem,
 };
@@ -37,6 +37,20 @@ pub(crate) fn execute_focus_blur(
         .scene_highlight
         .as_ref()
         .map(|target| target.view.clone());
+    let effect = effect.normalized();
+    let resolution_scale = focus_blur_resolution_scale(&effect, output);
+    if resolution_scale < 0.999 {
+        return execute_focus_blur_scaled(
+            renderer,
+            request,
+            effect,
+            input_view,
+            highlight_view.as_ref(),
+            output,
+            FocusBlurDepthSource::DepthMap,
+            resolution_scale,
+        );
+    }
     execute_focus_blur_with_depth_source(
         renderer,
         request,
@@ -46,6 +60,105 @@ pub(crate) fn execute_focus_blur(
         output,
         FocusBlurDepthSource::DepthMap,
     )
+}
+
+fn execute_focus_blur_scaled(
+    renderer: &mut WgpuSceneRenderer,
+    request: &WgpuFrameRenderRequest<'_>,
+    mut effect: FocusBlur2d,
+    input_view: &wgpu::TextureView,
+    highlight_view: Option<&wgpu::TextureView>,
+    output: &mut WgpuOffscreenTarget,
+    depth_source: FocusBlurDepthSource,
+    resolution_scale: f32,
+) -> AmigoResult<()> {
+    if !effect.is_active() {
+        return renderer.copy_offscreen_to_offscreen(output, input_view);
+    }
+
+    let mut scaled_input =
+        scaled_focus_blur_target(output, resolution_scale, "amigo-focus-blur-scaled-input");
+    renderer.copy_offscreen_to_offscreen(&mut scaled_input, input_view)?;
+
+    let mut scaled_output =
+        scaled_focus_blur_target(output, resolution_scale, "amigo-focus-blur-scaled-output");
+    effect.max_blur_px *= resolution_scale;
+    effect.sample_count = focus_blur_sample_budget(effect.sample_count, resolution_scale);
+    execute_focus_blur_with_depth_source(
+        renderer,
+        request,
+        effect,
+        &scaled_input.view,
+        highlight_view,
+        &mut scaled_output,
+        depth_source,
+    )?;
+    renderer.copy_offscreen_to_offscreen(output, &scaled_output.view)
+}
+
+fn focus_blur_resolution_scale(effect: &FocusBlur2d, output: &WgpuOffscreenTarget) -> f32 {
+    if !effect.is_active() || effect.debug_view != FocusBlurDebugView2d::Final {
+        return 1.0;
+    }
+
+    let pixel_count = output.width.saturating_mul(output.height);
+    if pixel_count >= 1280 * 720 && effect.sample_count >= 32 && effect.max_blur_px >= 12.0 {
+        return 0.35;
+    }
+    if effect.sample_count >= 48 || effect.max_blur_px >= 18.0 {
+        return 0.5;
+    }
+    1.0
+}
+
+fn focus_blur_sample_budget(sample_count: u32, resolution_scale: f32) -> u32 {
+    let sample_count = sample_count.clamp(12, 96);
+    if resolution_scale <= 0.4 {
+        sample_count.min(24)
+    } else if resolution_scale < 0.999 {
+        sample_count.min(32)
+    } else {
+        sample_count
+    }
+}
+
+fn scaled_focus_blur_target(
+    template: &WgpuOffscreenTarget,
+    scale: f32,
+    label: &'static str,
+) -> WgpuOffscreenTarget {
+    let scale = scale.clamp(0.25, 1.0);
+    let width = ((template.width.max(1) as f32 * scale).round() as u32).max(1);
+    let height = ((template.height.max(1) as f32 * scale).round() as u32).max(1);
+    let texture = template.device.create_texture(&wgpu::TextureDescriptor {
+        label: Some(label),
+        size: wgpu::Extent3d {
+            width,
+            height,
+            depth_or_array_layers: 1,
+        },
+        mip_level_count: 1,
+        sample_count: 1,
+        dimension: wgpu::TextureDimension::D2,
+        format: template.format,
+        usage: wgpu::TextureUsages::RENDER_ATTACHMENT
+            | wgpu::TextureUsages::TEXTURE_BINDING
+            | wgpu::TextureUsages::COPY_SRC
+            | wgpu::TextureUsages::COPY_DST,
+        view_formats: &[],
+    });
+    let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
+
+    WgpuOffscreenTarget {
+        report: template.report.clone(),
+        device: template.device.clone(),
+        queue: template.queue.clone(),
+        width,
+        height,
+        format: template.format,
+        texture,
+        view,
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -128,6 +241,7 @@ pub(crate) fn execute_focus_blur_with_depth_source(
         mipmap_filter: wgpu::MipmapFilterMode::Nearest,
         ..Default::default()
     });
+    let has_highlight_source = highlight_view.is_some();
     let texture_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
         label: Some("amigo-focus-blur-texture-bind-group"),
         layout: &renderer.focus_blur_texture_bind_group_layout,
@@ -184,6 +298,8 @@ pub(crate) fn execute_focus_blur_with_depth_source(
         ],
         depth_override,
     };
+    let mut uniforms = uniforms;
+    uniforms.depth_override[3] = if has_highlight_source { 1.0 } else { 0.0 };
     let uniform_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
         label: Some("amigo-focus-blur-uniform-buffer"),
         contents: bytes_of(&uniforms),
@@ -580,5 +696,13 @@ mod tests {
             Some(&input),
         );
         assert_eq!(actual, Some(0.41));
+    }
+
+    #[test]
+    fn focus_blur_sample_budget_caps_scaled_realtime_passes() {
+        assert_eq!(focus_blur_sample_budget(64, 0.5), 32);
+        assert_eq!(focus_blur_sample_budget(64, 0.35), 24);
+        assert_eq!(focus_blur_sample_budget(20, 0.5), 20);
+        assert_eq!(focus_blur_sample_budget(64, 1.0), 64);
     }
 }

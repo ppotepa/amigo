@@ -2,9 +2,8 @@ use amigo_render_api::{RenderPrimitive2d, RenderPrimitive2dKind};
 
 use crate::renderer::collect_material_candidate_2d;
 use crate::{
-    motion_vector_color,
-    WgpuRefractiveMaskAdapterContext, WgpuRefractiveMaskAppendOutcome, WgpuRenderable2dAdapter,
-    WgpuRenderable2dAdapterContext, WgpuMotionAdapterContext,
+    WgpuMotionAdapterContext, WgpuRefractiveMaskAdapterContext, WgpuRefractiveMaskAppendOutcome,
+    WgpuRenderable2dAdapter, WgpuRenderable2dAdapterContext, motion_vector_color,
 };
 
 pub struct VectorMesh2dRenderableAdapter;
@@ -83,10 +82,8 @@ impl WgpuRenderable2dAdapter for VectorMesh2dRenderableAdapter {
         let Some(vector) = item.primitive.vector_mesh() else {
             return false;
         };
-        let transform = crate::renderer::vector_primitive_viewport_fit_transform(
-            ctx.viewport,
-            vector,
-        );
+        let transform =
+            crate::renderer::vector_primitive_viewport_fit_transform(ctx.viewport, vector);
         let key = item.source_id().as_str().to_owned();
         ctx.current_positions
             .insert(key.clone(), transform.translation);

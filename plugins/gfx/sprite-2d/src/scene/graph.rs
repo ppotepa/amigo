@@ -5,6 +5,7 @@ use amigo_scene::{
 
 use super::Sprite2dDocument;
 
+#[derive(Default)]
 pub struct Sprite2dPluginGraphProvider;
 
 impl PluginComponentGraphProvider for Sprite2dPluginGraphProvider {

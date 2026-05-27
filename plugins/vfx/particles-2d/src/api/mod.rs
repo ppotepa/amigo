@@ -1,4 +1,4 @@
-use amigo_plugin_api::{scene_alpha, scene_color, CandidateStatus, TargetId};
+use amigo_plugin_api::{CandidateStatus, TargetId, scene_alpha, scene_color};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct ParticleEmitter2dSource {

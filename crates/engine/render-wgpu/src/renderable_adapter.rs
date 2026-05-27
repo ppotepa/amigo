@@ -7,9 +7,7 @@ use amigo_render_api::{
 use std::collections::BTreeSet;
 
 use crate::renderer::WgpuMaterialCandidate2d;
-use crate::renderer::{
-    ColorBatch, LightMap2dSampler, ParticleRenderLight, TextureBatch, Viewport,
-};
+use crate::renderer::{ColorBatch, LightMap2dSampler, ParticleRenderLight, TextureBatch, Viewport};
 use crate::{Renderable2dItem, WgpuOffscreenTarget, WgpuSceneRenderer};
 
 pub(crate) trait WgpuRenderable2dAdapter: Send + Sync {
@@ -75,7 +73,12 @@ pub(crate) trait WgpuRenderable2dAdapter: Send + Sync {
         let current = transform.translation;
         let previous = ctx.previous_positions.get(&key).copied();
         ctx.current_positions.insert(key, current);
-        append_motion_visual_quad(ctx, transform, size, motion_vector_color(previous, current, ctx.target_size));
+        append_motion_visual_quad(
+            ctx,
+            transform,
+            size,
+            motion_vector_color(previous, current, ctx.target_size),
+        );
         true
     }
 }
@@ -218,10 +221,6 @@ impl WgpuRenderable2dAdapterRegistry {
         A: WgpuRenderable2dAdapter + 'static,
     {
         self.adapters.push(Box::new(adapter));
-    }
-
-    pub(crate) fn supports_kind(&self, kind: RenderPrimitive2dKind) -> bool {
-        self.adapters.iter().any(|adapter| adapter.kind() == kind)
     }
 
     pub(crate) fn append_batches(

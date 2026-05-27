@@ -41,6 +41,7 @@ impl RuntimeControlProvider for Beacon2dControlProvider {
                 source_file: None,
             });
             for (property_path, value_type) in [
+                ("base_intensity", ControlValueType::F32),
                 ("glow_strength", ControlValueType::F32),
                 ("frequency_hz", ControlValueType::F32),
                 ("beam_enabled", ControlValueType::Bool),
@@ -81,6 +82,7 @@ impl RuntimeControlProvider for Beacon2dControlProvider {
             .find(|command| command.id == beacon_id)
             .ok_or_else(|| RuntimeControlError::UnknownTarget(path.target_path.clone()))?;
         match path.property_path.as_str() {
+            "base_intensity" => Ok(ControlValue::F64(command.base_intensity as f64)),
             "glow_strength" => Ok(ControlValue::F64(command.glow_strength as f64)),
             "frequency_hz" => Ok(ControlValue::F64(command.frequency_hz as f64)),
             "beam_enabled" => Ok(ControlValue::Bool(command.beam_enabled)),
@@ -101,6 +103,16 @@ impl RuntimeControlProvider for Beacon2dControlProvider {
             .replace('_', "-");
         let beacon_id = format!("beacon-{id}");
         let updated = match path.property_path.as_str() {
+            "base_intensity" => self.service.set_base_intensity(
+                &beacon_id,
+                value
+                    .as_f32()
+                    .ok_or_else(|| RuntimeControlError::TypeMismatch {
+                        path: path.console_path.clone(),
+                        expected: "f32".to_owned(),
+                        actual: "non-number".to_owned(),
+                    })?,
+            ),
             "glow_strength" => self.service.set_glow_strength(
                 &beacon_id,
                 value

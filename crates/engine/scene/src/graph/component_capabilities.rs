@@ -103,6 +103,9 @@ pub fn component_2d_traits(component: &SceneComponentDocument) -> Vec<MetadataTr
             RuntimeControllable,
             Patchable,
         ],
+        SceneComponentSemanticClass::Physics3d => {
+            vec![UsesTransform3D, RuntimeControllable, Patchable]
+        }
         SceneComponentSemanticClass::Script => {
             vec![Component2D, Scriptable, RuntimeControllable, Patchable]
         }

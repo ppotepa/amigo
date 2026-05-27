@@ -1,15 +1,13 @@
 use amigo_plugin_api::{
     CapabilityRef, ContributionContract, ContributionPolicy, DiagnosticChannelId,
-    DiagnosticChannelRef, DomainId, PluginId, PluginKind, PluginManifest,
-    RenderParticipation, SlotId, TargetId,
+    DiagnosticChannelRef, DomainId, PluginId, PluginKind, PluginManifest, RenderParticipation,
+    SlotId, TargetId,
 };
 
 use crate::error::PluginManifestParseError;
 use crate::raw::{RawContribution, RawPluginManifest};
 
-pub fn parse_plugin_manifest_str(
-    input: &str,
-) -> Result<PluginManifest, PluginManifestParseError> {
+pub fn parse_plugin_manifest_str(input: &str) -> Result<PluginManifest, PluginManifestParseError> {
     let raw: RawPluginManifest = toml::from_str(input)?;
 
     let kind = parse_kind(&raw.kind)?;

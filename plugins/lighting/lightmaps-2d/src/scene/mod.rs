@@ -7,4 +7,3 @@ pub fn lightmap_2d_source_scene_descriptor() -> PluginSceneComponentDescriptor {
         "LightMap2DSource",
     )
 }
-

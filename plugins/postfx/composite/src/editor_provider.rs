@@ -20,8 +20,7 @@ impl EditorRuntimeApplyProvider for CompositeEditorRuntimeApplyProvider {
         matches!(
             request,
             EditorRuntimeApplyRequest::RuntimeProperty {
-                binding:
-                    AuthoringRuntimeBinding::PostFxFrameEnabled { .. }
+                binding: AuthoringRuntimeBinding::PostFxFrameEnabled { .. }
                     | AuthoringRuntimeBinding::PostFxFrameField { .. },
                 ..
             }

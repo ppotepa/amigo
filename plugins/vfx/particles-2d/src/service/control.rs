@@ -65,6 +65,16 @@ impl RuntimeControlProvider for ParticleEmitter2dControlProvider {
                     max: None,
                 }),
             );
+            register_particle_property(
+                registry,
+                &target_path,
+                "intensity",
+                ControlValueType::F32,
+                Some(ControlRange {
+                    min: Some(0.0),
+                    max: Some(1.0),
+                }),
+            );
             register_particle_property(registry, &target_path, "active", ControlValueType::Bool, None);
         }
         Ok(())
@@ -86,6 +96,9 @@ impl RuntimeControlProvider for ParticleEmitter2dControlProvider {
             "spawn_rate" => Ok(ControlValue::F64(command.emitter.spawn_rate as f64)),
             "max_particles" => Ok(ControlValue::U64(command.emitter.max_particles as u64)),
             "initial_speed" => Ok(ControlValue::F64(command.emitter.initial_speed as f64)),
+            "intensity" => Ok(ControlValue::F64(
+                self.service.intensity(entity_name.as_str()) as f64,
+            )),
             "active" => Ok(ControlValue::Bool(self.service.is_active(entity_name.as_str()))),
             _ => Err(RuntimeControlError::UnknownProperty {
                 path: path.console_path.clone(),
@@ -123,6 +136,14 @@ impl RuntimeControlProvider for ParticleEmitter2dControlProvider {
                 })? as usize,
             ),
             "initial_speed" => self.service.set_initial_speed(
+                entity_name.as_str(),
+                value.as_f32().ok_or_else(|| RuntimeControlError::TypeMismatch {
+                    path: path.console_path.clone(),
+                    expected: "f32".to_owned(),
+                    actual: "non-number".to_owned(),
+                })?,
+            ),
+            "intensity" => self.service.set_intensity(
                 entity_name.as_str(),
                 value.as_f32().ok_or_else(|| RuntimeControlError::TypeMismatch {
                     path: path.console_path.clone(),

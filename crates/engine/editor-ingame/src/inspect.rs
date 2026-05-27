@@ -56,7 +56,13 @@ pub(crate) fn resolve_inspect_request(
     let Ok(graph) = graph_service.graph_for_current_scene(runtime) else {
         return Err(InspectResolveError::NoGraph);
     };
-    resolve_subject(runtime, &graph, state, &request.subject, request.expression.clone())
+    resolve_subject(
+        runtime,
+        &graph,
+        state,
+        &request.subject,
+        request.expression.clone(),
+    )
 }
 
 pub(crate) fn resolve_subject(

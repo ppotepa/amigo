@@ -272,6 +272,7 @@ impl Material3dSceneCommand {
             label: label.into(),
             albedo: ColorRgba::WHITE,
             source,
+            render_order: 0,
         }
     }
 }

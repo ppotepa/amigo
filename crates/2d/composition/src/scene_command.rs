@@ -1,5 +1,5 @@
 use amigo_core::{AmigoError, AmigoResult};
-use amigo_scene::{format_scene_command, SceneCommand};
+use amigo_scene::{SceneCommand, format_scene_command};
 
 use crate::{LightRoute2dSceneService, RenderLayer2dSceneService};
 

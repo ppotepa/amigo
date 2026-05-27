@@ -9,6 +9,7 @@ pub fn global_light_2d_scene_descriptor() -> PluginSceneComponentDescriptor {
     )
 }
 
+#[derive(Default)]
 pub struct Lighting2dSceneDescriptorProvider;
 
 impl ScenePluginDescriptorProvider for Lighting2dSceneDescriptorProvider {

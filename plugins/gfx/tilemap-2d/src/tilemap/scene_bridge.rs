@@ -7,8 +7,8 @@ use amigo_scene::{
 };
 
 use super::{
-    TileMap2dDrawCommand, TileMap2dSceneService, infer_tile_ruleset_from_prepared_asset,
-    model::TileMap2d, resolver, resolver::resolve_tilemap,
+    infer_tile_ruleset_from_prepared_asset, model::TileMap2d, resolver, resolver::resolve_tilemap,
+    TileMap2dDrawCommand, TileMap2dSceneService,
 };
 
 pub fn queue_tilemap_scene_command(

@@ -160,7 +160,11 @@ pub fn input_mouse_position(input_state: Option<&Arc<InputState>>) -> rhai::Map 
     let (x, y) = input_state
         .and_then(|input_state| input_state.cursor_position())
         .unwrap_or((0.0, 0.0));
-    point_map(x, y, input_state.is_some_and(|input_state| input_state.cursor_position().is_some()))
+    point_map(
+        x,
+        y,
+        input_state.is_some_and(|input_state| input_state.cursor_position().is_some()),
+    )
 }
 
 pub fn input_mouse_canvas_position(
@@ -179,7 +183,10 @@ pub fn input_mouse_canvas_position(
         .unwrap_or((canvas_width as f32, canvas_height as f32));
     let canvas_width = canvas_width as f32;
     let canvas_height = canvas_height as f32;
-    if canvas_width <= 0.0 || canvas_height <= 0.0 || viewport_width <= 0.0 || viewport_height <= 0.0
+    if canvas_width <= 0.0
+        || canvas_height <= 0.0
+        || viewport_width <= 0.0
+        || viewport_height <= 0.0
     {
         return point_map(0.0, 0.0, false);
     }

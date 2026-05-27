@@ -1,4 +1,4 @@
-use amigo_capabilities::{DEFAULT_CAPABILITY_VERSION, register_domain_plugin};
+use amigo_capabilities::{register_domain_plugin, DEFAULT_CAPABILITY_VERSION};
 use amigo_core::AmigoResult;
 use amigo_runtime::{RuntimePlugin, ServiceRegistry};
 use amigo_runtime_control::RuntimeControlService;
@@ -29,18 +29,9 @@ impl RuntimePlugin for LayeredImagePlugin {
             registry,
             super::reset::LayeredImage2dSceneResetHandler,
         )?;
-        if let Some(metadata) = registry.resolve::<amigo_scene::ComponentMetadataProviderRegistry>()
-        {
-            metadata.register(crate::scene::LayeredImage2dComponentMetadataProvider);
-        }
-        if let Some(schemas) = registry.resolve::<amigo_scene::ComponentSchemaRegistry>() {
-            schemas.register_provider(&crate::scene::LayeredImage2dSceneDescriptorProvider);
-            schemas.register_schema_provider(crate::scene::LayeredImage2dSceneSchemaProvider);
-        }
-        if let Some(hydrators) = registry.resolve::<amigo_scene::ComponentHydratorRegistry>() {
-            hydrators.register(crate::scene::LayeredImage2dComponentHydrator);
-            hydrators.register_plugin(crate::scene::LayeredImage2dPluginComponentHydrator);
-        }
+        amigo_scene::register_scene_component_plugin_spec::<
+            crate::scene::LayeredImage2dSceneComponentSpec,
+        >(registry)?;
         if let Some(render_extractors) =
             registry.resolve::<amigo_render_api::RuntimeRenderExtractorIdRegistry>()
         {

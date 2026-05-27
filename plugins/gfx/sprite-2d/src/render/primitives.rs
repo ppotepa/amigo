@@ -31,7 +31,11 @@ pub fn sprite_draw_command_to_render_primitive(command: &SpriteDrawCommand) -> R
         transform: command.transform,
         sheet: command.sprite.sheet.map(sprite_sheet_to_primitive),
         frame_index: command.sprite.frame_index,
-        visual_maps: command.sprite.visual_maps.as_ref().map(visual_maps_to_primitive),
+        visual_maps: command
+            .sprite
+            .visual_maps
+            .as_ref()
+            .map(visual_maps_to_primitive),
         material: RenderMaterialBinding2d::new(
             command.material,
             command.render_contributions.clone(),

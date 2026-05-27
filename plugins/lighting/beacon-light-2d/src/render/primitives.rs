@@ -26,9 +26,10 @@ pub fn beacon_draw_command_to_render_primitive(
         bloom: command.bloom,
         camera_intensity: command.camera_response.intensity,
         camera_glare: command.camera_response.glare,
-        overlay_visible: command
-            .render_contributions
-            .enabled_or(amigo_render_api::render_contribution_roles::OVERLAY_VISIBLE, true),
+        overlay_visible: command.render_contributions.enabled_or(
+            amigo_render_api::render_contribution_roles::OVERLAY_VISIBLE,
+            true,
+        ),
         distance_m: command.distance_m,
         z_depth: command.z_depth,
         viewport_fit: match command.viewport_fit {
@@ -52,9 +53,10 @@ pub fn beacon_draw_command_to_render_primitive(
 pub fn beacon_draw_command_to_renderable_2d(
     command: &BeaconLight2dDrawCommand,
 ) -> Renderable2dItem {
-    let overlay_visible = command
-        .render_contributions
-        .enabled_or(amigo_render_api::render_contribution_roles::OVERLAY_VISIBLE, true);
+    let overlay_visible = command.render_contributions.enabled_or(
+        amigo_render_api::render_contribution_roles::OVERLAY_VISIBLE,
+        true,
+    );
     Renderable2dItem::new(
         Renderable2dCommon::world(
             command.entity_name.clone(),
@@ -102,7 +104,12 @@ pub fn beacon_draw_command_to_light_contribution(
         emitter_kind: LightEmitterKind2d::Beacon,
         emitter_id: None,
         render_layer: Some(command.render_layer.clone()),
-        color_rgba: Some([command.color.r, command.color.g, command.color.b, command.color.a]),
+        color_rgba: Some([
+            command.color.r,
+            command.color.g,
+            command.color.b,
+            command.color.a,
+        ]),
         intensity: Some(command.intensity),
         effective_intensity: Some(command.intensity * command.color.a),
         response: Some(1.0),

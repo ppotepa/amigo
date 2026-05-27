@@ -1,44 +1,17 @@
-use amigo_scene::SceneComponentDocument as ComponentDocument;
 use amigo_scene::{
     Camera2dModeDocument, Camera2dSceneCommand, CameraAperture2dSceneCommand,
     CameraAutoExposure2dSceneCommand, CameraDepthOfField2dSceneCommand,
     CameraExposure2dSceneCommand, CameraExposureMode2dSceneCommand, CameraFilm2dSceneCommand,
     CameraFocus2dDocument, CameraFocus2dSceneCommand, CameraLens2dSceneCommand,
     CameraLensSurface2dSceneCommand, CameraLook2dSceneCommand, CameraShutter2dSceneCommand,
-    ComponentHydrationContext, ComponentHydrator, PluginComponentHydrationContext,
-    PluginComponentHydrator, RenderContributions2dSceneCommand, SceneCommand,
-    SceneComponentDocument, SceneDocumentError, SceneDocumentResult,
+    PluginComponentHydrationContext, PluginComponentHydrator, RenderContributions2dSceneCommand,
+    SceneCommand, SceneDocumentError, SceneDocumentResult,
 };
 
 use super::Camera2dDocument;
 
-pub struct Camera2dComponentHydrator;
+#[derive(Default)]
 pub struct Camera2dPluginComponentHydrator;
-
-impl ComponentHydrator for Camera2dComponentHydrator {
-    fn provider_id(&self) -> &'static str {
-        "amigo.camera.camera-core"
-    }
-
-    fn can_hydrate(&self, component: &SceneComponentDocument) -> bool {
-        matches!(component, ComponentDocument::Camera2d { .. })
-    }
-
-    fn hydrate(&self, ctx: ComponentHydrationContext<'_>) -> SceneDocumentResult<()> {
-        let document = match ctx.component {
-            ComponentDocument::Camera2d { .. } => {
-                let Some(document) = Camera2dDocument::from_component(ctx.component) else {
-                    return Ok(());
-                };
-                document
-            }
-            _ => return Ok(()),
-        };
-
-        push_camera_command(&document, ctx.source_mod, ctx.entity_name, ctx.commands);
-        Ok(())
-    }
-}
 
 impl PluginComponentHydrator for Camera2dPluginComponentHydrator {
     fn provider_id(&self) -> &'static str {
@@ -221,6 +194,115 @@ fn camera_focus_from_document(focus: &CameraFocus2dDocument) -> CameraFocus2dSce
         },
         CameraFocus2dDocument::Depth { value } => {
             CameraFocus2dSceneCommand::Depth { value: *value }
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use amigo_scene::{
+        PluginComponentHydrationContext, RenderContributionsDocument, SceneCommand, SceneDocument,
+        SceneEntityDocument, SceneMetadataDocument, SceneVisual2dDocument,
+    };
+    use std::collections::BTreeMap;
+
+    #[test]
+    fn camera_hydrator_merges_declared_render_contributions_with_defaults() {
+        let hydrator = Camera2dPluginComponentHydrator;
+        let mut render_contributions = RenderContributionsDocument::default();
+        render_contributions.set("camera.film", true);
+        render_contributions.set("camera.scan_output", false);
+        let payload = Camera2dDocument {
+            id: "main-camera".to_owned(),
+            mode: Camera2dModeDocument::Manual,
+            render_contributions,
+            ..Camera2dDocument::default()
+        };
+        let entity = test_entity("camera");
+        let document = test_document(entity.clone());
+        let mut commands = Vec::new();
+
+        hydrator
+            .hydrate_plugin_payload(PluginComponentHydrationContext {
+                source_mod: "test-mod",
+                document: &document,
+                entity: &entity,
+                entity_name: "camera",
+                component_index: 0,
+                component_type: "amigo.camera.camera-core.Camera2D",
+                payload: &payload,
+                commands: &mut commands,
+            })
+            .expect("camera hydrator should accept plugin payload");
+
+        let command = plugin_payload::<Camera2dSceneCommand>(&commands);
+        assert_eq!(command.source_mod, "test-mod");
+        assert_eq!(command.entity_name, "camera");
+        assert_eq!(command.camera_id, "main-camera");
+        assert_eq!(command.mode, CameraExposureMode2dSceneCommand::Manual);
+        assert_eq!(
+            command.render_contributions.roles.get("camera.projection"),
+            Some(&true)
+        );
+        assert_eq!(
+            command.render_contributions.roles.get("camera.film"),
+            Some(&true)
+        );
+        assert_eq!(
+            command.render_contributions.roles.get("camera.scan_output"),
+            Some(&false)
+        );
+        assert_eq!(
+            command.render_contributions.roles.get("camera.optics"),
+            Some(&false)
+        );
+    }
+
+    fn plugin_payload<T: 'static>(commands: &[SceneCommand]) -> &T {
+        assert_eq!(commands.len(), 1);
+        match &commands[0] {
+            SceneCommand::Plugin { command } => command
+                .payload_as::<T>()
+                .expect("plugin scene payload should downcast"),
+            other => panic!("expected plugin scene command, got {other:?}"),
+        }
+    }
+
+    fn test_entity(name: &str) -> SceneEntityDocument {
+        SceneEntityDocument {
+            id: name.to_owned(),
+            name: name.to_owned(),
+            tags: Vec::new(),
+            groups: Vec::new(),
+            visible: true,
+            simulation_enabled: true,
+            collision_enabled: true,
+            properties: BTreeMap::new(),
+            transform2: None,
+            transform3: None,
+            post_fx: Vec::new(),
+            prefab: None,
+            prefab_overrides: Vec::new(),
+            components: Vec::new(),
+        }
+    }
+
+    fn test_document(entity: SceneEntityDocument) -> SceneDocument {
+        SceneDocument {
+            version: 1,
+            scene: SceneMetadataDocument {
+                id: "test-scene".to_owned(),
+                label: String::new(),
+                description: None,
+            },
+            transitions: Vec::new(),
+            collision_events: Vec::new(),
+            audio_cues: Vec::new(),
+            activation_sets: Vec::new(),
+            visual2d: SceneVisual2dDocument::default(),
+            state: BTreeMap::new(),
+            entities: vec![entity],
         }
     }
 }

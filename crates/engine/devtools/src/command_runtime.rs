@@ -95,10 +95,7 @@ pub fn dispatch_console_command(runtime: &Runtime, command: DevConsoleCommand) {
                 "route=prefer_rhai next=eval_console source={:?}",
                 routed.source
             ));
-            write_console_result(
-                console.as_ref(),
-                eval_console_route(runtime, routed.source),
-            );
+            write_console_result(console.as_ref(), eval_console_route(runtime, routed.source));
             return;
         }
         ConsoleInputRoute::Command => {}

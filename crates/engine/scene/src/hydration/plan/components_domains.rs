@@ -9,159 +9,6 @@ fn hydrate_component_domains(
     commands: &mut Vec<SceneCommand>,
 ) -> SceneDocumentResult<bool> {
     match component {
-        DomainComponentDocument::ParticleEmitter2d {
-            render_layer,
-            attached_to,
-            local_offset,
-            local_direction_degrees,
-            spawn_area,
-            active,
-            spawn_rate,
-            max_particles,
-            particle_lifetime,
-            lifetime_jitter,
-            initial_speed,
-            speed_jitter,
-            spread_degrees,
-            inherit_parent_velocity,
-            velocity_mode,
-            simulation_space,
-            initial_size,
-            final_size,
-            size_jitter,
-            color,
-            color_ramp,
-            z_index,
-            shape,
-            shape_choices,
-            shape_over_lifetime,
-            line_anchor,
-            align,
-            blend_mode,
-            motion_stretch,
-            material,
-            light,
-            emission_rate_curve,
-            size_curve,
-            alpha_curve,
-            speed_curve,
-            forces,
-            post_fx: _,
-        } => {
-            commands.push(SceneCommand::Plugin {
-                command: particle_emitter_2d_plugin_scene_command(ParticleEmitter2dSceneCommand {
-                    source_mod: source_mod.to_owned(),
-                    entity_name: entity_name.clone(),
-                    render_layer: render_layer.clone(),
-                    attached_to: attached_to.clone(),
-                    local_offset: vec2_from_document(*local_offset),
-                    local_direction_radians: local_direction_degrees.to_radians(),
-                    spawn_area: particle_spawn_area_from_document(spawn_area.as_ref()),
-                    active: *active,
-                    spawn_rate: *spawn_rate,
-                    max_particles: *max_particles,
-                    particle_lifetime: *particle_lifetime,
-                    lifetime_jitter: *lifetime_jitter,
-                    initial_speed: *initial_speed,
-                    speed_jitter: *speed_jitter,
-                    spread_radians: spread_degrees.to_radians(),
-                    inherit_parent_velocity: *inherit_parent_velocity,
-                    velocity_mode: particle_velocity_mode_from_document(*velocity_mode),
-                    simulation_space: particle_simulation_space_from_document(*simulation_space),
-                    initial_size: *initial_size,
-                    final_size: *final_size,
-                    size_jitter: size_jitter.max(0.0),
-                    color: parse_optional_color_rgba_hex(
-                        color.as_deref(),
-                        &document.scene.id,
-                        &entity.id,
-                        component.kind(),
-                        "color",
-                    )?
-                    .unwrap_or(ColorRgba::WHITE),
-                    color_ramp: color_ramp
-                        .as_ref()
-                        .map(|color_ramp| {
-                            color_ramp_from_document(
-                                color_ramp,
-                                &document.scene.id,
-                                &entity.id,
-                                component.kind(),
-                            )
-                        })
-                        .transpose()?,
-                    z_index: *z_index,
-                    shape: particle_shape_from_document(shape.as_ref()),
-                    shape_choices: shape_choices
-                        .iter()
-                        .map(|choice| ParticleShapeChoice2dSceneCommand {
-                            shape: particle_shape_from_document(Some(&choice.shape)),
-                            weight: choice.weight.max(0.0),
-                        })
-                        .collect(),
-                    shape_over_lifetime: shape_over_lifetime
-                        .iter()
-                        .map(|keyframe| ParticleShapeKeyframe2dSceneCommand {
-                            t: keyframe.t.clamp(0.0, 1.0),
-                            shape: particle_shape_from_document(Some(&keyframe.shape)),
-                        })
-                        .collect(),
-                    line_anchor: particle_line_anchor_from_document(*line_anchor),
-                    align: particle_align_from_document(*align),
-                    blend_mode: particle_blend_from_document(*blend_mode),
-                    motion_stretch: motion_stretch.map(|motion_stretch| {
-                        ParticleMotionStretch2dSceneCommand {
-                            enabled: motion_stretch.enabled,
-                            velocity_scale: motion_stretch.velocity_scale.max(0.0),
-                            max_length: motion_stretch.max_length.max(0.0),
-                            shutter_seconds: motion_stretch.shutter_seconds.max(0.0),
-                            tail_alpha: motion_stretch.tail_alpha.clamp(0.0, 1.0),
-                            head_alpha: motion_stretch.head_alpha.clamp(0.0, 1.0),
-                        }
-                    }),
-                    material: material
-                        .as_ref()
-                        .map(|material| crate::ParticleMaterial2dSceneCommand {
-                            lighting_mode: particle_lighting_mode_from_document(
-                                material.lighting_mode,
-                                material.receives_light,
-                                material.light_receiver.as_ref(),
-                            ),
-                            receives_light: material.receives_light,
-                            light_response: material.light_response.max(0.0),
-                            light_receiver: material
-                                .light_receiver
-                                .as_ref()
-                                .map(light_receiver_binding_from_document),
-                        })
-                        .unwrap_or(crate::ParticleMaterial2dSceneCommand {
-                            lighting_mode: Material2dLightingModeSceneCommand::Unlit,
-                            receives_light: false,
-                            light_response: 1.0,
-                            light_receiver: None,
-                        }),
-                    light: light.map(|light| crate::ParticleLight2dSceneCommand {
-                        radius: light.radius.max(0.0),
-                        intensity: light.intensity.max(0.0),
-                        mode: particle_light_mode_from_document(light.mode),
-                        glow: light.glow,
-                    }),
-                    emission_rate_curve: curve1d_from_optional_document(
-                        emission_rate_curve.as_ref(),
-                    ),
-                    size_curve: curve1d_from_optional_document(size_curve.as_ref()),
-                    alpha_curve: alpha_curve
-                        .as_ref()
-                        .map(curve1d_from_document)
-                        .unwrap_or(Curve1d::Constant(1.0)),
-                    speed_curve: speed_curve
-                        .as_ref()
-                        .map(curve1d_from_document)
-                        .unwrap_or(Curve1d::Constant(1.0)),
-                    forces: forces.iter().map(particle_force_from_document).collect(),
-                }),
-            });
-        }
         DomainComponentDocument::Velocity2d { velocity } => {
             commands.push(SceneCommand::Plugin {
                 command: velocity_2d_plugin_scene_command(Velocity2dSceneCommand::new(
@@ -403,6 +250,7 @@ fn hydrate_component_domains(
             label,
             source,
             albedo,
+            render_order,
         } => {
             let mut command = Material3dSceneCommand::new(
                 source_mod.to_owned(),
@@ -415,6 +263,7 @@ fn hydrate_component_domains(
                 command.albedo =
                     parse_color_rgba_hex(albedo, &document.scene.id, &entity.id, component.kind())?;
             }
+            command.render_order = *render_order;
 
             commands.push(SceneCommand::Plugin {
                 command: material_3d_plugin_scene_command(command),
@@ -433,6 +282,149 @@ fn hydrate_component_domains(
                     font: AssetKey::new(font.clone()),
                     size: *size,
                     transform: transform3_for_entity(entity),
+                }),
+            });
+        }
+        DomainComponentDocument::PhysicsWorld3d {
+            gravity,
+            substeps,
+            solver_iterations,
+            ccd_substeps,
+        } => {
+            commands.push(SceneCommand::Plugin {
+                command: physics_world_3d_plugin_scene_command(PhysicsWorld3dSceneCommand {
+                    source_mod: source_mod.to_owned(),
+                    entity_name: entity_name.clone(),
+                    gravity: vec3_from_document(*gravity),
+                    substeps: *substeps,
+                    solver_iterations: *solver_iterations,
+                    ccd_substeps: *ccd_substeps,
+                }),
+            });
+        }
+        DomainComponentDocument::RigidBody3d {
+            velocity,
+            angular_velocity,
+            mass,
+            linear_damping,
+            angular_damping,
+            gravity_scale,
+            restitution,
+            friction,
+            ccd,
+        } => {
+            commands.push(SceneCommand::Plugin {
+                command: rigid_body_3d_plugin_scene_command(
+                    RigidBody3dSceneCommand::new(
+                        source_mod.to_owned(),
+                        entity_name.clone(),
+                        vec3_from_document(*velocity),
+                        *gravity_scale,
+                        *restitution,
+                    )
+                    .with_angular(vec3_from_document(*angular_velocity), *angular_damping)
+                    .with_physical_properties(*mass, *linear_damping, *friction, *ccd),
+                ),
+            });
+        }
+        DomainComponentDocument::BoxCollider3d { size, offset } => {
+            commands.push(SceneCommand::Plugin {
+                command: box_collider_3d_plugin_scene_command(BoxCollider3dSceneCommand::new(
+                    source_mod.to_owned(),
+                    entity_name.clone(),
+                    vec3_from_document(*size),
+                    vec3_from_document(*offset),
+                )),
+            });
+        }
+        DomainComponentDocument::StaticBoxCollider3d {
+            size,
+            offset,
+            friction,
+            restitution,
+        } => {
+            let transform = transform3_for_entity(entity);
+            let offset = vec3_from_document(*offset);
+            commands.push(SceneCommand::Plugin {
+                command: static_box_collider_3d_plugin_scene_command(
+                    StaticBoxCollider3dSceneCommand::new(
+                        source_mod.to_owned(),
+                        entity_name.clone(),
+                        vec3_from_document(*size),
+                        amigo_math::Vec3::new(
+                            transform.translation.x + offset.x,
+                            transform.translation.y + offset.y,
+                            transform.translation.z + offset.z,
+                        ),
+                    )
+                    .with_surface(*friction, *restitution),
+                ),
+            });
+        }
+        DomainComponentDocument::PhysicsSpawner3d {
+            entity_prefix,
+            mesh,
+            material,
+            material_label,
+            interval_seconds,
+            origin,
+            spawn_scale,
+            grid_spacing,
+            initial_velocity,
+            angular_velocity,
+            spawn_position_jitter,
+            spawn_rotation_jitter,
+            initial_velocity_jitter,
+            angular_velocity_jitter,
+            mass,
+            linear_damping,
+            angular_damping,
+            gravity_scale,
+            restitution,
+            friction,
+            ccd,
+            collider_size,
+            max_alive,
+            counter_entity,
+            counter_prefix,
+            counter_font,
+            counter_size,
+            counter_position,
+        } => {
+            commands.push(SceneCommand::Plugin {
+                command: physics_spawner_3d_plugin_scene_command(PhysicsSpawner3dSceneCommand {
+                    source_mod: source_mod.to_owned(),
+                    entity_name: entity_name.clone(),
+                    entity_prefix: entity_prefix.clone(),
+                    mesh: AssetKey::new(mesh.clone()),
+                    material: AssetKey::new(material.clone()),
+                    material_label: material_label
+                        .clone()
+                        .unwrap_or_else(|| "cube-material".to_owned()),
+                    interval_seconds: *interval_seconds,
+                    origin: vec3_from_document(*origin),
+                    spawn_scale: vec3_from_document(*spawn_scale),
+                    grid_spacing: vec3_from_document(*grid_spacing),
+                    initial_velocity: vec3_from_document(*initial_velocity),
+                    angular_velocity: vec3_from_document(*angular_velocity),
+                    spawn_position_jitter: vec3_from_document(*spawn_position_jitter),
+                    spawn_rotation_jitter: vec3_from_document(*spawn_rotation_jitter),
+                    initial_velocity_jitter: vec3_from_document(*initial_velocity_jitter),
+                    angular_velocity_jitter: vec3_from_document(*angular_velocity_jitter),
+                    mass: *mass,
+                    linear_damping: *linear_damping,
+                    angular_damping: *angular_damping,
+                    gravity_scale: *gravity_scale,
+                    restitution: *restitution,
+                    friction: *friction,
+                    ccd: *ccd,
+                    collider_size: vec3_from_document(*collider_size),
+                    max_alive: *max_alive,
+                    counter_entity: counter_entity.clone(),
+                    counter_prefix: counter_prefix.clone(),
+                    counter_font: counter_font.as_ref().map(AssetKey::new),
+                    counter_size: *counter_size,
+                    counter_position: vec3_from_document(*counter_position),
                 }),
             });
         }
@@ -474,97 +466,4 @@ fn hydrate_component_domains(
         _ => return Ok(false),
     }
     Ok(true)
-}
-
-fn light_receiver_binding_from_document(
-    binding: &LightReceiver2dBindingSceneDocument,
-) -> LightReceiver2dBindingSceneCommand {
-    LightReceiver2dBindingSceneCommand {
-        groups: binding.groups.clone(),
-        source: binding.source.clone(),
-        channel: binding.channel.clone(),
-        sample_strategy: light_sample_strategy_from_document(binding.sample_strategy),
-        sample_points: binding.sample_points.clamp(1, 9),
-        radius_px: binding.radius_px.max(0.0),
-        exposure: binding.exposure.max(0.0),
-        dark_policy: light_receiver_dark_policy_from_document(binding.dark_policy),
-        global_lights: binding
-            .global_lights
-            .iter()
-            .map(light_receiver_global_light_from_document)
-            .collect(),
-    }
-}
-
-fn particle_lighting_mode_from_document(
-    explicit: Option<Material2dLightingModeSceneDocument>,
-    receives_light: bool,
-    receiver: Option<&LightReceiver2dBindingSceneDocument>,
-) -> Material2dLightingModeSceneCommand {
-    if let Some(mode) = explicit {
-        return match mode {
-            Material2dLightingModeSceneDocument::Unlit => Material2dLightingModeSceneCommand::Unlit,
-            Material2dLightingModeSceneDocument::DynamicLights => {
-                Material2dLightingModeSceneCommand::DynamicLights
-            }
-            Material2dLightingModeSceneDocument::LightmapSampled => {
-                Material2dLightingModeSceneCommand::LightMapSampled
-            }
-            Material2dLightingModeSceneDocument::LightGroupSampled => {
-                Material2dLightingModeSceneCommand::LightGroupSampled
-            }
-        };
-    }
-
-    let Some(receiver) = receiver else {
-        return if receives_light {
-            Material2dLightingModeSceneCommand::DynamicLights
-        } else {
-            Material2dLightingModeSceneCommand::Unlit
-        };
-    };
-
-    if !receiver.groups.is_empty() {
-        Material2dLightingModeSceneCommand::LightGroupSampled
-    } else if !receiver.source.is_empty() && !receiver.channel.is_empty() {
-        Material2dLightingModeSceneCommand::LightMapSampled
-    } else if receives_light {
-        Material2dLightingModeSceneCommand::DynamicLights
-    } else {
-        Material2dLightingModeSceneCommand::Unlit
-    }
-}
-
-fn light_sample_strategy_from_document(
-    strategy: LightSampleStrategy2dSceneDocument,
-) -> LightSampleStrategy2dSceneCommand {
-    match strategy {
-        LightSampleStrategy2dSceneDocument::Point => LightSampleStrategy2dSceneCommand::Point,
-        LightSampleStrategy2dSceneDocument::Line => LightSampleStrategy2dSceneCommand::Line,
-    }
-}
-
-fn light_receiver_dark_policy_from_document(
-    policy: LightReceiverDarkPolicy2dSceneDocument,
-) -> LightReceiverDarkPolicy2dSceneCommand {
-    match policy {
-        LightReceiverDarkPolicy2dSceneDocument::Transparent => {
-            LightReceiverDarkPolicy2dSceneCommand::Transparent
-        }
-        LightReceiverDarkPolicy2dSceneDocument::BaseColor => {
-            LightReceiverDarkPolicy2dSceneCommand::BaseColor
-        }
-        LightReceiverDarkPolicy2dSceneDocument::ShadowTint => {
-            LightReceiverDarkPolicy2dSceneCommand::ShadowTint
-        }
-    }
-}
-
-fn light_receiver_global_light_from_document(
-    global_light: &LightReceiverGlobalLight2dSceneDocument,
-) -> LightReceiverGlobalLight2dSceneCommand {
-    LightReceiverGlobalLight2dSceneCommand {
-        id: global_light.id.clone(),
-        response: global_light.response.max(0.0),
-    }
 }

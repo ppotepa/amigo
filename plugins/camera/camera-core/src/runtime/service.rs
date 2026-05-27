@@ -18,16 +18,16 @@ use amigo_render_api::{
 };
 use amigo_scene::{CameraFollow2dSceneCommand, Parallax2dSceneCommand};
 
+use self::focus_transition::{
+    apply_focus_transition_target, focus_transition_start_for, lerp_focus_transition_target,
+    transition_target_for_depth,
+};
 use crate::runtime::rig::{
     apply_camera_depth_motion_to_rig, resolve_camera_rig_2d, ResolvedCameraRig2d,
 };
 use crate::{Camera, CameraFocusTarget2dService, CameraFocusTransition2d, CameraId};
 use amigo_camera_optics_plugin::runtime::Camera2dRuntimeState;
 use amigo_camera_profiles_plugin::api::{CameraQualityProfile2d, CameraQualitySettings2d};
-use self::focus_transition::{
-    apply_focus_transition_target, focus_transition_start_for, lerp_focus_transition_target,
-    transition_target_for_depth,
-};
 
 #[derive(Debug, Default)]
 pub struct CameraService {

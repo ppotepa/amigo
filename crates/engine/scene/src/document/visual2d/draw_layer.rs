@@ -1,5 +1,5 @@
-use amigo_render_api::PostFx2dDocument;
 use super::{default_one, default_true};
+use amigo_render_api::PostFx2dDocument;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]

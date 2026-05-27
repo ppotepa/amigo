@@ -12,6 +12,7 @@ mod world_3d;
 
 pub use host_overlay::{
     register_host_overlay_render_extractors, register_host_render_extractor_provider,
+    register_surface_overlay_render_extractors,
 };
 
 pub use composition::{WgpuFrameCompositionBuilder, WgpuFrameCompositionOptions};

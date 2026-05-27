@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use amigo_core::AmigoResult;
 use amigo_render_api::{FrameResourceId, RenderInitializationReport};
@@ -15,8 +15,8 @@ pub(crate) struct WgpuFrameResourceAllocator {
 }
 
 impl WgpuFrameResourceAllocator {
-    pub(crate) fn clear(&mut self) {
-        self.textures.clear();
+    pub(crate) fn retain_ids(&mut self, used: &BTreeSet<FrameResourceId>) {
+        self.textures.retain(|id, _| used.contains(id));
     }
 
     pub(crate) fn create_color_texture(
@@ -29,11 +29,22 @@ impl WgpuFrameResourceAllocator {
         height: u32,
         format: wgpu::TextureFormat,
     ) -> AmigoResult<()> {
+        let width = width.max(1);
+        let height = height.max(1);
+        if let Some(existing) = self.textures.get(&id) {
+            if existing.target.width == width
+                && existing.target.height == height
+                && existing.target.format == format
+            {
+                return Ok(());
+            }
+        }
+
         let texture = device.create_texture(&wgpu::TextureDescriptor {
             label: Some(label),
             size: wgpu::Extent3d {
-                width: width.max(1),
-                height: height.max(1),
+                width,
+                height,
                 depth_or_array_layers: 1,
             },
             mip_level_count: 1,

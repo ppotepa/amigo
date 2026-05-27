@@ -69,10 +69,11 @@ fn handle_event_pipeline_command(
             .map(event_pipeline_step_from_scene_command)
             .collect(),
     });
-    ctx.scene_event_queue.publish(SceneEvent::EventPipelineQueued {
-        entity_id: entity.raw(),
-        entity_name: command.entity_name,
-    });
+    ctx.scene_event_queue
+        .publish(SceneEvent::EventPipelineQueued {
+            entity_id: entity.raw(),
+            entity_name: command.entity_name,
+        });
     Ok(EventPipelineSceneCommandOutcome {
         id: command.id,
         source_mod: command.source_mod,

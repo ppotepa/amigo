@@ -8,71 +8,53 @@ visual2d:
       far_m: 1500.0
       curve: logarithmic
   render_layers:
-  - id: background.city
-    label: Background City
-    order: -100.0
-    visible: true
-    opacity: 1.0
-    optical_role: world_surface
-    depth:
-      mode: depth_map
-      z_depth: 0.08
-      blur_scale: 1.0
-  - id: weather.rain.10m
-    label: Rain 10m
-    order: -14.0
-    visible: true
-    opacity: 1.0
-    optical_role: scene_medium
-    depth:
-      mode: distance
-      distance_m: 10.0
-      blur_scale: 0.75
-  - id: weather.rain.5m
-    label: Rain 5m
-    order: -13.0
-    visible: true
-    opacity: 1.0
-    optical_role: foreground_medium
-    depth:
-      mode: distance
-      distance_m: 5.0
-      blur_scale: 0.85
-  - id: weather.rain.1m
-    label: Rain 1m
-    order: 35.0
-    visible: true
-    opacity: 1.0
-    optical_role: foreground_medium
-    depth:
-      mode: distance
-      distance_m: 1.0
-      blur_scale: 1.1
-  - id: weather.rain.super_near
-    label: Rain Super Near
-    order: 60.0
-    visible: true
-    opacity: 1.0
-    optical_role: foreground_medium
-    depth:
-      mode: distance
-      distance_m: 0.2
-      blur_scale: 1.4
-  - id: title.depth2d
-    label: Rotten Club Title
-    order: 20.0
-    visible: true
-    opacity: 1.0
-    optical_role: foreground_medium
-    depth:
-      mode: distance
-      distance_m: 1.0
-      blur_scale: 1.0
-  - id: ui
-    label: UI
-    order: 1000.0
-    visible: true
-    opacity: 1.0
-    optical_role: overlay
-    depth:
-      mode: overlay
+    - id: background.city
+      label: Background City
+      order: -100.0
+      visible: true
+      opacity: 1.0
+      optical_role: world_surface
+      depth:
+        mode: depth_map
+        z_depth: 0.08
+        blur_scale: 1.0
+    - id: weather.rain.far
+      label: Far Rain
+      order: -8.0
+      visible: true
+      opacity: 1.0
+      optical_role: scene_medium
+      depth:
+        mode: distance
+        distance_m: 18.0
+        blur_scale: 0.55
+    - id: weather.rain.near
+      label: Near Rain
+      order: 8.0
+      visible: true
+      opacity: 1.0
+      optical_role: foreground_medium
+      depth:
+        mode: distance
+        distance_m: 2.0
+        blur_scale: 1.0
+    - id: lighting.neon
+      label: Neon Beacons
+      order: 12.0
+      visible: true
+      opacity: 1.0
+      optical_role: scene_medium
+      depth:
+        mode: distance
+        distance_m: 7.5
+        blur_scale: 0.65
+    - id: title.depth2d
+      label: Rotten Club Title
+      order: 30.0
+      visible: true
+      opacity: 0.0
+      optical_role: foreground_medium
+      depth:
+        mode: distance
+        distance_m: 4.5
+        blur_scale: 0.45

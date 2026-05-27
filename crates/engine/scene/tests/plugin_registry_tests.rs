@@ -1,15 +1,12 @@
 use amigo_scene::{
-    ScenePluginComponentDescriptor, ScenePluginComponentId,
-    ScenePluginDescriptorProvider, ScenePluginDescriptorRegistry,
+    ScenePluginComponentDescriptor, ScenePluginComponentId, ScenePluginDescriptorProvider,
+    ScenePluginDescriptorRegistry,
 };
 
 #[test]
 fn plugin_component_descriptor_validates_required_fields() {
-    let descriptor = ScenePluginComponentDescriptor::new(
-        "amigo.gfx.sprite-2d.Sprite2D",
-        "gfx",
-        "Sprite2D",
-    );
+    let descriptor =
+        ScenePluginComponentDescriptor::new("amigo.gfx.sprite-2d.Sprite2D", "gfx", "Sprite2D");
 
     assert!(descriptor.is_valid());
 }
@@ -40,10 +37,7 @@ fn plugin_descriptor_registry_indexes_by_component_id() {
 struct TestDescriptorProvider;
 
 impl ScenePluginDescriptorProvider for TestDescriptorProvider {
-    fn register_scene_descriptors(
-        &self,
-        registry: &mut ScenePluginDescriptorRegistry,
-    ) {
+    fn register_scene_descriptors(&self, registry: &mut ScenePluginDescriptorRegistry) {
         registry.insert(ScenePluginComponentDescriptor::new(
             "amigo.gfx.text-2d.Text2D",
             "gfx",
@@ -58,7 +52,9 @@ fn plugin_descriptor_registry_accepts_provider_registration() {
 
     registry.register_provider(&TestDescriptorProvider);
 
-    assert!(registry
-        .get(&ScenePluginComponentId::new("amigo.gfx.text-2d.Text2D"))
-        .is_some());
+    assert!(
+        registry
+            .get(&ScenePluginComponentId::new("amigo.gfx.text-2d.Text2D"))
+            .is_some()
+    );
 }

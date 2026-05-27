@@ -1,5 +1,5 @@
-use amigo_particles_2d_plugin::ParticleVelocityMode2d;
 use amigo_math::ColorRgba;
+use amigo_particles_2d_plugin::ParticleVelocityMode2d;
 
 use super::ParticlesApi;
 
@@ -190,8 +190,10 @@ impl ParticlesApi {
         self.particles
             .as_ref()
             .map(|particles| {
-                particles
-                    .set_spawn_area(entity_name, amigo_particles_2d_plugin::ParticleSpawnArea2d::Point)
+                particles.set_spawn_area(
+                    entity_name,
+                    amigo_particles_2d_plugin::ParticleSpawnArea2d::Point,
+                )
             })
             .unwrap_or(false)
     }
@@ -298,7 +300,10 @@ impl ParticlesApi {
         self.particles
             .as_ref()
             .map(|particles| {
-                particles.set_shape(entity_name, amigo_particles_2d_plugin::ParticleShape2d::Quad)
+                particles.set_shape(
+                    entity_name,
+                    amigo_particles_2d_plugin::ParticleShape2d::Quad,
+                )
             })
             .unwrap_or(false)
     }
@@ -317,11 +322,15 @@ impl ParticlesApi {
                     entity_name,
                     vec![
                         amigo_particles_2d_plugin::WeightedParticleShape2d {
-                            shape: amigo_particles_2d_plugin::ParticleShape2d::Circle { segments: 8 },
+                            shape: amigo_particles_2d_plugin::ParticleShape2d::Circle {
+                                segments: 8,
+                            },
                             weight: circle_weight as f32,
                         },
                         amigo_particles_2d_plugin::WeightedParticleShape2d {
-                            shape: amigo_particles_2d_plugin::ParticleShape2d::Line { length: 14.0 },
+                            shape: amigo_particles_2d_plugin::ParticleShape2d::Line {
+                                length: 14.0,
+                            },
                             weight: line_weight as f32,
                         },
                         amigo_particles_2d_plugin::WeightedParticleShape2d {

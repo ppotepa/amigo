@@ -1,5 +1,5 @@
-use amigo_scene::SceneService;
 use amigo_render_api::RenderExtractionOutput2d;
+use amigo_scene::SceneService;
 
 use crate::{LayeredImageDrawCommand, LayeredImageSceneService};
 
@@ -23,9 +23,7 @@ impl LayeredImage2dRenderExtractor {
         output: &mut impl RenderExtractionOutput2d,
     ) {
         for command in extract_layered_image2d_render_commands(ctx) {
-            output.push_renderable_2d(super::layered_image_draw_command_to_renderable_2d(
-                &command,
-            ));
+            output.push_renderable_2d(super::layered_image_draw_command_to_renderable_2d(&command));
         }
     }
 }

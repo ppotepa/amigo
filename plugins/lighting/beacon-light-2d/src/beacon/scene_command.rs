@@ -1,5 +1,5 @@
 use amigo_core::{AmigoError, AmigoResult};
-use amigo_scene::{SceneCommand, SceneEvent, SceneEventQueue, SceneService, format_scene_command};
+use amigo_scene::{format_scene_command, SceneCommand, SceneEvent, SceneEventQueue, SceneService};
 
 use crate::BeaconLight2dSceneService;
 
@@ -26,7 +26,8 @@ impl amigo_scene::RuntimeSceneCommandHandler for Beacon2dSceneCommandHandler {
         let scene_event_queue = runtime.required::<SceneEventQueue>()?;
         match command {
             SceneCommand::Plugin { command }
-                if command.command_type == amigo_scene::BEACON_LIGHT_2D_PLUGIN_SCENE_COMMAND_TYPE =>
+                if command.command_type
+                    == amigo_scene::BEACON_LIGHT_2D_PLUGIN_SCENE_COMMAND_TYPE =>
             {
                 let command = command
                     .payload_as::<amigo_scene::BeaconLight2dSceneCommand>()

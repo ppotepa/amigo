@@ -5,15 +5,26 @@ pub(crate) fn project_point(
     camera: Transform3,
     viewport: Viewport,
 ) -> Option<ProjectedPoint> {
+    project_point_with_camera(point, camera, viewport, 60.0, 0.05, 1000.0)
+}
+
+pub(crate) fn project_point_with_camera(
+    point: Vec3,
+    camera: Transform3,
+    viewport: Viewport,
+    fov_y_degrees: f32,
+    near_clip: f32,
+    far_clip: f32,
+) -> Option<ProjectedPoint> {
     let relative = sub(point, camera.translation);
     let camera_space = rotate_inverse(relative, camera.rotation_euler);
     let depth = -camera_space.z;
 
-    if depth <= 0.05 {
+    if depth <= near_clip.max(0.001) || depth >= far_clip.max(near_clip + 0.001) {
         return None;
     }
 
-    let focal = 1.0 / (60.0_f32.to_radians() * 0.5).tan();
+    let focal = 1.0 / (fov_y_degrees.clamp(20.0, 120.0).to_radians() * 0.5).tan();
     let x = (camera_space.x * focal / viewport.aspect) / depth;
     let y = (camera_space.y * focal) / depth;
 
@@ -213,6 +224,15 @@ pub(crate) fn blend_colors(base: ColorRgba, accent: ColorRgba) -> ColorRgba {
         (base.g * 0.45 + accent.g * 0.55).clamp(0.0, 1.0),
         (base.b * 0.45 + accent.b * 0.55).clamp(0.0, 1.0),
         base.a,
+    )
+}
+
+pub(crate) fn multiply_color(left: ColorRgba, right: ColorRgba) -> ColorRgba {
+    ColorRgba::new(
+        (left.r * right.r).clamp(0.0, 1.0),
+        (left.g * right.g).clamp(0.0, 1.0),
+        (left.b * right.b).clamp(0.0, 1.0),
+        left.a * right.a,
     )
 }
 

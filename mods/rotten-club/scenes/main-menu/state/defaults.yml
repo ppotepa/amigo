@@ -2,41 +2,18 @@ kind: scene-fragment
 schema_version: 1
 
 state:
-  camera_lens.distortion_px: 0.0
-  camera_lens.chromatic_aberration: 0.12
-  camera_lens.edge_warp: 0.0
-  rain.enabled: true
-  intro.focus.skyline_started: false
-  intro.focus.far_street_started: false
-  intro.focus.club_started: false
-  intro.focus.title_started: false
-  intro.focus_hunt.near_started: false
-  intro.focus_hunt.far_started: false
-  intro.focus_hunt.locked: false
-  intro.bar_lit: false
-  intro.club_lit: false
-  intro.pharmacy_lit: false
-  intro.rain_started: false
-  intro.lightning_fired: false
-  intro.title_reveal_started: false
-  intro.title_alpha: 0.0
-  intro.title_shown: false
-  intro.rain_intensity: 0.0
-  intro.lightning_intensity: 0.0
+  intro.t: 0.0
   intro.complete: false
-  intro.prompt_shown: false
-  intro.menu_active: false
-  intro.prompt_top_space: 513.0
-  intro.prompt_shown_at: 0.0
-  intro.prompt_input_after: 0.0
-  bar.next_flicker: 0.0
-  bar.mul: 1.0
-  club.next_flicker: 0.0
-  club.mul: 1.0
-  skyline.next_flicker: 0.0
-  skyline.mul: 1.0
-  pharmacy.next_fault: 12.0
-  pharmacy.mul: 0.0
-  camera_motion.dolly.signal: 0.0
-  camera_motion.dolly.camera_z_m: 0.0
-  camera_motion.focus_residual.current_m: 0.0
+  intro.title_visible: false
+  intro.title_alpha: 0.0
+  intro.rain_started: false
+  intro.rain_intensity: 0.0
+  intro.lightning_fired: false
+  intro.lightning_intensity: 0.0
+  intro.camera_focus_distance_m: 36.0
+  intro.skyline_mul: 1.0
+  intro.club_mul: 1.0
+  intro.bar_mul: 1.0
+  intro.next_skyline_flicker: 0.0
+  intro.next_club_flicker: 0.0
+  intro.next_bar_flicker: 0.0

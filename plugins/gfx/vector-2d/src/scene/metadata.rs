@@ -213,6 +213,7 @@ pub fn vector_shape_2d_descriptor() -> ComponentTypeDescriptor {
     }
 }
 
+#[derive(Default)]
 pub struct Vector2dComponentMetadataProvider;
 
 impl ComponentMetadataProvider for Vector2dComponentMetadataProvider {
@@ -221,6 +222,8 @@ impl ComponentMetadataProvider for Vector2dComponentMetadataProvider {
     }
 
     fn register_component_metadata(&self, registry: &mut ComponentRegistry) {
-        registry.insert(vector_shape_2d_descriptor());
+        registry
+            .try_insert(vector_shape_2d_descriptor())
+            .expect("duplicate VectorShape2D component metadata");
     }
 }

@@ -439,26 +439,3 @@ pub(super) fn vec2_from_document(value: crate::SceneVec2Document) -> Vec2 {
 pub(super) fn vec3_from_document(value: crate::SceneVec3Document) -> Vec3 {
     Vec3::new(value.x, value.y, value.z)
 }
-
-pub(super) fn sprite_sheet_from_document(
-    value: SceneSpriteSheetDocument,
-) -> SpriteSheet2dSceneCommand {
-    SpriteSheet2dSceneCommand {
-        columns: value.columns.max(1),
-        rows: value.rows.max(1),
-        frame_count: value.frame_count.max(1),
-        frame_size: vec2_from_document(value.frame_size),
-        fps: value.fps.max(0.0),
-        looping: value.looping,
-    }
-}
-
-pub(super) fn sprite_animation_from_document(
-    value: crate::SceneSpriteAnimationDocument,
-) -> SpriteAnimation2dSceneOverride {
-    SpriteAnimation2dSceneOverride {
-        fps: value.fps.map(|fps| fps.max(0.0)),
-        looping: value.looping,
-        start_frame: value.start_frame,
-    }
-}

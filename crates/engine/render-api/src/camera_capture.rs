@@ -763,12 +763,16 @@ mod tests {
             input.layer_mask.as_ref().map(|source| source.kind),
             Some(VisualSourceKind2d::LayerMask)
         );
-        assert!(input
-            .missing_source_kinds()
-            .contains(&VisualSourceKind2d::SceneNormal));
-        assert!(!input
-            .missing_source_kinds()
-            .contains(&VisualSourceKind2d::SceneHighlight));
+        assert!(
+            input
+                .missing_source_kinds()
+                .contains(&VisualSourceKind2d::SceneNormal)
+        );
+        assert!(
+            !input
+                .missing_source_kinds()
+                .contains(&VisualSourceKind2d::SceneHighlight)
+        );
         assert_eq!(
             input
                 .source(VisualSourceKind2d::SceneHighlight)

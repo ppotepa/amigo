@@ -13,6 +13,10 @@ use super::context::WgpuRenderExtractorRegistry;
 
 pub fn register_host_overlay_render_extractors(registry: &mut WgpuRenderExtractorRegistry) {
     registry.register(WgpuUiOverlayRenderExtractorBridge);
+    register_surface_overlay_render_extractors(registry);
+}
+
+pub fn register_surface_overlay_render_extractors(registry: &mut WgpuRenderExtractorRegistry) {
     registry.register(WgpuDevConsoleOverlayRenderExtractorBridge);
     registry.register(WgpuDebugOverlayRenderExtractorBridge);
 }

@@ -3,7 +3,7 @@
 
 use std::sync::Mutex;
 
-use amigo_capabilities::{register_domain_plugin, DEFAULT_CAPABILITY_VERSION};
+use amigo_capabilities::{DEFAULT_CAPABILITY_VERSION, register_domain_plugin};
 pub use amigo_render_api::{Mesh3d, MeshDrawCommand};
 use amigo_runtime::{RuntimePlugin, ServiceRegistry};
 use amigo_scene::{Mesh3dSceneCommand, SceneEntityId, SceneService};
@@ -121,7 +121,7 @@ pub fn queue_mesh_scene_command(
 #[cfg(test)]
 mod tests {
     use super::{
-        queue_mesh_scene_command, Mesh3d, Mesh3dEditorCapability, MeshDrawCommand, MeshSceneService,
+        Mesh3d, Mesh3dEditorCapability, MeshDrawCommand, MeshSceneService, queue_mesh_scene_command,
     };
     use amigo_assets::AssetKey;
     use amigo_editor_api::EditorCapability;

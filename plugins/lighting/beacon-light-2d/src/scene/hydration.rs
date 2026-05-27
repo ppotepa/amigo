@@ -2,51 +2,18 @@ use amigo_2d_spatial::{resolve_depth_source, DepthSource2d};
 use amigo_camera::camera_optical_response_from_document;
 use amigo_math::{ColorRgba, Transform2, Vec2};
 use amigo_scene::{
-    BeaconLight2dSceneCommand, ComponentHydrationContext, ComponentHydrator,
-    LayeredImageViewportFit2dDocument, LayeredImageViewportFit2dSceneCommand,
-    PluginComponentHydrationContext, PluginComponentHydrator,
-    RenderContributions2dSceneCommand, RenderDepth2dDocument, RenderDepth2dSceneCommand,
-    RenderDepthMode2dDocument, RenderDepthMode2dSceneCommand, SceneComponentDocument,
+    BeaconLight2dSceneCommand, LayeredImageViewportFit2dDocument,
+    LayeredImageViewportFit2dSceneCommand, PluginComponentHydrationContext,
+    PluginComponentHydrator, RenderContributions2dSceneCommand, RenderDepth2dDocument,
+    RenderDepth2dSceneCommand, RenderDepthMode2dDocument, RenderDepthMode2dSceneCommand,
     SceneDocumentError, SceneDocumentResult, SceneTransform2Document, SceneTransform3Document,
     SceneVec2Document,
 };
-use amigo_scene::SceneComponentDocument as ComponentDocument;
 
 use super::BeaconLight2dDocument;
 
-pub struct BeaconLight2dComponentHydrator;
+#[derive(Default)]
 pub struct BeaconLight2dPluginComponentHydrator;
-
-impl ComponentHydrator for BeaconLight2dComponentHydrator {
-    fn provider_id(&self) -> &'static str {
-        "amigo.lighting.beacon-light-2d"
-    }
-
-    fn can_hydrate(&self, component: &SceneComponentDocument) -> bool {
-        matches!(component, ComponentDocument::BeaconLight2d { .. })
-    }
-
-    fn hydrate(&self, ctx: ComponentHydrationContext<'_>) -> SceneDocumentResult<()> {
-        let document = match ctx.component {
-            ComponentDocument::BeaconLight2d { .. } => {
-                let Some(document) = BeaconLight2dDocument::from_component(ctx.component) else {
-                    return Ok(());
-                };
-                document
-            }
-            _ => return Ok(()),
-        };
-
-        push_beacon_light_command(
-            ctx.source_mod,
-            ctx.document,
-            ctx.entity,
-            ctx.entity_name,
-            ctx.commands,
-            &document,
-        )
-    }
-}
 
 impl PluginComponentHydrator for BeaconLight2dPluginComponentHydrator {
     fn provider_id(&self) -> &'static str {
@@ -285,4 +252,165 @@ fn parse_hex_channel(
         component_kind: component_kind.to_owned(),
         message: format!("invalid color `{original}`: {source}"),
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use amigo_scene::{
+        PluginComponentHydrationContext, RenderContributionsDocument, SceneCommand, SceneDocument,
+        SceneEntityDocument, SceneMetadataDocument, SceneTransform2Document, SceneVec2Document,
+        SceneVisual2dDocument,
+    };
+    use std::collections::BTreeMap;
+
+    #[test]
+    fn beacon_hydrator_carries_render_contributions_and_transform() {
+        let hydrator = BeaconLight2dPluginComponentHydrator;
+        let mut render_contributions = RenderContributionsDocument::default();
+        render_contributions.set("overlay.visible", false);
+        render_contributions.set("relight.plate", true);
+        render_contributions.set("bloom.source", false);
+        let payload = BeaconLight2dDocument {
+            id: "alarm".to_owned(),
+            render_layer: "fx.beacons".to_owned(),
+            color: "#8040FFFF".to_owned(),
+            base_intensity: 2.5,
+            render_contributions,
+            viewport_canvas_size: Some(SceneVec2Document {
+                x: 1280.0,
+                y: 720.0,
+            }),
+            ..BeaconLight2dDocument {
+                id: "unused".to_owned(),
+                render_layer: "default".to_owned(),
+                color: "#FFFFFFFF".to_owned(),
+                base_intensity: 1.0,
+                frequency_hz: 1.0,
+                duty_cycle: 0.2,
+                rise_seconds: 0.1,
+                fall_seconds: 0.2,
+                phase_offset: 0.0,
+                sync_group: None,
+                jitter_amount: 0.06,
+                jitter_hz: 9.0,
+                core_radius_px: 2.0,
+                halo_radius_px: 9.0,
+                glow_strength: 1.0,
+                beam_enabled: true,
+                beam_length_px: 0.0,
+                beam_width_degrees: 20.0,
+                beam_strength: 0.0,
+                aberration_px: 0.8,
+                bloom: 1.0,
+                camera_response: Default::default(),
+                depth: None,
+                z_depth: None,
+                z_index: 0.0,
+                render_contributions: RenderContributionsDocument::default(),
+                enabled: true,
+                viewport_fit: LayeredImageViewportFit2dDocument::default(),
+                viewport_canvas_size: None,
+            }
+        };
+        let mut entity = test_entity("beacon");
+        entity.transform2 = Some(SceneTransform2Document {
+            translation: SceneVec2Document { x: 12.0, y: -4.0 },
+            rotation_radians: 0.5,
+            scale: SceneVec2Document { x: 2.0, y: 3.0 },
+        });
+        let document = test_document(entity.clone());
+        let mut commands = Vec::new();
+
+        hydrator
+            .hydrate_plugin_payload(PluginComponentHydrationContext {
+                source_mod: "test-mod",
+                document: &document,
+                entity: &entity,
+                entity_name: "beacon",
+                component_index: 0,
+                component_type: "amigo.lighting.beacon-light-2d.BeaconLight2D",
+                payload: &payload,
+                commands: &mut commands,
+            })
+            .expect("beacon hydrator should accept plugin payload");
+
+        let command = plugin_payload::<BeaconLight2dSceneCommand>(&commands);
+        assert_eq!(command.source_mod, "test-mod");
+        assert_eq!(command.entity_name, "beacon");
+        assert_eq!(command.id, "alarm");
+        assert_eq!(command.render_layer, "fx.beacons");
+        assert_eq!(
+            command.color,
+            ColorRgba::new(128.0 / 255.0, 64.0 / 255.0, 1.0, 1.0)
+        );
+        assert_eq!(command.base_intensity, 2.5);
+        assert_eq!(
+            command.render_contributions.roles.get("overlay.visible"),
+            Some(&false)
+        );
+        assert_eq!(
+            command.render_contributions.roles.get("relight.plate"),
+            Some(&true)
+        );
+        assert_eq!(
+            command.render_contributions.roles.get("bloom.source"),
+            Some(&false)
+        );
+        assert_eq!(
+            command.render_contributions.roles.get("camera.fx_source"),
+            Some(&true)
+        );
+        assert_eq!(command.transform.translation, Vec2::new(12.0, -4.0));
+        assert_eq!(command.transform.rotation_radians, 0.5);
+        assert_eq!(command.transform.scale, Vec2::new(2.0, 3.0));
+        assert_eq!(command.viewport_canvas_size, Some(Vec2::new(1280.0, 720.0)));
+    }
+
+    fn plugin_payload<T: 'static>(commands: &[SceneCommand]) -> &T {
+        assert_eq!(commands.len(), 1);
+        match &commands[0] {
+            SceneCommand::Plugin { command } => command
+                .payload_as::<T>()
+                .expect("plugin scene payload should downcast"),
+            other => panic!("expected plugin scene command, got {other:?}"),
+        }
+    }
+
+    fn test_entity(name: &str) -> SceneEntityDocument {
+        SceneEntityDocument {
+            id: name.to_owned(),
+            name: name.to_owned(),
+            tags: Vec::new(),
+            groups: Vec::new(),
+            visible: true,
+            simulation_enabled: true,
+            collision_enabled: true,
+            properties: BTreeMap::new(),
+            transform2: None,
+            transform3: None,
+            post_fx: Vec::new(),
+            prefab: None,
+            prefab_overrides: Vec::new(),
+            components: Vec::new(),
+        }
+    }
+
+    fn test_document(entity: SceneEntityDocument) -> SceneDocument {
+        SceneDocument {
+            version: 1,
+            scene: SceneMetadataDocument {
+                id: "test-scene".to_owned(),
+                label: String::new(),
+                description: None,
+            },
+            transitions: Vec::new(),
+            collision_events: Vec::new(),
+            audio_cues: Vec::new(),
+            activation_sets: Vec::new(),
+            visual2d: SceneVisual2dDocument::default(),
+            state: BTreeMap::new(),
+            entities: vec![entity],
+        }
+    }
 }

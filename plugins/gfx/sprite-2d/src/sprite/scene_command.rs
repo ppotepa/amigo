@@ -4,11 +4,11 @@ use std::sync::Arc;
 use amigo_assets::{AssetCatalog, AssetKey};
 use amigo_core::{AmigoError, AmigoResult};
 use amigo_scene::{
-    PluginSceneCommand, PluginSceneCommandPayload, SceneCommand, SceneEvent, SceneEventQueue,
-    SceneService, Sprite2dSceneCommand, format_scene_command,
+    format_scene_command, PluginSceneCommand, PluginSceneCommandPayload, SceneCommand, SceneEvent,
+    SceneEventQueue, SceneService, Sprite2dSceneCommand,
 };
 
-use super::{SpriteSceneService, queue_sprite_scene_command, resolve_sprite_sheet_for_command};
+use super::{queue_sprite_scene_command, resolve_sprite_sheet_for_command, SpriteSceneService};
 
 pub struct Sprite2dSceneCommandHandler;
 

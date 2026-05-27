@@ -1,11 +1,11 @@
 use crate::{ConsoleArgKind, ConsoleArgSpec, ConsoleCommandDescriptor, ConsoleCommandSchema};
 
+use super::resources::inspect_target_suggestions;
+use super::rhai::rhai_symbol_suggestions;
 use super::{
     ConsoleCompletionContext, ConsoleCompletionKind, ConsoleCompletionSnapshot,
     ConsoleCompletionSuggestion, MAX_COMPLETION_SUGGESTIONS, sort_and_limit_suggestions,
 };
-use super::resources::inspect_target_suggestions;
-use super::rhai::rhai_symbol_suggestions;
 
 pub(super) fn complete_initial_token(
     input: &str,

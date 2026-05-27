@@ -1,10 +1,10 @@
 use amigo_session::{
-    RuntimeSession,
     runtime_capabilities::{
         RuntimeCapability, RuntimeCapabilityDescriptor, RuntimeCapabilityKind, RuntimeDomainId,
         SceneCommandHandlerContribution, SceneCommandHandlerDescriptor, SystemContribution,
         SystemDescriptor,
     },
+    RuntimeSession,
 };
 
 const DOMAIN_ID: &str = "amigo.2d.motion";

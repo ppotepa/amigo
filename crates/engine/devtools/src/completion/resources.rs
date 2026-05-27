@@ -1,10 +1,10 @@
 use amigo_runtime_control::{RuntimeControlCompletionKind, split_console_prefix};
 
+use super::rhai::complete_quoted_entity_name;
 use super::{
     ConsoleCompletionContext, ConsoleCompletionKind, ConsoleCompletionSnapshot,
     ConsoleCompletionSuggestion, MAX_COMPLETION_SUGGESTIONS, active_token, complete_values,
 };
-use super::rhai::complete_quoted_entity_name;
 
 pub(super) fn inspect_target_suggestions(
     prefix: &str,

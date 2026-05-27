@@ -9,9 +9,9 @@ use amigo_light_2d_plugin::{
     GlobalLight2dSceneService, LightGroup2dSceneService, LightMap2dSceneService,
 };
 use amigo_particles_2d_plugin::{
-    tick_particles_2d_world, Particle2dSceneService, ParticlePreset2dService,
+    Particle2dSceneService, ParticlePreset2dService, tick_particles_2d_world,
 };
-use amigo_ui::{process_ui_input, resolve_ui_overlay_documents, UiInputViewportState};
+use amigo_ui::{UiInputViewportState, process_ui_input, resolve_ui_overlay_documents};
 use amigo_vector_2d_plugin::VectorSceneService;
 
 #[test]
@@ -72,11 +72,8 @@ fn particles_showcase_dropdown_can_wheel_scroll_to_lava_sparks() {
         .resolve::<UiInputService>()
         .expect("ui input should exist");
 
-    let resolved = resolve_ui_overlay_documents(
-        ui_scene.as_ref(),
-        ui_state.as_ref(),
-        ui_theme.as_ref(),
-    );
+    let resolved =
+        resolve_ui_overlay_documents(ui_scene.as_ref(), ui_state.as_ref(), ui_theme.as_ref());
     let showcase = resolved
         .iter()
         .find(|document| document.overlay.entity_name == "playground-2d-particles-showcase-ui")
@@ -98,12 +95,10 @@ fn particles_showcase_dropdown_can_wheel_scroll_to_lava_sparks() {
         dropdown.rect.y + dropdown.rect.height * 0.5,
     );
     ui_input.set_left_button(true);
-    process_ui_input(&runtime)
-        .expect("dropdown press should process");
+    process_ui_input(&runtime).expect("dropdown press should process");
     ui_input.clear_frame_transients();
     ui_input.set_left_button(false);
-    process_ui_input(&runtime)
-        .expect("dropdown release should expand");
+    process_ui_input(&runtime).expect("dropdown release should expand");
     ui_input.clear_frame_transients();
 
     ui_input.set_mouse_position(
@@ -112,8 +107,7 @@ fn particles_showcase_dropdown_can_wheel_scroll_to_lava_sparks() {
     );
     let target_offset = (lava_index as f32 - 4.0).max(0.0);
     ui_input.add_mouse_wheel(-(target_offset / 0.65));
-    process_ui_input(&runtime)
-        .expect("dropdown wheel should smooth-scroll");
+    process_ui_input(&runtime).expect("dropdown wheel should smooth-scroll");
     ui_input.clear_frame_transients();
     let actual_offset = ui_state.dropdown_scroll_offset(&dropdown.path);
     assert!(
@@ -127,12 +121,10 @@ fn particles_showcase_dropdown_can_wheel_scroll_to_lava_sparks() {
         dropdown.rect.y + 38.0 * lava_row,
     );
     ui_input.set_left_button(true);
-    process_ui_input(&runtime)
-        .expect("lava_sparks option press should process");
+    process_ui_input(&runtime).expect("lava_sparks option press should process");
     ui_input.clear_frame_transients();
     ui_input.set_left_button(false);
-    process_ui_input(&runtime)
-        .expect("lava_sparks option release should select");
+    process_ui_input(&runtime).expect("lava_sparks option release should select");
     ui_input.clear_frame_transients();
     process_placeholder_bridges(&runtime).expect("dropdown event should dispatch");
 
@@ -167,8 +159,7 @@ fn particles_showcase_explosion_burst_work() {
         vec!["explosion".to_owned()],
     ));
     process_placeholder_bridges(&runtime).expect("select event should dispatch");
-    tick_particles_2d_world(&runtime, 1.0 / 60.0)
-        .expect("particle runtime tick should succeed");
+    tick_particles_2d_world(&runtime, 1.0 / 60.0).expect("particle runtime tick should succeed");
 
     let particles = runtime
         .resolve::<Particle2dSceneService>()
@@ -230,11 +221,8 @@ fn particles_showcase_hydrates_emitters() {
     let ui_theme = runtime
         .resolve::<UiThemeService>()
         .expect("ui theme service should exist");
-    let resolved = resolve_ui_overlay_documents(
-        ui_scene.as_ref(),
-        ui_state.as_ref(),
-        ui_theme.as_ref(),
-    );
+    let resolved =
+        resolve_ui_overlay_documents(ui_scene.as_ref(), ui_state.as_ref(), ui_theme.as_ref());
     let showcase_ui = resolved
         .iter()
         .find(|document| document.overlay.entity_name == "playground-2d-particles-showcase-ui")
@@ -253,8 +241,7 @@ fn particles_showcase_hydrates_emitters() {
         other => panic!("preset-options should resolve as dropdown, got {other:?}"),
     }
 
-    tick_particles_2d_world(&runtime, 1.0 / 10.0)
-        .expect("particle runtime tick should succeed");
+    tick_particles_2d_world(&runtime, 1.0 / 10.0).expect("particle runtime tick should succeed");
     assert!(
         !particles.draw_commands().is_empty(),
         "showcase emitters should produce particle draw commands after a tick"

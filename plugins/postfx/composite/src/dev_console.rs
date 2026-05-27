@@ -107,10 +107,7 @@ pub fn handle_post_fx_dev_console_command(
                 .effects
                 .iter()
                 .any(|effect| effect.kind() == "dirty_bloom");
-            let crt_active = stack
-                .effects
-                .iter()
-                .any(|effect| effect.kind() == "crt");
+            let crt_active = stack.effects.iter().any(|effect| effect.kind() == "crt");
             let film_noise_active = stack
                 .effects
                 .iter()

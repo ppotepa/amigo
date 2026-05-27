@@ -49,10 +49,7 @@ impl SceneResetHandlerRegistry {
     }
 }
 
-pub fn register_scene_reset_handler<H>(
-    registry: &ServiceRegistry,
-    handler: H,
-) -> AmigoResult<()>
+pub fn register_scene_reset_handler<H>(registry: &ServiceRegistry, handler: H) -> AmigoResult<()>
 where
     H: SceneResetHandler + 'static,
 {

@@ -119,7 +119,8 @@ pub fn handle_physics_scene_command(
             })
         }
         SceneCommand::Plugin { command }
-            if command.command_type == amigo_scene::STATIC_COLLIDER_2D_PLUGIN_SCENE_COMMAND_TYPE =>
+            if command.command_type
+                == amigo_scene::STATIC_COLLIDER_2D_PLUGIN_SCENE_COMMAND_TYPE =>
         {
             let Some(command) = command
                 .payload_as::<amigo_scene::StaticCollider2dSceneCommand>()
@@ -145,7 +146,8 @@ pub fn handle_physics_scene_command(
             })
         }
         SceneCommand::Plugin { command }
-            if command.command_type == amigo_scene::CIRCLE_COLLIDER_2D_PLUGIN_SCENE_COMMAND_TYPE =>
+            if command.command_type
+                == amigo_scene::CIRCLE_COLLIDER_2D_PLUGIN_SCENE_COMMAND_TYPE =>
         {
             let Some(command) = command
                 .payload_as::<amigo_scene::CircleCollider2dSceneCommand>()

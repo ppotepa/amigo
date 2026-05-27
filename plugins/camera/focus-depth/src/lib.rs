@@ -1,6 +1,6 @@
 pub mod api;
-pub mod diagnostics;
 pub mod depth_map;
+pub mod diagnostics;
 pub mod manifest;
 pub mod participation;
 pub mod plugin;

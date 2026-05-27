@@ -1,6 +1,6 @@
 use amigo_assets::AssetKey;
-use amigo_math::{Transform2, Vec2};
 use amigo_material_2d_plugin::Material2d;
+use amigo_math::{Transform2, Vec2};
 use amigo_render_api::RenderContributionSet;
 use amigo_scene::SceneEntityId;
 

@@ -81,10 +81,10 @@ pub fn handle_beacon2d_script_command(
             })
         }
 
-("set_bloom", [target, value]) => update_f32(target, value, "bloom", |target, value| {
+        ("set_bloom", [target, value]) => update_f32(target, value, "bloom", |target, value| {
             ctx.beacon_scene_service.set_bloom(target, value)
         }),
-("set_position_2d", [target, x, y]) => {
+        ("set_position_2d", [target, x, y]) => {
             update_vec2(target, x, y, "position", |target, x, y| {
                 ctx.beacon_scene_service.set_position_2d(target, x, y)
             })
@@ -94,9 +94,11 @@ pub fn handle_beacon2d_script_command(
                 ctx.beacon_scene_service.set_distance_m(target, value)
             })
         }
-        ("set_z_depth", [target, value]) => update_f32(target, value, "z depth", |target, value| {
-            ctx.beacon_scene_service.set_z_depth(target, value)
-        }),
+        ("set_z_depth", [target, value]) => {
+            update_f32(target, value, "z depth", |target, value| {
+                ctx.beacon_scene_service.set_z_depth(target, value)
+            })
+        }
         _ => Beacon2dScriptCommandOutcome::Unhandled,
     }
 }
@@ -165,9 +167,7 @@ fn update_vec2(
             "updated 2d beacon `{target}` {label} to ({x}, {y})"
         ))
     } else {
-        Beacon2dScriptCommandOutcome::Updated(format!(
-            "2d beacon `{target}` not found for {label}"
-        ))
+        Beacon2dScriptCommandOutcome::Updated(format!("2d beacon `{target}` not found for {label}"))
     }
 }
 

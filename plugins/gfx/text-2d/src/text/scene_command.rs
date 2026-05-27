@@ -4,8 +4,8 @@ use std::sync::Arc;
 use amigo_assets::AssetKey;
 use amigo_core::{AmigoError, AmigoResult};
 use amigo_scene::{
-    PluginSceneCommand, PluginSceneCommandPayload, SceneCommand, SceneEvent, SceneEventQueue,
-    SceneService, Text2dSceneCommand, format_scene_command,
+    format_scene_command, PluginSceneCommand, PluginSceneCommandPayload, SceneCommand, SceneEvent,
+    SceneEventQueue, SceneService, Text2dSceneCommand,
 };
 
 use crate::{queue_text2d_scene_command, Text2dSceneService};
@@ -65,8 +65,8 @@ pub fn handle_text_scene_command(
         SceneCommand::Plugin { command } => {
             let Some(command) = command.payload_as::<Text2dSceneCommand>().cloned() else {
                 return Err(AmigoError::Message(format!(
-                "text-2d cannot handle command {}",
-                format_scene_command(&SceneCommand::Plugin { command })
+                    "text-2d cannot handle command {}",
+                    format_scene_command(&SceneCommand::Plugin { command })
                 )));
             };
             Ok(handle_queue_text_scene_command(ctx, command))

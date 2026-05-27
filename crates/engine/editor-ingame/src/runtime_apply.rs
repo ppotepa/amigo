@@ -1,9 +1,7 @@
 use amigo_2d_composition::RenderDepthMode2d;
 use amigo_core::{AmigoError, AmigoResult};
+use amigo_editor_api::{EditorRuntimeApplyOutcome, EditorRuntimeApplyRequest};
 use amigo_editor_authoring::AuthoringRuntimeBinding;
-use amigo_editor_api::{
-    EditorRuntimeApplyOutcome, EditorRuntimeApplyRequest,
-};
 use amigo_runtime::Runtime;
 
 use crate::IngameEditorRuntimeApplyProviderRegistry;
@@ -79,7 +77,14 @@ pub fn apply_property_request(
             apply_runtime_property_provider(runtime, request.property_id, target, request.next)
         }
         AuthoringRuntimeBinding::ParticleEmitterProperty { entity_name, field } => {
-            apply_particle_property(runtime, request.property_id, target, entity_name, field, request.next)
+            apply_particle_property(
+                runtime,
+                request.property_id,
+                target,
+                entity_name,
+                field,
+                request.next,
+            )
         }
         AuthoringRuntimeBinding::PostFxFrameEnabled { .. } => {
             apply_runtime_property_provider(runtime, request.property_id, target, request.next)

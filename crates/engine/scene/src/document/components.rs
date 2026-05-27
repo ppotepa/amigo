@@ -4,18 +4,11 @@ use serde::{Deserialize, Serialize};
 use serde_yaml::Value;
 
 use super::behavior::*;
-use super::camera::*;
 use super::core::*;
 use super::defaults::*;
-use super::particles::*;
-use super::render_contributions::*;
-use super::render_values::*;
-use super::text2d::*;
+use super::render_values::{SceneVec2Document, SceneVec3Document};
 use super::ui::*;
 use super::visual2d::PostFx2dDocument;
-use super::visual2d::RenderDepth2dDocument;
-use amigo_camera::CameraOpticalResponse2dDocument;
-use amigo_material_api::Material2dDocument;
 
 impl SceneEntityDocument {
     pub fn display_name(&self) -> String {
@@ -26,12 +19,6 @@ impl SceneEntityDocument {
         }
     }
 }
-
-const COMPONENT_TYPE_SPRITE_2D: &str = "amigo.gfx.sprite-2d.Sprite2D";
-const COMPONENT_TYPE_TILE_MAP_2D: &str = "amigo.gfx.tilemap-2d.TileMap2D";
-const COMPONENT_TYPE_TEXT_2D: &str = "amigo.gfx.text-2d.Text2D";
-const COMPONENT_TYPE_VECTOR_SHAPE_2D: &str = "amigo.gfx.vector-2d.VectorShape2D";
-const COMPONENT_TYPE_PARTICLE_EMITTER_2D: &str = "amigo.vfx.particles-2d.ParticleEmitter2D";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SceneComponentSemanticClass {
@@ -45,6 +32,7 @@ pub enum SceneComponentSemanticClass {
     Camera2d,
     Motion2d,
     Physics2d,
+    Physics3d,
     Script,
     Plugin,
     Generic2d,
@@ -53,118 +41,27 @@ pub enum SceneComponentSemanticClass {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(tag = "type")]
 pub enum SceneComponentDocumentModel {
-    #[serde(rename = "Camera2D")]
-    Camera2d {
-        #[serde(default = "default_camera2d_id")]
-        id: String,
-
-        #[serde(default)]
-        mode: Camera2dModeDocument,
-
-        #[serde(default)]
-        render_contributions: RenderContributionsDocument,
-
-        #[serde(default)]
-        exposure: CameraExposure2dDocument,
-
-        #[serde(default)]
-        shutter: CameraShutter2dDocument,
-
-        #[serde(default)]
-        lens: CameraLens2dDocument,
-
-        #[serde(default)]
-        lens_surface: CameraLensSurface2dDocument,
-
-        #[serde(default)]
-        film: CameraFilm2dDocument,
-
-        #[serde(default)]
-        look: CameraLook2dDocument,
-
-        #[serde(default)]
-        aperture: CameraAperture2dDocument,
-    },
     #[serde(rename = "Camera3D")]
-    Camera3d,
+    Camera3d {
+        #[serde(default = "default_camera3d_fov_y_degrees")]
+        fov_y_degrees: f32,
+        #[serde(default = "default_camera3d_near_clip")]
+        near_clip: f32,
+        #[serde(default = "default_camera3d_far_clip")]
+        far_clip: f32,
+    },
     #[serde(rename = "Light3D")]
     Light3d {
         #[serde(default)]
         kind: String,
-    },
-    #[serde(rename = "amigo.gfx.sprite-2d.Sprite2D")]
-    Sprite2d {
-        #[serde(default = "default_render_layer")]
-        render_layer: String,
-        texture: String,
-        size: SceneVec2Document,
+        #[serde(default = "default_light3d_direction")]
+        direction: SceneVec3Document,
         #[serde(default)]
-        sheet: Option<SceneSpriteSheetDocument>,
-        #[serde(default)]
-        animation: Option<SceneSpriteAnimationDocument>,
-        #[serde(default, skip_serializing_if = "Option::is_none")]
-        visual_maps: Option<VisualMaps2dDocument>,
-        #[serde(default)]
-        render_contributions: RenderContributionsDocument,
-        #[serde(default, skip_serializing_if = "Option::is_none")]
-        material: Option<Material2dDocument>,
-        #[serde(default)]
-        z_index: f32,
-        #[serde(default, skip_serializing_if = "Vec::is_empty")]
-        post_fx: Vec<PostFx2dDocument>,
-    },
-    #[serde(rename = "LayeredImage2D")]
-    LayeredImage2d {
-        #[serde(default = "default_render_layer")]
-        render_layer: String,
-        asset: String,
-        size: SceneVec2Document,
-        #[serde(default = "default_layered_image_base_opacity")]
-        base_opacity: f32,
-        #[serde(default)]
-        viewport_fit: LayeredImageViewportFit2dDocument,
-        #[serde(default, skip_serializing_if = "Option::is_none")]
-        visual_maps: Option<VisualMaps2dDocument>,
-        #[serde(default)]
-        z_index: f32,
-        #[serde(default)]
-        layer_overrides: Vec<LayeredImageLayerOverrideDocument>,
-        #[serde(default, skip_serializing_if = "Vec::is_empty")]
-        post_fx: Vec<PostFx2dDocument>,
-    },
-    #[serde(rename = "DepthMap2D")]
-    DepthMap2d {
-        id: String,
-        asset: String,
-        size: SceneVec2Document,
-        #[serde(default)]
-        viewport_fit: LayeredImageViewportFit2dDocument,
-        #[serde(default = "default_true")]
-        white_is_near: bool,
-        #[serde(default)]
-        z_index: f32,
-    },
-    #[serde(rename = "DepthAuxMap2D")]
-    DepthAuxMap2d {
-        id: String,
-        asset: String,
-        #[serde(default, skip_serializing_if = "Option::is_none")]
-        surface_asset: Option<String>,
-        size: SceneVec2Document,
-        #[serde(default)]
-        viewport_fit: LayeredImageViewportFit2dDocument,
-        #[serde(default)]
-        channels: DepthAuxMap2dChannelsDocument,
-        #[serde(default)]
-        z_index: f32,
-    },
-    #[serde(rename = "GlobalLight2D")]
-    GlobalLight2d {
-        id: String,
-        #[serde(default = "default_global_light_color")]
-        color: String,
-        #[serde(default)]
+        color: Option<String>,
+        #[serde(default = "default_light3d_intensity")]
         intensity: f32,
+        #[serde(default = "default_light3d_ambient")]
+        ambient: f32,
     },
     #[serde(rename = "LightMap2DSource")]
     LightMap2dSource {
@@ -172,132 +69,6 @@ pub enum SceneComponentDocumentModel {
         source: LightMap2dSourceRefDocument,
         #[serde(default)]
         channels: Vec<LightMap2dChannelDocument>,
-    },
-    #[serde(rename = "amigo.gfx.tilemap-2d.TileMap2D")]
-    TileMap2d {
-        #[serde(default = "default_render_layer")]
-        render_layer: String,
-        tileset: String,
-        #[serde(default)]
-        ruleset: Option<String>,
-        tile_size: SceneVec2Document,
-        #[serde(default)]
-        editor: Option<TileMap2dEditorDocument>,
-        grid: Vec<String>,
-        #[serde(default)]
-        depth_fill_rows: usize,
-        #[serde(default)]
-        z_index: f32,
-        #[serde(default, skip_serializing_if = "Vec::is_empty")]
-        post_fx: Vec<PostFx2dDocument>,
-    },
-    #[serde(rename = "amigo.gfx.text-2d.Text2D")]
-    Text2d {
-        #[serde(default = "default_render_layer")]
-        render_layer: String,
-        content: String,
-        font: String,
-        bounds: SceneVec2Document,
-        #[serde(default)]
-        style: Text2dStyleDocument,
-        #[serde(default)]
-        render_contributions: RenderContributionsDocument,
-        #[serde(default)]
-        z_index: f32,
-        #[serde(default, skip_serializing_if = "Option::is_none")]
-        material: Option<Material2dDocument>,
-        #[serde(default, skip_serializing_if = "Vec::is_empty")]
-        post_fx: Vec<PostFx2dDocument>,
-    },
-    #[serde(rename = "amigo.gfx.vector-2d.VectorShape2D")]
-    VectorShape2d {
-        #[serde(default = "default_render_layer")]
-        render_layer: String,
-        kind: SceneVectorShapeKindComponentDocument,
-        #[serde(default)]
-        points: Vec<SceneVec2Document>,
-        #[serde(default)]
-        closed: bool,
-        #[serde(default)]
-        radius: f32,
-        #[serde(default = "default_vector_segments")]
-        segments: u32,
-        #[serde(default)]
-        stroke_color: Option<String>,
-        #[serde(default = "default_vector_stroke_width")]
-        stroke_width: f32,
-        #[serde(default)]
-        fill_color: Option<String>,
-        #[serde(default)]
-        render_contributions: RenderContributionsDocument,
-        #[serde(default, skip_serializing_if = "Option::is_none")]
-        material: Option<Material2dDocument>,
-        #[serde(default)]
-        z_index: f32,
-        #[serde(default, skip_serializing_if = "Vec::is_empty")]
-        post_fx: Vec<PostFx2dDocument>,
-    },
-    #[serde(rename = "BeaconLight2D")]
-    BeaconLight2d {
-        id: String,
-        #[serde(default = "default_render_layer")]
-        render_layer: String,
-        #[serde(default = "default_global_light_color")]
-        color: String,
-        #[serde(default = "default_beacon_base_intensity")]
-        base_intensity: f32,
-        #[serde(default = "default_beacon_frequency_hz")]
-        frequency_hz: f32,
-        #[serde(default = "default_beacon_duty_cycle")]
-        duty_cycle: f32,
-        #[serde(default = "default_beacon_rise_seconds")]
-        rise_seconds: f32,
-        #[serde(default = "default_beacon_fall_seconds")]
-        fall_seconds: f32,
-        #[serde(default)]
-        phase_offset: f32,
-        #[serde(default)]
-        sync_group: Option<String>,
-        #[serde(default = "default_beacon_jitter_amount")]
-        jitter_amount: f32,
-        #[serde(default = "default_beacon_jitter_hz")]
-        jitter_hz: f32,
-        #[serde(default = "default_beacon_core_radius_px")]
-        core_radius_px: f32,
-        #[serde(default = "default_beacon_halo_radius_px")]
-        halo_radius_px: f32,
-        #[serde(default = "default_beacon_glow_strength")]
-        glow_strength: f32,
-        #[serde(default = "default_true")]
-        beam_enabled: bool,
-        #[serde(default = "default_beacon_beam_length_px")]
-        beam_length_px: f32,
-        #[serde(default = "default_beacon_beam_width_degrees")]
-        beam_width_degrees: f32,
-        #[serde(default = "default_beacon_beam_strength")]
-        beam_strength: f32,
-        #[serde(default = "default_beacon_aberration_px")]
-        aberration_px: f32,
-        #[serde(default = "default_beacon_bloom")]
-        bloom: f32,
-        #[serde(default)]
-        camera_response: CameraOpticalResponse2dDocument,
-        #[serde(default, skip_serializing_if = "Option::is_none")]
-        depth: Option<RenderDepth2dDocument>,
-        #[serde(default)]
-        z_depth: Option<f32>,
-        #[serde(default)]
-        z_index: f32,
-        #[serde(default)]
-        render_contributions: RenderContributionsDocument,
-        #[serde(default = "default_true")]
-        enabled: bool,
-        #[serde(default)]
-        viewport_fit: LayeredImageViewportFit2dDocument,
-        #[serde(default)]
-        viewport_canvas_size: Option<SceneVec2Document>,
-        #[serde(default, skip_serializing_if = "Vec::is_empty")]
-        post_fx: Vec<PostFx2dDocument>,
     },
     #[serde(rename = "EntityPool")]
     EntityPool {
@@ -353,83 +124,6 @@ pub enum SceneComponentDocumentModel {
         script: String,
         #[serde(default)]
         params: BTreeMap<String, ScenePropertyValueDocument>,
-    },
-    #[serde(rename = "amigo.vfx.particles-2d.ParticleEmitter2D")]
-    ParticleEmitter2d {
-        #[serde(default = "default_render_layer")]
-        render_layer: String,
-        #[serde(default)]
-        attached_to: Option<String>,
-        #[serde(default = "default_vec2_zero")]
-        local_offset: SceneVec2Document,
-        #[serde(default)]
-        local_direction_degrees: f32,
-        #[serde(default)]
-        spawn_area: Option<ParticleSpawnArea2dSceneDocument>,
-        #[serde(default)]
-        active: bool,
-        #[serde(default = "default_particle_spawn_rate")]
-        spawn_rate: f32,
-        #[serde(default = "default_particle_max_particles")]
-        max_particles: usize,
-        #[serde(default = "default_particle_lifetime")]
-        particle_lifetime: f32,
-        #[serde(default)]
-        lifetime_jitter: f32,
-        #[serde(default)]
-        initial_speed: f32,
-        #[serde(default)]
-        speed_jitter: f32,
-        #[serde(default)]
-        spread_degrees: f32,
-        #[serde(default)]
-        inherit_parent_velocity: f32,
-        #[serde(default)]
-        velocity_mode: Option<ParticleVelocityMode2dSceneDocument>,
-        #[serde(default)]
-        simulation_space: Option<ParticleSimulationSpace2dSceneDocument>,
-        #[serde(default = "default_particle_initial_size")]
-        initial_size: f32,
-        #[serde(default = "default_particle_final_size")]
-        final_size: f32,
-        #[serde(default)]
-        size_jitter: f32,
-        #[serde(default)]
-        color: Option<String>,
-        #[serde(default)]
-        color_ramp: Option<ColorRampSceneDocument>,
-        #[serde(default)]
-        z_index: f32,
-        #[serde(default)]
-        shape: Option<ParticleShape2dSceneDocument>,
-        #[serde(default)]
-        shape_choices: Vec<ParticleShapeChoice2dSceneDocument>,
-        #[serde(default)]
-        shape_over_lifetime: Vec<ParticleShapeKeyframe2dSceneDocument>,
-        #[serde(default)]
-        line_anchor: Option<ParticleLineAnchor2dSceneDocument>,
-        #[serde(default)]
-        align: Option<ParticleAlignMode2dSceneDocument>,
-        #[serde(default)]
-        blend_mode: Option<ParticleBlendMode2dSceneDocument>,
-        #[serde(default)]
-        motion_stretch: Option<ParticleMotionStretch2dSceneDocument>,
-        #[serde(default)]
-        material: Option<ParticleMaterial2dSceneDocument>,
-        #[serde(default)]
-        light: Option<ParticleLight2dSceneDocument>,
-        #[serde(default)]
-        emission_rate_curve: Option<Curve1dSceneDocument>,
-        #[serde(default)]
-        size_curve: Option<Curve1dSceneDocument>,
-        #[serde(default)]
-        alpha_curve: Option<Curve1dSceneDocument>,
-        #[serde(default)]
-        speed_curve: Option<Curve1dSceneDocument>,
-        #[serde(default)]
-        forces: Vec<ParticleForce2dSceneDocument>,
-        #[serde(default, skip_serializing_if = "Vec::is_empty")]
-        post_fx: Vec<PostFx2dDocument>,
     },
     #[serde(rename = "Velocity2D")]
     Velocity2d {
@@ -559,12 +253,118 @@ pub enum SceneComponentDocumentModel {
         source: Option<String>,
         #[serde(default)]
         albedo: Option<String>,
+        #[serde(default)]
+        render_order: i32,
     },
     #[serde(rename = "Text3D")]
     Text3d {
         content: String,
         font: String,
         size: f32,
+    },
+    #[serde(rename = "PhysicsWorld3D")]
+    PhysicsWorld3d {
+        #[serde(default = "default_physics3d_gravity")]
+        gravity: SceneVec3Document,
+        #[serde(default = "default_physics3d_substeps")]
+        substeps: u32,
+        #[serde(default = "default_physics3d_solver_iterations")]
+        solver_iterations: u32,
+        #[serde(default = "default_physics3d_ccd_substeps")]
+        ccd_substeps: u32,
+    },
+    #[serde(rename = "RigidBody3D")]
+    RigidBody3d {
+        #[serde(default = "default_vec3_zero")]
+        velocity: SceneVec3Document,
+        #[serde(default = "default_vec3_zero")]
+        angular_velocity: SceneVec3Document,
+        #[serde(default = "default_rigid_body_mass_3d")]
+        mass: f32,
+        #[serde(default = "default_linear_damping_3d")]
+        linear_damping: f32,
+        #[serde(default = "default_angular_damping_3d")]
+        angular_damping: f32,
+        #[serde(default = "default_gravity_scale")]
+        gravity_scale: f32,
+        #[serde(default)]
+        restitution: f32,
+        #[serde(default = "default_rigid_body_friction_3d")]
+        friction: f32,
+        #[serde(default)]
+        ccd: bool,
+    },
+    #[serde(rename = "BoxCollider3D")]
+    BoxCollider3d {
+        size: SceneVec3Document,
+        #[serde(default = "default_vec3_zero")]
+        offset: SceneVec3Document,
+    },
+    #[serde(rename = "StaticBoxCollider3D")]
+    StaticBoxCollider3d {
+        size: SceneVec3Document,
+        #[serde(default = "default_vec3_zero")]
+        offset: SceneVec3Document,
+        #[serde(default = "default_rigid_body_friction_3d")]
+        friction: f32,
+        #[serde(default)]
+        restitution: f32,
+    },
+    #[serde(rename = "PhysicsSpawner3D")]
+    PhysicsSpawner3d {
+        entity_prefix: String,
+        mesh: String,
+        material: String,
+        #[serde(default)]
+        material_label: Option<String>,
+        #[serde(default = "default_spawn_interval_seconds")]
+        interval_seconds: f32,
+        #[serde(default = "default_vec3_zero")]
+        origin: SceneVec3Document,
+        #[serde(default = "default_vec3_one")]
+        spawn_scale: SceneVec3Document,
+        #[serde(default = "default_vec3_zero")]
+        grid_spacing: SceneVec3Document,
+        #[serde(default = "default_vec3_zero")]
+        initial_velocity: SceneVec3Document,
+        #[serde(default = "default_vec3_zero")]
+        angular_velocity: SceneVec3Document,
+        #[serde(default = "default_vec3_zero")]
+        spawn_position_jitter: SceneVec3Document,
+        #[serde(default = "default_vec3_zero")]
+        spawn_rotation_jitter: SceneVec3Document,
+        #[serde(default = "default_vec3_zero")]
+        initial_velocity_jitter: SceneVec3Document,
+        #[serde(default = "default_vec3_zero")]
+        angular_velocity_jitter: SceneVec3Document,
+        #[serde(default = "default_rigid_body_mass_3d")]
+        mass: f32,
+        #[serde(default = "default_linear_damping_3d")]
+        linear_damping: f32,
+        #[serde(default = "default_angular_damping_3d")]
+        angular_damping: f32,
+        #[serde(default = "default_gravity_scale")]
+        gravity_scale: f32,
+        #[serde(default)]
+        restitution: f32,
+        #[serde(default = "default_rigid_body_friction_3d")]
+        friction: f32,
+        #[serde(default)]
+        ccd: bool,
+        #[serde(default = "default_vec3_one")]
+        collider_size: SceneVec3Document,
+        #[serde(default)]
+        max_alive: u32,
+        #[serde(default)]
+        counter_entity: Option<String>,
+        #[serde(default = "default_physics3d_counter_prefix")]
+        counter_prefix: String,
+        #[serde(default)]
+        counter_font: Option<String>,
+        #[serde(default = "default_physics3d_counter_size")]
+        counter_size: f32,
+        #[serde(default = "default_vec3_zero")]
+        counter_position: SceneVec3Document,
     },
     #[serde(rename = "UiDocument")]
     UiDocument {
@@ -588,19 +388,9 @@ pub type SceneComponentDocument = SceneComponentDocumentModel;
 pub fn is_builtin_component_type(kind: &str) -> bool {
     matches!(
         kind,
-        "Camera2D"
-            | "Camera3D"
+        "Camera3D"
             | "Light3D"
-            | COMPONENT_TYPE_SPRITE_2D
-            | "LayeredImage2D"
-            | "DepthMap2D"
-            | "DepthAuxMap2D"
-            | "GlobalLight2D"
             | "LightMap2DSource"
-            | COMPONENT_TYPE_TILE_MAP_2D
-            | COMPONENT_TYPE_TEXT_2D
-            | COMPONENT_TYPE_VECTOR_SHAPE_2D
-            | "BeaconLight2D"
             | "EntityPool"
             | "Lifetime"
             | "ProjectileEmitter2D"
@@ -609,7 +399,6 @@ pub fn is_builtin_component_type(kind: &str) -> bool {
             | "EventPipeline"
             | "UiModelBindings"
             | "ScriptComponent"
-            | COMPONENT_TYPE_PARTICLE_EMITTER_2D
             | "Velocity2D"
             | "Bounds2D"
             | "FreeflightMotion2D"
@@ -625,6 +414,11 @@ pub fn is_builtin_component_type(kind: &str) -> bool {
             | "Mesh3D"
             | "Material3D"
             | "Text3D"
+            | "PhysicsWorld3D"
+            | "RigidBody3D"
+            | "BoxCollider3D"
+            | "StaticBoxCollider3D"
+            | "PhysicsSpawner3D"
             | "UiDocument"
             | "UiThemeSet"
     )
@@ -646,19 +440,9 @@ pub fn plugin_component_document(component_type: String, payload: Value) -> Scen
 impl SceneComponentDocument {
     pub fn kind(&self) -> &str {
         match self {
-            Self::Camera2d { .. } => "Camera2D",
-            Self::Camera3d => "Camera3D",
+            Self::Camera3d { .. } => "Camera3D",
             Self::Light3d { .. } => "Light3D",
-            Self::Sprite2d { .. } => COMPONENT_TYPE_SPRITE_2D,
-            Self::LayeredImage2d { .. } => "LayeredImage2D",
-            Self::DepthMap2d { .. } => "DepthMap2D",
-            Self::DepthAuxMap2d { .. } => "DepthAuxMap2D",
-            Self::GlobalLight2d { .. } => "GlobalLight2D",
             Self::LightMap2dSource { .. } => "LightMap2DSource",
-            Self::TileMap2d { .. } => COMPONENT_TYPE_TILE_MAP_2D,
-            Self::Text2d { .. } => COMPONENT_TYPE_TEXT_2D,
-            Self::VectorShape2d { .. } => COMPONENT_TYPE_VECTOR_SHAPE_2D,
-            Self::BeaconLight2d { .. } => "BeaconLight2D",
             Self::EntityPool { .. } => "EntityPool",
             Self::Lifetime { .. } => "Lifetime",
             Self::ProjectileEmitter2d { .. } => "ProjectileEmitter2D",
@@ -667,7 +451,6 @@ impl SceneComponentDocument {
             Self::EventPipeline { .. } => "EventPipeline",
             Self::UiModelBindings { .. } => "UiModelBindings",
             Self::ScriptComponent { .. } => "ScriptComponent",
-            Self::ParticleEmitter2d { .. } => COMPONENT_TYPE_PARTICLE_EMITTER_2D,
             Self::Velocity2d { .. } => "Velocity2D",
             Self::Bounds2d { .. } => "Bounds2D",
             Self::FreeflightMotion2d { .. } => "FreeflightMotion2D",
@@ -683,6 +466,11 @@ impl SceneComponentDocument {
             Self::Mesh3d { .. } => "Mesh3D",
             Self::Material3d { .. } => "Material3D",
             Self::Text3d { .. } => "Text3D",
+            Self::PhysicsWorld3d { .. } => "PhysicsWorld3D",
+            Self::RigidBody3d { .. } => "RigidBody3D",
+            Self::BoxCollider3d { .. } => "BoxCollider3D",
+            Self::StaticBoxCollider3d { .. } => "StaticBoxCollider3D",
+            Self::PhysicsSpawner3d { .. } => "PhysicsSpawner3D",
             Self::UiDocument { .. } => "UiDocument",
             Self::UiThemeSet { .. } => "UiThemeSet",
             Self::Plugin { component_type, .. } => component_type.as_str(),
@@ -690,13 +478,7 @@ impl SceneComponentDocument {
     }
 
     pub fn primary_render_layer(&self) -> Option<&str> {
-        match self {
-            Self::ParticleEmitter2d { render_layer, .. }
-            | Self::LayeredImage2d { render_layer, .. }
-            | Self::BeaconLight2d { render_layer, .. } => Some(render_layer.as_str()),
-            Self::Plugin { .. } => None,
-            _ => None,
-        }
+        None
     }
 
     pub fn plugin_payload(&self) -> Option<(&str, &Value)> {
@@ -710,51 +492,20 @@ impl SceneComponentDocument {
     }
 
     pub fn post_fx_documents(&self) -> Option<&[PostFx2dDocument]> {
-        match self {
-            Self::Sprite2d { post_fx, .. }
-            | Self::LayeredImage2d { post_fx, .. }
-            | Self::TileMap2d { post_fx, .. }
-            | Self::Text2d { post_fx, .. }
-            | Self::VectorShape2d { post_fx, .. }
-            | Self::ParticleEmitter2d { post_fx, .. }
-            | Self::BeaconLight2d { post_fx, .. } => Some(post_fx.as_slice()),
-            Self::Plugin { .. } => None,
-            _ => None,
-        }
+        None
     }
 
     pub fn layered_image_part_post_fx_documents(&self) -> Option<Vec<(&str, &[PostFx2dDocument])>> {
-        match self {
-            Self::LayeredImage2d {
-                layer_overrides, ..
-            } => Some(
-                layer_overrides
-                    .iter()
-                    .filter(|override_doc| !override_doc.post_fx.is_empty())
-                    .map(|override_doc| (override_doc.id.as_str(), override_doc.post_fx.as_slice()))
-                    .collect(),
-            ),
-            Self::Plugin { .. } => None,
-            _ => None,
-        }
+        None
     }
 
     pub fn is_particle_emitter_2d(&self) -> bool {
-        matches!(self, Self::ParticleEmitter2d { .. })
+        false
     }
 
     pub fn semantic_class(&self) -> SceneComponentSemanticClass {
         match self {
-            Self::Sprite2d { .. } => SceneComponentSemanticClass::Sprite2d,
-            Self::LayeredImage2d { .. } => SceneComponentSemanticClass::LayeredImage2d,
-            Self::TileMap2d { .. } => SceneComponentSemanticClass::TileMap2d,
-            Self::Text2d { .. } => SceneComponentSemanticClass::Text2d,
-            Self::VectorShape2d { .. } => SceneComponentSemanticClass::VectorShape2d,
-            Self::ParticleEmitter2d { .. } => SceneComponentSemanticClass::ParticleEmitter2d,
-            Self::BeaconLight2d { .. } => SceneComponentSemanticClass::BeaconLight2d,
-            Self::Camera2d { .. } | Self::CameraFollow2d { .. } => {
-                SceneComponentSemanticClass::Camera2d
-            }
+            Self::CameraFollow2d { .. } => SceneComponentSemanticClass::Camera2d,
             Self::Velocity2d { .. }
             | Self::FreeflightMotion2d { .. }
             | Self::MotionController2d { .. } => SceneComponentSemanticClass::Motion2d,
@@ -763,6 +514,11 @@ impl SceneComponentDocument {
             | Self::StaticCollider2d { .. }
             | Self::CircleCollider2d { .. }
             | Self::Trigger2d { .. } => SceneComponentSemanticClass::Physics2d,
+            Self::PhysicsWorld3d { .. }
+            | Self::RigidBody3d { .. }
+            | Self::BoxCollider3d { .. }
+            | Self::StaticBoxCollider3d { .. }
+            | Self::PhysicsSpawner3d { .. } => SceneComponentSemanticClass::Physics3d,
             Self::ScriptComponent { .. } => SceneComponentSemanticClass::Script,
             Self::Plugin { .. } => SceneComponentSemanticClass::Plugin,
             _ => SceneComponentSemanticClass::Generic2d,

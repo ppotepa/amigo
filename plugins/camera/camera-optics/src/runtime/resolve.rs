@@ -16,9 +16,12 @@ pub fn resolve_camera_optical_candidate_2d(
     }
 
     let response = source.response.normalized();
-    let role_enabled =
-        source.roles.enabled_or(amigo_plugin_api::roles::CAMERA_FX_SOURCE, false)
-            || source.roles.enabled_or(amigo_plugin_api::roles::BLOOM_SOURCE, false);
+    let role_enabled = source
+        .roles
+        .enabled_or(amigo_plugin_api::roles::CAMERA_FX_SOURCE, false)
+        || source
+            .roles
+            .enabled_or(amigo_plugin_api::roles::BLOOM_SOURCE, false);
     let response_enabled = response.enabled
         && response
             .intensity
@@ -69,7 +72,10 @@ pub fn resolve_camera_optical_candidate_2d(
         component_kind: source.component_kind.clone(),
         render_layer: source.render_layer.clone(),
         color_rgba: source.color_rgba.unwrap_or([1.0, 1.0, 1.0, 1.0]),
-        intensity: source.effective_intensity.or(source.intensity).unwrap_or(0.0),
+        intensity: source
+            .effective_intensity
+            .or(source.intensity)
+            .unwrap_or(0.0),
         response,
         coverage,
         roles: source.roles.clone(),
@@ -169,7 +175,7 @@ fn light_group_coverage(source: &CameraOpticalSource2d) -> CameraOpticalCoverage
 
 #[cfg(test)]
 mod tests {
-    use amigo_plugin_api::{RenderContributionSet, render_contributions::roles};
+    use amigo_plugin_api::{render_contributions::roles, RenderContributionSet};
 
     use super::*;
     use crate::api::CameraOpticalResponse2d;

@@ -4,7 +4,9 @@
 use super::*;
 use amigo_runtime::EngineSchedulerMode;
 use amigo_runtime_control::{RuntimeControlService, build_scene_metadata_for_runtime};
-use amigo_scene::{CompiledSceneDocument, SceneDocument, SceneStateValueDocument};
+use amigo_scene::{
+    CompiledSceneDocument, SceneDocument, SceneDocumentDependencyKind, SceneStateValueDocument,
+};
 use amigo_scene::{
     SceneFrameClockDocument, SceneFramePresentationDocument, SceneSchedulingDocument,
 };
@@ -89,6 +91,7 @@ pub(super) fn load_scene_document_for_mod(
     )
     .map_err(|error| AmigoError::Message(error.to_string()))?;
     apply_compiled_scene_scheduling(runtime, &discovered_mod.root_path, scene_id, &compiled)?;
+    let timelines_2d = load_timeline_2d_documents(&compiled)?;
     let document = compiled.document;
 
     if document.scene.id != scene_id {
@@ -114,7 +117,6 @@ pub(super) fn load_scene_document_for_mod(
         &discovered_mod.root_path,
         &document_path,
     );
-
     let component_kinds = document
         .component_kind_counts()
         .into_iter()
@@ -142,7 +144,35 @@ pub(super) fn load_scene_document_for_mod(
         hydration_plan,
         transition_plan,
         runtime_control_metadata,
+        timelines_2d,
     }))
+}
+
+fn load_timeline_2d_documents(
+    compiled: &CompiledSceneDocument,
+) -> AmigoResult<Vec<amigo_runtime_bundles::Timeline2dDocument>> {
+    let mut timelines = Vec::new();
+    for dependency in &compiled.dependencies {
+        if dependency.kind != SceneDocumentDependencyKind::Use {
+            continue;
+        }
+        let raw = std::fs::read_to_string(&dependency.path)?;
+        let Ok(value) = serde_yaml::from_str::<serde_yaml::Value>(&raw) else {
+            continue;
+        };
+        if value
+            .as_mapping()
+            .and_then(|mapping| mapping.get(serde_yaml::Value::String("kind".to_owned())))
+            .and_then(serde_yaml::Value::as_str)
+            != Some("timeline-2d")
+        {
+            continue;
+        }
+        timelines.push(amigo_runtime_bundles::load_timeline_2d_document(
+            &dependency.path,
+        )?);
+    }
+    Ok(timelines)
 }
 
 fn enrich_runtime_control_metadata_from_authoring(
@@ -565,6 +595,10 @@ fn queue_scene_document_hydration_for_runtime(
         runtime_control_service.as_ref(),
         loaded_scene_document,
     );
+    if !loaded_scene_document.timelines_2d.is_empty() {
+        let timelines = required::<amigo_runtime_bundles::Timeline2dService>(runtime)?;
+        timelines.replace_timelines(loaded_scene_document.timelines_2d.clone());
+    }
 
     if let Some(scene_session_service) = runtime.resolve::<SceneSessionService>() {
         scene_session_service.complete_hydration_queue();
@@ -725,6 +759,9 @@ pub(super) fn clear_runtime_scene_content(runtime: &Runtime) -> AmigoResult<()> 
     let scene_service = required::<SceneService>(runtime)?;
     let runtime_control_service = required::<RuntimeControlService>(runtime)?;
     let dev_console_state = required::<DevConsoleState>(runtime)?;
+    if let Some(timelines) = runtime.resolve::<amigo_runtime_bundles::Timeline2dService>() {
+        timelines.clear();
+    }
 
     let previous = hydrated_scene_state.clear();
     runtime_control_service.clear_scene_metadata();

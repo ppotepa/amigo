@@ -227,10 +227,7 @@ fn runtime_detects_sidescroller_scene_document_changes_through_hot_reload_servic
         .and_then(|command| {
             command.document.root.children.into_iter().find_map(|node| {
                 match (node.id.as_deref(), node.kind) {
-                    (
-                        Some("title"),
-                        amigo_ui::UiNodeKind::Text { content, .. },
-                    ) => Some(content),
+                    (Some("title"), amigo_ui::UiNodeKind::Text { content, .. }) => Some(content),
                     _ => None,
                 }
             })

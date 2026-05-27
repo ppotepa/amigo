@@ -2,9 +2,7 @@ use amigo_plugin_api::CandidateStatus;
 use amigo_scene::{RenderContributionsDocument, SceneVectorShapeKindComponentDocument};
 use amigo_vector_2d_plugin::participation::adapters::camera_optics::vector_coverage_to_camera_optics;
 use amigo_vector_2d_plugin::runtime::collect_vector_2d_candidates;
-use amigo_vector_2d_plugin::scene::{
-    vector_2d_scene_descriptor, Vector2dDocument,
-};
+use amigo_vector_2d_plugin::scene::{vector_2d_scene_descriptor, Vector2dDocument};
 
 #[test]
 fn vector_document_collects_vector_candidate() {
@@ -41,8 +39,5 @@ fn vector_plugin_owns_scene_descriptor() {
     let descriptor = vector_2d_scene_descriptor();
 
     assert!(descriptor.is_valid());
-    assert_eq!(
-        descriptor.id.as_str(),
-        "amigo.gfx.vector-2d.VectorShape2D"
-    );
+    assert_eq!(descriptor.id.as_str(), "amigo.gfx.vector-2d.VectorShape2D");
 }

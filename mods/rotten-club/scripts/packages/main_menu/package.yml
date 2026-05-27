@@ -1,14 +1,6 @@
 id: main_menu
 version: 0.1.0
 exports:
-  - ids.rhai
-  - math.rhai
-  - timeline.rhai
-  - camera.rhai
-  - lighting.rhai
-  - title.rhai
-  - ui.rhai
-  - weather.rhai
   - director.rhai
 requires:
   capabilities: []

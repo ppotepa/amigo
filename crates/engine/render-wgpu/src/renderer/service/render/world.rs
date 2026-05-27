@@ -166,13 +166,12 @@ pub(super) fn execute_world_to_offscreen(
     let render_layer_lookup = render_layer_lookup(ctx.render_layers);
     let lightmap_samplers =
         renderer.lightmap_2d_samplers(ctx.assets, &viewport, ctx.renderables, ctx.lightmaps);
-    let mut world2d_items = ctx.renderables.to_vec();
+    let mut world2d_items = ctx.renderables.iter().collect::<Vec<_>>();
     world2d_items.retain(|item| {
         selection.layer_filter.allows(item.render_layer())
             && selection.object_filter.allows(item.object_id())
     });
     let renderable_adapters = crate::default_renderable_2d_adapter_registry();
-    world2d_items.retain(|item| renderable_adapters.supports_kind(item.primitive_kind()));
     world2d_items.sort_by_key(|item| world2d_sort_key(item, &render_layer_lookup));
     let mut material_candidates: Vec<WgpuMaterialCandidate2d> = Vec::new();
     let mut material_decisions: Vec<MaterialCandidateDecision2d> = Vec::new();
@@ -188,7 +187,7 @@ pub(super) fn execute_world_to_offscreen(
             &viewport,
             &render_layer_lookup,
             renderable_adapters,
-            &item,
+            item,
             layer_camera,
             &mut texture_batches,
             &mut color_batches,
@@ -201,32 +200,40 @@ pub(super) fn execute_world_to_offscreen(
     }
 
     let camera = resolve_camera_transform(ctx.scene_view);
+    let camera_settings = ctx.scene_view.camera_3d_settings();
+    let light_settings = ctx.scene_view.light_3d_settings();
     let material_lookup = material_lookup_from_commands(ctx.materials);
     let mut projected_triangles = Vec::new();
 
-    if selection.layer_filter.allows_layerless() {
+    if selection.layer_filter.allows_layerless() && !ctx.meshes.is_empty() {
         for command in ctx.meshes {
             let transform =
                 resolve_transform3(ctx.scene_view, &command.entity_name, command.mesh.transform);
-            let color = material_lookup
-                .get(&command.entity_name)
-                .copied()
+            let material = material_lookup.get(&command.entity_name).copied();
+            let color = material
+                .map(|material| material.albedo)
                 .unwrap_or_else(|| mesh_color(command.mesh.mesh_asset.as_str()));
+            let render_order = material.map(|material| material.render_order).unwrap_or(0);
             append_mesh_triangles(
                 &mut projected_triangles,
                 &viewport,
                 camera,
+                camera_settings,
+                light_settings,
                 transform,
                 color,
+                render_order,
             );
         }
     }
 
     projected_triangles.sort_by(|left, right| {
-        right
-            .depth
-            .partial_cmp(&left.depth)
-            .unwrap_or(Ordering::Equal)
+        left.render_order.cmp(&right.render_order).then_with(|| {
+            right
+                .depth
+                .partial_cmp(&left.depth)
+                .unwrap_or(Ordering::Equal)
+        })
     });
 
     for triangle in projected_triangles {
@@ -236,27 +243,29 @@ pub(super) fn execute_world_to_offscreen(
 
     if let Some(text3d) = ctx
         .text3d
-        .filter(|_| selection.layer_filter.allows_layerless())
+        .filter(|text3d| selection.layer_filter.allows_layerless() && !text3d.is_empty())
     {
         for command in text3d {
             let transform =
                 resolve_transform3(ctx.scene_view, &command.entity_name, command.text.transform);
-            if renderer.append_text3d_ttf_font_texture_batch(
-                &mut ui_texture_batches,
-                &target.device,
-                &target.queue,
-                ctx.assets,
-                &viewport,
-                camera,
-                &command.text.font,
-                &command.text.content,
-                transform,
-                command.text.size,
-                ColorRgba::new(0.94, 0.98, 1.0, 1.0),
-            ) {
+            const USE_TEXTURED_3D_TEXT: bool = false;
+            if USE_TEXTURED_3D_TEXT
+                && renderer.append_text3d_ttf_font_texture_batch(
+                    &mut ui_texture_batches,
+                    &target.device,
+                    &target.queue,
+                    ctx.assets,
+                    &viewport,
+                    camera,
+                    &command.text.font,
+                    &command.text.content,
+                    transform,
+                    command.text.size,
+                    ColorRgba::new(0.94, 0.98, 1.0, 1.0),
+                )
+            {
                 continue;
             }
-
             let vertices = color_batch_vertices(&mut color_batches, ParticleBlendMode2d::Alpha);
             append_text_3d_vertices(
                 vertices,
@@ -270,8 +279,9 @@ pub(super) fn execute_world_to_offscreen(
         }
     }
 
-    let mut ui_color_primitives = Vec::with_capacity(ui_primitives.len());
-    if selection.layer_filter.allows_layerless() {
+    let mut ui_color_primitives = Vec::new();
+    if selection.layer_filter.allows_layerless() && !ui_primitives.is_empty() {
+        ui_color_primitives.reserve(ui_primitives.len());
         for primitive in ui_primitives {
             if let UiDrawPrimitive::Text {
                 rect,
@@ -336,6 +346,10 @@ pub(super) fn execute_world_to_offscreen(
         &color_batches,
         &ui_texture_batches,
     )?;
+    if material_candidates.is_empty() {
+        return Ok(());
+    }
+
     super::refractive_material::execute_refractive_material_2d(
         renderer,
         target,

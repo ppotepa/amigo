@@ -1,11 +1,12 @@
-use amigo_capabilities::{DEFAULT_CAPABILITY_VERSION, register_domain_plugin};
+use amigo_capabilities::{register_domain_plugin, DEFAULT_CAPABILITY_VERSION};
 use amigo_core::AmigoResult;
 use amigo_runtime::{RuntimePlugin, ServiceRegistry};
+use amigo_runtime_control::RuntimeControlService;
 use std::sync::Arc;
 
 use super::{
-    GlobalLight2dSceneService, LIGHTING_2D_CAPABILITY, LIGHTING_2D_PLUGIN_LABEL,
-    LightGroup2dSceneService, LightMap2dSceneService,
+    GlobalLight2dSceneService, LightGroup2dSceneService, LightMap2dSceneService,
+    LIGHTING_2D_CAPABILITY, LIGHTING_2D_PLUGIN_LABEL,
 };
 
 pub struct Lighting2dPlugin;
@@ -19,18 +20,21 @@ impl RuntimePlugin for Lighting2dPlugin {
         registry.register(GlobalLight2dSceneService::default())?;
         registry.register(LightMap2dSceneService::default())?;
         registry.register(LightGroup2dSceneService::default())?;
+        if let (Some(control), Some(light_groups)) = (
+            registry.resolve::<RuntimeControlService>(),
+            registry.resolve::<LightGroup2dSceneService>(),
+        ) {
+            control.register_provider(Arc::new(super::LightGroup2dControlProvider::new(
+                light_groups,
+            )));
+        }
         amigo_scene::register_scene_reset_handler(
             registry,
             super::reset::Lighting2dSceneResetHandler,
         )?;
-        if let Some(schemas) = registry.resolve::<amigo_scene::ComponentSchemaRegistry>() {
-            schemas.register_provider(&crate::scene::Lighting2dSceneDescriptorProvider);
-            schemas.register_schema_provider(crate::scene::GlobalLight2dSceneSchemaProvider);
-        }
-        if let Some(hydrators) = registry.resolve::<amigo_scene::ComponentHydratorRegistry>() {
-            hydrators.register(crate::scene::GlobalLight2dComponentHydrator);
-            hydrators.register_plugin(crate::scene::GlobalLight2dPluginComponentHydrator);
-        }
+        amigo_scene::register_scene_component_plugin_spec::<
+            crate::scene::GlobalLight2dSceneComponentSpec,
+        >(registry)?;
         if let Some(render_extractors) =
             registry.resolve::<amigo_render_api::RuntimeRenderExtractorIdRegistry>()
         {

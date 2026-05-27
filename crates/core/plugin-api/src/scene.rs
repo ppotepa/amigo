@@ -31,11 +31,7 @@ pub struct PluginSceneComponentDescriptor {
 }
 
 impl PluginSceneComponentDescriptor {
-    pub fn new(
-        id: impl Into<String>,
-        domain: impl Into<String>,
-        label: impl Into<String>,
-    ) -> Self {
+    pub fn new(id: impl Into<String>, domain: impl Into<String>, label: impl Into<String>) -> Self {
         Self {
             id: PluginSceneComponentId::new(id),
             domain: domain.into(),
@@ -44,9 +40,6 @@ impl PluginSceneComponentDescriptor {
     }
 
     pub fn is_valid(&self) -> bool {
-        !self.id.is_empty()
-            && !self.domain.trim().is_empty()
-            && !self.label.trim().is_empty()
+        !self.id.is_empty() && !self.domain.trim().is_empty() && !self.label.trim().is_empty()
     }
 }
-

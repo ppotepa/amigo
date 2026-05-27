@@ -1,6 +1,5 @@
 use amigo_plugin_api::{
-    capabilities, slots, CapabilityRef, PluginKind, PluginManifest,
-    RenderParticipation,
+    capabilities, slots, CapabilityRef, PluginKind, PluginManifest, RenderParticipation,
 };
 
 pub fn plugin_manifest() -> PluginManifest {

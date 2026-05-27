@@ -149,7 +149,11 @@ fn debug_color(uv: vec2<f32>, depth: f32, coc: f32, focus_depth: f32, base: vec4
         return vec4<f32>(blurred, base.a);
     }
     if debug_view >= 4.5 && debug_view < 5.5 {
-        let mask = highlight_mask(base.rgb, textureSample(highlight_tex, source_sampler, uv).rgb);
+        var highlight_rgb = vec3<f32>(0.0);
+        if uniforms.depth_override.w > 0.5 {
+            highlight_rgb = textureSample(highlight_tex, source_sampler, uv).rgb;
+        }
+        let mask = highlight_mask(base.rgb, highlight_rgb);
         return vec4<f32>(vec3<f32>(mask), base.a);
     }
     return vec4<f32>(blurred, base.a);
@@ -184,7 +188,10 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
         let sample_depth_value = sample_depth(sample_uv);
         let sample_coc = signed_coc(sample_depth_value, focus_depth);
         let sample = textureSample(source_tex, source_sampler, sample_uv);
-        let sample_highlight = textureSample(highlight_tex, source_sampler, sample_uv).rgb;
+        var sample_highlight = vec3<f32>(0.0);
+        if uniforms.depth_override.w > 0.5 {
+            sample_highlight = textureSample(highlight_tex, source_sampler, sample_uv).rgb;
+        }
         let sample_rgb_raw = sample.rgb;
         let sample_rgb = highlight_boost(sample_rgb_raw, sample_highlight);
         let depth_gap = abs(sample_depth_value - center_depth);

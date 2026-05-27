@@ -1,4 +1,4 @@
-use amigo_capabilities::{DEFAULT_CAPABILITY_VERSION, register_domain_plugin};
+use amigo_capabilities::{register_domain_plugin, DEFAULT_CAPABILITY_VERSION};
 use amigo_runtime::{RuntimePlugin, ServiceRegistry};
 use std::sync::Arc;
 
@@ -23,18 +23,9 @@ impl RuntimePlugin for TileMap2dPlugin {
             registry,
             super::reset::TileMap2dSceneResetHandler,
         )?;
-        if let Some(schemas) = registry.resolve::<amigo_scene::ComponentSchemaRegistry>() {
-            schemas.register_provider(&crate::scene::TileMap2dSceneDescriptorProvider);
-            schemas.register_schema_provider(crate::scene::TileMap2dSceneSchemaProvider);
-        }
-        if let Some(metadata) = registry.resolve::<amigo_scene::ComponentMetadataProviderRegistry>()
-        {
-            metadata.register(crate::scene::TileMap2dComponentMetadataProvider);
-        }
-        if let Some(hydrators) = registry.resolve::<amigo_scene::ComponentHydratorRegistry>() {
-            hydrators.register(crate::scene::TileMap2dComponentHydrator);
-            hydrators.register_plugin(crate::scene::TileMap2dPluginComponentHydrator);
-        }
+        amigo_scene::register_scene_component_plugin_spec::<
+            crate::scene::TileMap2dSceneComponentSpec,
+        >(registry)?;
         if let Some(render_extractors) =
             registry.resolve::<amigo_render_api::RuntimeRenderExtractorIdRegistry>()
         {

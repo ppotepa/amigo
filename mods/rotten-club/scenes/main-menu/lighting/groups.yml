@@ -1,0 +1,108 @@
+kind: scene-fragment
+schema_version: 1
+
+visual2d:
+  light_groups:
+    - id: skyline
+      label: Skyline
+      color: "#9BB8FFFF"
+      intensity: 1.0
+      render_contributions:
+        lighting.emit: true
+        bloom.source: true
+        camera.fx_source: true
+      camera_response:
+        enabled: true
+        intensity: 0.30
+        bloom: 0.22
+        glare: 0.15
+        ghosting: 0.04
+        streaks: 0.03
+        chromatic_smear: 0.05
+        dirt_response: 0.15
+        halation: 0.08
+        threshold: 0.0
+      sources:
+        - kind: lightmap_channel
+          source: neon-alley-lightmap
+          channel: far_city
+          response: 1.0
+    - id: neon.mid
+      label: Mid Neon
+      color: "#FF66CCFF"
+      intensity: 1.0
+      render_contributions:
+        lighting.emit: true
+        bloom.source: true
+        camera.fx_source: true
+      camera_response:
+        enabled: true
+        intensity: 0.82
+        bloom: 0.54
+        glare: 0.46
+        ghosting: 0.16
+        streaks: 0.28
+        chromatic_smear: 0.24
+        dirt_response: 0.34
+        halation: 0.22
+        threshold: 0.0
+      sources:
+        - kind: lightmap_channel
+          source: neon-alley-lightmap
+          channel: mid_neon
+          response: 1.0
+    - id: bar
+      label: Bar
+      color: "#FFCC66FF"
+      intensity: 1.0
+      render_contributions:
+        lighting.emit: true
+        bloom.source: true
+        camera.fx_source: true
+      camera_response:
+        enabled: true
+        intensity: 0.58
+        bloom: 0.42
+        glare: 0.28
+        ghosting: 0.08
+        streaks: 0.12
+        chromatic_smear: 0.08
+        dirt_response: 0.26
+        halation: 0.24
+        threshold: 0.0
+      sources:
+        - kind: lightmap_channel
+          source: neon-alley-lightmap
+          channel: near_bar
+          response: 1.0
+    - id: lightning
+      label: Lightning
+      color: "#DBE8FFFF"
+      intensity: 0.0
+      render_contributions:
+        lighting.emit: true
+        bloom.source: true
+        camera.fx_source: true
+      camera_response:
+        enabled: true
+        intensity: 0.70
+        bloom: 0.70
+        glare: 0.42
+        ghosting: 0.10
+        streaks: 0.22
+        chromatic_smear: 0.14
+        dirt_response: 0.12
+        halation: 0.18
+        threshold: 0.0
+      sources:
+        - kind: global_light
+          id: ambient-night
+          response: 1.0
+
+  light_routes:
+    - receiver_layer: weather.rain.far
+      groups: [skyline, neon.mid, lightning]
+    - receiver_layer: weather.rain.near
+      groups: [skyline, neon.mid, bar, lightning]
+    - receiver_layer: title.depth2d
+      groups: [neon.mid, bar]

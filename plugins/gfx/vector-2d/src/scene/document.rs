@@ -5,11 +5,10 @@ use serde_yaml::Value;
 
 use amigo_material_api::Material2dDocument;
 use amigo_scene::{
-    RenderContributionsDocument, SceneComponentDocument, SceneComponentSchemaProvider,
-    SceneComponentPayload, SceneDocumentError, SceneDocumentResult,
-    SceneVectorShapeKindComponentDocument, SceneVec2Document,
+    RenderContributionsDocument, SceneComponentDocument, SceneComponentPayload,
+    SceneComponentSchemaProvider, SceneDocumentError, SceneDocumentResult, SceneVec2Document,
+    SceneVectorShapeKindComponentDocument,
 };
-use amigo_scene::SceneComponentDocument as ComponentDocument;
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct Vector2dDocument {
@@ -43,36 +42,7 @@ pub struct Vector2dDocument {
 impl Vector2dDocument {
     pub fn from_component(component: &SceneComponentDocument) -> Option<Self> {
         match component {
-            ComponentDocument::VectorShape2d {
-                render_layer,
-                kind,
-                points,
-                closed,
-                radius,
-                segments,
-                stroke_color,
-                stroke_width,
-                fill_color,
-                render_contributions,
-                material,
-                z_index,
-                post_fx: _,
-            } => Some(Self {
-                entity_name: String::new(),
-                render_layer: render_layer.clone(),
-                kind: kind.clone(),
-                points: points.clone(),
-                closed: *closed,
-                radius: *radius,
-                segments: *segments,
-                stroke_color: stroke_color.clone(),
-                stroke_width: *stroke_width,
-                fill_color: fill_color.clone(),
-                render_contributions: render_contributions.clone(),
-                material: *material,
-                z_index: *z_index,
-            }),
-            ComponentDocument::Plugin {
+            SceneComponentDocument::Plugin {
                 component_type,
                 payload,
             } if component_type == "amigo.gfx.vector-2d.VectorShape2D"
@@ -100,7 +70,7 @@ pub fn parse_vector_2d_plugin_payload(payload: &Value) -> SceneDocumentResult<Ve
         .map_err(|source| SceneDocumentError::Parse { path: None, source })
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Default)]
 pub struct Vector2dSceneSchemaProvider;
 
 impl SceneComponentSchemaProvider for Vector2dSceneSchemaProvider {
@@ -113,7 +83,9 @@ impl SceneComponentSchemaProvider for Vector2dSceneSchemaProvider {
     }
 
     fn parse_yaml(&self, payload: serde_yaml::Mapping) -> Result<Value, serde_yaml::Error> {
-        serde_yaml::to_value(serde_yaml::from_value::<Vector2dDocument>(Value::Mapping(payload))?)
+        serde_yaml::to_value(serde_yaml::from_value::<Vector2dDocument>(Value::Mapping(
+            payload,
+        ))?)
     }
 
     fn parse_payload_value(

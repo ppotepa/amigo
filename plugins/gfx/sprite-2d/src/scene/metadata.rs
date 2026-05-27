@@ -144,6 +144,7 @@ pub fn sprite_2d_descriptor() -> ComponentTypeDescriptor {
     }
 }
 
+#[derive(Default)]
 pub struct Sprite2dComponentMetadataProvider;
 
 impl ComponentMetadataProvider for Sprite2dComponentMetadataProvider {
@@ -152,6 +153,8 @@ impl ComponentMetadataProvider for Sprite2dComponentMetadataProvider {
     }
 
     fn register_component_metadata(&self, registry: &mut ComponentRegistry) {
-        registry.insert(sprite_2d_descriptor());
+        registry
+            .try_insert(sprite_2d_descriptor())
+            .expect("duplicate Sprite2D component metadata");
     }
 }

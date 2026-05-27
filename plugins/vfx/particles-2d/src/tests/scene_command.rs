@@ -19,9 +19,9 @@ fn particles_scene_command_handler_queues_emitter_and_event() {
     let events = SceneEventQueue::default();
     let command = particle_emitter_command();
 
-    assert!(can_handle_particles_scene_command(
-        &SceneCommand::plugin(particle_emitter_2d_plugin_scene_command(command.clone()))
-    ));
+    assert!(can_handle_particles_scene_command(&SceneCommand::plugin(
+        particle_emitter_2d_plugin_scene_command(command.clone())
+    )));
 
     let outcome = handle_particles_scene_command(
         ParticlesSceneCommandContext {

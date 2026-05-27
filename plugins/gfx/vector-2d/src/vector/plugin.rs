@@ -1,4 +1,4 @@
-use amigo_capabilities::{DEFAULT_CAPABILITY_VERSION, register_domain_plugin};
+use amigo_capabilities::{register_domain_plugin, DEFAULT_CAPABILITY_VERSION};
 use amigo_runtime::{RuntimePlugin, ServiceRegistry};
 
 #[derive(Debug, Clone)]
@@ -20,18 +20,9 @@ impl RuntimePlugin for Vector2dPlugin {
             registry,
             super::reset::Vector2dSceneResetHandler,
         )?;
-        if let Some(metadata) = registry.resolve::<amigo_scene::ComponentMetadataProviderRegistry>()
-        {
-            metadata.register(crate::scene::Vector2dComponentMetadataProvider);
-        }
-        if let Some(schemas) = registry.resolve::<amigo_scene::ComponentSchemaRegistry>() {
-            schemas.register_descriptor(crate::scene::vector_2d_scene_descriptor());
-            schemas.register_schema_provider(crate::scene::Vector2dSceneSchemaProvider);
-        }
-        if let Some(hydrators) = registry.resolve::<amigo_scene::ComponentHydratorRegistry>() {
-            hydrators.register(crate::scene::hydration::VectorShape2dComponentHydrator);
-            hydrators.register_plugin(crate::scene::hydration::Vector2dPluginComponentHydrator);
-        }
+        amigo_scene::register_scene_component_plugin_spec::<
+            crate::scene::Vector2dSceneComponentSpec,
+        >(registry)?;
         if let Some(render_extractors) =
             registry.resolve::<amigo_render_api::RuntimeRenderExtractorIdRegistry>()
         {

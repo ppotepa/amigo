@@ -12,9 +12,7 @@ impl PluginIndex {
         Self::default()
     }
 
-    pub fn from_manifests(
-        manifests: impl IntoIterator<Item = PluginManifest>,
-    ) -> Self {
+    pub fn from_manifests(manifests: impl IntoIterator<Item = PluginManifest>) -> Self {
         let mut index = Self::new();
 
         for manifest in manifests {

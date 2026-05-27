@@ -30,6 +30,7 @@ struct LoadedSceneDocument {
     hydration_plan: SceneHydrationPlan,
     transition_plan: Option<SceneTransitionPlan>,
     runtime_control_metadata: amigo_runtime_control::RuntimeControlSceneMetadata,
+    timelines_2d: Vec<amigo_runtime_bundles::Timeline2dDocument>,
 }
 
 #[derive(Debug, Clone)]
@@ -44,6 +45,7 @@ pub struct BootstrapSummary {
     pub startup_mod: Option<String>,
     pub startup_scene: Option<String>,
     pub frame_cap_fps: Option<f32>,
+    pub dev_mode: bool,
     pub active_scene: Option<String>,
     pub loaded_scene_document: Option<LoadedSceneDocumentSummary>,
     pub scene_entities: Vec<String>,

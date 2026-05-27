@@ -359,6 +359,7 @@ pub fn text_2d_descriptor() -> ComponentTypeDescriptor {
     }
 }
 
+#[derive(Default)]
 pub struct Text2dComponentMetadataProvider;
 
 impl ComponentMetadataProvider for Text2dComponentMetadataProvider {
@@ -367,6 +368,8 @@ impl ComponentMetadataProvider for Text2dComponentMetadataProvider {
     }
 
     fn register_component_metadata(&self, registry: &mut ComponentRegistry) {
-        registry.insert(text_2d_descriptor());
+        registry
+            .try_insert(text_2d_descriptor())
+            .expect("duplicate Text2D component metadata");
     }
 }

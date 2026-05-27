@@ -2,8 +2,8 @@ use amigo_assets::AssetKey;
 use amigo_math::Vec2;
 
 use crate::{
-    ResolvedTile2d, ResolvedTileMap2d, TileCollisionKind2d, TileMap2d, TileNeighborInfo2d,
-    marker_cells, solid_cells,
+    marker_cells, solid_cells, ResolvedTile2d, ResolvedTileMap2d, TileCollisionKind2d, TileMap2d,
+    TileNeighborInfo2d,
 };
 
 #[test]

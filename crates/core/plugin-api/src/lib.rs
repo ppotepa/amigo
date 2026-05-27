@@ -1,6 +1,6 @@
+pub mod candidate;
 pub mod capability;
 pub mod catalog;
-pub mod candidate;
 pub mod contribution;
 pub mod diagnostics;
 pub mod ids;
@@ -13,9 +13,9 @@ pub mod status;
 pub mod target;
 pub mod validation;
 
+pub use candidate::*;
 pub use capability::*;
 pub use catalog::*;
-pub use candidate::*;
 pub use contribution::*;
 pub use diagnostics::*;
 pub use ids::*;

@@ -103,12 +103,12 @@ impl BeaconLight2dSceneService {
         })
     }
 
-pub fn set_bloom(&self, target: &str, value: f32) -> bool {
+    pub fn set_bloom(&self, target: &str, value: f32) -> bool {
         self.update_target(target, |beacon| {
             beacon.bloom = value.clamp(0.0, 8.0);
         })
     }
-pub fn set_position_2d(&self, target: &str, x: f32, y: f32) -> bool {
+    pub fn set_position_2d(&self, target: &str, x: f32, y: f32) -> bool {
         if !x.is_finite() || !y.is_finite() {
             return false;
         }
@@ -191,8 +191,7 @@ pub fn set_position_2d(&self, target: &str, x: f32, y: f32) -> bool {
                     beam_width_degrees: b.beam_width_degrees,
                     beam_strength: b.beam_strength,
                     aberration_px: b.aberration_px,
-                    
-                    
+
                     bloom: b.bloom,
                     camera_response: b.camera_response,
                     distance_m: b.distance_m,

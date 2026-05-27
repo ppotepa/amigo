@@ -6,13 +6,13 @@ use amigo_devtools::{
 use amigo_editor_api::{EditorRuntimeApplyOutcome, EditorRuntimeApplyRequest};
 use amigo_scripting_api::ScriptRuntimeService;
 
+use crate::IngameEditorRuntimeApplyProviderRegistry;
 use crate::inspect::{
     format_inspect_error, process_pending_inspect_requests, resolve_text_inspect_selector,
 };
 use crate::runtime_apply::apply_property_value;
 use crate::selection::{select_node_by_id, select_viewport_target};
 use crate::state::{EditorPropertyValue, IngameEditorState, SelectionSource};
-use crate::IngameEditorRuntimeApplyProviderRegistry;
 use amigo_editor_authoring::{
     AuthoringNode, AuthoringPropertyEditor, AuthoringPropertyValue, AuthoringRuntimeBinding,
     AuthoringSceneGraph, AuthoringSceneGraphService, build_property_panel_for_node_with_registry,
@@ -823,8 +823,9 @@ fn preview_reveal(ctx: &DevConsoleCommandContext<'_>) -> ConsoleCommandResult {
         }
     }
 
-    if let Some(count) = editor_runtime_command(ctx, "editor.preview.reveal.layered-image", Vec::new())
-        .and_then(|value| value.parse::<usize>().ok())
+    if let Some(count) =
+        editor_runtime_command(ctx, "editor.preview.reveal.layered-image", Vec::new())
+            .and_then(|value| value.parse::<usize>().ok())
     {
         changed.extend((0..count).map(|index| format!("layered value {index}")));
     }

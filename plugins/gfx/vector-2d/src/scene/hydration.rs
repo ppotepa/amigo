@@ -1,54 +1,18 @@
 use amigo_camera::camera_optical_response_from_document;
 use amigo_math::{ColorRgba, Transform2, Vec2};
 use amigo_scene::{
-    ComponentHydrationContext, ComponentHydrator, Material2dDocument,
-    Material2dLightingSceneCommand, Material2dOpticalModeDocument,
+    Material2dDocument, Material2dLightingSceneCommand, Material2dOpticalModeDocument,
     Material2dOpticalModeSceneCommand, Material2dOpticalSceneCommand, Material2dSceneCommand,
     PluginComponentHydrationContext, PluginComponentHydrator, RenderContributions2dSceneCommand,
-    SceneComponentDocument, SceneDocumentError, SceneDocumentResult, SceneTransform2Document,
-    SceneTransform3Document, SceneVectorShapeKindComponentDocument, SceneVec2Document,
-    VectorShape2dSceneCommand, VectorShapeKind2dSceneCommand, VectorStyle2dSceneCommand,
+    SceneDocumentError, SceneDocumentResult, SceneTransform2Document, SceneTransform3Document,
+    SceneVec2Document, SceneVectorShapeKindComponentDocument, VectorShape2dSceneCommand,
+    VectorShapeKind2dSceneCommand, VectorStyle2dSceneCommand,
 };
-use amigo_scene::SceneComponentDocument as ComponentDocument;
 
 use super::Vector2dDocument;
 
-pub struct VectorShape2dComponentHydrator;
+#[derive(Default)]
 pub struct Vector2dPluginComponentHydrator;
-
-impl ComponentHydrator for VectorShape2dComponentHydrator {
-    fn provider_id(&self) -> &'static str {
-        "amigo.gfx.vector-2d"
-    }
-
-    fn can_hydrate(&self, component: &SceneComponentDocument) -> bool {
-        matches!(component, ComponentDocument::VectorShape2d { .. })
-    }
-
-    fn hydrate(&self, ctx: ComponentHydrationContext<'_>) -> SceneDocumentResult<()> {
-        let document = match ctx.component {
-            ComponentDocument::VectorShape2d { .. } => {
-                let Some(document) = Vector2dDocument::from_component(ctx.component) else {
-                    return Ok(());
-                };
-                document
-            }
-            _ => return Ok(()),
-        };
-
-        push_vector_shape_command(
-            &document,
-            ctx.source_mod,
-            ctx.document,
-            ctx.entity,
-            ctx.entity_name,
-            "VectorShape2D",
-            ctx.commands,
-        )?;
-
-        Ok(())
-    }
-}
 
 impl PluginComponentHydrator for Vector2dPluginComponentHydrator {
     fn provider_id(&self) -> &'static str {
@@ -109,12 +73,24 @@ fn push_vector_shape_command(
         })
         .transpose()?;
     let kind = match &document.kind {
-        SceneVectorShapeKindComponentDocument::Polyline => VectorShapeKind2dSceneCommand::Polyline {
-            points: document.points.iter().copied().map(vec2_from_document).collect(),
-            closed: document.closed,
-        },
+        SceneVectorShapeKindComponentDocument::Polyline => {
+            VectorShapeKind2dSceneCommand::Polyline {
+                points: document
+                    .points
+                    .iter()
+                    .copied()
+                    .map(vec2_from_document)
+                    .collect(),
+                closed: document.closed,
+            }
+        }
         SceneVectorShapeKindComponentDocument::Polygon => VectorShapeKind2dSceneCommand::Polygon {
-            points: document.points.iter().copied().map(vec2_from_document).collect(),
+            points: document
+                .points
+                .iter()
+                .copied()
+                .map(vec2_from_document)
+                .collect(),
         },
         SceneVectorShapeKindComponentDocument::Circle => VectorShapeKind2dSceneCommand::Circle {
             radius: document.radius.max(0.0),
@@ -238,7 +214,9 @@ fn parse_color_rgba_hex(
     ))
 }
 
-fn material2d_scene_command(material: Option<Material2dDocument>) -> Option<Material2dSceneCommand> {
+fn material2d_scene_command(
+    material: Option<Material2dDocument>,
+) -> Option<Material2dSceneCommand> {
     material.map(|material| Material2dSceneCommand {
         optical: Material2dOpticalSceneCommand {
             mode: match material.optical.mode {
@@ -266,4 +244,160 @@ fn material2d_scene_command(material: Option<Material2dDocument>) -> Option<Mate
         },
         camera_response: camera_optical_response_from_document(material.camera_response),
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use amigo_material_api::{Material2dLightingDocument, Material2dOpticalDocument};
+    use amigo_scene::{
+        PluginComponentHydrationContext, RenderContributionsDocument, SceneCommand, SceneDocument,
+        SceneEntityDocument, SceneMetadataDocument, SceneVisual2dDocument,
+    };
+    use std::collections::BTreeMap;
+
+    #[test]
+    fn vector_hydrator_carries_shape_material_and_contribution_defaults() {
+        let hydrator = Vector2dPluginComponentHydrator;
+        let mut render_contributions = RenderContributionsDocument::default();
+        render_contributions.set("material.mask", true);
+        render_contributions.set("optics.refract", true);
+        let payload = Vector2dDocument {
+            entity_name: String::new(),
+            render_layer: "foreground.props".to_owned(),
+            kind: SceneVectorShapeKindComponentDocument::Circle,
+            points: Vec::new(),
+            closed: false,
+            radius: 48.0,
+            segments: 24,
+            stroke_color: Some("#102030FF".to_owned()),
+            stroke_width: 3.0,
+            fill_color: Some("#FFFFFFFF".to_owned()),
+            render_contributions,
+            material: Some(Material2dDocument {
+                optical: Material2dOpticalDocument {
+                    mode: Material2dOpticalModeDocument::Refractive,
+                    transmission: 0.35,
+                    refraction_px: 5.0,
+                    ..Material2dOpticalDocument::default()
+                },
+                lighting: Material2dLightingDocument {
+                    receives_light: true,
+                    response: 0.2,
+                },
+                camera_response: Default::default(),
+            }),
+            z_index: 8.0,
+        };
+        let entity = test_entity("vector-glass");
+        let document = test_document(entity.clone());
+        let mut commands = Vec::new();
+
+        hydrator
+            .hydrate_plugin_payload(PluginComponentHydrationContext {
+                source_mod: "test-mod",
+                document: &document,
+                entity: &entity,
+                entity_name: "vector-glass",
+                component_index: 0,
+                component_type: "amigo.gfx.vector-2d.VectorShape2D",
+                payload: &payload,
+                commands: &mut commands,
+            })
+            .expect("vector hydrator should accept plugin payload");
+
+        let command = plugin_payload::<VectorShape2dSceneCommand>(&commands);
+        assert_eq!(command.source_mod, "test-mod");
+        assert_eq!(command.entity_name, "vector-glass");
+        assert_eq!(command.render_layer, "foreground.props");
+        assert_eq!(
+            command.kind,
+            VectorShapeKind2dSceneCommand::Circle {
+                radius: 48.0,
+                segments: 24
+            }
+        );
+        assert_eq!(command.style.stroke_width, 3.0);
+        assert_eq!(
+            command.style.stroke_color,
+            ColorRgba::new(16.0 / 255.0, 32.0 / 255.0, 48.0 / 255.0, 1.0)
+        );
+        assert_eq!(
+            command.render_contributions.roles.get("world.color"),
+            Some(&true)
+        );
+        assert_eq!(
+            command.render_contributions.roles.get("material.mask"),
+            Some(&true)
+        );
+        assert_eq!(
+            command.render_contributions.roles.get("optics.refract"),
+            Some(&true)
+        );
+        assert_eq!(
+            command
+                .render_contributions
+                .roles
+                .get("transmission.source"),
+            Some(&false)
+        );
+        let material = command
+            .material
+            .as_ref()
+            .expect("material should be preserved");
+        assert_eq!(
+            material.optical.mode,
+            Material2dOpticalModeSceneCommand::Refractive
+        );
+        assert_eq!(material.optical.transmission, 0.35);
+        assert_eq!(material.optical.refraction_px, 5.0);
+        assert!(material.lighting.receives_light);
+    }
+
+    fn plugin_payload<T: 'static>(commands: &[SceneCommand]) -> &T {
+        assert_eq!(commands.len(), 1);
+        match &commands[0] {
+            SceneCommand::Plugin { command } => command
+                .payload_as::<T>()
+                .expect("plugin scene payload should downcast"),
+            other => panic!("expected plugin scene command, got {other:?}"),
+        }
+    }
+
+    fn test_entity(name: &str) -> SceneEntityDocument {
+        SceneEntityDocument {
+            id: name.to_owned(),
+            name: name.to_owned(),
+            tags: Vec::new(),
+            groups: Vec::new(),
+            visible: true,
+            simulation_enabled: true,
+            collision_enabled: true,
+            properties: BTreeMap::new(),
+            transform2: None,
+            transform3: None,
+            post_fx: Vec::new(),
+            prefab: None,
+            prefab_overrides: Vec::new(),
+            components: Vec::new(),
+        }
+    }
+
+    fn test_document(entity: SceneEntityDocument) -> SceneDocument {
+        SceneDocument {
+            version: 1,
+            scene: SceneMetadataDocument {
+                id: "test-scene".to_owned(),
+                label: String::new(),
+                description: None,
+            },
+            transitions: Vec::new(),
+            collision_events: Vec::new(),
+            audio_cues: Vec::new(),
+            activation_sets: Vec::new(),
+            visual2d: SceneVisual2dDocument::default(),
+            state: BTreeMap::new(),
+            entities: vec![entity],
+        }
+    }
 }

@@ -10,10 +10,10 @@ use amigo_composite_plugin::PostFx2dService;
 use amigo_core::{AmigoError, AmigoResult};
 use amigo_particles_2d_plugin::Particle2dSceneService;
 use amigo_render_api::{
-    build_frame_graph_from_plan, FrameGraphBuildInfo, LightRoute2dCommand, RenderAssetSource,
+    FrameGraphBuildInfo, LightRoute2dCommand, RenderAssetSource,
     RenderCompositionDiagnosticsService, RenderContribution2d, RenderDepthAuxMap2d,
     RenderDepthMap2d, RenderFrameStats, RenderFrameStatsService, RenderLightMap2dSource,
-    Renderable2dKind,
+    Renderable2dKind, build_frame_graph_from_plan,
 };
 use amigo_render_wgpu::{
     UiOverlayDocument, WgpuEmergencyOverlayLine, WgpuFrameRenderTarget, WgpuGameViewportPlacement,
@@ -21,9 +21,10 @@ use amigo_render_wgpu::{
 };
 use amigo_runtime::Runtime;
 use amigo_scene::SceneService;
+use amigo_scripting_api::DevConsoleState;
 use amigo_session::RuntimeSession;
 
-use crate::{update_wgpu_render_composition_diagnostics, WgpuFrameCompositionBuilder};
+use crate::{WgpuFrameCompositionBuilder, update_wgpu_render_composition_diagnostics};
 
 fn required<T>(runtime: &Runtime) -> AmigoResult<Arc<T>>
 where
@@ -74,11 +75,9 @@ pub fn extract_game_frame_packet(
 pub fn extract_live_host_overlay_packet(
     session: &RuntimeSession,
 ) -> AmigoResult<amigo_render_wgpu::WgpuRenderFramePacket> {
-    let mut render_packet =
-        crate::default_wgpu_render_extractor_registry_for_runtime(session.runtime())
-            .extract_all(session.runtime());
-    render_packet.clear_world_content();
-    render_packet.clear_game_ui_overlay();
+    let mut registry = crate::render_extractor_bridges::WgpuRenderExtractorRegistry::new();
+    crate::render_extractor_bridges::register_surface_overlay_render_extractors(&mut registry);
+    let mut render_packet = registry.extract_all(session.runtime());
     amigo_editor_ingame::append_editor_overlay(
         session.runtime(),
         &mut WgpuEditorOverlayOutput(&mut render_packet),
@@ -222,6 +221,12 @@ pub fn render_game_frame_to_cache(
     let light_routes = required::<LightRoute2dSceneService>(runtime)?;
     let particles = required::<Particle2dSceneService>(runtime)?;
     let debug_overlay_service = required::<amigo_devtools::DebugOverlayService>(runtime)?;
+    let dev_console_open = runtime
+        .resolve::<DevConsoleState>()
+        .is_some_and(|console| console.is_open());
+    let debug_overlay_enabled = debug_overlay_service.is_enabled();
+    let wants_render_diagnostics =
+        dev_console_open || debug_overlay_service.wants_render_diagnostics();
 
     let render_packet = extract_game_frame_packet(session, include_game_ui)?;
 
@@ -247,13 +252,15 @@ pub fn render_game_frame_to_cache(
         graph
     };
 
-    update_wgpu_render_composition_diagnostics(
-        runtime,
-        assets.as_ref(),
-        &render_packet,
-        &composition_plan,
-        &frame_graph,
-    );
+    if wants_render_diagnostics {
+        update_wgpu_render_composition_diagnostics(
+            runtime,
+            assets.as_ref(),
+            &render_packet,
+            &composition_plan,
+            &frame_graph,
+        );
+    }
     if let Ok(stats_service) = required::<RenderFrameStatsService>(runtime) {
         let previous = stats_service.snapshot();
         let stats = RenderFrameStats {
@@ -288,22 +295,26 @@ pub fn render_game_frame_to_cache(
                 .sum(),
         };
         stats_service.set(stats.clone());
-        debug_overlay_service.record_render_frame(stats);
+        if debug_overlay_enabled || dev_console_open {
+            debug_overlay_service.record_render_frame(stats);
+        }
     }
-    if let Ok(scheduling) = required::<amigo_session::RuntimeSchedulingService>(runtime) {
-        debug_overlay_service.record_scheduling_stats(scheduling.stats());
+    if debug_overlay_enabled || dev_console_open {
+        if let Ok(scheduling) = required::<amigo_session::RuntimeSchedulingService>(runtime) {
+            debug_overlay_service.record_scheduling_stats(scheduling.stats());
+        }
+        if let Ok(clock) = required::<amigo_session::RuntimeFrameClockService>(runtime) {
+            debug_overlay_service.record_frame_clock_snapshot(clock.snapshot());
+        }
+        debug_overlay_service.record_particle_snapshot(
+            particles.emitters().len(),
+            particles
+                .emitters()
+                .iter()
+                .filter(|emitter| particles.is_active(&emitter.entity_name))
+                .count(),
+        );
     }
-    if let Ok(clock) = required::<amigo_session::RuntimeFrameClockService>(runtime) {
-        debug_overlay_service.record_frame_clock_snapshot(clock.snapshot());
-    }
-    debug_overlay_service.record_particle_snapshot(
-        particles.emitters().len(),
-        particles
-            .emitters()
-            .iter()
-            .filter(|emitter| particles.is_active(&emitter.entity_name))
-            .count(),
-    );
 
     if let Ok(post_fx_service) = required::<PostFx2dService>(runtime) {
         let has_post_fx = !render_packet.post_fx_stacks().is_empty();
@@ -333,7 +344,8 @@ pub fn render_game_frame_to_cache(
             game_viewport: None,
         },
     )?;
-    if let Ok(render_diagnostics) = required::<RenderCompositionDiagnosticsService>(runtime) {
+    if wants_render_diagnostics {
+        let render_diagnostics = required::<RenderCompositionDiagnosticsService>(runtime)?;
         render_diagnostics
             .set_plate_relight_summary(renderer.plate_relight_last_summary().to_owned());
         render_diagnostics

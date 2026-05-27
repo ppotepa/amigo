@@ -22,9 +22,9 @@ impl Beacon2dRenderExtractor {
     ) {
         for command in ctx.beacon_scene_service.draw_commands() {
             output.push_renderable_2d(super::beacon_draw_command_to_renderable_2d(&command));
-            output.push_render_contribution_2d(
-                super::beacon_draw_command_to_light_contribution(&command),
-            );
+            output.push_render_contribution_2d(super::beacon_draw_command_to_light_contribution(
+                &command,
+            ));
         }
     }
 }

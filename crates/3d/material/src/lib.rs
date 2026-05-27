@@ -3,7 +3,7 @@
 
 use std::sync::Mutex;
 
-use amigo_capabilities::{register_domain_plugin, DEFAULT_CAPABILITY_VERSION};
+use amigo_capabilities::{DEFAULT_CAPABILITY_VERSION, register_domain_plugin};
 pub use amigo_render_api::{Material3d, MaterialDrawCommand};
 use amigo_runtime::{RuntimePlugin, ServiceRegistry};
 use amigo_scene::{Material3dSceneCommand, SceneEntityId, SceneService};
@@ -114,6 +114,7 @@ pub fn queue_material_scene_command(
             label: command.label.clone(),
             albedo: command.albedo,
             source: command.source.clone(),
+            render_order: command.render_order,
         },
     });
     entity
@@ -122,8 +123,8 @@ pub fn queue_material_scene_command(
 #[cfg(test)]
 mod tests {
     use super::{
-        queue_material_scene_command, Material3d, Material3dEditorCapability, MaterialDrawCommand,
-        MaterialSceneService,
+        Material3d, Material3dEditorCapability, MaterialDrawCommand, MaterialSceneService,
+        queue_material_scene_command,
     };
     use amigo_assets::AssetKey;
     use amigo_editor_api::EditorCapability;
@@ -141,6 +142,7 @@ mod tests {
                 label: "debug-surface".to_owned(),
                 albedo: ColorRgba::WHITE,
                 source: Some(AssetKey::new("playground-3d/materials/debug-surface")),
+                render_order: 0,
             },
         });
 

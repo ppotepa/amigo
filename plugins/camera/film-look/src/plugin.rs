@@ -1,6 +1,5 @@
 use amigo_plugin_api::{
-    capabilities, slots, CapabilityRef, PluginKind, PluginManifest,
-    RenderParticipation,
+    capabilities, slots, CapabilityRef, PluginKind, PluginManifest, RenderParticipation,
 };
 
 pub fn plugin_manifest() -> PluginManifest {
@@ -12,10 +11,10 @@ pub fn plugin_manifest() -> PluginManifest {
         RenderParticipation::TargetConsumer,
     );
 
-    manifest.capabilities.provides.push(CapabilityRef::new(
-        capabilities::camera_film_look_2d().0,
-        1,
-    ));
+    manifest
+        .capabilities
+        .provides
+        .push(CapabilityRef::new(capabilities::camera_film_look_2d().0, 1));
     manifest.capabilities.requires.push(CapabilityRef::new(
         capabilities::camera_frame_context_2d().0,
         1,

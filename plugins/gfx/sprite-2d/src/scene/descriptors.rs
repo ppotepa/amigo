@@ -2,13 +2,10 @@ use amigo_plugin_api::PluginSceneComponentDescriptor;
 use amigo_scene::{ScenePluginDescriptorProvider, ScenePluginDescriptorRegistry};
 
 pub fn sprite_2d_scene_descriptor() -> PluginSceneComponentDescriptor {
-    PluginSceneComponentDescriptor::new(
-        "amigo.gfx.sprite-2d.Sprite2D",
-        "gfx",
-        "Sprite2D",
-    )
+    PluginSceneComponentDescriptor::new("amigo.gfx.sprite-2d.Sprite2D", "gfx", "Sprite2D")
 }
 
+#[derive(Default)]
 pub struct Sprite2dSceneDescriptorProvider;
 
 impl ScenePluginDescriptorProvider for Sprite2dSceneDescriptorProvider {
@@ -16,4 +13,3 @@ impl ScenePluginDescriptorProvider for Sprite2dSceneDescriptorProvider {
         registry.insert(sprite_2d_scene_descriptor());
     }
 }
-

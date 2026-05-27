@@ -17,6 +17,7 @@ mod render_session;
 mod runtime_summary;
 mod scripting;
 mod three_d;
+mod timeline_2d;
 mod two_d;
 
 pub use asset_domain_preparers::*;
@@ -41,6 +42,7 @@ pub use render_session::*;
 pub use runtime_summary::*;
 pub use scripting::*;
 pub use three_d::*;
+pub use timeline_2d::*;
 pub use two_d::*;
 
 use amigo_session::{

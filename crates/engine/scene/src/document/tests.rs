@@ -5,7 +5,6 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use serde_yaml::{Mapping, Value};
 
 use super::{
-    Camera2dModeDocument, CameraFocus2dDocument, Material2dOpticalModeDocument,
     RenderDepthMode2dDocument, SceneComponentDocument, SceneEntitySelectorDocument,
     SceneEntitySelectorKindDocument, compile_scene_document_from_path,
     load_scene_document_from_path, load_scene_document_from_str,
@@ -19,6 +18,72 @@ use crate::{
 type ComponentDocument = SceneComponentDocument;
 
 static TEST_DIR_COUNTER: AtomicUsize = AtomicUsize::new(0);
+
+fn plugin_payload<'a>(
+    component: &'a ComponentDocument,
+    expected_type: &str,
+) -> &'a serde_yaml::Mapping {
+    let ComponentDocument::Plugin {
+        component_type,
+        payload,
+    } = component
+    else {
+        panic!("expected plugin component `{expected_type}`, got {component:?}");
+    };
+    assert_eq!(component_type, expected_type);
+    payload
+        .as_mapping()
+        .expect("plugin component payload should be a mapping")
+}
+
+fn payload_bool(payload: &serde_yaml::Mapping, key: &str) -> Option<bool> {
+    payload
+        .get(Value::String(key.to_owned()))
+        .and_then(Value::as_bool)
+}
+
+fn nested_payload<'a>(payload: &'a serde_yaml::Mapping, key: &str) -> &'a serde_yaml::Mapping {
+    payload
+        .get(Value::String(key.to_owned()))
+        .and_then(Value::as_mapping)
+        .unwrap_or_else(|| panic!("missing `{key}` mapping"))
+}
+
+fn nested_f64(payload: &serde_yaml::Mapping, key: &str) -> f64 {
+    payload
+        .get(Value::String(key.to_owned()))
+        .and_then(Value::as_f64)
+        .unwrap_or_else(|| panic!("missing `{key}` number"))
+}
+
+fn nested_str<'a>(payload: &'a serde_yaml::Mapping, key: &str) -> &'a str {
+    payload
+        .get(Value::String(key.to_owned()))
+        .and_then(Value::as_str)
+        .unwrap_or_else(|| panic!("missing `{key}` string"))
+}
+
+#[test]
+fn plugin_owned_components_are_not_builtin_document_types() {
+    for component_type in [
+        "Camera2D",
+        "amigo.gfx.sprite-2d.Sprite2D",
+        "LayeredImage2D",
+        "DepthMap2D",
+        "DepthAuxMap2D",
+        "GlobalLight2D",
+        "amigo.gfx.tilemap-2d.TileMap2D",
+        "amigo.gfx.text-2d.Text2D",
+        "amigo.gfx.vector-2d.VectorShape2D",
+        "BeaconLight2D",
+        "amigo.vfx.particles-2d.ParticleEmitter2D",
+    ] {
+        assert!(
+            !super::is_builtin_component_type(component_type),
+            "{component_type} must parse through plugin schemas"
+        );
+    }
+}
 
 #[test]
 fn scene_document_parses_text2d_material() {
@@ -44,22 +109,21 @@ entities:
     )
     .expect("scene document should parse");
 
-    let material = document
+    let payload = document
         .entities
         .iter()
         .flat_map(|entity| &entity.components)
-        .find_map(|component| match component {
-            ComponentDocument::Text2d { material, .. } => *material,
-            _ => None,
+        .find_map(|component| {
+            matches!(component.kind(), "amigo.gfx.text-2d.Text2D")
+                .then(|| plugin_payload(component, "amigo.gfx.text-2d.Text2D"))
         })
-        .expect("text material should parse");
+        .expect("text component should exist");
+    let material = nested_payload(payload, "material");
+    let optical = nested_payload(material, "optical");
 
-    assert_eq!(
-        material.optical.mode,
-        Material2dOpticalModeDocument::Refractive
-    );
-    assert_eq!(material.optical.transmission, 0.58);
-    assert_eq!(material.optical.refraction_px, 4.5);
+    assert_eq!(nested_str(optical, "mode"), "refractive");
+    assert_eq!(nested_f64(optical, "transmission"), 0.58);
+    assert_eq!(nested_f64(optical, "refraction_px"), 4.5);
 }
 
 #[test]
@@ -92,33 +156,29 @@ entities:
     )
     .expect("sprite material scene should parse");
 
-    let (material, contributions) = document
+    let payload = document
         .entities
         .iter()
         .flat_map(|entity| &entity.components)
-        .find_map(|component| match component {
-            ComponentDocument::Sprite2d {
-                material,
-                render_contributions,
-                ..
-            } => Some((
-                material.expect("sprite material should parse"),
-                render_contributions,
-            )),
-            _ => None,
+        .find_map(|component| {
+            matches!(component.kind(), "amigo.gfx.sprite-2d.Sprite2D")
+                .then(|| plugin_payload(component, "amigo.gfx.sprite-2d.Sprite2D"))
         })
         .expect("sprite component should exist");
+    let material = nested_payload(payload, "material");
+    let optical = nested_payload(material, "optical");
+    let contributions = nested_payload(payload, "render_contributions");
 
+    assert_eq!(nested_str(optical, "mode"), "refractive");
+    assert_eq!(nested_f64(optical, "transmission"), 0.45);
+    assert_eq!(nested_f64(optical, "refraction_px"), 7.0);
+    assert_eq!(payload_bool(contributions, "world.color"), Some(true));
+    assert_eq!(payload_bool(contributions, "material.mask"), Some(true));
+    assert_eq!(payload_bool(contributions, "optics.refract"), Some(true));
     assert_eq!(
-        material.optical.mode,
-        Material2dOpticalModeDocument::Refractive
+        payload_bool(contributions, "transmission.source"),
+        Some(true)
     );
-    assert_eq!(material.optical.transmission, 0.45);
-    assert_eq!(material.optical.refraction_px, 7.0);
-    assert_eq!(contributions.get("world.color"), Some(true));
-    assert_eq!(contributions.get("material.mask"), Some(true));
-    assert_eq!(contributions.get("optics.refract"), Some(true));
-    assert_eq!(contributions.get("transmission.source"), Some(true));
 }
 
 #[test]
@@ -153,33 +213,29 @@ entities:
     )
     .expect("vector material scene should parse");
 
-    let (material, contributions) = document
+    let payload = document
         .entities
         .iter()
         .flat_map(|entity| &entity.components)
-        .find_map(|component| match component {
-            ComponentDocument::VectorShape2d {
-                material,
-                render_contributions,
-                ..
-            } => Some((
-                material.expect("vector material should parse"),
-                render_contributions,
-            )),
-            _ => None,
+        .find_map(|component| {
+            matches!(component.kind(), "amigo.gfx.vector-2d.VectorShape2D")
+                .then(|| plugin_payload(component, "amigo.gfx.vector-2d.VectorShape2D"))
         })
         .expect("vector component should exist");
+    let material = nested_payload(payload, "material");
+    let optical = nested_payload(material, "optical");
+    let contributions = nested_payload(payload, "render_contributions");
 
+    assert_eq!(nested_str(optical, "mode"), "refractive");
+    assert_eq!(nested_f64(optical, "transmission"), 0.35);
+    assert_eq!(nested_f64(optical, "refraction_px"), 5.0);
+    assert_eq!(payload_bool(contributions, "world.color"), Some(true));
+    assert_eq!(payload_bool(contributions, "material.mask"), Some(true));
+    assert_eq!(payload_bool(contributions, "optics.refract"), Some(true));
     assert_eq!(
-        material.optical.mode,
-        Material2dOpticalModeDocument::Refractive
+        payload_bool(contributions, "transmission.source"),
+        Some(true)
     );
-    assert_eq!(material.optical.transmission, 0.35);
-    assert_eq!(material.optical.refraction_px, 5.0);
-    assert_eq!(contributions.get("world.color"), Some(true));
-    assert_eq!(contributions.get("material.mask"), Some(true));
-    assert_eq!(contributions.get("optics.refract"), Some(true));
-    assert_eq!(contributions.get("transmission.source"), Some(true));
 }
 
 #[test]
@@ -221,10 +277,10 @@ entities:
             .get("amigo.gfx.sprite-2d.Sprite2D"),
         Some(&1usize)
     );
-    assert!(matches!(
-        document.entities[1].components[0],
-        ComponentDocument::Sprite2d { .. }
-    ));
+    plugin_payload(
+        &document.entities[1].components[0],
+        "amigo.gfx.sprite-2d.Sprite2D",
+    );
 }
 
 #[test]
@@ -434,20 +490,12 @@ entities:
     )
     .expect("camera scene should parse");
 
-    let contributions = document
-        .entities
-        .iter()
-        .flat_map(|entity| &entity.components)
-        .find_map(|component| match component {
-            ComponentDocument::Camera2d {
-                render_contributions,
-                ..
-            } => Some(render_contributions),
-            _ => None,
-        })
-        .expect("camera component should exist");
+    let payload = plugin_payload(&document.entities[0].components[0], "Camera2D");
 
-    assert!(contributions.is_empty());
+    assert!(
+        !payload.contains_key(Value::String("render_contributions".to_owned())),
+        "Camera2D defaults are owned by the camera plugin hydrator"
+    );
 }
 
 #[test]
@@ -471,22 +519,15 @@ entities:
     )
     .expect("camera scene should parse");
 
-    let contributions = document
-        .entities
-        .iter()
-        .flat_map(|entity| &entity.components)
-        .find_map(|component| match component {
-            ComponentDocument::Camera2d {
-                render_contributions,
-                ..
-            } => Some(render_contributions),
-            _ => None,
-        })
-        .expect("camera component should exist");
+    let payload = plugin_payload(&document.entities[0].components[0], "Camera2D");
+    let contributions = nested_payload(payload, "render_contributions");
 
-    assert_eq!(contributions.get("camera.exposure"), Some(true));
-    assert_eq!(contributions.get("camera.film"), Some(true));
-    assert_eq!(contributions.get("camera.scan_output"), Some(false));
+    assert_eq!(payload_bool(contributions, "camera.exposure"), Some(true));
+    assert_eq!(payload_bool(contributions, "camera.film"), Some(true));
+    assert_eq!(
+        payload_bool(contributions, "camera.scan_output"),
+        Some(false)
+    );
 }
 
 #[test]
@@ -511,22 +552,12 @@ entities:
     )
     .expect("beacon scene should parse");
 
-    let contributions = document
-        .entities
-        .iter()
-        .flat_map(|entity| &entity.components)
-        .find_map(|component| match component {
-            ComponentDocument::BeaconLight2d {
-                render_contributions,
-                ..
-            } => Some(render_contributions),
-            _ => None,
-        })
-        .expect("beacon component should exist");
+    let payload = plugin_payload(&document.entities[0].components[0], "BeaconLight2D");
+    let contributions = nested_payload(payload, "render_contributions");
 
-    assert_eq!(contributions.get("overlay.visible"), Some(false));
-    assert_eq!(contributions.get("relight.plate"), Some(true));
-    assert_eq!(contributions.get("bloom.source"), Some(false));
+    assert_eq!(payload_bool(contributions, "overlay.visible"), Some(false));
+    assert_eq!(payload_bool(contributions, "relight.plate"), Some(true));
+    assert_eq!(payload_bool(contributions, "bloom.source"), Some(false));
 }
 
 #[test]
@@ -847,7 +878,7 @@ entities:
             .component_kind_counts()
             .contains_key("amigo.gfx.tilemap-2d.TileMap2D")
     );
-    let tilemap_component = document
+    let tilemap_payload = document
         .entities
         .iter()
         .find(|entity| entity.name == "playground-sidescroller-tilemap")
@@ -855,18 +886,14 @@ entities:
             entity
                 .components
                 .iter()
-                .find(|component| matches!(component, ComponentDocument::TileMap2d { .. }))
+                .find(|component| component.kind() == "amigo.gfx.tilemap-2d.TileMap2D")
         })
+        .map(|component| plugin_payload(component, "amigo.gfx.tilemap-2d.TileMap2D"))
         .expect("tilemap component should exist");
-    match tilemap_component {
-        ComponentDocument::TileMap2d { ruleset, .. } => {
-            assert_eq!(
-                ruleset.as_deref(),
-                Some("playground-sidescroller/spritesheets/platformer/rulesets/platform/rules")
-            );
-        }
-        _ => unreachable!("expected tilemap component"),
-    }
+    assert_eq!(
+        nested_str(tilemap_payload, "ruleset"),
+        "playground-sidescroller/spritesheets/platformer/rulesets/platform/rules"
+    );
     assert!(
         document
             .component_kind_counts()
@@ -1114,31 +1141,26 @@ entities:
 
     let document = load_scene_document_from_str(yaml).unwrap();
 
-    let component = &document.entities[0].components[0];
-    match component {
-        ComponentDocument::Camera2d {
-            id,
-            mode,
-            exposure,
-            shutter,
-            lens,
-            film,
-            look,
-            aperture,
-            ..
-        } => {
-            assert_eq!(id, "main");
-            assert_eq!(mode, &Camera2dModeDocument::Manual);
-            assert_eq!(exposure.iso, 800.0);
-            assert_eq!(shutter.fps, 12.0);
-            assert_eq!(lens.profile, "vintage_soviet_35mm_dirty");
-            assert_eq!(film.profile, "polish_1994_push_800");
-            assert_eq!(look.profile, "rotten-club/camera/look/rotten-noir-print");
-            assert_eq!(look.intensity, 0.7);
-            assert!(!aperture.enabled);
-        }
-        other => panic!("expected Camera2D component, got {other:?}"),
-    }
+    let payload = plugin_payload(&document.entities[0].components[0], "Camera2D");
+    let exposure = nested_payload(payload, "exposure");
+    let shutter = nested_payload(payload, "shutter");
+    let lens = nested_payload(payload, "lens");
+    let film = nested_payload(payload, "film");
+    let look = nested_payload(payload, "look");
+    let aperture = nested_payload(payload, "aperture");
+
+    assert_eq!(nested_str(payload, "id"), "main");
+    assert_eq!(nested_str(payload, "mode"), "manual");
+    assert_eq!(nested_f64(exposure, "iso"), 800.0);
+    assert_eq!(nested_f64(shutter, "fps"), 12.0);
+    assert_eq!(nested_str(lens, "profile"), "vintage_soviet_35mm_dirty");
+    assert_eq!(nested_str(film, "profile"), "polish_1994_push_800");
+    assert_eq!(
+        nested_str(look, "profile"),
+        "rotten-club/camera/look/rotten-noir-print"
+    );
+    assert_eq!(nested_f64(look, "intensity"), 0.7);
+    assert_eq!(payload_bool(aperture, "enabled"), Some(false));
 }
 
 #[test]
@@ -1160,13 +1182,11 @@ entities:
 "#;
 
     let document = load_scene_document_from_str(distance_yaml).unwrap();
-    let ComponentDocument::Camera2d { aperture, .. } = &document.entities[0].components[0] else {
-        panic!("expected Camera2D component");
-    };
-    assert!(matches!(
-        aperture.focus,
-        CameraFocus2dDocument::Distance { distance_m } if (distance_m - 6.0).abs() < f32::EPSILON
-    ));
+    let payload = plugin_payload(&document.entities[0].components[0], "Camera2D");
+    let aperture = nested_payload(payload, "aperture");
+    let focus = nested_payload(aperture, "focus");
+    assert_eq!(nested_str(focus, "kind"), "distance");
+    assert_eq!(nested_f64(focus, "distance_m"), 6.0);
 
     let depth_yaml = r#"
 version: 1
@@ -1185,13 +1205,11 @@ entities:
 "#;
 
     let document = load_scene_document_from_str(depth_yaml).unwrap();
-    let ComponentDocument::Camera2d { aperture, .. } = &document.entities[0].components[0] else {
-        panic!("expected Camera2D component");
-    };
-    assert!(matches!(
-        aperture.focus,
-        CameraFocus2dDocument::Depth { value } if (value - 0.52).abs() < f32::EPSILON
-    ));
+    let payload = plugin_payload(&document.entities[0].components[0], "Camera2D");
+    let aperture = nested_payload(payload, "aperture");
+    let focus = nested_payload(aperture, "focus");
+    assert_eq!(nested_str(focus, "kind"), "depth");
+    assert_eq!(nested_f64(focus, "value"), 0.52);
 }
 
 #[test]

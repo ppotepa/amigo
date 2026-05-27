@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use amigo_2d_physics::{
-    Physics2dSceneService, move_and_collide, overlaps_trigger_with_translation,
+    move_and_collide, overlaps_trigger_with_translation, Physics2dSceneService,
 };
 use amigo_core::{AmigoError, AmigoResult};
 use amigo_math::Vec2;
@@ -10,9 +10,9 @@ use amigo_scene::SceneService;
 use amigo_scripting_api::{ScriptEvent, ScriptEventQueue};
 
 use super::{
-    BoundsOutcome2d, Facing2d, Motion2dSceneService, MotionAnimationState, MotionState2d,
     apply_bounds_2d, drive_motion_2d, motion_animation_state_for, step_freeflight_motion_2d,
-    step_velocity_2d,
+    step_velocity_2d, BoundsOutcome2d, Facing2d, Motion2dSceneService, MotionAnimationState,
+    MotionState2d,
 };
 
 fn required<T: Send + Sync + 'static>(runtime: &Runtime) -> AmigoResult<Arc<T>> {

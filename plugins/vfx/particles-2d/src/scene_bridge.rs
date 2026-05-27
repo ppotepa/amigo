@@ -337,7 +337,9 @@ fn blend_mode_name(blend_mode: ParticleBlendMode2d) -> &'static str {
     }
 }
 
-fn material_lighting_mode_name(mode: amigo_light_2d_plugin::Material2dLightingMode) -> &'static str {
+fn material_lighting_mode_name(
+    mode: amigo_light_2d_plugin::Material2dLightingMode,
+) -> &'static str {
     match mode {
         amigo_light_2d_plugin::Material2dLightingMode::Unlit => "unlit",
         amigo_light_2d_plugin::Material2dLightingMode::DynamicLights => "dynamic_lights",

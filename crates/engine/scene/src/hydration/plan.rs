@@ -1,9 +1,9 @@
-use super::style::{parse_color_rgba_hex, parse_optional_color_rgba_hex, ui_theme_from_component};
+use super::style::{parse_color_rgba_hex, ui_theme_from_component};
 use super::*;
 use amigo_assets::AssetKey;
 use amigo_camera::camera_optical_response_from_document;
-use amigo_math::{ColorRgba, Curve1d};
 use amigo_render_api::PostFxScope2d;
+use std::collections::BTreeMap;
 
 use super::post_fx::{
     build_scoped_post_fx_stack, component_post_fx_host_id, draw_layer_post_fx_host_id,
@@ -12,69 +12,45 @@ use super::post_fx::{
 
 use crate::{
     AabbCollider2dSceneCommand, ActivationEntrySceneCommand, ActivationSetSceneCommand,
-    AudioCueSceneCommand, BeaconLight2dSceneCommand, BehaviorConditionSceneCommand,
-    BehaviorSceneCommand, Bounds2dSceneCommand, Camera2dModeDocument, Camera2dSceneCommand,
-    CameraAperture2dSceneCommand, CameraAutoExposure2dSceneCommand,
-    CameraDepthOfField2dSceneCommand, CameraExposure2dSceneCommand,
-    CameraExposureMode2dSceneCommand, CameraFilm2dSceneCommand, CameraFocus2dDocument,
-    CameraFocus2dSceneCommand, CameraFollow2dSceneCommand, CameraLens2dSceneCommand,
-    CameraLensSurface2dSceneCommand, CameraLook2dSceneCommand, CameraShutter2dSceneCommand,
-    CircleCollider2dSceneCommand, CollisionEventRule2dSceneCommand, DepthAuxMap2dChannelsDocument,
-    DepthAuxMap2dChannelsSceneCommand, DepthAuxMap2dSceneCommand, DepthCurve2dSceneCommand,
-    DepthMap2dSceneCommand, DepthMapViewportFit2dSceneCommand, DepthSpace2dSceneCommand,
-    EntityPoolSceneCommand, EventPipelineSceneCommand, FreeflightMotion2dSceneCommand,
-    GlobalLight2dSceneCommand, InputActionMapSceneCommand, KinematicBody2dSceneCommand,
-    LayeredImage2dSceneCommand, LayeredImageBlendMode2dDocument,
-    LayeredImageBlendMode2dSceneCommand, LayeredImageLayerOverrideSceneCommand,
-    LayeredImageViewportFit2dDocument, LayeredImageViewportFit2dSceneCommand, LifetimeSceneCommand,
-    LightGroup2dSceneCommand, LightGroup2dSourceDocument, LightGroup2dSourceKindSceneCommand,
-    LightGroup2dSourceSceneCommand, LightMap2dChannelDocument, LightMap2dChannelSceneCommand,
-    LightMap2dSourceKindSceneCommand, LightMap2dSourceRefDocument, LightMap2dSourceRefSceneCommand,
-    LightMap2dSourceSceneCommand, LightReceiver2dBindingSceneCommand,
-    LightReceiver2dBindingSceneDocument, LightReceiverDarkPolicy2dSceneCommand,
-    LightReceiverDarkPolicy2dSceneDocument, LightReceiverGlobalLight2dSceneCommand,
-    LightReceiverGlobalLight2dSceneDocument, LightRoute2dSceneCommand,
-    LightSampleStrategy2dSceneCommand, LightSampleStrategy2dSceneDocument, Material2dDocument,
-    Material2dLightingModeSceneCommand, Material2dLightingModeSceneDocument,
-    Material2dLightingSceneCommand, Material2dOpticalModeDocument,
-    Material2dOpticalModeSceneCommand, Material2dOpticalSceneCommand, Material2dSceneCommand,
+    AudioCueSceneCommand, BehaviorConditionSceneCommand, BehaviorSceneCommand,
+    Bounds2dSceneCommand, BoxCollider3dSceneCommand, CameraFollow2dSceneCommand,
+    CircleCollider2dSceneCommand, CollisionEventRule2dSceneCommand, DepthCurve2dSceneCommand,
+    DepthSpace2dSceneCommand, EntityPoolSceneCommand, EventPipelineSceneCommand,
+    FreeflightMotion2dSceneCommand, InputActionMapSceneCommand, KinematicBody2dSceneCommand,
+    LifetimeSceneCommand, LightGroup2dSceneCommand, LightGroup2dSourceDocument,
+    LightGroup2dSourceKindSceneCommand, LightGroup2dSourceSceneCommand, LightMap2dChannelDocument,
+    LightMap2dChannelSceneCommand, LightMap2dSourceKindSceneCommand, LightMap2dSourceRefDocument,
+    LightMap2dSourceRefSceneCommand, LightMap2dSourceSceneCommand, LightRoute2dSceneCommand,
     Material3dSceneCommand, Mesh3dSceneCommand, MotionController2dSceneCommand,
     OpticalLayerRole2dDocument, OpticalLayerRole2dSceneCommand, Parallax2dSceneCommand,
-    ParticleEmitter2dSceneCommand, ParticleMotionStretch2dSceneCommand,
-    ParticleShapeChoice2dSceneCommand, ParticleShapeKeyframe2dSceneCommand, PostFx2dDocument,
+    PhysicsSpawner3dSceneCommand, PhysicsWorld3dSceneCommand, PostFx2dDocument,
     ProjectileEmitter2dSceneCommand, RenderContributions2dSceneCommand,
     RenderContributionsDocument, RenderDepth2dDocument, RenderDepth2dSceneCommand,
     RenderDepthMode2dDocument, RenderDepthMode2dSceneCommand, RenderLayer2dSceneCommand,
-    SceneCommand, SceneComponentDocument, SceneDocument, SceneDocumentResult,
-    SceneEntityLifecycleOverride, SceneVectorShapeKindComponentDocument,
-    ScriptComponentSceneCommand, Sprite2dSceneCommand, StaticCollider2dSceneCommand,
-    Text2dAlignDocument, Text2dAlignSceneCommand, Text2dBlendModeDocument,
-    Text2dBlendModeSceneCommand, Text2dGlowSceneCommand, Text2dOutlineSceneCommand,
-    Text2dSceneCommand, Text2dShadowSceneCommand, Text2dStyleDocument, Text2dStyleSceneCommand,
-    Text3dSceneCommand, TileMap2dSceneCommand, TileMapMarker2dSceneCommand, Trigger2dSceneCommand,
-    UiModelBindingsSceneCommand, UiSceneCommand, UiThemeSetSceneCommand, VectorShape2dSceneCommand,
-    VectorShapeKind2dSceneCommand, VectorStyle2dSceneCommand, Velocity2dSceneCommand,
-    VisualMaps2dDocument, VisualMaps2dSceneCommand, aabb_collider_2d_plugin_scene_command,
-    audio_cue_plugin_scene_command, beacon_light_2d_plugin_scene_command,
-    behavior_plugin_scene_command, bounds_2d_plugin_scene_command, camera_2d_plugin_scene_command,
-    camera_follow_2d_plugin_scene_command, circle_collider_2d_plugin_scene_command,
-    collision_event_rule_2d_plugin_scene_command, depth_aux_map_2d_plugin_scene_command,
-    depth_map_2d_plugin_scene_command, entity_pool_plugin_scene_command,
-    event_pipeline_plugin_scene_command, freeflight_motion_2d_plugin_scene_command,
-    global_light_2d_plugin_scene_command, input_action_map_plugin_scene_command,
-    kinematic_body_2d_plugin_scene_command, layered_image_2d_plugin_scene_command,
-    lifetime_plugin_scene_command, light_group_2d_plugin_scene_command,
-    light_route_2d_plugin_scene_command, lightmap_2d_source_plugin_scene_command,
-    material_3d_plugin_scene_command, mesh_3d_plugin_scene_command,
-    motion_controller_2d_plugin_scene_command, parallax_2d_plugin_scene_command,
-    particle_emitter_2d_plugin_scene_command, projectile_emitter_2d_plugin_scene_command,
-    render_layer_2d_plugin_scene_command, script_component_plugin_scene_command,
-    sprite_2d_plugin_scene_command, static_collider_2d_plugin_scene_command,
-    text_2d_plugin_scene_command, text_3d_plugin_scene_command, tilemap_2d_plugin_scene_command,
+    RigidBody3dSceneCommand, SceneCommand, SceneComponentDocument, SceneDocument,
+    SceneDocumentResult, SceneEntityLifecycleOverride, ScenePropertyValue,
+    ScriptComponentSceneCommand, StaticBoxCollider3dSceneCommand, StaticCollider2dSceneCommand,
+    Text3dSceneCommand, TileMapMarker2dSceneCommand, Trigger2dSceneCommand,
+    UiModelBindingsSceneCommand, UiSceneCommand, UiThemeSetSceneCommand, Velocity2dSceneCommand,
+    aabb_collider_2d_plugin_scene_command, audio_cue_plugin_scene_command,
+    behavior_plugin_scene_command, bounds_2d_plugin_scene_command,
+    box_collider_3d_plugin_scene_command, camera_follow_2d_plugin_scene_command,
+    circle_collider_2d_plugin_scene_command, collision_event_rule_2d_plugin_scene_command,
+    entity_pool_plugin_scene_command, event_pipeline_plugin_scene_command,
+    freeflight_motion_2d_plugin_scene_command, input_action_map_plugin_scene_command,
+    kinematic_body_2d_plugin_scene_command, lifetime_plugin_scene_command,
+    light_group_2d_plugin_scene_command, light_route_2d_plugin_scene_command,
+    lightmap_2d_source_plugin_scene_command, material_3d_plugin_scene_command,
+    mesh_3d_plugin_scene_command, motion_controller_2d_plugin_scene_command,
+    parallax_2d_plugin_scene_command, physics_spawner_3d_plugin_scene_command,
+    physics_world_3d_plugin_scene_command, projectile_emitter_2d_plugin_scene_command,
+    render_layer_2d_plugin_scene_command, rigid_body_3d_plugin_scene_command,
+    script_component_plugin_scene_command, static_box_collider_3d_plugin_scene_command,
+    static_collider_2d_plugin_scene_command, text_3d_plugin_scene_command,
     tilemap_marker_2d_plugin_scene_command, trigger_2d_plugin_scene_command,
     ui_document_plugin_scene_command, ui_model_bindings_plugin_scene_command,
-    ui_theme_set_plugin_scene_command, vector_shape_2d_plugin_scene_command,
-    velocity_2d_plugin_scene_command, visual2d_spatial_plugin_scene_command,
+    ui_theme_set_plugin_scene_command, velocity_2d_plugin_scene_command,
+    visual2d_spatial_plugin_scene_command,
 };
 
 #[derive(Debug, Clone, PartialEq)]
@@ -131,11 +107,7 @@ pub fn build_scene_hydration_plan_with_component_hydrators(
             lifecycle: lifecycle_for_entity(entity),
             tags: entity.tags.clone(),
             groups: entity.groups.clone(),
-            properties: entity
-                .properties
-                .iter()
-                .map(|(key, value)| (key.clone(), property_value_from_document(value)))
-                .collect(),
+            properties: runtime_properties_for_entity(entity),
         });
 
         for (component_index, component) in entity.components.iter().enumerate() {
@@ -513,6 +485,76 @@ fn render_depth_from_document(
 
 fn component_post_fx_documents(component: &SceneComponentDocument) -> Option<&[PostFx2dDocument]> {
     component.post_fx_documents()
+}
+
+fn runtime_properties_for_entity(
+    entity: &crate::SceneEntityDocument,
+) -> BTreeMap<String, ScenePropertyValue> {
+    let mut properties: BTreeMap<String, ScenePropertyValue> = entity
+        .properties
+        .iter()
+        .map(|(key, value)| (key.clone(), property_value_from_document(value)))
+        .collect();
+
+    for component in &entity.components {
+        match component {
+            SceneComponentDocument::Camera3d {
+                fov_y_degrees,
+                near_clip,
+                far_clip,
+            } => {
+                properties.insert(
+                    "camera3d.fov_y_degrees".to_owned(),
+                    ScenePropertyValue::Float(f64::from(*fov_y_degrees)),
+                );
+                properties.insert(
+                    "camera3d.near_clip".to_owned(),
+                    ScenePropertyValue::Float(f64::from(*near_clip)),
+                );
+                properties.insert(
+                    "camera3d.far_clip".to_owned(),
+                    ScenePropertyValue::Float(f64::from(*far_clip)),
+                );
+            }
+            SceneComponentDocument::Light3d {
+                direction,
+                color,
+                intensity,
+                ambient,
+                ..
+            } => {
+                properties.insert(
+                    "light3d.direction.x".to_owned(),
+                    ScenePropertyValue::Float(f64::from(direction.x)),
+                );
+                properties.insert(
+                    "light3d.direction.y".to_owned(),
+                    ScenePropertyValue::Float(f64::from(direction.y)),
+                );
+                properties.insert(
+                    "light3d.direction.z".to_owned(),
+                    ScenePropertyValue::Float(f64::from(direction.z)),
+                );
+                properties.insert(
+                    "light3d.intensity".to_owned(),
+                    ScenePropertyValue::Float(f64::from(*intensity)),
+                );
+                properties.insert(
+                    "light3d.ambient".to_owned(),
+                    ScenePropertyValue::Float(f64::from(*ambient)),
+                );
+                if let Some(color) = color {
+                    properties.insert(
+                        "light3d.color".to_owned(),
+                        ScenePropertyValue::String(color.clone()),
+                    );
+                }
+            }
+            _ => {}
+        }
+    }
+
+    properties
 }
 
 fn layered_image_part_post_fx_documents(

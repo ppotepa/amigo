@@ -1,10 +1,12 @@
-use amigo_capabilities::{register_domain_plugin, DEFAULT_CAPABILITY_VERSION};
+use amigo_capabilities::{DEFAULT_CAPABILITY_VERSION, register_domain_plugin};
 use amigo_core::AmigoResult;
 use amigo_runtime::{RuntimePlugin, ServiceRegistry};
+use amigo_runtime_control::RuntimeControlService;
+use std::sync::Arc;
 
 use crate::{
-    LightRoute2dSceneService, RenderLayer2dSceneService, COMPOSITION_2D_CAPABILITY,
-    COMPOSITION_2D_PLUGIN_LABEL,
+    COMPOSITION_2D_CAPABILITY, COMPOSITION_2D_PLUGIN_LABEL, LightRoute2dSceneService,
+    RenderLayer2dSceneService,
 };
 
 pub struct Composition2dPlugin;
@@ -17,6 +19,14 @@ impl RuntimePlugin for Composition2dPlugin {
     fn register(&self, registry: &mut ServiceRegistry) -> AmigoResult<()> {
         registry.register(RenderLayer2dSceneService::default())?;
         registry.register(LightRoute2dSceneService::default())?;
+        if let (Some(control), Some(render_layers)) = (
+            registry.resolve::<RuntimeControlService>(),
+            registry.resolve::<RenderLayer2dSceneService>(),
+        ) {
+            control.register_provider(Arc::new(crate::RenderLayer2dControlProvider::new(
+                render_layers,
+            )));
+        }
         amigo_scene::register_scene_reset_handler(registry, crate::Composition2dSceneResetHandler)?;
         if let Some(render_extractors) =
             registry.resolve::<amigo_render_api::RuntimeRenderExtractorIdRegistry>()

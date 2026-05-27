@@ -853,10 +853,12 @@ mod tests {
         .certify();
 
         assert!(!report.accepted);
-        assert!(report
-            .issues
-            .iter()
-            .any(|issue| issue.code == "lens_droplets_debug_ui_forbidden"));
+        assert!(
+            report
+                .issues
+                .iter()
+                .any(|issue| issue.code == "lens_droplets_debug_ui_forbidden")
+        );
     }
 
     #[test]

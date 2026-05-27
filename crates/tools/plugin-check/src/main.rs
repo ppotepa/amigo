@@ -175,7 +175,13 @@ fn validate_plugin_dir(plugin_dir: &Path, ids: &mut BTreeSet<String>, errors: &m
     require_file(plugin_dir, "tests/waterfall_tests.rs", errors);
     require_file(plugin_dir, "src/plugin.rs", errors);
 
-    for dir in ["src/api", "src/scene", "src/runtime", "src/scripting", "src/diagnostics"] {
+    for dir in [
+        "src/api",
+        "src/scene",
+        "src/runtime",
+        "src/scripting",
+        "src/diagnostics",
+    ] {
         require_dir(plugin_dir, dir, errors);
     }
     if !plugin_dir.join("src/render_wgpu").is_dir() && !plugin_dir.join("src/render").is_dir() {

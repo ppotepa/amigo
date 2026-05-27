@@ -69,6 +69,7 @@ pub struct Material3dSceneCommand {
     pub label: String,
     pub albedo: ColorRgba,
     pub source: Option<AssetKey>,
+    pub render_order: i32,
 }
 
 #[derive(Debug, Clone, PartialEq)]

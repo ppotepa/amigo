@@ -5,6 +5,7 @@ pub fn camera_2d_scene_descriptor() -> PluginSceneComponentDescriptor {
     PluginSceneComponentDescriptor::new("amigo.camera.camera-core.Camera2D", "camera", "Camera2D")
 }
 
+#[derive(Default)]
 pub struct Camera2dSceneDescriptorProvider;
 
 impl ScenePluginDescriptorProvider for Camera2dSceneDescriptorProvider {

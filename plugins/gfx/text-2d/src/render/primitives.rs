@@ -1,8 +1,8 @@
 use amigo_material_api::MaterialCoverageKind2d;
 use amigo_render_api::{
-    GlyphRun2dBlendMode, GlyphRun2dGlow, GlyphRun2dOutline, GlyphRun2dPrimitive,
-    GlyphRun2dShadow, RenderMaterialBinding2d, RenderPrimitive2d, Renderable2dCommon,
-    Renderable2dItem, Renderable2dKind,
+    GlyphRun2dBlendMode, GlyphRun2dGlow, GlyphRun2dOutline, GlyphRun2dPrimitive, GlyphRun2dShadow,
+    RenderMaterialBinding2d, RenderPrimitive2d, Renderable2dCommon, Renderable2dItem,
+    Renderable2dKind,
 };
 
 use crate::{Text2dBlendMode, Text2dDrawCommand};

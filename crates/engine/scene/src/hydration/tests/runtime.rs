@@ -1,12 +1,8 @@
 use std::path::PathBuf;
 
-use amigo_math::{Curve1d, Vec2};
-
 use super::super::build_scene_hydration_plan;
 use crate::{
-    EventPipelineStepSceneCommand, ParticleAlignMode2dSceneCommand,
-    ParticleBlendMode2dSceneCommand, ParticleSpawnArea2dSceneCommand,
-    UiModelBindingKindSceneCommand, load_scene_document_from_str,
+    EventPipelineStepSceneCommand, UiModelBindingKindSceneCommand, load_scene_document_from_str,
 };
 
 #[test]
@@ -171,7 +167,7 @@ entities:
 }
 
 #[test]
-fn hydrates_particle_emitter_2d_command() {
+fn skips_particle_emitter_2d_without_plugin_hydrator() {
     let document = load_scene_document_from_str(
         r#####"
 version: 1
@@ -240,27 +236,7 @@ entities:
     let plan = build_scene_hydration_plan("test-mod", &document)
         .expect("particle scene hydration should build");
 
-    assert!(plan.commands.iter().any(|command| {
-        super::plugin_payload::<crate::ParticleEmitter2dSceneCommand>(command)
-            .is_some_and(|command| {
-                command.entity_name == "test-emitter"
-                    && command.attached_to.as_deref() == Some("test-source")
-                    && command.spawn_rate == 90.0
-                    && command.max_particles == 64
-                    && command.emission_rate_curve == Curve1d::EaseOut
-                    && command.velocity_mode == crate::ParticleVelocityMode2dSceneCommand::SourceInertial
-                    && command.simulation_space == crate::ParticleSimulationSpace2dSceneCommand::Source
-                    && command.shape_choices.len() == 2
-                    && command.shape_over_lifetime.len() == 2
-                    && command.line_anchor == crate::ParticleLineAnchor2dSceneCommand::Start
-                    && command.align == ParticleAlignMode2dSceneCommand::Emitter
-                    && command.blend_mode == ParticleBlendMode2dSceneCommand::Additive
-                    && command.motion_stretch.is_some_and(|stretch| stretch.enabled && stretch.velocity_scale == 2.2 && stretch.max_length == 96.0)
-                    && command.material.receives_light
-                    && (command.material.light_response - 0.6).abs() < f32::EPSILON
-                    && command.light.is_some_and(|light| (light.radius - 24.0).abs() < f32::EPSILON && (light.intensity - 0.35).abs() < f32::EPSILON && light.mode == crate::ParticleLightMode2dSceneCommand::Source && !light.glow)
-                    && matches!(command.spawn_area, ParticleSpawnArea2dSceneCommand::Rect { size } if size == Vec2::new(120.0, 20.0))
-                    && command.forces.len() == 2
-            })
+    assert!(plan.commands.iter().all(|command| {
+        super::plugin_payload::<crate::ParticleEmitter2dSceneCommand>(command).is_none()
     }));
 }

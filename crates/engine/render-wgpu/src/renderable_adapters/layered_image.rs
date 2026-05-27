@@ -1,7 +1,5 @@
 use crate::renderer::collect_material_candidate_2d;
-use crate::{
-    WgpuRenderable2dAdapter, WgpuRenderable2dAdapterContext, WgpuVisualMapAdapterContext,
-};
+use crate::{WgpuRenderable2dAdapter, WgpuRenderable2dAdapterContext, WgpuVisualMapAdapterContext};
 use amigo_render_api::{
     RenderMaterialBinding2d, RenderPrimitive2d, RenderPrimitive2dKind, TexturedQuad2dPrimitive,
     VisualMaps2dPrimitive, VisualSourceKind2d,
@@ -46,7 +44,10 @@ impl WgpuRenderable2dAdapter for LayeredTexturedQuads2dRenderableAdapter {
         true
     }
 
-    fn focus_sample_world_position(&self, item: &crate::Renderable2dItem) -> Option<amigo_math::Vec2> {
+    fn focus_sample_world_position(
+        &self,
+        item: &crate::Renderable2dItem,
+    ) -> Option<amigo_math::Vec2> {
         item.primitive
             .layered_textured_quads()
             .map(|primitive| primitive.transform.translation)

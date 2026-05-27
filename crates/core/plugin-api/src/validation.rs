@@ -209,10 +209,7 @@ fn validate_diagnostic_channel(
     }
 }
 
-fn validate_diagnostic_owner(
-    owner: &PluginId,
-    errors: &mut Vec<PluginManifestValidationError>,
-) {
+fn validate_diagnostic_owner(owner: &PluginId, errors: &mut Vec<PluginManifestValidationError>) {
     if owner.0.trim().is_empty() {
         errors.push(PluginManifestValidationError::EmptyDiagnosticOwner);
     }
@@ -222,11 +219,25 @@ fn validate_docs_and_tests(
     manifest: &PluginManifest,
     errors: &mut Vec<PluginManifestValidationError>,
 ) {
-    if manifest.docs.pipeline.as_deref().unwrap_or("").trim().is_empty() {
+    if manifest
+        .docs
+        .pipeline
+        .as_deref()
+        .unwrap_or("")
+        .trim()
+        .is_empty()
+    {
         errors.push(PluginManifestValidationError::MissingPipelineDocs);
     }
 
-    if manifest.tests.waterfall.as_deref().unwrap_or("").trim().is_empty() {
+    if manifest
+        .tests
+        .waterfall
+        .as_deref()
+        .unwrap_or("")
+        .trim()
+        .is_empty()
+    {
         errors.push(PluginManifestValidationError::MissingWaterfallTest);
     }
 }

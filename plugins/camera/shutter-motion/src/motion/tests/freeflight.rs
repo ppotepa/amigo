@@ -1,5 +1,5 @@
 use super::common::test_freeflight_profile;
-use crate::{FreeflightMotionIntent2d, FreeflightMotionState2d, step_freeflight_motion_2d};
+use crate::{step_freeflight_motion_2d, FreeflightMotionIntent2d, FreeflightMotionState2d};
 use amigo_math::{Curve1d, Vec2};
 
 #[test]

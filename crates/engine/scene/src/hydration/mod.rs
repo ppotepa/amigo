@@ -5,7 +5,7 @@
 mod common;
 /// Event expansion generated while hydrating authored content.
 mod events;
-/// Particle-specific hydration helpers and command emission.
+/// Shared particle-profile color ramp conversion.
 mod particles;
 /// Planning logic that turns documents into scene command batches.
 mod plan;
@@ -24,7 +24,6 @@ pub use post_fx::component_post_fx_host_id;
 
 use common::*;
 use events::*;
-use particles::*;
 use ui::*;
 
 #[cfg(test)]

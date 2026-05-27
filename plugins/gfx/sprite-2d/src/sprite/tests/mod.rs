@@ -1,20 +1,20 @@
 use super::{
-    Sprite, SpriteAnimationOverride, SpriteDrawCommand, SpriteSceneService, SpriteSheet,
     infer_sprite_sheet_from_prepared_asset, queue_sprite_scene_command,
-    resolve_sprite_sheet_for_command,
+    resolve_sprite_sheet_for_command, Sprite, SpriteAnimationOverride, SpriteDrawCommand,
+    SpriteSceneService, SpriteSheet,
 };
 use amigo_assets::{
-    AssetCatalog, AssetKey, AssetLoadPriority, AssetLoadRequest, AssetManifest, AssetSourceKind,
-    LoadedAsset, prepare_asset_from_contents,
+    prepare_asset_from_contents, AssetCatalog, AssetKey, AssetLoadPriority, AssetLoadRequest,
+    AssetManifest, AssetSourceKind, LoadedAsset,
 };
+use amigo_camera_optics_plugin::scene::CameraOpticalResponse2dSceneCommand;
 use amigo_math::{Transform2, Transform3, Vec2, Vec3};
 use amigo_render_api::RenderContributionSet;
-use amigo_camera_optics_plugin::scene::CameraOpticalResponse2dSceneCommand;
 use amigo_scene::{
+    sprite_2d_plugin_scene_command, Material2dLightingSceneCommand,
     Material2dOpticalModeSceneCommand, Material2dOpticalSceneCommand, Material2dSceneCommand,
-    Material2dLightingSceneCommand, SceneCommand,
-    SceneEntityId, SceneEvent, SceneEventQueue, SceneService, Sprite2dSceneCommand,
-    SpriteAnimation2dSceneOverride, sprite_2d_plugin_scene_command,
+    SceneCommand, SceneEntityId, SceneEvent, SceneEventQueue, SceneService, Sprite2dSceneCommand,
+    SpriteAnimation2dSceneOverride,
 };
 use std::path::PathBuf;
 
@@ -218,8 +218,14 @@ fn queues_sprite_scene_command_with_material_and_render_contributions() {
         AssetKey::new("test/poster"),
         Vec2::new(128.0, 128.0),
     );
-    command.render_contributions.roles.insert("material.mask".to_owned(), true);
-    command.render_contributions.roles.insert("optics.refract".to_owned(), true);
+    command
+        .render_contributions
+        .roles
+        .insert("material.mask".to_owned(), true);
+    command
+        .render_contributions
+        .roles
+        .insert("optics.refract".to_owned(), true);
     command.material = Some(Material2dSceneCommand {
         optical: Material2dOpticalSceneCommand {
             mode: Material2dOpticalModeSceneCommand::Refractive,
@@ -374,14 +380,12 @@ looping: true
 
 #[test]
 fn can_handle_sprite_scene_command_returns_true_for_sprite_command() {
-    let command = SceneCommand::plugin(sprite_2d_plugin_scene_command(
-        Sprite2dSceneCommand::new(
-            "playground-2d",
-            "hero",
-            AssetKey::new("playground-2d/sprites/hero"),
-            Vec2::new(32.0, 32.0),
-        ),
-    ));
+    let command = SceneCommand::plugin(sprite_2d_plugin_scene_command(Sprite2dSceneCommand::new(
+        "playground-2d",
+        "hero",
+        AssetKey::new("playground-2d/sprites/hero"),
+        Vec2::new(32.0, 32.0),
+    )));
 
     assert!(super::can_handle_sprite_scene_command(&command));
 }
@@ -392,14 +396,12 @@ fn handle_sprite_scene_command_queues_sprite_and_publishes_event() {
     let sprite_scene_service = SpriteSceneService::default();
     let scene_event_queue = SceneEventQueue::default();
     let asset_catalog = AssetCatalog::default();
-    let command = SceneCommand::plugin(sprite_2d_plugin_scene_command(
-        Sprite2dSceneCommand::new(
-            "playground-2d",
-            "hero",
-            AssetKey::new("playground-2d/sprites/hero"),
-            Vec2::new(32.0, 32.0),
-        ),
-    ));
+    let command = SceneCommand::plugin(sprite_2d_plugin_scene_command(Sprite2dSceneCommand::new(
+        "playground-2d",
+        "hero",
+        AssetKey::new("playground-2d/sprites/hero"),
+        Vec2::new(32.0, 32.0),
+    )));
 
     let outcome = super::handle_sprite_scene_command(
         super::SpriteSceneCommandContext {

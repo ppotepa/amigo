@@ -18,18 +18,15 @@ mod systems;
 use std::collections::BTreeMap;
 use std::sync::{Arc, Mutex};
 
-use amigo_shutter_motion_plugin::Motion2dSceneService;
-use amigo_particles_2d_plugin::{Particle2dSceneService, ParticlePreset2dService};
 use amigo_2d_physics::Physics2dSceneService;
-use amigo_composite_plugin::PostFx2dService;
-use amigo_sprite_2d_plugin::SpriteSceneService;
-use amigo_vector_2d_plugin::VectorSceneService;
 use amigo_assets::AssetCatalog;
 use amigo_camera_core_plugin::{CameraFocusTarget2dService, CameraService};
+use amigo_composite_plugin::PostFx2dService;
 use amigo_core::{AmigoError, AmigoResult, LaunchSelection, RuntimeDiagnostics};
 use amigo_input_actions::InputActionService;
 use amigo_input_api::InputState;
 use amigo_modding::ModCatalog;
+use amigo_particles_2d_plugin::{Particle2dSceneService, ParticlePreset2dService};
 use amigo_runtime::{RuntimePlugin, ServiceRegistry};
 use amigo_scene::{EntityPoolSceneService, LifetimeSceneService, SceneService};
 use amigo_scripting_api::{
@@ -38,14 +35,17 @@ use amigo_scripting_api::{
     ScriptParams, ScriptRuntime, ScriptRuntimeInfo, ScriptRuntimeService, ScriptSourceContext,
     ScriptTraceService, ScriptValue,
 };
+use amigo_shutter_motion_plugin::Motion2dSceneService;
+use amigo_sprite_2d_plugin::SpriteSceneService;
 use amigo_state::{SceneStateService, SceneTimerService, SessionStateService};
 use amigo_ui::UiThemeService;
+use amigo_vector_2d_plugin::VectorSceneService;
 use bindings::{ScriptTimeState, WorldApi, register_world_api};
 use package::PackageModuleResolver;
 use rhai::CallFnOptions;
 
-pub use runtime_capabilities::*;
 pub use plugin_bindings::*;
+pub use runtime_capabilities::*;
 pub use scene_command::*;
 pub use systems::*;
 

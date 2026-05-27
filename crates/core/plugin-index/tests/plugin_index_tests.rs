@@ -1,13 +1,9 @@
-use amigo_codemap_api::{
-    validate_codemap_graph, CodeMapEdgeKind, CodeMapNodeId,
-};
+use amigo_codemap_api::{validate_codemap_graph, CodeMapEdgeKind, CodeMapNodeId};
 use amigo_plugin_api::{
-    CapabilityRef, DiagnosticChannelId, DiagnosticChannelRef, PluginKind,
-    PluginManifest, RenderParticipation, SlotId, TargetId,
+    CapabilityRef, DiagnosticChannelId, DiagnosticChannelRef, PluginKind, PluginManifest,
+    RenderParticipation, SlotId, TargetId,
 };
-use amigo_plugin_index::{
-    build_codemap_graph_from_index, validate_plugin_index, PluginIndex,
-};
+use amigo_plugin_index::{build_codemap_graph_from_index, validate_plugin_index, PluginIndex};
 
 fn camera_optics_manifest() -> PluginManifest {
     let mut manifest = PluginManifest::new(
@@ -87,8 +83,7 @@ fn plugin_graph_contains_plugin_and_targets() {
     let plugin = CodeMapNodeId::Plugin(amigo_plugin_api::PluginId(
         "amigo.camera.camera-optics".to_string(),
     ));
-    let scene_highlight =
-        CodeMapNodeId::Target(TargetId("SceneHighlight".to_string()));
+    let scene_highlight = CodeMapNodeId::Target(TargetId("SceneHighlight".to_string()));
 
     assert!(graph.contains_node(&plugin));
     assert!(graph.contains_node(&scene_highlight));

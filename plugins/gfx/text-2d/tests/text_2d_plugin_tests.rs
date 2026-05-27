@@ -2,14 +2,12 @@ use amigo_plugin_api::CandidateStatus;
 use amigo_runtime::{RuntimePlugin, ServiceRegistry, SystemRegistry};
 use amigo_scene::{
     ComponentGraphProviderRegistry, ComponentHydratorRegistry, ComponentSchemaRegistry,
-    ScenePluginCommandHandlerRegistry, RuntimeSceneCommandHandlerRegistry, ScenePlugin,
+    RuntimeSceneCommandHandlerRegistry, ScenePlugin, ScenePluginCommandHandlerRegistry,
 };
 use amigo_scripting_api::RuntimeScriptCommandHandlerRegistry;
 use amigo_text_2d_plugin::participation::adapters::camera_optics::text_coverage_to_camera_optics;
 use amigo_text_2d_plugin::runtime::collect_text_2d_candidates;
-use amigo_text_2d_plugin::scene::{
-    text_2d_scene_descriptor, Text2dDocument,
-};
+use amigo_text_2d_plugin::scene::{text_2d_scene_descriptor, Text2dDocument};
 use amigo_text_2d_plugin::Text2dPlugin;
 
 #[test]
@@ -84,7 +82,9 @@ fn text_plugin_registers_schema_provider_and_hydrator() {
         .iter()
         .any(|id| id == "amigo.gfx.text-2d.Text2D"));
     assert!(hydrators.provider_ids().contains(&"amigo.gfx.text-2d"));
-    assert!(graph_providers.provider_ids().contains(&"amigo.gfx.text-2d"));
+    assert!(graph_providers
+        .provider_ids()
+        .contains(&"amigo.gfx.text-2d"));
     assert!(plugin_scene_handlers
         .handler_for("amigo.gfx.text-2d.scene-command.Text2D")
         .is_some());

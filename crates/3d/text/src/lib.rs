@@ -3,7 +3,7 @@
 
 use std::sync::Mutex;
 
-use amigo_capabilities::{register_domain_plugin, DEFAULT_CAPABILITY_VERSION};
+use amigo_capabilities::{DEFAULT_CAPABILITY_VERSION, register_domain_plugin};
 pub use amigo_render_api::{Text3d, Text3dDrawCommand};
 use amigo_runtime::{RuntimePlugin, ServiceRegistry};
 use amigo_scene::{SceneEntityId, SceneService, Text3dSceneCommand};
@@ -31,6 +31,7 @@ impl Text3dSceneService {
             .commands
             .lock()
             .expect("text3d scene service mutex should not be poisoned");
+        commands.retain(|existing| existing.entity_name != command.entity_name);
         commands.push(command);
     }
 
@@ -123,8 +124,8 @@ pub fn queue_text3d_scene_command(
 #[cfg(test)]
 mod tests {
     use super::{
-        queue_text3d_scene_command, Text3d, Text3dDrawCommand, Text3dEditorCapability,
-        Text3dSceneService,
+        Text3d, Text3dDrawCommand, Text3dEditorCapability, Text3dSceneService,
+        queue_text3d_scene_command,
     };
     use amigo_assets::AssetKey;
     use amigo_editor_api::EditorCapability;

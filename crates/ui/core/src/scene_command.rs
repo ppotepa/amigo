@@ -58,7 +58,9 @@ pub fn handle_ui_scene_command(
             let command = command
                 .payload_as::<amigo_scene::UiThemeSetSceneCommand>()
                 .ok_or_else(|| {
-                    AmigoError::Message("ui theme plugin scene command payload type mismatch".into())
+                    AmigoError::Message(
+                        "ui theme plugin scene command payload type mismatch".into(),
+                    )
                 })?
                 .clone();
             handle_ui_theme_set_scene_command(ctx, command)
@@ -69,7 +71,9 @@ pub fn handle_ui_scene_command(
             let command = command
                 .payload_as::<amigo_scene::UiSceneCommand>()
                 .ok_or_else(|| {
-                    AmigoError::Message("ui document plugin scene command payload type mismatch".into())
+                    AmigoError::Message(
+                        "ui document plugin scene command payload type mismatch".into(),
+                    )
                 })?
                 .clone();
             handle_ui_document_scene_command(ctx, command)

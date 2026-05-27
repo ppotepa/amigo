@@ -61,10 +61,7 @@ impl ComponentHydratorRegistry {
             .push(Box::new(hydrator));
     }
 
-    pub fn hydrate_first(
-        &self,
-        ctx: ComponentHydrationContext<'_>,
-    ) -> SceneDocumentResult<bool> {
+    pub fn hydrate_first(&self, ctx: ComponentHydrationContext<'_>) -> SceneDocumentResult<bool> {
         let hydrators = self
             .hydrators
             .read()

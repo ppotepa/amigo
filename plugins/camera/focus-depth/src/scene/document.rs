@@ -5,10 +5,9 @@ use serde_yaml::Value;
 
 use amigo_scene::{
     DepthAuxMap2dChannelsDocument, LayeredImageViewportFit2dDocument, SceneComponentDocument,
-    SceneComponentPayload, SceneComponentSchemaProvider, SceneDocumentError,
-    SceneDocumentResult, SceneVec2Document,
+    SceneComponentPayload, SceneComponentSchemaProvider, SceneDocumentError, SceneDocumentResult,
+    SceneVec2Document,
 };
-use amigo_scene::SceneComponentDocument as ComponentDocument;
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct FocusDepthResponse2dDocument {
@@ -45,21 +44,14 @@ pub struct DepthMap2dDocument {
 impl DepthMap2dDocument {
     pub fn from_component(component: &SceneComponentDocument) -> Option<Self> {
         match component {
-            ComponentDocument::DepthMap2d {
-                id,
-                asset,
-                size,
-                viewport_fit,
-                white_is_near,
-                z_index,
-            } => Some(Self {
-                id: id.clone(),
-                asset: asset.clone(),
-                size: *size,
-                viewport_fit: *viewport_fit,
-                white_is_near: *white_is_near,
-                z_index: *z_index,
-            }),
+            SceneComponentDocument::Plugin {
+                component_type,
+                payload,
+            } if component_type == "amigo.camera.focus-depth.DepthMap2D"
+                || component_type == "DepthMap2D" =>
+            {
+                parse_depth_map_2d_plugin_payload(payload).ok()
+            }
             _ => None,
         }
     }
@@ -93,23 +85,14 @@ pub struct DepthAuxMap2dDocument {
 impl DepthAuxMap2dDocument {
     pub fn from_component(component: &SceneComponentDocument) -> Option<Self> {
         match component {
-            ComponentDocument::DepthAuxMap2d {
-                id,
-                asset,
-                surface_asset,
-                size,
-                viewport_fit,
-                channels,
-                z_index,
-            } => Some(Self {
-                id: id.clone(),
-                asset: asset.clone(),
-                surface_asset: surface_asset.clone(),
-                size: *size,
-                viewport_fit: *viewport_fit,
-                channels: channels.clone(),
-                z_index: *z_index,
-            }),
+            SceneComponentDocument::Plugin {
+                component_type,
+                payload,
+            } if component_type == "amigo.camera.focus-depth.DepthAuxMap2D"
+                || component_type == "DepthAuxMap2D" =>
+            {
+                parse_depth_aux_map_2d_plugin_payload(payload).ok()
+            }
             _ => None,
         }
     }
@@ -125,7 +108,9 @@ impl SceneComponentPayload for DepthAuxMap2dDocument {
     }
 }
 
-pub fn parse_depth_map_2d_plugin_payload(payload: &Value) -> SceneDocumentResult<DepthMap2dDocument> {
+pub fn parse_depth_map_2d_plugin_payload(
+    payload: &Value,
+) -> SceneDocumentResult<DepthMap2dDocument> {
     serde_yaml::from_value::<DepthMap2dDocument>(payload.clone())
         .map_err(|source| SceneDocumentError::Parse { path: None, source })
 }
@@ -137,7 +122,7 @@ pub fn parse_depth_aux_map_2d_plugin_payload(
         .map_err(|source| SceneDocumentError::Parse { path: None, source })
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Default)]
 pub struct DepthMap2dSceneSchemaProvider;
 
 impl SceneComponentSchemaProvider for DepthMap2dSceneSchemaProvider {
@@ -150,7 +135,9 @@ impl SceneComponentSchemaProvider for DepthMap2dSceneSchemaProvider {
     }
 
     fn parse_yaml(&self, payload: serde_yaml::Mapping) -> Result<Value, serde_yaml::Error> {
-        serde_yaml::to_value(serde_yaml::from_value::<DepthMap2dDocument>(Value::Mapping(payload))?)
+        serde_yaml::to_value(serde_yaml::from_value::<DepthMap2dDocument>(
+            Value::Mapping(payload),
+        )?)
     }
 
     fn parse_payload_value(
@@ -161,7 +148,7 @@ impl SceneComponentSchemaProvider for DepthMap2dSceneSchemaProvider {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Default)]
 pub struct DepthAuxMap2dSceneSchemaProvider;
 
 impl SceneComponentSchemaProvider for DepthAuxMap2dSceneSchemaProvider {

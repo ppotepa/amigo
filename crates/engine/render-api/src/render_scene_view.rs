@@ -2,10 +2,14 @@ use std::collections::BTreeMap;
 
 use amigo_math::{Transform2, Transform3, Vec2};
 
+use crate::{Camera3dRenderSettings, Light3dRenderSettings};
+
 #[derive(Debug, Clone, Default)]
 pub struct RenderSceneView {
     camera_2d: Transform2,
     camera_3d: Transform3,
+    camera_3d_settings: Camera3dRenderSettings,
+    light_3d_settings: Light3dRenderSettings,
     entity_transforms: BTreeMap<String, Transform3>,
 }
 
@@ -14,6 +18,8 @@ impl RenderSceneView {
         Self {
             camera_2d,
             camera_3d,
+            camera_3d_settings: Camera3dRenderSettings::default(),
+            light_3d_settings: Light3dRenderSettings::default(),
             entity_transforms: BTreeMap::new(),
         }
     }
@@ -24,6 +30,22 @@ impl RenderSceneView {
 
     pub fn camera_3d(&self) -> Transform3 {
         self.camera_3d
+    }
+
+    pub fn camera_3d_settings(&self) -> Camera3dRenderSettings {
+        self.camera_3d_settings
+    }
+
+    pub fn light_3d_settings(&self) -> Light3dRenderSettings {
+        self.light_3d_settings
+    }
+
+    pub fn set_camera_3d_settings(&mut self, settings: Camera3dRenderSettings) {
+        self.camera_3d_settings = settings;
+    }
+
+    pub fn set_light_3d_settings(&mut self, settings: Light3dRenderSettings) {
+        self.light_3d_settings = settings;
     }
 
     pub fn insert_entity_transform(

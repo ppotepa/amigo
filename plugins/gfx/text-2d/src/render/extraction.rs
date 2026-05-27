@@ -1,5 +1,5 @@
-use amigo_scene::SceneService;
 use amigo_render_api::RenderExtractionOutput2d;
+use amigo_scene::SceneService;
 
 use crate::{Text2dDrawCommand, Text2dSceneService};
 

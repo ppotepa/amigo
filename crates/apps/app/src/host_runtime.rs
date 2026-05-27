@@ -1,12 +1,14 @@
 use super::*;
 use amigo_input_api::InputModifiers;
 use amigo_runtime::SystemPhase;
+use amigo_runtime_bundles::{AudioOutputBackendService, AudioOutputStartStatus};
 use amigo_runtime_bundles::{
     add_ui_input_mouse_wheel, clear_ui_input_frame_transients, set_ui_input_left_button,
     set_ui_input_mouse_position,
 };
-use amigo_runtime_bundles::{AudioOutputBackendService, AudioOutputStartStatus};
 use amigo_session::RuntimeSession;
+
+const HOT_RELOAD_POLL_INTERVAL: std::time::Duration = std::time::Duration::from_secs(1);
 
 fn start_audio_output(runtime: &Runtime) -> AmigoResult<()> {
     let audio_backend = required::<AudioOutputBackendService>(runtime)?;
@@ -66,6 +68,7 @@ pub(crate) struct InteractiveRuntimeHostHandler {
     game_frame_cache: Option<CachedGameFrame>,
     scene_ids: Vec<String>,
     printed_console_lines: usize,
+    last_hot_reload_poll: Option<std::time::Instant>,
     printed: bool,
     modifiers: InputModifiers,
 }
@@ -104,6 +107,7 @@ impl InteractiveRuntimeHostHandler {
             game_frame_cache: None,
             scene_ids,
             printed: false,
+            last_hot_reload_poll: None,
             modifiers: InputModifiers::default(),
         })
     }
@@ -153,12 +157,13 @@ impl InteractiveRuntimeHostHandler {
         clock.begin_host_frame(now);
 
         self.tick_runtime_pre_update()?;
-        for _dt in clock.take_pending_simulation_ticks() {
+        let (simulation_tick_count, _simulation_dt) = clock.take_pending_simulation_tick_count();
+        for _ in 0..simulation_tick_count {
             self.tick_runtime_update()?;
-            self.pump_runtime()?;
         }
-        self.tick_runtime_post_update()?;
         self.pump_runtime()?;
+        self.tick_runtime_post_update()?;
+        self.poll_hot_reload(now)?;
 
         Ok(())
     }
@@ -182,6 +187,28 @@ impl InteractiveRuntimeHostHandler {
             if let Some(surface) = &mut self.surface {
                 surface.render_default_frame()?;
             }
+            return Ok(());
+        }
+
+        if !config.presentation.cache_game_frame {
+            if let (Some(surface), Some(renderer)) = (&mut self.surface, &mut self.renderer) {
+                crate::render_runtime::build_render_frame_for_session(
+                    &self.session,
+                    surface,
+                    renderer,
+                )?;
+                clock.mark_game_frame_rendered();
+            }
+
+            if let Ok(debug_overlay_service) =
+                required::<crate::debug_overlay::DebugOverlayService>(self.runtime())
+            {
+                if debug_overlay_service.is_enabled() {
+                    debug_overlay_service.record_frame_clock_snapshot(clock.snapshot());
+                }
+            }
+
+            self.session.complete_render_present();
             return Ok(());
         }
 
@@ -228,11 +255,16 @@ impl InteractiveRuntimeHostHandler {
         if let Ok(debug_overlay_service) =
             required::<crate::debug_overlay::DebugOverlayService>(self.runtime())
         {
-            debug_overlay_service.record_frame_clock_snapshot(clock.snapshot());
+            if debug_overlay_service.is_enabled() {
+                debug_overlay_service.record_frame_clock_snapshot(clock.snapshot());
+            }
         }
 
-        let overlay_packet =
-            crate::render_runtime::extract_live_host_overlay_packet(&self.session)?;
+        let overlay_packet = if self.needs_live_host_overlay(&config) {
+            crate::render_runtime::extract_live_host_overlay_packet(&self.session)?
+        } else {
+            Default::default()
+        };
         let emergency_overlay = crate::render_runtime::emergency_overlay_lines(self.runtime());
         let editor_game_viewport = crate::render_runtime::editor_game_viewport_placement(
             self.runtime(),
@@ -261,6 +293,12 @@ impl InteractiveRuntimeHostHandler {
         Ok(())
     }
 
+    fn needs_live_host_overlay(&self, config: &amigo_session::ResolvedFrameClockConfig) -> bool {
+        config.presentation.devtools_live
+            || config.presentation.editor_live
+            || config.presentation.debug_overlay_live
+    }
+
     fn host_scene_switch_enabled(&self) -> bool {
         self.summary.startup_mod.as_deref() == Some("core-game") && self.scene_ids.len() > 1
     }
@@ -280,20 +318,27 @@ impl InteractiveRuntimeHostHandler {
         let previous_scene = self.summary.active_scene.clone();
         let previous_document = self.summary.loaded_scene_document.clone();
         let previous_entities = self.summary.scene_entities.clone();
-        let updated = refresh_runtime_summary(self.runtime())?;
+        let bridge_summary =
+            crate::orchestration::stabilize_runtime_queues_for_session(&self.session)?;
+        let scene_service = required::<SceneService>(self.runtime())?;
+        let active_scene = scene_service
+            .selected_scene()
+            .map(|scene| scene.as_str().to_owned());
+        let loaded_scene_document =
+            crate::scene_runtime::current_loaded_scene_document_summary(self.runtime())?;
+        let scene_entities = scene_service.entity_names();
 
-        if updated.active_scene != previous_scene {
+        if active_scene != previous_scene {
             println!(
                 "active scene: {}",
-                updated.active_scene.as_deref().unwrap_or("none")
+                active_scene.as_deref().unwrap_or("none")
             );
         }
 
-        if updated.loaded_scene_document != previous_document {
+        if loaded_scene_document != previous_document {
             println!(
                 "scene document: {}",
-                updated
-                    .loaded_scene_document
+                loaded_scene_document
                     .as_ref()
                     .map(|document| format!(
                         "{}:{}",
@@ -304,14 +349,14 @@ impl InteractiveRuntimeHostHandler {
             );
         }
 
-        if updated.scene_entities != previous_entities {
+        if scene_entities != previous_entities {
             println!(
                 "scene entities: {}",
-                crate::app_helpers::display_string_list(&updated.scene_entities)
+                crate::app_helpers::display_string_list(&scene_entities)
             );
         }
 
-        for line in updated
+        for line in bridge_summary
             .console_output
             .iter()
             .skip(self.printed_console_lines)
@@ -319,9 +364,36 @@ impl InteractiveRuntimeHostHandler {
             println!("console: {line}");
         }
 
-        self.printed_console_lines = updated.console_output.len();
-        self.summary = updated;
+        self.printed_console_lines = bridge_summary.console_output.len();
+        self.summary.active_scene = active_scene;
+        self.summary.loaded_scene_document = loaded_scene_document;
+        self.summary.scene_entities = scene_entities;
+        self.summary.processed_script_commands = bridge_summary.processed_script_commands;
+        self.summary.processed_audio_commands = bridge_summary.processed_audio_commands;
+        self.summary.processed_scene_commands = bridge_summary.processed_scene_commands;
+        self.summary.processed_script_events = bridge_summary.processed_script_events;
+        self.summary.console_commands = bridge_summary.console_commands;
+        self.summary.console_output = bridge_summary.console_output;
 
+        Ok(())
+    }
+
+    fn poll_hot_reload(&mut self, now: std::time::Instant) -> AmigoResult<()> {
+        if !self.summary.dev_mode {
+            return Ok(());
+        }
+
+        if self
+            .last_hot_reload_poll
+            .is_some_and(|last| now.duration_since(last) < HOT_RELOAD_POLL_INTERVAL)
+        {
+            return Ok(());
+        }
+
+        self.last_hot_reload_poll = Some(now);
+        if crate::orchestration::poll_runtime_hot_reload(self.runtime())? > 0 {
+            self.pump_runtime()?;
+        }
         Ok(())
     }
 }
@@ -397,7 +469,7 @@ impl HostHandler for InteractiveRuntimeHostHandler {
                 ..WindowDescriptor::default()
             },
             exit_strategy: HostExitStrategy::Manual,
-            max_frame_rate_fps: None,
+            max_frame_rate_fps: self.summary.frame_cap_fps,
         }
     }
 

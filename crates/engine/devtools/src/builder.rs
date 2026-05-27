@@ -49,10 +49,7 @@ pub fn build_debug_overlay_document(
 
     let theme = DebugOverlayTheme::default();
     let viewport = viewport.unwrap_or_else(|| {
-        UiViewportSize::new(
-            theme.viewport.default_width,
-            theme.viewport.default_height,
-        )
+        UiViewportSize::new(theme.viewport.default_width, theme.viewport.default_height)
     });
     let layout = theme.layout(snapshot.settings.layout_mode);
     let scale = snapshot.settings.scale.clamp(0.5, 3.0);
@@ -299,10 +296,12 @@ fn push_fps_lines(
                 ));
                 lines.push(body_line(
                     format!(
-                        "sim target {:.1} dt {:.4} pending {} cached={}",
+                        "sim target {:.1} dt {:.4} scheduled {} consumed {} dropped {:.3}s cached={}",
                         clock.target_simulation_fps,
                         clock.simulation_delta_seconds,
-                        clock.pending_simulation_ticks,
+                        clock.scheduled_simulation_ticks,
+                        clock.consumed_simulation_ticks,
+                        clock.dropped_simulation_debt_seconds,
                         clock.holding_cached_game_frame,
                     ),
                     theme.muted,

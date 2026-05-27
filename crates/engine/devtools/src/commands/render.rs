@@ -284,11 +284,9 @@ impl ConsoleCommandHandler for RenderConsoleCommandHandler {
                     diagnostics.camera_focus_plan_summary
                 })
             }
-            "camera.focus.targets" | "focus.targets" => {
-                ConsoleCommandResult::error(
-                    "camera.focus.targets is provided by the camera runtime plugin".to_owned(),
-                )
-            }
+            "camera.focus.targets" | "focus.targets" => ConsoleCommandResult::error(
+                "camera.focus.targets is provided by the camera runtime plugin".to_owned(),
+            ),
             "render.contributions" | "contributions" | "camera.effects" => {
                 let diagnostics = match ctx.required::<RenderCompositionDiagnosticsService>() {
                     Ok(service) => service.snapshot(),
@@ -338,15 +336,19 @@ impl ConsoleCommandHandler for RenderConsoleCommandHandler {
                     Ok(service) => service.snapshot(),
                     Err(error) => return ConsoleCommandResult::error(error.to_string()),
                 };
-                ConsoleCommandResult::ok(if diagnostics.camera_optical_candidates_summary.is_empty()
-                {
-                    "camera.optical.candidates: no optical candidate diagnostics captured yet"
-                        .to_owned()
-                } else {
-                    diagnostics.camera_optical_candidates_summary
-                })
+                ConsoleCommandResult::ok(
+                    if diagnostics.camera_optical_candidates_summary.is_empty() {
+                        "camera.optical.candidates: no optical candidate diagnostics captured yet"
+                            .to_owned()
+                    } else {
+                        diagnostics.camera_optical_candidates_summary
+                    },
+                )
             }
-            "plate.relight.status" | "relight.status" | "plate.relight.lights" | "relight.lights" => {
+            "plate.relight.status"
+            | "relight.status"
+            | "plate.relight.lights"
+            | "relight.lights" => {
                 let diagnostics = match ctx.required::<RenderCompositionDiagnosticsService>() {
                     Ok(service) => service.snapshot(),
                     Err(error) => return ConsoleCommandResult::error(error.to_string()),

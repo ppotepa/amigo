@@ -1,0 +1,19 @@
+[package]
+name = "amigo-3d-physics"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[dependencies]
+amigo-assets.workspace = true
+amigo-core.workspace = true
+amigo-math.workspace = true
+amigo-runtime.workspace = true
+amigo-capabilities.workspace = true
+amigo-scene.workspace = true
+amigo-session.workspace = true
+amigo-scripting-api.workspace = true
+glam.workspace = true
+rapier3d.workspace = true

@@ -6,5 +6,5 @@ pub mod render;
 pub mod runtime;
 pub mod scene;
 
-pub use render::*;
 pub use layered_image::*;
+pub use render::*;

@@ -5,9 +5,7 @@ use amigo_render_api::{
     VectorShape2dStylePrimitive, VectorShape2dViewportFit,
 };
 
-use crate::vector::{
-    VectorShape2dDrawCommand, VectorShapeKind2d, VectorViewportFit2d,
-};
+use crate::vector::{VectorShape2dDrawCommand, VectorShapeKind2d, VectorViewportFit2d};
 
 fn viewport_fit(mode: VectorViewportFit2d) -> VectorShape2dViewportFit {
     match mode {

@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
-use amigo_sprite_2d_plugin::SpriteSceneService;
 use amigo_core::LaunchSelection;
 use amigo_scripting_api::ScriptCommandQueue;
+use amigo_sprite_2d_plugin::SpriteSceneService;
 
 use crate::bindings::commands::queue_sprite_spawn;
 

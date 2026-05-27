@@ -356,14 +356,10 @@ fn handle_script_command_updates_layered_image_overrides() {
     let script_event_queue = ScriptEventQueue::default();
     let dev_console_state = DevConsoleState::default();
     let asset_catalog = AssetCatalog::default();
-    let layered_images =
-        LayeredImageSceneService::default();
-    let render_layers =
-        RenderLayer2dSceneService::default();
-    let global_lights =
-        GlobalLight2dSceneService::default();
-    let light_groups =
-        LightGroup2dSceneService::default();
+    let layered_images = LayeredImageSceneService::default();
+    let render_layers = RenderLayer2dSceneService::default();
+    let global_lights = GlobalLight2dSceneService::default();
+    let light_groups = LightGroup2dSceneService::default();
     let ui_state = UiStateService::default();
     let audio_command_queue = AudioCommandQueue::default();
     let audio_scene_service = AudioSceneService::default();
@@ -374,24 +370,21 @@ fn handle_script_command_updates_layered_image_overrides() {
         Vec::new(),
         true,
     );
-    layered_images.queue(
-        LayeredImageDrawCommand {
-            entity_id: amigo_scene::SceneEntityId::new(1),
-            entity_name: "test-layered-background".to_owned(),
-            image: LayeredImageInstance {
-                asset: AssetKey::new("test-mod/layered-images/test-pack"),
-                size: amigo_math::Vec2::new(1280.0, 720.0),
-                base_opacity: 0.0,
-                viewport_fit:
-                    LayeredImageViewportFit2d::Fixed,
-                layer_overrides: Vec::new(),
-                visual_maps: None,
-            },
-            render_layer: "default".to_owned(),
-            z_index: -100.0,
-            transform: amigo_math::Transform2::default(),
+    layered_images.queue(LayeredImageDrawCommand {
+        entity_id: amigo_scene::SceneEntityId::new(1),
+        entity_name: "test-layered-background".to_owned(),
+        image: LayeredImageInstance {
+            asset: AssetKey::new("test-mod/layered-images/test-pack"),
+            size: amigo_math::Vec2::new(1280.0, 720.0),
+            base_opacity: 0.0,
+            viewport_fit: LayeredImageViewportFit2d::Fixed,
+            layer_overrides: Vec::new(),
+            visual_maps: None,
         },
-    );
+        render_layer: "default".to_owned(),
+        z_index: -100.0,
+        transform: amigo_math::Transform2::default(),
+    });
 
     for command in [
         ScriptCommand::new(
@@ -455,10 +448,7 @@ fn handle_script_command_updates_layered_image_overrides() {
         .expect("script command should create accent light override");
     assert_eq!(override_.opacity, Some(0.42));
     assert_eq!(override_.enabled, Some(false));
-    assert_eq!(
-        override_.blend_mode,
-        Some(LayeredImageBlendMode2d::Screen)
-    );
+    assert_eq!(override_.blend_mode, Some(LayeredImageBlendMode2d::Screen));
 
     script_runtime::dispatch_script_command_with_layered_image_service(
         ScriptCommand::new(

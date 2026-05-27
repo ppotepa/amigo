@@ -165,6 +165,28 @@ impl DebugOverlayService {
         };
     }
 
+    pub fn is_enabled(&self) -> bool {
+        self.state
+            .lock()
+            .expect("debug overlay mutex should not be poisoned")
+            .settings
+            .enabled
+    }
+
+    pub fn panel_visible(&self, panel: DebugOverlayPanel) -> bool {
+        let state = self
+            .state
+            .lock()
+            .expect("debug overlay mutex should not be poisoned");
+        state.settings.enabled && state.settings.panels.contains(&panel)
+    }
+
+    pub fn wants_render_diagnostics(&self) -> bool {
+        self.panel_visible(DebugOverlayPanel::Render)
+            || self.panel_visible(DebugOverlayPanel::Timings)
+            || self.panel_visible(DebugOverlayPanel::Stats)
+    }
+
     pub fn set_enabled(&self, enabled: bool) {
         self.with_settings_mut(|settings| settings.enabled = enabled);
     }

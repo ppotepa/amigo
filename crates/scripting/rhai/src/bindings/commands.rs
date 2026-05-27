@@ -587,6 +587,67 @@ pub fn queue_material3d_bind(
     )
 }
 
+#[allow(clippy::too_many_arguments)]
+pub fn queue_physics3d_dynamic_box(
+    launch_selection: Option<&Arc<LaunchSelection>>,
+    command_queue: Option<&Arc<ScriptCommandQueue>>,
+    entity_name: &str,
+    size_x: f32,
+    size_y: f32,
+    size_z: f32,
+    velocity_x: f32,
+    velocity_y: f32,
+    velocity_z: f32,
+) -> bool {
+    let Some(root_mod) = launch_selection.map(|selection| selection.selected_mod().to_owned())
+    else {
+        return false;
+    };
+
+    queue_placeholder_command(
+        command_queue,
+        "3d.physics",
+        "dynamic_box",
+        vec![
+            root_mod,
+            entity_name.to_owned(),
+            size_x.to_string(),
+            size_y.to_string(),
+            size_z.to_string(),
+            velocity_x.to_string(),
+            velocity_y.to_string(),
+            velocity_z.to_string(),
+        ],
+    )
+}
+
+pub fn queue_physics3d_static_box(
+    launch_selection: Option<&Arc<LaunchSelection>>,
+    command_queue: Option<&Arc<ScriptCommandQueue>>,
+    entity_name: &str,
+    size_x: f32,
+    size_y: f32,
+    size_z: f32,
+) -> bool {
+    let Some(root_mod) = launch_selection.map(|selection| selection.selected_mod().to_owned())
+    else {
+        return false;
+    };
+
+    queue_placeholder_command(
+        command_queue,
+        "3d.physics",
+        "static_box",
+        vec![
+            root_mod,
+            entity_name.to_owned(),
+            size_x.to_string(),
+            size_y.to_string(),
+            size_z.to_string(),
+        ],
+    )
+}
+
 pub fn queue_text3d_spawn(
     launch_selection: Option<&Arc<LaunchSelection>>,
     command_queue: Option<&Arc<ScriptCommandQueue>>,

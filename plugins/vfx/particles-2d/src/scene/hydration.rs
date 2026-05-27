@@ -1,64 +1,30 @@
 use amigo_fx::{ColorInterpolation, ColorRamp, ColorStop};
 use amigo_math::{ColorRgba, Curve1d, CurvePoint1d, Vec2};
-use amigo_scene::SceneComponentDocument as ComponentDocument;
 use amigo_scene::{
-    ColorInterpolationSceneDocument, ColorRampSceneDocument, ComponentHydrationContext,
-    ComponentHydrator, Curve1dSceneDocument, LightReceiver2dBindingSceneCommand,
-    LightReceiver2dBindingSceneDocument, LightReceiverDarkPolicy2dSceneCommand,
-    LightReceiverDarkPolicy2dSceneDocument, LightReceiverGlobalLight2dSceneCommand,
-    LightReceiverGlobalLight2dSceneDocument, LightSampleStrategy2dSceneCommand,
-    LightSampleStrategy2dSceneDocument, Material2dLightingModeSceneCommand,
-    Material2dLightingModeSceneDocument, ParticleAlignMode2dSceneCommand,
-    ParticleAlignMode2dSceneDocument, ParticleBlendMode2dSceneCommand,
-    ParticleBlendMode2dSceneDocument, ParticleEmitter2dSceneCommand, ParticleForce2dSceneCommand,
-    ParticleForce2dSceneDocument, ParticleLight2dSceneCommand, ParticleLightMode2dSceneCommand,
-    ParticleLightMode2dSceneDocument, ParticleLineAnchor2dSceneCommand,
-    ParticleLineAnchor2dSceneDocument, ParticleMaterial2dSceneCommand,
-    ParticleMotionStretch2dSceneCommand, ParticleShape2dSceneCommand, ParticleShape2dSceneDocument,
-    ParticleShapeChoice2dSceneCommand, ParticleShapeKeyframe2dSceneCommand,
-    ParticleSimulationSpace2dSceneCommand, ParticleSimulationSpace2dSceneDocument,
-    ParticleSpawnArea2dSceneCommand, ParticleSpawnArea2dSceneDocument,
-    ParticleVelocityMode2dSceneCommand, ParticleVelocityMode2dSceneDocument,
-    PluginComponentHydrationContext, PluginComponentHydrator, SceneCommand, SceneComponentDocument,
-    SceneDocumentError, SceneDocumentResult, SceneVec2Document,
+    ColorInterpolationSceneDocument, ColorRampSceneDocument, Curve1dSceneDocument,
+    LightReceiver2dBindingSceneCommand, LightReceiver2dBindingSceneDocument,
+    LightReceiverDarkPolicy2dSceneCommand, LightReceiverDarkPolicy2dSceneDocument,
+    LightReceiverGlobalLight2dSceneCommand, LightReceiverGlobalLight2dSceneDocument,
+    LightSampleStrategy2dSceneCommand, LightSampleStrategy2dSceneDocument,
+    Material2dLightingModeSceneCommand, Material2dLightingModeSceneDocument,
+    ParticleAlignMode2dSceneCommand, ParticleAlignMode2dSceneDocument,
+    ParticleBlendMode2dSceneCommand, ParticleBlendMode2dSceneDocument,
+    ParticleEmitter2dSceneCommand, ParticleForce2dSceneCommand, ParticleForce2dSceneDocument,
+    ParticleLight2dSceneCommand, ParticleLightMode2dSceneCommand, ParticleLightMode2dSceneDocument,
+    ParticleLineAnchor2dSceneCommand, ParticleLineAnchor2dSceneDocument,
+    ParticleMaterial2dSceneCommand, ParticleMotionStretch2dSceneCommand,
+    ParticleShape2dSceneCommand, ParticleShape2dSceneDocument, ParticleShapeChoice2dSceneCommand,
+    ParticleShapeKeyframe2dSceneCommand, ParticleSimulationSpace2dSceneCommand,
+    ParticleSimulationSpace2dSceneDocument, ParticleSpawnArea2dSceneCommand,
+    ParticleSpawnArea2dSceneDocument, ParticleVelocityMode2dSceneCommand,
+    ParticleVelocityMode2dSceneDocument, PluginComponentHydrationContext, PluginComponentHydrator,
+    SceneCommand, SceneDocumentError, SceneDocumentResult, SceneVec2Document,
 };
 
 use super::ParticleEmitter2dDocument;
 
-pub struct ParticleEmitter2dComponentHydrator;
+#[derive(Default)]
 pub struct ParticleEmitter2dPluginComponentHydrator;
-
-impl ComponentHydrator for ParticleEmitter2dComponentHydrator {
-    fn provider_id(&self) -> &'static str {
-        "amigo.vfx.particles-2d"
-    }
-
-    fn can_hydrate(&self, component: &SceneComponentDocument) -> bool {
-        matches!(component, ComponentDocument::ParticleEmitter2d { .. })
-    }
-
-    fn hydrate(&self, ctx: ComponentHydrationContext<'_>) -> SceneDocumentResult<()> {
-        let document = match ctx.component {
-            ComponentDocument::ParticleEmitter2d { .. } => {
-                let Some(document) = ParticleEmitter2dDocument::from_component(ctx.component)
-                else {
-                    return Ok(());
-                };
-                document
-            }
-            _ => return Ok(()),
-        };
-
-        push_particle_emitter_command(
-            &document,
-            ctx.source_mod,
-            &ctx.document.scene.id,
-            &ctx.entity.id,
-            ctx.entity_name,
-            ctx.commands,
-        )
-    }
-}
 
 impl PluginComponentHydrator for ParticleEmitter2dPluginComponentHydrator {
     fn provider_id(&self) -> &'static str {
@@ -600,4 +566,235 @@ fn parse_hex_channel(
 
 fn channel_to_f32(value: u8) -> f32 {
     f32::from(value) / 255.0
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use amigo_scene::{
+        ParticleAlignMode2dSceneDocument, ParticleBlendMode2dSceneDocument,
+        ParticleForce2dSceneDocument, ParticleLight2dSceneDocument,
+        ParticleLightMode2dSceneDocument, ParticleLineAnchor2dSceneDocument,
+        ParticleMaterial2dSceneDocument, ParticleMotionStretch2dSceneDocument,
+        ParticleShape2dSceneDocument, ParticleShapeChoice2dSceneDocument,
+        ParticleShapeKeyframe2dSceneDocument, ParticleSimulationSpace2dSceneDocument,
+        ParticleSpawnArea2dSceneDocument, ParticleVelocityMode2dSceneDocument,
+        PluginComponentHydrationContext, SceneCommand, SceneDocument, SceneEntityDocument,
+        SceneMetadataDocument, SceneVisual2dDocument,
+    };
+    use std::collections::BTreeMap;
+
+    #[test]
+    fn particle_hydrator_carries_emitter_domain_payload() {
+        let hydrator = ParticleEmitter2dPluginComponentHydrator;
+        let payload = ParticleEmitter2dDocument {
+            entity_name: String::new(),
+            render_layer: "fx.particles".to_owned(),
+            attached_to: Some("ship".to_owned()),
+            local_offset: SceneVec2Document { x: -12.0, y: 1.0 },
+            local_direction_degrees: 180.0,
+            spawn_area: Some(ParticleSpawnArea2dSceneDocument::Rect {
+                size: SceneVec2Document { x: 120.0, y: 20.0 },
+            }),
+            active: false,
+            spawn_rate: 90.0,
+            max_particles: 64,
+            particle_lifetime: 0.5,
+            lifetime_jitter: 0.2,
+            initial_speed: 120.0,
+            speed_jitter: 8.0,
+            spread_degrees: 45.0,
+            inherit_parent_velocity: 0.75,
+            velocity_mode: Some(ParticleVelocityMode2dSceneDocument::SourceInertial),
+            simulation_space: Some(ParticleSimulationSpace2dSceneDocument::Source),
+            initial_size: 2.0,
+            final_size: 8.0,
+            size_jitter: 0.4,
+            color: Some("#FFFFFFFF".to_owned()),
+            color_ramp: None,
+            z_index: 6.0,
+            shape: Some(ParticleShape2dSceneDocument::Circle { segments: 8 }),
+            shape_choices: vec![
+                ParticleShapeChoice2dSceneDocument {
+                    weight: 2.0,
+                    shape: ParticleShape2dSceneDocument::Circle { segments: 8 },
+                },
+                ParticleShapeChoice2dSceneDocument {
+                    weight: 1.0,
+                    shape: ParticleShape2dSceneDocument::Line { length: 14.0 },
+                },
+            ],
+            shape_over_lifetime: vec![
+                ParticleShapeKeyframe2dSceneDocument {
+                    t: 0.0,
+                    shape: ParticleShape2dSceneDocument::Quad,
+                },
+                ParticleShapeKeyframe2dSceneDocument {
+                    t: 0.75,
+                    shape: ParticleShape2dSceneDocument::Circle { segments: 12 },
+                },
+            ],
+            line_anchor: Some(ParticleLineAnchor2dSceneDocument::Start),
+            align: Some(ParticleAlignMode2dSceneDocument::Emitter),
+            blend_mode: Some(ParticleBlendMode2dSceneDocument::Additive),
+            motion_stretch: Some(ParticleMotionStretch2dSceneDocument {
+                enabled: true,
+                velocity_scale: 2.2,
+                max_length: 96.0,
+                shutter_seconds: 0.03,
+                tail_alpha: 0.25,
+                head_alpha: 0.9,
+            }),
+            material: Some(ParticleMaterial2dSceneDocument {
+                lighting_mode: None,
+                receives_light: true,
+                light_response: 0.6,
+                light_receiver: None,
+            }),
+            light: Some(ParticleLight2dSceneDocument {
+                radius: 24.0,
+                intensity: 0.35,
+                mode: ParticleLightMode2dSceneDocument::Source,
+                glow: false,
+            }),
+            emission_rate_curve: None,
+            size_curve: None,
+            alpha_curve: None,
+            speed_curve: None,
+            forces: vec![
+                ParticleForce2dSceneDocument::Gravity {
+                    acceleration: SceneVec2Document { x: 0.0, y: -480.0 },
+                },
+                ParticleForce2dSceneDocument::Drag { coefficient: 1.8 },
+            ],
+            post_fx: Vec::new(),
+        };
+        let entity = test_entity("emitter");
+        let document = test_document(entity.clone());
+        let mut commands = Vec::new();
+
+        hydrator
+            .hydrate_plugin_payload(PluginComponentHydrationContext {
+                source_mod: "test-mod",
+                document: &document,
+                entity: &entity,
+                entity_name: "test-emitter",
+                component_index: 0,
+                component_type: "amigo.vfx.particles-2d.ParticleEmitter2D",
+                payload: &payload,
+                commands: &mut commands,
+            })
+            .expect("particle hydrator should accept plugin payload");
+
+        let command = plugin_payload::<ParticleEmitter2dSceneCommand>(&commands);
+        assert_eq!(command.source_mod, "test-mod");
+        assert_eq!(command.entity_name, "test-emitter");
+        assert_eq!(command.render_layer, "fx.particles");
+        assert_eq!(command.attached_to.as_deref(), Some("ship"));
+        assert_eq!(command.local_offset, Vec2::new(-12.0, 1.0));
+        assert!((command.local_direction_radians - std::f32::consts::PI).abs() < 0.001);
+        assert_eq!(
+            command.spawn_area,
+            ParticleSpawnArea2dSceneCommand::Rect {
+                size: Vec2::new(120.0, 20.0)
+            }
+        );
+        assert!(!command.active);
+        assert_eq!(command.spawn_rate, 90.0);
+        assert_eq!(command.max_particles, 64);
+        assert_eq!(
+            command.velocity_mode,
+            ParticleVelocityMode2dSceneCommand::SourceInertial
+        );
+        assert_eq!(
+            command.simulation_space,
+            ParticleSimulationSpace2dSceneCommand::Source
+        );
+        assert_eq!(
+            command.shape,
+            ParticleShape2dSceneCommand::Circle { segments: 8 }
+        );
+        assert_eq!(command.shape_choices.len(), 2);
+        assert_eq!(
+            command.shape_choices[1].shape,
+            ParticleShape2dSceneCommand::Line { length: 14.0 }
+        );
+        assert_eq!(command.shape_over_lifetime.len(), 2);
+        assert_eq!(command.line_anchor, ParticleLineAnchor2dSceneCommand::Start);
+        assert_eq!(command.align, ParticleAlignMode2dSceneCommand::Emitter);
+        assert_eq!(
+            command.blend_mode,
+            ParticleBlendMode2dSceneCommand::Additive
+        );
+        let stretch = command
+            .motion_stretch
+            .expect("motion stretch should be preserved");
+        assert!(stretch.enabled);
+        assert_eq!(stretch.velocity_scale, 2.2);
+        assert_eq!(stretch.max_length, 96.0);
+        assert!(command.material.receives_light);
+        assert_eq!(command.material.light_response, 0.6);
+        let light = command.light.expect("particle light should be preserved");
+        assert_eq!(light.radius, 24.0);
+        assert_eq!(light.intensity, 0.35);
+        assert_eq!(light.mode, ParticleLightMode2dSceneCommand::Source);
+        assert_eq!(command.forces.len(), 2);
+        assert_eq!(
+            command.forces[0],
+            ParticleForce2dSceneCommand::Gravity {
+                acceleration: Vec2::new(0.0, -480.0)
+            }
+        );
+        assert_eq!(
+            command.forces[1],
+            ParticleForce2dSceneCommand::Drag { coefficient: 1.8 }
+        );
+    }
+
+    fn plugin_payload<T: 'static>(commands: &[SceneCommand]) -> &T {
+        assert_eq!(commands.len(), 1);
+        match &commands[0] {
+            SceneCommand::Plugin { command } => command
+                .payload_as::<T>()
+                .expect("plugin scene payload should downcast"),
+            other => panic!("expected plugin scene command, got {other:?}"),
+        }
+    }
+
+    fn test_entity(name: &str) -> SceneEntityDocument {
+        SceneEntityDocument {
+            id: name.to_owned(),
+            name: name.to_owned(),
+            tags: Vec::new(),
+            groups: Vec::new(),
+            visible: true,
+            simulation_enabled: true,
+            collision_enabled: true,
+            properties: BTreeMap::new(),
+            transform2: None,
+            transform3: None,
+            post_fx: Vec::new(),
+            prefab: None,
+            prefab_overrides: Vec::new(),
+            components: Vec::new(),
+        }
+    }
+
+    fn test_document(entity: SceneEntityDocument) -> SceneDocument {
+        SceneDocument {
+            version: 1,
+            scene: SceneMetadataDocument {
+                id: "test-scene".to_owned(),
+                label: String::new(),
+                description: None,
+            },
+            transitions: Vec::new(),
+            collision_events: Vec::new(),
+            audio_cues: Vec::new(),
+            activation_sets: Vec::new(),
+            visual2d: SceneVisual2dDocument::default(),
+            state: BTreeMap::new(),
+            entities: vec![entity],
+        }
+    }
 }

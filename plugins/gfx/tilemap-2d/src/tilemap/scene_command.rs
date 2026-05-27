@@ -1,9 +1,9 @@
 use amigo_2d_physics::Physics2dSceneService;
 use amigo_assets::{AssetCatalog, AssetKey};
 use amigo_core::{AmigoError, AmigoResult};
-use amigo_scene::{SceneCommand, SceneEvent, SceneEventQueue, SceneService, format_scene_command};
+use amigo_scene::{format_scene_command, SceneCommand, SceneEvent, SceneEventQueue, SceneService};
 
-use super::{TileMap2dSceneService, marker_cells, queue_tilemap_scene_command};
+use super::{marker_cells, queue_tilemap_scene_command, TileMap2dSceneService};
 
 pub struct TileMap2dSceneCommandHandler;
 

@@ -1,7 +1,7 @@
 use std::path::{Path, PathBuf};
 
-use anyhow::Result;
 use amigo_symbol_explorer::scan::{ScanDiagnostics, SymbolExplorerScanOptions, scan_project};
+use anyhow::Result;
 
 fn main() -> Result<()> {
     let root = std::env::args()

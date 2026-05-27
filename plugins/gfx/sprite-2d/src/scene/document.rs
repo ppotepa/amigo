@@ -4,12 +4,11 @@ use serde::{Deserialize, Serialize};
 use serde_yaml::Value;
 
 use amigo_scene::{
-    Material2dDocument, RenderContributionsDocument, SceneComponentDocument,
-    SceneComponentPayload, SceneComponentSchemaProvider, SceneDocumentError, SceneDocumentResult,
+    Material2dDocument, RenderContributionsDocument, SceneComponentDocument, SceneComponentPayload,
+    SceneComponentSchemaProvider, SceneDocumentError, SceneDocumentResult,
     SceneSpriteAnimationDocument, SceneSpriteSheetDocument, SceneVec2Document,
     VisualMaps2dDocument,
 };
-use amigo_scene::SceneComponentDocument as ComponentDocument;
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct Sprite2dDocument {
@@ -40,35 +39,12 @@ pub struct Sprite2dDocument {
 impl Sprite2dDocument {
     pub fn from_component(component: &SceneComponentDocument) -> Option<Self> {
         match component {
-            ComponentDocument::Sprite2d {
-                render_layer,
-                texture,
-                size,
-                sheet,
-                animation,
-                visual_maps,
-                render_contributions,
-                material,
-                z_index,
-                post_fx: _,
-            } => Some(Self {
-                entity_name: String::new(),
-                render_layer: render_layer.clone(),
-                texture: texture.clone(),
-                size: *size,
-                sheet: *sheet,
-                animation: *animation,
-                visual_maps: visual_maps.clone(),
-                render_contributions: render_contributions.clone(),
-                material: material.clone(),
-                z_index: *z_index,
-                opacity: 1.0,
-                visible: true,
-            }),
-            ComponentDocument::Plugin {
+            SceneComponentDocument::Plugin {
                 component_type,
                 payload,
-            } if component_type == "amigo.gfx.sprite-2d.Sprite2D" || component_type == "Sprite2D" => {
+            } if component_type == "amigo.gfx.sprite-2d.Sprite2D"
+                || component_type == "Sprite2D" =>
+            {
                 parse_sprite_2d_plugin_payload(payload).ok()
             }
             _ => None,
@@ -91,7 +67,7 @@ pub fn parse_sprite_2d_plugin_payload(payload: &Value) -> SceneDocumentResult<Sp
         .map_err(|source| SceneDocumentError::Parse { path: None, source })
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Default)]
 pub struct Sprite2dSceneSchemaProvider;
 
 impl SceneComponentSchemaProvider for Sprite2dSceneSchemaProvider {
@@ -104,7 +80,9 @@ impl SceneComponentSchemaProvider for Sprite2dSceneSchemaProvider {
     }
 
     fn parse_yaml(&self, payload: serde_yaml::Mapping) -> Result<Value, serde_yaml::Error> {
-        serde_yaml::to_value(serde_yaml::from_value::<Sprite2dDocument>(Value::Mapping(payload))?)
+        serde_yaml::to_value(serde_yaml::from_value::<Sprite2dDocument>(Value::Mapping(
+            payload,
+        ))?)
     }
 
     fn parse_payload_value(

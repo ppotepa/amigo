@@ -1,3 +1,7 @@
+use amigo_camera_optics_plugin::api::CameraOpticalResponse2d;
+use amigo_render_api::{
+    LightContributionKind2d, LightEmitterKind2d, LightSource2dCommon, LightSource2dCommonParams,
+};
 use amigo_render_api::{
     LightReceiver2dBindingPrimitive, LightReceiverDarkPolicy2dPrimitive,
     LightReceiverGlobalLight2dPrimitive, LightSampleStrategy2dPrimitive, Particle2dPrimitive,
@@ -6,10 +10,6 @@ use amigo_render_api::{
     ParticleMaterialLightingMode2dPrimitive, ParticleMotionStretch2dPrimitive,
     ParticleShape2dPrimitive, RenderContribution2d, RenderPrimitive2d, Renderable2dCommon,
     Renderable2dItem, Renderable2dKind,
-};
-use amigo_camera_optics_plugin::api::CameraOpticalResponse2d;
-use amigo_render_api::{
-    LightContributionKind2d, LightEmitterKind2d, LightSource2dCommon, LightSource2dCommonParams,
 };
 
 use crate::{Particle2dDrawCommand, ParticleLight2d};
@@ -43,14 +43,16 @@ pub fn particle_draw_command_to_render_primitive(
             crate::ParticleBlendMode2d::Multiply => ParticleBlendMode2dPrimitive::Multiply,
             crate::ParticleBlendMode2d::Screen => ParticleBlendMode2dPrimitive::Screen,
         },
-        motion_stretch: command.motion_stretch.map(|stretch| ParticleMotionStretch2dPrimitive {
-            enabled: stretch.enabled,
-            velocity_scale: stretch.velocity_scale,
-            max_length: stretch.max_length,
-            shutter_seconds: stretch.shutter_seconds,
-            tail_alpha: stretch.tail_alpha,
-            head_alpha: stretch.head_alpha,
-        }),
+        motion_stretch: command
+            .motion_stretch
+            .map(|stretch| ParticleMotionStretch2dPrimitive {
+                enabled: stretch.enabled,
+                velocity_scale: stretch.velocity_scale,
+                max_length: stretch.max_length,
+                shutter_seconds: stretch.shutter_seconds,
+                tail_alpha: stretch.tail_alpha,
+                head_alpha: stretch.head_alpha,
+            }),
         material: ParticleMaterial2dPrimitive {
             lighting_mode: match command.material.lighting_mode {
                 amigo_light_2d_plugin::Material2dLightingMode::Unlit => {
@@ -68,11 +70,8 @@ pub fn particle_draw_command_to_render_primitive(
             },
             receives_light: command.material.receives_light,
             light_response: command.material.light_response,
-            light_receiver: command
-                .material
-                .light_receiver
-                .as_ref()
-                .map(|binding| LightReceiver2dBindingPrimitive {
+            light_receiver: command.material.light_receiver.as_ref().map(|binding| {
+                LightReceiver2dBindingPrimitive {
                     groups: binding.groups.clone(),
                     source: binding.source.clone(),
                     channel: binding.channel.clone(),
@@ -106,7 +105,8 @@ pub fn particle_draw_command_to_render_primitive(
                             response: light.response,
                         })
                         .collect(),
-                }),
+                }
+            }),
         },
         light: command.light.map(|light| ParticleLight2dPrimitive {
             radius: light.radius,
@@ -122,9 +122,7 @@ pub fn particle_draw_command_to_render_primitive(
     })
 }
 
-pub fn particle_draw_command_to_renderable_2d(
-    command: &Particle2dDrawCommand,
-) -> Renderable2dItem {
+pub fn particle_draw_command_to_renderable_2d(command: &Particle2dDrawCommand) -> Renderable2dItem {
     Renderable2dItem::new(
         Renderable2dCommon::world(
             command.emitter_entity_name.clone(),
@@ -158,7 +156,12 @@ fn particle_draw_command_to_light_source(
         emitter_kind: LightEmitterKind2d::ParticleLight,
         emitter_id: Some(command.emitter_entity_name.clone()),
         render_layer: Some(command.render_layer.clone()),
-        color_rgba: Some([command.color.r, command.color.g, command.color.b, command.color.a]),
+        color_rgba: Some([
+            command.color.r,
+            command.color.g,
+            command.color.b,
+            command.color.a,
+        ]),
         intensity: Some(light.intensity),
         effective_intensity: Some(light.intensity * command.color.a),
         response: Some(1.0),
@@ -187,13 +190,21 @@ fn particle_light_camera_response(light: ParticleLight2d) -> CameraOpticalRespon
     CameraOpticalResponse2d {
         enabled: light.intensity > 0.0 && light.glow,
         intensity: light.intensity,
-        bloom: if light.glow { light.intensity * 0.35 } else { 0.0 },
+        bloom: if light.glow {
+            light.intensity * 0.35
+        } else {
+            0.0
+        },
         glare: light.intensity * 0.2,
         ghosting: 0.0,
         streaks: 0.0,
         chromatic_smear: 0.0,
         dirt_response: 0.0,
-        halation: if light.glow { light.intensity * 0.15 } else { 0.0 },
+        halation: if light.glow {
+            light.intensity * 0.15
+        } else {
+            0.0
+        },
         threshold: 0.0,
     }
     .normalized()

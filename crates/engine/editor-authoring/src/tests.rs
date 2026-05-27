@@ -874,7 +874,7 @@ fn rotten_club_main_menu_particle_emitters_use_component_metadata() {
     let particle = nodes_by_kind(&graph, AuthoringNodeKind::Component)
         .into_iter()
         .find(|node| {
-                node.semantic.component_type.as_deref() == Some("ParticleEmitter2D")
+            node.semantic.component_type.as_deref() == Some("ParticleEmitter2D")
                 && node.semantic.owner_entity_name.as_deref() == Some("rain-10m")
         })
         .expect("rain-10m ParticleEmitter2D");

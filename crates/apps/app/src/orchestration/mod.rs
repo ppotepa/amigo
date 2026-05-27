@@ -46,6 +46,21 @@ pub(crate) fn stabilize_runtime_for_session(
     stabilize_runtime_with_scene_session(session.runtime(), Some(session))
 }
 
+pub(crate) fn stabilize_runtime_queues(runtime: &Runtime) -> AmigoResult<PlaceholderBridgeSummary> {
+    stabilize_runtime_queues_with_scene_session(runtime, None)
+}
+
+pub(crate) fn stabilize_runtime_queues_for_session(
+    session: &RuntimeSession,
+) -> AmigoResult<PlaceholderBridgeSummary> {
+    stabilize_runtime_queues_with_scene_session(session.runtime(), Some(session))
+}
+
+pub(crate) fn poll_runtime_hot_reload(runtime: &Runtime) -> AmigoResult<usize> {
+    assets::sync_hot_reload_watches(runtime)?;
+    assets::queue_hot_reload_changes(runtime)
+}
+
 fn stabilize_runtime_with_scene_session(
     runtime: &Runtime,
     session: Option<&RuntimeSession>,
@@ -70,6 +85,35 @@ fn stabilize_runtime_with_scene_session(
 
     Err(AmigoError::Message(format!(
         "runtime stabilization exceeded the maximum of {MAX_RUNTIME_STABILIZATION_PASSES} passes"
+    )))
+}
+
+fn stabilize_runtime_queues_with_scene_session(
+    runtime: &Runtime,
+    session: Option<&RuntimeSession>,
+) -> AmigoResult<PlaceholderBridgeSummary> {
+    let mut summary = PlaceholderBridgeSummary::default();
+
+    for _ in 0..MAX_RUNTIME_STABILIZATION_PASSES {
+        merge_placeholder_bridge_summary(
+            &mut summary,
+            process_placeholder_bridges_with_scene_session(runtime, session)?,
+        );
+        assets::process_pending_asset_loads(runtime)?;
+
+        if required::<AssetCatalog>(runtime)?
+            .pending_loads()
+            .is_empty()
+        {
+            let dev_console_state = required::<DevConsoleState>(runtime)?;
+            summary.console_commands = dev_console_state.command_history();
+            summary.console_output = dev_console_state.output_lines();
+            return Ok(summary);
+        }
+    }
+
+    Err(AmigoError::Message(format!(
+        "runtime queue stabilization exceeded the maximum of {MAX_RUNTIME_STABILIZATION_PASSES} passes"
     )))
 }
 

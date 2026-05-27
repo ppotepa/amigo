@@ -45,7 +45,11 @@ fn graph_with_missing_edge_target_fails_validation() {
         "camera-optics",
     ));
 
-    graph.add_edge(CodeMapEdge::new(plugin, target, CodeMapEdgeKind::WritesTarget));
+    graph.add_edge(CodeMapEdge::new(
+        plugin,
+        target,
+        CodeMapEdgeKind::WritesTarget,
+    ));
 
     let errors = validate_codemap_graph(&graph).unwrap_err();
 

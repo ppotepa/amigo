@@ -1,6 +1,6 @@
 use amigo_plugin_api::{
-    camera_artifact_layer, final_composite, scene_color, scene_depth,
-    scene_emissive, scene_highlight, StandardTarget, TargetRef,
+    camera_artifact_layer, final_composite, scene_color, scene_depth, scene_emissive,
+    scene_highlight, StandardTarget, TargetRef,
 };
 
 #[test]
@@ -29,10 +29,8 @@ fn helpers_return_target_ids() {
 #[test]
 fn standard_target_refs_can_be_constructed() {
     let read = TargetRef::read_standard(StandardTarget::SceneDepth);
-    let write =
-        TargetRef::write_standard(StandardTarget::CameraArtifactLayer);
-    let contribute =
-        TargetRef::contribute_standard(StandardTarget::SceneHighlight);
+    let write = TargetRef::write_standard(StandardTarget::CameraArtifactLayer);
+    let contribute = TargetRef::contribute_standard(StandardTarget::SceneHighlight);
 
     assert_eq!(read.id.0, "SceneDepth");
     assert_eq!(write.id.0, "CameraArtifactLayer");

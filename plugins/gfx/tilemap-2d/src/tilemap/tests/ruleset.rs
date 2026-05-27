@@ -1,9 +1,9 @@
-use amigo_assets::{AssetKey, AssetSourceKind, LoadedAsset, prepare_asset_from_contents};
+use amigo_assets::{prepare_asset_from_contents, AssetKey, AssetSourceKind, LoadedAsset};
 use amigo_math::Vec2;
 use amigo_scene::SceneEntityId;
 
 use crate::{
-    TileMap2d, TileMap2dDrawCommand, TileMap2dSceneService, infer_tile_ruleset_from_prepared_asset,
+    infer_tile_ruleset_from_prepared_asset, TileMap2d, TileMap2dDrawCommand, TileMap2dSceneService,
 };
 
 #[test]

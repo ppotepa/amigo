@@ -2,9 +2,9 @@ use amigo_assets::AssetKey;
 use amigo_math::Vec2;
 
 use crate::{
-    TileCollisionKind2d, TileMap2d, TileMarkerRule2d, TileRuleSet2d, TileRuleSetSymbols2d,
-    TileTerrainRule2d, TileVariantSet2d, TileWorldDiagnosticSeverity, TileWorldValidationContext,
-    validate_tile_world_contract_with_context,
+    validate_tile_world_contract_with_context, TileCollisionKind2d, TileMap2d, TileMarkerRule2d,
+    TileRuleSet2d, TileRuleSetSymbols2d, TileTerrainRule2d, TileVariantSet2d,
+    TileWorldDiagnosticSeverity, TileWorldValidationContext,
 };
 
 #[test]
@@ -55,34 +55,22 @@ fn validates_grid_width_unknown_symbols_marker_counts_and_tile_ids() {
     assert!(diagnostics.iter().any(|diagnostic| diagnostic.severity
         == TileWorldDiagnosticSeverity::Error
         && diagnostic.message.contains("width")));
-    assert!(
-        diagnostics
-            .iter()
-            .any(|diagnostic| diagnostic.message.contains("symbol 'X'"))
-    );
-    assert!(
-        diagnostics
-            .iter()
-            .any(|diagnostic| diagnostic.message.contains("max_count"))
-    );
-    assert!(
-        diagnostics
-            .iter()
-            .any(|diagnostic| diagnostic.message.contains("tile id 9"))
-    );
-    assert!(
-        diagnostics
-            .iter()
-            .any(|diagnostic| diagnostic.message.contains("unknown collision"))
-    );
-    assert!(
-        diagnostics
-            .iter()
-            .any(|diagnostic| diagnostic.message.contains("Tileset"))
-    );
-    assert!(
-        diagnostics
-            .iter()
-            .any(|diagnostic| diagnostic.message.contains("tile_size"))
-    );
+    assert!(diagnostics
+        .iter()
+        .any(|diagnostic| diagnostic.message.contains("symbol 'X'")));
+    assert!(diagnostics
+        .iter()
+        .any(|diagnostic| diagnostic.message.contains("max_count")));
+    assert!(diagnostics
+        .iter()
+        .any(|diagnostic| diagnostic.message.contains("tile id 9")));
+    assert!(diagnostics
+        .iter()
+        .any(|diagnostic| diagnostic.message.contains("unknown collision")));
+    assert!(diagnostics
+        .iter()
+        .any(|diagnostic| diagnostic.message.contains("Tileset")));
+    assert!(diagnostics
+        .iter()
+        .any(|diagnostic| diagnostic.message.contains("tile_size")));
 }

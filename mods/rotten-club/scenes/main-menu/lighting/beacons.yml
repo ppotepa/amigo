@@ -2,279 +2,269 @@ kind: scene-fragment
 schema_version: 1
 
 entities:
-- id: beacon-a
-  name: beacon-a
-  visible: true
-  simulation_enabled: false
-  collision_enabled: false
-  transform2:
-    translation: { x: -132.0, y: 295.0 }
-    rotation_degrees: -18.0
-    scale: { x: 1.0, y: 1.0 }
-  components:
-  - type: BeaconLight2D
-    id: beacon-a
-    render_layer: background.city
-    viewport_fit: cover
-    viewport_canvas_size: { x: 1280.0, y: 720.0 }
-    render_contributions:
-      overlay.visible: true
-      relight.plate: false
-      bloom.source: true
-      camera.fx_source: true
-    color: '#FF2418FF'
-    base_intensity: 2.20
-    frequency_hz: 0.54
-    duty_cycle: 0.58
-    rise_seconds: 0.08
-    fall_seconds: 0.16
-    phase_offset: 0.00
-    jitter_amount: 0.10
-    jitter_hz: 7.5
-    core_radius_px: 1.35
-    halo_radius_px: 42.0
-    glow_strength: 0.62
-    beam_enabled: false
-    beam_length_px: 0.0
-    beam_width_degrees: 1.0
-    beam_strength: 0.0
-    aberration_px: 0.62
-    bloom: 0.28
-    camera_response:
-      enabled: true
-      intensity: 0.64
-      bloom: 0.30
-      glare: 0.64
-      ghosting: 0.20
-      streaks: 0.082
-      chromatic_smear: 0.022
-      dirt_response: 0.32
-      halation: 0.105
-      threshold: 0.0
-    depth:
-      mode: distance
-      distance_m: 150.0
-    z_index: 2000.0
-    enabled: true
+  - id: beacon-left
+    name: rotten-club-beacon-left
+    tags: [lighting, beacon, skyline-beacon]
+    transform2:
+      translation: { x: -132.0, y: 295.0 }
+      rotation_degrees: -18.0
+      scale: { x: 1.0, y: 1.0 }
+    components:
+      - type: amigo.lighting.beacon-light-2d.BeaconLight2D
+        id: beacon-left
+        render_layer: background.city
+        viewport_fit: cover
+        viewport_canvas_size: { x: 1280.0, y: 720.0 }
+        render_contributions:
+          overlay.visible: true
+          relight.plate: false
+          bloom.source: true
+          camera.fx_source: true
+        color: "#FF2418FF"
+        base_intensity: 2.20
+        frequency_hz: 0.54
+        duty_cycle: 0.58
+        rise_seconds: 0.08
+        fall_seconds: 0.16
+        phase_offset: 0.00
+        jitter_amount: 0.10
+        jitter_hz: 7.5
+        core_radius_px: 1.35
+        halo_radius_px: 42.0
+        glow_strength: 0.62
+        beam_enabled: false
+        beam_length_px: 0.0
+        beam_width_degrees: 1.0
+        beam_strength: 0.0
+        aberration_px: 0.62
+        bloom: 0.28
+        camera_response:
+          enabled: true
+          intensity: 0.64
+          bloom: 0.30
+          glare: 0.64
+          ghosting: 0.20
+          streaks: 0.082
+          chromatic_smear: 0.022
+          dirt_response: 0.32
+          halation: 0.105
+          threshold: 0.0
+        depth:
+          mode: distance
+          distance_m: 150.0
+          blur_scale: 0.65
+        z_index: 2000.0
 
-- id: beacon-b
-  name: beacon-b
-  visible: true
-  simulation_enabled: false
-  collision_enabled: false
-  transform2:
-    translation: { x: -219.0, y: 179.0 }
-    rotation_degrees: -18.0
-    scale: { x: 1.0, y: 1.0 }
-  components:
-  - type: BeaconLight2D
-    id: beacon-b
-    render_layer: background.city
-    viewport_fit: cover
-    viewport_canvas_size: { x: 1280.0, y: 720.0 }
-    render_contributions:
-      overlay.visible: true
-      relight.plate: false
-      bloom.source: true
-      camera.fx_source: true
-    color: '#E51B14FF'
-    base_intensity: 1.95
-    frequency_hz: 0.50
-    duty_cycle: 0.56
-    rise_seconds: 0.08
-    fall_seconds: 0.16
-    phase_offset: 0.21
-    jitter_amount: 0.08
-    jitter_hz: 6.8
-    core_radius_px: 1.20
-    halo_radius_px: 36.0
-    glow_strength: 0.58
-    beam_enabled: false
-    beam_length_px: 0.0
-    beam_width_degrees: 1.0
-    beam_strength: 0.0
-    aberration_px: 0.55
-    bloom: 0.25
-    camera_response:
-      enabled: true
-      intensity: 0.48
-      bloom: 0.27
-      glare: 0.48
-      ghosting: 0.16
-      streaks: 0.066
-      chromatic_smear: 0.019
-      dirt_response: 0.24
-      halation: 0.095
-      threshold: 0.0
-    depth:
-      mode: distance
-      distance_m: 180.0
-    z_index: 2000.0
-    enabled: true
+  - id: beacon-mid-left
+    name: rotten-club-beacon-mid-left
+    tags: [lighting, beacon, skyline-beacon]
+    transform2:
+      translation: { x: -219.0, y: 179.0 }
+      rotation_degrees: -18.0
+      scale: { x: 1.0, y: 1.0 }
+    components:
+      - type: amigo.lighting.beacon-light-2d.BeaconLight2D
+        id: beacon-mid-left
+        render_layer: background.city
+        viewport_fit: cover
+        viewport_canvas_size: { x: 1280.0, y: 720.0 }
+        render_contributions:
+          overlay.visible: true
+          relight.plate: false
+          bloom.source: true
+          camera.fx_source: true
+        color: "#E51B14FF"
+        base_intensity: 1.95
+        frequency_hz: 0.50
+        duty_cycle: 0.56
+        rise_seconds: 0.08
+        fall_seconds: 0.16
+        phase_offset: 0.21
+        jitter_amount: 0.08
+        jitter_hz: 6.8
+        core_radius_px: 1.20
+        halo_radius_px: 36.0
+        glow_strength: 0.58
+        beam_enabled: false
+        beam_length_px: 0.0
+        beam_width_degrees: 1.0
+        beam_strength: 0.0
+        aberration_px: 0.55
+        bloom: 0.25
+        camera_response:
+          enabled: true
+          intensity: 0.48
+          bloom: 0.27
+          glare: 0.48
+          ghosting: 0.16
+          streaks: 0.066
+          chromatic_smear: 0.019
+          dirt_response: 0.24
+          halation: 0.095
+          threshold: 0.0
+        depth:
+          mode: distance
+          distance_m: 180.0
+          blur_scale: 0.65
+        z_index: 2000.0
 
-- id: beacon-c
-  name: beacon-c
-  visible: true
-  simulation_enabled: false
-  collision_enabled: false
-  transform2:
-    translation: { x: -176.0, y: 110.0 }
-    rotation_degrees: -18.0
-    scale: { x: 1.0, y: 1.0 }
-  components:
-  - type: BeaconLight2D
-    id: beacon-c
-    render_layer: background.city
-    viewport_fit: cover
-    viewport_canvas_size: { x: 1280.0, y: 720.0 }
-    render_contributions:
-      overlay.visible: true
-      relight.plate: false
-      bloom.source: true
-      camera.fx_source: true
-    color: '#F31F16FF'
-    base_intensity: 2.08
-    frequency_hz: 0.58
-    duty_cycle: 0.57
-    rise_seconds: 0.08
-    fall_seconds: 0.16
-    phase_offset: 0.41
-    jitter_amount: 0.09
-    jitter_hz: 8.4
-    core_radius_px: 1.28
-    halo_radius_px: 39.0
-    glow_strength: 0.60
-    beam_enabled: false
-    beam_length_px: 0.0
-    beam_width_degrees: 1.0
-    beam_strength: 0.0
-    aberration_px: 0.58
-    bloom: 0.27
-    camera_response:
-      enabled: true
-      intensity: 0.56
-      bloom: 0.29
-      glare: 0.56
-      ghosting: 0.18
-      streaks: 0.074
-      chromatic_smear: 0.021
-      dirt_response: 0.28
-      halation: 0.102
-      threshold: 0.0
-    depth:
-      mode: distance
-      distance_m: 130.0
-    z_index: 2000.0
-    enabled: true
+  - id: beacon-center
+    name: rotten-club-beacon-center
+    tags: [lighting, beacon, skyline-beacon]
+    transform2:
+      translation: { x: -176.0, y: 110.0 }
+      rotation_degrees: -18.0
+      scale: { x: 1.0, y: 1.0 }
+    components:
+      - type: amigo.lighting.beacon-light-2d.BeaconLight2D
+        id: beacon-center
+        render_layer: background.city
+        viewport_fit: cover
+        viewport_canvas_size: { x: 1280.0, y: 720.0 }
+        render_contributions:
+          overlay.visible: true
+          relight.plate: false
+          bloom.source: true
+          camera.fx_source: true
+        color: "#F31F16FF"
+        base_intensity: 2.08
+        frequency_hz: 0.58
+        duty_cycle: 0.57
+        rise_seconds: 0.08
+        fall_seconds: 0.16
+        phase_offset: 0.41
+        jitter_amount: 0.09
+        jitter_hz: 8.4
+        core_radius_px: 1.28
+        halo_radius_px: 39.0
+        glow_strength: 0.60
+        beam_enabled: false
+        beam_length_px: 0.0
+        beam_width_degrees: 1.0
+        beam_strength: 0.0
+        aberration_px: 0.58
+        bloom: 0.27
+        camera_response:
+          enabled: true
+          intensity: 0.56
+          bloom: 0.29
+          glare: 0.56
+          ghosting: 0.18
+          streaks: 0.074
+          chromatic_smear: 0.021
+          dirt_response: 0.28
+          halation: 0.102
+          threshold: 0.0
+        depth:
+          mode: distance
+          distance_m: 130.0
+          blur_scale: 0.65
+        z_index: 2000.0
 
-- id: beacon-d-sync-1
-  name: beacon-d-sync-1
-  visible: true
-  simulation_enabled: false
-  collision_enabled: false
-  transform2:
-    translation: { x: -91.0, y: 121.0 }
-    rotation_degrees: -18.0
-    scale: { x: 1.0, y: 1.0 }
-  components:
-  - type: BeaconLight2D
-    id: beacon-d-sync-1
-    render_layer: background.city
-    viewport_fit: cover
-    viewport_canvas_size: { x: 1280.0, y: 720.0 }
-    render_contributions:
-      overlay.visible: true
-      relight.plate: false
-      bloom.source: true
-      camera.fx_source: true
-    color: '#E81C14FF'
-    base_intensity: 2.02
-    frequency_hz: 0.52
-    duty_cycle: 0.56
-    rise_seconds: 0.08
-    fall_seconds: 0.16
-    phase_offset: 0.13
-    sync_group: dual_tower_right
-    jitter_amount: 0.07
-    jitter_hz: 7.2
-    core_radius_px: 1.24
-    halo_radius_px: 38.0
-    glow_strength: 0.59
-    beam_enabled: false
-    beam_length_px: 0.0
-    beam_width_degrees: 1.0
-    beam_strength: 0.0
-    aberration_px: 0.56
-    bloom: 0.26
-    camera_response:
-      enabled: true
-      intensity: 0.52
-      bloom: 0.28
-      glare: 0.52
-      ghosting: 0.17
-      streaks: 0.070
-      chromatic_smear: 0.020
-      dirt_response: 0.26
-      halation: 0.098
-      threshold: 0.0
-    depth:
-      mode: distance
-      distance_m: 90.0
-    z_index: 2000.0
-    enabled: true
+  - id: beacon-right
+    name: rotten-club-beacon-right
+    tags: [lighting, beacon, skyline-beacon]
+    transform2:
+      translation: { x: -91.0, y: 121.0 }
+      rotation_degrees: -18.0
+      scale: { x: 1.0, y: 1.0 }
+    components:
+      - type: amigo.lighting.beacon-light-2d.BeaconLight2D
+        id: beacon-right
+        render_layer: background.city
+        viewport_fit: cover
+        viewport_canvas_size: { x: 1280.0, y: 720.0 }
+        render_contributions:
+          overlay.visible: true
+          relight.plate: false
+          bloom.source: true
+          camera.fx_source: true
+        color: "#E81C14FF"
+        base_intensity: 2.02
+        frequency_hz: 0.52
+        duty_cycle: 0.56
+        rise_seconds: 0.08
+        fall_seconds: 0.16
+        phase_offset: 0.13
+        sync_group: dual_tower_right
+        jitter_amount: 0.07
+        jitter_hz: 7.2
+        core_radius_px: 1.24
+        halo_radius_px: 38.0
+        glow_strength: 0.59
+        beam_enabled: false
+        beam_length_px: 0.0
+        beam_width_degrees: 1.0
+        beam_strength: 0.0
+        aberration_px: 0.56
+        bloom: 0.26
+        camera_response:
+          enabled: true
+          intensity: 0.52
+          bloom: 0.28
+          glare: 0.52
+          ghosting: 0.17
+          streaks: 0.070
+          chromatic_smear: 0.020
+          dirt_response: 0.26
+          halation: 0.098
+          threshold: 0.0
+        depth:
+          mode: distance
+          distance_m: 90.0
+          blur_scale: 0.65
+        z_index: 2000.0
 
-- id: beacon-d-sync-2
-  name: beacon-d-sync-2
-  visible: true
-  simulation_enabled: false
-  collision_enabled: false
-  transform2:
-    translation: { x: -72.0, y: 120.0 }
-    rotation_degrees: -18.0
-    scale: { x: 1.0, y: 1.0 }
-  components:
-  - type: BeaconLight2D
-    id: beacon-d-sync-2
-    render_layer: background.city
-    viewport_fit: cover
-    viewport_canvas_size: { x: 1280.0, y: 720.0 }
-    render_contributions:
-      overlay.visible: true
-      relight.plate: false
-      bloom.source: true
-      camera.fx_source: true
-    color: '#E81C14FF'
-    base_intensity: 2.02
-    frequency_hz: 0.52
-    duty_cycle: 0.56
-    rise_seconds: 0.08
-    fall_seconds: 0.16
-    phase_offset: 0.13
-    sync_group: dual_tower_right
-    jitter_amount: 0.07
-    jitter_hz: 7.2
-    core_radius_px: 1.24
-    halo_radius_px: 38.0
-    glow_strength: 0.59
-    beam_enabled: false
-    beam_length_px: 0.0
-    beam_width_degrees: 1.0
-    beam_strength: 0.0
-    aberration_px: 0.56
-    bloom: 0.26
-    camera_response:
-      enabled: true
-      intensity: 0.52
-      bloom: 0.28
-      glare: 0.52
-      ghosting: 0.17
-      streaks: 0.070
-      chromatic_smear: 0.020
-      dirt_response: 0.26
-      halation: 0.098
-      threshold: 0.0
-    depth:
-      mode: distance
-      distance_m: 90.0
-    z_index: 2000.0
-    enabled: true
+  - id: beacon-right-sync
+    name: rotten-club-beacon-right-sync
+    tags: [lighting, beacon, skyline-beacon]
+    transform2:
+      translation: { x: -72.0, y: 120.0 }
+      rotation_degrees: -18.0
+      scale: { x: 1.0, y: 1.0 }
+    components:
+      - type: amigo.lighting.beacon-light-2d.BeaconLight2D
+        id: beacon-right-sync
+        render_layer: background.city
+        viewport_fit: cover
+        viewport_canvas_size: { x: 1280.0, y: 720.0 }
+        render_contributions:
+          overlay.visible: true
+          relight.plate: false
+          bloom.source: true
+          camera.fx_source: true
+        color: "#E81C14FF"
+        base_intensity: 2.02
+        frequency_hz: 0.52
+        duty_cycle: 0.56
+        rise_seconds: 0.08
+        fall_seconds: 0.16
+        phase_offset: 0.13
+        sync_group: dual_tower_right
+        jitter_amount: 0.07
+        jitter_hz: 7.2
+        core_radius_px: 1.24
+        halo_radius_px: 38.0
+        glow_strength: 0.59
+        beam_enabled: false
+        beam_length_px: 0.0
+        beam_width_degrees: 1.0
+        beam_strength: 0.0
+        aberration_px: 0.56
+        bloom: 0.26
+        camera_response:
+          enabled: true
+          intensity: 0.52
+          bloom: 0.28
+          glare: 0.52
+          ghosting: 0.17
+          streaks: 0.070
+          chromatic_smear: 0.020
+          dirt_response: 0.26
+          halation: 0.098
+          threshold: 0.0
+        depth:
+          mode: distance
+          distance_m: 90.0
+          blur_scale: 0.65
+        z_index: 2000.0

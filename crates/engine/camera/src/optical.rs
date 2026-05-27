@@ -1,6 +1,6 @@
 use amigo_plugin_api::{
-    render_contributions::roles, CandidateStatus, CandidateTrace, DomainCandidate, DomainId,
-    RenderContributionSet, TargetId,
+    CandidateStatus, CandidateTrace, DomainCandidate, DomainId, RenderContributionSet, TargetId,
+    render_contributions::roles,
 };
 use serde::{Deserialize, Serialize};
 
@@ -123,22 +123,37 @@ impl CameraOpticalResponse2d {
 }
 
 fn finite_or_zero(value: f32) -> f32 {
-    if value.is_finite() {
-        value
-    } else {
-        0.0
-    }
+    if value.is_finite() { value } else { 0.0 }
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum CameraOpticalCoverage2d {
-    LightMapChannel { source: String, channel: String },
-    Hotspot { entity_name: String, radius_px: f32 },
-    Glyphs { entity_name: String, render_layer: String },
-    TextureAlpha { entity_name: String, render_layer: String },
-    VectorCoverage { entity_name: String, render_layer: String },
-    ParticleCoverage { emitter_entity_name: String },
-    Unsupported { reason: String },
+    LightMapChannel {
+        source: String,
+        channel: String,
+    },
+    Hotspot {
+        entity_name: String,
+        radius_px: f32,
+    },
+    Glyphs {
+        entity_name: String,
+        render_layer: String,
+    },
+    TextureAlpha {
+        entity_name: String,
+        render_layer: String,
+    },
+    VectorCoverage {
+        entity_name: String,
+        render_layer: String,
+    },
+    ParticleCoverage {
+        emitter_entity_name: String,
+    },
+    Unsupported {
+        reason: String,
+    },
 }
 
 impl CameraOpticalCoverage2d {

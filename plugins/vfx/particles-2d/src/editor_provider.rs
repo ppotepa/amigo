@@ -30,8 +30,7 @@ impl EditorRuntimeApplyProvider for Particle2dEditorRuntimeApplyProvider {
         request: EditorRuntimeApplyRequest,
     ) -> AmigoResult<EditorRuntimeApplyOutcome> {
         let EditorRuntimeApplyRequest::RuntimeProperty {
-            binding:
-                AuthoringRuntimeBinding::ParticleEmitterProperty { entity_name, field },
+            binding: AuthoringRuntimeBinding::ParticleEmitterProperty { entity_name, field },
             value,
             ..
         } = request
@@ -59,12 +58,8 @@ fn apply_particle_property_to_service(
     value: serde_yaml::Value,
 ) -> Option<bool> {
     match (field, value) {
-        ("active", serde_yaml::Value::Bool(value)) => {
-            Some(service.set_active(entity_name, value))
-        }
-        ("spawn_rate", value) => {
-            Some(service.set_spawn_rate(entity_name, number_value(value)?))
-        }
+        ("active", serde_yaml::Value::Bool(value)) => Some(service.set_active(entity_name, value)),
+        ("spawn_rate", value) => Some(service.set_spawn_rate(entity_name, number_value(value)?)),
         ("max_particles", value) => Some(
             service.set_max_particles(entity_name, number_value(value)?.round().max(0.0) as usize),
         ),
@@ -80,15 +75,15 @@ fn apply_particle_property_to_service(
         ("speed_jitter", value) => {
             Some(service.set_speed_jitter(entity_name, number_value(value)?))
         }
-        ("spread_degrees", value) => Some(
-            service.set_spread_radians(entity_name, number_value(value)?.to_radians()),
-        ),
+        ("spread_degrees", value) => {
+            Some(service.set_spread_radians(entity_name, number_value(value)?.to_radians()))
+        }
         ("local_direction_degrees", value) => Some(
             service.set_local_direction_radians(entity_name, number_value(value)?.to_radians()),
         ),
-        ("inherit_parent_velocity", value) => Some(
-            service.set_inherit_parent_velocity(entity_name, number_value(value)?),
-        ),
+        ("inherit_parent_velocity", value) => {
+            Some(service.set_inherit_parent_velocity(entity_name, number_value(value)?))
+        }
         ("initial_size", value) => {
             Some(service.set_initial_size(entity_name, number_value(value)?))
         }

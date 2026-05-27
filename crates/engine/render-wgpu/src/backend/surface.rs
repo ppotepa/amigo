@@ -50,7 +50,7 @@ impl WgpuRenderBackend {
         let (device, queue) = helpers::block_on(adapter.request_device(&descriptor))
             .map_err(|error| AmigoError::Message(error.to_string()))?;
 
-        let config = surface
+        let mut config = surface
             .get_default_config(
                 &adapter,
                 handles.size.width.max(1),
@@ -59,6 +59,10 @@ impl WgpuRenderBackend {
             .ok_or_else(|| {
                 AmigoError::Message("failed to derive a default surface configuration".to_owned())
             })?;
+        let capabilities = surface.get_capabilities(&adapter);
+        if let Some(present_mode) = preferred_present_mode(&capabilities.present_modes) {
+            config.present_mode = present_mode;
+        }
         surface.configure(&device, &config);
 
         Ok(WgpuSurfaceState {
@@ -115,6 +119,18 @@ impl WgpuRenderBackend {
             view,
         })
     }
+}
+
+fn preferred_present_mode(available: &[wgpu::PresentMode]) -> Option<wgpu::PresentMode> {
+    [
+        wgpu::PresentMode::AutoNoVsync,
+        wgpu::PresentMode::Mailbox,
+        wgpu::PresentMode::Immediate,
+        wgpu::PresentMode::AutoVsync,
+        wgpu::PresentMode::Fifo,
+    ]
+    .into_iter()
+    .find(|mode| available.contains(mode))
 }
 
 impl WgpuSurfaceState {
@@ -234,6 +250,10 @@ impl WgpuSurfaceState {
 
 impl WgpuOffscreenTarget {
     pub fn read_rgba8(&self) -> AmigoResult<Vec<u8>> {
+        self.read_rgba8_blocking()
+    }
+
+    pub fn read_rgba8_blocking(&self) -> AmigoResult<Vec<u8>> {
         let unpadded_bytes_per_row = self.width as u64 * 4;
         let align = wgpu::COPY_BYTES_PER_ROW_ALIGNMENT as u64;
         let padded_bytes_per_row = unpadded_bytes_per_row.div_ceil(align) * align;

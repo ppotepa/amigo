@@ -1,5 +1,5 @@
-use amigo_composite_plugin::{ColorRamp2d, RainGlass2d};
 use amigo_assets::AssetCatalog;
+use amigo_composite_plugin::{ColorRamp2d, RainGlass2d};
 use amigo_plugin_api::{roles, RenderContributionSet};
 
 use amigo_camera_profiles_plugin::runtime::{

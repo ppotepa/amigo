@@ -2,8 +2,8 @@ use amigo_core::AmigoResult;
 use amigo_runtime::Runtime;
 use amigo_scripting_api::ScriptEvent;
 
-use crate::runtime_context::RuntimeContext;
 use crate::LaunchSelection;
+use crate::runtime_context::RuntimeContext;
 
 pub(crate) fn run_event_pipelines_for_event(
     runtime: &Runtime,

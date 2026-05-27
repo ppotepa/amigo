@@ -49,13 +49,13 @@ impl WorldObjectFilter<'_> {
         match self {
             Self::All => true,
             Self::Include(objects) => objects.contains(object_id),
-            Self::IncludeSubtrees(roots) => roots
-                .iter()
-                .any(|root| object_id.matches_subtree(root)),
+            Self::IncludeSubtrees(roots) => {
+                roots.iter().any(|root| object_id.matches_subtree(root))
+            }
             Self::Exclude(objects) => !objects.contains(object_id),
-            Self::ExcludeSubtrees(roots) => !roots
-                .iter()
-                .any(|root| object_id.matches_subtree(root)),
+            Self::ExcludeSubtrees(roots) => {
+                !roots.iter().any(|root| object_id.matches_subtree(root))
+            }
             Self::ExcludeCombined { objects, subtrees } => {
                 !objects.contains(object_id)
                     && !subtrees.iter().any(|root| object_id.matches_subtree(root))

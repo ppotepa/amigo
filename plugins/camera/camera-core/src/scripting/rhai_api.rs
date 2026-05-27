@@ -156,11 +156,7 @@ impl CameraApi {
         self.set_aperture_rotation_degrees("main", value)
     }
 
-    pub fn set_aperture_rotation_degrees(
-        &mut self,
-        camera_id: &str,
-        value: rhai::FLOAT,
-    ) -> bool {
+    pub fn set_aperture_rotation_degrees(&mut self, camera_id: &str, value: rhai::FLOAT) -> bool {
         let Some(value) = finite_clamped(value, -360.0, 360.0) else {
             return false;
         };

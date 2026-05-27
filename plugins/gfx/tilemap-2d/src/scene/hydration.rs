@@ -1,40 +1,14 @@
 use amigo_assets::AssetKey;
 use amigo_math::Vec2;
 use amigo_scene::{
-    ComponentHydrationContext, ComponentHydrator, PluginComponentHydrationContext,
-    PluginComponentHydrator, SceneComponentDocument, SceneDocumentResult, SceneVec2Document,
-    TileMap2dSceneCommand,
+    PluginComponentHydrationContext, PluginComponentHydrator, SceneDocumentResult,
+    SceneVec2Document, TileMap2dSceneCommand,
 };
-use amigo_scene::SceneComponentDocument as ComponentDocument;
 
 use super::Tilemap2dDocument;
 
-pub struct TileMap2dComponentHydrator;
+#[derive(Default)]
 pub struct TileMap2dPluginComponentHydrator;
-
-impl ComponentHydrator for TileMap2dComponentHydrator {
-    fn provider_id(&self) -> &'static str {
-        "amigo.gfx.tilemap-2d"
-    }
-
-    fn can_hydrate(&self, component: &SceneComponentDocument) -> bool {
-        matches!(component, ComponentDocument::TileMap2d { .. })
-    }
-
-    fn hydrate(&self, ctx: ComponentHydrationContext<'_>) -> SceneDocumentResult<()> {
-        let document = match ctx.component {
-            ComponentDocument::TileMap2d { .. } => {
-                let Some(document) = Tilemap2dDocument::from_component(ctx.component) else {
-                    return Ok(());
-                };
-                document
-            }
-            _ => return Ok(()),
-        };
-
-        push_tilemap_command(ctx.source_mod, ctx.entity_name, ctx.commands, &document)
-    }
-}
 
 impl PluginComponentHydrator for TileMap2dPluginComponentHydrator {
     fn provider_id(&self) -> &'static str {
@@ -87,4 +61,107 @@ fn push_tilemap_command(
     });
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use amigo_scene::{
+        PluginComponentHydrationContext, SceneCommand, SceneDocument, SceneEntityDocument,
+        SceneMetadataDocument, SceneVisual2dDocument,
+    };
+    use std::collections::BTreeMap;
+
+    #[test]
+    fn tilemap_hydrator_carries_tileset_ruleset_and_grid() {
+        let hydrator = TileMap2dPluginComponentHydrator;
+        let payload = Tilemap2dDocument {
+            entity_name: String::new(),
+            render_layer: "world.tiles".to_owned(),
+            tileset: "playground/tiles/base".to_owned(),
+            ruleset: Some("playground/rules/platform".to_owned()),
+            tile_size: SceneVec2Document { x: 16.0, y: 24.0 },
+            editor: None,
+            grid: vec![".P..".to_owned(), "####".to_owned()],
+            depth_fill_rows: 2,
+            z_index: -3.0,
+        };
+        let entity = test_entity("tilemap");
+        let document = test_document(entity.clone());
+        let mut commands = Vec::new();
+
+        hydrator
+            .hydrate_plugin_payload(PluginComponentHydrationContext {
+                source_mod: "playground",
+                document: &document,
+                entity: &entity,
+                entity_name: "tilemap",
+                component_index: 0,
+                component_type: "amigo.gfx.tilemap-2d.TileMap2D",
+                payload: &payload,
+                commands: &mut commands,
+            })
+            .expect("tilemap hydrator should accept plugin payload");
+
+        let command = plugin_payload::<TileMap2dSceneCommand>(&commands);
+        assert_eq!(command.source_mod, "playground");
+        assert_eq!(command.entity_name, "tilemap");
+        assert_eq!(command.render_layer, "world.tiles");
+        assert_eq!(command.tileset, AssetKey::new("playground/tiles/base"));
+        assert_eq!(
+            command.ruleset,
+            Some(AssetKey::new("playground/rules/platform"))
+        );
+        assert_eq!(command.tile_size, Vec2::new(16.0, 24.0));
+        assert_eq!(command.grid, vec![".P..".to_owned(), "####".to_owned()]);
+        assert_eq!(command.depth_fill_rows, 2);
+        assert_eq!(command.z_index, -3.0);
+    }
+
+    fn plugin_payload<T: 'static>(commands: &[SceneCommand]) -> &T {
+        assert_eq!(commands.len(), 1);
+        match &commands[0] {
+            SceneCommand::Plugin { command } => command
+                .payload_as::<T>()
+                .expect("plugin scene payload should downcast"),
+            other => panic!("expected plugin scene command, got {other:?}"),
+        }
+    }
+
+    fn test_entity(name: &str) -> SceneEntityDocument {
+        SceneEntityDocument {
+            id: name.to_owned(),
+            name: name.to_owned(),
+            tags: Vec::new(),
+            groups: Vec::new(),
+            visible: true,
+            simulation_enabled: true,
+            collision_enabled: true,
+            properties: BTreeMap::new(),
+            transform2: None,
+            transform3: None,
+            post_fx: Vec::new(),
+            prefab: None,
+            prefab_overrides: Vec::new(),
+            components: Vec::new(),
+        }
+    }
+
+    fn test_document(entity: SceneEntityDocument) -> SceneDocument {
+        SceneDocument {
+            version: 1,
+            scene: SceneMetadataDocument {
+                id: "test-scene".to_owned(),
+                label: String::new(),
+                description: None,
+            },
+            transitions: Vec::new(),
+            collision_events: Vec::new(),
+            audio_cues: Vec::new(),
+            activation_sets: Vec::new(),
+            visual2d: SceneVisual2dDocument::default(),
+            state: BTreeMap::new(),
+            entities: vec![entity],
+        }
+    }
 }

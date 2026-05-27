@@ -1,6 +1,4 @@
-use amigo_plugin_api::{
-    CapabilityId, DiagnosticChannelId, DomainId, PluginId, SlotId, TargetId,
-};
+use amigo_plugin_api::{CapabilityId, DiagnosticChannelId, DomainId, PluginId, SlotId, TargetId};
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum CodeMapNodeId {
@@ -41,11 +39,7 @@ pub struct CodeMapNode {
 }
 
 impl CodeMapNode {
-    pub fn new(
-        id: CodeMapNodeId,
-        kind: CodeMapNodeKind,
-        label: impl Into<String>,
-    ) -> Self {
+    pub fn new(id: CodeMapNodeId, kind: CodeMapNodeKind, label: impl Into<String>) -> Self {
         Self {
             id,
             kind,

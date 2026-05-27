@@ -105,7 +105,8 @@ pub fn refresh_focus_targets_2d_system(runtime: &Runtime) -> AmigoResult<()> {
             );
         }
     }
-    if let Some(beacons) = runtime.resolve::<amigo_beacon_light_2d_plugin::BeaconLight2dSceneService>()
+    if let Some(beacons) =
+        runtime.resolve::<amigo_beacon_light_2d_plugin::BeaconLight2dSceneService>()
     {
         for command in beacons.commands() {
             push_entity_focus_target(
@@ -119,7 +120,8 @@ pub fn refresh_focus_targets_2d_system(runtime: &Runtime) -> AmigoResult<()> {
             );
         }
     }
-    if let Some(particles) = runtime.resolve::<amigo_particles_2d_plugin::Particle2dSceneService>() {
+    if let Some(particles) = runtime.resolve::<amigo_particles_2d_plugin::Particle2dSceneService>()
+    {
         for command in particles.draw_commands() {
             push_entity_focus_target(
                 &mut output,
@@ -179,9 +181,9 @@ fn push_entity_focus_target(
     if layer.depth.is_overlay() {
         return;
     }
-    let world_position = scene.transform_of(entity_name).map(|transform| {
-        Vec2::new(transform.translation.x, transform.translation.y)
-    });
+    let world_position = scene
+        .transform_of(entity_name)
+        .map(|transform| Vec2::new(transform.translation.x, transform.translation.y));
     output.push(CameraFocusTarget2d {
         id: format!("entity:{entity_name}"),
         aliases: [entity_name.to_owned(), format!("entity:{entity_name}")]
@@ -216,19 +218,19 @@ fn focus_depth_for_layer(
         | amigo_2d_composition::RenderDepthMode2d::Infinity => CameraFocusTargetDepth2d::Depth {
             z_depth: layer.depth.z_depth.clamp(0.0, 1.0),
         },
-        amigo_2d_composition::RenderDepthMode2d::Overlay => CameraFocusTargetDepth2d::Depth {
-            z_depth: 1.0,
-        },
+        amigo_2d_composition::RenderDepthMode2d::Overlay => {
+            CameraFocusTargetDepth2d::Depth { z_depth: 1.0 }
+        }
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use amigo_text_2d_plugin::{Text2d, Text2dDrawCommand, Text2dStyle};
     use amigo_assets::AssetKey;
     use amigo_math::Transform2;
     use amigo_scene::SceneEntityId;
+    use amigo_text_2d_plugin::{Text2d, Text2dDrawCommand, Text2dStyle};
 
     #[test]
     fn refresh_focus_targets_registers_text2d_entity_with_layer_distance() {
@@ -263,7 +265,9 @@ mod tests {
             },
             optical_role: amigo_2d_spatial::OpticalLayerRole2d::ForegroundMedium,
         });
-        let text = runtime.required::<amigo_text_2d_plugin::Text2dSceneService>().unwrap();
+        let text = runtime
+            .required::<amigo_text_2d_plugin::Text2dSceneService>()
+            .unwrap();
         text.queue(Text2dDrawCommand {
             entity_id: SceneEntityId::new(1),
             entity_name: "title".to_owned(),
@@ -284,7 +288,9 @@ mod tests {
         refresh_focus_targets_2d_system(&runtime).unwrap();
 
         let targets = runtime.required::<CameraFocusTarget2dService>().unwrap();
-        let resolved = targets.resolve("title").expect("title target should resolve");
+        let resolved = targets
+            .resolve("title")
+            .expect("title target should resolve");
         assert!(matches!(
             resolved.target.depth,
             CameraFocusTargetDepth2d::Distance { meters, .. } if (meters - 1.0).abs() < 0.001

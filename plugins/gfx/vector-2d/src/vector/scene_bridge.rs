@@ -6,9 +6,7 @@ use amigo_camera_optics_plugin::api::CameraOpticalResponse2d;
 use amigo_material_2d_plugin::{
     Material2d, Material2dLighting, Material2dOptical, Material2dOpticalMode,
 };
-use amigo_render_api::{
-    RenderContributionSet, render_contribution_roles as roles,
-};
+use amigo_render_api::{render_contribution_roles as roles, RenderContributionSet};
 use amigo_scene::{
     Material2dOpticalModeSceneCommand, Material2dSceneCommand, SceneService,
     VectorShape2dSceneCommand, VectorShapeKind2dSceneCommand, VectorStyle2dSceneCommand,

@@ -1,5 +1,5 @@
 use amigo_core::{AmigoError, AmigoResult};
-use amigo_scene::{format_scene_command, RuntimeSceneCommandHandler, SceneCommand};
+use amigo_scene::{RuntimeSceneCommandHandler, SceneCommand, format_scene_command};
 
 use crate::{LensDroplets2dCertificationReport, PostFx2dService, ScopedPostFx2dStack};
 

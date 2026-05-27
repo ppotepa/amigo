@@ -9,6 +9,7 @@ pub fn particle_emitter_2d_scene_descriptor() -> PluginSceneComponentDescriptor 
     )
 }
 
+#[derive(Default)]
 pub struct ParticleEmitter2dSceneDescriptorProvider;
 
 impl ScenePluginDescriptorProvider for ParticleEmitter2dSceneDescriptorProvider {

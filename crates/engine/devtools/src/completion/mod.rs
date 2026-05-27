@@ -16,13 +16,11 @@ pub use provider::{ConsoleCompletionProvider, ConsoleCompletionProviderRegistry}
 pub use rhai::collect_console_rhai_symbols_from_source;
 pub use state::ConsoleCompletionState;
 
-use rhai::{complete_rhai_property, complete_rhai_symbol};
-use resources::{
-    complete_runtime_context, complete_runtime_control_path,
-};
 use commands::{
     complete_argument, complete_command_segment, complete_initial_token, complete_typed_argument,
 };
+use resources::{complete_runtime_context, complete_runtime_control_path};
+use rhai::{complete_rhai_property, complete_rhai_symbol};
 
 const MAX_COMPLETION_SUGGESTIONS: usize = 8;
 
@@ -209,7 +207,6 @@ fn complete_values(
     })
 }
 
-
 fn sort_and_limit_suggestions(suggestions: &mut Vec<ConsoleCompletionSuggestion>) {
     suggestions.sort_by(|a, b| {
         a.label
@@ -219,8 +216,6 @@ fn sort_and_limit_suggestions(suggestions: &mut Vec<ConsoleCompletionSuggestion>
     suggestions.dedup_by(|a, b| a.label == b.label && a.insert_text == b.insert_text);
     suggestions.truncate(MAX_COMPLETION_SUGGESTIONS);
 }
-
-
 
 fn apply_suggestion(
     input: &str,
@@ -290,10 +285,10 @@ mod tests {
     };
 
     use super::{
-        ConsoleArgKind, ConsoleArgSpec, ConsoleCommandDescriptor, ConsoleCommandSchema,
         ConsoleCompletionContext, ConsoleRhaiSymbol, ConsoleRhaiValueKind,
         collect_console_rhai_symbols_from_source, compute_console_completion_from_descriptors,
     };
+    use crate::{ConsoleArgKind, ConsoleArgSpec, ConsoleCommandDescriptor, ConsoleCommandSchema};
 
     const MOCK_COMPONENT: &str = "Emitter";
     const MOCK_COMPONENT_PATH: &str = "world.weather.rain.front.Emitter";

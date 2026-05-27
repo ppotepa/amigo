@@ -1,4 +1,4 @@
-use crate::{Velocity2d, step_velocity_2d};
+use crate::{step_velocity_2d, Velocity2d};
 use amigo_math::Vec2;
 
 #[test]

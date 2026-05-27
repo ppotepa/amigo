@@ -1,5 +1,9 @@
+use std::collections::BTreeSet;
+
 use amigo_core::AmigoResult;
-use amigo_render_api::{FrameGraph, FrameGraphNode, FrameGraphNodeKind, FrameResourceKind};
+use amigo_render_api::{
+    FrameGraph, FrameGraphNode, FrameGraphNodeKind, FrameResourceId, FrameResourceKind,
+};
 
 use crate::renderer::graph::WgpuFrameResourceAllocator;
 use crate::renderer::service::{WgpuFrameRenderRequest, WgpuSceneRenderer};
@@ -69,9 +73,13 @@ impl WgpuFrameGraphExecutor {
         graph: &FrameGraph,
         request: &WgpuFrameRenderRequest<'_>,
     ) -> AmigoResult<()> {
-        self.resources.clear();
+        let used_resources = used_resource_ids(graph);
+        self.resources.retain_ids(&used_resources);
 
         for resource in &graph.resources {
+            if !used_resources.contains(&resource.id) {
+                continue;
+            }
             if let FrameResourceKind::TextureColor {
                 width,
                 height,
@@ -92,6 +100,15 @@ impl WgpuFrameGraphExecutor {
 
         Ok(())
     }
+}
+
+fn used_resource_ids(graph: &FrameGraph) -> BTreeSet<FrameResourceId> {
+    graph
+        .nodes
+        .iter()
+        .flat_map(|node| node.reads.iter().chain(node.writes.iter()))
+        .copied()
+        .collect()
 }
 
 #[cfg(test)]

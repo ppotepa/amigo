@@ -1,4 +1,4 @@
-use amigo_capabilities::{DEFAULT_CAPABILITY_VERSION, register_domain_plugin};
+use amigo_capabilities::{register_domain_plugin, DEFAULT_CAPABILITY_VERSION};
 use amigo_runtime::{RuntimePlugin, ServiceRegistry};
 
 use super::service::SpriteSceneService;
@@ -22,23 +22,9 @@ impl RuntimePlugin for SpritePlugin {
             registry,
             super::reset::Sprite2dSceneResetHandler,
         )?;
-        if let Some(metadata) = registry.resolve::<amigo_scene::ComponentMetadataProviderRegistry>()
-        {
-            metadata.register(crate::scene::Sprite2dComponentMetadataProvider);
-        }
-        if let Some(schemas) = registry.resolve::<amigo_scene::ComponentSchemaRegistry>() {
-            schemas.register_provider(&crate::scene::descriptors::Sprite2dSceneDescriptorProvider);
-            schemas.register_schema_provider(crate::scene::Sprite2dSceneSchemaProvider);
-        }
-        if let Some(hydrators) = registry.resolve::<amigo_scene::ComponentHydratorRegistry>() {
-            hydrators.register(crate::scene::hydration::Sprite2dComponentHydrator);
-            hydrators.register_plugin(crate::scene::hydration::Sprite2dPluginComponentHydrator);
-        }
-        if let Some(graph_providers) =
-            registry.resolve::<amigo_scene::ComponentGraphProviderRegistry>()
-        {
-            graph_providers.register(crate::scene::Sprite2dPluginGraphProvider);
-        }
+        amigo_scene::register_scene_component_plugin_spec::<
+            crate::scene::Sprite2dSceneComponentSpec,
+        >(registry)?;
         if let Some(render_extractors) =
             registry.resolve::<amigo_render_api::RuntimeRenderExtractorIdRegistry>()
         {

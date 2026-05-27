@@ -3,17 +3,15 @@
 
 use std::sync::Mutex;
 
-use amigo_composite_plugin::PostFxHost2dId;
 use amigo_assets::AssetKey;
-use amigo_capabilities::{register_domain_plugin, DEFAULT_CAPABILITY_VERSION};
 use amigo_camera_optics_plugin::api::CameraOpticalResponse2d;
-use amigo_math::{ColorRgba, Transform2, Vec2};
+use amigo_capabilities::{register_domain_plugin, DEFAULT_CAPABILITY_VERSION};
+use amigo_composite_plugin::PostFxHost2dId;
 use amigo_material_2d_plugin::{
     Material2d, Material2dLighting, Material2dOptical, Material2dOpticalMode,
 };
-use amigo_render_api::{
-    render_contribution_roles, RenderContributionSet,
-};
+use amigo_math::{ColorRgba, Transform2, Vec2};
+use amigo_render_api::{render_contribution_roles, RenderContributionSet};
 use amigo_runtime::{RuntimePlugin, ServiceRegistry};
 use amigo_scene::{
     Material2dOpticalModeSceneCommand, Material2dSceneCommand, SceneEntityId, SceneService,
@@ -170,23 +168,9 @@ impl RuntimePlugin for Text2dPlugin {
     fn register(&self, registry: &mut ServiceRegistry) -> amigo_core::AmigoResult<()> {
         registry.register(Text2dSceneService::default())?;
         amigo_scene::register_scene_reset_handler(registry, Text2dSceneResetHandler)?;
-        if let Some(metadata) = registry.resolve::<amigo_scene::ComponentMetadataProviderRegistry>()
-        {
-            metadata.register(crate::scene::Text2dComponentMetadataProvider);
-        }
-        if let Some(schemas) = registry.resolve::<amigo_scene::ComponentSchemaRegistry>() {
-            schemas.register_descriptor(crate::scene::text_2d_scene_descriptor());
-            schemas.register_schema_provider(crate::scene::Text2dSceneSchemaProvider);
-        }
-        if let Some(hydrators) = registry.resolve::<amigo_scene::ComponentHydratorRegistry>() {
-            hydrators.register(crate::scene::hydration::Text2dComponentHydrator);
-            hydrators.register_plugin(crate::scene::hydration::Text2dPluginComponentHydrator);
-        }
-        if let Some(graph_providers) =
-            registry.resolve::<amigo_scene::ComponentGraphProviderRegistry>()
-        {
-            graph_providers.register(crate::scene::Text2dPluginGraphProvider);
-        }
+        amigo_scene::register_scene_component_plugin_spec::<crate::scene::Text2dSceneComponentSpec>(
+            registry,
+        )?;
         if let Some(render_extractors) =
             registry.resolve::<amigo_render_api::RuntimeRenderExtractorIdRegistry>()
         {

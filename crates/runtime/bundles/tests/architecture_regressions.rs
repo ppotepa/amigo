@@ -122,7 +122,11 @@ fn particles_plugin_does_not_depend_on_shutter_motion() {
         "particles-2d must not depend on shutter-motion directly; use runtime bundle bridge"
     );
 
-    for relative_path in ["src/systems.rs", "src/model.rs", "src/participation/adapters/mod.rs"] {
+    for relative_path in [
+        "src/systems.rs",
+        "src/model.rs",
+        "src/participation/adapters/mod.rs",
+    ] {
         let content = read(particles_root.join(relative_path));
         assert!(
             !content.contains("amigo_shutter_motion_plugin")

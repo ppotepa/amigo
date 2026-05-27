@@ -3,7 +3,7 @@ use std::sync::Arc;
 use amigo_scene::{
     ComponentMetadataProvider, ComponentRegistry, ComponentSchemaRegistry,
     RuntimeSceneCommandHandler, SceneCommand, SceneComponentSchemaProvider,
-    ScenePluginCommandHandlerRegistry, camera_2d_descriptor,
+    ScenePluginCommandHandlerRegistry, camera_3d_descriptor,
 };
 use serde_yaml::{Mapping, Value};
 
@@ -15,7 +15,7 @@ impl ComponentMetadataProvider for TestProvider {
     }
 
     fn register_component_metadata(&self, registry: &mut ComponentRegistry) {
-        registry.insert(camera_2d_descriptor());
+        registry.insert(camera_3d_descriptor());
     }
 }
 
@@ -24,22 +24,22 @@ fn provider_can_register_component_metadata() {
     let mut registry = ComponentRegistry::new([]);
     TestProvider.register_component_metadata(&mut registry);
 
-    assert!(registry.descriptor("Camera2D").is_some());
+    assert!(registry.descriptor("Camera3D").is_some());
     assert_eq!(registry.iter().count(), 1);
 }
 
 #[test]
 fn duplicate_component_metadata_registration_is_explicit_error() {
-    let mut registry = ComponentRegistry::new([camera_2d_descriptor()]);
+    let mut registry = ComponentRegistry::new([camera_3d_descriptor()]);
 
-    let error = registry.try_insert(camera_2d_descriptor()).unwrap_err();
+    let error = registry.try_insert(camera_3d_descriptor()).unwrap_err();
 
     assert!(
         error
             .to_string()
             .contains("duplicate component metadata provider")
     );
-    assert!(registry.descriptor("Camera2D").is_some());
+    assert!(registry.descriptor("Camera3D").is_some());
     assert_eq!(registry.iter().count(), 1);
 }
 

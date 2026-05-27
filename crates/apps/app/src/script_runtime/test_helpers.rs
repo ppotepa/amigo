@@ -1,11 +1,11 @@
 use super::*;
 use amigo_2d_composition::RenderLayer2dSceneService;
 use amigo_layered_image_2d_plugin::{
-    can_handle_layered_image_script_command, handle_layered_image_script_command,
     LayeredImageSceneService, LayeredImageScriptCommandContext, LayeredImageScriptCommandOutcome,
+    can_handle_layered_image_script_command, handle_layered_image_script_command,
 };
 use amigo_light_2d_plugin::{GlobalLight2dSceneService, LightGroup2dSceneService};
-use amigo_ui::{handle_ui_script_command, UiScriptCommandContext, UiStateService};
+use amigo_ui::{UiScriptCommandContext, UiStateService, handle_ui_script_command};
 
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn dispatch_script_command(
@@ -79,16 +79,13 @@ pub(crate) fn dispatch_script_command_with_layered_image_service(
     diagnostics: &RuntimeDiagnostics,
     launch_selection: &LaunchSelection,
 ) {
-    if can_handle_layered_image_script_command(
-        &command,
-    ) {
-        let outcome =
-            handle_layered_image_script_command(
-                LayeredImageScriptCommandContext {
-                    layered_image_scene_service: layered_images,
-                },
-                command,
-            );
+    if can_handle_layered_image_script_command(&command) {
+        let outcome = handle_layered_image_script_command(
+            LayeredImageScriptCommandContext {
+                layered_image_scene_service: layered_images,
+            },
+            command,
+        );
 
         match outcome {
             LayeredImageScriptCommandOutcome::Updated(message)
@@ -130,21 +127,11 @@ fn dispatch_audio_script_command_for_test(
     );
 
     match outcome {
-        amigo_runtime_bundles::AudioScriptCommandOutcome::PlayOnce {
-            asset_key,
-        }
-        | amigo_runtime_bundles::AudioScriptCommandOutcome::SourceStarted {
-            asset_key,
-            ..
-        }
-        | amigo_runtime_bundles::AudioScriptCommandOutcome::Preloaded {
-            asset_key,
-            ..
-        } => {
+        amigo_runtime_bundles::AudioScriptCommandOutcome::PlayOnce { asset_key }
+        | amigo_runtime_bundles::AudioScriptCommandOutcome::SourceStarted { asset_key, .. }
+        | amigo_runtime_bundles::AudioScriptCommandOutcome::Preloaded { asset_key, .. } => {
             audio_scene_service.register_clip(amigo_runtime_bundles::AudioClip {
-                key: amigo_runtime_bundles::AudioClipKey::new(
-                    asset_key.as_str().to_owned(),
-                ),
+                key: amigo_runtime_bundles::AudioClipKey::new(asset_key.as_str().to_owned()),
                 mode: amigo_runtime_bundles::AudioPlaybackMode::OneShot,
             });
         }

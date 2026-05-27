@@ -31,4 +31,3 @@ impl RhaiPluginBindingProviderDescriptor {
                 .all(|binding| !binding.trim().is_empty())
     }
 }
-

@@ -6,11 +6,10 @@ use crate::bindings::commands::{
     queue_beacon2d_set_aberration_px, queue_beacon2d_set_base_intensity,
     queue_beacon2d_set_beam_enabled, queue_beacon2d_set_beam_length_px,
     queue_beacon2d_set_beam_strength, queue_beacon2d_set_beam_width_degrees,
-    queue_beacon2d_set_bloom, queue_beacon2d_set_core_radius_px,
-    queue_beacon2d_set_distance_m, queue_beacon2d_set_duty_cycle,
-    queue_beacon2d_set_frequency_hz, queue_beacon2d_set_glow_strength,
-    queue_beacon2d_set_halo_radius_px, queue_beacon2d_set_position_2d,
-    queue_beacon2d_set_z_depth,
+    queue_beacon2d_set_bloom, queue_beacon2d_set_core_radius_px, queue_beacon2d_set_distance_m,
+    queue_beacon2d_set_duty_cycle, queue_beacon2d_set_frequency_hz,
+    queue_beacon2d_set_glow_strength, queue_beacon2d_set_halo_radius_px,
+    queue_beacon2d_set_position_2d, queue_beacon2d_set_z_depth,
 };
 
 #[derive(Clone)]
@@ -136,7 +135,7 @@ impl Beacon2dApi {
         )
     }
 
-pub fn set_bloom(&mut self, target: &str, value: rhai::FLOAT) -> bool {
+    pub fn set_bloom(&mut self, target: &str, value: rhai::FLOAT) -> bool {
         queue_beacon2d_value(
             self.command_queue.as_ref(),
             target,
@@ -146,7 +145,7 @@ pub fn set_bloom(&mut self, target: &str, value: rhai::FLOAT) -> bool {
             queue_beacon2d_set_bloom,
         )
     }
-pub fn set_position_2d(&mut self, target: &str, x: rhai::FLOAT, y: rhai::FLOAT) -> bool {
+    pub fn set_position_2d(&mut self, target: &str, x: rhai::FLOAT, y: rhai::FLOAT) -> bool {
         if target.is_empty() || !x.is_finite() || !y.is_finite() {
             return false;
         }

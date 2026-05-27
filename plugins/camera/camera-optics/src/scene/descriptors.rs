@@ -7,4 +7,3 @@ pub fn camera_optics_2d_scene_descriptor() -> PluginSceneComponentDescriptor {
         "CameraOptics2D",
     )
 }
-

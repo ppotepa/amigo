@@ -6,6 +6,7 @@ use amigo_event_pipeline::EventPipelinePlugin;
 use amigo_file_watch_notify::NotifyFileWatchPlugin;
 use amigo_hot_reload::HotReloadPlugin;
 use amigo_runtime::{PluginBundle, RuntimeBuilder, RuntimePlugin, ServiceRegistry};
+use amigo_runtime_control::RuntimeControlService;
 use amigo_scene::ScenePlugin;
 use amigo_session::RuntimeSession;
 use amigo_state::StatePlugin;
@@ -29,6 +30,7 @@ impl PluginBundle for CoreRuntimeBundle {
             .with_plugin(RenderExtractorIdRegistryPlugin)?
             .with_plugin(WgpuRenderExtractorBridgeRegistryPlugin)?
             .with_plugin(LoadedAssetDomainPreparerRegistryPlugin)?
+            .with_plugin(RuntimeControlCorePlugin)?
             .with_plugin(AssetsPlugin)?
             .with_plugin(HotReloadPlugin)?
             .with_plugin(NotifyFileWatchPlugin)?
@@ -51,6 +53,7 @@ struct RenderExtractorIdRegistryPlugin;
 struct WgpuRenderExtractorBridgeRegistryPlugin;
 
 struct LoadedAssetDomainPreparerRegistryPlugin;
+struct RuntimeControlCorePlugin;
 
 impl RuntimePlugin for SystemRegistryPlugin {
     fn name(&self) -> &'static str {
@@ -59,6 +62,19 @@ impl RuntimePlugin for SystemRegistryPlugin {
 
     fn register(&self, registry: &mut ServiceRegistry) -> AmigoResult<()> {
         registry.register(amigo_runtime::SystemRegistry::default())?;
+        Ok(())
+    }
+}
+
+impl RuntimePlugin for RuntimeControlCorePlugin {
+    fn name(&self) -> &'static str {
+        "amigo-runtime-control-core"
+    }
+
+    fn register(&self, registry: &mut ServiceRegistry) -> AmigoResult<()> {
+        if !registry.has::<RuntimeControlService>() {
+            registry.register(RuntimeControlService::default())?;
+        }
         Ok(())
     }
 }

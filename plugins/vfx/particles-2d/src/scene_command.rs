@@ -1,5 +1,5 @@
-use amigo_light_2d_plugin::{GlobalLight2dSceneService, LightMap2dSceneService};
 use amigo_core::{AmigoError, AmigoResult};
+use amigo_light_2d_plugin::{GlobalLight2dSceneService, LightMap2dSceneService};
 use amigo_scene::{
     LightReceiver2dBindingSceneCommand, ParticleEmitter2dSceneCommand, SceneCommand, SceneEvent,
     SceneEventQueue, SceneService, format_scene_command,
@@ -38,7 +38,8 @@ pub fn handle_particles_scene_command(
 ) -> AmigoResult<ParticlesSceneCommandOutcome> {
     match command {
         SceneCommand::Plugin { command }
-            if command.command_type == amigo_scene::PARTICLE_EMITTER_2D_PLUGIN_SCENE_COMMAND_TYPE =>
+            if command.command_type
+                == amigo_scene::PARTICLE_EMITTER_2D_PLUGIN_SCENE_COMMAND_TYPE =>
         {
             let Some(command) = command
                 .payload_as::<amigo_scene::ParticleEmitter2dSceneCommand>()

@@ -28,11 +28,7 @@ pub struct CodeMapEdge {
 }
 
 impl CodeMapEdge {
-    pub fn new(
-        from: CodeMapNodeId,
-        to: CodeMapNodeId,
-        kind: CodeMapEdgeKind,
-    ) -> Self {
+    pub fn new(from: CodeMapNodeId, to: CodeMapNodeId, kind: CodeMapEdgeKind) -> Self {
         Self {
             from,
             to,

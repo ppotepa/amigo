@@ -2,8 +2,8 @@ use amigo_core::AmigoResult;
 use amigo_runtime::{RuntimePlugin, ServiceRegistry};
 
 use crate::commands::IngameEditorConsoleCommandHandler;
-use crate::{IngameEditorProviderRegistry, IngameEditorRuntimeApplyProviderRegistry};
 use crate::state::IngameEditorState;
+use crate::{IngameEditorProviderRegistry, IngameEditorRuntimeApplyProviderRegistry};
 
 pub struct IngameEditorPlugin {
     enabled: bool,

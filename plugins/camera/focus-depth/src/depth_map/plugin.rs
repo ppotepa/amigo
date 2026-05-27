@@ -1,4 +1,4 @@
-use amigo_capabilities::{DEFAULT_CAPABILITY_VERSION, register_domain_plugin};
+use amigo_capabilities::{register_domain_plugin, DEFAULT_CAPABILITY_VERSION};
 use amigo_core::AmigoResult;
 use amigo_runtime::{RuntimePlugin, ServiceRegistry};
 use std::sync::Arc;
@@ -14,16 +14,12 @@ impl RuntimePlugin for DepthMap2dPlugin {
 
     fn register(&self, registry: &mut ServiceRegistry) -> AmigoResult<()> {
         registry.register(DepthMap2dSceneService::default())?;
-        if let Some(schemas) = registry.resolve::<amigo_scene::ComponentSchemaRegistry>() {
-            schemas.register_provider(&crate::scene::FocusDepthSceneDescriptorProvider);
-            schemas.register_schema_provider(crate::scene::DepthMap2dSceneSchemaProvider);
-            schemas.register_schema_provider(crate::scene::DepthAuxMap2dSceneSchemaProvider);
-        }
-        if let Some(hydrators) = registry.resolve::<amigo_scene::ComponentHydratorRegistry>() {
-            hydrators.register(crate::scene::DepthMap2dComponentHydrator);
-            hydrators.register_plugin(crate::scene::DepthMap2dPluginComponentHydrator);
-            hydrators.register_plugin(crate::scene::DepthAuxMap2dPluginComponentHydrator);
-        }
+        amigo_scene::register_scene_component_plugin_spec::<
+            crate::scene::DepthMap2dSceneComponentSpec,
+        >(registry)?;
+        amigo_scene::register_scene_component_plugin_spec::<
+            crate::scene::DepthAuxMap2dSceneComponentSpec,
+        >(registry)?;
         if let Some(render_extractors) =
             registry.resolve::<amigo_render_api::RuntimeRenderExtractorIdRegistry>()
         {

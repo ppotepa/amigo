@@ -7,7 +7,6 @@ use amigo_scene::{
     SceneComponentDocument, SceneComponentPayload, SceneComponentSchemaProvider,
     SceneDocumentError, SceneDocumentResult, SceneVec2Document, TileMap2dEditorDocument,
 };
-use amigo_scene::SceneComponentDocument as ComponentDocument;
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct Tilemap2dDocument {
@@ -48,28 +47,7 @@ impl Default for Tilemap2dDocument {
 impl Tilemap2dDocument {
     pub fn from_component(component: &SceneComponentDocument) -> Option<Self> {
         match component {
-            ComponentDocument::TileMap2d {
-                render_layer,
-                tileset,
-                ruleset,
-                tile_size,
-                editor,
-                grid,
-                depth_fill_rows,
-                z_index,
-                post_fx: _,
-            } => Some(Self {
-                entity_name: String::new(),
-                render_layer: render_layer.clone(),
-                tileset: tileset.clone(),
-                ruleset: ruleset.clone(),
-                tile_size: *tile_size,
-                editor: editor.clone(),
-                grid: grid.clone(),
-                depth_fill_rows: *depth_fill_rows,
-                z_index: *z_index,
-            }),
-            ComponentDocument::Plugin {
+            SceneComponentDocument::Plugin {
                 component_type,
                 payload,
             } if component_type == "amigo.gfx.tilemap-2d.TileMap2D"
@@ -97,7 +75,7 @@ pub fn parse_tilemap_2d_plugin_payload(payload: &Value) -> SceneDocumentResult<T
         .map_err(|source| SceneDocumentError::Parse { path: None, source })
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Default)]
 pub struct TileMap2dSceneSchemaProvider;
 
 impl SceneComponentSchemaProvider for TileMap2dSceneSchemaProvider {
@@ -110,7 +88,9 @@ impl SceneComponentSchemaProvider for TileMap2dSceneSchemaProvider {
     }
 
     fn parse_yaml(&self, payload: serde_yaml::Mapping) -> Result<Value, serde_yaml::Error> {
-        serde_yaml::to_value(serde_yaml::from_value::<Tilemap2dDocument>(Value::Mapping(payload))?)
+        serde_yaml::to_value(serde_yaml::from_value::<Tilemap2dDocument>(
+            Value::Mapping(payload),
+        )?)
     }
 
     fn parse_payload_value(

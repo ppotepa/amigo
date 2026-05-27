@@ -140,6 +140,41 @@ fn playground_3d_material_scene_populates_3d_material_domain_and_assets() {
 }
 
 #[test]
+fn playground_3d_physics_scene_bootstraps() {
+    let (_runtime, summary) = bootstrap_with_options(
+        BootstrapOptions::new(mods_root())
+            .with_active_mods(vec!["core".to_owned(), "playground-3d".to_owned()])
+            .with_startup_mod("playground-3d")
+            .with_startup_scene("physics-cubes")
+            .with_dev_mode(true),
+    )
+    .expect("3d physics playground bootstrap should succeed");
+
+    assert_eq!(summary.active_scene.as_deref(), Some("physics-cubes"));
+    assert_eq!(
+        summary
+            .loaded_scene_document
+            .as_ref()
+            .map(|document| document.relative_path.to_string_lossy().replace('\\', "/"))
+            .as_deref(),
+        Some("scenes/physics-cubes/scene.yml")
+    );
+    assert!(
+        summary
+            .mesh_entities_3d
+            .iter()
+            .any(|entity| entity == "playground-3d-ground")
+    );
+    assert!(
+        summary
+            .text_entities_3d
+            .iter()
+            .any(|entity| entity == "playground-3d-physics-label")
+    );
+    assert!(summary.failed_assets.is_empty());
+}
+
+#[test]
 fn playground_3d_mesh_scene_populates_3d_domain_and_assets() {
     let (_runtime, summary) = bootstrap_with_options(
         BootstrapOptions::new(mods_root())

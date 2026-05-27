@@ -11,10 +11,9 @@ use amigo_scene::{
     ParticleShapeChoice2dSceneDocument, ParticleShapeKeyframe2dSceneDocument,
     ParticleSimulationSpace2dSceneDocument, ParticleSpawnArea2dSceneDocument,
     ParticleVelocityMode2dSceneDocument, PostFx2dDocument, SceneComponentDocument,
-    SceneComponentPayload, SceneComponentSchemaProvider, SceneDocumentError,
-    SceneDocumentResult, SceneVec2Document,
+    SceneComponentPayload, SceneComponentSchemaProvider, SceneDocumentError, SceneDocumentResult,
+    SceneVec2Document,
 };
-use amigo_scene::SceneComponentDocument as ComponentDocument;
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct ParticleEmitter2dDocument {
@@ -144,85 +143,7 @@ impl Default for ParticleEmitter2dDocument {
 impl ParticleEmitter2dDocument {
     pub fn from_component(component: &SceneComponentDocument) -> Option<Self> {
         match component {
-            ComponentDocument::ParticleEmitter2d {
-                render_layer,
-                attached_to,
-                local_offset,
-                local_direction_degrees,
-                spawn_area,
-                active,
-                spawn_rate,
-                max_particles,
-                particle_lifetime,
-                lifetime_jitter,
-                initial_speed,
-                speed_jitter,
-                spread_degrees,
-                inherit_parent_velocity,
-                velocity_mode,
-                simulation_space,
-                initial_size,
-                final_size,
-                size_jitter,
-                color,
-                color_ramp,
-                z_index,
-                shape,
-                shape_choices,
-                shape_over_lifetime,
-                line_anchor,
-                align,
-                blend_mode,
-                motion_stretch,
-                material,
-                light,
-                emission_rate_curve,
-                size_curve,
-                alpha_curve,
-                speed_curve,
-                forces,
-                post_fx,
-            } => Some(Self {
-                entity_name: String::new(),
-                render_layer: render_layer.clone(),
-                attached_to: attached_to.clone(),
-                local_offset: *local_offset,
-                local_direction_degrees: *local_direction_degrees,
-                spawn_area: spawn_area.clone(),
-                active: *active,
-                spawn_rate: *spawn_rate,
-                max_particles: *max_particles,
-                particle_lifetime: *particle_lifetime,
-                lifetime_jitter: *lifetime_jitter,
-                initial_speed: *initial_speed,
-                speed_jitter: *speed_jitter,
-                spread_degrees: *spread_degrees,
-                inherit_parent_velocity: *inherit_parent_velocity,
-                velocity_mode: *velocity_mode,
-                simulation_space: *simulation_space,
-                initial_size: *initial_size,
-                final_size: *final_size,
-                size_jitter: *size_jitter,
-                color: color.clone(),
-                color_ramp: color_ramp.clone(),
-                z_index: *z_index,
-                shape: shape.clone(),
-                shape_choices: shape_choices.clone(),
-                shape_over_lifetime: shape_over_lifetime.clone(),
-                line_anchor: *line_anchor,
-                align: *align,
-                blend_mode: *blend_mode,
-                motion_stretch: motion_stretch.clone(),
-                material: material.clone(),
-                light: *light,
-                emission_rate_curve: emission_rate_curve.clone(),
-                size_curve: size_curve.clone(),
-                alpha_curve: alpha_curve.clone(),
-                speed_curve: speed_curve.clone(),
-                forces: forces.clone(),
-                post_fx: post_fx.clone(),
-            }),
-            ComponentDocument::Plugin {
+            SceneComponentDocument::Plugin {
                 component_type,
                 payload,
             } if component_type == "amigo.vfx.particles-2d.ParticleEmitter2D"
@@ -252,7 +173,7 @@ pub fn parse_particle_emitter_2d_plugin_payload(
         .map_err(|source| SceneDocumentError::Parse { path: None, source })
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Default)]
 pub struct ParticleEmitter2dSceneSchemaProvider;
 
 impl SceneComponentSchemaProvider for ParticleEmitter2dSceneSchemaProvider {

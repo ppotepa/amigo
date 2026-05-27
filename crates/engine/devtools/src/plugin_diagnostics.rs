@@ -28,4 +28,3 @@ impl PluginDiagnosticProviderDescriptor {
                 .all(|channel| !channel.0.trim().is_empty())
     }
 }
-

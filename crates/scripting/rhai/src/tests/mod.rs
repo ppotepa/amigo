@@ -2,22 +2,7 @@ use std::collections::BTreeMap;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use amigo_light_2d_plugin::Material2dLightingMode;
-use amigo_shutter_motion_plugin::{
-    Facing2d, FreeflightMotion2dCommand, FreeflightMotionProfile2d, FreeflightMotionState2d,
-    Motion2dSceneService, MotionAnimationState, MotionController2d, MotionController2dCommand,
-    MotionIntent2d, MotionProfile2d, MotionState2d, ProjectileEmitter2d,
-    ProjectileEmitter2dCommand,
-};
-use amigo_particles_2d_plugin::{
-    Particle2dSceneService, ParticleEmitter2d, ParticleEmitter2dCommand, ParticleShape2d,
-};
 use amigo_2d_physics::{CircleCollider2d, CircleCollider2dCommand, Physics2dSceneService};
-use amigo_sprite_2d_plugin::{Sprite, SpriteDrawCommand, SpriteSceneService, SpriteSheet};
-use amigo_vector_2d_plugin::{
-    VectorSceneService, VectorShape2d, VectorShape2dDrawCommand, VectorShapeKind2d, VectorStyle2d,
-    VectorViewportFit2d,
-};
 use amigo_assets::{
     AssetCatalog, AssetKey, AssetLoadPriority, AssetLoadRequest, AssetManifest, AssetSourceKind,
     PreparedAssetKind, prepare_debug_placeholder_asset,
@@ -25,8 +10,12 @@ use amigo_assets::{
 use amigo_core::{LaunchSelection, RuntimeDiagnostics};
 use amigo_input_actions::{InputActionBinding, InputActionId, InputActionMap, InputActionService};
 use amigo_input_api::{InputState, KeyCode};
+use amigo_light_2d_plugin::Material2dLightingMode;
 use amigo_math::{ColorRgba, Transform2, Transform3, Vec2, Vec3};
 use amigo_modding::{DiscoveredMod, ModCatalog, ModManifest, ModSceneManifest};
+use amigo_particles_2d_plugin::{
+    Particle2dSceneService, ParticleEmitter2d, ParticleEmitter2dCommand, ParticleShape2d,
+};
 use amigo_scene::{
     EntityPoolSceneCommand, EntityPoolSceneService, SceneEntityId, SceneEntityLifecycle, SceneKey,
     ScenePropertyValue, SceneService,
@@ -35,8 +24,19 @@ use amigo_scripting_api::{
     DevConsoleQueue, ScriptCommand, ScriptCommandQueue, ScriptEventQueue, ScriptTraceService,
     ScriptValue,
 };
+use amigo_shutter_motion_plugin::{
+    Facing2d, FreeflightMotion2dCommand, FreeflightMotionProfile2d, FreeflightMotionState2d,
+    Motion2dSceneService, MotionAnimationState, MotionController2d, MotionController2dCommand,
+    MotionIntent2d, MotionProfile2d, MotionState2d, ProjectileEmitter2d,
+    ProjectileEmitter2dCommand,
+};
+use amigo_sprite_2d_plugin::{Sprite, SpriteDrawCommand, SpriteSceneService, SpriteSheet};
 use amigo_state::{SceneStateService, SceneTimerService, SessionStateService};
 use amigo_ui::{UiTheme, UiThemePalette, UiThemeService};
+use amigo_vector_2d_plugin::{
+    VectorSceneService, VectorShape2d, VectorShape2dDrawCommand, VectorShapeKind2d, VectorStyle2d,
+    VectorViewportFit2d,
+};
 
 use crate::RhaiScriptRuntime;
 use amigo_scripting_api::ScriptRuntime;

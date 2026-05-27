@@ -118,6 +118,7 @@ fn summarize_runtime_state_with_loaded_document(
         startup_mod: launch_selection.startup_mod,
         startup_scene: launch_selection.startup_scene,
         frame_cap_fps,
+        dev_mode: launch_selection.dev_mode,
         active_scene: scene
             .selected_scene()
             .map(|scene| scene.as_str().to_owned()),

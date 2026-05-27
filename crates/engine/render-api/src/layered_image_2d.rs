@@ -1,7 +1,7 @@
 use amigo_assets::{AssetCatalog, AssetKey, PreparedAsset, PreparedAssetKind};
 use amigo_math::{ColorRgba, Vec2};
 
-use crate::{cached_image_post_fx_stack_from_flat_metadata, PostFx2dStack};
+use crate::{PostFx2dStack, cached_image_post_fx_stack_from_flat_metadata};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LayeredImageBlendMode2d {

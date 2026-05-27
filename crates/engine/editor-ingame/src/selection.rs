@@ -40,7 +40,8 @@ pub fn select_viewport_target(
     logical_y: f32,
 ) -> bool {
     let registry = crate::component_registry::editor_component_registry(runtime);
-    let Some(candidate) = topmost_candidate_at_with_registry(graph, &registry, logical_x, logical_y)
+    let Some(candidate) =
+        topmost_candidate_at_with_registry(graph, &registry, logical_x, logical_y)
     else {
         state.clear_selection();
         state.set_status(format!(

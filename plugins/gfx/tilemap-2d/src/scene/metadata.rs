@@ -140,6 +140,7 @@ pub fn tile_map_2d_descriptor() -> ComponentTypeDescriptor {
     }
 }
 
+#[derive(Default)]
 pub struct TileMap2dComponentMetadataProvider;
 
 impl ComponentMetadataProvider for TileMap2dComponentMetadataProvider {
@@ -148,7 +149,9 @@ impl ComponentMetadataProvider for TileMap2dComponentMetadataProvider {
     }
 
     fn register_component_metadata(&self, registry: &mut ComponentRegistry) {
-        registry.insert(tile_map_2d_descriptor());
+        registry
+            .try_insert(tile_map_2d_descriptor())
+            .expect("duplicate TileMap2D component metadata");
     }
 }
 
@@ -167,8 +170,12 @@ mod tests {
             .descriptor("TileMap2D")
             .expect("tilemap metadata descriptor should be registered");
         assert_eq!(descriptor.type_name, "TileMap2D");
-        assert!(descriptor.metadata_traits.contains(&MetadataTraitKind::Renderable2D));
-        assert!(descriptor.metadata_traits.contains(&MetadataTraitKind::HasAssetRefs));
+        assert!(descriptor
+            .metadata_traits
+            .contains(&MetadataTraitKind::Renderable2D));
+        assert!(descriptor
+            .metadata_traits
+            .contains(&MetadataTraitKind::HasAssetRefs));
     }
 
     #[test]
@@ -178,10 +185,21 @@ mod tests {
             .register(ComponentMetadataProviderRegistry::default())
             .unwrap();
         registry
+            .register(ComponentSchemaRegistry::default())
+            .unwrap();
+        registry
+            .register(ComponentHydratorRegistry::default())
+            .unwrap();
+        registry
+            .register(ComponentGraphProviderRegistry::default())
+            .unwrap();
+        registry
             .register(RuntimeSceneCommandHandlerRegistry::new())
             .unwrap();
 
-        crate::tilemap::TileMap2dPlugin.register(&mut registry).unwrap();
+        crate::tilemap::TileMap2dPlugin
+            .register(&mut registry)
+            .unwrap();
 
         let providers = registry
             .resolve::<ComponentMetadataProviderRegistry>()

@@ -1,0 +1,182 @@
+version: 1
+scene:
+  id: physics-cubes
+  label: Physics Cubes
+  description: Falling cubes spawned every second onto a flat ground plane.
+entities:
+  - id: physics-world
+    name: playground-3d-physics-world
+    components:
+      - type: PhysicsWorld3D
+        gravity:
+          x: 0.0
+          y: -9.81
+          z: 0.0
+        substeps: 2
+        solver_iterations: 10
+        ccd_substeps: 4
+
+  - id: camera
+    name: playground-3d-physics-camera
+    transform3:
+      translation:
+        x: 0.0
+        y: 5.0
+        z: 14.0
+      rotation_euler:
+        x: -0.25
+        y: 0.0
+        z: 0.0
+      scale:
+        x: 1.0
+        y: 1.0
+        z: 1.0
+    components:
+      - type: Camera3D
+        fov_y_degrees: 50.0
+        near_clip: 0.1
+        far_clip: 80.0
+
+  - id: light
+    name: playground-3d-physics-light
+    components:
+      - type: Light3D
+        kind: directional
+        direction:
+          x: -0.35
+          y: -0.85
+          z: -0.45
+        color: "#FFFFFFFF"
+        intensity: 0.9
+        ambient: 0.28
+
+  - id: ground
+    name: playground-3d-ground
+    transform3:
+      translation:
+        x: 0.0
+        y: -0.5
+        z: 0.0
+      rotation_euler:
+        x: 0.0
+        y: 0.0
+        z: 0.0
+      scale:
+        x: 12.0
+        y: 1.0
+        z: 12.0
+    components:
+      - type: Mesh3D
+        mesh: playground-3d/meshes/cube
+      - type: Material3D
+        label: ground
+        source: playground-3d/materials/cube-material
+        albedo: "#6A6E74FF"
+        render_order: -100
+      - type: StaticBoxCollider3D
+        size:
+          x: 12.0
+          y: 1.0
+          z: 12.0
+        friction: 0.85
+        restitution: 0.02
+
+  - id: cube-spawner
+    name: playground-3d-cube-spawner
+    transform3:
+      translation:
+        x: 0.0
+        y: 7.0
+        z: 0.0
+      rotation_euler:
+        x: 0.0
+        y: 0.0
+        z: 0.0
+      scale:
+        x: 1.0
+        y: 1.0
+        z: 1.0
+    components:
+      - type: PhysicsSpawner3D
+        entity_prefix: playground-3d-cube
+        mesh: playground-3d/meshes/cube
+        material: playground-3d/materials/cube-material
+        material_label: cube-material
+        interval_seconds: 0.33333334
+        origin:
+          x: 0.0
+          y: 7.0
+          z: 0.0
+        spawn_scale:
+          x: 0.5
+          y: 0.5
+          z: 0.5
+        grid_spacing:
+          x: 0.82
+          y: 0.62
+          z: 0.82
+        initial_velocity:
+          x: 0.0
+          y: 0.0
+          z: 0.0
+        angular_velocity:
+          x: 0.72
+          y: 1.10
+          z: 0.48
+        spawn_position_jitter:
+          x: 0.18
+          y: 0.0
+          z: 0.18
+        spawn_rotation_jitter:
+          x: 0.35
+          y: 0.55
+          z: 0.30
+        initial_velocity_jitter:
+          x: 0.08
+          y: 0.0
+          z: 0.08
+        angular_velocity_jitter:
+          x: 0.18
+          y: 0.22
+          z: 0.16
+        mass: 1.0
+        linear_damping: 0.02
+        angular_damping: 0.08
+        gravity_scale: 1.0
+        restitution: 0.05
+        friction: 0.75
+        ccd: true
+        collider_size:
+          x: 0.5
+          y: 0.5
+          z: 0.5
+        max_alive: 0
+        counter_entity: playground-3d-cube-counter
+        counter_prefix: "CUBES: "
+        counter_font: playground-3d/fonts/debug-3d
+        counter_size: 0.28
+        counter_position:
+          x: 4.8
+          y: 7.65
+          z: 0.0
+
+  - id: label
+    name: playground-3d-physics-label
+    transform3:
+      translation:
+        x: 0.0
+        y: 7.5
+        z: 0.0
+      rotation_euler:
+        x: 0.0
+        y: 0.0
+        z: 0.0
+      scale:
+        x: 1.0
+        y: 1.0
+        z: 1.0
+    components:
+      - type: Text3D
+        content: PHYSICS CUBES
+        font: playground-3d/fonts/debug-3d
+        size: 0.45

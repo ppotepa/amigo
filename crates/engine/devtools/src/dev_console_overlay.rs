@@ -6,8 +6,8 @@ use amigo_overlay_api::{
 };
 use amigo_scripting_api::{DevConsoleInputSnapshot, DevConsoleOutputLine, DevConsoleState};
 
-use crate::dev_console_theme::DevConsoleTheme;
 use crate::ConsoleCompletionSnapshot;
+use crate::dev_console_theme::DevConsoleTheme;
 
 pub trait DevConsoleOverlayRenderOutput {
     fn push_dev_console_overlay_document(&mut self, document: UiOverlayDocument);
@@ -52,10 +52,7 @@ pub fn build_dev_console_overlay_with_theme(
     }
 
     let viewport = viewport.unwrap_or_else(|| {
-        UiViewportSize::new(
-            theme.viewport.default_width,
-            theme.viewport.default_height,
-        )
+        UiViewportSize::new(theme.viewport.default_width, theme.viewport.default_height)
     });
     let layout = &theme.layout;
     let panel_width = (viewport.width - layout.margin * 2.0).max(0.0);
@@ -627,10 +624,10 @@ fn panel_node(
 
 #[cfg(test)]
 mod tests {
-    use amigo_overlay_api::{build_ui_layout_tree, UiOverlayNodeKind, UiViewportSize};
+    use amigo_overlay_api::{UiOverlayNodeKind, UiViewportSize, build_ui_layout_tree};
     use amigo_scripting_api::DevConsoleState;
 
-    use super::{build_dev_console_overlay, build_dev_console_overlay_with_theme, UiOverlayNode};
+    use super::{UiOverlayNode, build_dev_console_overlay, build_dev_console_overlay_with_theme};
     use crate::dev_console_theme::DevConsoleTheme;
 
     #[test]

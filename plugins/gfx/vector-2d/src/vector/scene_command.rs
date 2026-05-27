@@ -3,11 +3,11 @@ use std::sync::Arc;
 
 use amigo_core::{AmigoError, AmigoResult};
 use amigo_scene::{
-    PluginSceneCommand, PluginSceneCommandPayload, SceneCommand, SceneEvent, SceneEventQueue,
-    SceneService, VectorShape2dSceneCommand, format_scene_command,
+    format_scene_command, PluginSceneCommand, PluginSceneCommandPayload, SceneCommand, SceneEvent,
+    SceneEventQueue, SceneService, VectorShape2dSceneCommand,
 };
 
-use super::{VectorSceneService, queue_vector_shape_scene_command};
+use super::{queue_vector_shape_scene_command, VectorSceneService};
 
 pub struct Vector2dSceneCommandHandler;
 
@@ -63,8 +63,8 @@ pub fn handle_vector_scene_command(
         SceneCommand::Plugin { command } => {
             let Some(command) = command.payload_as::<VectorShape2dSceneCommand>().cloned() else {
                 return Err(AmigoError::Message(format!(
-                "vector-2d cannot handle command {}",
-                format_scene_command(&SceneCommand::Plugin { command })
+                    "vector-2d cannot handle command {}",
+                    format_scene_command(&SceneCommand::Plugin { command })
                 )));
             };
             Ok(handle_queue_vector_shape_scene_command(ctx, command))

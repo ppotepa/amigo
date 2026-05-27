@@ -9,6 +9,7 @@ pub fn layered_image_2d_scene_descriptor() -> PluginSceneComponentDescriptor {
     )
 }
 
+#[derive(Default)]
 pub struct LayeredImage2dSceneDescriptorProvider;
 
 impl ScenePluginDescriptorProvider for LayeredImage2dSceneDescriptorProvider {

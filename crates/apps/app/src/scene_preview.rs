@@ -202,11 +202,16 @@ impl ScenePreviewHost {
         for _ in 0..frames {
             self.tick_runtime_frame(self.options.playback_delta_seconds)?;
         }
+        let updated = {
+            let runtime = self.runtime()?;
+            crate::summary::refresh_runtime_summary(runtime)?
+        };
+        self.summary = Some(updated);
         Ok(())
     }
 
     fn tick_runtime_frame(&mut self, delta_seconds: f32) -> AmigoResult<()> {
-        let updated = {
+        {
             let runtime = self.runtime()?;
             if let Some(clock) = runtime.resolve::<amigo_session::RuntimeFrameClockService>() {
                 clock.force_single_simulation_tick(delta_seconds);
@@ -217,9 +222,8 @@ impl ScenePreviewHost {
             systems.run_phase(SystemPhase::Update, runtime)?;
             systems.run_phase(SystemPhase::PostUpdate, runtime)?;
             amigo_runtime_bundles::clear_runtime_frame_transients(runtime);
-            crate::summary::refresh_runtime_summary(runtime)?
-        };
-        self.summary = Some(updated);
+            crate::orchestration::stabilize_runtime_queues(runtime)?;
+        }
         Ok(())
     }
 
@@ -246,7 +250,7 @@ impl ScenePreviewHost {
             },
         )?;
 
-        offscreen.target.read_rgba8()
+        offscreen.target.read_rgba8_blocking()
     }
 
     fn ensure_offscreen(&mut self, width: u32, height: u32) -> AmigoResult<()> {

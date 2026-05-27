@@ -6,10 +6,10 @@ use amigo_scene::{
 };
 
 use super::{
-    GlobalLight2dSceneService, LightGroup2dSceneService, LightMap2dSceneService,
-    LightMap2dSourceKind, LightingSceneCommandContext, LightingSceneCommandOutcome,
     can_handle_lighting_scene_command, handle_lighting_scene_command,
     queue_global_light_2d_scene_command, queue_lightmap_2d_source_scene_command,
+    GlobalLight2dSceneService, LightGroup2dSceneService, LightMap2dSceneService,
+    LightMap2dSourceKind, LightingSceneCommandContext, LightingSceneCommandOutcome,
 };
 
 #[test]
@@ -144,9 +144,9 @@ fn lighting_scene_command_handler_queues_global_light_and_event() {
         intensity: 2.0,
     };
 
-    assert!(can_handle_lighting_scene_command(
-        &SceneCommand::plugin(amigo_scene::global_light_2d_plugin_scene_command(command.clone()))
-    ));
+    assert!(can_handle_lighting_scene_command(&SceneCommand::plugin(
+        amigo_scene::global_light_2d_plugin_scene_command(command.clone())
+    )));
 
     let outcome = handle_lighting_scene_command(
         LightingSceneCommandContext {

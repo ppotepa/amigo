@@ -94,7 +94,7 @@ impl LauncherConfig {
         let mut config = match toml::from_str::<Self>(&raw) {
             Ok(config) => config,
             Err(_) => {
-                let imported =  toml::from_str::<ImportedLauncherConfig>(&raw)
+                let imported = toml::from_str::<ImportedLauncherConfig>(&raw)
                     .map_err(|error| AmigoError::Message(error.to_string()))?;
                 imported.into_current()
             }

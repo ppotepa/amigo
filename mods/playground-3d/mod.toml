@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "Hands-on 3D demos for meshes, materials, cameras, and text."
 authors = ["Amigo Engine Team"]
 dependencies = ["core"]
-capabilities = ["rendering_3d", "materials_3d", "text_3d"]
+capabilities = ["rendering_3d", "materials_3d", "text_3d", "physics_3d"]
 
 [scripting]
 mod_script_mode = "disabled"
@@ -29,3 +29,10 @@ label = "Material & Lighting Lab"
 description = "3D playground scene for material and lighting validation."
 path = "scenes/material-lab"
 launcher_visible = false
+
+[[scenes]]
+id = "physics-cubes"
+label = "Physics Cubes"
+description = "3D physics demo with stacked falling cubes."
+path = "scenes/physics-cubes"
+launcher_visible = true

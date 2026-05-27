@@ -3,8 +3,8 @@ mods_root = "mods"
 
 [editor.viewport]
 render_transport = "image-url"
-max_drag_fps = 24
-max_idle_fps = 10
+max_drag_fps = 60
+max_idle_fps = 60
 
 [[profiles]]
 id = "dev"
@@ -56,6 +56,32 @@ render_backend = "wgpu"
 script_backend = "rhai"
 root_mod = "core"
 startup_scene = "bootstrap"
+hosted_default = true
+
+[[profiles]]
+id = "rotten-club-dev"
+label = "Rotten Club Main Menu"
+description = "Clean-room hosted Rotten Club scene for engine-path validation."
+cargo_profile = "dev"
+window_backend = "winit"
+input_backend = "winit"
+render_backend = "wgpu"
+script_backend = "rhai"
+root_mod = "rotten-club"
+startup_scene = "main-menu"
+hosted_default = true
+
+[[profiles]]
+id = "rotten-club-release"
+label = "Rotten Club Main Menu (Release)"
+description = "Release-hosted clean-room Rotten Club performance profile."
+cargo_profile = "release"
+window_backend = "winit"
+input_backend = "winit"
+render_backend = "wgpu"
+script_backend = "rhai"
+root_mod = "rotten-club"
+startup_scene = "main-menu"
 hosted_default = true
 
 [[profiles]]

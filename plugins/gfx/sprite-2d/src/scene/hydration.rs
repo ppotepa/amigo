@@ -1,13 +1,11 @@
 use amigo_assets::AssetKey;
 use amigo_camera::camera_optical_response_from_document;
 use amigo_math::{Transform2, Vec2};
-use amigo_scene::SceneComponentDocument as ComponentDocument;
 use amigo_scene::{
-    ComponentHydrationContext, ComponentHydrator, Material2dDocument,
-    Material2dLightingSceneCommand, Material2dOpticalModeDocument,
+    Material2dDocument, Material2dLightingSceneCommand, Material2dOpticalModeDocument,
     Material2dOpticalModeSceneCommand, Material2dOpticalSceneCommand, Material2dSceneCommand,
     PluginComponentHydrationContext, PluginComponentHydrator, RenderContributions2dSceneCommand,
-    SceneComponentDocument, SceneDocumentError, SceneDocumentResult, SceneSpriteAnimationDocument,
+    SceneDocumentError, SceneDocumentResult, SceneSpriteAnimationDocument,
     SceneSpriteSheetDocument, SceneTransform2Document, SceneTransform3Document, SceneVec2Document,
     Sprite2dSceneCommand, SpriteAnimation2dSceneOverride, SpriteSheet2dSceneCommand,
     VisualMaps2dDocument, VisualMaps2dSceneCommand,
@@ -28,54 +26,8 @@ pub fn sprite_candidate_from_document(document: &Sprite2dDocument) -> Sprite2dRe
     )
 }
 
-pub struct Sprite2dComponentHydrator;
+#[derive(Default)]
 pub struct Sprite2dPluginComponentHydrator;
-
-impl ComponentHydrator for Sprite2dComponentHydrator {
-    fn provider_id(&self) -> &'static str {
-        "amigo.gfx.sprite-2d"
-    }
-
-    fn can_hydrate(&self, component: &SceneComponentDocument) -> bool {
-        matches!(component, ComponentDocument::Sprite2d { .. })
-            || component
-                .plugin_payload()
-                .is_some_and(|(component_type, _)| {
-                    component_type == "amigo.gfx.sprite-2d.Sprite2D" || component_type == "Sprite2D"
-                })
-    }
-
-    fn hydrate(&self, ctx: ComponentHydrationContext<'_>) -> SceneDocumentResult<()> {
-        let Some(document) = Sprite2dDocument::from_component(ctx.component) else {
-            return Ok(());
-        };
-
-        ctx.commands.push(amigo_scene::SceneCommand::plugin(
-            crate::sprite_plugin_scene_command(Sprite2dSceneCommand {
-                source_mod: ctx.source_mod.to_owned(),
-                entity_name: ctx.entity_name.to_owned(),
-                render_layer: document.render_layer.clone(),
-                texture: AssetKey::new(document.texture.clone()),
-                size: vec2_from_document(document.size),
-                sheet: document.sheet.map(sprite_sheet_from_document),
-                animation: document.animation.map(sprite_animation_from_document),
-                visual_maps: document.visual_maps.as_ref().map(visual_maps_from_document),
-                render_contributions: RenderContributions2dSceneCommand {
-                    roles: document
-                        .render_contributions
-                        .clone()
-                        .with_defaults(sprite_render_contribution_defaults())
-                        .into_roles(),
-                },
-                material: material2d_scene_command(document.material.clone()),
-                z_index: document.z_index,
-                transform: transform2_for_entity(ctx.entity),
-            }),
-        ));
-
-        Ok(())
-    }
-}
 
 impl PluginComponentHydrator for Sprite2dPluginComponentHydrator {
     fn provider_id(&self) -> &'static str {
@@ -232,33 +184,28 @@ fn material2d_scene_command(
 mod tests {
     use super::*;
     use amigo_scene::{
-        plugin_component_document, ComponentHydrationContext, RenderContributionsDocument,
-        SceneCommand, SceneDocument, SceneEntityDocument, SceneMetadataDocument,
-        SceneVisual2dDocument,
+        PluginComponentHydrationContext, RenderContributionsDocument, SceneCommand, SceneDocument,
+        SceneEntityDocument, SceneMetadataDocument, SceneVisual2dDocument,
     };
     use std::collections::BTreeMap;
 
     #[test]
     fn sprite_hydrator_converts_plugin_envelope_into_plugin_scene_command() {
-        let hydrator = Sprite2dComponentHydrator;
-        let component = plugin_component_document(
-            "amigo.gfx.sprite-2d.Sprite2D".to_owned(),
-            serde_yaml::to_value(Sprite2dDocument {
-                entity_name: String::new(),
-                render_layer: "world".to_owned(),
-                texture: "test/sprite".to_owned(),
-                size: SceneVec2Document { x: 64.0, y: 32.0 },
-                sheet: None,
-                animation: None,
-                visual_maps: None,
-                render_contributions: RenderContributionsDocument::default(),
-                material: None,
-                z_index: 3.0,
-                opacity: 1.0,
-                visible: true,
-            })
-            .expect("sprite document should serialize"),
-        );
+        let hydrator = Sprite2dPluginComponentHydrator;
+        let payload = Sprite2dDocument {
+            entity_name: String::new(),
+            render_layer: "world".to_owned(),
+            texture: "test/sprite".to_owned(),
+            size: SceneVec2Document { x: 64.0, y: 32.0 },
+            sheet: None,
+            animation: None,
+            visual_maps: None,
+            render_contributions: RenderContributionsDocument::default(),
+            material: None,
+            z_index: 3.0,
+            opacity: 1.0,
+            visible: true,
+        };
         let entity = SceneEntityDocument {
             id: "sprite".to_owned(),
             name: "sprite".to_owned(),
@@ -273,7 +220,7 @@ mod tests {
             post_fx: Vec::new(),
             prefab: None,
             prefab_overrides: Vec::new(),
-            components: vec![component.clone()],
+            components: Vec::new(),
         };
         let document = SceneDocument {
             version: 1,
@@ -293,16 +240,17 @@ mod tests {
         let mut commands = Vec::new();
 
         hydrator
-            .hydrate(ComponentHydrationContext {
+            .hydrate_plugin_payload(PluginComponentHydrationContext {
                 source_mod: "test-mod",
                 document: &document,
                 entity: &entity,
                 entity_name: "sprite",
                 component_index: 0,
-                component: &component,
+                component_type: "amigo.gfx.sprite-2d.Sprite2D",
+                payload: &payload,
                 commands: &mut commands,
             })
-            .expect("sprite hydrator should accept plugin envelope");
+            .expect("sprite hydrator should accept plugin payload");
 
         assert_eq!(commands.len(), 1);
         match &commands[0] {

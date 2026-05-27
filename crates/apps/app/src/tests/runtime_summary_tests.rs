@@ -1,6 +1,6 @@
 use amigo_composite_plugin::PostFx2dService;
 use amigo_render_api::{
-    post_fx_lens_droplets, PostFx2dStack, PostFxLensDroplets2d, ScopedPostFx2dStack,
+    PostFx2dStack, PostFxLensDroplets2d, ScopedPostFx2dStack, post_fx_lens_droplets,
 };
 
 use super::*;
@@ -139,23 +139,15 @@ fn runtime_render_graph_with_lens_droplets_has_plan_and_no_surface_write_warning
     let post_fx_service = runtime
         .resolve::<PostFx2dService>()
         .expect("post-fx service should exist");
-    post_fx_service.set_scoped_stacks(vec![
-        ScopedPostFx2dStack::from_frame_stack(
-            PostFx2dStack {
-                effects: vec![
-                    post_fx_lens_droplets(
-                        PostFxLensDroplets2d {
-                            enabled: true,
-                            affects_world: true,
-                            affects_game_ui: true,
-                            affects_debug_ui: true,
-                            ..PostFxLensDroplets2d::default()
-                        },
-                    ),
-                ],
-            },
-        ),
-    ]);
+    post_fx_service.set_scoped_stacks(vec![ScopedPostFx2dStack::from_frame_stack(PostFx2dStack {
+        effects: vec![post_fx_lens_droplets(PostFxLensDroplets2d {
+            enabled: true,
+            affects_world: true,
+            affects_game_ui: true,
+            affects_debug_ui: true,
+            ..PostFxLensDroplets2d::default()
+        })],
+    })]);
 
     runtime
         .resolve::<DevConsoleQueue>()

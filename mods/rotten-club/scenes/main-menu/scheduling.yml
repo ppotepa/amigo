@@ -1,42 +1,18 @@
-kind: scene-scheduling
+kind: scene-fragment
 schema_version: 1
 
 scheduling:
-  mode: hybrid
-  strict: false
-  allow_frame_latency: false
-  overrides:
-    - target: entity:rain-10m/component:ParticleEmitter2D
-      lane: simulation
-      priority: background
-      parallelism: per_emitter
-      allow_frame_latency: true
-      quality_scale: 0.55
-      budget_ms: 0.25
-    - target: entity:rain-5m/component:ParticleEmitter2D
-      lane: simulation
-      priority: normal
-      parallelism: per_emitter
-      allow_frame_latency: true
-      quality_scale: 0.75
-      budget_ms: 0.35
-    - target: entity:rain-1m/component:ParticleEmitter2D
-      lane: simulation
-      priority: foreground
-      parallelism: per_emitter
-      allow_frame_latency: false
-      quality_scale: 0.9
-      budget_ms: 0.45
-    - target: entity:rain-super-near/component:ParticleEmitter2D
-      lane: simulation
-      priority: foreground
-      parallelism: per_emitter
-      allow_frame_latency: false
-      quality_scale: 1.0
-      budget_ms: 0.45
-    - target: render:particles2d
-      lane: render_prepare
-      priority: normal
-      parallelism: per_layer
-      allow_frame_latency: true
-      budget_ms: 0.8
+  frame_clock:
+    strategy: host_realtime
+    simulation_fps: 60.0
+    render_fps: 60.0
+    max_catch_up_ticks: 1
+    clamp_frame_delta_seconds: 0.05
+
+    presentation:
+      cache_game_frame: false
+      hold_last_game_frame: false
+      game_ui: cached
+      devtools: cached
+      editor: cached
+      debug_overlay: cached

@@ -8,7 +8,7 @@ use super::{
     bounds::{Bounds2d, Bounds2dCommand},
     controller::{MotionController2dCommand, MotionIntent2d, MotionState2d},
     freeflight::{FreeflightMotion2dCommand, FreeflightMotionIntent2d, FreeflightMotionState2d},
-    projectile::{ProjectileEmitter2dCommand, projectile_launch_2d},
+    projectile::{projectile_launch_2d, ProjectileEmitter2dCommand},
     registry::MotionStateRegistry,
     velocity::{Velocity2d, Velocity2dCommand},
 };

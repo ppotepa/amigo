@@ -1,6 +1,6 @@
 use amigo_devtools::{
-    ConsoleCommandDescriptor, ConsoleCommandResult, DevConsoleCommandContext,
-    ParsedConsoleCommand, RuntimeConsoleCommandHandler,
+    ConsoleCommandDescriptor, ConsoleCommandResult, DevConsoleCommandContext, ParsedConsoleCommand,
+    RuntimeConsoleCommandHandler,
 };
 
 pub struct Lighting2dConsoleCommandHandler;

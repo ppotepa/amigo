@@ -1,22 +1,19 @@
 use amigo_plugin_api::CandidateStatus;
 use amigo_runtime::{RuntimePlugin, ServiceRegistry, SystemRegistry};
+use amigo_scene::RenderContributionsDocument;
+use amigo_scene::SceneVec2Document;
 use amigo_scene::{
     ComponentGraphProviderRegistry, ComponentHydratorRegistry, ComponentSchemaRegistry,
-    ScenePluginCommandHandlerRegistry, RuntimeSceneCommandHandlerRegistry, ScenePlugin,
+    RuntimeSceneCommandHandlerRegistry, ScenePlugin, ScenePluginCommandHandlerRegistry,
 };
+use amigo_scripting_api::RuntimeScriptCommandHandlerRegistry;
 use amigo_sprite_2d_plugin::participation::adapters::{
-    camera_optics::sprite_coverage_to_camera_optics,
-    focus_depth::sprite_coverage_to_focus_depth,
+    camera_optics::sprite_coverage_to_camera_optics, focus_depth::sprite_coverage_to_focus_depth,
     shutter_motion::sprite_coverage_to_shutter_motion,
 };
 use amigo_sprite_2d_plugin::runtime::collect_sprite_2d_candidates;
+use amigo_sprite_2d_plugin::scene::{sprite_2d_scene_descriptor, Sprite2dDocument};
 use amigo_sprite_2d_plugin::SpritePlugin;
-use amigo_sprite_2d_plugin::scene::{
-    sprite_2d_scene_descriptor, Sprite2dDocument,
-};
-use amigo_scripting_api::RuntimeScriptCommandHandlerRegistry;
-use amigo_scene::RenderContributionsDocument;
-use amigo_scene::SceneVec2Document;
 
 #[test]
 fn sprite_document_collects_active_renderable_candidate() {
@@ -112,7 +109,9 @@ fn sprite_plugin_registers_schema_provider_and_hydrator() {
         .iter()
         .any(|id| id == "amigo.gfx.sprite-2d.Sprite2D"));
     assert!(hydrators.provider_ids().contains(&"amigo.gfx.sprite-2d"));
-    assert!(graph_providers.provider_ids().contains(&"amigo.gfx.sprite-2d"));
+    assert!(graph_providers
+        .provider_ids()
+        .contains(&"amigo.gfx.sprite-2d"));
     assert!(plugin_scene_handlers
         .handler_for("amigo.gfx.sprite-2d.scene-command.Sprite2D")
         .is_some());

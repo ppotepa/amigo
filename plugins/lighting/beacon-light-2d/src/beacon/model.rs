@@ -1,8 +1,6 @@
-use amigo_math::{ColorRgba, Transform2, Vec2};
 use amigo_camera_optics_plugin::api::CameraOpticalResponse2d;
-use amigo_render_api::{
-    render_contribution_roles as roles, RenderContributionSet,
-};
+use amigo_math::{ColorRgba, Transform2, Vec2};
+use amigo_render_api::{render_contribution_roles as roles, RenderContributionSet};
 use amigo_scene::{BeaconLight2dSceneCommand, LayeredImageViewportFit2dSceneCommand};
 
 pub const BEACON_2D_CAPABILITY: &str = "beacon_2d";

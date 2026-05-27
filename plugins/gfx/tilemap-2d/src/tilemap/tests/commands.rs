@@ -2,14 +2,14 @@ use amigo_assets::AssetCatalog;
 use amigo_assets::AssetKey;
 use amigo_math::Vec2;
 use amigo_scene::{
-    SceneCommand, SceneEntityId, SceneEvent, SceneEventQueue, SceneService,
+    tilemap_2d_plugin_scene_command, tilemap_marker_2d_plugin_scene_command, SceneCommand,
+    SceneEntityId, SceneEvent, SceneEventQueue, SceneService,
     TileMap2dSceneCommand as SceneTileMap2dSceneCommand, TileMapMarker2dSceneCommand,
-    tilemap_2d_plugin_scene_command, tilemap_marker_2d_plugin_scene_command,
 };
 
 use crate::{
-    TileMap2d, TileMap2dDrawCommand, TileMap2dSceneService, build_tilemap_from_scene_command,
-    queue_tilemap_scene_command,
+    build_tilemap_from_scene_command, queue_tilemap_scene_command, TileMap2d, TileMap2dDrawCommand,
+    TileMap2dSceneService,
 };
 
 #[test]

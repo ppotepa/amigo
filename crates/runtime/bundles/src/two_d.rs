@@ -15,20 +15,21 @@ use amigo_particles_2d_plugin::{
 };
 use amigo_runtime::{PluginBundle, Runtime, RuntimeBuilder, RuntimePlugin, ServiceRegistry};
 use amigo_scene::{
-    build_scene_hydration_plan, SceneCommand, SceneComponentDocument, SceneDocument,
+    ComponentHydratorRegistry, ComponentSchemaRegistry, SceneCommand, SceneDocument,
     SceneEntityDocument, SceneMetadataDocument,
+    build_scene_hydration_plan_with_component_hydrators, plugin_component_document,
 };
 use amigo_session::RuntimeSession;
-use amigo_shutter_motion_plugin::{Motion2dSceneService, MOTION_2D_PLUGIN};
+use amigo_shutter_motion_plugin::{MOTION_2D_PLUGIN, Motion2dSceneService};
 use amigo_sprite_2d_plugin::SpritePlugin;
 use amigo_text_2d_plugin::Text2dPlugin;
 use amigo_tilemap_2d_plugin::TileMap2dPlugin;
 use amigo_ui::UiPlugin;
 use amigo_vector_2d_plugin::Vector2dPlugin;
 
-use crate::{LoadedAssetDomainPreparer, LoadedAssetDomainPreparerRegistry};
 use crate::render_extractor_bridges;
 use crate::render_extractor_registry::WgpuRenderExtractorBridgeRegistry;
+use crate::{LoadedAssetDomainPreparer, LoadedAssetDomainPreparerRegistry};
 
 pub fn load_particle_preset_file(source_mod: &str, path: &Path) -> AmigoResult<ParticlePreset2d> {
     let raw = fs::read_to_string(path)?;
@@ -67,19 +68,40 @@ pub fn load_particle_preset_file(source_mod: &str, path: &Path) -> AmigoResult<P
             path.display()
         ))
     })?;
-    let emitter_component = serde_yaml::from_value::<SceneComponentDocument>(emitter_value.clone())
+    let mut emitter_mapping = emitter_value.as_mapping().cloned().ok_or_else(|| {
+        AmigoError::Message(format!(
+            "particle preset `{}` emitter must be a mapping",
+            path.display()
+        ))
+    })?;
+    let emitter_type = emitter_mapping
+        .remove(serde_yaml::Value::String("type".to_owned()))
+        .and_then(|value| value.as_str().map(str::to_owned))
+        .unwrap_or_else(|| "ParticleEmitter2D".to_owned());
+    let component_schemas = ComponentSchemaRegistry::default();
+    component_schemas.register_schema_provider(
+        amigo_particles_2d_plugin::scene::ParticleEmitter2dSceneSchemaProvider,
+    );
+    let hydrators = ComponentHydratorRegistry::default();
+    hydrators.register_plugin(
+        amigo_particles_2d_plugin::scene::ParticleEmitter2dPluginComponentHydrator,
+    );
+    let Some((component_type, payload)) = component_schemas
+        .parse_plugin_payload_with_canonical_type(&emitter_type, emitter_mapping)
+        .transpose()
         .map_err(|error| {
             AmigoError::Message(format!(
                 "failed to parse emitter in particle preset `{}`: {error}",
                 path.display()
             ))
-        })?;
-    if !emitter_component.is_particle_emitter_2d() {
+        })?
+    else {
         return Err(AmigoError::Message(format!(
             "particle preset `{}` emitter must be type: ParticleEmitter2D",
             path.display()
         )));
-    }
+    };
+    let emitter_component = plugin_component_document(component_type, payload);
 
     let scene_document = SceneDocument {
         version: 1,
@@ -111,7 +133,13 @@ pub fn load_particle_preset_file(source_mod: &str, path: &Path) -> AmigoResult<P
             components: vec![emitter_component],
         }],
     };
-    let plan = build_scene_hydration_plan(source_mod, &scene_document).map_err(|error| {
+    let plan = build_scene_hydration_plan_with_component_hydrators(
+        source_mod,
+        &scene_document,
+        Some(&hydrators),
+        Some(&component_schemas),
+    )
+    .map_err(|error| {
         AmigoError::Message(format!(
             "failed to hydrate particle preset `{}`: {error}",
             path.display()
@@ -225,8 +253,8 @@ impl Particle2dSourceVelocityProvider for Motion2dParticleSourceVelocityProvider
     }
 }
 
-fn two_d_profile_render_extractor_bridge_installers(
-) -> Vec<crate::render_extractor_registry::WgpuRenderExtractorBridgeInstaller> {
+fn two_d_profile_render_extractor_bridge_installers()
+-> Vec<crate::render_extractor_registry::WgpuRenderExtractorBridgeInstaller> {
     render_extractor_bridges::available_world_2d_plugin_bridge_installers()
 }
 
@@ -260,7 +288,33 @@ impl PluginBundle for TwoDRuntimeBundle {
             .with_plugin(MOTION_2D_PLUGIN)?
             .with_plugin(Particle2dMotionVelocityBridgePlugin)?
             .with_plugin(FocusTargets2dRuntimePlugin)?
+            .with_plugin(Timeline2dRuntimePlugin)?
             .with_plugin(WgpuTwoDRenderExtractorBridgePlugin)
+    }
+}
+
+struct Timeline2dRuntimePlugin;
+
+impl RuntimePlugin for Timeline2dRuntimePlugin {
+    fn name(&self) -> &'static str {
+        "amigo-timeline-2d-runtime"
+    }
+
+    fn register(&self, registry: &mut ServiceRegistry) -> AmigoResult<()> {
+        registry.register(crate::Timeline2dService::default())?;
+        registry
+            .required::<amigo_runtime::SystemRegistry>()?
+            .register_fn(
+                amigo_runtime::SystemPhase::Update,
+                "timeline_2d",
+                |runtime| {
+                    crate::tick_timeline_2d_world(
+                        runtime,
+                        amigo_session::simulation_delta_seconds(runtime),
+                    )
+                },
+            );
+        Ok(())
     }
 }
 
@@ -273,11 +327,16 @@ impl LoadedAssetDomainPreparer for SpriteLoadedAssetDomainPreparer {
         "amigo-sprite-2d-loaded-asset-domain-preparer"
     }
 
-    fn prepare(&self, asset_catalog: &amigo_assets::AssetCatalog, asset_key: &amigo_assets::AssetKey) {
+    fn prepare(
+        &self,
+        asset_catalog: &amigo_assets::AssetCatalog,
+        asset_key: &amigo_assets::AssetKey,
+    ) {
         let Some(prepared) = asset_catalog.prepared_asset(asset_key) else {
             return;
         };
-        if let Some(sheet) = amigo_sprite_2d_plugin::infer_sprite_sheet_from_prepared_asset(&prepared)
+        if let Some(sheet) =
+            amigo_sprite_2d_plugin::infer_sprite_sheet_from_prepared_asset(&prepared)
         {
             self.sprites.sync_sheet_for_texture(asset_key, sheet);
         }
@@ -293,7 +352,11 @@ impl LoadedAssetDomainPreparer for TileMapLoadedAssetDomainPreparer {
         "amigo-tilemap-2d-loaded-asset-domain-preparer"
     }
 
-    fn prepare(&self, asset_catalog: &amigo_assets::AssetCatalog, asset_key: &amigo_assets::AssetKey) {
+    fn prepare(
+        &self,
+        asset_catalog: &amigo_assets::AssetCatalog,
+        asset_key: &amigo_assets::AssetKey,
+    ) {
         let Some(prepared) = asset_catalog.prepared_asset(asset_key) else {
             return;
         };
@@ -329,8 +392,8 @@ impl RuntimePlugin for Particle2dMotionVelocityBridgePlugin {
 
     fn register(&self, registry: &mut ServiceRegistry) -> AmigoResult<()> {
         if let (Some(particles), Some(motion)) = (
-            registry.resolve::<amigo_particles_2d_plugin::Particle2dSourceVelocityProviderRegistry>(
-            ),
+            registry
+                .resolve::<amigo_particles_2d_plugin::Particle2dSourceVelocityProviderRegistry>(),
             registry.resolve::<Motion2dSceneService>(),
         ) {
             particles.register(Arc::new(Motion2dParticleSourceVelocityProvider { motion }));

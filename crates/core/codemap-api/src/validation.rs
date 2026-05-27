@@ -29,9 +29,9 @@ pub fn validate_codemap_graph(graph: &CodeMapGraph) -> CodeMapGraphValidationRes
         }
 
         if !graph.contains_node(&edge.to) {
-            errors.push(CodeMapGraphValidationError::EdgeToMissingNode(format_node_id(
-                &edge.to,
-            )));
+            errors.push(CodeMapGraphValidationError::EdgeToMissingNode(
+                format_node_id(&edge.to),
+            ));
         }
     }
 

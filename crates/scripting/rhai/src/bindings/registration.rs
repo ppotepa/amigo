@@ -9,6 +9,7 @@ pub(crate) fn register_all(engine: &mut rhai::Engine) {
     super::arcade::register_api(engine);
     super::camera::register_api(engine);
     super::physics::register_api(engine);
+    super::physics3d::register_api(engine);
     super::postfx::register_api(engine);
     super::pools::register_api(engine);
     super::projectiles::register_api(engine);

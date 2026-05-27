@@ -111,9 +111,23 @@ pub fn particle_emitter_2d_descriptor() -> ComponentTypeDescriptor {
             property!(live num "initial_speed", "Initial Speed", EditorPropertyValueKind::Number, EditorPropertyEditorKind::Number, MetadataTraitKind::Motion2D, "motion2.tuning", EDITOR_NUMBER_PARTICLE_SPEED, EditorRuntimeBindingTemplate::ParticleEmitterField),
             property!(live num "initial_size", "Initial Size", EditorPropertyValueKind::Number, EditorPropertyEditorKind::Number, MetadataTraitKind::HasBounds2D, "bounds2.size", EDITOR_NUMBER_PARTICLE_SIZE, EditorRuntimeBindingTemplate::ParticleEmitterField),
             property!(live num "final_size", "Final Size", EditorPropertyValueKind::Number, EditorPropertyEditorKind::Number, MetadataTraitKind::HasBounds2D, "bounds2.size", EDITOR_NUMBER_PARTICLE_SIZE, EditorRuntimeBindingTemplate::ParticleEmitterField),
-            property!("render_layer", "Render Layer", EditorPropertyValueKind::String, EditorPropertyEditorKind::Text, MetadataTraitKind::RenderLayered2D, "render2d.order"),
+            property!(
+                "render_layer",
+                "Render Layer",
+                EditorPropertyValueKind::String,
+                EditorPropertyEditorKind::Text,
+                MetadataTraitKind::RenderLayered2D,
+                "render2d.order"
+            ),
             property!(live num "z_index", "Z Index", EditorPropertyValueKind::Number, EditorPropertyEditorKind::Number, MetadataTraitKind::Renderable2D, "render2d.order", EDITOR_NUMBER_ORDER, EditorRuntimeBindingTemplate::ParticleEmitterField),
-            property!("color", "Color", EditorPropertyValueKind::Color, EditorPropertyEditorKind::Color, MetadataTraitKind::Renderable2D, "render2d.color"),
+            property!(
+                "color",
+                "Color",
+                EditorPropertyValueKind::Color,
+                EditorPropertyEditorKind::Color,
+                MetadataTraitKind::Renderable2D,
+                "render2d.color"
+            ),
             property!(ro "color_ramp", "Color Ramp", MetadataTraitKind::Renderable2D, "render2d.color"),
             property!(ro "alpha_curve", "Alpha Curve", MetadataTraitKind::Renderable2D, "render2d.color"),
             property!(ro "size_curve", "Size Curve", MetadataTraitKind::HasBounds2D, "bounds2.size"),
@@ -126,17 +140,87 @@ pub fn particle_emitter_2d_descriptor() -> ComponentTypeDescriptor {
             property!(live num "lifetime_jitter", "Lifetime Jitter", EditorPropertyValueKind::Number, EditorPropertyEditorKind::Number, MetadataTraitKind::Renderable2D, "render2d.content", EDITOR_NUMBER_PARTICLE_SECONDS, EditorRuntimeBindingTemplate::ParticleEmitterField),
             property!(live num "speed_jitter", "Speed Jitter", EditorPropertyValueKind::Number, EditorPropertyEditorKind::Number, MetadataTraitKind::Motion2D, "motion2.tuning", EDITOR_NUMBER_PARTICLE_SPEED, EditorRuntimeBindingTemplate::ParticleEmitterField),
             property!(ro "forces", "Forces", MetadataTraitKind::Motion2D, "motion2.tuning"),
-            property!("material", "Material", EditorPropertyValueKind::String, EditorPropertyEditorKind::Text, MetadataTraitKind::LightReceiver2D, "render2d.lighting"),
-            property!("attached_to", "Attached To", EditorPropertyValueKind::String, EditorPropertyEditorKind::Text, MetadataTraitKind::Motion2D, "motion2.attachment"),
-            property!("local_offset", "Local Offset", EditorPropertyValueKind::Vec2, EditorPropertyEditorKind::Vec2, MetadataTraitKind::HasBounds2D, "bounds2.offset"),
-            property!("blend_mode", "Blend Mode", EditorPropertyValueKind::String, EditorPropertyEditorKind::Text, MetadataTraitKind::Renderable2D, "render2d.content"),
+            property!(
+                "material",
+                "Material",
+                EditorPropertyValueKind::String,
+                EditorPropertyEditorKind::Text,
+                MetadataTraitKind::LightReceiver2D,
+                "render2d.lighting"
+            ),
+            property!(
+                "attached_to",
+                "Attached To",
+                EditorPropertyValueKind::String,
+                EditorPropertyEditorKind::Text,
+                MetadataTraitKind::Motion2D,
+                "motion2.attachment"
+            ),
+            property!(
+                "local_offset",
+                "Local Offset",
+                EditorPropertyValueKind::Vec2,
+                EditorPropertyEditorKind::Vec2,
+                MetadataTraitKind::HasBounds2D,
+                "bounds2.offset"
+            ),
+            property!(
+                "blend_mode",
+                "Blend Mode",
+                EditorPropertyValueKind::String,
+                EditorPropertyEditorKind::Text,
+                MetadataTraitKind::Renderable2D,
+                "render2d.content"
+            ),
             property!(live num "inherit_parent_velocity", "Inherit Parent Velocity", EditorPropertyValueKind::Number, EditorPropertyEditorKind::Number, MetadataTraitKind::Motion2D, "motion2.tuning", EDITOR_NUMBER_PARTICLE_VELOCITY_SCALE, EditorRuntimeBindingTemplate::ParticleEmitterField),
-            property!("align", "Align", EditorPropertyValueKind::String, EditorPropertyEditorKind::Text, MetadataTraitKind::Renderable2D, "render2d.content"),
-            property!("motion_stretch", "Motion Stretch", EditorPropertyValueKind::Number, EditorPropertyEditorKind::Number, MetadataTraitKind::Motion2D, "motion2.tuning"),
-            property!("simulation_space", "Simulation Space", EditorPropertyValueKind::String, EditorPropertyEditorKind::Text, MetadataTraitKind::Renderable2D, "render2d.content"),
-            property!("light", "Light", EditorPropertyValueKind::Bool, EditorPropertyEditorKind::Checkbox, MetadataTraitKind::Renderable2D, "render2d.content"),
-            property!("line_anchor", "Line Anchor", EditorPropertyValueKind::String, EditorPropertyEditorKind::Text, MetadataTraitKind::Renderable2D, "render2d.content"),
-            property!("velocity_mode", "Velocity Mode", EditorPropertyValueKind::String, EditorPropertyEditorKind::Text, MetadataTraitKind::Motion2D, "motion2.tuning"),
+            property!(
+                "align",
+                "Align",
+                EditorPropertyValueKind::String,
+                EditorPropertyEditorKind::Text,
+                MetadataTraitKind::Renderable2D,
+                "render2d.content"
+            ),
+            property!(
+                "motion_stretch",
+                "Motion Stretch",
+                EditorPropertyValueKind::Number,
+                EditorPropertyEditorKind::Number,
+                MetadataTraitKind::Motion2D,
+                "motion2.tuning"
+            ),
+            property!(
+                "simulation_space",
+                "Simulation Space",
+                EditorPropertyValueKind::String,
+                EditorPropertyEditorKind::Text,
+                MetadataTraitKind::Renderable2D,
+                "render2d.content"
+            ),
+            property!(
+                "light",
+                "Light",
+                EditorPropertyValueKind::Bool,
+                EditorPropertyEditorKind::Checkbox,
+                MetadataTraitKind::Renderable2D,
+                "render2d.content"
+            ),
+            property!(
+                "line_anchor",
+                "Line Anchor",
+                EditorPropertyValueKind::String,
+                EditorPropertyEditorKind::Text,
+                MetadataTraitKind::Renderable2D,
+                "render2d.content"
+            ),
+            property!(
+                "velocity_mode",
+                "Velocity Mode",
+                EditorPropertyValueKind::String,
+                EditorPropertyEditorKind::Text,
+                MetadataTraitKind::Motion2D,
+                "motion2.tuning"
+            ),
         ],
         transform_policy: TransformPolicy::UsesEntityTransform2,
         bounds_policy: BoundsPolicy::SpawnArea2D {
@@ -150,6 +234,7 @@ pub fn particle_emitter_2d_descriptor() -> ComponentTypeDescriptor {
     }
 }
 
+#[derive(Default)]
 pub struct ParticleEmitter2dComponentMetadataProvider;
 
 impl ComponentMetadataProvider for ParticleEmitter2dComponentMetadataProvider {
@@ -158,7 +243,9 @@ impl ComponentMetadataProvider for ParticleEmitter2dComponentMetadataProvider {
     }
 
     fn register_component_metadata(&self, registry: &mut ComponentRegistry) {
-        registry.insert(particle_emitter_2d_descriptor());
+        registry
+            .try_insert(particle_emitter_2d_descriptor())
+            .expect("duplicate ParticleEmitter2D component metadata");
     }
 }
 
@@ -177,8 +264,16 @@ mod tests {
             .descriptor("ParticleEmitter2D")
             .expect("particle metadata descriptor should be registered");
         assert_eq!(descriptor.type_name, "ParticleEmitter2D");
-        assert!(descriptor.metadata_traits.contains(&MetadataTraitKind::Renderable2D));
-        assert!(descriptor.metadata_traits.contains(&MetadataTraitKind::Motion2D));
+        assert!(
+            descriptor
+                .metadata_traits
+                .contains(&MetadataTraitKind::Renderable2D)
+        );
+        assert!(
+            descriptor
+                .metadata_traits
+                .contains(&MetadataTraitKind::Motion2D)
+        );
     }
 
     #[test]
@@ -186,6 +281,15 @@ mod tests {
         let mut registry = ServiceRegistry::default();
         registry
             .register(ComponentMetadataProviderRegistry::default())
+            .unwrap();
+        registry
+            .register(ComponentSchemaRegistry::default())
+            .unwrap();
+        registry
+            .register(ComponentHydratorRegistry::default())
+            .unwrap();
+        registry
+            .register(ComponentGraphProviderRegistry::default())
             .unwrap();
         registry
             .register(RuntimeSceneCommandHandlerRegistry::new())

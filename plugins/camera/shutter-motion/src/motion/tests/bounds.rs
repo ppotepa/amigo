@@ -1,5 +1,5 @@
 use super::common::test_bounds;
-use crate::{BoundsBehavior2d, BoundsContact2d, BoundsOutcome2d, apply_bounds_2d};
+use crate::{apply_bounds_2d, BoundsBehavior2d, BoundsContact2d, BoundsOutcome2d};
 use amigo_math::Vec2;
 
 #[test]

@@ -1,4 +1,4 @@
-use crate::{ProjectileEmitter2d, projectile_launch_2d};
+use crate::{projectile_launch_2d, ProjectileEmitter2d};
 use amigo_math::{Transform3, Vec2, Vec3};
 
 #[test]

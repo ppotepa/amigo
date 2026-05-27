@@ -1,13 +1,13 @@
 use amigo_core::{AmigoError, AmigoResult};
 use amigo_scene::{
-    BOUNDS_2D_PLUGIN_SCENE_COMMAND_TYPE, Bounds2dSceneCommand, BoundsBehavior2dSceneCommand,
-    ENTITY_POOL_PLUGIN_SCENE_COMMAND_TYPE, EntityPoolSceneCommand, EntityPoolSceneService,
-    FREEFLIGHT_MOTION_2D_PLUGIN_SCENE_COMMAND_TYPE, FreeflightMotion2dSceneCommand,
-    LIFETIME_PLUGIN_SCENE_COMMAND_TYPE, LifetimeSceneCommand, LifetimeSceneService,
-    MOTION_CONTROLLER_2D_PLUGIN_SCENE_COMMAND_TYPE, MotionController2dSceneCommand,
-    PROJECTILE_EMITTER_2D_PLUGIN_SCENE_COMMAND_TYPE, ProjectileEmitter2dSceneCommand,
-    SceneCommand, SceneEvent, SceneEventQueue, SceneService, VELOCITY_2D_PLUGIN_SCENE_COMMAND_TYPE,
-    Velocity2dSceneCommand, format_scene_command,
+    format_scene_command, Bounds2dSceneCommand, BoundsBehavior2dSceneCommand,
+    EntityPoolSceneCommand, EntityPoolSceneService, FreeflightMotion2dSceneCommand,
+    LifetimeSceneCommand, LifetimeSceneService, MotionController2dSceneCommand,
+    ProjectileEmitter2dSceneCommand, SceneCommand, SceneEvent, SceneEventQueue, SceneService,
+    Velocity2dSceneCommand, BOUNDS_2D_PLUGIN_SCENE_COMMAND_TYPE,
+    ENTITY_POOL_PLUGIN_SCENE_COMMAND_TYPE, FREEFLIGHT_MOTION_2D_PLUGIN_SCENE_COMMAND_TYPE,
+    LIFETIME_PLUGIN_SCENE_COMMAND_TYPE, MOTION_CONTROLLER_2D_PLUGIN_SCENE_COMMAND_TYPE,
+    PROJECTILE_EMITTER_2D_PLUGIN_SCENE_COMMAND_TYPE, VELOCITY_2D_PLUGIN_SCENE_COMMAND_TYPE,
 };
 
 use super::{
@@ -87,9 +87,12 @@ pub fn handle_motion_scene_command(
         {
             let command = command
                 .payload_as::<MotionController2dSceneCommand>()
-                .ok_or_else(|| AmigoError::Message(
-                    "motion controller 2d plugin scene command payload type mismatch".to_owned(),
-                ))?
+                .ok_or_else(|| {
+                    AmigoError::Message(
+                        "motion controller 2d plugin scene command payload type mismatch"
+                            .to_owned(),
+                    )
+                })?
                 .clone();
             let entity = ctx
                 .scene_service
@@ -120,12 +123,16 @@ pub fn handle_motion_scene_command(
                 source_mod: command.source_mod,
             })
         }
-        SceneCommand::Plugin { command } if command.command_type == ENTITY_POOL_PLUGIN_SCENE_COMMAND_TYPE => {
+        SceneCommand::Plugin { command }
+            if command.command_type == ENTITY_POOL_PLUGIN_SCENE_COMMAND_TYPE =>
+        {
             let command = command
                 .payload_as::<EntityPoolSceneCommand>()
-                .ok_or_else(|| AmigoError::Message(
-                    "entity pool plugin scene command payload type mismatch".to_owned(),
-                ))?
+                .ok_or_else(|| {
+                    AmigoError::Message(
+                        "entity pool plugin scene command payload type mismatch".to_owned(),
+                    )
+                })?
                 .clone();
             ctx.entity_pool_scene_service.queue(command.clone());
             ctx.scene_event_queue.publish(SceneEvent::EntityPoolQueued {
@@ -137,12 +144,16 @@ pub fn handle_motion_scene_command(
                 member_count: command.members.len(),
             })
         }
-        SceneCommand::Plugin { command } if command.command_type == LIFETIME_PLUGIN_SCENE_COMMAND_TYPE => {
+        SceneCommand::Plugin { command }
+            if command.command_type == LIFETIME_PLUGIN_SCENE_COMMAND_TYPE =>
+        {
             let command = command
                 .payload_as::<LifetimeSceneCommand>()
-                .ok_or_else(|| AmigoError::Message(
-                    "lifetime plugin scene command payload type mismatch".to_owned(),
-                ))?
+                .ok_or_else(|| {
+                    AmigoError::Message(
+                        "lifetime plugin scene command payload type mismatch".to_owned(),
+                    )
+                })?
                 .clone();
             let entity = ctx
                 .scene_service
@@ -162,9 +173,12 @@ pub fn handle_motion_scene_command(
         {
             let command = command
                 .payload_as::<ProjectileEmitter2dSceneCommand>()
-                .ok_or_else(|| AmigoError::Message(
-                    "projectile emitter 2d plugin scene command payload type mismatch".to_owned(),
-                ))?
+                .ok_or_else(|| {
+                    AmigoError::Message(
+                        "projectile emitter 2d plugin scene command payload type mismatch"
+                            .to_owned(),
+                    )
+                })?
                 .clone();
             let entity = ctx
                 .scene_service
@@ -191,12 +205,16 @@ pub fn handle_motion_scene_command(
                 source_mod: command.source_mod,
             })
         }
-        SceneCommand::Plugin { command } if command.command_type == VELOCITY_2D_PLUGIN_SCENE_COMMAND_TYPE => {
+        SceneCommand::Plugin { command }
+            if command.command_type == VELOCITY_2D_PLUGIN_SCENE_COMMAND_TYPE =>
+        {
             let command = command
                 .payload_as::<Velocity2dSceneCommand>()
-                .ok_or_else(|| AmigoError::Message(
-                    "velocity 2d plugin scene command payload type mismatch".to_owned(),
-                ))?
+                .ok_or_else(|| {
+                    AmigoError::Message(
+                        "velocity 2d plugin scene command payload type mismatch".to_owned(),
+                    )
+                })?
                 .clone();
             let entity = ctx
                 .scene_service
@@ -215,12 +233,16 @@ pub fn handle_motion_scene_command(
                 source_mod: command.source_mod,
             })
         }
-        SceneCommand::Plugin { command } if command.command_type == BOUNDS_2D_PLUGIN_SCENE_COMMAND_TYPE => {
+        SceneCommand::Plugin { command }
+            if command.command_type == BOUNDS_2D_PLUGIN_SCENE_COMMAND_TYPE =>
+        {
             let command = command
                 .payload_as::<Bounds2dSceneCommand>()
-                .ok_or_else(|| AmigoError::Message(
-                    "bounds 2d plugin scene command payload type mismatch".to_owned(),
-                ))?
+                .ok_or_else(|| {
+                    AmigoError::Message(
+                        "bounds 2d plugin scene command payload type mismatch".to_owned(),
+                    )
+                })?
                 .clone();
             let entity = ctx
                 .scene_service
@@ -248,9 +270,12 @@ pub fn handle_motion_scene_command(
         {
             let command = command
                 .payload_as::<FreeflightMotion2dSceneCommand>()
-                .ok_or_else(|| AmigoError::Message(
-                    "freeflight motion 2d plugin scene command payload type mismatch".to_owned(),
-                ))?
+                .ok_or_else(|| {
+                    AmigoError::Message(
+                        "freeflight motion 2d plugin scene command payload type mismatch"
+                            .to_owned(),
+                    )
+                })?
                 .clone();
             let entity = ctx
                 .scene_service

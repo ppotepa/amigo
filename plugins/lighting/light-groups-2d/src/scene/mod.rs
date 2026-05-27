@@ -7,4 +7,3 @@ pub fn light_group_2d_scene_descriptor() -> PluginSceneComponentDescriptor {
         "LightGroup2D",
     )
 }
-

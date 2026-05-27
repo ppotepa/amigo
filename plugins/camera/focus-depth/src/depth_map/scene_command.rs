@@ -1,13 +1,13 @@
 use amigo_assets::AssetKey;
 use amigo_core::{AmigoError, AmigoResult};
 use amigo_scene::{
-    DEPTH_AUX_MAP_2D_PLUGIN_SCENE_COMMAND_TYPE, DEPTH_MAP_2D_PLUGIN_SCENE_COMMAND_TYPE,
-    DepthAuxMap2dSceneCommand, DepthMap2dSceneCommand, SceneCommand, SceneEvent, SceneEventQueue,
-    SceneService, format_scene_command,
+    format_scene_command, DepthAuxMap2dSceneCommand, DepthMap2dSceneCommand, SceneCommand,
+    SceneEvent, SceneEventQueue, SceneService, DEPTH_AUX_MAP_2D_PLUGIN_SCENE_COMMAND_TYPE,
+    DEPTH_MAP_2D_PLUGIN_SCENE_COMMAND_TYPE,
 };
 
 use crate::{
-    DepthMap2dSceneService, queue_depth_aux_map2d_scene_command, queue_depth_map2d_scene_command,
+    queue_depth_aux_map2d_scene_command, queue_depth_map2d_scene_command, DepthMap2dSceneService,
 };
 
 pub struct DepthMap2dSceneCommandHandler;

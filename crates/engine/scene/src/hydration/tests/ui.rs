@@ -236,9 +236,8 @@ entities:
     let plan = build_scene_hydration_plan("test-mod", &document)
         .expect("vector arcade scene plan should build");
 
-    assert!(plan.commands.iter().any(|command| {
-        super::plugin_payload::<crate::VectorShape2dSceneCommand>(command)
-            .is_some_and(|command| command.entity_name == "test-actor")
+    assert!(plan.commands.iter().all(|command| {
+        super::plugin_payload::<crate::VectorShape2dSceneCommand>(command).is_none()
     }));
     assert!(plan.commands.iter().any(|command| {
         super::plugin_payload::<crate::EntityPoolSceneCommand>(command)

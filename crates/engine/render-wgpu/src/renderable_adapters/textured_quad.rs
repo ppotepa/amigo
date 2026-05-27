@@ -59,7 +59,10 @@ impl WgpuRenderable2dAdapter for TexturedQuad2dRenderableAdapter {
         true
     }
 
-    fn focus_sample_world_position(&self, item: &crate::Renderable2dItem) -> Option<amigo_math::Vec2> {
+    fn focus_sample_world_position(
+        &self,
+        item: &crate::Renderable2dItem,
+    ) -> Option<amigo_math::Vec2> {
         item.primitive
             .textured_quad()
             .map(|primitive| primitive.transform.translation)

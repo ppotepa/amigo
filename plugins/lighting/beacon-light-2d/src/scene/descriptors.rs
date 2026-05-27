@@ -9,6 +9,7 @@ pub fn beacon_light_2d_scene_descriptor() -> PluginSceneComponentDescriptor {
     )
 }
 
+#[derive(Default)]
 pub struct BeaconLight2dSceneDescriptorProvider;
 
 impl ScenePluginDescriptorProvider for BeaconLight2dSceneDescriptorProvider {

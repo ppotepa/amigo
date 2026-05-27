@@ -30,10 +30,10 @@ pub use command_runtime::{
 };
 pub use completion::{
     ConsoleCompletionContext, ConsoleCompletionEdit, ConsoleCompletionKind,
-    ConsoleCompletionProvider, ConsoleCompletionProviderRegistry,
-    ConsoleCompletionSnapshot, ConsoleCompletionState, ConsoleCompletionSuggestion,
-    ConsoleRhaiSymbol, ConsoleRhaiValueKind, accept_completion_tab,
-    collect_console_rhai_symbols_from_source, compute_console_completion_from_descriptors,
+    ConsoleCompletionProvider, ConsoleCompletionProviderRegistry, ConsoleCompletionSnapshot,
+    ConsoleCompletionState, ConsoleCompletionSuggestion, ConsoleRhaiSymbol, ConsoleRhaiValueKind,
+    accept_completion_tab, collect_console_rhai_symbols_from_source,
+    compute_console_completion_from_descriptors,
 };
 pub use console::{
     ConsoleArgKind, ConsoleArgSpec, ConsoleCommandDescriptor, ConsoleCommandForm,

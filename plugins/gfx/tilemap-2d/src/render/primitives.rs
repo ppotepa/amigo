@@ -1,6 +1,6 @@
 use amigo_render_api::{
-    RenderPrimitive2d, TileMap2dPrimitive, TileMapResolved2dPrimitive,
-    TileMapResolvedTile2dPrimitive, Renderable2dCommon, Renderable2dItem, Renderable2dKind,
+    RenderPrimitive2d, Renderable2dCommon, Renderable2dItem, Renderable2dKind, TileMap2dPrimitive,
+    TileMapResolved2dPrimitive, TileMapResolvedTile2dPrimitive,
 };
 
 use crate::tilemap::TileMap2dDrawCommand;
@@ -13,20 +13,24 @@ pub fn tilemap_draw_command_to_render_primitive(
         tile_size: command.tilemap.tile_size,
         grid: command.tilemap.grid.clone(),
         origin_offset: command.tilemap.origin_offset,
-        resolved: command.tilemap.resolved.as_ref().map(|resolved| TileMapResolved2dPrimitive {
-            rows: resolved
-                .rows
-                .iter()
-                .map(|row| {
-                    row.iter()
-                        .map(|tile| TileMapResolvedTile2dPrimitive {
-                            symbol: tile.symbol,
-                            tile_id: tile.tile_id,
-                        })
-                        .collect()
-                })
-                .collect(),
-        }),
+        resolved: command
+            .tilemap
+            .resolved
+            .as_ref()
+            .map(|resolved| TileMapResolved2dPrimitive {
+                rows: resolved
+                    .rows
+                    .iter()
+                    .map(|row| {
+                        row.iter()
+                            .map(|tile| TileMapResolvedTile2dPrimitive {
+                                symbol: tile.symbol,
+                                tile_id: tile.tile_id,
+                            })
+                            .collect()
+                    })
+                    .collect(),
+            }),
     })
 }
 

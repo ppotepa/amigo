@@ -19,13 +19,27 @@ pub(crate) fn resolve_camera2d_transform(scene_view: &RenderSceneView) -> Transf
     scene_view.camera_2d()
 }
 
+#[derive(Clone, Copy)]
+pub(crate) struct Material3dRenderInfo {
+    pub(crate) albedo: ColorRgba,
+    pub(crate) render_order: i32,
+}
+
 pub(crate) fn material_lookup_from_commands(
     materials: &[MaterialDrawCommand],
-) -> BTreeMap<String, ColorRgba> {
+) -> BTreeMap<String, Material3dRenderInfo> {
     materials
         .iter()
         .cloned()
-        .map(|command| (command.entity_name, command.material.albedo))
+        .map(|command| {
+            (
+                command.entity_name,
+                Material3dRenderInfo {
+                    albedo: command.material.albedo,
+                    render_order: command.material.render_order,
+                },
+            )
+        })
         .collect()
 }
 

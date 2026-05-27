@@ -1,17 +1,16 @@
 version: 1
 scene:
   id: main-menu
-  label: Main Menu
-  description: Native runtime UI main menu scene for Rotten Club.
+  label: Rotten Club Main Menu
+  description: Plugin-owned Rotten Club main menu with authored timeline tracks and a small lifecycle script.
 
 use:
   scheduling:
     - ./scheduling.yml
+  timeline:
+    - ./timeline/intro.yml
   camera:
     - ./camera/main.yml
-    - ./camera/motion.yml
-    - ./camera/dof-controls.yml
-    - ./camera/presets.yml
   render:
     - ./render/layers.yml
   world:
@@ -19,19 +18,11 @@ use:
     - ./world/depth.yml
     - ./world/title.yml
   lighting:
-    - ./lighting/sources.yml
+    - ./lighting/global.yml
     - ./lighting/beacons.yml
-    - ./lighting/routes.yml
+    - ./lighting/groups.yml
   weather:
-    - ./weather/rain-particles.yml
-  interaction:
-    - ./interaction/controls.yml
-  ui:
-    - ./ui/mount.yml
-  input:
-    - ./input/actions.yml
-  events:
-    - ./events/pipelines.yml
+    - ./weather/rain.yml
   state:
     - ./state/defaults.yml
 

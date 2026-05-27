@@ -79,15 +79,11 @@ entities:
     let plan = build_scene_hydration_plan("playground-sidescroller", &document)
         .expect("sidescroller hydration plan should build");
 
-    assert!(plan.commands.iter().any(|command| {
-        plugin_payload::<crate::TileMap2dSceneCommand>(command).is_some_and(|command| {
-            command.entity_name == "playground-sidescroller-tilemap"
-                && command.ruleset.as_ref().map(|ruleset| ruleset.as_str())
-                    == Some(
-                        "playground-sidescroller/spritesheets/platformer/rulesets/platform/rules",
-                    )
-        })
-    }));
+    assert!(
+        plan.commands
+            .iter()
+            .all(|command| plugin_payload::<crate::TileMap2dSceneCommand>(command).is_none())
+    );
     assert!(plan.commands.iter().any(|command| {
         plugin_payload::<crate::KinematicBody2dSceneCommand>(command)
             .is_some_and(|command| command.entity_name == "playground-sidescroller-player")
@@ -117,19 +113,9 @@ entities:
                 && command.event.as_deref() == Some("coin.collected")
         })
     }));
-    assert!(plan.commands.iter().any(|command| {
-        plugin_payload::<crate::Sprite2dSceneCommand>(command).is_some_and(|command| {
-            command.entity_name == "playground-sidescroller-coin"
-                && command
-                    .animation
-                    .as_ref()
-                    .and_then(|animation| animation.fps)
-                    == Some(10.0)
-                && command
-                    .animation
-                    .as_ref()
-                    .and_then(|animation| animation.looping)
-                    == Some(true)
-        })
-    }));
+    assert!(
+        plan.commands
+            .iter()
+            .all(|command| plugin_payload::<crate::Sprite2dSceneCommand>(command).is_none())
+    );
 }

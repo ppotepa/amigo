@@ -5,10 +5,10 @@
 mod behavior;
 /// Camera-authored document fragments.
 mod camera;
-/// Generic component envelope used by plugin-owned scene components.
-mod component_envelope;
 /// Scope/domain scene authoring compiler.
 mod compiler;
+/// Generic component envelope used by plugin-owned scene components.
+mod component_envelope;
 /// Component schemas shared by authored scene entities.
 mod components;
 /// Core scene document types and top-level metadata.
@@ -21,10 +21,10 @@ mod loader;
 mod particles;
 /// Prefab document schema for reusable entity hierarchies.
 mod prefab;
-/// Render-oriented scalar and color value decoding.
-mod render_values;
 /// Authored render contribution role toggles.
 mod render_contributions;
+/// Render-oriented scalar and color value decoding.
+mod render_values;
 /// Scene scheduling metadata collected during authoring compilation.
 mod scheduling;
 /// Authored 2D text document fragments.
@@ -34,20 +34,20 @@ mod ui;
 /// Authored 2D visual composition document fragments.
 mod visual2d;
 
+pub use amigo_material_api::{
+    Material2dDocument, Material2dLightingDocument, Material2dOpticalDocument,
+    Material2dOpticalModeDocument,
+};
 pub use behavior::*;
 pub use camera::*;
 pub use compiler::*;
 pub use components::*;
 pub use core::*;
 pub use loader::*;
-pub use amigo_material_api::{
-    Material2dDocument, Material2dLightingDocument, Material2dOpticalDocument,
-    Material2dOpticalModeDocument,
-};
 pub use particles::*;
 pub use prefab::*;
-pub use render_values::*;
 pub use render_contributions::*;
+pub use render_values::*;
 pub use scheduling::*;
 pub use text2d::*;
 pub use ui::*;

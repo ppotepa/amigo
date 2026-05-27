@@ -1,8 +1,8 @@
 use amigo_assets::AssetKey;
 use amigo_core::{AmigoError, AmigoResult};
-use amigo_scene::{format_scene_command, SceneCommand, SceneEvent, SceneEventQueue, SceneService};
+use amigo_scene::{SceneCommand, SceneEvent, SceneEventQueue, SceneService, format_scene_command};
 
-use crate::{queue_material_scene_command, MaterialSceneService};
+use crate::{MaterialSceneService, queue_material_scene_command};
 
 pub struct Material3dSceneCommandHandler;
 

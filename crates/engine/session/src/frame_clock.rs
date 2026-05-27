@@ -17,7 +17,10 @@ pub struct RuntimeFrameClockSnapshot {
     pub target_render_fps: f32,
     pub actual_host_fps: f32,
     pub actual_game_render_fps: f32,
+    pub scheduled_simulation_ticks: u32,
+    pub consumed_simulation_ticks: u32,
     pub pending_simulation_ticks: u32,
+    pub dropped_simulation_debt_seconds: f32,
     pub should_render_game_frame: bool,
     pub holding_cached_game_frame: bool,
 }
@@ -38,7 +41,11 @@ struct RuntimeFrameClockState {
     simulation_delta_seconds: f32,
     actual_host_fps: f32,
     actual_game_render_fps: f32,
+    scheduled_simulation_ticks: u32,
+    consumed_simulation_ticks: u32,
     pending_simulation_ticks: u32,
+    dropped_simulation_debt_seconds: f32,
+    last_game_render_instant: Option<Instant>,
     render_due: bool,
     cache_valid: bool,
 }
@@ -59,7 +66,11 @@ impl Default for RuntimeFrameClockService {
                 host_delta_seconds: 1.0 / 60.0,
                 actual_host_fps: 60.0,
                 actual_game_render_fps: 60.0,
+                scheduled_simulation_ticks: 0,
+                consumed_simulation_ticks: 0,
                 pending_simulation_ticks: 0,
+                dropped_simulation_debt_seconds: 0.0,
+                last_game_render_instant: None,
                 render_due: true,
                 cache_valid: false,
             }),
@@ -77,6 +88,10 @@ impl RuntimeFrameClockService {
         state.simulation_accumulator = Duration::ZERO;
         state.render_accumulator = Duration::ZERO;
         state.pending_simulation_ticks = 0;
+        state.scheduled_simulation_ticks = 0;
+        state.consumed_simulation_ticks = 0;
+        state.dropped_simulation_debt_seconds = 0.0;
+        state.last_game_render_instant = None;
         state.render_due = true;
         state.cache_valid = false;
         state.simulation_delta_seconds = 1.0 / state.config.simulation_fps;
@@ -106,6 +121,8 @@ impl RuntimeFrameClockService {
         state.host_frame_index += 1;
         state.host_delta_seconds = host_delta.as_secs_f32();
         state.actual_host_fps = fps_from_delta(state.host_delta_seconds);
+        state.consumed_simulation_ticks = 0;
+        state.dropped_simulation_debt_seconds = 0.0;
 
         match state.config.strategy {
             ResolvedFrameClockStrategy::HostRealtime => {
@@ -118,8 +135,10 @@ impl RuntimeFrameClockService {
                 let max_catch_up_ticks = state.config.max_catch_up_ticks;
                 state.simulation_accumulator += host_delta;
                 state.render_accumulator += host_delta;
-                state.pending_simulation_ticks =
+                let consumed =
                     consume_ticks(&mut state.simulation_accumulator, step, max_catch_up_ticks);
+                state.pending_simulation_ticks = consumed.ticks;
+                state.dropped_simulation_debt_seconds = consumed.dropped_debt.as_secs_f32();
                 state.simulation_delta_seconds = step.as_secs_f32();
                 state.render_due = state.render_accumulator >= step || !state.cache_valid;
                 if state.render_due {
@@ -132,11 +151,13 @@ impl RuntimeFrameClockService {
                 let max_catch_up_ticks = state.config.max_catch_up_ticks;
                 state.simulation_accumulator += host_delta;
                 state.render_accumulator += host_delta;
-                state.pending_simulation_ticks = consume_ticks(
+                let consumed = consume_ticks(
                     &mut state.simulation_accumulator,
                     sim_step,
                     max_catch_up_ticks,
                 );
+                state.pending_simulation_ticks = consumed.ticks;
+                state.dropped_simulation_debt_seconds = consumed.dropped_debt.as_secs_f32();
                 state.simulation_delta_seconds = sim_step.as_secs_f32();
                 state.render_due = state.render_accumulator >= render_step || !state.cache_valid;
                 if state.render_due {
@@ -154,19 +175,27 @@ impl RuntimeFrameClockService {
                 }
             }
         }
+        state.scheduled_simulation_ticks = state.pending_simulation_ticks;
 
         snapshot_from_state(&state)
     }
 
-    pub fn take_pending_simulation_ticks(&self) -> Vec<f32> {
+    pub fn take_pending_simulation_tick_count(&self) -> (u32, f32) {
         let mut state = self
             .inner
             .lock()
             .expect("runtime frame clock mutex should not be poisoned");
         let ticks = state.pending_simulation_ticks;
+        let dt = state.simulation_delta_seconds;
         state.pending_simulation_ticks = 0;
+        state.consumed_simulation_ticks = ticks;
         state.simulation_tick_index += u64::from(ticks);
-        vec![state.simulation_delta_seconds; ticks as usize]
+        (ticks, dt)
+    }
+
+    pub fn take_pending_simulation_ticks(&self) -> Vec<f32> {
+        let (ticks, dt) = self.take_pending_simulation_tick_count();
+        vec![dt; ticks as usize]
     }
 
     pub fn should_render_game_frame(&self) -> bool {
@@ -177,6 +206,10 @@ impl RuntimeFrameClockService {
     }
 
     pub fn mark_game_frame_rendered(&self) {
+        self.mark_game_frame_rendered_at(Instant::now());
+    }
+
+    pub fn mark_game_frame_rendered_at(&self, now: Instant) {
         let mut state = self
             .inner
             .lock()
@@ -184,7 +217,12 @@ impl RuntimeFrameClockService {
         state.game_render_frame_index += 1;
         state.cache_valid = true;
         state.render_due = false;
-        state.actual_game_render_fps = state.config.render_fps;
+        if let Some(previous) = state.last_game_render_instant.replace(now) {
+            state.actual_game_render_fps =
+                fps_from_delta(now.saturating_duration_since(previous).as_secs_f32());
+        } else {
+            state.actual_game_render_fps = state.config.render_fps;
+        }
     }
 
     pub fn mark_game_frame_cache_invalid(&self) {
@@ -253,16 +291,28 @@ pub fn host_delta_seconds(runtime: &Runtime) -> f32 {
         .unwrap_or(1.0 / 60.0)
 }
 
-fn consume_ticks(accumulator: &mut Duration, step: Duration, max_ticks: u32) -> u32 {
+struct TickConsumption {
+    ticks: u32,
+    dropped_debt: Duration,
+}
+
+fn consume_ticks(accumulator: &mut Duration, step: Duration, max_ticks: u32) -> TickConsumption {
     let mut ticks = 0;
     while *accumulator >= step && ticks < max_ticks {
         *accumulator -= step;
         ticks += 1;
     }
-    if ticks == max_ticks && *accumulator >= step {
+    let dropped_debt = if ticks == max_ticks && *accumulator >= step {
+        let dropped = *accumulator;
         *accumulator = Duration::ZERO;
+        dropped
+    } else {
+        Duration::ZERO
+    };
+    TickConsumption {
+        ticks,
+        dropped_debt,
     }
-    ticks
 }
 
 fn snapshot_from_state(state: &RuntimeFrameClockState) -> RuntimeFrameClockSnapshot {
@@ -277,7 +327,10 @@ fn snapshot_from_state(state: &RuntimeFrameClockState) -> RuntimeFrameClockSnaps
         target_render_fps: state.config.render_fps,
         actual_host_fps: state.actual_host_fps,
         actual_game_render_fps: state.actual_game_render_fps,
+        scheduled_simulation_ticks: state.scheduled_simulation_ticks,
+        consumed_simulation_ticks: state.consumed_simulation_ticks,
         pending_simulation_ticks: state.pending_simulation_ticks,
+        dropped_simulation_debt_seconds: state.dropped_simulation_debt_seconds,
         should_render_game_frame: state.render_due,
         holding_cached_game_frame: state.config.presentation.hold_last_game_frame
             && state.cache_valid
@@ -336,10 +389,48 @@ mod tests {
         clock.mark_game_frame_rendered();
         clock.begin_host_frame(start + Duration::from_millis(100));
 
+        let scheduled = clock.snapshot();
+        assert_eq!(scheduled.scheduled_simulation_ticks, 5);
+        assert_eq!(scheduled.pending_simulation_ticks, 5);
         let ticks = clock.take_pending_simulation_ticks();
         assert_eq!(ticks.len(), 5);
         assert!(ticks.iter().all(|dt| (*dt - (1.0 / 60.0)).abs() < 0.0001));
+        let consumed = clock.snapshot();
+        assert_eq!(consumed.scheduled_simulation_ticks, 5);
+        assert_eq!(consumed.consumed_simulation_ticks, 5);
+        assert_eq!(consumed.pending_simulation_ticks, 0);
         assert!(clock.should_render_game_frame());
+    }
+
+    #[test]
+    fn fixed_simulation_reports_dropped_debt_when_catch_up_saturates() {
+        let clock = RuntimeFrameClockService::default();
+        clock.configure(config(
+            ResolvedFrameClockStrategy::FixedSimulationSampledRender,
+            60.0,
+            60.0,
+            1,
+        ));
+        let start = Instant::now();
+
+        clock.begin_host_frame(start);
+        clock.begin_host_frame(start + Duration::from_millis(100));
+
+        let snapshot = clock.snapshot();
+        assert_eq!(snapshot.scheduled_simulation_ticks, 1);
+        assert!(snapshot.dropped_simulation_debt_seconds > 0.0);
+    }
+
+    #[test]
+    fn game_render_fps_is_measured_from_render_intervals() {
+        let clock = RuntimeFrameClockService::default();
+        let start = Instant::now();
+
+        clock.mark_game_frame_rendered_at(start);
+        clock.mark_game_frame_rendered_at(start + Duration::from_millis(100));
+
+        let snapshot = clock.snapshot();
+        assert!((snapshot.actual_game_render_fps - 10.0).abs() < 0.01);
     }
 
     #[test]

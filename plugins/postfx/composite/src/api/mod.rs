@@ -1,4 +1,4 @@
-use amigo_plugin_api::{camera_artifact_layer, final_composite, scene_color, TargetId};
+use amigo_plugin_api::{TargetId, camera_artifact_layer, final_composite, scene_color};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct CompositeTargetPlan {

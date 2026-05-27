@@ -1,19 +1,19 @@
-use crate::VectorSceneService;
 use super::model::{
-    ProceduralVectorError, RadialJitterPolygon, VectorShape2d, VectorShape2dDrawCommand,
-    VectorShapeKind2d, VectorStyle2d, VectorViewportFit2d, radial_jitter_polygon_points,
+    radial_jitter_polygon_points, ProceduralVectorError, RadialJitterPolygon, VectorShape2d,
+    VectorShape2dDrawCommand, VectorShapeKind2d, VectorStyle2d, VectorViewportFit2d,
 };
 use super::plugin::Vector2dPlugin;
-use amigo_math::{ColorRgba, Transform2, Transform3, Vec2, Vec3};
+use crate::VectorSceneService;
 use amigo_camera_optics_plugin::scene::CameraOpticalResponse2dSceneCommand;
-use amigo_render_api::{RenderContributionSet, render_contribution_roles as roles};
+use amigo_math::{ColorRgba, Transform2, Transform3, Vec2, Vec3};
+use amigo_render_api::{render_contribution_roles as roles, RenderContributionSet};
 use amigo_runtime::RuntimeBuilder;
 use amigo_scene::{
-    Material2dOpticalModeSceneCommand, Material2dOpticalSceneCommand, Material2dSceneCommand,
-    Material2dLightingSceneCommand,
-    RenderContributions2dSceneCommand, RuntimeSceneCommandHandlerRegistry, SceneCommand, SceneEvent,
-    SceneEventQueue, SceneService, VectorShape2dSceneCommand, VectorShapeKind2dSceneCommand,
-    VectorStyle2dSceneCommand,
+    ComponentGraphProviderRegistry, ComponentHydratorRegistry, ComponentMetadataProviderRegistry,
+    ComponentSchemaRegistry, Material2dLightingSceneCommand, Material2dOpticalModeSceneCommand,
+    Material2dOpticalSceneCommand, Material2dSceneCommand, RenderContributions2dSceneCommand,
+    RuntimeSceneCommandHandlerRegistry, SceneCommand, SceneEvent, SceneEventQueue, SceneService,
+    VectorShape2dSceneCommand, VectorShapeKind2dSceneCommand, VectorStyle2dSceneCommand,
 };
 
 #[test]
@@ -166,9 +166,7 @@ fn applies_radial_jitter_polygon_to_existing_entity() {
     assert!(
         !service.set_radial_jitter_polygon("missing", RadialJitterPolygon::new(6, 9.0, 0.25, 99),)
     );
-    assert!(
-        !service.set_radial_jitter_polygon("rock", RadialJitterPolygon::new(2, 9.0, 0.25, 99),)
-    );
+    assert!(!service.set_radial_jitter_polygon("rock", RadialJitterPolygon::new(2, 9.0, 0.25, 99),));
 
     let commands = service.commands();
     match &commands[0].shape.kind {
@@ -312,8 +310,14 @@ fn queues_vector_shape_scene_command_with_material_and_render_contributions() {
             fill_color: Some(ColorRgba::WHITE),
         },
     );
-    command.render_contributions.roles.insert(roles::MATERIAL_MASK.to_owned(), true);
-    command.render_contributions.roles.insert(roles::OPTICS_REFRACT.to_owned(), true);
+    command
+        .render_contributions
+        .roles
+        .insert(roles::MATERIAL_MASK.to_owned(), true);
+    command
+        .render_contributions
+        .roles
+        .insert(roles::OPTICS_REFRACT.to_owned(), true);
     command.material = Some(Material2dSceneCommand {
         optical: Material2dOpticalSceneCommand {
             mode: Material2dOpticalModeSceneCommand::Refractive,
@@ -346,12 +350,22 @@ fn queues_vector_shape_scene_command_with_material_and_render_contributions() {
 
     let commands = service.commands();
     let draw = commands.first().expect("vector command should be queued");
-    let material = draw.material.expect("material should be carried to runtime");
+    let material = draw
+        .material
+        .expect("material should be carried to runtime");
     assert!(material.is_refractive());
-    assert!(draw.render_contributions.enabled_or(roles::WORLD_COLOR, false));
-    assert!(draw.render_contributions.enabled_or(roles::MATERIAL_MASK, false));
-    assert!(draw.render_contributions.enabled_or(roles::OPTICS_REFRACT, false));
-    assert!(!draw.render_contributions.enabled_or(roles::TRANSMISSION_SOURCE, true));
+    assert!(draw
+        .render_contributions
+        .enabled_or(roles::WORLD_COLOR, false));
+    assert!(draw
+        .render_contributions
+        .enabled_or(roles::MATERIAL_MASK, false));
+    assert!(draw
+        .render_contributions
+        .enabled_or(roles::OPTICS_REFRACT, false));
+    assert!(!draw
+        .render_contributions
+        .enabled_or(roles::TRANSMISSION_SOURCE, true));
 }
 
 #[test]
@@ -469,12 +483,18 @@ fn registers_vector_runtime_plugin() {
     let runtime = RuntimeBuilder::default()
         .with_service(RuntimeSceneCommandHandlerRegistry::new())
         .expect("scene command registry should register")
+        .with_service(ComponentMetadataProviderRegistry::default())
+        .expect("component metadata provider registry should register")
+        .with_service(ComponentSchemaRegistry::default())
+        .expect("component schema registry should register")
+        .with_service(ComponentHydratorRegistry::default())
+        .expect("component hydrator registry should register")
+        .with_service(ComponentGraphProviderRegistry::default())
+        .expect("component graph provider registry should register")
         .with_plugin(Vector2dPlugin)
         .expect("vector plugin should register")
         .build();
-    assert!(
-        runtime
-            .resolve::<super::service::VectorSceneService>()
-            .is_some()
-    );
+    assert!(runtime
+        .resolve::<super::service::VectorSceneService>()
+        .is_some());
 }

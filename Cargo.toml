@@ -43,6 +43,7 @@ members = [
     "crates/2d/material-api",
     "crates/2d/spatial",
     "crates/2d/physics",
+    "crates/3d/physics",
     "crates/3d/mesh",
     "crates/3d/text",
     "crates/3d/material",
@@ -170,6 +171,7 @@ amigo-2d-composition = { path = "crates/2d/composition" }
 amigo-material-api = { path = "crates/2d/material-api" }
 amigo-2d-spatial = { path = "crates/2d/spatial" }
 amigo-2d-physics = { path = "crates/2d/physics" }
+amigo-3d-physics = { path = "crates/3d/physics" }
 amigo-3d-mesh = { path = "crates/3d/mesh" }
 amigo-3d-text = { path = "crates/3d/text" }
 amigo-3d-material = { path = "crates/3d/material" }
@@ -187,6 +189,7 @@ serde = { version = "1.0", features = ["derive"] }
 serde_yaml = "0.9"
 toml = "1.0"
 rhai = { version = "1.24", features = ["sync"] }
+rapier3d = "0.32.0"
 raw-window-handle = "0.6"
 winit = "0.30"
 wgpu = "29.0"

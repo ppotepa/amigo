@@ -1,5 +1,5 @@
-use amigo_light_2d_plugin::{LightReceiver2dBinding, Material2dLightingMode};
 use amigo_fx::ColorRamp;
+use amigo_light_2d_plugin::{LightReceiver2dBinding, Material2dLightingMode};
 use amigo_math::{ColorRgba, Curve1d, Transform2, Vec2};
 use amigo_scene::{
     ParticleAlignMode2dSceneCommand, ParticleBlendMode2dSceneCommand,
@@ -57,7 +57,10 @@ mod source_velocity_provider_tests {
         let registry = Particle2dSourceVelocityProviderRegistry::default();
         registry.register(Arc::new(StaticVelocityProvider));
 
-        assert_eq!(registry.source_velocity("ship"), Some(Vec2::new(12.0, -4.0)));
+        assert_eq!(
+            registry.source_velocity("ship"),
+            Some(Vec2::new(12.0, -4.0))
+        );
         assert_eq!(registry.source_velocity("rain"), None);
     }
 }

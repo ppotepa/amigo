@@ -1,10 +1,10 @@
 use amigo_session::{
-    RuntimeSession,
     runtime_capabilities::{
         RenderExtractorContribution, RenderExtractorDescriptor, RuntimeCapability,
         RuntimeCapabilityDescriptor, RuntimeCapabilityKind, RuntimeDomainId,
         SceneCommandHandlerContribution, SceneCommandHandlerDescriptor,
     },
+    RuntimeSession,
 };
 
 const VECTOR_DOMAIN_ID: &str = "amigo.2d.vector";

@@ -1,7 +1,7 @@
 use super::common::{TEST_EMITTER, test_emitter, test_input};
 use super::*;
-use amigo_light_2d_plugin::Material2dLightingMode;
 use amigo_fx::ColorRamp;
+use amigo_light_2d_plugin::Material2dLightingMode;
 use amigo_math::{ColorRgba, Curve1d};
 
 #[test]

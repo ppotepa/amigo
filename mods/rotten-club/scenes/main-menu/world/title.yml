@@ -2,63 +2,40 @@ kind: scene-fragment
 schema_version: 1
 
 entities:
-- id: main-menu-title
-  name: title
-  tags:
-  - title
-  - text
-  visible: false
-  simulation_enabled: false
-  collision_enabled: false
-  transform2:
-    translation:
-      x: 0.0
-      y: 0.0
-    rotation_degrees: 0.0
-    scale:
-      x: 1.0
-      y: 1.0
-  components:
-  - type: amigo.gfx.text-2d.Text2D
-    render_layer: title.depth2d
-    content: ROTTEN CLUB
-    font: rotten-club/fonts/game
-    bounds:
-      x: 1180.0
-      y: 240.0
-    style:
-      color: "#F7FBFFFF"
-      opacity: 0.60
-      font_size: 174.0
-      align: center
-    render_contributions:
-      world.color: true
-      material.mask: true
-      optics.refract: true
-      transmission.source: true
-      bloom.source: false
-      camera.fx_source: true
-    material:
-      optical:
-        mode: refractive
-        transmission: 0.78
-        refraction_px: 5.2
-        distortion: 0.12
-        dispersion: 0.04
-        roughness: 0.18
-        edge_boost: 0.35
-      lighting:
-        receives_light: true
-        response: 0.28
-      camera_response:
-        enabled: true
-        intensity: 0.50
-        bloom: 0.0
-        glare: 0.46
-        ghosting: 0.025
-        streaks: 0.020
-        chromatic_smear: 0.06
-        dirt_response: 0.20
-        halation: 0.10
-        threshold: 0.0
-    z_index: 40.0
+  - id: title
+    name: rotten-club-title
+    tags: [title, text, ui]
+    transform2:
+      translation: { x: 0.0, y: -222.0 }
+      rotation_degrees: 0.0
+      scale: { x: 1.0, y: 1.0 }
+    components:
+      - type: amigo.gfx.text-2d.Text2D
+        render_layer: title.depth2d
+        content: ROTTEN CLUB
+        font: rotten-club/fonts/game
+        bounds: { x: 760.0, y: 116.0 }
+        style:
+          font_size: 72.0
+          color: "#F5F7FAFF"
+          align: center
+        z_index: 10.0
+
+  - id: subtitle
+    name: rotten-club-subtitle
+    tags: [title, text, ui]
+    transform2:
+      translation: { x: 0.0, y: -144.0 }
+      rotation_degrees: 0.0
+      scale: { x: 1.0, y: 1.0 }
+    components:
+      - type: amigo.gfx.text-2d.Text2D
+        render_layer: title.depth2d
+        content: clean engine path / plugin-owned scene
+        font: rotten-club/fonts/game
+        bounds: { x: 720.0, y: 48.0 }
+        style:
+          font_size: 24.0
+          color: "#8EA2B6FF"
+          align: center
+        z_index: 11.0

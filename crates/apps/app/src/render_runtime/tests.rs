@@ -1,27 +1,27 @@
-use amigo_assets::AssetKey;
 use amigo_2d_composition::{LightRoute2dSceneService, RenderLayer2dSceneService};
+use amigo_3d_material::{Material3d, MaterialDrawCommand, MaterialSceneService};
+use amigo_3d_mesh::{Mesh3d, MeshDrawCommand, MeshSceneService};
+use amigo_3d_text::{Text3d, Text3dDrawCommand, Text3dSceneService};
+use amigo_assets::AssetKey;
+use amigo_composite_plugin::PostFx2dService;
+use amigo_focus_depth_plugin::DepthMap2dSceneService;
 use amigo_layered_image_2d_plugin::LayeredImageSceneService;
 use amigo_light_2d_plugin::{
     GlobalLight2dSceneService, LightGroup2dSceneService, LightMap2dSceneService,
     Material2dLightingMode,
 };
-use amigo_math::{ColorRgba, Transform2, Transform3, Vec2};
-use amigo_render_api::{
-    post_fx_blur, post_fx_crt, post_fx_dirty_bloom, post_fx_film_noise, post_fx_lens_droplets,
-    post_fx_wet_reflections, Crt2d, DirtyBloom2d, FilmNoise2d, PostFx2dStack, PostFxBlur2d,
-    PostFxLensDroplets2d, PostFxWetReflections2d, ScopedPostFx2dStack,
-};
 use amigo_material_api::MaterialCoverageKind2d;
-use amigo_3d_material::{Material3d, MaterialDrawCommand, MaterialSceneService};
-use amigo_3d_mesh::{Mesh3d, MeshDrawCommand, MeshSceneService};
-use amigo_3d_text::{Text3d, Text3dDrawCommand, Text3dSceneService};
-use amigo_composite_plugin::PostFx2dService;
-use amigo_focus_depth_plugin::DepthMap2dSceneService;
+use amigo_math::{ColorRgba, Transform2, Transform3, Vec2};
 use amigo_particles_2d_plugin::{
     Particle2dEmitterRuntimeInput, Particle2dSceneService, ParticleAlignMode2d,
     ParticleBlendMode2d, ParticleEmitter2d, ParticleEmitter2dCommand, ParticleLineAnchor2d,
     ParticleMaterial2d, ParticleShape2d, ParticleSimulationSpace2d, ParticleSpawnArea2d,
     ParticleVelocityMode2d,
+};
+use amigo_render_api::{
+    Crt2d, DirtyBloom2d, FilmNoise2d, PostFx2dStack, PostFxBlur2d, PostFxLensDroplets2d,
+    PostFxWetReflections2d, ScopedPostFx2dStack, post_fx_blur, post_fx_crt, post_fx_dirty_bloom,
+    post_fx_film_noise, post_fx_lens_droplets, post_fx_wet_reflections,
 };
 use amigo_scene::SceneEntityId;
 use amigo_scripting_api::DevConsoleState;
@@ -35,8 +35,8 @@ use amigo_ui::{
     UiTheme, UiThemePalette, UiThemeService,
 };
 use amigo_vector_2d_plugin::{
-    VectorSceneService, VectorShape2d, VectorShape2dDrawCommand, VectorShapeKind2d,
-    VectorStyle2d, VectorViewportFit2d,
+    VectorSceneService, VectorShape2d, VectorShape2dDrawCommand, VectorShapeKind2d, VectorStyle2d,
+    VectorViewportFit2d,
 };
 
 use super::*;
@@ -282,6 +282,7 @@ fn app_render_extractor_registry_collects_vector_and_ui_data() {
             label: "debug-surface".to_owned(),
             albedo: ColorRgba::WHITE,
             source: Some(AssetKey::new("playground-3d/materials/debug-surface")),
+            render_order: 0,
         },
     });
 
@@ -416,8 +417,7 @@ fn app_render_extractor_registry_appends_enabled_debug_overlay() {
     let text2d = Text2dSceneService::default();
     let vectors = VectorSceneService::default();
     let particles = Particle2dSceneService::default();
-    let depth_maps =
-        DepthMap2dSceneService::default();
+    let depth_maps = DepthMap2dSceneService::default();
     let meshes = MeshSceneService::default();
     let materials = MaterialSceneService::default();
     let text3d = Text3dSceneService::default();
@@ -525,20 +525,13 @@ fn composition_orders_game_ui_before_debug_overlay() {
 #[test]
 fn composition_places_wet_reflections_between_world_and_ui() {
     let mut packet = WgpuRenderFramePacket::default();
-    packet.set_post_fx_stacks(vec![
-        ScopedPostFx2dStack::from_frame_stack(
-            PostFx2dStack::single(post_fx_wet_reflections(
-                PostFxWetReflections2d {
-                    reflection_mask: "rotten-club/layered-images/neon-alley/reflection_mask.png"
-                        .to_owned(),
-                    edge_map: Some(
-                        "rotten-club/layered-images/neon-alley/edge_map_2.png".to_owned(),
-                    ),
-                    ..Default::default()
-                },
-            )),
-        ),
-    ]);
+    packet.set_post_fx_stacks(vec![ScopedPostFx2dStack::from_frame_stack(
+        PostFx2dStack::single(post_fx_wet_reflections(PostFxWetReflections2d {
+            reflection_mask: "rotten-club/layered-images/neon-alley/reflection_mask.png".to_owned(),
+            edge_map: Some("rotten-club/layered-images/neon-alley/edge_map_2.png".to_owned()),
+            ..Default::default()
+        })),
+    )]);
     packet.extend_game_ui_overlay([test_overlay_document("game")]);
     packet.extend_debug_overlay([test_overlay_document("debug")]);
 
@@ -564,13 +557,9 @@ fn composition_places_wet_reflections_between_world_and_ui() {
 #[test]
 fn composition_places_post_fx_before_game_and_debug_ui() {
     let mut packet = WgpuRenderFramePacket::default();
-    packet.set_post_fx_stacks(vec![
-        ScopedPostFx2dStack::from_frame_stack(
-            PostFx2dStack::single(post_fx_blur(
-                PostFxBlur2d::default(),
-            )),
-        ),
-    ]);
+    packet.set_post_fx_stacks(vec![ScopedPostFx2dStack::from_frame_stack(
+        PostFx2dStack::single(post_fx_blur(PostFxBlur2d::default())),
+    )]);
     packet.extend_game_ui_overlay([test_overlay_document("game")]);
     packet.extend_debug_overlay([test_overlay_document("debug")]);
 
@@ -618,13 +607,9 @@ fn composition_plan_inserts_post_fx_between_world_and_ui() {
             },
         ),
     ));
-    packet.set_post_fx_stacks(vec![
-        ScopedPostFx2dStack::from_frame_stack(
-            PostFx2dStack::single(post_fx_lens_droplets(
-                PostFxLensDroplets2d::default(),
-            )),
-        ),
-    ]);
+    packet.set_post_fx_stacks(vec![ScopedPostFx2dStack::from_frame_stack(
+        PostFx2dStack::single(post_fx_lens_droplets(PostFxLensDroplets2d::default())),
+    )]);
     packet.extend_game_ui_overlay([test_overlay_document("game")]);
     packet.extend_debug_overlay([test_overlay_document("debug")]);
 
@@ -650,24 +635,20 @@ fn composition_plan_inserts_post_fx_between_world_and_ui() {
 #[test]
 fn composition_places_film_noise_before_game_ui() {
     let mut packet = WgpuRenderFramePacket::default();
-    packet.set_post_fx_stacks(vec![
-        ScopedPostFx2dStack::from_frame_stack(
-            PostFx2dStack {
-                effects: vec![
-                    post_fx_wet_reflections(PostFxWetReflections2d {
-                        reflection_mask: "debug/mask.png".to_owned(),
-                        ..Default::default()
-                    }),
-                    post_fx_dirty_bloom(DirtyBloom2d::default()),
-                    post_fx_film_noise(FilmNoise2d {
-                        iso: 3200.0,
-                        ..Default::default()
-                    }),
-                    post_fx_crt(Crt2d::default()),
-                ],
-            },
-        ),
-    ]);
+    packet.set_post_fx_stacks(vec![ScopedPostFx2dStack::from_frame_stack(PostFx2dStack {
+        effects: vec![
+            post_fx_wet_reflections(PostFxWetReflections2d {
+                reflection_mask: "debug/mask.png".to_owned(),
+                ..Default::default()
+            }),
+            post_fx_dirty_bloom(DirtyBloom2d::default()),
+            post_fx_film_noise(FilmNoise2d {
+                iso: 3200.0,
+                ..Default::default()
+            }),
+            post_fx_crt(Crt2d::default()),
+        ],
+    })]);
     packet.extend_game_ui_overlay([test_overlay_document("game")]);
     packet.extend_debug_overlay([test_overlay_document("debug")]);
 
@@ -789,14 +770,12 @@ fn composition_preserves_original_postfx_effect_order_in_labels() {
     inactive.intensity = 0.0;
 
     stack.effects.push(post_fx_blur(inactive));
-    stack.effects.push(post_fx_lens_droplets(
-        PostFxLensDroplets2d::default(),
-    ));
+    stack
+        .effects
+        .push(post_fx_lens_droplets(PostFxLensDroplets2d::default()));
 
     let mut packet = WgpuRenderFramePacket::default();
-    packet.set_post_fx_stacks(vec![
-        ScopedPostFx2dStack::from_frame_stack(stack),
-    ]);
+    packet.set_post_fx_stacks(vec![ScopedPostFx2dStack::from_frame_stack(stack)]);
 
     let plan = WgpuFrameCompositionBuilder::build(&packet);
     let labels = plan.views[0]
@@ -1077,6 +1056,7 @@ fn rebuilds_material_scene_service_from_packet() {
             label: "debug-surface".to_owned(),
             albedo: ColorRgba::WHITE,
             source: Some(AssetKey::new("playground-3d/materials/debug-surface")),
+            render_order: 0,
         },
     });
 

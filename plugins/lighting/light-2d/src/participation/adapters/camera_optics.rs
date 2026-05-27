@@ -26,8 +26,9 @@ pub fn light_to_camera_optics_source(light: &Light2dSource) -> CameraOpticalSour
             glare: light.intensity,
             ..CameraOpticalResponse2d::default()
         },
-        roles: amigo_plugin_api::RenderContributionSet::from_pairs([
-            (amigo_plugin_api::roles::CAMERA_FX_SOURCE, true),
-        ]),
+        roles: amigo_plugin_api::RenderContributionSet::from_pairs([(
+            amigo_plugin_api::roles::CAMERA_FX_SOURCE,
+            true,
+        )]),
     }
 }

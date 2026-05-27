@@ -11,4 +11,3 @@ pub fn material_2d_scene_descriptor() -> PluginSceneComponentDescriptor {
         "Material2D",
     )
 }
-

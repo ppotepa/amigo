@@ -1,24 +1,24 @@
 use std::sync::Arc;
 
-use amigo_shutter_motion_plugin::Motion2dSceneService;
-use amigo_particles_2d_plugin::{Particle2dSceneService, ParticlePreset2dService};
 use amigo_2d_physics::Physics2dSceneService;
-use amigo_composite_plugin::PostFx2dService;
-use amigo_sprite_2d_plugin::SpriteSceneService;
-use amigo_vector_2d_plugin::VectorSceneService;
 use amigo_assets::AssetCatalog;
 use amigo_camera_core_plugin::{CameraFocusTarget2dService, CameraService};
+use amigo_composite_plugin::PostFx2dService;
 use amigo_core::{LaunchSelection, RuntimeDiagnostics};
 use amigo_editor_api::{InspectRequest, InspectRequestService};
 use amigo_input_actions::InputActionService;
 use amigo_input_api::InputState;
 use amigo_modding::ModCatalog;
+use amigo_particles_2d_plugin::{Particle2dSceneService, ParticlePreset2dService};
 use amigo_scene::{EntityPoolSceneService, LifetimeSceneService, SceneService};
 use amigo_scripting_api::{
     DevConsoleQueue, ScriptCommandQueue, ScriptEventQueue, ScriptTraceService,
 };
+use amigo_shutter_motion_plugin::Motion2dSceneService;
+use amigo_sprite_2d_plugin::SpriteSceneService;
 use amigo_state::{SceneStateService, SceneTimerService, SessionStateService};
 use amigo_ui::UiThemeService;
+use amigo_vector_2d_plugin::VectorSceneService;
 
 use crate::bindings::actions::ActionsApi;
 use crate::bindings::arcade::ArcadeApi;
@@ -37,6 +37,7 @@ use crate::bindings::mod_api::ModApi;
 use crate::bindings::motion::MotionApi;
 use crate::bindings::particles::ParticlesApi;
 use crate::bindings::physics::PhysicsApi;
+use crate::bindings::physics3d::Physics3dApi;
 use crate::bindings::pools::PoolsApi;
 use crate::bindings::postfx::PostFxApi;
 use crate::bindings::projectiles::ProjectilesApi;
@@ -68,6 +69,7 @@ pub struct WorldApi {
     arcade: ArcadeApi,
     camera: CameraApi,
     physics: PhysicsApi,
+    physics3d: Physics3dApi,
     postfx: PostFxApi,
     pools: PoolsApi,
     projectiles: ProjectilesApi,
@@ -169,6 +171,10 @@ impl WorldApi {
             physics: PhysicsApi {
                 scene: scene.clone(),
                 physics_scene: physics_scene.clone(),
+            },
+            physics3d: Physics3dApi {
+                launch_selection: launch_selection.clone(),
+                command_queue: command_queue.clone(),
             },
             postfx: PostFxApi { post_fx },
             pools: PoolsApi {
@@ -298,6 +304,10 @@ impl WorldApi {
         self.physics.clone()
     }
 
+    pub fn physics3d(&mut self) -> Physics3dApi {
+        self.physics3d.clone()
+    }
+
     pub fn postfx(&mut self) -> PostFxApi {
         self.postfx.clone()
     }
@@ -405,7 +415,7 @@ impl WorldApi {
 
 pub(crate) fn register_api(engine: &mut rhai::Engine) {
     engine
-.register_type_with_name::<WorldApi>("World")
+        .register_type_with_name::<WorldApi>("World")
         .register_get("scene", WorldApi::scene)
         .register_get("entities", WorldApi::entities)
         .register_get("input", WorldApi::input)
@@ -417,6 +427,7 @@ pub(crate) fn register_api(engine: &mut rhai::Engine) {
         .register_get("arcade", WorldApi::arcade)
         .register_get("camera", WorldApi::camera)
         .register_get("physics", WorldApi::physics)
+        .register_get("physics3d", WorldApi::physics3d)
         .register_get("postfx", WorldApi::postfx)
         .register_get("pools", WorldApi::pools)
         .register_get("projectiles", WorldApi::projectiles)

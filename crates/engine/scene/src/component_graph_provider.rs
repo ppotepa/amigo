@@ -70,6 +70,42 @@ impl PluginComponentGraphContext<'_> {
             None,
         ));
     }
+
+    pub fn add_scene_object_ref(
+        &mut self,
+        port: &str,
+        kind: SceneReferenceKind,
+        raw_target: &str,
+        missing_code: &'static str,
+    ) {
+        if let Some(target) = self.scene_objects.get(raw_target) {
+            self.graph.add_reference(SceneReferenceEdge::new(
+                self.component_node.clone(),
+                port,
+                kind,
+                SceneReferenceTargetKind::SceneObject,
+                raw_target,
+                true,
+                Some(target.clone()),
+            ));
+            return;
+        }
+
+        self.graph.add_reference(SceneReferenceEdge::new(
+            self.component_node.clone(),
+            port,
+            kind,
+            SceneReferenceTargetKind::SceneObject,
+            raw_target,
+            true,
+            None,
+        ));
+        self.graph.add_diagnostic(SceneGraphDiagnostic::error(
+            missing_code,
+            format!("missing scene object reference `{raw_target}` at `{port}`"),
+            Some(self.component_node.clone()),
+        ));
+    }
 }
 
 #[derive(Default)]
@@ -97,7 +133,9 @@ impl ComponentGraphProviderRegistry {
             .providers
             .read()
             .expect("component graph provider registry poisoned");
-        providers.get(component_type).map(|provider| f(provider.as_ref()))
+        providers
+            .get(component_type)
+            .map(|provider| f(provider.as_ref()))
     }
 
     pub fn provider_ids(&self) -> Vec<&'static str> {

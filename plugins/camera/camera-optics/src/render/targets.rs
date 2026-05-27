@@ -30,7 +30,7 @@ pub fn scene_emissive_target_id() -> TargetId {
 
 #[cfg(test)]
 mod tests {
-    use amigo_plugin_api::{RenderContributionSet, render_contributions::roles};
+    use amigo_plugin_api::{render_contributions::roles, RenderContributionSet};
 
     use super::*;
     use crate::api::{

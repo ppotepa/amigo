@@ -1,8 +1,8 @@
-use std::collections::{BTreeMap, BTreeSet};
-use std::path::Path;
 use crate::config::LauncherConfig;
 use amigo_core::AmigoResult;
 use amigo_modding::ModCatalog;
+use std::collections::{BTreeMap, BTreeSet};
+use std::path::Path;
 use toml;
 
 use super::{KnownMod, LauncherManifestMetadata, LauncherMetadata};

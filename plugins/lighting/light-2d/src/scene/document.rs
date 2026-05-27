@@ -4,10 +4,9 @@ use serde::{Deserialize, Serialize};
 use serde_yaml::Value;
 
 use amigo_scene::{
-    SceneComponentDocument, SceneComponentPayload, SceneComponentSchemaProvider, SceneDocumentError,
-    SceneDocumentResult,
+    SceneComponentDocument, SceneComponentPayload, SceneComponentSchemaProvider,
+    SceneDocumentError, SceneDocumentResult,
 };
-use amigo_scene::SceneComponentDocument as ComponentDocument;
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct GlobalLight2dDocument {
@@ -21,15 +20,14 @@ pub struct GlobalLight2dDocument {
 impl GlobalLight2dDocument {
     pub fn from_component(component: &SceneComponentDocument) -> Option<Self> {
         match component {
-            ComponentDocument::GlobalLight2d {
-                id,
-                color,
-                intensity,
-            } => Some(Self {
-                id: id.clone(),
-                color: color.clone(),
-                intensity: *intensity,
-            }),
+            SceneComponentDocument::Plugin {
+                component_type,
+                payload,
+            } if component_type == "amigo.lighting.light-2d.GlobalLight2D"
+                || component_type == "GlobalLight2D" =>
+            {
+                parse_global_light_2d_plugin_payload(payload).ok()
+            }
             _ => None,
         }
     }
@@ -52,7 +50,7 @@ pub fn parse_global_light_2d_plugin_payload(
         .map_err(|source| SceneDocumentError::Parse { path: None, source })
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Default)]
 pub struct GlobalLight2dSceneSchemaProvider;
 
 impl SceneComponentSchemaProvider for GlobalLight2dSceneSchemaProvider {

@@ -2,84 +2,56 @@ kind: scene-fragment
 schema_version: 1
 
 entities:
-- id: main-menu-camera
-  name: main-menu-camera
-  tags:
-  - camera
-  - main-camera
-  visible: true
-  simulation_enabled: true
-  collision_enabled: false
-  transform2:
-    translation:
-      x: 0.0
-      y: 0.0
-    rotation_degrees: 0.0
-    scale:
-      x: 1.05
-      y: 1.05
-  components:
-  - type: Camera2D
-    id: main
-    mode: manual
-    render_contributions:
-      camera.projection: true
-      camera.exposure: true
-      camera.shutter: true
-      camera.optics: true
-      camera.focus_blur: true
-      camera.lens_surface: false
-      camera.film: true
-      camera.look: false
-      camera.scan_output: true
-    exposure:
-      iso: 400
-      compensation: 0.0
-    shutter:
-      enabled: true
-      speed_s: 0.22
-      fps: 24.0
-      angle: 180.0
-      opacity: 0.96
-      history_mix: 0.0
-      history_mix_2: 0.0
-      edge_rejection: 0.08
-      luma_threshold: 0.018
-      frame_hold: false
-    lens:
-      profile: rotten-club/camera/lens/gritty-club-custom
-      intensity: 1.0
-    lens_surface:
-      rain_profile: ""
-    film:
-      profile: neutral_digital_400
-      intensity: 0.42
-      seed: 1001
-    look:
-      profile: ""
-      intensity: 0.0
-    aperture:
-      enabled: true
-      f_stop: 2.8
-      focus_distance_m: 6.0
-      focus:
-        kind: distance
-        distance_m: 6.0
-      depth_of_field:
-        depth_map: main-menu-depth
-        max_blur_px: 34.0
-        depth_contrast: 1.0
-        focus_width: 0.032
-        foreground_blur_boost: 1.20
-        background_blur_boost: 1.85
-        edge_aware: true
-        invert_depth: false
-        debug_view: final
-        aperture_blades: 7
-        aperture_roundness: 0.78
-        aperture_rotation_degrees: 0.0
-        sample_count: 64
-        highlight_threshold: 0.42
-        highlight_knee: 0.16
-        highlight_gain: 2.80
-        highlight_saturation: 1.25
+  - id: main-camera
+    name: rotten-club-main-camera
+    tags: [camera, main-camera]
+    transform2:
+      translation: { x: 0.0, y: 0.0 }
+      rotation_degrees: 0.0
+      scale: { x: 1.0, y: 1.0 }
+    components:
+      - type: Camera2D
+        id: main
+        mode: manual
+        render_contributions:
+          camera.projection: true
+          camera.exposure: true
+          camera.shutter: false
+          camera.optics: true
+          camera.focus_blur: true
+          camera.lens_surface: false
+          camera.film: true
+          camera.look: false
+          camera.scan_output: false
+        exposure:
+          iso: 400
+          compensation: 0.0
+        film:
+          profile: neutral_digital_400
+          intensity: 0.18
+          seed: 2002
+        aperture:
+          enabled: true
+          f_stop: 4.0
+          focus_distance_m: 6.0
+          focus:
+            kind: distance
+            distance_m: 6.0
+          depth_of_field:
+            depth_map: main-depth
+            max_blur_px: 14.0
+            depth_contrast: 1.0
+            focus_width: 0.055
+            foreground_blur_boost: 0.75
+            background_blur_boost: 1.0
+            edge_aware: true
+            invert_depth: false
+            debug_view: final
+            aperture_blades: 7
+            aperture_roundness: 0.82
+            aperture_rotation_degrees: 0.0
+            sample_count: 16
+            highlight_threshold: 0.58
+            highlight_knee: 0.18
+            highlight_gain: 1.2
+            highlight_saturation: 1.0

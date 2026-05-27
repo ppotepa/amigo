@@ -19,6 +19,7 @@ pub(crate) fn register_api(engine: &mut rhai::Engine) {
         .register_fn("rotate_2d", EntityRef::rotate_2d)
         .register_fn("rotate_3d", EntityRef::rotate_3d)
         .register_fn("set_position_2d", EntityRef::set_position_2d)
+        .register_fn("set_position_3d", EntityRef::set_position_3d)
         .register_fn("hide", EntityRef::hide)
         .register_fn("show", EntityRef::show)
         .register_fn("enable", EntityRef::enable)

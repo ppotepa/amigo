@@ -91,7 +91,10 @@ pub(crate) fn register_api(engine: &mut rhai::Engine) {
         .register_fn("set_focus_depth", CameraApi::set_focus_depth)
         .register_fn("set_main_sway_amounts", CameraApi::set_main_sway_amounts)
         .register_fn("set_sway_amounts", CameraApi::set_sway_amounts)
-        .register_fn("set_main_sway_frequency", CameraApi::set_main_sway_frequency)
+        .register_fn(
+            "set_main_sway_frequency",
+            CameraApi::set_main_sway_frequency,
+        )
         .register_fn("set_sway_frequency", CameraApi::set_sway_frequency)
         .register_fn("set_main_sway_z_offset", CameraApi::set_main_sway_z_offset)
         .register_fn("set_sway_z_offset", CameraApi::set_sway_z_offset)

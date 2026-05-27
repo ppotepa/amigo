@@ -148,7 +148,9 @@ fn preview_reveal(runtime: &Runtime) -> AmigoResult<EditorRuntimeApplyOutcome> {
         }
     }
 
-    Ok(EditorRuntimeApplyOutcome::Applied(changed.len().to_string()))
+    Ok(EditorRuntimeApplyOutcome::Applied(
+        changed.len().to_string(),
+    ))
 }
 
 fn yaml_number_to_f32(value: serde_yaml::Number) -> AmigoResult<f32> {

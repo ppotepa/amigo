@@ -7,4 +7,3 @@ pub fn shutter_motion_2d_scene_descriptor() -> PluginSceneComponentDescriptor {
         "ShutterMotion2D",
     )
 }
-

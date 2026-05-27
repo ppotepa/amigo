@@ -163,6 +163,7 @@ pub fn layered_image_2d_descriptor() -> ComponentTypeDescriptor {
     }
 }
 
+#[derive(Default)]
 pub struct LayeredImage2dComponentMetadataProvider;
 
 impl ComponentMetadataProvider for LayeredImage2dComponentMetadataProvider {
@@ -171,6 +172,8 @@ impl ComponentMetadataProvider for LayeredImage2dComponentMetadataProvider {
     }
 
     fn register_component_metadata(&self, registry: &mut ComponentRegistry) {
-        registry.insert(layered_image_2d_descriptor());
+        registry
+            .try_insert(layered_image_2d_descriptor())
+            .expect("duplicate LayeredImage2D component metadata");
     }
 }

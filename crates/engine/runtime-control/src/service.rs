@@ -764,7 +764,10 @@ mod tests {
     fn set_unknown_property_returns_error() {
         let service = RuntimeControlService::default();
         let error = service
-            .set("world.weather.rain.front.Emitter.unknown", ControlValue::F64(1.0))
+            .set(
+                "world.weather.rain.front.Emitter.unknown",
+                ControlValue::F64(1.0),
+            )
             .expect_err("unknown property should error");
         assert!(matches!(error, RuntimeControlError::UnknownProperty { .. }));
     }

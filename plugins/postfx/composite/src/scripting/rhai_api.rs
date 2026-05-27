@@ -1,12 +1,9 @@
 use std::sync::Arc;
 
 use crate::{
-    ColorQuantize2d, ColorRamp2d, PostFx2dService, RainGlass2d, RainGlassPatch,
-    ScopedPostFx2dStack,
+    ColorQuantize2d, ColorRamp2d, PostFx2dService, RainGlass2d, RainGlassPatch, ScopedPostFx2dStack,
 };
-use amigo_render_api::{
-    PostFx2d, post_fx_color_quantize, post_fx_color_ramp, post_fx_rain_glass,
-};
+use amigo_render_api::{PostFx2d, post_fx_color_quantize, post_fx_color_ramp, post_fx_rain_glass};
 
 #[derive(Clone)]
 pub struct PostFxApi {
@@ -60,14 +57,11 @@ impl PostFxApi {
         self.post_fx
             .as_ref()
             .and_then(|service| {
-                service
-                    .frame_effects()
-                    .into_iter()
-                    .find_map(|effect| {
-                        effect
-                            .as_color_quantize()
-                            .map(|effect| effect.palette_size as rhai::INT)
-                    })
+                service.frame_effects().into_iter().find_map(|effect| {
+                    effect
+                        .as_color_quantize()
+                        .map(|effect| effect.palette_size as rhai::INT)
+                })
             })
             .unwrap_or(0)
     }
@@ -102,14 +96,11 @@ impl PostFxApi {
         self.post_fx
             .as_ref()
             .and_then(|service| {
-                service
-                    .frame_effects()
-                    .into_iter()
-                    .find_map(|effect| {
-                        effect
-                            .as_color_ramp()
-                            .map(|effect| effect.palette_size as rhai::INT)
-                    })
+                service.frame_effects().into_iter().find_map(|effect| {
+                    effect
+                        .as_color_ramp()
+                        .map(|effect| effect.palette_size as rhai::INT)
+                })
             })
             .unwrap_or(0)
     }
@@ -227,9 +218,9 @@ impl PostFxApi {
             .unwrap_or_default();
         update(&mut rain);
         stack.effects[index] = post_fx_rain_glass(rain.normalized());
-        service.set_scoped_stacks(vec![
-            ScopedPostFx2dStack::from_frame_stack(stack.normalized()),
-        ]);
+        service.set_scoped_stacks(vec![ScopedPostFx2dStack::from_frame_stack(
+            stack.normalized(),
+        )]);
         true
     }
 
@@ -258,9 +249,9 @@ impl PostFxApi {
         let effect = effect.normalized();
         let palette_size = effect.palette_size as rhai::INT;
         stack.effects[index] = post_fx_color_quantize(effect);
-        service.set_scoped_stacks(vec![
-            ScopedPostFx2dStack::from_frame_stack(stack.normalized()),
-        ]);
+        service.set_scoped_stacks(vec![ScopedPostFx2dStack::from_frame_stack(
+            stack.normalized(),
+        )]);
         palette_size
     }
 
@@ -289,9 +280,9 @@ impl PostFxApi {
         let effect = effect.normalized();
         let palette_size = effect.palette_size as rhai::INT;
         stack.effects[index] = post_fx_color_ramp(effect);
-        service.set_scoped_stacks(vec![
-            ScopedPostFx2dStack::from_frame_stack(stack.normalized()),
-        ]);
+        service.set_scoped_stacks(vec![ScopedPostFx2dStack::from_frame_stack(
+            stack.normalized(),
+        )]);
         palette_size
     }
 }

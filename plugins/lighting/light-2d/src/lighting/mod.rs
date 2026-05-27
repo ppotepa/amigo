@@ -1,3 +1,4 @@
+mod control;
 mod dev_console;
 mod model;
 mod plugin;
@@ -9,6 +10,7 @@ mod scene_command;
 mod script_command;
 mod service;
 
+pub use control::*;
 pub use dev_console::*;
 pub use model::*;
 pub use plugin::*;

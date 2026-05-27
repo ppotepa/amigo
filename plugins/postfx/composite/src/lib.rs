@@ -14,8 +14,8 @@ mod runtime_capabilities;
 pub mod scene;
 mod scene_command;
 mod scope;
-mod service;
 pub mod scripting;
+mod service;
 
 pub use dev_console::*;
 pub use devtools_console::*;

@@ -7,10 +7,9 @@ use crate::api::LayeredImage2dLayer;
 
 use amigo_scene::{
     LayeredImageLayerOverrideDocument, LayeredImageViewportFit2dDocument, SceneComponentDocument,
-    SceneComponentPayload, SceneComponentSchemaProvider, SceneDocumentError,
-    SceneDocumentResult, SceneVec2Document, VisualMaps2dDocument,
+    SceneComponentPayload, SceneComponentSchemaProvider, SceneDocumentError, SceneDocumentResult,
+    SceneVec2Document, VisualMaps2dDocument,
 };
-use amigo_scene::SceneComponentDocument as ComponentDocument;
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct LayeredImage2dDocument {
@@ -54,28 +53,14 @@ impl Default for LayeredImage2dDocument {
 impl LayeredImage2dDocument {
     pub fn from_component(component: &SceneComponentDocument) -> Option<Self> {
         match component {
-            ComponentDocument::LayeredImage2d {
-                render_layer,
-                asset,
-                size,
-                base_opacity,
-                viewport_fit,
-                visual_maps,
-                z_index,
-                layer_overrides,
-                post_fx: _,
-            } => Some(Self {
-                entity_name: String::new(),
-                layers: Vec::new(),
-                render_layer: render_layer.clone(),
-                asset: asset.clone(),
-                size: *size,
-                base_opacity: *base_opacity,
-                viewport_fit: *viewport_fit,
-                visual_maps: visual_maps.clone(),
-                z_index: *z_index,
-                layer_overrides: layer_overrides.clone(),
-            }),
+            SceneComponentDocument::Plugin {
+                component_type,
+                payload,
+            } if component_type == "amigo.gfx.layered-image-2d.LayeredImage2D"
+                || component_type == "LayeredImage2D" =>
+            {
+                parse_layered_image_2d_plugin_payload(payload).ok()
+            }
             _ => None,
         }
     }
@@ -98,7 +83,7 @@ pub fn parse_layered_image_2d_plugin_payload(
         .map_err(|source| SceneDocumentError::Parse { path: None, source })
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Default)]
 pub struct LayeredImage2dSceneSchemaProvider;
 
 impl SceneComponentSchemaProvider for LayeredImage2dSceneSchemaProvider {

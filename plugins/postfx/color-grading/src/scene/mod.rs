@@ -7,4 +7,3 @@ pub fn color_grading_scene_descriptor() -> PluginSceneComponentDescriptor {
         "ColorGrading",
     )
 }
-

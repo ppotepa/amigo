@@ -43,8 +43,7 @@ pub(super) fn execute_world_graph_node(
         .renderables
         .iter()
         .filter(|item| {
-            item.common.kind == amigo_render_api::Renderable2dKind::Beacon
-                && item.overlay_visible()
+            item.common.kind == amigo_render_api::Renderable2dKind::Beacon && item.overlay_visible()
         })
         .map(|item| item.render_layer().to_owned())
         .collect::<std::collections::BTreeSet<_>>();

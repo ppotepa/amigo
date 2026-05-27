@@ -38,9 +38,8 @@ impl Lighting2dRenderExtractor {
     ) {
         let commands = extract_lighting2d_render_commands(ctx);
         for command in &commands.global_lights {
-            output.push_render_contribution_2d(global_light_command_to_render_contribution(
-                command,
-            ));
+            output
+                .push_render_contribution_2d(global_light_command_to_render_contribution(command));
         }
         for contribution in lightmap_commands_to_render_contributions(&commands.lightmaps) {
             output.push_render_contribution_2d(contribution);
@@ -78,7 +77,12 @@ pub fn global_light_command_to_light_source(command: &GlobalLight2dCommand) -> L
         emitter_kind: LightEmitterKind2d::GlobalLight,
         emitter_id: Some(command.id.clone()),
         render_layer: None,
-        color_rgba: Some([command.color.r, command.color.g, command.color.b, command.color.a]),
+        color_rgba: Some([
+            command.color.r,
+            command.color.g,
+            command.color.b,
+            command.color.a,
+        ]),
         intensity: Some(command.intensity),
         effective_intensity: Some(command.intensity * command.color.a),
         response: Some(1.0),

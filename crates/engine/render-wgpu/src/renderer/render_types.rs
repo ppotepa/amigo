@@ -17,6 +17,7 @@ pub(crate) struct ProjectedTriangle {
     pub(crate) points: [Vec2; 3],
     pub(crate) color: ColorRgba,
     pub(crate) depth: f32,
+    pub(crate) render_order: i32,
 }
 
 #[derive(Clone, Copy)]

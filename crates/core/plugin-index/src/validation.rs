@@ -1,8 +1,6 @@
 use std::collections::HashSet;
 
-use amigo_plugin_api::{
-    validate_plugin_manifest, PluginId, PluginManifestValidationError,
-};
+use amigo_plugin_api::{validate_plugin_manifest, PluginId, PluginManifestValidationError};
 
 use crate::index::PluginIndex;
 
@@ -15,8 +13,7 @@ pub enum PluginIndexValidationError {
     DuplicatePluginId(String),
 }
 
-pub type PluginIndexValidationResult =
-    Result<(), Vec<PluginIndexValidationError>>;
+pub type PluginIndexValidationResult = Result<(), Vec<PluginIndexValidationError>>;
 
 pub fn validate_plugin_index(index: &PluginIndex) -> PluginIndexValidationResult {
     let mut errors = Vec::new();

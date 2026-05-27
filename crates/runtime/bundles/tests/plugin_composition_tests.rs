@@ -20,7 +20,7 @@ fn default_camera_2d_composition_declares_plugins_and_contracts() {
         composition
             .required_slots
             .iter()
-        .any(|slot| slot.0 == "camera.optics.consumer.2d")
+            .any(|slot| slot.0 == "camera.optics.consumer.2d")
     );
 }
 

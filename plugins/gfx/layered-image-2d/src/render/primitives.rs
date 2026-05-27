@@ -45,7 +45,11 @@ pub fn layered_image_draw_command_to_render_primitive(
         base_opacity: command.image.base_opacity,
         viewport_fit: viewport_fit(command.image.viewport_fit),
         transform: command.transform,
-        visual_maps: command.image.visual_maps.as_ref().map(visual_maps_to_primitive),
+        visual_maps: command
+            .image
+            .visual_maps
+            .as_ref()
+            .map(visual_maps_to_primitive),
         layer_overrides: command
             .image
             .layer_overrides

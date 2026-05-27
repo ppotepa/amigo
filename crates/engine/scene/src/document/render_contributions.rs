@@ -21,7 +21,10 @@ impl RenderContributionsDocument {
         self.roles.insert(role.into(), enabled);
     }
 
-    pub fn with_defaults(mut self, defaults: impl IntoIterator<Item = (&'static str, bool)>) -> Self {
+    pub fn with_defaults(
+        mut self,
+        defaults: impl IntoIterator<Item = (&'static str, bool)>,
+    ) -> Self {
         for (role, enabled) in defaults {
             self.roles.entry(role.to_owned()).or_insert(enabled);
         }

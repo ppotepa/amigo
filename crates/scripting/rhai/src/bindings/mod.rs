@@ -17,12 +17,12 @@ pub(crate) mod camera;
 pub(crate) mod commands;
 /// Common scalar conversion helpers used by bindings.
 pub(crate) mod common;
-/// Handle reference bindings shared across APIs.
-pub(crate) mod handle_refs;
 /// Debug and developer-console bindings.
 pub(crate) mod debug;
 /// Entity lookup and mutation bindings.
 pub(crate) mod entities;
+/// Handle reference bindings shared across APIs.
+pub(crate) mod handle_refs;
 /// Raw input bindings exposed to scripts.
 pub(crate) mod input;
 /// 2D layered-image runtime bindings.
@@ -41,6 +41,8 @@ pub(crate) mod motion;
 pub(crate) mod particles;
 /// Physics query and collider bindings.
 pub(crate) mod physics;
+/// 3D physics command bindings.
+pub(crate) mod physics3d;
 /// Entity-pool bindings used for reuse-oriented gameplay patterns.
 pub(crate) mod pools;
 /// Post-fx stack inspection bindings.
@@ -49,12 +51,12 @@ pub(crate) mod postfx;
 pub(crate) mod projectiles;
 /// Random value helpers for lightweight script effects.
 pub(crate) mod random;
+/// Rhai binding registration dispatcher.
+pub(crate) mod registration;
 /// 2D render-composition runtime bindings.
 pub(crate) mod render2d;
 /// Runtime diagnostics and backend metadata bindings.
 pub(crate) mod runtime;
-/// Rhai binding registration dispatcher.
-pub(crate) mod registration;
 /// Scene selection and reload bindings.
 pub(crate) mod scene;
 /// Session-state bindings that live longer than a single scene.
