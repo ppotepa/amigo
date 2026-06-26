@@ -1,0 +1,156 @@
+version: 1
+scene:
+  id: comic-lines
+  label: Comic Lines Workbench
+  description: >
+    NPR workbench based on npr.html. Current runtime displays prepared 3D
+    placeholders while source GLB models are staged for the future line cache.
+
+entities:
+  - id: camera
+    name: playground-npr-camera
+    transform3:
+      translation:
+        x: 0.0
+        y: 0.0
+        z: 7.0
+      rotation_euler:
+        x: 0.0
+        y: 0.0
+        z: 0.0
+      scale:
+        x: 1.0
+        y: 1.0
+        z: 1.0
+    components:
+      - type: Camera3D
+        fov_y_degrees: 42.0
+        near_clip: 0.1
+        far_clip: 100.0
+
+  - id: key-light
+    name: playground-npr-key-light
+    components:
+      - type: Light3D
+        kind: directional
+        direction:
+          x: -0.45
+          y: -0.78
+          z: -0.36
+        color: "#FFF6E8FF"
+        intensity: 0.92
+        ambient: 0.18
+
+  - id: box-source
+    name: playground-npr-box-source
+    transform3:
+      translation:
+        x: -1.6
+        y: 0.0
+        z: 0.0
+      rotation_euler:
+        x: 0.0
+        y: 0.35
+        z: 0.0
+      scale:
+        x: 1.25
+        y: 1.25
+        z: 1.25
+    components:
+      - type: Mesh3D
+        mesh: playground-npr/meshes/box-source
+      - type: Material3D
+        label: box-ink-test
+        source: playground-npr/materials/warm-paper-fill
+        albedo: "#F7E3A2FF"
+        render_order: 0
+
+  - id: fox-source
+    name: playground-npr-fox-source
+    transform3:
+      translation:
+        x: 1.6
+        y: 0.0
+        z: 0.0
+      rotation_euler:
+        x: 0.0
+        y: -0.45
+        z: 0.0
+      scale:
+        x: 1.25
+        y: 1.25
+        z: 1.25
+    components:
+      - type: Mesh3D
+        mesh: playground-npr/meshes/fox-source
+      - type: Material3D
+        label: fox-ink-test
+        source: playground-npr/materials/cool-paper-fill
+        albedo: "#CFE8FFFF"
+        render_order: 1
+
+  - id: comic-probe
+    name: playground-npr-comic-probe
+    transform3:
+      translation:
+        x: 0.0
+        y: -1.55
+        z: 0.0
+      rotation_euler:
+        x: 0.0
+        y: 0.0
+        z: 0.0
+      scale:
+        x: 0.65
+        y: 0.65
+        z: 0.65
+    components:
+      - type: Mesh3D
+        mesh: playground-npr/meshes/comic-probe
+      - type: Material3D
+        label: ink-silhouette-probe
+        source: playground-npr/materials/ink-fill
+        albedo: "#111111FF"
+        render_order: 2
+
+  - id: title
+    name: playground-npr-title
+    transform3:
+      translation:
+        x: 0.0
+        y: 2.25
+        z: 0.0
+      rotation_euler:
+        x: 0.0
+        y: 0.0
+        z: 0.0
+      scale:
+        x: 1.0
+        y: 1.0
+        z: 1.0
+    components:
+      - type: Text3D
+        content: NPR COMIC LINES
+        font: playground-npr/fonts/debug-3d
+        size: 0.42
+
+  - id: subtitle
+    name: playground-npr-subtitle
+    transform3:
+      translation:
+        x: 0.0
+        y: -2.35
+        z: 0.0
+      rotation_euler:
+        x: 0.0
+        y: 0.0
+        z: 0.0
+      scale:
+        x: 1.0
+        y: 1.0
+        z: 1.0
+    components:
+      - type: Text3D
+        content: MESH CACHE -> VISIBLE EDGES -> HUMANIZED STROKES
+        font: playground-npr/fonts/debug-3d
+        size: 0.20

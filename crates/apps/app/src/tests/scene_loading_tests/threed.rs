@@ -62,6 +62,78 @@ fn playground_3d_main_scene_bootstraps() {
 }
 
 #[test]
+fn playground_npr_comic_lines_scene_bootstraps() {
+    let (_runtime, summary) = bootstrap_with_options(
+        BootstrapOptions::new(mods_root())
+            .with_active_mods(vec!["core".to_owned(), "playground-npr".to_owned()])
+            .with_startup_mod("playground-npr")
+            .with_startup_scene("comic-lines")
+            .with_dev_mode(true),
+    )
+    .expect("npr comic lines playground bootstrap should succeed");
+
+    assert_eq!(summary.active_scene.as_deref(), Some("comic-lines"));
+    assert_eq!(
+        summary
+            .loaded_scene_document
+            .as_ref()
+            .map(|document| document.relative_path.to_string_lossy().replace('\\', "/"))
+            .as_deref(),
+        Some("scenes/comic-lines/scene.yml")
+    );
+    assert!(
+        summary
+            .mesh_entities_3d
+            .iter()
+            .any(|entity| entity == "playground-npr-box-source")
+    );
+    assert!(
+        summary
+            .mesh_entities_3d
+            .iter()
+            .any(|entity| entity == "playground-npr-fox-source")
+    );
+    assert!(
+        summary
+            .material_entities_3d
+            .iter()
+            .any(|entity| entity == "playground-npr-box-source")
+    );
+    assert!(
+        summary
+            .text_entities_3d
+            .iter()
+            .any(|entity| entity == "playground-npr-title")
+    );
+    assert!(
+        summary
+            .prepared_assets
+            .iter()
+            .any(|asset| asset == "playground-npr/meshes/box-source (mesh-3d)")
+    );
+    assert!(
+        summary
+            .prepared_assets
+            .iter()
+            .any(|asset| asset == "playground-npr/meshes/fox-source (mesh-3d)")
+    );
+    assert!(
+        summary
+            .prepared_assets
+            .iter()
+            .any(|asset| asset == "playground-npr/materials/warm-paper-fill (material-3d)")
+    );
+    assert!(
+        summary
+            .prepared_assets
+            .iter()
+            .any(|asset| asset == "playground-npr/fonts/debug-3d (font-3d)")
+    );
+    assert!(summary.failed_assets.is_empty());
+    assert!(summary.pending_asset_loads.is_empty());
+}
+
+#[test]
 fn playground_3d_material_scene_populates_3d_material_domain_and_assets() {
     let (_runtime, summary) = bootstrap_with_options(
         BootstrapOptions::new(mods_root())

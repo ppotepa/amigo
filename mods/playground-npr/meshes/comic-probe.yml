@@ -1,0 +1,10 @@
+kind: mesh-3d
+schema_version: 1
+id: comic-probe
+label: Comic Line Debug Probe
+format: debug-placeholder
+npr:
+  cache_profile: comic-lines-probe-v1
+  intended_role: current-runtime-visible-placeholder
+  line_types: [boundary, silhouette, feature]
+  feature_angle_degrees: 28.0

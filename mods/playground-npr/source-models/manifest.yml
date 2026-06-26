@@ -1,0 +1,22 @@
+kind: source-model-manifest
+schema_version: 1
+id: playground-npr-source-models
+label: NPR Comic Lines Source Models
+
+models:
+  - id: box-textured
+    file: khronos/BoxTextured.glb
+    provider: Khronos glTF Sample Models
+    url: https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/BoxTextured/glTF-Binary/BoxTextured.glb
+    license: CC-BY-4.0
+    role: static topology and hard-edge reference
+  - id: fox
+    file: khronos/Fox.glb
+    provider: Khronos glTF Sample Models
+    url: https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/Fox/glTF-Binary/Fox.glb
+    license: CC0 base mesh plus CC-BY-4.0 rigging and animation
+    role: animated topology and future skinning reference
+  - id: rigged-hand-obj
+    file: ../../../npr.html#OBJ_B64
+    provider: local npr.html prototype
+    role: embedded OBJ reference, not copied into the mod until licensing/source is clarified

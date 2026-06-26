@@ -3,6 +3,20 @@
 This repository contains original code and content, plus implementations that
 were developed with direct reference to upstream open-source work.
 
+## Khronos glTF sample models
+
+The NPR playground bundles small source-model inputs from:
+
+- Repository: <https://github.com/KhronosGroup/glTF-Sample-Models>
+- Files:
+  - `mods/playground-npr/source-models/khronos/BoxTextured.glb`
+  - `mods/playground-npr/source-models/khronos/Fox.glb`
+
+License notes from the upstream model READMEs:
+
+- `BoxTextured.glb`: donated by Cesium for glTF testing and licensed under Creative Commons Attribution 4.0.
+- `Fox.glb`: base mesh by PixelMannen under CC0; rigging and animation by @tomkranis under Creative Commons Attribution 4.0.
+
 ## RainGlass effect reference
 
 The `RainGlass` post-fx implementation in:

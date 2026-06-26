@@ -1,0 +1,8 @@
+kind: material-3d
+schema_version: 1
+id: cool-paper-fill
+label: Cool Paper Fill
+format: debug-placeholder
+npr:
+  fill_role: paper-toned-base
+  ink_group: cool-fill
