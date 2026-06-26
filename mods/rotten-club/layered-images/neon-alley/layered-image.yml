@@ -76,5 +76,85 @@ layers:
     color: '#FF1493'
     animation_hint: flicker
 
+  - id: menu2_bar_warm_interior
+    label: Main Menu 2 Bar Warm Interior
+    image: ../../scenes/main-menu2/images/01_ADD_L20_BAR_WARM_INTERIOR_right_bar_bottles_wood_sidewalk_spill.png
+    blend: additive
+    default_opacity: 0.0
+    color: '#FFB15A'
+    animation_hint: flicker
+
+  - id: menu2_bar_sign
+    label: Main Menu 2 Bar Sign
+    image: ../../scenes/main-menu2/images/02_ADD_L21_BAR_SIGN_warm_BAR_and_BAR_MLECZNY_letters_local_spill.png
+    blend: additive
+    default_opacity: 0.0
+    color: '#FFC06A'
+    animation_hint: neon_flicker
+
+  - id: menu2_apteka_interior
+    label: Main Menu 2 Apteka Interior
+    image: ../../scenes/main-menu2/images/03_ADD_L30_APTEKA_INTERIOR_cool_greenwhite_windows_shelves_sidewalk_spill.png
+    blend: additive
+    default_opacity: 0.0
+    color: '#C9FFE8'
+    animation_hint: flicker
+
+  - id: menu2_apteka_cross
+    label: Main Menu 2 Apteka Cross
+    image: ../../scenes/main-menu2/images/04_ADD_L31_APTEKA_CROSS_green_pharmacy_cross_facade_wet_ground_spill.png
+    blend: additive
+    default_opacity: 0.0
+    color: '#42FF78'
+    animation_hint: pulse
+
+  - id: menu2_club_main_sign
+    label: Main Menu 2 Czarny Sen Main Sign
+    image: ../../scenes/main-menu2/images/05_ADD_L40_CZARNY_SEN_MAIN_SIGN_cold_dirty_blue_facade_doorway_spill.png
+    blend: additive
+    default_opacity: 0.0
+    color: '#5FA8FF'
+    animation_hint: neon_flicker
+
+  - id: menu2_klub_vertical
+    label: Main Menu 2 Klub Vertical Sign
+    image: ../../scenes/main-menu2/images/06_ADD_L41_KLUB_VERTICAL_SIGN_cold_blue_corner_edge_spill.png
+    blend: additive
+    default_opacity: 0.0
+    color: '#4D8DFF'
+    animation_hint: flicker
+
+  - id: menu2_background_palace_cool
+    label: Main Menu 2 Background Palace Cool
+    image: ../../scenes/main-menu2/images/07_ADD_L50_BACKGROUND_PALACE_cool_blue_distant_skyline_haze.png
+    blend: additive
+    default_opacity: 0.42
+    color: '#4FA7FF'
+    animation_hint: ambient
+
+  - id: menu2_background_palace_pinlights
+    label: Main Menu 2 Background Palace Warm Pinlights
+    image: ../../scenes/main-menu2/images/08_ADD_L51_BACKGROUND_PALACE_warm_window_pinlights_only.png
+    blend: additive
+    default_opacity: 0.32
+    color: '#FFB36A'
+    animation_hint: flicker
+
+  - id: menu2_misc_windows
+    label: Main Menu 2 Misc Windows
+    image: ../../scenes/main-menu2/images/09_ADD_L60_MISC_WINDOWS_sparse_urban_pinlights_mid_far_distance.png
+    blend: additive
+    default_opacity: 0.18
+    color: '#FFD08A'
+    animation_hint: flicker
+
+  - id: menu2_wet_reflections
+    label: Main Menu 2 Combined Wet Reflections
+    image: ../../scenes/main-menu2/images/10_ADD_L70_COMBINED_WET_REFLECTIONS_ground_only_all_sources.png
+    blend: additive
+    default_opacity: 0.12
+    color: '#AFCBFF'
+    animation_hint: ambient
+
 preview:
   image: preview_reconstructed.png

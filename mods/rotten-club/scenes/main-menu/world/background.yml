@@ -14,14 +14,24 @@ entities:
         render_layer: background.city
         asset: rotten-club/layered-images/neon-alley
         size: { x: 1672.0, y: 941.0 }
-        base_opacity: 0.04
+        base_opacity: 0.025
         viewport_fit: cover
         z_index: -100.0
         layer_overrides:
-          - { id: skyline, opacity: 0.85 }
+          - { id: skyline, opacity: 0.18 }
           - { id: club_sign, opacity: 0.0 }
           - { id: club_entry, opacity: 0.0 }
           - { id: bar_sign, opacity: 0.0 }
           - { id: bar_lanterns, opacity: 0.0 }
           - { id: pharmacy_cross, opacity: 0.0 }
           - { id: rain_relief_edges, opacity: 0.0 }
+          - { id: menu2_bar_warm_interior, opacity: 0.0 }
+          - { id: menu2_bar_sign, opacity: 0.0 }
+          - { id: menu2_apteka_interior, opacity: 0.0 }
+          - { id: menu2_apteka_cross, opacity: 0.0 }
+          - { id: menu2_club_main_sign, opacity: 0.0 }
+          - { id: menu2_klub_vertical, opacity: 0.0 }
+          - { id: menu2_background_palace_cool, opacity: 0.42 }
+          - { id: menu2_background_palace_pinlights, opacity: 0.32 }
+          - { id: menu2_misc_windows, opacity: 0.18 }
+          - { id: menu2_wet_reflections, opacity: 0.12 }

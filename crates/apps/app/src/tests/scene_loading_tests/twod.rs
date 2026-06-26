@@ -139,14 +139,41 @@ fn rotten_club_main_menu_queues_layered_image_background() {
         .layer_overrides
         .iter()
         .any(|override_| override_.id == "skyline" && override_.opacity.unwrap_or(0.0) > 0.0));
-    for layer_id in ["club_sign", "club_entry", "bar_sign", "bar_lanterns", "pharmacy_cross"] {
+    for layer_id in [
+        "club_sign",
+        "club_entry",
+        "bar_sign",
+        "bar_lanterns",
+        "pharmacy_cross",
+        "menu2_bar_warm_interior",
+        "menu2_bar_sign",
+        "menu2_apteka_interior",
+        "menu2_apteka_cross",
+        "menu2_club_main_sign",
+        "menu2_klub_vertical",
+    ] {
         assert!(
             background
                 .image
                 .layer_overrides
                 .iter()
                 .any(|override_| override_.id == layer_id && override_.opacity.unwrap_or(1.0) == 0.0),
-            "light layer `{layer_id}` should stay off in the skyline-only checkpoint"
+            "foreground light layer `{layer_id}` should stay off in the opening checkpoint"
+        );
+    }
+    for layer_id in [
+        "menu2_background_palace_cool",
+        "menu2_background_palace_pinlights",
+        "menu2_misc_windows",
+        "menu2_wet_reflections",
+    ] {
+        assert!(
+            background
+                .image
+                .layer_overrides
+                .iter()
+                .any(|override_| override_.id == layer_id && override_.opacity.unwrap_or(0.0) > 0.0),
+            "background light layer `{layer_id}` should be visible in the opening checkpoint"
         );
     }
 }
