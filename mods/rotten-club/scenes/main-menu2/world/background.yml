@@ -14,7 +14,7 @@ entities:
         render_layer: background.city
         asset: rotten-club/layered-images/main-menu2
         size: { x: 1672.0, y: 941.0 }
-        base_opacity: 1.0
+        base_opacity: 0.68
         viewport_fit: cover
         z_index: -100.0
         layer_overrides:
