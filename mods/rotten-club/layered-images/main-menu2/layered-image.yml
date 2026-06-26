@@ -13,64 +13,64 @@ base:
 layers:
   - id: right_orange_bar_apteka
     label: Right Orange Bar And Apteka Spill
-    image: ../../scenes/main-menu2/images/01_L31_APTEKA_CROSS_green_cross_facade_spill.png
-    blend: screen
-    default_opacity: 0.08
+    image: ../../scenes/main-menu2/light-deltas/01_right_orange_bar_apteka_delta.png
+    blend: additive
+    default_opacity: 0.85
     color: '#FF9A36'
     animation_hint: flicker
 
   - id: bar_sign_bright
     label: Bright Bar Sign Light
-    image: ../../scenes/main-menu2/images/02_L60_MISC_WINDOWS_sparse_warm_city_pinlights.png
-    blend: screen
-    default_opacity: 0.06
+    image: ../../scenes/main-menu2/light-deltas/02_bar_sign_bright_delta.png
+    blend: additive
+    default_opacity: 0.70
     color: '#FFC66A'
     animation_hint: neon_flicker
 
   - id: signs_scene_base_light
     label: L20 L21 Signs And Scene Base Light
-    image: ../../scenes/main-menu2/images/03_L20_L21_BAR_WARM_sign_and_interior_amber_glow.png
-    blend: screen
-    default_opacity: 0.10
+    image: ../../scenes/main-menu2/light-deltas/03_signs_scene_base_light_delta.png
+    blend: additive
+    default_opacity: 0.55
     color: '#FFB35A'
     animation_hint: flicker
 
   - id: apteka_light
     label: Apteka Light
-    image: ../../scenes/main-menu2/images/04_FULL_COMPOSITE_all_sources_active_wet_reflections.png
-    blend: screen
-    default_opacity: 0.07
+    image: ../../scenes/main-menu2/light-deltas/04_apteka_light_delta.png
+    blend: additive
+    default_opacity: 0.75
     color: '#9CFFE0'
     animation_hint: pulse
 
   - id: czarny_sen_horizontal
     label: Czarny Sen Horizontal Light
-    image: ../../scenes/main-menu2/images/05_L41_KLUB_VERTICAL_SIGN_cold_blue_spill.png
-    blend: screen
-    default_opacity: 0.08
+    image: ../../scenes/main-menu2/light-deltas/05_czarny_sen_horizontal_delta.png
+    blend: additive
+    default_opacity: 0.95
     color: '#5FA8FF'
     animation_hint: flicker
 
   - id: klub_vertical
     label: Klub Vertical Sign
-    image: ../../scenes/main-menu2/images/06_L21_BAR_SIGN_only_localized_sign_glow.png
-    blend: screen
-    default_opacity: 0.06
+    image: ../../scenes/main-menu2/light-deltas/06_klub_vertical_delta.png
+    blend: additive
+    default_opacity: 0.70
     color: '#4D8DFF'
     animation_hint: neon_flicker
 
   - id: palace_background_reflection
     label: Palace Background And Reflection
-    image: ../../scenes/main-menu2/images/07_L30_APTEKA_INTERIOR_cool_window_spill.png
-    blend: screen
-    default_opacity: 0.09
+    image: ../../scenes/main-menu2/light-deltas/07_palace_background_reflection_delta.png
+    blend: additive
+    default_opacity: 0.60
     color: '#6AA8FF'
     animation_hint: ambient
 
   - id: lanterns_apartments
     label: Lanterns And Apartment Lights
-    image: ../../scenes/main-menu2/images/08_L40_CZARNY_SEN_MAIN_SIGN_cold_blue_club_frontage.png
-    blend: screen
-    default_opacity: 0.07
+    image: ../../scenes/main-menu2/light-deltas/08_lanterns_apartments_delta.png
+    blend: additive
+    default_opacity: 0.60
     color: '#FFD18A'
     animation_hint: flicker
