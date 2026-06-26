@@ -18,10 +18,11 @@ entities:
         viewport_fit: cover
         z_index: -100.0
         layer_overrides:
-          - { id: apteka_cross, opacity: 0.20 }
-          - { id: misc_windows, opacity: 0.12 }
-          - { id: bar_warm, opacity: 0.18 }
+          - { id: right_orange_bar_apteka, opacity: 0.18 }
+          - { id: bar_sign_bright, opacity: 0.16 }
+          - { id: signs_scene_base_light, opacity: 0.20 }
+          - { id: apteka_light, opacity: 0.18 }
+          - { id: czarny_sen_horizontal, opacity: 0.16 }
           - { id: klub_vertical, opacity: 0.14 }
-          - { id: bar_sign, opacity: 0.12 }
-          - { id: apteka_interior, opacity: 0.12 }
-          - { id: club_main_sign, opacity: 0.16 }
+          - { id: palace_background_reflection, opacity: 0.16 }
+          - { id: lanterns_apartments, opacity: 0.14 }

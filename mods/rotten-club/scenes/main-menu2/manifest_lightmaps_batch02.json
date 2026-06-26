@@ -14,64 +14,64 @@
     },
     {
       "file": "01_L31_APTEKA_CROSS_green_cross_facade_spill.png",
-      "role": "pharmacy_cross",
-      "description": "Pharmacy cross as the primary active light source. Green spill on facade, sidewalk, wet ground, and subtle tint on the parked car.",
+      "role": "right_orange_bar_apteka",
+      "description": "Right-side orange light pass illuminating the bar and apteka side of the street.",
       "width": 1672,
       "height": 941,
       "sha256": "faa9be74c902adf8c3b65730bb84606a4954977e444a010899a1cf39bb55ce6c"
     },
     {
       "file": "02_L60_MISC_WINDOWS_sparse_warm_city_pinlights.png",
-      "role": "misc_windows",
-      "description": "Sparse warm miscellaneous city windows and distant pinlights. Very subtle urban occupancy lights with limited spill.",
+      "role": "bar_sign_bright",
+      "description": "Bright bar sign light focused on the sign face and nearby storefront spill.",
       "width": 1672,
       "height": 941,
       "sha256": "091ffa62db3ffa9d5a271295a9eb607b6f461ff655deda3060e1144e3bc09a75"
     },
     {
       "file": "03_L20_L21_BAR_WARM_sign_and_interior_amber_glow.png",
-      "role": "bar_warm",
-      "description": "Warm bar light: sign plus interior bottle shelves and warm spill on the right storefront and wet pavement.",
+      "role": "signs_scene_base_light",
+      "description": "Active L20/L21 sign lighting and general low-level scene brightness, not a dedicated bar-warm-only pass.",
       "width": 1672,
       "height": 941,
       "sha256": "b291922933d13c1b1279b12133baad95d351448383e51284776d621af4c6402c"
     },
     {
       "file": "04_FULL_COMPOSITE_all_sources_active_wet_reflections.png",
-      "role": "full_composite",
-      "description": "Full composite mood variant with multiple sources active together, including reflections on wet street and light interaction across the scene.",
+      "role": "apteka_light",
+      "description": "Apteka light pass used as a runtime light layer despite the original filename.",
       "width": 1672,
       "height": 941,
       "sha256": "0d6725b42c898ed44f851aa3ea7d9bded6ee1e852d41f0eea943b658f252f1b5"
     },
     {
       "file": "05_L41_KLUB_VERTICAL_SIGN_cold_blue_spill.png",
-      "role": "klub_vertical_sign",
-      "description": "Vertical KLUB sign as the primary source. Cold blue spill localized around the club facade and pavement.",
+      "role": "czarny_sen_horizontal",
+      "description": "Horizontal Czarny Sen club frontage light pass with cold blue spill.",
       "width": 1672,
       "height": 941,
       "sha256": "468ab1eef82e6367131681868ec532967c3b425743d82e91cd38d1dc3ab21c98"
     },
     {
       "file": "06_L21_BAR_SIGN_only_localized_sign_glow.png",
-      "role": "bar_sign_local",
-      "description": "Mostly localized BAR sign / storefront glow with restrained spill and low overall ambient contribution.",
+      "role": "klub_vertical",
+      "description": "Vertical KLUB sign light pass.",
       "width": 1672,
       "height": 941,
       "sha256": "ce8fdcc5147a5ce51186318a2dcbf896da597efde83988975463cbe98845df38"
     },
     {
       "file": "07_L30_APTEKA_INTERIOR_cool_window_spill.png",
-      "role": "apteka_interior",
-      "description": "Cool apteka interior light as the primary source, emphasizing pharmacy windows, frames, and cool reflections.",
+      "role": "palace_background_reflection",
+      "description": "Palace of Culture and Science background light pass, deepest background layer with associated reflection.",
       "width": 1672,
       "height": 941,
       "sha256": "5de81c76fe39a1c7732974dfe090930bd736aa1a76c4ea05dde4fb0279bcde78"
     },
     {
       "file": "08_L40_CZARNY_SEN_MAIN_SIGN_cold_blue_club_frontage.png",
-      "role": "czarny_sen_main_sign",
-      "description": "CZARNY SEN main sign and entrance lighting as the primary source, with cold blue spill at the central building and street center.",
+      "role": "lanterns_apartments",
+      "description": "Lantern and apartment/window light pass.",
       "width": 1672,
       "height": 941,
       "sha256": "46720a64225b53e6ebc9e6637c590d101315bf5804e409f6ccd50cbb3250f99a"

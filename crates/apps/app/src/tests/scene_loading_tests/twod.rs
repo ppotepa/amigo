@@ -135,13 +135,14 @@ fn rotten_club_main_menu2_queues_layered_image_background() {
     assert_eq!(background.image.size, amigo_math::Vec2::new(1672.0, 941.0));
     assert!(background.image.base_opacity < 0.75);
     for layer_id in [
-        "bar_sign",
-        "bar_warm",
-        "apteka_interior",
-        "apteka_cross",
-        "club_main_sign",
+        "right_orange_bar_apteka",
+        "bar_sign_bright",
+        "signs_scene_base_light",
+        "apteka_light",
+        "czarny_sen_horizontal",
         "klub_vertical",
-        "misc_windows",
+        "palace_background_reflection",
+        "lanterns_apartments",
     ] {
         assert!(
             background
