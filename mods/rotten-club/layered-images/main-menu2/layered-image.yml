@@ -8,7 +8,7 @@ canvas:
   height: 941
 
 base:
-  image: ../../scenes/main-menu2/images/00_BASE_NIGHT_MASTER_consistent_scene.png
+  image: ../../scenes/main-menu2/albedo/00_base_night_albedo_dark.png
 
 layers:
   - id: right_orange_bar_apteka
