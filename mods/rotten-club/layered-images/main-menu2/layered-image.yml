@@ -15,7 +15,7 @@ layers:
     label: Right Orange Bar And Apteka Spill
     image: ../../scenes/main-menu2/images/01_L31_APTEKA_CROSS_green_cross_facade_spill.png
     blend: screen
-    default_opacity: 0.24
+    default_opacity: 0.08
     color: '#FF9A36'
     animation_hint: flicker
 
@@ -23,7 +23,7 @@ layers:
     label: Bright Bar Sign Light
     image: ../../scenes/main-menu2/images/02_L60_MISC_WINDOWS_sparse_warm_city_pinlights.png
     blend: screen
-    default_opacity: 0.18
+    default_opacity: 0.06
     color: '#FFC66A'
     animation_hint: neon_flicker
 
@@ -31,7 +31,7 @@ layers:
     label: L20 L21 Signs And Scene Base Light
     image: ../../scenes/main-menu2/images/03_L20_L21_BAR_WARM_sign_and_interior_amber_glow.png
     blend: screen
-    default_opacity: 0.12
+    default_opacity: 0.10
     color: '#FFB35A'
     animation_hint: flicker
 
@@ -39,7 +39,7 @@ layers:
     label: Apteka Light
     image: ../../scenes/main-menu2/images/04_FULL_COMPOSITE_all_sources_active_wet_reflections.png
     blend: screen
-    default_opacity: 0.18
+    default_opacity: 0.07
     color: '#9CFFE0'
     animation_hint: pulse
 
@@ -47,7 +47,7 @@ layers:
     label: Czarny Sen Horizontal Light
     image: ../../scenes/main-menu2/images/05_L41_KLUB_VERTICAL_SIGN_cold_blue_spill.png
     blend: screen
-    default_opacity: 0.22
+    default_opacity: 0.08
     color: '#5FA8FF'
     animation_hint: flicker
 
@@ -55,7 +55,7 @@ layers:
     label: Klub Vertical Sign
     image: ../../scenes/main-menu2/images/06_L21_BAR_SIGN_only_localized_sign_glow.png
     blend: screen
-    default_opacity: 0.16
+    default_opacity: 0.06
     color: '#4D8DFF'
     animation_hint: neon_flicker
 
@@ -63,7 +63,7 @@ layers:
     label: Palace Background And Reflection
     image: ../../scenes/main-menu2/images/07_L30_APTEKA_INTERIOR_cool_window_spill.png
     blend: screen
-    default_opacity: 0.14
+    default_opacity: 0.09
     color: '#6AA8FF'
     animation_hint: ambient
 
@@ -71,6 +71,6 @@ layers:
     label: Lanterns And Apartment Lights
     image: ../../scenes/main-menu2/images/08_L40_CZARNY_SEN_MAIN_SIGN_cold_blue_club_frontage.png
     blend: screen
-    default_opacity: 0.10
+    default_opacity: 0.07
     color: '#FFD18A'
     animation_hint: flicker

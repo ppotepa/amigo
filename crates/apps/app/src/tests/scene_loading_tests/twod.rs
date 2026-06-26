@@ -133,7 +133,7 @@ fn rotten_club_main_menu2_queues_layered_image_background() {
         .expect("main-menu2 Rotten Club background should be queued");
     assert_eq!(background.image.asset.as_str(), "rotten-club/layered-images/main-menu2");
     assert_eq!(background.image.size, amigo_math::Vec2::new(1672.0, 941.0));
-    assert!(background.image.base_opacity < 0.55);
+    assert!(background.image.base_opacity < 0.40);
     for layer_id in [
         "right_orange_bar_apteka",
         "bar_sign_bright",
