@@ -1,0 +1,80 @@
+{
+  "package_name": "dark_alley_corrected_batch02_package",
+  "package_version": "v001",
+  "source_image": "/mnt/data/ghostwriter_images/context/48808d14-320a-51e0-af71-a783d4beb5fa.png",
+  "description": "Corrected lightmap / night-lighting batch derived from the same base composition. Each image is a labeled lighting pass or mood variant intended to keep the parked car and scene composition consistent.",
+  "images": [
+    {
+      "file": "00_BASE_NIGHT_MASTER_consistent_scene.png",
+      "role": "master_base_night",
+      "description": "Base corrected night scene with stable geometry and stable parked car; no dominant active emissive source, only dark night ambience and wet street readability.",
+      "width": 1672,
+      "height": 941,
+      "sha256": "1d003954b13331256f0b4ea356621e3137fbee9dc0e1043de4076d25dfef45b6"
+    },
+    {
+      "file": "01_L31_APTEKA_CROSS_green_cross_facade_spill.png",
+      "role": "pharmacy_cross",
+      "description": "Pharmacy cross as the primary active light source. Green spill on facade, sidewalk, wet ground, and subtle tint on the parked car.",
+      "width": 1672,
+      "height": 941,
+      "sha256": "faa9be74c902adf8c3b65730bb84606a4954977e444a010899a1cf39bb55ce6c"
+    },
+    {
+      "file": "02_L60_MISC_WINDOWS_sparse_warm_city_pinlights.png",
+      "role": "misc_windows",
+      "description": "Sparse warm miscellaneous city windows and distant pinlights. Very subtle urban occupancy lights with limited spill.",
+      "width": 1672,
+      "height": 941,
+      "sha256": "091ffa62db3ffa9d5a271295a9eb607b6f461ff655deda3060e1144e3bc09a75"
+    },
+    {
+      "file": "03_L20_L21_BAR_WARM_sign_and_interior_amber_glow.png",
+      "role": "bar_warm",
+      "description": "Warm bar light: sign plus interior bottle shelves and warm spill on the right storefront and wet pavement.",
+      "width": 1672,
+      "height": 941,
+      "sha256": "b291922933d13c1b1279b12133baad95d351448383e51284776d621af4c6402c"
+    },
+    {
+      "file": "04_FULL_COMPOSITE_all_sources_active_wet_reflections.png",
+      "role": "full_composite",
+      "description": "Full composite mood variant with multiple sources active together, including reflections on wet street and light interaction across the scene.",
+      "width": 1672,
+      "height": 941,
+      "sha256": "0d6725b42c898ed44f851aa3ea7d9bded6ee1e852d41f0eea943b658f252f1b5"
+    },
+    {
+      "file": "05_L41_KLUB_VERTICAL_SIGN_cold_blue_spill.png",
+      "role": "klub_vertical_sign",
+      "description": "Vertical KLUB sign as the primary source. Cold blue spill localized around the club facade and pavement.",
+      "width": 1672,
+      "height": 941,
+      "sha256": "468ab1eef82e6367131681868ec532967c3b425743d82e91cd38d1dc3ab21c98"
+    },
+    {
+      "file": "06_L21_BAR_SIGN_only_localized_sign_glow.png",
+      "role": "bar_sign_local",
+      "description": "Mostly localized BAR sign / storefront glow with restrained spill and low overall ambient contribution.",
+      "width": 1672,
+      "height": 941,
+      "sha256": "ce8fdcc5147a5ce51186318a2dcbf896da597efde83988975463cbe98845df38"
+    },
+    {
+      "file": "07_L30_APTEKA_INTERIOR_cool_window_spill.png",
+      "role": "apteka_interior",
+      "description": "Cool apteka interior light as the primary source, emphasizing pharmacy windows, frames, and cool reflections.",
+      "width": 1672,
+      "height": 941,
+      "sha256": "5de81c76fe39a1c7732974dfe090930bd736aa1a76c4ea05dde4fb0279bcde78"
+    },
+    {
+      "file": "08_L40_CZARNY_SEN_MAIN_SIGN_cold_blue_club_frontage.png",
+      "role": "czarny_sen_main_sign",
+      "description": "CZARNY SEN main sign and entrance lighting as the primary source, with cold blue spill at the central building and street center.",
+      "width": 1672,
+      "height": 941,
+      "sha256": "46720a64225b53e6ebc9e6637c590d101315bf5804e409f6ccd50cbb3250f99a"
+    }
+  ]
+}
