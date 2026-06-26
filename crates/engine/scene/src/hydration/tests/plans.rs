@@ -698,6 +698,52 @@ fn builds_hydration_plan_for_playground_3d_main_scene() {
 }
 
 #[test]
+fn builds_hydration_plan_for_playground_npr_mesh_switches() {
+    let workspace_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .and_then(|path| path.parent())
+        .and_then(|path| path.parent())
+        .expect("workspace root should exist")
+        .to_path_buf();
+
+    let document = load_scene_document_from_path(
+        workspace_root.join("mods/playground-npr/scenes/comic-lines/scene.yml"),
+    )
+    .expect("playground npr scene should parse");
+
+    let plan = build_scene_hydration_plan("playground-npr", &document).expect("plan should build");
+
+    let box_mesh = plan
+        .commands
+        .iter()
+        .filter_map(mesh_command)
+        .find(|command| command.entity_name == "playground-npr-box-source")
+        .expect("box mesh command should be present");
+    let box_npr = box_mesh
+        .npr
+        .as_ref()
+        .expect("npr: true should enable default NPR line settings");
+    assert!(box_npr.boundary);
+    assert!(box_npr.silhouette);
+    assert!(box_npr.feature);
+    assert_eq!(box_npr.feature_angle_degrees, 32.0);
+
+    let fox_mesh = plan
+        .commands
+        .iter()
+        .filter_map(mesh_command)
+        .find(|command| command.entity_name == "playground-npr-fox-source")
+        .expect("fox mesh command should be present");
+    let fox_npr = fox_mesh
+        .npr
+        .as_ref()
+        .expect("npr settings block should enable NPR line settings");
+    assert_eq!(fox_npr.feature_angle_degrees, 30.0);
+    assert_eq!(fox_npr.seed, 2602);
+    assert_eq!(fox_npr.passes, 2);
+}
+
+#[test]
 fn builds_hydration_plan_for_playground_3d_physics_scene() {
     let workspace_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .parent()

@@ -59,6 +59,7 @@ entities:
     components:
       - type: Mesh3D
         mesh: playground-npr/meshes/box-source
+        npr: true
       - type: Material3D
         label: box-ink-test
         source: playground-npr/materials/warm-paper-fill
@@ -83,6 +84,19 @@ entities:
     components:
       - type: Mesh3D
         mesh: playground-npr/meshes/fox-source
+        npr:
+          enabled: true
+          feature_angle_degrees: 30.0
+          min_screen_length_px: 2.0
+          ink_color: "#12100DFF"
+          width_px: 2.6
+          width_jitter_px: 0.6
+          path_jitter_px: 0.8
+          taper: 0.68
+          overshoot_px: 2.0
+          dropout: 0.025
+          passes: 2
+          seed: 2602
       - type: Material3D
         label: fox-ink-test
         source: playground-npr/materials/cool-paper-fill

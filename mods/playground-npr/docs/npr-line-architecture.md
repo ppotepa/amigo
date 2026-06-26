@@ -179,34 +179,40 @@ Use explicit ordering:
 Silhouettes should be thicker and allowed to overshoot more than internal
 feature lines.
 
-## Scene Authoring Target
+## Scene Authoring
 
-Future scene component:
+The first supported authoring seam is deliberately simple: `Mesh3D.npr`.
+Use a boolean for the default comic-line style:
 
 ```yaml
-- type: amigo.rendering.npr-lines.NprLineStyle3D
-  enabled: true
-  mesh: self
-  extraction:
-    boundary: true
-    silhouette: true
-    feature: true
-    feature_angle_degrees: 32.0
-    min_screen_length_px: 2.0
-    visibility: face_id_depth
-  style:
-    ink_color: "#101010FF"
-    width_px: 2.4
-    width_jitter_px: 0.55
-    path_jitter_px: 0.75
-    taper: 0.65
-    overshoot_px: 1.8
-    dropout: 0.035
-    passes: 2
-    seed: 2002
+- type: Mesh3D
+  mesh: playground-npr/meshes/box-source
+  npr: true
 ```
 
-Do not place this component in shipped scenes until the plugin exists.
+Use a settings block when a mesh needs a different line profile:
+
+```yaml
+- type: Mesh3D
+  mesh: playground-npr/meshes/fox-source
+  npr:
+    enabled: true
+    feature_angle_degrees: 30.0
+    min_screen_length_px: 2.0
+    ink_color: "#12100DFF"
+    width_px: 2.6
+    width_jitter_px: 0.6
+    path_jitter_px: 0.8
+    taper: 0.68
+    overshoot_px: 2.0
+    dropout: 0.025
+    passes: 2
+    seed: 2602
+```
+
+This keeps scene authoring compact while still hydrating into an explicit
+renderer-facing contract. A future scene-level preset can set defaults for all
+meshes, but per-mesh opt-in should remain the runtime source of truth.
 
 ## Implementation Plan
 
@@ -227,7 +233,8 @@ READ `crates/engine/render-wgpu/src/renderer/world_3d.rs`
 
 ADD `plugins/rendering/npr-lines`
 
-- intent: domain-owned NPR scene document, hydration, diagnostics, and tests.
+- intent: domain-owned NPR diagnostics, presets, and tests after the renderer
+  consumes the existing `Mesh3D.npr` contract.
 
 ADD `crates/engine/render-api/src/npr_3d.rs`
 

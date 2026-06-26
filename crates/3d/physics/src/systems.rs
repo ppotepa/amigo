@@ -298,6 +298,7 @@ fn submit_spawned_cube(
             entity_name: entity_name.clone(),
             mesh_asset: AssetKey::new(command.spawner.mesh.clone()),
             transform,
+            npr: None,
         }),
     });
     scene_command_queue.submit(SceneCommand::Plugin {

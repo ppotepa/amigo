@@ -236,13 +236,19 @@ fn hydrate_component_domains(
                 )),
             });
         }
-        DomainComponentDocument::Mesh3d { mesh } => {
+        DomainComponentDocument::Mesh3d { mesh, npr } => {
             commands.push(SceneCommand::Plugin {
                 command: mesh_3d_plugin_scene_command(Mesh3dSceneCommand {
                     source_mod: source_mod.to_owned(),
                     entity_name: entity_name.clone(),
                     mesh_asset: AssetKey::new(mesh.clone()),
                     transform: transform3_for_entity(entity),
+                    npr: npr_line_settings_3d_from_document(
+                        npr.as_ref(),
+                        &document.scene.id,
+                        &entity.id,
+                        component.kind(),
+                    )?,
                 }),
             });
         }
@@ -466,4 +472,48 @@ fn hydrate_component_domains(
         _ => return Ok(false),
     }
     Ok(true)
+}
+
+fn npr_line_settings_3d_from_document(
+    document: Option<&crate::document::NprLine3dDocument>,
+    scene_id: &str,
+    entity_id: &str,
+    component_kind: &str,
+) -> SceneDocumentResult<Option<amigo_render_api::NprLineSettings3d>> {
+    let Some(document) = document else {
+        return Ok(None);
+    };
+
+    match document {
+        crate::document::NprLine3dDocument::Enabled(enabled) => {
+            Ok(enabled.then(amigo_render_api::NprLineSettings3d::default))
+        }
+        crate::document::NprLine3dDocument::Settings(settings) => {
+            if !settings.enabled {
+                return Ok(None);
+            }
+
+            Ok(Some(amigo_render_api::NprLineSettings3d {
+                boundary: settings.boundary,
+                silhouette: settings.silhouette,
+                feature: settings.feature,
+                feature_angle_degrees: settings.feature_angle_degrees,
+                min_screen_length_px: settings.min_screen_length_px,
+                ink_color: parse_color_rgba_hex(
+                    &settings.ink_color,
+                    scene_id,
+                    entity_id,
+                    component_kind,
+                )?,
+                width_px: settings.width_px,
+                width_jitter_px: settings.width_jitter_px,
+                path_jitter_px: settings.path_jitter_px,
+                taper: settings.taper,
+                overshoot_px: settings.overshoot_px,
+                dropout: settings.dropout,
+                passes: settings.passes,
+                seed: settings.seed,
+            }))
+        }
+    }
 }

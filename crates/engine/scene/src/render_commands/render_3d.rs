@@ -9,6 +9,7 @@ pub struct Mesh3dSceneCommand {
     pub entity_name: String,
     pub mesh_asset: AssetKey,
     pub transform: Transform3,
+    pub npr: Option<amigo_render_api::NprLineSettings3d>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -58,6 +59,7 @@ impl Mesh3dSceneCommand {
             entity_name: entity_name.into(),
             mesh_asset,
             transform: Transform3::default(),
+            npr: None,
         }
     }
 }

@@ -113,6 +113,7 @@ pub fn queue_mesh_scene_command(
         mesh: Mesh3d {
             mesh_asset: command.mesh_asset.clone(),
             transform: command.transform,
+            npr: command.npr.clone(),
         },
     });
     entity
@@ -126,6 +127,7 @@ mod tests {
     use amigo_assets::AssetKey;
     use amigo_editor_api::EditorCapability;
     use amigo_math::Transform3;
+    use amigo_render_api::NprLineSettings3d;
     use amigo_scene::{Mesh3dSceneCommand, SceneService};
 
     #[test]
@@ -138,6 +140,7 @@ mod tests {
             mesh: Mesh3d {
                 mesh_asset: AssetKey::new("playground-3d/meshes/probe"),
                 transform: Transform3::default(),
+                npr: None,
             },
         });
 
@@ -169,6 +172,34 @@ mod tests {
         assert_eq!(entity.raw(), 0);
         assert_eq!(service.commands().len(), 1);
         assert_eq!(scene.entity_names(), vec!["playground-3d-probe".to_owned()]);
+    }
+
+    #[test]
+    fn queues_mesh_scene_command_with_npr_line_settings() {
+        let scene = SceneService::default();
+        let service = MeshSceneService::default();
+        let mut command = Mesh3dSceneCommand::new(
+            "playground-npr",
+            "playground-npr-box-source",
+            AssetKey::new("playground-npr/meshes/box-source"),
+        );
+        command.npr = Some(NprLineSettings3d {
+            feature_angle_degrees: 30.0,
+            seed: 2602,
+            ..NprLineSettings3d::default()
+        });
+
+        queue_mesh_scene_command(&scene, &service, &command);
+
+        let queued = service.commands();
+        assert_eq!(queued.len(), 1);
+        let npr = queued[0]
+            .mesh
+            .npr
+            .as_ref()
+            .expect("npr line settings should be preserved");
+        assert_eq!(npr.feature_angle_degrees, 30.0);
+        assert_eq!(npr.seed, 2602);
     }
 
     #[test]

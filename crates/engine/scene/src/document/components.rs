@@ -39,6 +39,95 @@ pub enum SceneComponentSemanticClass {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(untagged)]
+pub enum NprLine3dDocument {
+    Enabled(bool),
+    Settings(NprLine3dSettingsDocument),
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct NprLine3dSettingsDocument {
+    #[serde(default = "default_bool_true")]
+    pub enabled: bool,
+    #[serde(default = "default_bool_true")]
+    pub boundary: bool,
+    #[serde(default = "default_bool_true")]
+    pub silhouette: bool,
+    #[serde(default = "default_bool_true")]
+    pub feature: bool,
+    #[serde(default = "default_npr_feature_angle_degrees")]
+    pub feature_angle_degrees: f32,
+    #[serde(default = "default_npr_min_screen_length_px")]
+    pub min_screen_length_px: f32,
+    #[serde(default = "default_npr_ink_color")]
+    pub ink_color: String,
+    #[serde(default = "default_npr_width_px")]
+    pub width_px: f32,
+    #[serde(default = "default_npr_width_jitter_px")]
+    pub width_jitter_px: f32,
+    #[serde(default = "default_npr_path_jitter_px")]
+    pub path_jitter_px: f32,
+    #[serde(default = "default_npr_taper")]
+    pub taper: f32,
+    #[serde(default = "default_npr_overshoot_px")]
+    pub overshoot_px: f32,
+    #[serde(default = "default_npr_dropout")]
+    pub dropout: f32,
+    #[serde(default = "default_npr_passes")]
+    pub passes: u8,
+    #[serde(default = "default_npr_seed")]
+    pub seed: u64,
+}
+
+fn default_bool_true() -> bool {
+    true
+}
+
+fn default_npr_feature_angle_degrees() -> f32 {
+    32.0
+}
+
+fn default_npr_min_screen_length_px() -> f32 {
+    2.0
+}
+
+fn default_npr_ink_color() -> String {
+    "#100E0BFF".to_owned()
+}
+
+fn default_npr_width_px() -> f32 {
+    2.4
+}
+
+fn default_npr_width_jitter_px() -> f32 {
+    0.55
+}
+
+fn default_npr_path_jitter_px() -> f32 {
+    0.75
+}
+
+fn default_npr_taper() -> f32 {
+    0.65
+}
+
+fn default_npr_overshoot_px() -> f32 {
+    1.8
+}
+
+fn default_npr_dropout() -> f32 {
+    0.035
+}
+
+fn default_npr_passes() -> u8 {
+    2
+}
+
+fn default_npr_seed() -> u64 {
+    2002
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(tag = "type")]
 pub enum SceneComponentDocumentModel {
     #[serde(rename = "Camera3D")]
@@ -245,7 +334,11 @@ pub enum SceneComponentDocumentModel {
         offset: SceneVec2Document,
     },
     #[serde(rename = "Mesh3D")]
-    Mesh3d { mesh: String },
+    Mesh3d {
+        mesh: String,
+        #[serde(default)]
+        npr: Option<NprLine3dDocument>,
+    },
     #[serde(rename = "Material3D")]
     Material3d {
         label: String,
