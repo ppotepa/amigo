@@ -102,25 +102,25 @@ fn playground_2d_main_scene_bootstraps() {
 }
 
 #[test]
-fn rotten_club_main_menu_queues_layered_image_background() {
+fn rotten_club_main_menu2_queues_layered_image_background() {
     let (runtime, summary) = bootstrap_with_options(
         BootstrapOptions::new(mods_root())
             .with_active_mods(vec!["core".to_owned(), "rotten-club".to_owned()])
             .with_startup_mod("rotten-club")
-            .with_startup_scene("main-menu")
+            .with_startup_scene("main-menu2")
             .with_dev_mode(true),
     )
-    .expect("they are rotten main menu bootstrap should succeed");
+    .expect("Rotten Club main-menu2 bootstrap should succeed");
 
-    assert_eq!(summary.active_scene.as_deref(), Some("main-menu"));
+    assert_eq!(summary.active_scene.as_deref(), Some("main-menu2"));
     assert!(summary
         .prepared_assets
         .iter()
-        .any(|asset| asset == "rotten-club/layered-images/neon-alley (layered-image-2d)"));
+        .any(|asset| asset == "rotten-club/layered-images/main-menu2 (layered-image-2d)"));
     assert!(summary
         .prepared_assets
         .iter()
-        .any(|asset| asset == "rotten-club/depth-maps/neon-alley-depth (depth-map-2d)"));
+        .any(|asset| asset == "rotten-club/depth-maps/main-menu2-depth (depth-map-2d)"));
     assert!(summary.failed_assets.is_empty());
 
     let layered_images = runtime
@@ -129,43 +129,22 @@ fn rotten_club_main_menu_queues_layered_image_background() {
     let background = layered_images
         .commands()
         .into_iter()
-        .find(|command| command.entity_name == "rotten-club-background")
-        .expect("single-plate Rotten Club background should be queued");
-    assert_eq!(background.image.asset.as_str(), "rotten-club/layered-images/neon-alley");
+        .find(|command| command.entity_name == "rotten-club-main-menu2-background")
+        .expect("main-menu2 Rotten Club background should be queued");
+    assert_eq!(background.image.asset.as_str(), "rotten-club/layered-images/main-menu2");
     assert_eq!(background.image.size, amigo_math::Vec2::new(1672.0, 941.0));
-    assert!(background.image.base_opacity <= 0.05);
-    assert!(background
-        .image
-        .layer_overrides
-        .iter()
-        .any(|override_| override_.id == "skyline" && override_.opacity.unwrap_or(0.0) > 0.0));
+    assert_eq!(background.image.base_opacity, 0.0);
     for layer_id in [
-        "club_sign",
-        "club_entry",
         "bar_sign",
-        "bar_lanterns",
-        "pharmacy_cross",
-        "menu2_bar_warm_interior",
-        "menu2_bar_sign",
-        "menu2_apteka_interior",
-        "menu2_apteka_cross",
-        "menu2_club_main_sign",
-        "menu2_klub_vertical",
-    ] {
-        assert!(
-            background
-                .image
-                .layer_overrides
-                .iter()
-                .any(|override_| override_.id == layer_id && override_.opacity.unwrap_or(1.0) == 0.0),
-            "foreground light layer `{layer_id}` should stay off in the opening checkpoint"
-        );
-    }
-    for layer_id in [
-        "menu2_background_palace_cool",
-        "menu2_background_palace_pinlights",
-        "menu2_misc_windows",
-        "menu2_wet_reflections",
+        "bar_warm_interior",
+        "apteka_interior",
+        "apteka_cross",
+        "club_main_sign",
+        "klub_vertical",
+        "background_palace_cool",
+        "background_palace_pinlights",
+        "misc_windows",
+        "wet_reflections",
     ] {
         assert!(
             background
@@ -173,7 +152,7 @@ fn rotten_club_main_menu_queues_layered_image_background() {
                 .layer_overrides
                 .iter()
                 .any(|override_| override_.id == layer_id && override_.opacity.unwrap_or(0.0) > 0.0),
-            "background light layer `{layer_id}` should be visible in the opening checkpoint"
+            "main-menu2 light layer `{layer_id}` should be visible"
         );
     }
 }
@@ -201,20 +180,24 @@ fn rotten_club_main_menu2_variant_bootstraps() {
     assert!(summary
         .prepared_assets
         .iter()
-        .any(|asset| asset == "rotten-club/layered-images/neon-alley (layered-image-2d)"));
+        .any(|asset| asset == "rotten-club/layered-images/main-menu2 (layered-image-2d)"));
+    assert!(summary
+        .prepared_assets
+        .iter()
+        .any(|asset| asset == "rotten-club/depth-maps/main-menu2-depth (depth-map-2d)"));
     assert!(summary.failed_assets.is_empty());
 }
 
 #[test]
-fn rotten_club_main_menu_timeline_animates_layered_image_intro() {
+fn rotten_club_main_menu2_has_single_layered_image_checkpoint() {
     let (runtime, _summary) = bootstrap_with_options(
         BootstrapOptions::new(mods_root())
             .with_active_mods(vec!["core".to_owned(), "rotten-club".to_owned()])
             .with_startup_mod("rotten-club")
-            .with_startup_scene("main-menu")
+            .with_startup_scene("main-menu2")
             .with_dev_mode(true),
     )
-    .expect("they are rotten main menu bootstrap should succeed");
+    .expect("Rotten Club main-menu2 bootstrap should succeed");
     let particles = runtime
         .resolve::<Particle2dSceneService>()
         .expect("particle scene service should be registered");
@@ -231,10 +214,10 @@ fn rotten_club_timeline_drives_weather_camera_lighting_and_title() {
         BootstrapOptions::new(mods_root())
             .with_active_mods(vec!["core".to_owned(), "rotten-club".to_owned()])
             .with_startup_mod("rotten-club")
-            .with_startup_scene("main-menu")
+            .with_startup_scene("main-menu2")
             .with_dev_mode(true),
     )
-    .expect("Rotten Club main menu bootstrap should succeed");
+    .expect("Rotten Club main-menu2 bootstrap should succeed");
     let particles = runtime
         .resolve::<Particle2dSceneService>()
         .expect("particle scene service should be registered");
@@ -260,18 +243,23 @@ fn rotten_club_timeline_drives_weather_camera_lighting_and_title() {
 
 #[test]
 fn rotten_club_authored_timeline_matches_script_beats() {
-    let timeline_path = mods_root()
+    let scene_path = mods_root()
         .join("rotten-club")
         .join("scenes")
-        .join("main-menu")
-        .join("timeline")
-        .join("intro.yml");
-    let timeline_source =
-        std::fs::read_to_string(&timeline_path).expect("Rotten Club timeline should be readable");
-    let timeline: serde_yaml::Value =
-        serde_yaml::from_str(&timeline_source).expect("Rotten Club timeline should parse");
+        .join("main-menu2")
+        .join("scene.yml");
+    let scene_source =
+        std::fs::read_to_string(&scene_path).expect("Rotten Club main-menu2 scene should be readable");
+    let scene: serde_yaml::Value =
+        serde_yaml::from_str(&scene_source).expect("Rotten Club main-menu2 scene should parse");
 
-    assert_eq!(timeline.get("kind").and_then(serde_yaml::Value::as_str), Some("scene-fragment"));
+    assert_eq!(
+        scene
+            .get("scene")
+            .and_then(|scene| scene.get("id"))
+            .and_then(serde_yaml::Value::as_str),
+        Some("main-menu2")
+    );
 }
 
 #[test]
@@ -280,7 +268,7 @@ fn rotten_club_main_menu_camera_capture_sees_world_sources() {
         BootstrapOptions::new(mods_root())
             .with_active_mods(vec!["core".to_owned(), "rotten-club".to_owned()])
             .with_startup_mod("rotten-club")
-            .with_startup_scene("main-menu")
+            .with_startup_scene("main-menu2")
             .with_dev_mode(true),
     )
     .expect("they are rotten main menu bootstrap should succeed");
@@ -289,12 +277,12 @@ fn rotten_club_main_menu_camera_capture_sees_world_sources() {
         amigo_runtime_bundles::default_wgpu_render_extractor_registry_for_runtime(&runtime)
             .extract_all(&runtime);
     assert!(packet.renderables_2d().iter().any(|item| {
-        item.owner_entity() == "rotten-club-background"
+        item.owner_entity() == "rotten-club-main-menu2-background"
             && item.component_kind() == "LayeredImage2D"
     }));
     assert!(packet.render_depth_maps_2d().any(|depth_map| {
         depth_map.id == "main-depth"
-            && depth_map.asset.as_str() == "rotten-club/depth-maps/neon-alley-depth"
+            && depth_map.asset.as_str() == "rotten-club/depth-maps/main-menu2-depth"
     }));
     assert!(packet.post_fx_stacks().iter().any(|stack| {
         stack
@@ -315,7 +303,7 @@ fn rotten_club_main_menu_camera_capture_sees_world_sources() {
 #[test]
 fn rotten_club_main_menu_preview_is_not_black_after_warmup() {
     let mut preview = crate::ScenePreviewHost::new(
-        crate::ScenePreviewOptions::new(mods_root(), "rotten-club", "main-menu", 320, 180)
+        crate::ScenePreviewOptions::new(mods_root(), "rotten-club", "main-menu2", 320, 180)
             .with_active_mods(vec!["core".to_owned(), "rotten-club".to_owned()])
             .with_warmup_frames(900)
             .with_playback_delta_seconds(1.0 / 30.0),

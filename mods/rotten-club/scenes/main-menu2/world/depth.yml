@@ -8,7 +8,7 @@ entities:
     components:
       - type: amigo.camera.focus-depth.DepthMap2D
         id: main-depth
-        asset: rotten-club/depth-maps/neon-alley-depth
+        asset: rotten-club/depth-maps/main-menu2-depth
         target_camera: main-camera
         size: { x: 1672.0, y: 941.0 }
         viewport_fit: cover

@@ -11,7 +11,7 @@ fn main() -> AmigoResult<()> {
     let startup_mod = parse_option_value(&args, "--mod")
         .or_else(|| editor_requested.then(|| "rotten-club".to_owned()));
     let startup_scene = parse_option_value(&args, "--scene")
-        .or_else(|| editor_requested.then(|| "main-menu".to_owned()));
+        .or_else(|| editor_requested.then(|| "main-menu2".to_owned()));
     let editor_mode = editor_requested;
     let active_mods = parse_option_value(&args, "--mods").map(|mods| {
         mods.split(',')

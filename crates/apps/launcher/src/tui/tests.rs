@@ -294,8 +294,8 @@ fn editor_launch_mode_syncs_focused_selection() {
     state.selected_scene_index = state
         .current_scene_list()
         .iter()
-        .position(|scene| scene.id == "main-menu")
-        .expect("main-menu should exist");
+        .position(|scene| scene.id == "main-menu2")
+        .expect("main-menu2 should exist");
     state.tree_cursor_on_scene = true;
     state.sync_tree_selection_to_visible();
 
@@ -307,7 +307,7 @@ fn editor_launch_mode_syncs_focused_selection() {
     );
     assert_eq!(
         state.active_profile().startup_scene.as_deref(),
-        Some("main-menu")
+        Some("main-menu2")
     );
     assert!(matches!(
         outcome,

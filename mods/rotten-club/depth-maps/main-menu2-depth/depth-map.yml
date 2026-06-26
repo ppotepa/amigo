@@ -1,0 +1,5 @@
+kind: depth-map-2d
+schema_version: 1
+id: main-menu2-depth
+label: Rotten Club Main Menu 2 Depth
+image: ../../scenes/main-menu2/images/00_DEPTH_MAP.png
