@@ -6,7 +6,8 @@ use super::super::{
     build_scene_hydration_plan, entity_selector_from_document, scene_key_from_document,
 };
 use crate::{
-    ComponentHydratorRegistry, ComponentSchemaRegistry, EntitySelector,
+    CameraController3dModeSceneCommand, CameraController3dSceneCommand, ComponentHydratorRegistry,
+    ComponentSchemaRegistry, EntitySelector, InputActionMapSceneCommand,
     PluginComponentHydrationContext, PluginComponentHydrator, SceneCommand, SceneComponentPayload,
     SceneComponentSchemaProvider, SceneDocumentError, SceneEntitySelectorDocument,
     SceneEntitySelectorKindDocument, load_scene_document_from_path, load_scene_document_from_str,
@@ -713,33 +714,78 @@ fn builds_hydration_plan_for_playground_npr_mesh_switches() {
 
     let plan = build_scene_hydration_plan("playground-npr", &document).expect("plan should build");
 
-    let box_mesh = plan
+    let input_map = plan
+        .commands
+        .iter()
+        .find_map(super::plugin_payload::<InputActionMapSceneCommand>)
+        .expect("npr input action map should be present");
+    assert_eq!(input_map.id, "playground-npr");
+    for index in 1..=6 {
+        assert!(
+            input_map
+                .actions
+                .contains_key(&format!("npr.select_{index}")),
+            "missing npr select action for slot {index}"
+        );
+    }
+    for action in [
+        "npr.camera_toggle",
+        "npr.model_autorotate_toggle",
+        "npr.fly_forward",
+        "npr.fly_strafe",
+        "npr.fly_lift",
+    ] {
+        assert!(
+            input_map.actions.contains_key(action),
+            "missing npr camera action {action}"
+        );
+    }
+
+    let controller = plan
+        .commands
+        .iter()
+        .find_map(super::plugin_payload::<CameraController3dSceneCommand>)
+        .expect("npr camera controller should be present");
+    assert_eq!(controller.camera, "playground-npr-camera");
+    assert_eq!(controller.mode, CameraController3dModeSceneCommand::Orbit);
+    assert_eq!(
+        controller.switch_action.as_deref(),
+        Some("npr.camera_toggle")
+    );
+    assert_eq!(controller.move_forward_action, "npr.fly_forward");
+
+    let mesh_commands = plan
         .commands
         .iter()
         .filter_map(mesh_command)
-        .find(|command| command.entity_name == "playground-npr-box-source")
-        .expect("box mesh command should be present");
-    let box_npr = box_mesh
+        .collect::<Vec<_>>();
+    assert_eq!(mesh_commands.len(), 6);
+
+    let soldier_mesh = mesh_commands
+        .iter()
+        .copied()
+        .find(|command| command.entity_name == "playground-npr-model-1-soldier")
+        .expect("soldier mesh command should be present");
+    let soldier_npr = soldier_mesh
         .npr
         .as_ref()
-        .expect("npr: true should enable default NPR line settings");
-    assert!(box_npr.boundary);
-    assert!(box_npr.silhouette);
-    assert!(box_npr.feature);
-    assert_eq!(box_npr.feature_angle_degrees, 32.0);
+        .expect("npr settings block should enable NPR line settings");
+    assert!(soldier_npr.boundary);
+    assert!(soldier_npr.silhouette);
+    assert!(soldier_npr.feature);
+    assert_eq!(soldier_npr.feature_angle_degrees, 34.0);
 
-    let fox_mesh = plan
-        .commands
+    let fox_mesh = mesh_commands
         .iter()
-        .filter_map(mesh_command)
-        .find(|command| command.entity_name == "playground-npr-fox-source")
+        .copied()
+        .find(|command| command.entity_name == "playground-npr-model-5-fox")
         .expect("fox mesh command should be present");
     let fox_npr = fox_mesh
         .npr
         .as_ref()
         .expect("npr settings block should enable NPR line settings");
-    assert_eq!(fox_npr.feature_angle_degrees, 30.0);
-    assert_eq!(fox_npr.seed, 2602);
+    assert_eq!(fox_npr.feature_angle_degrees, 34.0);
+    assert_eq!(fox_npr.seed, 1505);
     assert_eq!(fox_npr.passes, 2);
 }
 

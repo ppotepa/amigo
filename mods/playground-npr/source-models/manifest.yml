@@ -4,6 +4,12 @@ id: playground-npr-source-models
 label: NPR Comic Lines Source Models
 
 models:
+  - id: soldier
+    file: threejs/Soldier.glb
+    provider: Three.js Examples
+    url: https://threejs.org/examples/models/gltf/Soldier.glb
+    license: Three.js examples asset
+    role: primary character target for projected-stroke NPR
   - id: box-textured
     file: khronos/BoxTextured.glb
     provider: Khronos glTF Sample Models
@@ -16,6 +22,30 @@ models:
     url: https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/Fox/glTF-Binary/Fox.glb
     license: CC0 base mesh plus CC-BY-4.0 rigging and animation
     role: animated topology and future skinning reference
+  - id: box
+    file: khronos/Box.glb
+    provider: Khronos glTF Sample Models
+    url: https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/Box/glTF-Binary/Box.glb
+    license: Khronos glTF Sample Models license metadata
+    role: minimal hard-edge reference
+  - id: box-interleaved
+    file: khronos/BoxInterleaved.glb
+    provider: Khronos glTF Sample Models
+    url: https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/BoxInterleaved/glTF-Binary/BoxInterleaved.glb
+    license: Khronos glTF Sample Models license metadata
+    role: interleaved-buffer import coverage
+  - id: box-animated
+    file: khronos/BoxAnimated.glb
+    provider: Khronos glTF Sample Models
+    url: https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/BoxAnimated/glTF-Binary/BoxAnimated.glb
+    license: Khronos glTF Sample Models license metadata
+    role: animated-source static topology coverage
+  - id: cesium-man
+    file: khronos/CesiumMan.glb
+    provider: Khronos glTF Sample Models
+    url: https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/CesiumMan/glTF-Binary/CesiumMan.glb
+    license: Khronos glTF Sample Models license metadata
+    role: character silhouette and feature-line reference
   - id: rigged-hand-obj
     file: ../../../npr.html#OBJ_B64
     provider: local npr.html prototype

@@ -1,0 +1,1195 @@
+NPR.HTML -> AMIGO NPR LINE DRAWING PSEUDOCODE
+Scope: line drawing only.
+Omitted for now: painterly fill, brush material fill, vector color shapes, hatching, halftone.
+Goal: reproduce the drawing behavior from npr.html as configurable engine data.
+
+
+0. WHAT NPR.HTML IS REALLY DOING
+================================
+
+npr.html is not primarily a shader outline demo.
+
+The line-art pipeline is:
+
+1. Load or parse a 3D model.
+2. Extract mesh topology:
+   - world-space vertices
+   - triangle faces
+   - face normals
+   - face centroids
+   - unique mesh edges
+   - edge -> adjacent faces
+   - object/material ownership
+3. Every visible frame:
+   - update animation/skinning
+   - update world positions
+   - project all model vertices through the active camera
+   - build a face-ID visibility buffer from projected triangles
+   - classify mesh edges into boundary, silhouette, or feature
+   - split each edge into visible 2D fragments
+   - join fragments into paths
+   - simplify paths
+   - sort paths
+   - reveal paths by draw progress
+   - draw paths as humanized strokes with jitter, pressure, and multiple passes
+
+This is close to:
+
+model triangles -> projected 2D points -> visible line segments -> connected stroke paths -> hand-drawn canvas strokes.
+
+This should translate into Amigo as an explicit NPR line-art render pipeline, not as a generic material flag only.
+
+
+1. HTML SETTINGS THAT MATTER FOR LINE DRAWING
+============================================
+
+Source: npr.html state block around line-art controls.
+
+Only keep these settings for the first engine pass:
+
+NprLineSettings:
+  show_silhouette: true
+  show_feature: true
+  show_boundary: true
+  feature_angle_degrees: 34
+
+  cull_outside_clip: true
+  min_segment_px: 1.0
+  mesh_stride: 1
+
+  occlusion:
+    enabled: true
+    samples: 7
+    strictness: 1.0
+    bias: 0.0007
+    depth_scale: 1.0
+
+  frame:
+    target_fps: 8
+
+  stroke:
+    style: pencil
+    color: "#23201c"
+    paper_color: "#e8e2d5"
+    line_width_px: 2.2
+    jitter_px: 1.6
+    pressure: 0.32
+    path_simplify_px: 0.6
+    seed: 17
+
+  draw:
+    auto_draw: true
+    draw_speed: 0.28
+    draw_progress: 0.0
+
+Stroke style variants in npr.html:
+  pencil:
+    passes: 3
+    low alpha per pass
+    stronger jitter per pass
+    occasional skipped micro-segments
+
+  brush:
+    passes: 2
+    first pass wider and translucent
+    second pass thinner and more opaque
+
+  ink / default:
+    passes: 1
+    low jitter
+    high opacity
+
+
+2. MODEL EXTRACTION
+===================
+
+HTML source functions:
+  extractModelData(root)
+  updateModelPositions(data)
+
+Input:
+  root 3D object containing Mesh or SkinnedMesh children.
+
+Output:
+  ModelLineData:
+    positions: Vec<Vec3> indexed from 1 in HTML, can be 0-based in Rust
+    faces: Vec<Face>
+    edges: Vec<Edge>
+    parts: Vec<ModelPart>
+    objects: Vec<ObjectInfo>
+    materials: Vec<MaterialInfo>
+    bbox: Aabb
+
+Face:
+  id
+  verts: [vertex_a, vertex_b, vertex_c]
+  normal: Vec3
+  centroid: Vec3
+  tangent: Vec3
+  bitangent: Vec3
+  object_name
+  material_id
+  front_facing
+
+Edge:
+  a: vertex_index
+  b: vertex_index
+  faces: up to two adjacent face ids
+  object_names: set
+
+Pseudocode:
+
+function extract_model_data(root):
+    data = empty ModelLineData
+    edge_map = Map<(min_vertex, max_vertex), Edge>
+    material_map = Map<material_key, material_id>
+
+    for each child in root traversal:
+        if child is not Mesh and not SkinnedMesh:
+            continue
+        if child has no position attribute:
+            continue
+
+        mesh = child
+        geometry = mesh.geometry
+        positions = geometry.position_attribute
+        indices = geometry.index_optional
+        object_name = mesh.name or parent.name or "Mesh"
+        materials = mesh.original_material or mesh.material
+
+        base_vertex = data.positions.len
+        append placeholder positions for every local vertex
+
+        part = ModelPart:
+            mesh_handle
+            object_name
+            base_vertex
+            vertex_count
+            position_attribute
+            skinned = mesh.is_skinned
+        data.parts.push(part)
+
+        face_count = if indexed:
+            indices.count / 3
+        else:
+            positions.count / 3
+
+        for tri in 0..face_count:
+            a = base_vertex + index_or_sequential(tri * 3 + 0)
+            b = base_vertex + index_or_sequential(tri * 3 + 1)
+            c = base_vertex + index_or_sequential(tri * 3 + 2)
+
+            material_id = register_material_for_triangle(geometry, materials, tri)
+            face_id = data.faces.len
+
+            data.faces.push(Face:
+                id = face_id
+                verts = [a, b, c]
+                material_id = material_id
+                object_name = object_name
+                normal = zero
+                centroid = zero
+                front_facing = false
+            )
+
+            add_edge(edge_map, a, b, face_id, object_name)
+            add_edge(edge_map, b, c, face_id, object_name)
+            add_edge(edge_map, c, a, face_id, object_name)
+
+    data.edges = values(edge_map)
+    update_model_positions(data)
+    return data
+
+function add_edge(edge_map, a, b, face_id, object_name):
+    if a == b:
+        return
+    key = sorted_pair(a, b)
+    edge = edge_map.get_or_insert(key)
+    if edge.faces.len < 2:
+        edge.faces.push(face_id)
+    edge.object_names.add(object_name)
+
+function update_model_positions(data):
+    update root matrix world
+
+    for each part in data.parts:
+        for local_vertex in 0..part.vertex_count:
+            p = read local position from attribute
+            if part.skinned:
+                p = bone_transform(local_vertex, p)
+            p = mesh.matrix_world * p
+            data.positions[part.base_vertex + local_vertex] = p
+
+    for each face in data.faces:
+        a = data.positions[face.verts[0]]
+        b = data.positions[face.verts[1]]
+        c = data.positions[face.verts[2]]
+
+        e0 = b - a
+        e1 = c - a
+        face.normal = normalize(cross(e0, e1))
+        face.centroid = (a + b + c) / 3
+        face.tangent = normalize(e0 if length(e0) > epsilon else e1)
+        face.bitangent = normalize(cross(face.normal, face.tangent))
+
+Engine translation:
+  - Static topology should be built once during asset preparation.
+  - World/skinned positions must update per frame for animated models.
+  - For static models, positions and face normals can be cached until transform or camera changes.
+
+
+3. PROJECTION CACHE
+===================
+
+HTML source functions:
+  computeProjectedVertices()
+  ndcToScreen(v)
+  projectedVertexToBuffer(vId)
+
+Data:
+  ProjectionCache:
+    ndc[vertex_id]: Vec3
+    screen[vertex_id]: Vec2
+
+Pseudocode:
+
+function compute_projected_vertices(model_data, camera, viewport):
+    ensure proj_cache size >= vertex_count
+
+    for each vertex_id:
+        world = model_data.positions[vertex_id]
+        clip_or_ndc = project(camera.view_projection, world)
+        screen = ndc_to_screen(clip_or_ndc, viewport)
+
+        proj_cache.ndc[vertex_id] = clip_or_ndc
+        proj_cache.screen[vertex_id] = screen
+
+function ndc_to_screen(ndc, viewport):
+    x = (ndc.x * 0.5 + 0.5) * viewport.width
+    y = (1.0 - (ndc.y * 0.5 + 0.5)) * viewport.height
+    return Vec2(x, y)
+
+function projected_vertex_to_visibility_buffer(vertex_id):
+    screen = proj_cache.screen[vertex_id]
+    ndc = proj_cache.ndc[vertex_id]
+
+    return BufferVertex:
+        x = screen.x / viewport.width * face_id_buffer.width
+        y = screen.y / viewport.height * face_id_buffer.height
+        z = ndc.z * 0.5 + 0.5
+
+Engine translation:
+  - This can run on CPU initially.
+  - Long-term optimized path should use GPU compute or render pass to produce face-ID/depth textures.
+  - Stroke generation needs screen-space points, so the final output is a list of 2D paths.
+
+
+4. FACE-ID VISIBILITY BUFFER
+============================
+
+HTML source functions:
+  ensureFaceIdVisibilityBuffer(faceCount)
+  buildFaceIdVisibilityBuffer()
+  sampleOwnedFaceAtScreen(x, y, allowedFaces)
+
+Purpose:
+  The buffer answers this question:
+    "At this screen pixel, which triangle face is actually visible?"
+
+This is stronger than only checking depth, because line segments often lie between two adjacent triangles.
+HTML samples a 3x3 neighborhood around the edge pixel and accepts the line if one of the edge's adjacent faces is visible.
+
+Buffer channels:
+  depth[pixel]: nearest depth
+  face_id[pixel]: visible face id
+  material_id[pixel]: visible material id
+  normal[pixel]: visible face normal
+  world_position[pixel]
+  tangent[pixel]
+  tangent_2d[pixel]
+  light_tone[pixel]
+  specular_tone[pixel]
+  face_visible[face_id]: bool
+  material_visible[material_id]: bool
+
+For line-art-only, required minimum:
+  depth
+  face_id
+  face_visible
+
+Pseudocode:
+
+function build_face_id_visibility_buffer(model_data, proj_cache, viewport, settings):
+    W = max(8, floor(viewport.width * settings.occlusion.depth_scale))
+    H = max(8, floor(viewport.height * settings.occlusion.depth_scale))
+
+    depth.fill(infinity)
+    face_id.fill(-1)
+    face_visible.fill(false)
+
+    for each face in model_data.faces:
+        if object disabled:
+            continue
+
+        ia, ib, ic = face.verts
+        na = proj_cache.ndc[ia]
+        nb = proj_cache.ndc[ib]
+        nc = proj_cache.ndc[ic]
+
+        if triangle_outside_clip(na, nb, nc):
+            continue
+
+        a = projected_vertex_to_visibility_buffer(ia)
+        b = projected_vertex_to_visibility_buffer(ib)
+        c = projected_vertex_to_visibility_buffer(ic)
+
+        area = edge_function(a, b, c)
+        if abs(area) < epsilon:
+            continue
+
+        bounds = integer bounding box of triangle in buffer pixels
+
+        for y in bounds.min_y..bounds.max_y:
+            for x in bounds.min_x..bounds.max_x:
+                p = (x + 0.5, y + 0.5)
+
+                w0 = edge_function(b, c, p)
+                w1 = edge_function(c, a, p)
+                w2 = edge_function(a, b, p)
+
+                if p is not inside triangle:
+                    continue
+
+                l0 = w0 / area
+                l1 = w1 / area
+                l2 = w2 / area
+                z = l0 * a.z + l1 * b.z + l2 * c.z
+
+                if z < 0 or z > 1:
+                    continue
+
+                idx = y * W + x
+                if z < depth[idx]:
+                    depth[idx] = z
+                    face_id[idx] = face.id
+
+    for each pixel:
+        if face_id[pixel] >= 0:
+            face_visible[face_id[pixel]] = true
+
+function sample_owned_face_at_screen(x, y, allowed_faces):
+    cx = clamp(floor(x / viewport.width * W), 0, W - 1)
+    cy = clamp(floor(y / viewport.height * H), 0, H - 1)
+
+    for dy in -1..1:
+        for dx in -1..1:
+            sx = cx + dx
+            sy = cy + dy
+            if outside buffer:
+                continue
+            face = face_id[sy * W + sx]
+            if allowed_faces contains face:
+                return true
+
+    return false
+
+Engine translation:
+  - MVP CPU rasterizer is acceptable for workbench and correctness.
+  - Production path should use an offscreen face-ID render target to avoid CPU triangle rasterization at high poly counts.
+  - Do not infer visibility from material or object names.
+  - Visibility must be explicit pipeline data.
+
+
+5. VISIBLE FACE TEST
+====================
+
+HTML source function:
+  computeVisibleFaces()
+
+Purpose:
+  A face is usable for line classification when it is front-facing and visible in the face-ID buffer.
+
+Pseudocode:
+
+function compute_visible_faces(model_data, camera, face_id_buffer, settings):
+    visible = array<bool>(face_count, false)
+
+    for each face in model_data.faces:
+        view_vec = camera.position - face.centroid
+        face.front_facing = dot(face.normal, view_vec) > 0
+
+        if settings.occlusion.enabled:
+            visible[face.id] = face.front_facing and face_id_buffer.face_visible[face.id]
+        else:
+            visible[face.id] = face.front_facing
+
+    return visible
+
+Important:
+  - Silhouette classification uses front-facing difference between adjacent faces.
+  - Feature classification uses angle between adjacent face normals.
+  - Boundary classification uses only one adjacent face.
+
+
+6. EDGE CLASSIFICATION
+======================
+
+HTML source function:
+  classifyEdges(faceVisible)
+
+Edge types:
+  boundary:
+    Edge has only one adjacent face.
+    Draw if boundary is enabled and the adjacent face is visible.
+
+  silhouette:
+    Edge has two adjacent faces.
+    Draw if one face is front-facing and the other is back-facing.
+    At least one adjacent face must be visible.
+
+  feature:
+    Edge has two adjacent faces.
+    Both faces must be visible.
+    Angle between normals must be >= feature_angle_degrees.
+
+Pseudocode:
+
+function classify_edges(model_data, proj_cache, face_visible, settings):
+    result = {
+        silhouette: [],
+        feature: [],
+        boundary: [],
+    }
+
+    feature_threshold = radians(settings.feature_angle_degrees)
+    stride_counter = 0
+
+    for each edge in model_data.edges:
+        stride_counter += 1
+        if settings.mesh_stride > 1 and stride_counter % settings.mesh_stride != 0:
+            continue
+
+        if no object in edge.object_names is enabled:
+            continue
+
+        f0 = edge.faces[0] optional
+        f1 = edge.faces[1] optional
+
+        vis0 = f0 exists and face_visible[f0]
+        vis1 = f1 exists and face_visible[f1]
+        front0 = f0 exists and model_data.faces[f0].front_facing
+        front1 = f1 exists and model_data.faces[f1].front_facing
+
+        type = none
+
+        if edge.faces.len == 1:
+            if settings.show_boundary and vis0:
+                type = boundary
+        else:
+            if settings.show_silhouette and ((front0 and not front1) or (not front0 and front1)) and (vis0 or vis1):
+                type = silhouette
+            else if settings.show_feature and vis0 and vis1:
+                n0 = model_data.faces[f0].normal
+                n1 = model_data.faces[f1].normal
+                angle = acos(clamp(dot(n0, n1), -1, 1))
+                if angle >= feature_threshold:
+                    type = feature
+
+        if type is none:
+            continue
+
+        if settings.cull_outside_clip and endpoints outside same clip side:
+            continue
+
+        if screen_length(edge) < settings.min_segment_px:
+            continue
+
+        fragments = visible_fragments_for_edge(edge, type)
+        if fragments empty:
+            count as occluded
+            continue
+
+        result[type].extend(fragments)
+
+    return result
+
+
+7. EDGE VISIBILITY FRAGMENTATION
+================================
+
+HTML source functions:
+  visibleFragmentsForEdge(edge, type)
+  sampleOwnedFaceAtScreen(x, y, allowedFaces)
+
+Purpose:
+  An edge can be partly hidden.
+  npr.html does not draw whole edges blindly.
+  It samples along the projected edge and emits only continuous visible runs.
+
+Pseudocode:
+
+function visible_fragments_for_edge(edge, type, proj_cache, face_id_buffer, settings):
+    a = proj_cache.screen[edge.a]
+    b = proj_cache.screen[edge.b]
+    ndc_a = proj_cache.ndc[edge.a]
+    ndc_b = proj_cache.ndc[edge.b]
+
+    len = distance(a, b)
+    if len < max(0.5, settings.min_segment_px):
+        return []
+
+    if not settings.occlusion.enabled:
+        return [Fragment(type, a, b)]
+
+    allowed_faces = set(edge.faces)
+    if allowed_faces empty:
+        return []
+
+    sample_count = clamp(ceil(len / 4), min=7, max=96)
+    fragments = []
+    run_start = none
+    prev_point = none
+    prev_visible = false
+
+    for i in 0..sample_count:
+        t = i / sample_count
+
+        x = lerp(a.x, b.x, t)
+        y = lerp(a.y, b.y, t)
+        ndc = lerp(ndc_a, ndc_b, t)
+
+        in_clip = ndc.x/y/z all inside [-1, 1]
+        owned = in_clip and sample_owned_face_at_screen(x, y, allowed_faces)
+
+        point = Vec2(x, y)
+
+        if owned and not prev_visible:
+            run_start = point
+
+        if not owned and prev_visible:
+            if run_start exists and prev_point exists:
+                if distance(run_start, prev_point) >= max(0.5, settings.min_segment_px):
+                    fragments.push(Fragment(type, run_start, prev_point))
+            run_start = none
+
+        prev_visible = owned
+        prev_point = point
+
+    if prev_visible and run_start exists and prev_point exists:
+        if distance(run_start, prev_point) >= max(0.5, settings.min_segment_px):
+            fragments.push(Fragment(type, run_start, prev_point))
+
+    return fragments
+
+Important:
+  This is the part that makes the drawing believable.
+  Without fragmentation, hidden contour pieces leak through the model and the result looks like a cheap wireframe.
+
+
+8. FRAGMENTS -> PATHS
+=====================
+
+HTML source functions:
+  buildPathsForFragments(fragments, type)
+  simplifyPath(points, epsilon)
+  buildProjectedPaths()
+
+Purpose:
+  Human drawing works as strokes, not isolated per-edge segments.
+  npr.html connects nearby fragment endpoints into longer paths.
+
+Pseudocode:
+
+function build_paths_for_fragments(fragments, type):
+    quant = 2.5 pixels
+
+    function point_key(p):
+        return round(p.x / quant) + ":" + round(p.y / quant)
+
+    adjacency = Map<point_key, Vec<(fragment_index, endpoint)>>
+
+    for each fragment index i:
+        k0 = point_key(fragment.p0)
+        k1 = point_key(fragment.p1)
+        adjacency[k0].push((i, endpoint_0))
+        adjacency[k1].push((i, endpoint_1))
+        fragment.k0 = k0
+        fragment.k1 = k1
+
+    visited = Set<fragment_index>
+    paths = []
+
+    function walk(start_fragment, enter_endpoint):
+        points = []
+        current_fragment = start_fragment
+        current_enter = enter_endpoint
+
+        while current_fragment exists and not visited:
+            mark visited
+
+            fragment = fragments[current_fragment]
+            first = endpoint selected by current_enter
+            second = opposite endpoint
+
+            if points empty:
+                points.push(first)
+            points.push(second)
+
+            next_key = key at second endpoint
+            candidates = adjacency[next_key] not visited
+            if candidates empty:
+                break
+
+            next = first candidate
+            current_fragment = next.fragment_index
+            current_enter = next.endpoint
+
+        return points
+
+    First pass:
+      start walks at non-degree-2 nodes.
+      This prefers open polyline strokes from endpoints/junctions.
+
+    Second pass:
+      walk any remaining fragment.
+      This catches closed loops.
+
+    return paths with at least 2 points
+
+function simplify_path(points, epsilon):
+    if epsilon <= 0 or len(points) <= 2:
+        return points
+
+    Use Ramer-Douglas-Peucker:
+      find point with max perpendicular distance to line start-end
+      if max_distance > epsilon:
+          recursively simplify left and right
+      else:
+          keep only start and end
+
+function build_projected_paths():
+    update projection cache
+    if occlusion enabled:
+        build face-ID visibility buffer
+    else:
+        mark all faces visible
+
+    face_visible = compute_visible_faces()
+    fragments_by_type = classify_edges(face_visible)
+    paths = []
+
+    for each type in [silhouette, feature, boundary]:
+        partial_paths = build_paths_for_fragments(fragments_by_type[type], type)
+        for each path:
+            points = simplify_path(path.points, settings.stroke.path_simplify_px)
+            if len(points) > 1:
+                paths.push(Path(type, points))
+
+    sort paths by average y ascending
+    return paths
+
+Sorting note:
+  npr.html sorts by average screen y.
+  This creates a stable drawing/reveal order rather than random edge flicker.
+
+
+9. DRAW PROGRESS
+================
+
+HTML source functions:
+  pathLength(points)
+  partialPath(points, maxLen)
+  renderDrawing(paths)
+
+Purpose:
+  The scene can look like it is being drawn by hand.
+  draw_progress reveals paths by cumulative length, not by path count.
+
+Pseudocode:
+
+function path_length(points):
+    total = 0
+    for i in 1..points.len:
+        total += distance(points[i - 1], points[i])
+    return total
+
+function partial_path(points, max_length):
+    if max_length <= 0:
+        return [points[0]]
+
+    out = [points[0]]
+    remaining = max_length
+
+    for i in 1..points.len:
+        a = points[i - 1]
+        b = points[i]
+        segment_len = distance(a, b)
+
+        if segment_len <= remaining:
+            out.push(b)
+            remaining -= segment_len
+        else:
+            t = remaining / max(segment_len, epsilon)
+            out.push(lerp(a, b, t))
+            break
+
+    return out
+
+function render_drawing(paths, settings):
+    clear drawing canvas
+    draw paper background
+
+    lengths = map path_length(paths)
+    total = sum(lengths)
+    remaining = total * settings.draw.draw_progress
+
+    for each path with index:
+        if remaining <= 0:
+            break
+
+        if remaining >= path_length:
+            draw_points = path.points
+        else:
+            draw_points = partial_path(path.points, remaining)
+
+        if draw_points.len > 1:
+            draw_styled_path(draw_points, path.type, path_index)
+
+        remaining -= path_length
+
+
+10. HUMANIZED STROKE DRAWING
+============================
+
+HTML source functions:
+  noise01(x, seed)
+  jitterPoint(points, i, amount, seed)
+  drawStyledPath(points, type, pathIndex)
+
+Purpose:
+  The final look comes from drawing every path as multiple imperfect line segments.
+  Stroke points are displaced perpendicular to the path direction.
+  Width changes per segment using pressure noise.
+
+Pseudocode:
+
+function noise01(x, seed):
+    s = sin(x * 12.9898 + seed * 78.233) * 43758.5453
+    return fract(s)
+
+function jitter_point(points, i, amount, seed):
+    p = points[i]
+    prev = points[max(0, i - 1)]
+    next = points[min(points.len - 1, i + 1)]
+
+    tangent = next - prev
+    tangent_len = length(tangent)
+    if tangent_len == 0:
+        tangent = (1, 0)
+    else:
+        tangent /= tangent_len
+
+    normal = (-tangent.y, tangent.x)
+    mag = (noise01(i * 1.371 + p.x * 0.003 + p.y * 0.002, seed) - 0.5) * 2 * amount
+
+    return p + normal * mag
+
+function draw_styled_path(points, type, path_index, settings):
+    style = settings.stroke.style
+
+    if type == silhouette:
+        base_width = line_width_px * 1.0
+        base_jitter = jitter_px * 1.0
+    else if type == feature:
+        base_width = line_width_px * 0.72
+        base_jitter = jitter_px * 0.8
+    else if type == boundary:
+        base_width = line_width_px * 0.82
+        base_jitter = jitter_px * 1.0
+
+    seed = settings.stroke.seed + path_index * 17
+
+    if style == pencil:
+        passes = 3
+    else if style == brush:
+        passes = 2
+    else:
+        passes = 1
+
+    for pass in 0..passes:
+        if style == pencil:
+            alpha = 0.18
+            pass_jitter = base_jitter * (1.0 + pass * 0.55)
+            width_mul = 0.9
+        else if style == brush:
+            alpha = pass == 0 ? 0.28 : 0.75
+            pass_jitter = base_jitter * (pass == 0 ? 1.1 : 0.35)
+            width_mul = pass == 0 ? 1.6 : 0.85
+        else:
+            alpha = 0.92
+            pass_jitter = base_jitter * 0.35
+            width_mul = 0.75
+
+        for point_index in 1..points.len:
+            p0 = jitter_point(points, point_index - 1, pass_jitter, seed + pass * 11)
+            p1 = jitter_point(points, point_index, pass_jitter, seed + pass * 11 + 3)
+
+            t = point_index / max(1, points.len - 1)
+            pressure_noise = 1 + pressure * ((noise01(t * 9 + pass * 1.7, seed) - 0.5) * 1.7)
+            width = max(0.35, base_width * width_mul * pressure_noise)
+
+            if style == pencil:
+                if noise01(point_index * 2.13 + pass, seed) < 0.06:
+                    continue
+
+            draw line segment:
+                from p0 to p1
+                color = stroke.color
+                alpha = alpha
+                width = width
+                cap = round
+                join = round
+
+Engine translation:
+  - The important unit is not Edge, it is StrokePath.
+  - StrokePath can be generated on CPU and sent as a dynamic 2D line mesh.
+  - Each stroke segment should become a camera-space or screen-space quad.
+  - For "pencil", use multiple passes and low alpha.
+  - For "brush", use two passes with different width/alpha.
+  - Use deterministic seeded noise, not frame-random noise, or strokes will shimmer.
+
+
+11. PER-FRAME LOOP
+==================
+
+HTML source function:
+  animate(now)
+
+Pseudocode:
+
+function frame(now):
+    request next frame
+
+    if target_fps > 0:
+        frame_interval = 1000 / target_fps
+        if now - last_frame_time < frame_interval:
+            return
+
+    dt = min((now - last_frame_time) / 1000, 0.05)
+    last_frame_time = now
+
+    update animation mixer by dt * animation_speed
+    update camera controls
+
+    if auto_draw:
+        draw_progress = min(1.0, draw_progress + dt * draw_speed)
+
+    update_model_positions(model_data)
+    paths = build_projected_paths()
+
+    render 3D scene optionally as hidden/ghost/reference
+    render drawing canvas from paths
+
+Engine translation:
+  - The visible NPR output should not depend on the normal 3D shaded render being visible.
+  - The 3D render can be used as a hidden/depth/ID source.
+  - The final line-art pass should be explicit and independently configurable.
+
+
+12. PROPOSED AMIGO YAML MODEL
+=============================
+
+The target model should be configurable from YAML.
+Scene should not need hardcoded NPR behavior.
+
+Recommended authored shape:
+
+components:
+  - type: amigo.rendering.3d.Mesh3D
+    mesh: playground-npr/meshes/soldier
+    npr:
+      enabled: true
+      pipeline: projected_strokes
+
+      line_art:
+        show_silhouette: true
+        show_feature: true
+        show_boundary: true
+        feature_angle_degrees: 34.0
+        cull_outside_clip: true
+        min_segment_px: 1.0
+        mesh_stride: 1
+
+      visibility:
+        mode: face_id
+        depth_scale: 1.0
+        samples_per_edge_min: 7
+        samples_per_edge_max: 96
+        sample_spacing_px: 4.0
+        owned_face_neighborhood_px: 1
+        strictness: 1.0
+        bias: 0.0007
+
+      path:
+        endpoint_quant_px: 2.5
+        simplify_px: 0.6
+        sort: average_y
+        reveal:
+          enabled: true
+          auto_draw: true
+          speed: 0.28
+          progress: 0.0
+
+      stroke:
+        style: pencil
+        color: "#23201c"
+        width_px: 2.2
+        jitter_px: 1.6
+        pressure: 0.32
+        seed: 17
+
+      paper:
+        enabled: true
+        color: "#e8e2d5"
+        noise: subtle
+
+This YAML intentionally mirrors npr.html, but names the concepts as engine contracts.
+
+
+13. PROPOSED AMIGO ENGINE PIPELINE
+==================================
+
+Clean architecture:
+
+Mesh3D authored data
+  -> mesh plugin hydrates NprLineSettings
+  -> render-api stores NprLineRenderCommand
+  -> render-wgpu executes projected-strokes pipeline
+  -> diagnostics expose path count, segment count, hidden count
+
+Render backend stages:
+
+Stage A: prepare topology cache
+  Input:
+    loaded mesh asset
+  Output:
+    MeshLineTopology:
+      vertices
+      faces
+      edges
+      adjacency
+      materials
+  Cache lifetime:
+    until mesh asset changes
+
+Stage B: update dynamic geometry
+  Input:
+    topology cache
+    world transform
+    optional skinning/morph animation
+  Output:
+    world positions
+    face normals
+    centroids
+  Cache lifetime:
+    per frame if animated
+    per transform change if static
+
+Stage C: project
+  Input:
+    camera view-projection
+    viewport
+    world positions
+  Output:
+    projected NDC and screen positions
+
+Stage D: visibility
+  MVP:
+    CPU face-ID rasterizer matching npr.html.
+
+  Optimized:
+    WGPU offscreen face-ID/depth render target:
+      R32Uint face_id
+      R32Float depth
+      optional material_id/normal/tone later
+
+Stage E: classify edges
+  Input:
+    topology
+    projected vertices
+    face visibility
+    edge settings
+  Output:
+    typed fragments:
+      silhouette
+      feature
+      boundary
+
+Stage F: build paths
+  Input:
+    fragments
+  Output:
+    StrokePath:
+      type
+      points Vec<Vec2>
+
+Stage G: generate stroke mesh
+  Input:
+    StrokePath
+    stroke style
+    draw progress
+  Output:
+    screen-space quads or line instances:
+      position
+      width
+      alpha
+      color
+
+Stage H: draw
+  Input:
+    stroke mesh
+    paper background
+  Output:
+    final comic line drawing
+
+
+14. WHAT CAN BE TRANSLATED 1:1 FROM NPR.HTML
+============================================
+
+Good 1:1 translations:
+
+1. Mesh topology extraction:
+   - face list
+   - edge map by sorted vertex pair
+   - edge adjacent faces
+
+2. Projection math:
+   - world -> camera projection -> NDC -> viewport pixels
+
+3. Face-ID visibility concept:
+   - rasterize visible triangle id per pixel
+   - sample 3x3 around projected edge
+
+4. Edge classification:
+   - boundary = one face
+   - silhouette = front/back transition
+   - feature = normal angle threshold
+
+5. Fragmentation:
+   - sample along edge every about 4 px
+   - emit continuous visible runs
+
+6. Path building:
+   - quantized endpoint keys
+   - graph walk
+   - RDP simplification
+
+7. Stroke humanization:
+   - seeded perpendicular jitter
+   - pressure-based width modulation
+   - pencil multi-pass
+   - deterministic skip gaps
+
+8. Draw reveal:
+   - progress by cumulative path length
+
+
+15. WHAT SHOULD NOT BE COPIED 1:1
+=================================
+
+Do not copy these as final engine architecture:
+
+1. DOM/UI state as global mutable state.
+   Engine should hydrate settings from YAML and expose diagnostics separately.
+
+2. Canvas2D drawing as the final production renderer.
+   Use it as algorithm reference only.
+   In engine, generate stroke geometry and render via WGPU.
+
+3. CPU face-ID rasterizer as permanent production path.
+   It is useful for correctness and tests.
+   GPU face-ID pass is the scalable path.
+
+4. Per-frame recomputation for static meshes.
+   Cache topology and reuse paths when camera/model/settings are unchanged.
+
+5. Painterly/vector fill paths.
+   These are out of scope for the current line-art phase.
+
+
+16. MINIMUM ENGINE MVP
+======================
+
+To get the first faithful result:
+
+1. Add YAML settings for Mesh3D NPR projected_strokes.
+2. Build MeshLineTopology from GLB:
+   - positions
+   - faces
+   - edges
+   - edge faces
+3. Per frame:
+   - update world positions
+   - compute face normals/centroids
+   - project vertices
+   - classify boundary/silhouette/feature
+4. Add face-ID visibility:
+   - MVP CPU buffer first
+   - same 3x3 owned-face sampling as HTML
+5. Convert fragments to paths:
+   - endpoint quantization 2.5 px
+   - simplify 0.6 px
+6. Draw stroke paths:
+   - screen-space quads
+   - pencil multi-pass
+   - deterministic jitter
+   - pressure width noise
+7. Add diagnostics:
+   - paths
+   - fragments
+   - hidden fragments
+   - visible faces
+   - active stroke style
+
+
+17. ACCEPTANCE CRITERIA FOR LINE-ART PHASE
+==========================================
+
+The result is close to npr.html when:
+
+1. Rotating the model changes silhouette lines correctly.
+2. Internal feature lines appear only at hard/creased angles.
+3. Hidden back-side/wireframe lines do not leak through.
+4. Lines are connected into longer strokes, not only isolated triangle edges.
+5. Pencil mode looks like multiple imperfect hand passes.
+6. Stroke jitter is stable between frames unless seed/settings change.
+7. Draw progress reveals the image as if it is being drawn by hand.
+8. The target model can be swapped in YAML without changing renderer code.
+
+
+18. FAST IMPLEMENTATION ORDER
+=============================
+
+READ/MODIFY order for Amigo:
+
+1. READ current Mesh3D/NPR document model.
+2. MODIFY Mesh3D NPR schema to match the YAML block above.
+3. MODIFY render-api command to carry projected_strokes settings.
+4. MODIFY render-wgpu topology cache to store faces and edges.
+5. MODIFY render-wgpu frame path:
+   - project vertices
+   - classify edges
+   - build visible fragments
+   - build paths
+   - generate stroke quads
+6. ADD focused tests:
+   - cube has boundary/feature/silhouette edge classification
+   - feature angle filters edges
+   - hidden face-ID sample removes occluded fragment
+   - same seed produces same jitter
+   - draw progress returns partial path
+7. MODIFY playground-npr scene YAML to configure Soldier or selected model through npr block.
+
+End state:
+  The scene is no longer "normal 3D plus outline".
+  It becomes "projected 3D geometry converted into drawn 2D strokes".

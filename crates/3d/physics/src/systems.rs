@@ -309,6 +309,7 @@ fn submit_spawned_cube(
             albedo: ColorRgba::WHITE,
             source: Some(AssetKey::new(command.spawner.material.clone())),
             render_order: 0,
+            shading: Default::default(),
         }),
     });
     scene_command_queue.submit(SceneCommand::Plugin {

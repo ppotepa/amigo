@@ -9,8 +9,9 @@ use amigo_scene::{
 use std::sync::Arc;
 
 use crate::{
-    tick_camera_focus_transition_2d_system, tick_camera_follow_2d_system, tick_parallax_2d_system,
-    AssetCatalogControlProvider, Camera2dControlProvider, CameraFocusTarget2dService,
+    tick_camera_controller_3d_system, tick_camera_focus_transition_2d_system,
+    tick_camera_follow_2d_system, tick_parallax_2d_system, AssetCatalogControlProvider,
+    Camera2dControlProvider, CameraController3dSceneService, CameraFocusTarget2dService,
     CameraFollow2dSceneService, CameraSceneCommandHandler, CameraService, Parallax2dSceneService,
 };
 
@@ -25,6 +26,7 @@ impl RuntimePlugin for CameraPlugin {
         registry.register(CameraService::default())?;
         registry.register(CameraFocusTarget2dService::default())?;
         registry.register(CameraFollow2dSceneService::default())?;
+        registry.register(CameraController3dSceneService::default())?;
         registry.register(Parallax2dSceneService::default())?;
         amigo_scene::register_scene_reset_handler(
             registry,
@@ -59,11 +61,20 @@ impl RuntimePlugin for CameraPlugin {
                 Arc::new(CameraSceneCommandHandler),
             );
             plugin_scene_handlers.register(
+                amigo_scene::CAMERA_CONTROLLER_3D_PLUGIN_SCENE_COMMAND_TYPE,
+                Arc::new(CameraSceneCommandHandler),
+            );
+            plugin_scene_handlers.register(
                 amigo_scene::PARALLAX_2D_PLUGIN_SCENE_COMMAND_TYPE,
                 Arc::new(CameraSceneCommandHandler),
             );
         }
 
+        registry.required::<SystemRegistry>()?.register_fn(
+            SystemPhase::Update,
+            "camera_controller_3d",
+            tick_camera_controller_3d_system,
+        );
         registry.required::<SystemRegistry>()?.register_fn(
             SystemPhase::Update,
             "camera_follow_2d",

@@ -7,6 +7,76 @@ use amigo_layered_image_2d_plugin::{
 use amigo_light_2d_plugin::{GlobalLight2dSceneService, LightGroup2dSceneService};
 
 #[test]
+#[ignore = "requires a local WGPU adapter for offscreen readback"]
+fn playground_npr_preview_renders_fill_and_ink_edges() {
+    let frame = crate::capture_scene_preview(
+        crate::ScenePreviewOptions::new(mods_root(), "playground-npr", "comic-lines", 320, 240)
+            .with_active_mods(vec!["core".to_owned(), "playground-npr".to_owned()])
+            .with_warmup_frames(2),
+    )
+    .expect("npr scene preview should render offscreen");
+
+    let bright_pixels = count_bright_pixels(&frame.pixels_rgba8);
+    let ink_edge_pixels = count_dark_pixels_adjacent_to_bright(
+        &frame.pixels_rgba8,
+        frame.width as usize,
+        frame.height as usize,
+    );
+
+    assert!(
+        bright_pixels > 200,
+        "NPR preview should contain visible model fill pixels, got {bright_pixels}"
+    );
+    assert!(
+        ink_edge_pixels > 20,
+        "NPR preview should contain dark ink pixels adjacent to model fill, got {ink_edge_pixels}"
+    );
+}
+
+fn count_bright_pixels(pixels: &[u8]) -> usize {
+    pixels
+        .chunks_exact(4)
+        .filter(|rgba| pixel_luma(rgba) > 150)
+        .count()
+}
+
+fn count_dark_pixels_adjacent_to_bright(pixels: &[u8], width: usize, height: usize) -> usize {
+    let mut count = 0;
+    for y in 1..height.saturating_sub(1) {
+        for x in 1..width.saturating_sub(1) {
+            let index = (y * width + x) * 4;
+            let pixel = &pixels[index..index + 4];
+            if pixel_luma(pixel) > 35 {
+                continue;
+            }
+            let has_bright_neighbor = [
+                (x - 1, y),
+                (x + 1, y),
+                (x, y - 1),
+                (x, y + 1),
+                (x - 1, y - 1),
+                (x + 1, y - 1),
+                (x - 1, y + 1),
+                (x + 1, y + 1),
+            ]
+            .into_iter()
+            .any(|(nx, ny)| {
+                let neighbor = (ny * width + nx) * 4;
+                pixel_luma(&pixels[neighbor..neighbor + 4]) > 150
+            });
+            if has_bright_neighbor {
+                count += 1;
+            }
+        }
+    }
+    count
+}
+
+fn pixel_luma(rgba: &[u8]) -> u8 {
+    ((rgba[0] as u16 + rgba[1] as u16 + rgba[2] as u16) / 3) as u8
+}
+
+#[test]
 fn handle_script_command_asset_reload_requests_load_and_event() {
     let scene_command_queue = SceneCommandQueue::default();
     let script_event_queue = ScriptEventQueue::default();

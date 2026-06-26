@@ -13,24 +13,24 @@ pub(super) fn update_camera_2d_capture(
 
     let (quality_settings, camera_motion, camera_shutter_active) =
         if let Some(camera) = camera_service.main_camera2d() {
-        let settings = camera_service.quality_profile_2d(&camera.id).settings();
-        let camera_motion = camera_service.camera_depth_motion_2d(&camera.id);
-        let camera_shutter_active = camera.render_contributions.enabled_or(
-            amigo_render_api::render_contribution_roles::CAMERA_SHUTTER,
-            false,
-        ) && camera.shutter.enabled
-            && camera.shutter.opacity > 0.0
-            && camera.shutter.exposure_seconds() > 0.0;
-        packet.set_active_camera_2d_entity(Some(camera.entity_name));
-        packet.set_camera_debug_view_2d(camera_service.debug_view_2d(&camera.id));
-        (settings, camera_motion, camera_shutter_active)
-    } else {
-        (
-            amigo_camera_core_plugin::CameraQualityProfile2d::default().settings(),
-            amigo_camera_core_plugin::api::CameraDepthMotion2d::default(),
-            false,
-        )
-    };
+            let settings = camera_service.quality_profile_2d(&camera.id).settings();
+            let camera_motion = camera_service.camera_depth_motion_2d(&camera.id);
+            let camera_shutter_active = camera.render_contributions.enabled_or(
+                amigo_render_api::render_contribution_roles::CAMERA_SHUTTER,
+                false,
+            ) && camera.shutter.enabled
+                && camera.shutter.opacity > 0.0
+                && camera.shutter.exposure_seconds() > 0.0;
+            packet.set_active_camera_2d_entity(Some(camera.entity_name));
+            packet.set_camera_debug_view_2d(camera_service.debug_view_2d(&camera.id));
+            (settings, camera_motion, camera_shutter_active)
+        } else {
+            (
+                amigo_camera_core_plugin::CameraQualityProfile2d::default().settings(),
+                amigo_camera_core_plugin::api::CameraDepthMotion2d::default(),
+                false,
+            )
+        };
 
     let assets = runtime.resolve::<amigo_assets::AssetCatalog>();
     let camera_stacks =

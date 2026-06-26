@@ -16,7 +16,10 @@ use amigo_render_api::{
     post_fx_focus_blur, post_fx_rain_glass, post_fx_scan_output, post_fx_shutter_blur,
     render_contribution_roles as roles,
 };
-use amigo_scene::{CameraFollow2dSceneCommand, Parallax2dSceneCommand};
+use amigo_scene::{
+    CameraController3dModeSceneCommand, CameraController3dSceneCommand, CameraFollow2dSceneCommand,
+    Parallax2dSceneCommand,
+};
 
 use self::focus_transition::{
     apply_focus_transition_target, focus_transition_start_for, lerp_focus_transition_target,
@@ -54,6 +57,73 @@ pub struct CameraSway2d {
     pub camera_z_m: f32,
     pub focus_residual_m: f32,
     pub dolly_signal: f32,
+}
+
+#[derive(Debug, Default)]
+pub struct CameraController3dSceneService {
+    controllers: Mutex<BTreeMap<String, CameraController3dRuntimeState>>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct CameraController3dRuntimeState {
+    pub command: CameraController3dSceneCommand,
+    pub mode: CameraController3dModeSceneCommand,
+    pub yaw: f32,
+    pub pitch: f32,
+    pub distance: f32,
+    pub freelook_speed_multiplier: f32,
+    pub last_cursor: Option<(f32, f32)>,
+}
+
+impl CameraController3dSceneService {
+    pub fn queue(&self, command: CameraController3dSceneCommand) {
+        let min_distance = command.orbit_min_distance.max(0.01);
+        let max_distance = command.orbit_max_distance.max(min_distance);
+        let state = CameraController3dRuntimeState {
+            mode: command.mode,
+            yaw: command.orbit_yaw,
+            pitch: command.orbit_pitch,
+            distance: command.orbit_distance.clamp(min_distance, max_distance),
+            freelook_speed_multiplier: 1.0,
+            command,
+            last_cursor: None,
+        };
+        self.controllers
+            .lock()
+            .expect("camera controller 3d service mutex should not be poisoned")
+            .insert(state.command.entity_name.clone(), state);
+    }
+
+    pub fn clear(&self) {
+        self.controllers
+            .lock()
+            .expect("camera controller 3d service mutex should not be poisoned")
+            .clear();
+    }
+
+    pub fn controllers(&self) -> Vec<CameraController3dRuntimeState> {
+        self.controllers
+            .lock()
+            .expect("camera controller 3d service mutex should not be poisoned")
+            .values()
+            .cloned()
+            .collect()
+    }
+
+    pub fn update_controller<F>(&self, entity_name: &str, update: F) -> bool
+    where
+        F: FnOnce(&mut CameraController3dRuntimeState),
+    {
+        let mut controllers = self
+            .controllers
+            .lock()
+            .expect("camera controller 3d service mutex should not be poisoned");
+        let Some(controller) = controllers.get_mut(entity_name) else {
+            return false;
+        };
+        update(controller);
+        true
+    }
 }
 
 impl Default for CameraSway2d {

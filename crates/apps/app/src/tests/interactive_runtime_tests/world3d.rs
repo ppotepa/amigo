@@ -53,6 +53,307 @@ fn interactive_host_handler_applies_arrow_input_to_playground_3d_cube() {
 }
 
 #[test]
+fn interactive_host_handler_selects_playground_npr_model_with_digit_keys() {
+    let (runtime, summary) = bootstrap_with_options(
+        BootstrapOptions::new(mods_root())
+            .with_active_mods(vec!["core".to_owned(), "playground-npr".to_owned()])
+            .with_startup_mod("playground-npr")
+            .with_startup_scene("comic-lines")
+            .with_dev_mode(true),
+    )
+    .expect("npr comic lines playground bootstrap should succeed");
+
+    let scene = runtime
+        .resolve::<SceneService>()
+        .expect("scene service should exist");
+    assert!(scene.is_visible("playground-npr-model-1-soldier"));
+    assert!(!scene.is_visible("playground-npr-model-6-cesium-man"));
+
+    let mut handler = InteractiveRuntimeHostHandler::new(
+        amigo_session::RuntimeSession::from_runtime(
+            runtime,
+            amigo_session::RuntimeSessionProfile::Game,
+        ),
+        summary,
+    )
+    .expect("interactive host handler should initialize");
+
+    handler
+        .on_input_event(InputEvent::Key {
+            key: KeyCode::Digit6,
+            pressed: true,
+        })
+        .expect("digit input event should be accepted");
+    handler
+        .session
+        .run_phase(amigo_runtime::SystemPhase::Update)
+        .expect("npr selection update should run");
+
+    let scene = handler
+        .session
+        .runtime()
+        .resolve::<SceneService>()
+        .expect("scene service should exist after update");
+    assert!(!scene.is_visible("playground-npr-model-1-soldier"));
+    assert!(scene.is_visible("playground-npr-model-6-cesium-man"));
+}
+
+#[test]
+fn interactive_host_handler_toggles_playground_npr_model_autorotate_with_r() {
+    let (runtime, summary) = bootstrap_with_options(
+        BootstrapOptions::new(mods_root())
+            .with_active_mods(vec!["core".to_owned(), "playground-npr".to_owned()])
+            .with_startup_mod("playground-npr")
+            .with_startup_scene("comic-lines")
+            .with_dev_mode(true),
+    )
+    .expect("npr comic lines playground bootstrap should succeed");
+
+    let initial = runtime
+        .resolve::<SceneService>()
+        .expect("scene service should exist")
+        .transform_of("playground-npr-model-1-soldier")
+        .expect("soldier should exist");
+
+    let mut handler = InteractiveRuntimeHostHandler::new(
+        amigo_session::RuntimeSession::from_runtime(
+            runtime,
+            amigo_session::RuntimeSessionProfile::Game,
+        ),
+        summary,
+    )
+    .expect("interactive host handler should initialize");
+
+    handler
+        .session
+        .runtime()
+        .resolve::<amigo_session::RuntimeFrameClockService>()
+        .expect("frame clock should exist")
+        .force_single_simulation_tick(0.25);
+    handler
+        .session
+        .run_phase(amigo_runtime::SystemPhase::Update)
+        .expect("npr update without autorotate should run");
+    let without_autorotate = handler
+        .session
+        .runtime()
+        .resolve::<SceneService>()
+        .expect("scene service should exist after update")
+        .transform_of("playground-npr-model-1-soldier")
+        .expect("soldier should exist after update");
+    assert_eq!(
+        without_autorotate.rotation_euler, initial.rotation_euler,
+        "model should not rotate before R enables autorotate"
+    );
+
+    handler
+        .on_input_event(InputEvent::Key {
+            key: KeyCode::R,
+            pressed: true,
+        })
+        .expect("autorotate toggle input should be accepted");
+    handler
+        .session
+        .runtime()
+        .resolve::<amigo_session::RuntimeFrameClockService>()
+        .expect("frame clock should exist")
+        .force_single_simulation_tick(0.25);
+    handler
+        .session
+        .run_phase(amigo_runtime::SystemPhase::Update)
+        .expect("npr autorotate update should run");
+
+    let rotated = handler
+        .session
+        .runtime()
+        .resolve::<SceneService>()
+        .expect("scene service should exist after autorotate")
+        .transform_of("playground-npr-model-1-soldier")
+        .expect("soldier should exist after autorotate");
+    assert!(
+        rotated.rotation_euler.y > without_autorotate.rotation_euler.y,
+        "R should enable automatic model rotation"
+    );
+}
+
+#[test]
+fn interactive_host_handler_toggles_playground_npr_camera_freelook_with_f() {
+    let (runtime, summary) = bootstrap_with_options(
+        BootstrapOptions::new(mods_root())
+            .with_active_mods(vec!["core".to_owned(), "playground-npr".to_owned()])
+            .with_startup_mod("playground-npr")
+            .with_startup_scene("comic-lines")
+            .with_dev_mode(true),
+    )
+    .expect("npr comic lines playground bootstrap should succeed");
+
+    let initial_camera = runtime
+        .resolve::<SceneService>()
+        .expect("scene service should exist")
+        .transform_of("playground-npr-camera")
+        .expect("npr camera should exist");
+
+    let mut handler = InteractiveRuntimeHostHandler::new(
+        amigo_session::RuntimeSession::from_runtime(
+            runtime,
+            amigo_session::RuntimeSessionProfile::Game,
+        ),
+        summary,
+    )
+    .expect("interactive host handler should initialize");
+
+    handler
+        .on_input_event(InputEvent::MouseButton {
+            button: amigo_input_api::MouseButton::Left,
+            pressed: true,
+        })
+        .expect("orbit mouse press should be accepted");
+    handler
+        .on_input_event(InputEvent::CursorMoved { x: 120.0, y: 100.0 })
+        .expect("orbit cursor start should be accepted");
+    handler
+        .session
+        .run_phase(amigo_runtime::SystemPhase::Update)
+        .expect("npr orbit camera should record initial cursor");
+    handler
+        .on_input_event(InputEvent::CursorMoved { x: 184.0, y: 100.0 })
+        .expect("orbit cursor drag should be accepted");
+    handler
+        .session
+        .run_phase(amigo_runtime::SystemPhase::Update)
+        .expect("npr orbit camera update should run");
+    handler
+        .on_input_event(InputEvent::MouseButton {
+            button: amigo_input_api::MouseButton::Left,
+            pressed: false,
+        })
+        .expect("orbit mouse release should be accepted");
+
+    let orbit_camera = handler
+        .session
+        .runtime()
+        .resolve::<SceneService>()
+        .expect("scene service should exist after orbit update")
+        .transform_of("playground-npr-camera")
+        .expect("npr camera should exist after orbit update");
+    assert!(
+        orbit_camera.rotation_euler.y < initial_camera.rotation_euler.y,
+        "left mouse drag should orbit the NPR camera around the active model"
+    );
+
+    handler
+        .on_input_event(InputEvent::Key {
+            key: KeyCode::F,
+            pressed: true,
+        })
+        .expect("camera toggle input event should be accepted");
+    handler
+        .session
+        .run_phase(amigo_runtime::SystemPhase::Update)
+        .expect("npr camera update should run");
+
+    let controller_service = handler
+        .session
+        .runtime()
+        .resolve::<amigo_camera_core_plugin::CameraController3dSceneService>()
+        .expect("camera controller service should exist after update");
+    assert_eq!(
+        controller_service.controllers()[0].mode,
+        amigo_scene::CameraController3dModeSceneCommand::Freelook
+    );
+    handler
+        .session
+        .runtime()
+        .resolve::<amigo_input_api::InputState>()
+        .expect("input state should exist after camera toggle")
+        .clear_frame_transients();
+    handler
+        .on_input_event(InputEvent::MouseWheel { delta_y: 120.0 })
+        .expect("freelook wheel input should be accepted");
+    handler
+        .session
+        .run_phase(amigo_runtime::SystemPhase::Update)
+        .expect("npr freelook wheel update should run");
+    let speed_multiplier = handler
+        .session
+        .runtime()
+        .resolve::<amigo_camera_core_plugin::CameraController3dSceneService>()
+        .expect("camera controller service should exist after wheel")
+        .controllers()[0]
+        .freelook_speed_multiplier;
+    assert!(
+        speed_multiplier > 1.0 && speed_multiplier <= 1.2,
+        "large wheel deltas should adjust freelook speed without a huge jump"
+    );
+    handler
+        .session
+        .runtime()
+        .resolve::<amigo_input_api::InputState>()
+        .expect("input state should exist after wheel")
+        .clear_frame_transients();
+
+    let before_fly = handler
+        .session
+        .runtime()
+        .resolve::<SceneService>()
+        .expect("scene service should exist before freelook fly")
+        .transform_of("playground-npr-camera")
+        .expect("npr camera should exist before freelook fly");
+    handler
+        .on_input_event(InputEvent::Key {
+            key: KeyCode::F,
+            pressed: false,
+        })
+        .expect("camera toggle release should be accepted");
+    handler
+        .on_input_event(InputEvent::Key {
+            key: KeyCode::W,
+            pressed: true,
+        })
+        .expect("freelook forward input should be accepted");
+    assert!(
+        handler
+            .session
+            .runtime()
+            .resolve::<amigo_input_api::InputState>()
+            .expect("input state should exist before freelook fly")
+            .is_down(KeyCode::W),
+        "W should be down before freelook update"
+    );
+    handler
+        .session
+        .runtime()
+        .resolve::<amigo_session::RuntimeFrameClockService>()
+        .expect("frame clock should exist")
+        .force_single_simulation_tick(0.25);
+    handler
+        .session
+        .run_phase(amigo_runtime::SystemPhase::Update)
+        .expect("npr freelook camera update should run");
+    let state = handler
+        .session
+        .runtime()
+        .resolve::<amigo_state::SceneStateService>()
+        .expect("scene state service should exist after freelook fly");
+    assert_eq!(
+        state.get_string("npr_last_active_input_map").as_deref(),
+        Some("playground-npr")
+    );
+
+    let after_fly = handler
+        .session
+        .runtime()
+        .resolve::<SceneService>()
+        .expect("scene service should exist after freelook fly")
+        .transform_of("playground-npr-camera")
+        .expect("npr camera should exist after freelook fly");
+    assert_ne!(
+        after_fly.translation, before_fly.translation,
+        "W should move the NPR camera in freelook mode"
+    );
+}
+
+#[test]
 fn interactive_host_handler_spawns_and_advances_physics_cubes_scene() {
     let (runtime, summary) = bootstrap_with_options(
         BootstrapOptions::new(mods_root())

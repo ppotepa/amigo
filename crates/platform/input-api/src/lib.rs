@@ -24,6 +24,8 @@ pub enum KeyCode {
     S,
     D,
     E,
+    F,
+    Q,
     B,
     C,
     R,

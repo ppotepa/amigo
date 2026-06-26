@@ -3,145 +3,285 @@ scene:
   id: comic-lines
   label: Comic Lines Workbench
   description: >
-    NPR workbench based on npr.html. Current runtime displays prepared 3D
-    placeholders while source GLB models are staged for the future line cache.
+    NPR workbench based on npr.html. Press 1-6 to switch staged GLB models
+    and inspect mesh-cache comic line rendering.
 
 entities:
+  - id: controls
+    name: playground-npr-controls
+    components:
+      - type: InputActionMap
+        id: playground-npr
+        active: true
+        actions:
+          npr.select_1:
+            kind: button
+            pressed: ["1"]
+          npr.select_2:
+            kind: button
+            pressed: ["2"]
+          npr.select_3:
+            kind: button
+            pressed: ["3"]
+          npr.select_4:
+            kind: button
+            pressed: ["4"]
+          npr.select_5:
+            kind: button
+            pressed: ["5"]
+          npr.select_6:
+            kind: button
+            pressed: ["6"]
+          npr.camera_toggle:
+            kind: button
+            pressed: ["F"]
+          npr.model_autorotate_toggle:
+            kind: button
+            pressed: ["R"]
+          npr.fly_forward:
+            kind: axis
+            positive: ["W"]
+            negative: ["S"]
+          npr.fly_strafe:
+            kind: axis
+            positive: ["D"]
+            negative: ["A"]
+          npr.fly_lift:
+            kind: axis
+            positive: ["Space", "E"]
+            negative: ["Q"]
+      - type: CameraController3D
+        camera: playground-npr-camera
+        mode: orbit
+        switch_action: npr.camera_toggle
+        orbit_distance: 6.5
+        orbit_min_distance: 1.2
+        orbit_max_distance: 18.0
+        orbit_yaw: 0.0
+        orbit_pitch: 0.08
+        orbit_sensitivity: 0.006
+        orbit_zoom_speed: 0.035
+        freelook_speed: 3.8
+        freelook_sensitivity: 0.004
+        move_forward_action: npr.fly_forward
+        move_strafe_action: npr.fly_strafe
+        move_lift_action: npr.fly_lift
+
   - id: camera
     name: playground-npr-camera
     transform3:
-      translation:
-        x: 0.0
-        y: 0.0
-        z: 7.0
-      rotation_euler:
-        x: 0.0
-        y: 0.0
-        z: 0.0
-      scale:
-        x: 1.0
-        y: 1.0
-        z: 1.0
+      translation: { x: 0.0, y: 0.0, z: 6.5 }
+      rotation_euler: { x: 0.0, y: 0.0, z: 0.0 }
+      scale: { x: 1.0, y: 1.0, z: 1.0 }
     components:
       - type: Camera3D
-        fov_y_degrees: 42.0
+        fov_y_degrees: 38.0
         near_clip: 0.1
         far_clip: 100.0
+        background_color: "#FFFFFFFF"
 
   - id: key-light
     name: playground-npr-key-light
     components:
       - type: Light3D
         kind: directional
-        direction:
-          x: -0.45
-          y: -0.78
-          z: -0.36
-        color: "#FFF6E8FF"
-        intensity: 0.92
-        ambient: 0.18
+        direction: { x: -0.35, y: -0.82, z: -0.42 }
+        color: "#FFF2D6FF"
+        intensity: 0.86
+        ambient: 0.28
 
-  - id: box-source
-    name: playground-npr-box-source
+  - id: model-1-soldier
+    name: playground-npr-model-1-soldier
+    visible: true
     transform3:
-      translation:
-        x: -1.6
-        y: 0.0
-        z: 0.0
-      rotation_euler:
-        x: 0.0
-        y: 0.35
-        z: 0.0
-      scale:
-        x: 1.25
-        y: 1.25
-        z: 1.25
+      translation: { x: 0.0, y: -0.05, z: 0.0 }
+      rotation_euler: { x: -1.5707963, y: 0.35, z: 0.0 }
+      scale: { x: 1.55, y: 1.55, z: 1.55 }
+    components:
+      - type: Mesh3D
+        mesh: playground-npr/meshes/soldier
+        npr:
+          enabled: true
+          feature_angle_degrees: 34.0
+          min_screen_length_px: 1.6
+          ink_color: "#12100DFF"
+          width_px: 2.1
+          width_jitter_px: 0.6
+          path_jitter_px: 0.72
+          endpoint_quant_px: 2.5
+          path_simplify_px: 0.6
+          taper: 0.72
+          overshoot_px: 1.7
+          dropout: 0.025
+          passes: 2
+          seed: 1101
+      - type: Material3D
+        label: soldier-paper-fill
+        albedo: "#FFFFFFFF"
+        render_order: 0
+        shading: unlit
+
+  - id: model-2-box-textured
+    name: playground-npr-model-2-box-textured
+    visible: false
+    transform3:
+      translation: { x: 0.0, y: 0.0, z: 0.0 }
+      rotation_euler: { x: 0.0, y: 0.35, z: 0.0 }
+      scale: { x: 1.7, y: 1.7, z: 1.7 }
     components:
       - type: Mesh3D
         mesh: playground-npr/meshes/box-source
-        npr: true
+        npr:
+          enabled: true
+          feature_angle_degrees: 30.0
+          min_screen_length_px: 2.0
+          ink_color: "#14110DFF"
+          width_px: 2.8
+          width_jitter_px: 0.55
+          path_jitter_px: 0.55
+          endpoint_quant_px: 2.5
+          path_simplify_px: 0.6
+          taper: 0.58
+          overshoot_px: 1.8
+          dropout: 0.01
+          passes: 2
+          seed: 1202
       - type: Material3D
-        label: box-ink-test
-        source: playground-npr/materials/warm-paper-fill
-        albedo: "#F7E3A2FF"
+        label: textured-box-paper-fill
+        albedo: "#FFFFFFFF"
         render_order: 0
+        shading: unlit
 
-  - id: fox-source
-    name: playground-npr-fox-source
+  - id: model-3-box-interleaved
+    name: playground-npr-model-3-box-interleaved
+    visible: false
     transform3:
-      translation:
-        x: 1.6
-        y: 0.0
-        z: 0.0
-      rotation_euler:
-        x: 0.0
-        y: -0.45
-        z: 0.0
-      scale:
-        x: 1.25
-        y: 1.25
-        z: 1.25
+      translation: { x: 0.0, y: 0.0, z: 0.0 }
+      rotation_euler: { x: 0.0, y: -0.25, z: 0.0 }
+      scale: { x: 1.7, y: 1.7, z: 1.7 }
+    components:
+      - type: Mesh3D
+        mesh: playground-npr/meshes/box-interleaved
+        npr:
+          enabled: true
+          feature_angle_degrees: 28.0
+          min_screen_length_px: 2.0
+          ink_color: "#101010FF"
+          width_px: 2.7
+          width_jitter_px: 0.45
+          path_jitter_px: 0.5
+          endpoint_quant_px: 2.5
+          path_simplify_px: 0.6
+          taper: 0.55
+          overshoot_px: 1.6
+          dropout: 0.0
+          passes: 2
+          seed: 1303
+      - type: Material3D
+        label: interleaved-box-paper-fill
+        albedo: "#FFFFFFFF"
+        render_order: 0
+        shading: unlit
+
+  - id: model-4-box-animated
+    name: playground-npr-model-4-box-animated
+    visible: false
+    transform3:
+      translation: { x: 0.0, y: 0.0, z: 0.0 }
+      rotation_euler: { x: 0.0, y: 0.15, z: 0.0 }
+      scale: { x: 1.7, y: 1.7, z: 1.7 }
+    components:
+      - type: Mesh3D
+        mesh: playground-npr/meshes/box-animated
+        npr:
+          enabled: true
+          feature_angle_degrees: 28.0
+          min_screen_length_px: 2.0
+          ink_color: "#18120CFF"
+          width_px: 2.9
+          width_jitter_px: 0.65
+          path_jitter_px: 0.65
+          endpoint_quant_px: 2.5
+          path_simplify_px: 0.6
+          taper: 0.60
+          overshoot_px: 2.0
+          dropout: 0.015
+          passes: 2
+          seed: 1404
+      - type: Material3D
+        label: animated-box-paper-fill
+        albedo: "#FFFFFFFF"
+        render_order: 0
+        shading: unlit
+
+  - id: model-5-fox
+    name: playground-npr-model-5-fox
+    visible: false
+    transform3:
+      translation: { x: 0.0, y: -0.2, z: 0.0 }
+      rotation_euler: { x: -1.5707963, y: -0.35, z: 0.0 }
+      scale: { x: 1.45, y: 1.45, z: 1.45 }
     components:
       - type: Mesh3D
         mesh: playground-npr/meshes/fox-source
         npr:
           enabled: true
-          feature_angle_degrees: 30.0
-          min_screen_length_px: 2.0
+          feature_angle_degrees: 34.0
+          min_screen_length_px: 2.2
           ink_color: "#12100DFF"
-          width_px: 2.6
-          width_jitter_px: 0.6
+          width_px: 2.4
+          width_jitter_px: 0.7
           path_jitter_px: 0.8
+          endpoint_quant_px: 2.5
+          path_simplify_px: 0.6
           taper: 0.68
-          overshoot_px: 2.0
+          overshoot_px: 2.1
           dropout: 0.025
           passes: 2
-          seed: 2602
+          seed: 1505
       - type: Material3D
-        label: fox-ink-test
-        source: playground-npr/materials/cool-paper-fill
-        albedo: "#CFE8FFFF"
-        render_order: 1
+        label: fox-paper-fill
+        albedo: "#FFFFFFFF"
+        render_order: 0
+        shading: unlit
 
-  - id: comic-probe
-    name: playground-npr-comic-probe
+  - id: model-6-cesium-man
+    name: playground-npr-model-6-cesium-man
+    visible: false
     transform3:
-      translation:
-        x: 0.0
-        y: -1.55
-        z: 0.0
-      rotation_euler:
-        x: 0.0
-        y: 0.0
-        z: 0.0
-      scale:
-        x: 0.65
-        y: 0.65
-        z: 0.65
+      translation: { x: 0.0, y: -0.05, z: 0.0 }
+      rotation_euler: { x: -1.5707963, y: 0.4, z: 0.0 }
+      scale: { x: 1.55, y: 1.55, z: 1.55 }
     components:
       - type: Mesh3D
-        mesh: playground-npr/meshes/comic-probe
+        mesh: playground-npr/meshes/cesium-man
+        npr:
+          enabled: true
+          feature_angle_degrees: 36.0
+          min_screen_length_px: 1.8
+          ink_color: "#0F0F0FFF"
+          width_px: 1.9
+          width_jitter_px: 0.55
+          path_jitter_px: 0.65
+          endpoint_quant_px: 2.5
+          path_simplify_px: 0.6
+          taper: 0.72
+          overshoot_px: 1.5
+          dropout: 0.04
+          passes: 2
+          seed: 1606
       - type: Material3D
-        label: ink-silhouette-probe
-        source: playground-npr/materials/ink-fill
-        albedo: "#111111FF"
-        render_order: 2
+        label: cesium-man-paper-fill
+        albedo: "#FFFFFFFF"
+        render_order: 0
+        shading: unlit
 
   - id: title
     name: playground-npr-title
     transform3:
-      translation:
-        x: 0.0
-        y: 2.25
-        z: 0.0
-      rotation_euler:
-        x: 0.0
-        y: 0.0
-        z: 0.0
-      scale:
-        x: 1.0
-        y: 1.0
-        z: 1.0
+      translation: { x: 0.0, y: 2.25, z: 0.0 }
+      rotation_euler: { x: 0.0, y: 0.0, z: 0.0 }
+      scale: { x: 1.0, y: 1.0, z: 1.0 }
     components:
       - type: Text3D
         content: NPR COMIC LINES
@@ -151,20 +291,11 @@ entities:
   - id: subtitle
     name: playground-npr-subtitle
     transform3:
-      translation:
-        x: 0.0
-        y: -2.35
-        z: 0.0
-      rotation_euler:
-        x: 0.0
-        y: 0.0
-        z: 0.0
-      scale:
-        x: 1.0
-        y: 1.0
-        z: 1.0
+      translation: { x: 0.0, y: -2.35, z: 0.0 }
+      rotation_euler: { x: 0.0, y: 0.0, z: 0.0 }
+      scale: { x: 1.0, y: 1.0, z: 1.0 }
     components:
       - type: Text3D
-        content: MESH CACHE -> VISIBLE EDGES -> HUMANIZED STROKES
+        content: PRESS 1-6 TO SWITCH MODELS
         font: playground-npr/fonts/debug-3d
         size: 0.20

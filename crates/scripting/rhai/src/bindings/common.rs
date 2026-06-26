@@ -19,6 +19,14 @@ pub fn string_to_bool(value: &str) -> bool {
     )
 }
 
+pub fn sin(value: rhai::FLOAT) -> rhai::FLOAT {
+    value.sin()
+}
+
+pub fn cos(value: rhai::FLOAT) -> rhai::FLOAT {
+    value.cos()
+}
+
 pub fn key_code_name(key: KeyCode) -> String {
     match key {
         KeyCode::Unknown => "Unknown".to_owned(),
@@ -39,6 +47,8 @@ pub fn key_code_name(key: KeyCode) -> String {
         KeyCode::S => "S".to_owned(),
         KeyCode::D => "D".to_owned(),
         KeyCode::E => "E".to_owned(),
+        KeyCode::F => "F".to_owned(),
+        KeyCode::Q => "Q".to_owned(),
         KeyCode::B => "B".to_owned(),
         KeyCode::C => "C".to_owned(),
         KeyCode::R => "R".to_owned(),
@@ -91,6 +101,8 @@ pub fn parse_key_code(value: &str) -> KeyCode {
         "S" => KeyCode::S,
         "D" => KeyCode::D,
         "E" | "KeyE" => KeyCode::E,
+        "F" | "KeyF" => KeyCode::F,
+        "Q" | "KeyQ" => KeyCode::Q,
         "B" | "KeyB" => KeyCode::B,
         "C" | "KeyC" => KeyCode::C,
         "R" => KeyCode::R,
@@ -121,5 +133,7 @@ pub(crate) fn register_api(engine: &mut rhai::Engine) {
     engine
         .register_fn("to_float", string_to_float)
         .register_fn("to_int", string_to_int)
-        .register_fn("to_bool", string_to_bool);
+        .register_fn("to_bool", string_to_bool)
+        .register_fn("sin", sin)
+        .register_fn("cos", cos);
 }

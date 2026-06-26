@@ -62,6 +62,8 @@ pub struct NprLineSettings3d {
     pub width_px: f32,
     pub width_jitter_px: f32,
     pub path_jitter_px: f32,
+    pub endpoint_quant_px: f32,
+    pub path_simplify_px: f32,
     pub taper: f32,
     pub overshoot_px: f32,
     pub dropout: f32,
@@ -81,6 +83,8 @@ impl Default for NprLineSettings3d {
             width_px: 2.4,
             width_jitter_px: 0.55,
             path_jitter_px: 0.75,
+            endpoint_quant_px: 2.5,
+            path_simplify_px: 0.6,
             taper: 0.65,
             overshoot_px: 1.8,
             dropout: 0.035,
@@ -96,6 +100,19 @@ pub struct Material3d {
     pub albedo: ColorRgba,
     pub source: Option<AssetKey>,
     pub render_order: i32,
+    pub shading: Material3dShadingMode,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Material3dShadingMode {
+    Lit,
+    Unlit,
+}
+
+impl Default for Material3dShadingMode {
+    fn default() -> Self {
+        Self::Lit
+    }
 }
 
 #[derive(Debug, Clone)]

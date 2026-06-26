@@ -85,19 +85,19 @@ fn playground_npr_comic_lines_scene_bootstraps() {
         summary
             .mesh_entities_3d
             .iter()
-            .any(|entity| entity == "playground-npr-box-source")
+            .any(|entity| entity == "playground-npr-model-1-soldier")
     );
     assert!(
         summary
-            .mesh_entities_3d
+            .scene_entities
             .iter()
-            .any(|entity| entity == "playground-npr-fox-source")
+            .any(|entity| entity == "playground-npr-model-6-cesium-man")
     );
     assert!(
         summary
             .material_entities_3d
             .iter()
-            .any(|entity| entity == "playground-npr-box-source")
+            .any(|entity| entity == "playground-npr-model-1-soldier")
     );
     assert!(
         summary
@@ -109,19 +109,13 @@ fn playground_npr_comic_lines_scene_bootstraps() {
         summary
             .prepared_assets
             .iter()
-            .any(|asset| asset == "playground-npr/meshes/box-source (mesh-3d)")
+            .any(|asset| asset == "playground-npr/meshes/soldier (mesh-3d)")
     );
     assert!(
         summary
             .prepared_assets
             .iter()
-            .any(|asset| asset == "playground-npr/meshes/fox-source (mesh-3d)")
-    );
-    assert!(
-        summary
-            .prepared_assets
-            .iter()
-            .any(|asset| asset == "playground-npr/materials/warm-paper-fill (material-3d)")
+            .any(|asset| asset == "playground-npr/meshes/cesium-man (mesh-3d)")
     );
     assert!(
         summary

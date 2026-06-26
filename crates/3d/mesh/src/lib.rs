@@ -180,8 +180,8 @@ mod tests {
         let service = MeshSceneService::default();
         let mut command = Mesh3dSceneCommand::new(
             "playground-npr",
-            "playground-npr-box-source",
-            AssetKey::new("playground-npr/meshes/box-source"),
+            "playground-npr-model-1-soldier",
+            AssetKey::new("playground-npr/meshes/soldier"),
         );
         command.npr = Some(NprLineSettings3d {
             feature_angle_degrees: 30.0,

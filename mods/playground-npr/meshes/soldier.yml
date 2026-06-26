@@ -1,0 +1,14 @@
+kind: mesh-3d
+schema_version: 1
+id: soldier
+label: Three.js Soldier
+format: glb
+source:
+  file: ../source-models/threejs/Soldier.glb
+  provider: Three.js Examples
+  url: https://threejs.org/examples/models/gltf/Soldier.glb
+npr:
+  cache_profile: comic-lines-character-v1
+  intended_role: primary target character for projected-stroke NPR
+  line_types: [boundary, silhouette, feature]
+  feature_angle_degrees: 34.0

@@ -204,26 +204,44 @@ pub(super) fn execute_world_to_offscreen(
     let light_settings = ctx.scene_view.light_3d_settings();
     let material_lookup = material_lookup_from_commands(ctx.materials);
     let mut projected_triangles = Vec::new();
+    let mut npr_line_vertices = Vec::new();
 
     if selection.layer_filter.allows_layerless() && !ctx.meshes.is_empty() {
         for command in ctx.meshes {
             let transform =
                 resolve_transform3(ctx.scene_view, &command.entity_name, command.mesh.transform);
+            let geometry = renderer.mesh_geometry_3d(ctx.assets, &command.mesh.mesh_asset);
             let material = material_lookup.get(&command.entity_name).copied();
             let color = material
                 .map(|material| material.albedo)
                 .unwrap_or_else(|| mesh_color(command.mesh.mesh_asset.as_str()));
             let render_order = material.map(|material| material.render_order).unwrap_or(0);
+            let shading = material
+                .map(|material| material.shading)
+                .unwrap_or_default();
             append_mesh_triangles(
                 &mut projected_triangles,
                 &viewport,
                 camera,
                 camera_settings,
                 light_settings,
+                &geometry,
                 transform,
                 color,
                 render_order,
+                shading,
             );
+            if let Some(npr) = command.mesh.npr.as_ref() {
+                append_mesh_npr_line_vertices(
+                    &mut npr_line_vertices,
+                    &viewport,
+                    camera,
+                    camera_settings,
+                    &geometry,
+                    transform,
+                    npr,
+                );
+            }
         }
     }
 
@@ -239,6 +257,10 @@ pub(super) fn execute_world_to_offscreen(
     for triangle in projected_triangles {
         let vertices = color_batch_vertices(&mut color_batches, ParticleBlendMode2d::Alpha);
         push_triangle(vertices, triangle.points, triangle.color);
+    }
+    if !npr_line_vertices.is_empty() {
+        let vertices = color_batch_vertices(&mut color_batches, ParticleBlendMode2d::Alpha);
+        vertices.extend(npr_line_vertices);
     }
 
     if let Some(text3d) = ctx
@@ -341,7 +363,9 @@ pub(super) fn execute_world_to_offscreen(
 
     renderer.render_offscreen_batches(
         target,
-        selection.pass_load.to_load_op(),
+        selection
+            .pass_load
+            .to_load_op_with_clear(ctx.scene_view.background_color()),
         &texture_batches,
         &color_batches,
         &ui_texture_batches,

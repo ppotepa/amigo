@@ -4,7 +4,7 @@ use amigo_math::Vec2;
 
 use crate::renderer::service::pipeline_registry::WgpuPipelineRegistry;
 use crate::renderer::service::{CachedFontAtlas, WgpuEmergencyOverlayLine};
-use crate::renderer::{CachedLightMap2dImage, CachedTextureResource};
+use crate::renderer::{CachedLightMap2dImage, CachedMeshGeometry3d, CachedTextureResource};
 
 pub(crate) const POST_FX_EXECUTOR_BLUR: &str = "screen_space.blur";
 pub(crate) const POST_FX_EXECUTOR_CAMERA_EXPOSURE: &str = "screen_space.camera_exposure";
@@ -45,6 +45,7 @@ pub struct WgpuSceneRenderer {
         crate::renderer::service::post_fx::rain_glass::RainGlassRenderRuntime,
     >,
     pub(crate) texture_cache: BTreeMap<String, CachedTextureResource>,
+    pub(crate) mesh_3d_geometry_cache: BTreeMap<String, CachedMeshGeometry3d>,
     pub(crate) lightmap_2d_image_cache: BTreeMap<String, CachedLightMap2dImage>,
     pub(crate) font_atlas_cache: BTreeMap<String, CachedFontAtlas>,
     pub(crate) font_missing_glyph_warnings: BTreeSet<String>,

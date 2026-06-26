@@ -219,6 +219,52 @@ fn hydrate_component_domains(
                 )),
             });
         }
+        DomainComponentDocument::CameraController3d {
+            camera,
+            mode,
+            switch_action,
+            orbit_target,
+            orbit_distance,
+            orbit_min_distance,
+            orbit_max_distance,
+            orbit_yaw,
+            orbit_pitch,
+            orbit_sensitivity,
+            orbit_zoom_speed,
+            freelook_speed,
+            freelook_sensitivity,
+            move_forward_action,
+            move_strafe_action,
+            move_lift_action,
+        } => {
+            commands.push(SceneCommand::Plugin {
+                command: camera_controller_3d_plugin_scene_command(CameraController3dSceneCommand {
+                    source_mod: source_mod.to_owned(),
+                    entity_name: entity_name.clone(),
+                    camera: camera.clone(),
+                    mode: camera_controller_3d_mode_from_document(
+                        mode,
+                        &document.scene.id,
+                        &entity.id,
+                        component.kind(),
+                    )?,
+                    switch_action: switch_action.clone(),
+                    orbit_target: orbit_target.clone(),
+                    orbit_distance: *orbit_distance,
+                    orbit_min_distance: *orbit_min_distance,
+                    orbit_max_distance: *orbit_max_distance,
+                    orbit_yaw: *orbit_yaw,
+                    orbit_pitch: *orbit_pitch,
+                    orbit_sensitivity: *orbit_sensitivity,
+                    orbit_zoom_speed: *orbit_zoom_speed,
+                    freelook_speed: *freelook_speed,
+                    freelook_sensitivity: *freelook_sensitivity,
+                    move_forward_action: move_forward_action.clone(),
+                    move_strafe_action: move_strafe_action.clone(),
+                    move_lift_action: move_lift_action.clone(),
+                }),
+            });
+        }
         DomainComponentDocument::TileMapMarker2d {
             symbol,
             tilemap_entity,
@@ -257,6 +303,7 @@ fn hydrate_component_domains(
             source,
             albedo,
             render_order,
+            shading,
         } => {
             let mut command = Material3dSceneCommand::new(
                 source_mod.to_owned(),
@@ -270,6 +317,12 @@ fn hydrate_component_domains(
                     parse_color_rgba_hex(albedo, &document.scene.id, &entity.id, component.kind())?;
             }
             command.render_order = *render_order;
+            command.shading = material_3d_shading_from_document(
+                shading.as_deref(),
+                &document.scene.id,
+                &entity.id,
+                component.kind(),
+            )?;
 
             commands.push(SceneCommand::Plugin {
                 command: material_3d_plugin_scene_command(command),
@@ -329,7 +382,12 @@ fn hydrate_component_domains(
                         *restitution,
                     )
                     .with_angular(vec3_from_document(*angular_velocity), *angular_damping)
-                    .with_physical_properties(*mass, *linear_damping, *friction, *ccd),
+                    .with_physical_properties(
+                        *mass,
+                        *linear_damping,
+                        *friction,
+                        *ccd,
+                    ),
                 ),
             });
         }
@@ -508,6 +566,8 @@ fn npr_line_settings_3d_from_document(
                 width_px: settings.width_px,
                 width_jitter_px: settings.width_jitter_px,
                 path_jitter_px: settings.path_jitter_px,
+                endpoint_quant_px: settings.endpoint_quant_px,
+                path_simplify_px: settings.path_simplify_px,
                 taper: settings.taper,
                 overshoot_px: settings.overshoot_px,
                 dropout: settings.dropout,
@@ -515,5 +575,47 @@ fn npr_line_settings_3d_from_document(
                 seed: settings.seed,
             }))
         }
+    }
+}
+
+fn material_3d_shading_from_document(
+    value: Option<&str>,
+    scene_id: &str,
+    entity_id: &str,
+    component_kind: &str,
+) -> SceneDocumentResult<amigo_render_api::Material3dShadingMode> {
+    let Some(value) = value.map(str::trim).filter(|value| !value.is_empty()) else {
+        return Ok(amigo_render_api::Material3dShadingMode::Lit);
+    };
+
+    match value {
+        "lit" => Ok(amigo_render_api::Material3dShadingMode::Lit),
+        "unlit" => Ok(amigo_render_api::Material3dShadingMode::Unlit),
+        other => Err(crate::SceneDocumentError::Hydration {
+            scene_id: scene_id.to_owned(),
+            entity_id: entity_id.to_owned(),
+            component_kind: component_kind.to_owned(),
+            message: format!("expected Material3D shading to be `lit` or `unlit`, got `{other}`"),
+        }),
+    }
+}
+
+fn camera_controller_3d_mode_from_document(
+    value: &str,
+    scene_id: &str,
+    entity_id: &str,
+    component_kind: &str,
+) -> SceneDocumentResult<CameraController3dModeSceneCommand> {
+    match value.trim() {
+        "orbit" => Ok(CameraController3dModeSceneCommand::Orbit),
+        "freelook" => Ok(CameraController3dModeSceneCommand::Freelook),
+        other => Err(crate::SceneDocumentError::Hydration {
+            scene_id: scene_id.to_owned(),
+            entity_id: entity_id.to_owned(),
+            component_kind: component_kind.to_owned(),
+            message: format!(
+                "expected CameraController3D mode to be `orbit` or `freelook`, got `{other}`"
+            ),
+        }),
     }
 }

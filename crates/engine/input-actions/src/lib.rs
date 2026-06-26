@@ -206,6 +206,8 @@ pub fn parse_key_code(value: &str) -> KeyCode {
         "S" | "KeyS" => KeyCode::S,
         "D" | "KeyD" => KeyCode::D,
         "E" | "KeyE" => KeyCode::E,
+        "F" | "KeyF" => KeyCode::F,
+        "Q" | "KeyQ" => KeyCode::Q,
         "R" | "KeyR" => KeyCode::R,
         "T" | "KeyT" => KeyCode::T,
         "F1" => KeyCode::F1,

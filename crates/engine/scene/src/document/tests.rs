@@ -5,9 +5,10 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use serde_yaml::{Mapping, Value};
 
 use super::{
-    compile_scene_document_from_path, load_scene_document_from_path, load_scene_document_from_str,
-    load_scene_document_from_str_with_component_schemas, RenderDepthMode2dDocument,
-    SceneComponentDocument, SceneEntitySelectorDocument, SceneEntitySelectorKindDocument,
+    RenderDepthMode2dDocument, SceneComponentDocument, SceneEntitySelectorDocument,
+    SceneEntitySelectorKindDocument, compile_scene_document_from_path,
+    load_scene_document_from_path, load_scene_document_from_str,
+    load_scene_document_from_str_with_component_schemas,
 };
 use crate::SceneDocumentError;
 use crate::{
@@ -720,12 +721,16 @@ fn parses_playground_scene_documents_from_disk() {
 
     assert_eq!(sprite_doc.scene.id, "sprite-lab");
     assert_eq!(material_doc.scene.id, "material-lab");
-    assert!(sprite_doc
-        .component_kind_counts()
-        .contains_key("amigo.gfx.sprite-2d.Sprite2D"));
-    assert!(material_doc
-        .component_kind_counts()
-        .contains_key("Material3D"));
+    assert!(
+        sprite_doc
+            .component_kind_counts()
+            .contains_key("amigo.gfx.sprite-2d.Sprite2D")
+    );
+    assert!(
+        material_doc
+            .component_kind_counts()
+            .contains_key("Material3D")
+    );
 }
 
 #[test]
@@ -744,12 +749,16 @@ fn parses_playground_2d_main_scene_from_disk() {
 
     assert_eq!(document.scene.id, "hello-world-spritesheet");
     assert_eq!(document.transitions.len(), 1);
-    assert!(document
-        .component_kind_counts()
-        .contains_key("amigo.gfx.sprite-2d.Sprite2D"));
-    assert!(document
-        .component_kind_counts()
-        .contains_key("amigo.gfx.text-2d.Text2D"));
+    assert!(
+        document
+            .component_kind_counts()
+            .contains_key("amigo.gfx.sprite-2d.Sprite2D")
+    );
+    assert!(
+        document
+            .component_kind_counts()
+            .contains_key("amigo.gfx.text-2d.Text2D")
+    );
 }
 
 #[test]
@@ -787,9 +796,11 @@ fn parses_playground_2d_screen_space_preview_from_disk() {
     .expect("screen-space preview scene should parse");
 
     assert_eq!(document.scene.id, "screen-space-preview");
-    assert!(document
-        .component_kind_counts()
-        .contains_key("amigo.gfx.sprite-2d.Sprite2D"));
+    assert!(
+        document
+            .component_kind_counts()
+            .contains_key("amigo.gfx.sprite-2d.Sprite2D")
+    );
     assert!(document.component_kind_counts().contains_key("UiDocument"));
 }
 
@@ -862,9 +873,11 @@ entities:
     .expect("sidescroller scene document should parse");
 
     assert_eq!(document.scene.id, "vertical-slice");
-    assert!(document
-        .component_kind_counts()
-        .contains_key("amigo.gfx.tilemap-2d.TileMap2D"));
+    assert!(
+        document
+            .component_kind_counts()
+            .contains_key("amigo.gfx.tilemap-2d.TileMap2D")
+    );
     let tilemap_payload = document
         .entities
         .iter()
@@ -881,25 +894,37 @@ entities:
         nested_str(tilemap_payload, "ruleset"),
         "playground-sidescroller/spritesheets/platformer/rulesets/platform/rules"
     );
-    assert!(document
-        .component_kind_counts()
-        .contains_key("KinematicBody2D"));
-    assert!(document
-        .component_kind_counts()
-        .contains_key("AabbCollider2D"));
+    assert!(
+        document
+            .component_kind_counts()
+            .contains_key("KinematicBody2D")
+    );
+    assert!(
+        document
+            .component_kind_counts()
+            .contains_key("AabbCollider2D")
+    );
     assert!(document.component_kind_counts().contains_key("Trigger2D"));
-    assert!(document
-        .component_kind_counts()
-        .contains_key("MotionController2D"));
-    assert!(document
-        .component_kind_counts()
-        .contains_key("amigo.gfx.sprite-2d.Sprite2D"));
-    assert!(document
-        .component_kind_counts()
-        .contains_key("CameraFollow2D"));
-    assert!(document
-        .component_kind_counts()
-        .contains_key("TileMapMarker2D"));
+    assert!(
+        document
+            .component_kind_counts()
+            .contains_key("MotionController2D")
+    );
+    assert!(
+        document
+            .component_kind_counts()
+            .contains_key("amigo.gfx.sprite-2d.Sprite2D")
+    );
+    assert!(
+        document
+            .component_kind_counts()
+            .contains_key("CameraFollow2D")
+    );
+    assert!(
+        document
+            .component_kind_counts()
+            .contains_key("TileMapMarker2D")
+    );
 }
 
 #[test]

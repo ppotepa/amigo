@@ -77,6 +77,7 @@ impl WgpuSceneRenderer {
             shutter_blur_runtimes: BTreeMap::new(),
             rain_glass_runtimes: BTreeMap::new(),
             texture_cache: BTreeMap::new(),
+            mesh_3d_geometry_cache: BTreeMap::new(),
             lightmap_2d_image_cache: BTreeMap::new(),
             font_atlas_cache: BTreeMap::new(),
             font_missing_glyph_warnings: BTreeSet::new(),

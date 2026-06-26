@@ -7,7 +7,8 @@ use crate::bindings::entities::{
     entity_property, entity_property_bool, entity_property_float, entity_property_int,
     entity_property_string, hide_entity, is_entity_collision_enabled, is_entity_enabled,
     is_entity_visible, rotate_entity_2d, rotate_entity_3d, set_entity_collision_enabled,
-    set_entity_position_2d, set_entity_position_3d, set_entity_property, show_entity,
+    set_entity_position_2d, set_entity_position_3d, set_entity_property, set_entity_rotation_3d,
+    show_entity,
 };
 
 #[derive(Clone)]
@@ -56,6 +57,16 @@ impl EntityRef {
 
     pub fn set_position_3d(&mut self, x: rhai::FLOAT, y: rhai::FLOAT, z: rhai::FLOAT) -> bool {
         set_entity_position_3d(
+            self.scene.as_ref(),
+            &self.entity_name,
+            x as f32,
+            y as f32,
+            z as f32,
+        )
+    }
+
+    pub fn set_rotation_3d(&mut self, x: rhai::FLOAT, y: rhai::FLOAT, z: rhai::FLOAT) -> bool {
+        set_entity_rotation_3d(
             self.scene.as_ref(),
             &self.entity_name,
             x as f32,

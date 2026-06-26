@@ -1,0 +1,14 @@
+kind: mesh-3d
+schema_version: 1
+id: box
+label: Khronos Box
+format: glb
+source:
+  file: ../source-models/khronos/Box.glb
+  provider: Khronos glTF Sample Models
+  url: https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/Box/glTF-Binary/Box.glb
+npr:
+  cache_profile: comic-lines-static-v1
+  intended_role: low-poly hard-edge reference
+  line_types: [boundary, silhouette, feature]
+  feature_angle_degrees: 28.0

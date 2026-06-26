@@ -23,37 +23,51 @@ fn playground_2d_basic_scripting_demo_bootstraps() {
             .as_deref(),
         Some("scenes/basic-scripting-demo/scene.yml")
     );
-    assert!(summary
-        .sprite_entities_2d
-        .iter()
-        .any(|entity| entity == "playground-2d-demo-square"));
-    assert!(summary
-        .sprite_entities_2d
-        .iter()
-        .any(|entity| entity == "playground-2d-demo-spritesheet"));
-    assert!(summary
-        .text_entities_2d
-        .iter()
-        .any(|entity| entity == "playground-2d-demo-title"));
-    assert!(summary
-        .prepared_assets
-        .iter()
-        .any(|asset| asset == "playground-2d/spritesheets/square (sprite-sheet-2d)"));
+    assert!(
+        summary
+            .sprite_entities_2d
+            .iter()
+            .any(|entity| entity == "playground-2d-demo-square")
+    );
+    assert!(
+        summary
+            .sprite_entities_2d
+            .iter()
+            .any(|entity| entity == "playground-2d-demo-spritesheet")
+    );
+    assert!(
+        summary
+            .text_entities_2d
+            .iter()
+            .any(|entity| entity == "playground-2d-demo-title")
+    );
+    assert!(
+        summary
+            .prepared_assets
+            .iter()
+            .any(|asset| asset == "playground-2d/spritesheets/square (sprite-sheet-2d)")
+    );
     assert!(summary.prepared_assets.iter().any(
         |asset| asset == "playground-2d/spritesheets/hello-world-spritesheet (sprite-sheet-2d)"
     ));
-    assert!(summary
-        .prepared_assets
-        .iter()
-        .any(|asset| asset == "playground-2d/fonts/debug-ui (font-2d)"));
-    assert!(summary
-        .processed_script_events
-        .iter()
-        .any(|event| event == "playground-2d.demo.entered(basic-scripting-demo)"));
-    assert!(summary
-        .processed_script_events
-        .iter()
-        .any(|event| event == "playground-2d.demo.component.attach(playground-2d-demo-square)"));
+    assert!(
+        summary
+            .prepared_assets
+            .iter()
+            .any(|asset| asset == "playground-2d/fonts/debug-ui (font-2d)")
+    );
+    assert!(
+        summary
+            .processed_script_events
+            .iter()
+            .any(|event| event == "playground-2d.demo.entered(basic-scripting-demo)")
+    );
+    assert!(
+        summary
+            .processed_script_events
+            .iter()
+            .any(|event| event == "playground-2d.demo.component.attach(playground-2d-demo-square)")
+    );
     assert!(summary.failed_assets.is_empty());
 }
 
@@ -80,21 +94,27 @@ fn playground_2d_main_scene_bootstraps() {
             .as_deref(),
         Some("scenes/hello-world-spritesheet/scene.yml")
     );
-    assert!(summary
-        .sprite_entities_2d
-        .iter()
-        .any(|entity| entity == "playground-2d-spritesheet"));
-    assert!(summary
-        .text_entities_2d
-        .iter()
-        .any(|entity| entity == "playground-2d-hello"));
+    assert!(
+        summary
+            .sprite_entities_2d
+            .iter()
+            .any(|entity| entity == "playground-2d-spritesheet")
+    );
+    assert!(
+        summary
+            .text_entities_2d
+            .iter()
+            .any(|entity| entity == "playground-2d-hello")
+    );
     assert!(summary.prepared_assets.iter().any(
         |asset| asset == "playground-2d/spritesheets/hello-world-spritesheet (sprite-sheet-2d)"
     ));
-    assert!(summary
-        .prepared_assets
-        .iter()
-        .any(|asset| asset == "playground-2d/fonts/debug-ui (font-2d)"));
+    assert!(
+        summary
+            .prepared_assets
+            .iter()
+            .any(|asset| asset == "playground-2d/fonts/debug-ui (font-2d)")
+    );
     assert!(summary.failed_assets.is_empty());
 }
 
@@ -140,14 +160,18 @@ fn playground_2d_scene_selection_rehydrates_document_content() {
     assert!(sprite.entity_names().is_empty());
     assert_eq!(text.entity_names(), vec!["playground-2d-label".to_owned()]);
     assert_eq!(hydrated.snapshot().scene_id.as_deref(), Some("text-lab"));
-    assert!(bridge
-        .processed_scene_commands
-        .iter()
-        .any(|command| command == "scene.select(text-lab)"));
-    assert!(bridge
-        .processed_scene_commands
-        .iter()
-        .any(|command| command.starts_with("scene.plugin.text(")));
+    assert!(
+        bridge
+            .processed_scene_commands
+            .iter()
+            .any(|command| command == "scene.select(text-lab)")
+    );
+    assert!(
+        bridge
+            .processed_scene_commands
+            .iter()
+            .any(|command| command.starts_with("scene.plugin.text("))
+    );
 }
 
 #[test]
@@ -173,25 +197,33 @@ fn playground_2d_screen_space_preview_bootstraps() {
             .as_deref(),
         Some("scenes/screen-space-preview/scene.yml")
     );
-    assert!(summary
-        .loaded_scene_document
-        .as_ref()
-        .expect("loaded scene document should exist")
-        .component_kinds
-        .iter()
-        .any(|kind| kind == "UiDocument x1"));
-    assert!(summary
-        .ui_entities
-        .iter()
-        .any(|entity| entity == "playground-2d-ui-preview"));
-    assert!(summary
-        .sprite_entities_2d
-        .iter()
-        .any(|entity| entity == "playground-2d-ui-preview-square"));
-    assert!(summary
-        .prepared_assets
-        .iter()
-        .any(|asset| asset == "playground-2d/fonts/debug-ui (font-2d)"));
+    assert!(
+        summary
+            .loaded_scene_document
+            .as_ref()
+            .expect("loaded scene document should exist")
+            .component_kinds
+            .iter()
+            .any(|kind| kind == "UiDocument x1")
+    );
+    assert!(
+        summary
+            .ui_entities
+            .iter()
+            .any(|entity| entity == "playground-2d-ui-preview")
+    );
+    assert!(
+        summary
+            .sprite_entities_2d
+            .iter()
+            .any(|entity| entity == "playground-2d-ui-preview-square")
+    );
+    assert!(
+        summary
+            .prepared_assets
+            .iter()
+            .any(|asset| asset == "playground-2d/fonts/debug-ui (font-2d)")
+    );
     assert!(summary.failed_assets.is_empty());
 }
 
@@ -212,9 +244,11 @@ fn playground_2d_script_component_updates_and_detaches() {
     let scene_state = runtime
         .resolve::<amigo_state::SceneStateService>()
         .expect("scene state should exist");
-    assert!(scene_state
-        .get_float("playground-2d-demo-square.component.elapsed")
-        .is_some_and(|elapsed| elapsed >= 0.5));
+    assert!(
+        scene_state
+            .get_float("playground-2d-demo-square.component.elapsed")
+            .is_some_and(|elapsed| elapsed >= 0.5)
+    );
 
     runtime
         .resolve::<SceneCommandQueue>()
@@ -250,28 +284,38 @@ fn playground_2d_sprite_scene_populates_2d_domain_and_assets() {
             .as_deref(),
         Some("scenes/sprite-lab/scene.yml")
     );
-    assert!(summary
-        .processed_scene_commands
-        .iter()
-        .any(|command| command.starts_with("scene.plugin.sprite(")));
-    assert!(summary
-        .registered_assets
-        .iter()
-        .any(|asset| asset == "playground-2d/spritesheets/sprite-lab"));
-    assert!(summary
-        .loaded_assets
-        .iter()
-        .any(|asset| asset == "playground-2d/spritesheets/sprite-lab"));
-    assert!(summary
-        .prepared_assets
-        .iter()
-        .any(|asset| asset == "playground-2d/spritesheets/sprite-lab (sprite-sheet-2d)"));
+    assert!(
+        summary
+            .processed_scene_commands
+            .iter()
+            .any(|command| command.starts_with("scene.plugin.sprite("))
+    );
+    assert!(
+        summary
+            .registered_assets
+            .iter()
+            .any(|asset| asset == "playground-2d/spritesheets/sprite-lab")
+    );
+    assert!(
+        summary
+            .loaded_assets
+            .iter()
+            .any(|asset| asset == "playground-2d/spritesheets/sprite-lab")
+    );
+    assert!(
+        summary
+            .prepared_assets
+            .iter()
+            .any(|asset| asset == "playground-2d/spritesheets/sprite-lab (sprite-sheet-2d)")
+    );
     assert!(summary.failed_assets.is_empty());
     assert!(summary.pending_asset_loads.is_empty());
-    assert!(summary
-        .sprite_entities_2d
-        .iter()
-        .any(|entity| entity == "playground-2d-sprite"));
+    assert!(
+        summary
+            .sprite_entities_2d
+            .iter()
+            .any(|entity| entity == "playground-2d-sprite")
+    );
     assert!(summary.text_entities_2d.is_empty());
 }
 
@@ -295,28 +339,38 @@ fn playground_2d_text_scene_populates_2d_text_domain_and_assets() {
             .as_deref(),
         Some("scenes/text-lab/scene.yml")
     );
-    assert!(summary
-        .processed_scene_commands
-        .iter()
-        .any(|command| command.starts_with("scene.plugin.text(")));
-    assert!(summary
-        .registered_assets
-        .iter()
-        .any(|asset| asset == "playground-2d/fonts/debug-ui"));
-    assert!(summary
-        .loaded_assets
-        .iter()
-        .any(|asset| asset == "playground-2d/fonts/debug-ui"));
-    assert!(summary
-        .prepared_assets
-        .iter()
-        .any(|asset| asset == "playground-2d/fonts/debug-ui (font-2d)"));
+    assert!(
+        summary
+            .processed_scene_commands
+            .iter()
+            .any(|command| command.starts_with("scene.plugin.text("))
+    );
+    assert!(
+        summary
+            .registered_assets
+            .iter()
+            .any(|asset| asset == "playground-2d/fonts/debug-ui")
+    );
+    assert!(
+        summary
+            .loaded_assets
+            .iter()
+            .any(|asset| asset == "playground-2d/fonts/debug-ui")
+    );
+    assert!(
+        summary
+            .prepared_assets
+            .iter()
+            .any(|asset| asset == "playground-2d/fonts/debug-ui (font-2d)")
+    );
     assert!(summary.failed_assets.is_empty());
     assert!(summary.pending_asset_loads.is_empty());
-    assert!(summary
-        .text_entities_2d
-        .iter()
-        .any(|entity| entity == "playground-2d-label"));
+    assert!(
+        summary
+            .text_entities_2d
+            .iter()
+            .any(|entity| entity == "playground-2d-label")
+    );
     assert!(summary.sprite_entities_2d.is_empty());
 }
 
@@ -335,39 +389,53 @@ fn playground_sidescroller_bootstraps_and_prepares_tile_and_sprite_assets() {
     .expect("sidescroller bootstrap should succeed");
 
     assert_eq!(summary.active_scene.as_deref(), Some("vertical-slice"));
-    assert!(summary
-        .sprite_entities_2d
-        .iter()
-        .any(|entity| entity == "playground-sidescroller-player"));
-    assert!(summary
-        .registered_assets
-        .iter()
-        .any(|asset| asset == "playground-sidescroller/spritesheets/player"));
-    assert!(summary
-        .registered_assets
-        .iter()
-        .any(|asset| asset == "playground-sidescroller/spritesheets/platformer"));
-    assert!(summary
-        .registered_assets
-        .iter()
-        .any(|asset| asset
-            == "playground-sidescroller/spritesheets/platformer/tilesets/platform/base"));
-    assert!(summary
-        .loaded_assets
-        .iter()
-        .any(|asset| asset == "playground-sidescroller/spritesheets/player"));
-    assert!(summary
-        .loaded_assets
-        .iter()
-        .any(|asset| asset == "playground-sidescroller/spritesheets/platformer"));
-    assert!(summary
-        .prepared_assets
-        .iter()
-        .any(|asset| asset == "playground-sidescroller/spritesheets/player (sprite-sheet-2d)"));
-    assert!(summary
-        .prepared_assets
-        .iter()
-        .any(|asset| asset == "playground-sidescroller/spritesheets/platformer (sprite-sheet-2d)"));
+    assert!(
+        summary
+            .sprite_entities_2d
+            .iter()
+            .any(|entity| entity == "playground-sidescroller-player")
+    );
+    assert!(
+        summary
+            .registered_assets
+            .iter()
+            .any(|asset| asset == "playground-sidescroller/spritesheets/player")
+    );
+    assert!(
+        summary
+            .registered_assets
+            .iter()
+            .any(|asset| asset == "playground-sidescroller/spritesheets/platformer")
+    );
+    assert!(
+        summary.registered_assets.iter().any(|asset| asset
+            == "playground-sidescroller/spritesheets/platformer/tilesets/platform/base")
+    );
+    assert!(
+        summary
+            .loaded_assets
+            .iter()
+            .any(|asset| asset == "playground-sidescroller/spritesheets/player")
+    );
+    assert!(
+        summary
+            .loaded_assets
+            .iter()
+            .any(|asset| asset == "playground-sidescroller/spritesheets/platformer")
+    );
+    assert!(
+        summary
+            .prepared_assets
+            .iter()
+            .any(|asset| asset == "playground-sidescroller/spritesheets/player (sprite-sheet-2d)")
+    );
+    assert!(
+        summary
+            .prepared_assets
+            .iter()
+            .any(|asset| asset
+                == "playground-sidescroller/spritesheets/platformer (sprite-sheet-2d)")
+    );
     assert!(summary.prepared_assets.iter().any(|asset| asset
         == "playground-sidescroller/spritesheets/platformer/tilesets/platform/base (tileset-2d)"));
     assert!(summary.failed_assets.is_empty());

@@ -284,6 +284,7 @@ fn app_render_extractor_registry_collects_vector_and_ui_data() {
             albedo: ColorRgba::WHITE,
             source: Some(AssetKey::new("playground-3d/materials/debug-surface")),
             render_order: 0,
+            shading: Default::default(),
         },
     });
 
@@ -1059,6 +1060,7 @@ fn rebuilds_material_scene_service_from_packet() {
             albedo: ColorRgba::WHITE,
             source: Some(AssetKey::new("playground-3d/materials/debug-surface")),
             render_order: 0,
+            shading: Default::default(),
         },
     });
 

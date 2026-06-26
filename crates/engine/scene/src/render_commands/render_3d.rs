@@ -2,6 +2,8 @@ pub const MESH_3D_PLUGIN_SCENE_COMMAND_TYPE: &str = "amigo.rendering.3d.scene-co
 pub const MATERIAL_3D_PLUGIN_SCENE_COMMAND_TYPE: &str =
     "amigo.rendering.3d.scene-command.Material3d";
 pub const TEXT_3D_PLUGIN_SCENE_COMMAND_TYPE: &str = "amigo.rendering.3d.scene-command.Text3d";
+pub const CAMERA_CONTROLLER_3D_PLUGIN_SCENE_COMMAND_TYPE: &str =
+    "amigo.camera.camera-core.scene-command.CameraController3d";
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Mesh3dSceneCommand {
@@ -72,6 +74,7 @@ pub struct Material3dSceneCommand {
     pub albedo: ColorRgba,
     pub source: Option<AssetKey>,
     pub render_order: i32,
+    pub shading: amigo_render_api::Material3dShadingMode,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -116,6 +119,62 @@ pub fn material_3d_plugin_scene_command(
     crate::PluginSceneCommand::new(std::sync::Arc::new(Material3dPluginSceneCommandPayload(
         command,
     )))
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct CameraController3dSceneCommand {
+    pub source_mod: String,
+    pub entity_name: String,
+    pub camera: String,
+    pub mode: CameraController3dModeSceneCommand,
+    pub switch_action: Option<String>,
+    pub orbit_target: Option<String>,
+    pub orbit_distance: f32,
+    pub orbit_min_distance: f32,
+    pub orbit_max_distance: f32,
+    pub orbit_yaw: f32,
+    pub orbit_pitch: f32,
+    pub orbit_sensitivity: f32,
+    pub orbit_zoom_speed: f32,
+    pub freelook_speed: f32,
+    pub freelook_sensitivity: f32,
+    pub move_forward_action: String,
+    pub move_strafe_action: String,
+    pub move_lift_action: String,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CameraController3dModeSceneCommand {
+    Orbit,
+    Freelook,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct CameraController3dPluginSceneCommandPayload(pub CameraController3dSceneCommand);
+
+impl crate::PluginSceneCommandPayload for CameraController3dPluginSceneCommandPayload {
+    fn command_type(&self) -> &'static str {
+        CAMERA_CONTROLLER_3D_PLUGIN_SCENE_COMMAND_TYPE
+    }
+
+    fn command_as_any(&self) -> &dyn std::any::Any {
+        &self.0
+    }
+
+    fn eq_payload(&self, other: &dyn crate::PluginSceneCommandPayload) -> bool {
+        other
+            .command_as_any()
+            .downcast_ref::<CameraController3dSceneCommand>()
+            .is_some_and(|command| command == &self.0)
+    }
+}
+
+pub fn camera_controller_3d_plugin_scene_command(
+    command: CameraController3dSceneCommand,
+) -> crate::PluginSceneCommand {
+    crate::PluginSceneCommand::new(std::sync::Arc::new(
+        CameraController3dPluginSceneCommandPayload(command),
+    ))
 }
 
 #[derive(Debug, Clone, PartialEq)]

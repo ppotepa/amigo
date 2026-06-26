@@ -67,6 +67,10 @@ pub struct NprLine3dSettingsDocument {
     pub width_jitter_px: f32,
     #[serde(default = "default_npr_path_jitter_px")]
     pub path_jitter_px: f32,
+    #[serde(default = "default_npr_endpoint_quant_px")]
+    pub endpoint_quant_px: f32,
+    #[serde(default = "default_npr_path_simplify_px")]
+    pub path_simplify_px: f32,
     #[serde(default = "default_npr_taper")]
     pub taper: f32,
     #[serde(default = "default_npr_overshoot_px")]
@@ -107,6 +111,14 @@ fn default_npr_path_jitter_px() -> f32 {
     0.75
 }
 
+fn default_npr_endpoint_quant_px() -> f32 {
+    2.5
+}
+
+fn default_npr_path_simplify_px() -> f32 {
+    0.6
+}
+
 fn default_npr_taper() -> f32 {
     0.65
 }
@@ -127,6 +139,54 @@ fn default_npr_seed() -> u64 {
     2002
 }
 
+fn default_camera_controller_3d_mode() -> String {
+    "orbit".to_owned()
+}
+
+fn default_camera_controller_3d_distance() -> f32 {
+    6.5
+}
+
+fn default_camera_controller_3d_min_distance() -> f32 {
+    1.2
+}
+
+fn default_camera_controller_3d_max_distance() -> f32 {
+    18.0
+}
+
+fn default_camera_controller_3d_pitch() -> f32 {
+    0.12
+}
+
+fn default_camera_controller_3d_sensitivity() -> f32 {
+    0.006
+}
+
+fn default_camera_controller_3d_zoom_speed() -> f32 {
+    0.035
+}
+
+fn default_camera_controller_3d_freelook_speed() -> f32 {
+    3.8
+}
+
+fn default_camera_controller_3d_freelook_sensitivity() -> f32 {
+    0.004
+}
+
+fn default_camera_controller_3d_move_forward_action() -> String {
+    "npr.fly_forward".to_owned()
+}
+
+fn default_camera_controller_3d_move_strafe_action() -> String {
+    "npr.fly_strafe".to_owned()
+}
+
+fn default_camera_controller_3d_move_lift_action() -> String {
+    "npr.fly_lift".to_owned()
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(tag = "type")]
 pub enum SceneComponentDocumentModel {
@@ -138,6 +198,42 @@ pub enum SceneComponentDocumentModel {
         near_clip: f32,
         #[serde(default = "default_camera3d_far_clip")]
         far_clip: f32,
+        #[serde(default)]
+        background_color: Option<String>,
+    },
+    #[serde(rename = "CameraController3D")]
+    CameraController3d {
+        camera: String,
+        #[serde(default = "default_camera_controller_3d_mode")]
+        mode: String,
+        #[serde(default)]
+        switch_action: Option<String>,
+        #[serde(default)]
+        orbit_target: Option<String>,
+        #[serde(default = "default_camera_controller_3d_distance")]
+        orbit_distance: f32,
+        #[serde(default = "default_camera_controller_3d_min_distance")]
+        orbit_min_distance: f32,
+        #[serde(default = "default_camera_controller_3d_max_distance")]
+        orbit_max_distance: f32,
+        #[serde(default)]
+        orbit_yaw: f32,
+        #[serde(default = "default_camera_controller_3d_pitch")]
+        orbit_pitch: f32,
+        #[serde(default = "default_camera_controller_3d_sensitivity")]
+        orbit_sensitivity: f32,
+        #[serde(default = "default_camera_controller_3d_zoom_speed")]
+        orbit_zoom_speed: f32,
+        #[serde(default = "default_camera_controller_3d_freelook_speed")]
+        freelook_speed: f32,
+        #[serde(default = "default_camera_controller_3d_freelook_sensitivity")]
+        freelook_sensitivity: f32,
+        #[serde(default = "default_camera_controller_3d_move_forward_action")]
+        move_forward_action: String,
+        #[serde(default = "default_camera_controller_3d_move_strafe_action")]
+        move_strafe_action: String,
+        #[serde(default = "default_camera_controller_3d_move_lift_action")]
+        move_lift_action: String,
     },
     #[serde(rename = "Light3D")]
     Light3d {
@@ -348,6 +444,8 @@ pub enum SceneComponentDocumentModel {
         albedo: Option<String>,
         #[serde(default)]
         render_order: i32,
+        #[serde(default)]
+        shading: Option<String>,
     },
     #[serde(rename = "Text3D")]
     Text3d {
@@ -482,6 +580,7 @@ pub fn is_builtin_component_type(kind: &str) -> bool {
     matches!(
         kind,
         "Camera3D"
+            | "CameraController3D"
             | "Light3D"
             | "LightMap2DSource"
             | "EntityPool"
@@ -534,6 +633,7 @@ impl SceneComponentDocument {
     pub fn kind(&self) -> &str {
         match self {
             Self::Camera3d { .. } => "Camera3D",
+            Self::CameraController3d { .. } => "CameraController3D",
             Self::Light3d { .. } => "Light3D",
             Self::LightMap2dSource { .. } => "LightMap2DSource",
             Self::EntityPool { .. } => "EntityPool",
