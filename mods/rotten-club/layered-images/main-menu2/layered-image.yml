@@ -14,31 +14,31 @@ layers:
   - id: right_orange_bar_apteka
     label: Right Orange Bar And Apteka Spill
     image: ../../scenes/main-menu2/images/01_L31_APTEKA_CROSS_green_cross_facade_spill.png
-    blend: additive
-    default_opacity: 0.18
+    blend: screen
+    default_opacity: 0.24
     color: '#FF9A36'
     animation_hint: flicker
 
   - id: bar_sign_bright
     label: Bright Bar Sign Light
     image: ../../scenes/main-menu2/images/02_L60_MISC_WINDOWS_sparse_warm_city_pinlights.png
-    blend: additive
-    default_opacity: 0.16
+    blend: screen
+    default_opacity: 0.18
     color: '#FFC66A'
     animation_hint: neon_flicker
 
   - id: signs_scene_base_light
     label: L20 L21 Signs And Scene Base Light
     image: ../../scenes/main-menu2/images/03_L20_L21_BAR_WARM_sign_and_interior_amber_glow.png
-    blend: additive
-    default_opacity: 0.20
+    blend: screen
+    default_opacity: 0.12
     color: '#FFB35A'
     animation_hint: flicker
 
   - id: apteka_light
     label: Apteka Light
     image: ../../scenes/main-menu2/images/04_FULL_COMPOSITE_all_sources_active_wet_reflections.png
-    blend: additive
+    blend: screen
     default_opacity: 0.18
     color: '#9CFFE0'
     animation_hint: pulse
@@ -46,31 +46,31 @@ layers:
   - id: czarny_sen_horizontal
     label: Czarny Sen Horizontal Light
     image: ../../scenes/main-menu2/images/05_L41_KLUB_VERTICAL_SIGN_cold_blue_spill.png
-    blend: additive
-    default_opacity: 0.16
+    blend: screen
+    default_opacity: 0.22
     color: '#5FA8FF'
     animation_hint: flicker
 
   - id: klub_vertical
     label: Klub Vertical Sign
     image: ../../scenes/main-menu2/images/06_L21_BAR_SIGN_only_localized_sign_glow.png
-    blend: additive
-    default_opacity: 0.14
+    blend: screen
+    default_opacity: 0.16
     color: '#4D8DFF'
     animation_hint: neon_flicker
 
   - id: palace_background_reflection
     label: Palace Background And Reflection
     image: ../../scenes/main-menu2/images/07_L30_APTEKA_INTERIOR_cool_window_spill.png
-    blend: additive
-    default_opacity: 0.16
+    blend: screen
+    default_opacity: 0.14
     color: '#6AA8FF'
     animation_hint: ambient
 
   - id: lanterns_apartments
     label: Lanterns And Apartment Lights
     image: ../../scenes/main-menu2/images/08_L40_CZARNY_SEN_MAIN_SIGN_cold_blue_club_frontage.png
-    blend: additive
-    default_opacity: 0.14
+    blend: screen
+    default_opacity: 0.10
     color: '#FFD18A'
     animation_hint: flicker
