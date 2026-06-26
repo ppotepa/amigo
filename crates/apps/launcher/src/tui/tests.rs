@@ -122,6 +122,24 @@ fn activating_mod_uses_declared_first_scene() {
 }
 
 #[test]
+fn launcher_lists_rotten_club_main_menu2_scene() {
+    let state = state();
+    let rotten_club = state
+        .known_mods
+        .iter()
+        .find(|known_mod| known_mod.id == "rotten-club")
+        .expect("rotten-club mod should exist");
+
+    assert!(
+        rotten_club
+            .scenes
+            .iter()
+            .any(|scene| scene.id == "main-menu2"),
+        "rotten-club main-menu2 should be visible as a launcher scene"
+    );
+}
+
+#[test]
 fn launcher_tree_groups_scenes_by_engine_categories() {
     let mut state = state();
     state

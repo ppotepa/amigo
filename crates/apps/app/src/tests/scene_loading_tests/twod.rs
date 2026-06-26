@@ -179,6 +179,33 @@ fn rotten_club_main_menu_queues_layered_image_background() {
 }
 
 #[test]
+fn rotten_club_main_menu2_variant_bootstraps() {
+    let (_runtime, summary) = bootstrap_with_options(
+        BootstrapOptions::new(mods_root())
+            .with_active_mods(vec!["core".to_owned(), "rotten-club".to_owned()])
+            .with_startup_mod("rotten-club")
+            .with_startup_scene("main-menu2")
+            .with_dev_mode(true),
+    )
+    .expect("Rotten Club main-menu2 bootstrap should succeed");
+
+    assert_eq!(summary.active_scene.as_deref(), Some("main-menu2"));
+    assert_eq!(
+        summary
+            .loaded_scene_document
+            .as_ref()
+            .map(|document| document.relative_path.to_string_lossy().replace('\\', "/"))
+            .as_deref(),
+        Some("scenes/main-menu2/scene.yml")
+    );
+    assert!(summary
+        .prepared_assets
+        .iter()
+        .any(|asset| asset == "rotten-club/layered-images/neon-alley (layered-image-2d)"));
+    assert!(summary.failed_assets.is_empty());
+}
+
+#[test]
 fn rotten_club_main_menu_timeline_animates_layered_image_intro() {
     let (runtime, _summary) = bootstrap_with_options(
         BootstrapOptions::new(mods_root())

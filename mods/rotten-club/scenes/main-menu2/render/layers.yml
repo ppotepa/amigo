@@ -1,0 +1,20 @@
+kind: scene-fragment
+schema_version: 1
+
+visual2d:
+  spatial:
+    depth_space:
+      near_m: 0.2
+      far_m: 1500.0
+      curve: logarithmic
+  render_layers:
+    - id: background.city
+      label: Background City
+      order: -100.0
+      visible: true
+      opacity: 1.0
+      optical_role: world_surface
+      depth:
+        mode: depth_map
+        z_depth: 0.08
+        blur_scale: 1.0

@@ -25,3 +25,10 @@ label = "Main Menu"
 description = "Plugin-owned Rotten Club scene with authored timeline tracks and a small Rhai lifecycle director."
 path = "scenes/main-menu"
 launcher_visible = true
+
+[[scenes]]
+id = "main-menu2"
+label = "Main Menu 2 Light Pass Assembly"
+description = "Rotten Club scene variant assembled from the main-menu2 signed lightmap pass assets."
+path = "scenes/main-menu2"
+launcher_visible = true
