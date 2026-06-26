@@ -1,0 +1,4 @@
+PACKAGE CHECKSUM MANIFEST SHA256
+b2ef95742102b7ad32c2e3d1dcebaade6c0a3f4232381ca47cd86e580c00f8cc  SHA256SUMS.txt
+
+This is a checksum-based package signature, not a certificate-based digital signature.

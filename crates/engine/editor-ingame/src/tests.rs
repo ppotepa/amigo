@@ -1,4 +1,10 @@
 use super::*;
+use amigo_scene::{
+    BoundsPolicy, ComponentAssetRefDescriptor, ComponentDomain, ComponentMetadataProvider,
+    ComponentMetadataProviderRegistry, ComponentOwnerScope, ComponentRegistry,
+    ComponentTypeDescriptor, EditorControlKind, EditorPatchOpKind, EditorPropertyDescriptor,
+    EditorPropertyEditorKind, EditorPropertyValueKind, MetadataTraitKind, TransformPolicy,
+};
 
 #[test]
 fn editor_state_toggles_open_closed() {
@@ -122,6 +128,108 @@ fn test_graph(
     }
 }
 
+fn test_runtime() -> amigo_runtime::Runtime {
+    let providers = ComponentMetadataProviderRegistry::default();
+    providers.register(TestComponentMetadataProvider);
+    amigo_runtime::RuntimeBuilder::default()
+        .with_service(providers)
+        .expect("component metadata provider registry")
+        .build()
+}
+
+struct TestComponentMetadataProvider;
+
+impl ComponentMetadataProvider for TestComponentMetadataProvider {
+    fn provider_id(&self) -> &'static str {
+        "amigo-editor-ingame-tests"
+    }
+
+    fn register_component_metadata(&self, registry: &mut ComponentRegistry) {
+        registry
+            .try_insert(test_layered_image_descriptor())
+            .expect("duplicate LayeredImage2D metadata");
+        registry
+            .try_insert(test_particle_emitter_descriptor())
+            .expect("duplicate ParticleEmitter2D metadata");
+    }
+}
+
+fn test_layered_image_descriptor() -> ComponentTypeDescriptor {
+    ComponentTypeDescriptor {
+        kind_id: "LayeredImage2D",
+        type_name: "LayeredImage2D",
+        label: "Layered Image 2D",
+        domains: &[ComponentDomain::Render2D],
+        owner_scopes: &[ComponentOwnerScope::Entity],
+        default_yaml: None,
+        metadata_traits: &[
+            MetadataTraitKind::Renderable2D,
+            MetadataTraitKind::UsesTransform2D,
+            MetadataTraitKind::Selectable,
+            MetadataTraitKind::HasBounds2D,
+            MetadataTraitKind::GenericEditable,
+        ],
+        asset_refs: &[ComponentAssetRefDescriptor {
+            field_path: "asset",
+            domain: amigo_scene::AssetDomain::LayeredImage,
+            required: true,
+            trait_kind: MetadataTraitKind::HasAssetRefs,
+            group: "assetRefs.primary",
+        }],
+        properties: &[EditorPropertyDescriptor {
+            path: "size",
+            label: "Size",
+            value_kind: EditorPropertyValueKind::Vec2,
+            access: amigo_scene::EditorPropertyAccess::Editable,
+            editor: EditorPropertyEditorKind::Vec2,
+            asset_domain: None,
+            trait_kind: Some(MetadataTraitKind::HasBounds2D),
+            group: "bounds2.size",
+            patch_op: None,
+            number_constraints: None,
+            options: &[],
+            visibility: amigo_scene::EditorPropertyVisibility::Primary,
+            order: 0,
+            tags: &[],
+            readonly_reason: None,
+            binding_template: None,
+        }],
+        transform_policy: TransformPolicy::UsesEntityTransform2,
+        bounds_policy: BoundsPolicy::ComponentBounds2D { field: "size" },
+        editor_controls: &[EditorControlKind::Transform2D, EditorControlKind::Rect2D],
+        patch_ops: &[EditorPatchOpKind::SetTransform2],
+    }
+}
+
+fn test_particle_emitter_descriptor() -> ComponentTypeDescriptor {
+    ComponentTypeDescriptor {
+        kind_id: "ParticleEmitter2D",
+        type_name: "ParticleEmitter2D",
+        label: "Particle Emitter 2D",
+        domains: &[ComponentDomain::Particles, ComponentDomain::Render2D],
+        owner_scopes: &[ComponentOwnerScope::Entity],
+        default_yaml: None,
+        metadata_traits: &[
+            MetadataTraitKind::Renderable2D,
+            MetadataTraitKind::UsesTransform2D,
+            MetadataTraitKind::Selectable,
+            MetadataTraitKind::HasBounds2D,
+            MetadataTraitKind::GenericEditable,
+        ],
+        asset_refs: &[],
+        properties: &[],
+        transform_policy: TransformPolicy::UsesEntityTransform2,
+        bounds_policy: BoundsPolicy::SpawnArea2D {
+            field: "spawn_area",
+            size_field: "size",
+            default_width: 64,
+            default_height: 64,
+        },
+        editor_controls: &[EditorControlKind::Transform2D, EditorControlKind::Rect2D],
+        patch_ops: &[EditorPatchOpKind::SetTransform2],
+    }
+}
+
 fn find_overlay_text<'a>(node: &'a amigo_overlay_api::UiOverlayNode, id: &str) -> Option<&'a str> {
     if node.id.as_deref() == Some(id) {
         if let amigo_overlay_api::UiOverlayNodeKind::Text { content, .. } = &node.kind {
@@ -186,9 +294,10 @@ z_index: 2.0
     );
     let graph = test_graph(vec![entity, component]);
     let state = state::IngameEditorState::new(true);
+    let runtime = test_runtime();
 
     assert!(crate::selection::select_viewport_target(
-        &state, &graph, 50.0, 70.0
+        &runtime, &state, &graph, 50.0, 70.0
     ));
     assert_eq!(
         state.snapshot().selection.unwrap().logical_bounds,
@@ -234,9 +343,10 @@ z_index: 5.0
     );
     let graph = test_graph(vec![entity, component]);
     let state = state::IngameEditorState::new(true);
+    let runtime = test_runtime();
 
     assert!(crate::selection::select_viewport_target(
-        &state, &graph, 500.0, 300.0
+        &runtime, &state, &graph, 500.0, 300.0
     ));
     assert_eq!(
         state.snapshot().selection.unwrap().logical_bounds,
@@ -278,16 +388,14 @@ opacity: 0.8
 
     let panel = crate::properties::build_panel_with_overrides(&node, |_| None);
 
-    assert!(
-        panel
-            .groups
-            .iter()
-            .flat_map(|group| &group.properties)
-            .any(|row| {
-                row.label.eq_ignore_ascii_case("opacity")
-                    && crate::properties::is_slider(&row.editor).is_some()
-            })
-    );
+    assert!(panel
+        .groups
+        .iter()
+        .flat_map(|group| &group.properties)
+        .any(|row| {
+            row.label.eq_ignore_ascii_case("opacity")
+                && crate::properties::is_slider(&row.editor).is_some()
+        }));
 }
 
 #[test]
@@ -320,21 +428,21 @@ base_opacity: 1.0
         children: Vec::new(),
     };
 
-    let panel = crate::properties::build_panel_with_overrides(&node, |_| None);
+    let runtime = test_runtime();
+    let panel =
+        crate::properties::build_panel_with_overrides_for_runtime(&runtime, &node, |_| None);
 
-    assert!(
-        panel
-            .groups
-            .iter()
-            .flat_map(|group| &group.properties)
-            .any(|row| {
-                row.label == "entity"
-                    && row.value
-                        == amigo_editor_authoring::AuthoringPropertyValue::Text(
-                            "main-menu-background".to_owned(),
-                        )
-            })
-    );
+    assert!(panel
+        .groups
+        .iter()
+        .flat_map(|group| &group.properties)
+        .any(|row| {
+            row.label == "entity"
+                && row.value
+                    == amigo_editor_authoring::AuthoringPropertyValue::Text(
+                        "main-menu-background".to_owned(),
+                    )
+        }));
 }
 
 #[test]
@@ -553,11 +661,10 @@ fn tree_row_label_uses_ascii_markers() {
         .find(|row| row.node_id == "parent")
         .expect("parent row");
     assert_eq!(crate::theme::icon_ascii(row.icon), "[MAP]");
-    assert!(
-        row.tags
-            .iter()
-            .all(|tag| tag.label != "Edit" && tag.label != "RO")
-    );
+    assert!(row
+        .tags
+        .iter()
+        .all(|tag| tag.label != "Edit" && tag.label != "RO"));
 }
 
 #[test]
@@ -677,9 +784,11 @@ fn editor_overlay_clean_mode_shows_scene_objects_title() {
     let graph = test_graph(Vec::new());
     let state = IngameEditorState::new(true);
     state.set_tree_mode(crate::state::EditorTreeMode::Scene);
+    let runtime = test_runtime();
     let mut hit_targets = Vec::new();
     let mut stats = crate::overlay::OverlayStats::default();
     let document = crate::overlay::build_editor_document(
+        &runtime,
         amigo_overlay_api::UiViewportSize::new(1280.0, 720.0),
         &graph,
         None,
@@ -706,9 +815,11 @@ fn editor_overlay_tree_rows_use_ascii_icon_labels() {
     );
     let graph = test_graph(vec![entity]);
     let state = IngameEditorState::new(true);
+    let runtime = test_runtime();
     let mut hit_targets = Vec::new();
     let mut stats = crate::overlay::OverlayStats::default();
     let document = crate::overlay::build_editor_document(
+        &runtime,
         amigo_overlay_api::UiViewportSize::new(1280.0, 720.0),
         &graph,
         None,
@@ -727,9 +838,11 @@ fn editor_overlay_render_stack_tab_shows_expected_titles() {
     let graph = test_graph(Vec::new());
     let state = IngameEditorState::new(true);
     state.set_tree_mode(crate::state::EditorTreeMode::Stack);
+    let runtime = test_runtime();
     let mut hit_targets = Vec::new();
     let mut stats = crate::overlay::OverlayStats::default();
     let document = crate::overlay::build_editor_document(
+        &runtime,
         amigo_overlay_api::UiViewportSize::new(1280.0, 720.0),
         &graph,
         None,
@@ -756,9 +869,11 @@ fn editor_overlay_scalar_selection_explains_raw_debug_only() {
     );
     let graph = test_graph(vec![scalar.clone()]);
     let state = IngameEditorState::new(true);
+    let runtime = test_runtime();
     let mut hit_targets = Vec::new();
     let mut stats = crate::overlay::OverlayStats::default();
     let document = crate::overlay::build_editor_document(
+        &runtime,
         amigo_overlay_api::UiViewportSize::new(1280.0, 720.0),
         &graph,
         Some(&scalar),
@@ -974,12 +1089,10 @@ fn editor_icon_font_asset_is_registered_and_queued() {
         .expect("asset catalog");
     let key = crate::theme::editor_icon_font();
     assert!(assets.contains(&key));
-    assert!(
-        assets
-            .pending_loads()
-            .iter()
-            .any(|request| request.key == key)
-    );
+    assert!(assets
+        .pending_loads()
+        .iter()
+        .any(|request| request.key == key));
     let manifest = assets.manifest(&key).expect("editor icon font manifest");
     assert_eq!(
         manifest.source,
@@ -1046,7 +1159,7 @@ fn only_supported_generic_editors_have_hit_targets() {
 
 #[test]
 fn particle_bounds_use_descriptor_policy_without_component_exception() {
-    let registry = amigo_scene::default_component_registry();
+    let registry = crate::component_registry::editor_component_registry(&test_runtime());
     let descriptor = registry
         .descriptor_by_type_name("ParticleEmitter2D")
         .expect("ParticleEmitter2D descriptor");

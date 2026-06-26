@@ -98,7 +98,15 @@ impl AuthoringNodeSemantic {
     pub const COMPONENT_UI_DOCUMENT: &'static str = "UiDocument";
 
     pub fn component_type_is(&self, wanted: &str) -> bool {
-        self.component_type.as_deref() == Some(wanted)
+        self.component_type
+            .as_deref()
+            .is_some_and(|component_type| {
+                component_type.eq_ignore_ascii_case(wanted)
+                    || component_type
+                        .rsplit('.')
+                        .next()
+                        .is_some_and(|short_name| short_name.eq_ignore_ascii_case(wanted))
+            })
     }
 
     pub fn is_layered_image_2d(&self) -> bool {

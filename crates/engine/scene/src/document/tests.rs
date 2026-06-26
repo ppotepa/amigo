@@ -5,10 +5,9 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use serde_yaml::{Mapping, Value};
 
 use super::{
-    RenderDepthMode2dDocument, SceneComponentDocument, SceneEntitySelectorDocument,
-    SceneEntitySelectorKindDocument, compile_scene_document_from_path,
-    load_scene_document_from_path, load_scene_document_from_str,
-    load_scene_document_from_str_with_component_schemas,
+    compile_scene_document_from_path, load_scene_document_from_path, load_scene_document_from_str,
+    load_scene_document_from_str_with_component_schemas, RenderDepthMode2dDocument,
+    SceneComponentDocument, SceneEntitySelectorDocument, SceneEntitySelectorKindDocument,
 };
 use crate::SceneDocumentError;
 use crate::{
@@ -721,16 +720,12 @@ fn parses_playground_scene_documents_from_disk() {
 
     assert_eq!(sprite_doc.scene.id, "sprite-lab");
     assert_eq!(material_doc.scene.id, "material-lab");
-    assert!(
-        sprite_doc
-            .component_kind_counts()
-            .contains_key("amigo.gfx.sprite-2d.Sprite2D")
-    );
-    assert!(
-        material_doc
-            .component_kind_counts()
-            .contains_key("Material3D")
-    );
+    assert!(sprite_doc
+        .component_kind_counts()
+        .contains_key("amigo.gfx.sprite-2d.Sprite2D"));
+    assert!(material_doc
+        .component_kind_counts()
+        .contains_key("Material3D"));
 }
 
 #[test]
@@ -749,16 +744,12 @@ fn parses_playground_2d_main_scene_from_disk() {
 
     assert_eq!(document.scene.id, "hello-world-spritesheet");
     assert_eq!(document.transitions.len(), 1);
-    assert!(
-        document
-            .component_kind_counts()
-            .contains_key("amigo.gfx.sprite-2d.Sprite2D")
-    );
-    assert!(
-        document
-            .component_kind_counts()
-            .contains_key("amigo.gfx.text-2d.Text2D")
-    );
+    assert!(document
+        .component_kind_counts()
+        .contains_key("amigo.gfx.sprite-2d.Sprite2D"));
+    assert!(document
+        .component_kind_counts()
+        .contains_key("amigo.gfx.text-2d.Text2D"));
 }
 
 #[test]
@@ -796,11 +787,9 @@ fn parses_playground_2d_screen_space_preview_from_disk() {
     .expect("screen-space preview scene should parse");
 
     assert_eq!(document.scene.id, "screen-space-preview");
-    assert!(
-        document
-            .component_kind_counts()
-            .contains_key("amigo.gfx.sprite-2d.Sprite2D")
-    );
+    assert!(document
+        .component_kind_counts()
+        .contains_key("amigo.gfx.sprite-2d.Sprite2D"));
     assert!(document.component_kind_counts().contains_key("UiDocument"));
 }
 
@@ -873,11 +862,9 @@ entities:
     .expect("sidescroller scene document should parse");
 
     assert_eq!(document.scene.id, "vertical-slice");
-    assert!(
-        document
-            .component_kind_counts()
-            .contains_key("amigo.gfx.tilemap-2d.TileMap2D")
-    );
+    assert!(document
+        .component_kind_counts()
+        .contains_key("amigo.gfx.tilemap-2d.TileMap2D"));
     let tilemap_payload = document
         .entities
         .iter()
@@ -894,37 +881,25 @@ entities:
         nested_str(tilemap_payload, "ruleset"),
         "playground-sidescroller/spritesheets/platformer/rulesets/platform/rules"
     );
-    assert!(
-        document
-            .component_kind_counts()
-            .contains_key("KinematicBody2D")
-    );
-    assert!(
-        document
-            .component_kind_counts()
-            .contains_key("AabbCollider2D")
-    );
+    assert!(document
+        .component_kind_counts()
+        .contains_key("KinematicBody2D"));
+    assert!(document
+        .component_kind_counts()
+        .contains_key("AabbCollider2D"));
     assert!(document.component_kind_counts().contains_key("Trigger2D"));
-    assert!(
-        document
-            .component_kind_counts()
-            .contains_key("MotionController2D")
-    );
-    assert!(
-        document
-            .component_kind_counts()
-            .contains_key("amigo.gfx.sprite-2d.Sprite2D")
-    );
-    assert!(
-        document
-            .component_kind_counts()
-            .contains_key("CameraFollow2D")
-    );
-    assert!(
-        document
-            .component_kind_counts()
-            .contains_key("TileMapMarker2D")
-    );
+    assert!(document
+        .component_kind_counts()
+        .contains_key("MotionController2D"));
+    assert!(document
+        .component_kind_counts()
+        .contains_key("amigo.gfx.sprite-2d.Sprite2D"));
+    assert!(document
+        .component_kind_counts()
+        .contains_key("CameraFollow2D"));
+    assert!(document
+        .component_kind_counts()
+        .contains_key("TileMapMarker2D"));
 }
 
 #[test]
@@ -1588,87 +1563,65 @@ fn scene_compiler_compiles_rotten_club_main_menu_from_disk() {
     .expect("rotten-club main-menu should compile");
 
     assert_eq!(compiled.document.scene.id, "main-menu");
-    assert!(
-        compiled
-            .document
-            .entities
-            .iter()
-            .any(|entity| entity.id == "main-menu-camera" && entity.name == "main-menu-camera")
-    );
-    assert!(
-        compiled
-            .document
-            .entities
-            .iter()
-            .any(|entity| entity.id == "main-menu-background" && entity.name == "background")
-    );
-    assert!(
-        compiled
-            .document
-            .entities
-            .iter()
-            .any(|entity| entity.id == "main-menu-ui")
-    );
-    assert!(
-        compiled
-            .document
-            .entities
-            .iter()
-            .flat_map(|entity| entity.components.iter())
-            .any(|component| component.kind() == "UiDocument")
-    );
-    assert!(
-        compiled
-            .document
-            .visual2d
-            .render_layers
-            .iter()
-            .any(|layer| layer.id == "background.city")
-    );
-    assert!(
-        compiled
-            .document
-            .visual2d
-            .render_layers
-            .iter()
-            .any(|layer| layer.id == "weather.rain.1m"
-                && matches!(layer.depth.mode, RenderDepthMode2dDocument::Distance)
-                && (layer.depth.distance_m.unwrap_or_default() - 1.0).abs() < f32::EPSILON)
-    );
-    assert!(
-        compiled
-            .document
-            .visual2d
-            .render_layers
-            .iter()
-            .any(|layer| layer.id == "title.depth2d"
-                && matches!(layer.depth.mode, RenderDepthMode2dDocument::Distance)
-                && (layer.depth.distance_m.unwrap_or_default() - 1.0).abs() < f32::EPSILON
-                && (layer.depth.blur_scale - 1.0).abs() < f32::EPSILON)
-    );
+    assert!(compiled
+        .document
+        .entities
+        .iter()
+        .any(|entity| entity.id == "main-camera" && entity.name == "rotten-club-main-camera"));
+    assert!(compiled
+        .document
+        .entities
+        .iter()
+        .any(|entity| entity.id == "background" && entity.name == "rotten-club-background"));
+    assert!(compiled
+        .document
+        .visual2d
+        .render_layers
+        .iter()
+        .any(|layer| layer.id == "background.city"));
+    assert!(compiled
+        .document
+        .visual2d
+        .render_layers
+        .iter()
+        .any(|layer| layer.id == "weather.rain.near"
+            && matches!(layer.depth.mode, RenderDepthMode2dDocument::Distance)
+            && (layer.depth.distance_m.unwrap_or_default() - 2.0).abs() < f32::EPSILON));
+    assert!(compiled
+        .document
+        .visual2d
+        .render_layers
+        .iter()
+        .any(|layer| layer.id == "title.depth2d"
+            && matches!(layer.depth.mode, RenderDepthMode2dDocument::Distance)
+            && (layer.depth.distance_m.unwrap_or_default() - 4.5).abs() < f32::EPSILON
+            && (layer.depth.blur_scale - 0.45).abs() < f32::EPSILON));
     assert!(compiled.document.entities.iter().any(|entity| {
-        entity.id == "main-menu-title"
+        entity.id == "title"
             && entity
                 .components
                 .iter()
                 .any(|component| component.kind() == "amigo.gfx.text-2d.Text2D")
     }));
-    assert!(
-        compiled
-            .document
-            .visual2d
-            .light_groups
-            .iter()
-            .any(|group| group.id == "lightning")
-    );
-    assert!(
-        compiled
-            .document
-            .visual2d
-            .light_routes
-            .iter()
-            .any(|route| route.receiver_layer == "weather.rain.1m")
-    );
+    assert!(compiled.document.entities.iter().any(|entity| {
+        entity.id == "subtitle"
+            && entity
+                .components
+                .iter()
+                .any(|component| component.kind() == "amigo.gfx.text-2d.Text2D")
+    }));
+    assert!(compiled
+        .document
+        .visual2d
+        .light_groups
+        .iter()
+        .any(|group| group.id == "lightning"));
+    assert!(compiled
+        .document
+        .visual2d
+        .light_routes
+        .iter()
+        .any(|route| route.receiver_layer == "weather.rain.near"));
 }
 
 fn scene_compiler_temp_dir(name: &str) -> PathBuf {

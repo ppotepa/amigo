@@ -1,0 +1,96 @@
+{
+  "package": "dark_alley_lightmaps_batch01_signed_v001",
+  "timestamp_utc": "2026-06-26T16:51:48Z",
+  "items": [
+    {
+      "index": 1,
+      "filename": "images/01_ADD_L20_BAR_WARM_INTERIOR_right_bar_bottles_wood_sidewalk_spill.png",
+      "title": "BAR WARM INTERIOR",
+      "blend_mode": "ADD",
+      "resolution": "1672x941",
+      "source_generated_file": "a_dark_moody_night_scene_overall_almost_entirely_1_batch_1.png",
+      "description_pl": "cieply bursztynowy pass baru: butelki, drewno, witryna, prog, chodnik przy barze"
+    },
+    {
+      "index": 2,
+      "filename": "images/02_ADD_L21_BAR_SIGN_warm_BAR_and_BAR_MLECZNY_letters_local_spill.png",
+      "title": "BAR SIGN",
+      "blend_mode": "ADD",
+      "resolution": "1672x941",
+      "source_generated_file": "a_dark_moody_nighttime_street_scene_overall_almo_2_batch_2.png",
+      "description_pl": "osobny cieply pass napisu BAR oraz BAR MLECZNY, lokalny spill na drewnie i szkle"
+    },
+    {
+      "index": 3,
+      "filename": "images/03_ADD_L30_APTEKA_INTERIOR_cool_greenwhite_windows_shelves_sidewalk_spill.png",
+      "title": "APTEKA INTERIOR",
+      "blend_mode": "ADD",
+      "resolution": "1672x941",
+      "source_generated_file": "a_cinematic_moody_night_street_scene_with_heavy_d_3_batch_3.png",
+      "description_pl": "chlodny zielonkawo-bialy pass wnetrza apteki: okna, polki, drzwi, chodnik"
+    },
+    {
+      "index": 4,
+      "filename": "images/04_ADD_L31_APTEKA_CROSS_green_pharmacy_cross_facade_wet_ground_spill.png",
+      "title": "APTEKA CROSS",
+      "blend_mode": "ADD",
+      "resolution": "1672x941",
+      "source_generated_file": "a_dark_moody_atmospheric_nighttime_urban_street_4_batch_4.png",
+      "description_pl": "zielony pass krzyza aptecznego: krzyz, elewacja, szyba, mokry chodnik i asfalt"
+    },
+    {
+      "index": 5,
+      "filename": "images/05_ADD_L40_CZARNY_SEN_MAIN_SIGN_cold_dirty_blue_facade_doorway_spill.png",
+      "title": "CZARNY SEN MAIN SIGN",
+      "blend_mode": "ADD",
+      "resolution": "1672x941",
+      "source_generated_file": "a_moody_high_contrast_nighttime_street_scene_with_5_batch_5.png",
+      "description_pl": "zimny brudno-niebieski pass glownego szyldu CZARNY SEN i wejscia klubu"
+    },
+    {
+      "index": 6,
+      "filename": "images/06_ADD_L41_KLUB_VERTICAL_SIGN_cold_blue_corner_edge_spill.png",
+      "title": "KLUB VERTICAL SIGN",
+      "blend_mode": "ADD",
+      "resolution": "1672x941",
+      "source_generated_file": "a_dark_nearly_black_high_contrast_night_scene_wi_6_batch_6.png",
+      "description_pl": "osobny zimny niebieski pass pionowego szyldu KLUB i krawedzi naroznika"
+    },
+    {
+      "index": 7,
+      "filename": "images/07_ADD_L50_BACKGROUND_PALACE_cool_blue_distant_skyline_haze.png",
+      "title": "BACKGROUND PALACE COOL",
+      "blend_mode": "ADD",
+      "resolution": "1672x941",
+      "source_generated_file": "a_dark_moody_cinematic_night_scene_of_a_narrow_7_batch_7.png",
+      "description_pl": "chlodna daleka luminancja palace/tower i skyline w glebi kadru"
+    },
+    {
+      "index": 8,
+      "filename": "images/08_ADD_L51_BACKGROUND_PALACE_warm_window_pinlights_only.png",
+      "title": "BACKGROUND PALACE WARM PINLIGHTS",
+      "blend_mode": "ADD",
+      "resolution": "1672x941",
+      "source_generated_file": "a_dark_moody_night_street_scene_overall_almost_e_8_batch_8.png",
+      "description_pl": "cieple drobne pinlighty okien wiezy i dalekich kamienic"
+    },
+    {
+      "index": 9,
+      "filename": "images/09_ADD_L60_MISC_WINDOWS_sparse_urban_pinlights_mid_far_distance.png",
+      "title": "MISC WINDOWS",
+      "blend_mode": "ADD",
+      "resolution": "1672x941",
+      "source_generated_file": "a_moody_ultra_dark_cinematic_nighttime_urban_str_9_batch_9.png",
+      "description_pl": "pojedyncze subtelne swiatla okien i malych zrodel miejskich w srednim/dalekim planie"
+    },
+    {
+      "index": 10,
+      "filename": "images/10_ADD_L70_COMBINED_WET_REFLECTIONS_ground_only_all_sources.png",
+      "title": "COMBINED WET REFLECTIONS",
+      "blend_mode": "ADD",
+      "resolution": "1672x941",
+      "source_generated_file": "a_dark_moody_nighttime_urban_street_scene_overall_10_batch_10.png",
+      "description_pl": "zbiorczy pass odbic na mokrym asfalcie, kaluzach, krawedziach kraweznika i chodnika"
+    }
+  ]
+}

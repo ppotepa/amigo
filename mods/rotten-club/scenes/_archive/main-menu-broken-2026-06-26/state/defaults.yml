@@ -1,0 +1,19 @@
+kind: scene-fragment
+schema_version: 1
+
+state:
+  intro.t: 0.0
+  intro.complete: false
+  intro.title_visible: false
+  intro.title_alpha: 0.0
+  intro.rain_started: false
+  intro.rain_intensity: 0.0
+  intro.lightning_fired: false
+  intro.lightning_intensity: 0.0
+  intro.camera_focus_distance_m: 36.0
+  intro.skyline_mul: 1.0
+  intro.club_mul: 1.0
+  intro.bar_mul: 1.0
+  intro.next_skyline_flicker: 0.0
+  intro.next_club_flicker: 0.0
+  intro.next_bar_flicker: 0.0

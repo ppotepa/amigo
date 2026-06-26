@@ -1,0 +1,87 @@
+kind: scene-fragment
+schema_version: 1
+
+entities:
+  - id: main-camera
+    name: rotten-club-main-camera
+    tags: [camera, main-camera]
+    transform2:
+      translation: { x: 0.0, y: 0.0 }
+      rotation_degrees: 0.0
+      scale: { x: 1.0, y: 1.0 }
+    components:
+      - type: Camera2D
+        id: main
+        mode: manual
+        render_contributions:
+          camera.projection: true
+          camera.exposure: true
+          camera.shutter: true
+          camera.optics: true
+          camera.focus_blur: true
+          camera.lens_surface: false
+          camera.film: true
+          camera.look: true
+          camera.scan_output: true
+        exposure:
+          iso: 800
+          compensation: -0.45
+          white_balance: 4300.0
+          nd_stops: 0.0
+        shutter:
+          enabled: true
+          fps: 12.0
+          angle: 270.0
+          speed_s: 0.0625
+          opacity: 0.78
+          history_mix: 0.70
+          history_mix_2: 0.25
+          edge_rejection: 0.22
+          luma_threshold: 0.025
+          frame_hold: true
+        film:
+          profile: polish_1994_push_800
+          intensity: 0.72
+          seed: 2002
+          color_shift: 0.08
+          contrast: 1.32
+          saturation: 0.82
+          flicker: 0.08
+          vignette: 0.42
+          toe: 0.36
+          shoulder: 0.18
+          black_lift: -0.06
+          print_fade: 0.04
+          dust: 0.12
+          scratches: 0.035
+          push_pull: 0.22
+          gate_weave: 0.07
+          scan_softness: 0.22
+        look:
+          profile: rotten-club/camera/look/rotten-noir-print
+          intensity: 0.85
+        aperture:
+          enabled: true
+          f_stop: 2.8
+          focus_distance_m: 6.0
+          focus:
+            kind: distance
+            distance_m: 6.0
+          depth_of_field:
+            depth_map: main-depth
+            max_blur_px: 14.0
+            depth_contrast: 1.1
+            focus_width: 0.055
+            foreground_blur_boost: 0.85
+            background_blur_boost: 1.10
+            edge_aware: true
+            invert_depth: false
+            debug_view: final
+            aperture_blades: 7
+            aperture_roundness: 0.82
+            aperture_rotation_degrees: 0.0
+            sample_count: 16
+            highlight_threshold: 0.58
+            highlight_knee: 0.18
+            highlight_gain: 1.2
+            highlight_saturation: 1.0

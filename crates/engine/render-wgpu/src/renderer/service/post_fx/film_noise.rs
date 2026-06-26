@@ -32,7 +32,7 @@ struct FilmNoiseUniform {
     scan_softness: f32,
     opacity: f32,
     seed: f32,
-    _pad0: [f32; 3],
+    _pad0: [f32; 6],
 }
 
 pub(crate) fn execute_film_noise(
@@ -95,7 +95,7 @@ pub(crate) fn execute_film_noise(
         scan_softness: noise.scan_softness,
         opacity: noise.opacity,
         seed: noise.seed as f32,
-        _pad0: [0.0, 0.0, 0.0],
+        _pad0: [0.0; 6],
     };
     let uniform_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
         label: Some("amigo-film-noise-uniform-buffer"),

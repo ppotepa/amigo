@@ -1,0 +1,72 @@
+kind: scene-fragment
+schema_version: 1
+
+visual2d:
+  post_fx:
+    - type: shutter_blur
+      id: rc-shutter-12fps-rain-smear
+      fps: 12.0
+      shutter_angle: 270.0
+      opacity: 0.56
+      history_mix: 0.58
+      history_mix_2: 0.18
+      edge_rejection: 0.22
+      luma_threshold: 0.025
+      frame_hold: true
+    - type: color_ramp
+      id: rc-deep-noir-ramp
+      palette_size: 24
+      dither_strength: 0.34
+      dither_scale: 1.0
+      layered_dither: 0.42
+      opacity: 0.92
+      luma_preserve: 0.05
+      highlight_bias: 0.08
+      shadow_bias: 0.78
+      contrast: 1.42
+      saturation: 0.82
+      gamma: 1.25
+      seed: 2002
+    - type: color_quantize
+      id: rc-drawn-camera-quantize
+      palette_size: 18
+      dither_strength: 0.22
+      dither_scale: 1.0
+      layered_dither: 0.30
+      opacity: 0.36
+      luma_preserve: 0.08
+      highlight_bias: 0.04
+      shadow_bias: 0.72
+      contrast: 1.25
+      saturation: 0.90
+      gamma: 1.15
+      seed: 2231
+    - type: film_noise
+      id: rc-film-grain-shadow-heavy
+      iso: 800.0
+      grain_size: 1.0
+      chroma_noise: 0.06
+      color_shift: 0.08
+      contrast: 1.32
+      saturation: 0.82
+      flicker: 0.08
+      vignette: 0.42
+      toe: 0.36
+      shoulder: 0.18
+      black_lift: -0.06
+      print_fade: 0.04
+      dust: 0.12
+      scratches: 0.035
+      push_pull: 0.22
+      gate_weave: 0.07
+      scan_softness: 0.22
+      opacity: 0.28
+      seed: 2002
+    - type: rain_glass
+      id: rc-lens-rain
+      enabled: false
+      spawn_rate: 0.55
+      spawn_limit: 42
+      spawn_size: [2.0, 18.0]
+      opacity: 0.0
+      seed: 2002

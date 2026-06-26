@@ -8,16 +8,16 @@ scheduling:
   allow_frame_latency: false
 
   frame_clock:
-    strategy: host_realtime
-    simulation_fps: 60.0
-    render_fps: 60.0
+    strategy: fixed_simulation_sampled_render
+    simulation_fps: 12.0
+    render_fps: 12.0
     max_catch_up_ticks: 1
     clamp_frame_delta_seconds: 0.05
 
     presentation:
-      cache_game_frame: false
-      hold_last_game_frame: false
+      cache_game_frame: true
+      hold_last_game_frame: true
       game_ui: cached
-      devtools: cached
-      editor: cached
-      debug_overlay: cached
+      devtools: live
+      editor: live
+      debug_overlay: live

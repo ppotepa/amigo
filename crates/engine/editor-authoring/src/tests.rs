@@ -69,24 +69,18 @@ fn rotten_club_main_menu_loads_use_source_files() {
     )
     .expect("authoring graph");
 
-    assert!(
-        graph
-            .source_files
-            .iter()
-            .any(|path| path.ends_with("camera/main.yml"))
-    );
-    assert!(
-        graph
-            .source_files
-            .iter()
-            .any(|path| path.ends_with("camera/motion.yml"))
-    );
-    assert!(
-        graph
-            .source_files
-            .iter()
-            .any(|path| path.ends_with("render/layers.yml"))
-    );
+    assert!(graph
+        .source_files
+        .iter()
+        .any(|path| path.ends_with("camera/main.yml")));
+    assert!(graph
+        .source_files
+        .iter()
+        .any(|path| path.ends_with("weather/rain.yml")));
+    assert!(graph
+        .source_files
+        .iter()
+        .any(|path| path.ends_with("render/layers.yml")));
 }
 
 #[test]
@@ -113,10 +107,12 @@ fn rotten_club_main_menu_has_render_layer_nodes() {
 }
 
 #[test]
-fn rotten_club_main_menu_has_ui_nodes() {
+fn rotten_club_main_menu_has_title_text_nodes() {
     let graph = load_rotten_club_main_menu_graph();
 
-    assert!(!nodes_by_kind(&graph, AuthoringNodeKind::UiNode).is_empty());
+    assert!(nodes_by_kind(&graph, AuthoringNodeKind::Component)
+        .iter()
+        .any(|node| node.semantic.component_type_is("Text2D")));
 }
 
 fn test_component_node(component_type: &str, entity_name: &str, yaml: &str) -> AuthoringNode {
@@ -151,6 +147,181 @@ fn property_by_suffix<'a>(
         .unwrap_or_else(|| panic!("missing property suffix `{suffix}`"))
 }
 
+fn test_particle_component_registry() -> amigo_scene::ComponentRegistry {
+    let mut registry = amigo_scene::default_component_registry();
+    registry
+        .try_insert(test_layered_image_descriptor())
+        .expect("test LayeredImage2D descriptor");
+    registry
+        .try_insert(test_particle_emitter_descriptor())
+        .expect("test ParticleEmitter2D descriptor");
+    registry
+}
+
+fn test_layered_image_descriptor() -> amigo_scene::ComponentTypeDescriptor {
+    amigo_scene::ComponentTypeDescriptor {
+        kind_id: "LayeredImage2D",
+        type_name: "LayeredImage2D",
+        label: "Layered Image 2D",
+        domains: &[amigo_scene::ComponentDomain::Render2D],
+        owner_scopes: &[amigo_scene::ComponentOwnerScope::Entity],
+        default_yaml: None,
+        metadata_traits: &[
+            amigo_scene::MetadataTraitKind::Renderable2D,
+            amigo_scene::MetadataTraitKind::RenderLayered2D,
+            amigo_scene::MetadataTraitKind::HasAssetRefs,
+            amigo_scene::MetadataTraitKind::RuntimeControllable,
+            amigo_scene::MetadataTraitKind::GenericEditable,
+        ],
+        asset_refs: &[amigo_scene::ComponentAssetRefDescriptor {
+            field_path: "asset",
+            domain: amigo_scene::AssetDomain::LayeredImage,
+            required: true,
+            trait_kind: amigo_scene::MetadataTraitKind::HasAssetRefs,
+            group: "assetRefs.primary",
+        }],
+        properties: &[
+            amigo_scene::EditorPropertyDescriptor {
+                path: "asset",
+                label: "Layered Image Asset",
+                value_kind: amigo_scene::EditorPropertyValueKind::AssetRef,
+                access: amigo_scene::EditorPropertyAccess::Editable,
+                editor: amigo_scene::EditorPropertyEditorKind::AssetPicker,
+                asset_domain: Some(amigo_scene::AssetDomain::LayeredImage),
+                trait_kind: Some(amigo_scene::MetadataTraitKind::HasAssetRefs),
+                group: "assetRefs.primary",
+                patch_op: None,
+                number_constraints: None,
+                options: &[],
+                visibility: amigo_scene::EditorPropertyVisibility::Primary,
+                order: 0,
+                tags: &[],
+                readonly_reason: None,
+                binding_template: None,
+            },
+            amigo_scene::EditorPropertyDescriptor {
+                path: "size",
+                label: "Size",
+                value_kind: amigo_scene::EditorPropertyValueKind::Vec2,
+                access: amigo_scene::EditorPropertyAccess::Editable,
+                editor: amigo_scene::EditorPropertyEditorKind::Vec2,
+                asset_domain: None,
+                trait_kind: Some(amigo_scene::MetadataTraitKind::HasBounds2D),
+                group: "bounds2.size",
+                patch_op: None,
+                number_constraints: None,
+                options: &[],
+                visibility: amigo_scene::EditorPropertyVisibility::Primary,
+                order: 0,
+                tags: &[],
+                readonly_reason: None,
+                binding_template: None,
+            },
+            amigo_scene::EditorPropertyDescriptor {
+                path: "base_opacity",
+                label: "Base Opacity",
+                value_kind: amigo_scene::EditorPropertyValueKind::Number,
+                access: amigo_scene::EditorPropertyAccess::Editable,
+                editor: amigo_scene::EditorPropertyEditorKind::Number,
+                asset_domain: None,
+                trait_kind: Some(amigo_scene::MetadataTraitKind::RuntimeControllable),
+                group: "render2d.layers",
+                patch_op: None,
+                number_constraints: Some(amigo_scene::EDITOR_NUMBER_OPACITY),
+                options: &[],
+                visibility: amigo_scene::EditorPropertyVisibility::Primary,
+                order: 0,
+                tags: &["Live"],
+                readonly_reason: None,
+                binding_template: Some(
+                    amigo_scene::EditorRuntimeBindingTemplate::LayeredImageBaseOpacity,
+                ),
+            },
+        ],
+        transform_policy: amigo_scene::TransformPolicy::UsesEntityTransform2,
+        bounds_policy: amigo_scene::BoundsPolicy::ComponentBounds2D { field: "size" },
+        editor_controls: &[
+            amigo_scene::EditorControlKind::Transform2D,
+            amigo_scene::EditorControlKind::Rect2D,
+        ],
+        patch_ops: &[amigo_scene::EditorPatchOpKind::SetTransform2],
+    }
+}
+
+fn test_particle_emitter_descriptor() -> amigo_scene::ComponentTypeDescriptor {
+    amigo_scene::ComponentTypeDescriptor {
+        kind_id: "ParticleEmitter2D",
+        type_name: "ParticleEmitter2D",
+        label: "Particle Emitter 2D",
+        domains: &[
+            amigo_scene::ComponentDomain::Particles,
+            amigo_scene::ComponentDomain::Render2D,
+        ],
+        owner_scopes: &[amigo_scene::ComponentOwnerScope::Entity],
+        default_yaml: None,
+        metadata_traits: &[
+            amigo_scene::MetadataTraitKind::Renderable2D,
+            amigo_scene::MetadataTraitKind::RuntimeControllable,
+            amigo_scene::MetadataTraitKind::GenericEditable,
+        ],
+        asset_refs: &[],
+        properties: &[
+            amigo_scene::EditorPropertyDescriptor {
+                path: "active",
+                label: "Active",
+                value_kind: amigo_scene::EditorPropertyValueKind::Bool,
+                access: amigo_scene::EditorPropertyAccess::Editable,
+                editor: amigo_scene::EditorPropertyEditorKind::Checkbox,
+                asset_domain: None,
+                trait_kind: Some(amigo_scene::MetadataTraitKind::RuntimeControllable),
+                group: "render2d.content",
+                patch_op: None,
+                number_constraints: None,
+                options: &[],
+                visibility: amigo_scene::EditorPropertyVisibility::Primary,
+                order: 0,
+                tags: &["Live"],
+                readonly_reason: None,
+                binding_template: Some(
+                    amigo_scene::EditorRuntimeBindingTemplate::ParticleEmitterField,
+                ),
+            },
+            amigo_scene::EditorPropertyDescriptor {
+                path: "spawn_rate",
+                label: "Spawn Rate",
+                value_kind: amigo_scene::EditorPropertyValueKind::Number,
+                access: amigo_scene::EditorPropertyAccess::Editable,
+                editor: amigo_scene::EditorPropertyEditorKind::Number,
+                asset_domain: None,
+                trait_kind: Some(amigo_scene::MetadataTraitKind::RuntimeControllable),
+                group: "render2d.content",
+                patch_op: None,
+                number_constraints: Some(amigo_scene::EDITOR_NUMBER_PARTICLE_RATE),
+                options: &[],
+                visibility: amigo_scene::EditorPropertyVisibility::Primary,
+                order: 0,
+                tags: &["Live"],
+                readonly_reason: None,
+                binding_template: Some(
+                    amigo_scene::EditorRuntimeBindingTemplate::ParticleEmitterField,
+                ),
+            },
+        ],
+        transform_policy: amigo_scene::TransformPolicy::UsesEntityTransform2,
+        bounds_policy: amigo_scene::BoundsPolicy::SpawnArea2D {
+            field: "spawn_area",
+            size_field: "size",
+            default_width: 64,
+            default_height: 64,
+        },
+        editor_controls: &[
+            amigo_scene::EditorControlKind::Transform2D,
+            amigo_scene::EditorControlKind::Rect2D,
+        ],
+        patch_ops: &[amigo_scene::EditorPatchOpKind::SetTransform2],
+    }
+}
+
 #[test]
 fn component_descriptor_generates_particle_emitter_properties_from_scene_metadata() {
     let node = test_component_node(
@@ -167,7 +338,8 @@ render_layer: rain.near
 "#,
     );
 
-    let panel = build_property_panel_for_node(&node);
+    let registry = test_particle_component_registry();
+    let panel = build_property_panel_for_node_with_registry(&node, &registry);
 
     let spawn_rate = property_by_suffix(&panel, "::spawn_rate");
     assert_eq!(spawn_rate.label, "Spawn Rate");
@@ -207,7 +379,8 @@ layer_overrides:
 "#,
     );
 
-    let panel = build_property_panel_for_node(&node);
+    let registry = test_particle_component_registry();
+    let panel = build_property_panel_for_node_with_registry(&node, &registry);
 
     let asset = property_by_suffix(&panel, "::asset");
     assert_eq!(asset.label, "Layered Image Asset");
@@ -257,16 +430,15 @@ render_layer: rain.near
 "#,
     );
 
-    let panel = build_property_panel_for_node(&node);
+    let registry = test_particle_component_registry();
+    let panel = build_property_panel_for_node_with_registry(&node, &registry);
 
     assert_eq!(panel.title, "Component: Particle Emitter 2D");
     assert!(panel.groups.iter().any(|group| group.id == "metadata"));
-    assert!(
-        panel
-            .groups
-            .iter()
-            .any(|group| group.id == "render2d.content")
-    );
+    assert!(panel
+        .groups
+        .iter()
+        .any(|group| group.id == "render2d.content"));
     assert!(!panel.groups.iter().any(|group| group.id == "yaml"));
 }
 
@@ -298,13 +470,11 @@ base_opacity: 0.8
     let panel = build_property_panel_for_node(&entity);
 
     assert!(panel.groups.iter().any(|group| group.title == "Components"));
-    assert!(
-        panel
-            .groups
-            .iter()
-            .flat_map(|group| group.properties.iter())
-            .any(|property| property.label == "LayeredImage2D")
-    );
+    assert!(panel
+        .groups
+        .iter()
+        .flat_map(|group| group.properties.iter())
+        .any(|property| property.label == "LayeredImage2D"));
 }
 
 #[test]
@@ -323,7 +493,8 @@ layer_overrides: []
 "#,
     );
 
-    let panel = build_property_panel_for_node(&node);
+    let registry = test_particle_component_registry();
+    let panel = build_property_panel_for_node_with_registry(&node, &registry);
 
     let asset = property_by_suffix(&panel, "::asset");
     assert_eq!(
@@ -350,7 +521,8 @@ layer_overrides: []
 "#,
     );
 
-    let panel = build_property_panel_for_node(&node);
+    let registry = test_particle_component_registry();
+    let panel = build_property_panel_for_node_with_registry(&node, &registry);
     let base_opacity = property_by_suffix(&panel, "::base_opacity");
 
     let constraints = base_opacity
@@ -376,7 +548,8 @@ initial_speed: 640
 "#,
     );
 
-    let panel = build_property_panel_for_node(&node);
+    let registry = test_particle_component_registry();
+    let panel = build_property_panel_for_node_with_registry(&node, &registry);
     let spawn_rate = property_by_suffix(&panel, "::spawn_rate");
 
     let constraints = spawn_rate
@@ -406,7 +579,8 @@ layer_overrides:
 "#,
     );
 
-    let panel = build_property_panel_for_node(&node);
+    let registry = test_particle_component_registry();
+    let panel = build_property_panel_for_node_with_registry(&node, &registry);
 
     let opacity = property_by_suffix(&panel, "::layer_overrides.background.city.neon.opacity");
     assert_eq!(
@@ -727,7 +901,7 @@ fn first_component_by_type<'a>(
 ) -> &'a AuthoringNode {
     nodes_by_kind(graph, AuthoringNodeKind::Component)
         .into_iter()
-        .find(|node| node.semantic.component_type.as_deref() == Some(component_type))
+        .find(|node| node.semantic.component_type_is(component_type))
         .unwrap_or_else(|| panic!("missing component `{component_type}`"))
 }
 
@@ -747,21 +921,22 @@ fn rotten_club_main_menu_layered_image_has_owner_entity_and_bindings() {
     let node = first_component_by_type(&graph, "LayeredImage2D");
     assert_eq!(
         node.semantic.owner_entity_name.as_deref(),
-        Some("background")
+        Some("rotten-club-background")
     );
-    let panel = build_property_panel_for_node(node);
+    let registry = test_particle_component_registry();
+    let panel = build_property_panel_for_node_with_registry(node, &registry);
     let base_opacity = property_by_suffix(&panel, "::base_opacity");
     assert_eq!(
         base_opacity.binding,
         Some(AuthoringRuntimeBinding::LayeredImageBaseOpacity {
-            entity_name: "background".to_owned(),
+            entity_name: "rotten-club-background".to_owned(),
         })
     );
     let club_sign = property_by_suffix(&panel, "::layer_overrides.club_sign.opacity");
     assert_eq!(
         club_sign.binding,
         Some(AuthoringRuntimeBinding::LayeredImageLayerOpacity {
-            entity_name: "background".to_owned(),
+            entity_name: "rotten-club-background".to_owned(),
             layer_id: "club_sign".to_owned(),
         })
     );
@@ -809,27 +984,27 @@ fn rotten_club_main_menu_render_layers_generate_runtime_bindings() {
     assert!(option_ids.contains(&"distance"));
     assert!(option_ids.contains(&"infinity"));
 
-    let rain_node = first_render_layer_by_id(&graph, "weather.rain.5m");
+    let rain_node = first_render_layer_by_id(&graph, "weather.rain.near");
     let rain_panel = build_property_panel_for_node(rain_node);
     let distance_m = property_by_suffix(&rain_panel, "::depth.distance_m");
     assert_eq!(
         distance_m.binding,
         Some(AuthoringRuntimeBinding::RenderLayerDistanceM {
-            layer_id: "weather.rain.5m".to_owned(),
+            layer_id: "weather.rain.near".to_owned(),
         })
     );
     let z_depth = property_by_suffix(&rain_panel, "::depth.z_depth");
     assert_eq!(
         z_depth.binding,
         Some(AuthoringRuntimeBinding::RenderLayerZDepth {
-            layer_id: "weather.rain.5m".to_owned(),
+            layer_id: "weather.rain.near".to_owned(),
         })
     );
     let blur_scale = property_by_suffix(&rain_panel, "::depth.blur_scale");
     assert_eq!(
         blur_scale.binding,
         Some(AuthoringRuntimeBinding::RenderLayerDepthBlurScale {
-            layer_id: "weather.rain.5m".to_owned(),
+            layer_id: "weather.rain.near".to_owned(),
         })
     );
 }
@@ -837,11 +1012,9 @@ fn rotten_club_main_menu_render_layers_generate_runtime_bindings() {
 #[test]
 fn rotten_club_main_menu_camera_reports_profile_refs_without_scene_postfx_mock_dump() {
     let graph = load_rotten_club_main_menu_graph();
-    assert!(
-        nodes_by_kind(&graph, AuthoringNodeKind::PostFxItem)
-            .into_iter()
-            .all(|node| node.semantic.post_fx_id.as_deref() != Some("rotten_shutter_history"))
-    );
+    assert!(nodes_by_kind(&graph, AuthoringNodeKind::PostFxItem)
+        .into_iter()
+        .all(|node| node.semantic.post_fx_id.as_deref() != Some("rotten_shutter_history")));
 
     let node = first_component_by_type(&graph, "Camera2D");
     assert_eq!(
@@ -856,16 +1029,14 @@ fn rotten_club_main_menu_camera_reports_profile_refs_without_scene_postfx_mock_d
             .get("lens_surface")
             .and_then(|value| value.get("rain_profile"))
             .and_then(|value| value.as_str())
-            == Some("realistic_lens_rain")
+            == Some("rotten-club/camera/rain/realistic-lens-rain")
     );
     let panel = build_property_panel_for_node(node);
-    assert!(
-        !panel
-            .groups
-            .iter()
-            .flat_map(|group| group.properties.iter())
-            .any(|property| property.id.ends_with("::surface.blur_px"))
-    );
+    assert!(!panel
+        .groups
+        .iter()
+        .flat_map(|group| group.properties.iter())
+        .any(|property| property.id.ends_with("::surface.blur_px")));
 }
 
 #[test]
@@ -874,11 +1045,15 @@ fn rotten_club_main_menu_particle_emitters_use_component_metadata() {
     let particle = nodes_by_kind(&graph, AuthoringNodeKind::Component)
         .into_iter()
         .find(|node| {
-            node.semantic.component_type.as_deref() == Some("ParticleEmitter2D")
-                && node.semantic.owner_entity_name.as_deref() == Some("rain-10m")
+            node.semantic
+                .component_type
+                .as_deref()
+                .is_some_and(|component_type| component_type.ends_with("ParticleEmitter2D"))
+                && node.semantic.owner_entity_name.as_deref() == Some("rotten-club-rain-far")
         })
-        .expect("rain-10m ParticleEmitter2D");
-    let panel = build_property_panel_for_node(particle);
+        .expect("rotten-club-rain-far ParticleEmitter2D");
+    let registry = test_particle_component_registry();
+    let panel = build_property_panel_for_node_with_registry(particle, &registry);
     let spawn_rate = property_by_suffix(&panel, "::spawn_rate");
     assert_eq!(spawn_rate.label, "Spawn Rate");
     assert!(matches!(
@@ -888,7 +1063,7 @@ fn rotten_club_main_menu_particle_emitters_use_component_metadata() {
     assert_eq!(
         spawn_rate.binding,
         Some(AuthoringRuntimeBinding::ParticleEmitterProperty {
-            entity_name: "rain-10m".to_owned(),
+            entity_name: "rotten-club-rain-far".to_owned(),
             field: "spawn_rate".to_owned(),
         })
     );

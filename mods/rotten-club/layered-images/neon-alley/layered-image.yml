@@ -14,7 +14,7 @@ layers:
   - id: rain_relief_edges
     label: Rain Relief Edges
     image: base_albedo.png
-    blend: screen
+    blend: lighten
     default_opacity: 0.0
     color: '#DDE8FF'
     animation_hint: ambient

@@ -1,16 +1,2 @@
 kind: scene-fragment
 schema_version: 1
-
-entities:
-  - id: global-lights
-    name: rotten-club-global-lights
-    tags: [lighting]
-    components:
-      - type: amigo.lighting.light-2d.GlobalLight2D
-        id: ambient-night
-        color: "#101827FF"
-        intensity: 0.28
-      - type: amigo.lighting.light-2d.GlobalLight2D
-        id: neon-fill
-        color: "#315D78FF"
-        intensity: 0.16
