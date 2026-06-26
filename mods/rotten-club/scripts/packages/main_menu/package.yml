@@ -1,6 +1,0 @@
-id: main_menu
-version: 0.1.0
-exports:
-  - director.rhai
-requires:
-  capabilities: []

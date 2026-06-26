@@ -29,7 +29,7 @@ impl ConsoleCommandHandler for AssetsConsoleCommandHandler {
                 category: "assets",
                 help: "Reload an asset by key.",
                 usage: "asset.reload <asset-key>",
-                examples: &["asset.reload rotten-club/layered-images/neon-alley"],
+                examples: &["asset.reload playground-2d/spritesheets/sprite-lab"],
                 dev_only: true,
             },
         ]

@@ -9,9 +9,9 @@ fn main() -> AmigoResult<()> {
     let dev_mode = has_flag(&args, "--dev") || editor_requested;
     let mods_root = parse_option_value(&args, "--mods-root").unwrap_or_else(|| "mods".to_owned());
     let startup_mod = parse_option_value(&args, "--mod")
-        .or_else(|| editor_requested.then(|| "rotten-club".to_owned()));
+        .or_else(|| editor_requested.then(|| "playground-2d".to_owned()));
     let startup_scene = parse_option_value(&args, "--scene")
-        .or_else(|| editor_requested.then(|| "main-menu2".to_owned()));
+        .or_else(|| editor_requested.then(|| "screen-space-preview".to_owned()));
     let editor_mode = editor_requested;
     let active_mods = parse_option_value(&args, "--mods").map(|mods| {
         mods.split(',')

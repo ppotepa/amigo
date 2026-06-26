@@ -122,24 +122,6 @@ fn activating_mod_uses_declared_first_scene() {
 }
 
 #[test]
-fn launcher_lists_rotten_club_main_menu2_scene() {
-    let state = state();
-    let rotten_club = state
-        .known_mods
-        .iter()
-        .find(|known_mod| known_mod.id == "rotten-club")
-        .expect("rotten-club mod should exist");
-
-    assert!(
-        rotten_club
-            .scenes
-            .iter()
-            .any(|scene| scene.id == "main-menu2"),
-        "rotten-club main-menu2 should be visible as a launcher scene"
-    );
-}
-
-#[test]
 fn launcher_tree_groups_scenes_by_engine_categories() {
     let mut state = state();
     state
@@ -288,14 +270,14 @@ fn editor_launch_mode_syncs_focused_selection() {
     state.selected_mod_index = state
         .known_mods
         .iter()
-        .position(|known_mod| known_mod.id == "rotten-club")
-        .expect("rotten-club mod should exist");
-    state.expanded_mod_ids.insert("rotten-club".to_owned());
+        .position(|known_mod| known_mod.id == "playground-2d")
+        .expect("playground-2d mod should exist");
+    state.expanded_mod_ids.insert("playground-2d".to_owned());
     state.selected_scene_index = state
         .current_scene_list()
         .iter()
-        .position(|scene| scene.id == "main-menu2")
-        .expect("main-menu2 should exist");
+        .position(|scene| scene.id == "screen-space-preview")
+        .expect("screen-space-preview should exist");
     state.tree_cursor_on_scene = true;
     state.sync_tree_selection_to_visible();
 
@@ -303,11 +285,11 @@ fn editor_launch_mode_syncs_focused_selection() {
 
     assert_eq!(
         state.active_profile().root_mod.as_deref(),
-        Some("rotten-club")
+        Some("playground-2d")
     );
     assert_eq!(
         state.active_profile().startup_scene.as_deref(),
-        Some("main-menu2")
+        Some("screen-space-preview")
     );
     assert!(matches!(
         outcome,

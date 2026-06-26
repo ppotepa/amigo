@@ -53,7 +53,7 @@
   <text x="1068" y="126" class="mono title">RAW DEBUG</text>
   <text x="1068" y="152" class="mono small">Inspector / Properties        [Raw Debug]</text>
   <line x1="1068" y1="168" x2="1388" y2="168" class="line"/>
-  <text x="1068" y="196" class="mono tiny">source: mods/rotten-club/scenes/main-menu/visual/render.yml</text>
+  <text x="1068" y="196" class="mono tiny">source: mods/playground-2d/scenes/screen-space-preview/scene.yml</text>
   <text x="1068" y="220" class="mono tiny">yaml_pointer: /visual2d/render_layers/1</text>
   <text x="1068" y="244" class="mono tiny">kind: Mapping | editable=true</text>
   <text x="1068" y="286" class="mono small">Debug Fields</text>
