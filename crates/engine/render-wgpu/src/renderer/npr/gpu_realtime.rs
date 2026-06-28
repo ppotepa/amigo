@@ -174,6 +174,8 @@ impl GpuRealtimeNprRenderer3d {
             slice_as_bytes(&[6u32, 0u32, 0u32, 0u32]),
         );
 
+        let mut face_id_base = 0u32;
+        let mut clear_face_id = true;
         for job in &self.frame_jobs {
             let topology = self
                 .resources
@@ -191,6 +193,7 @@ impl GpuRealtimeNprRenderer3d {
                 camera_settings,
                 job.transform,
                 &job.settings,
+                face_id_base,
                 overlay,
             );
             queue.write_buffer(&frame_buffers.uniforms, 0, slice_as_bytes(&[uniforms]));
@@ -212,14 +215,22 @@ impl GpuRealtimeNprRenderer3d {
                         resolve_target: None,
                         depth_slice: None,
                         ops: wgpu::Operations {
-                            load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
+                            load: if clear_face_id {
+                                wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT)
+                            } else {
+                                wgpu::LoadOp::Load
+                            },
                             store: wgpu::StoreOp::Store,
                         },
                     })],
                     depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
                         view: &depth_view,
                         depth_ops: Some(wgpu::Operations {
-                            load: wgpu::LoadOp::Clear(1.0),
+                            load: if clear_face_id {
+                                wgpu::LoadOp::Clear(1.0)
+                            } else {
+                                wgpu::LoadOp::Load
+                            },
                             store: wgpu::StoreOp::Store,
                         }),
                         stencil_ops: None,
@@ -232,7 +243,32 @@ impl GpuRealtimeNprRenderer3d {
                 pass.set_bind_group(0, &face_id_bind_group, &[]);
                 pass.draw(0..topology.triangle_count.saturating_mul(3), 0..1);
             }
+            clear_face_id = false;
+            face_id_base = face_id_base.saturating_add(topology.triangle_count);
+        }
 
+        face_id_base = 0u32;
+        for job in &self.frame_jobs {
+            let topology = self
+                .resources
+                .topology_cache
+                .get(&topology_cache_key(&job.mesh_key, &job.geometry))
+                .ok_or_else(|| {
+                    format!(
+                        "missing uploaded gpu topology cache for `{}`",
+                        job.entity_name
+                    )
+                })?;
+            let uniforms = uniforms_for_job(
+                viewport,
+                camera,
+                camera_settings,
+                job.transform,
+                &job.settings,
+                face_id_base,
+                overlay,
+            );
+            queue.write_buffer(&frame_buffers.uniforms, 0, slice_as_bytes(&[uniforms]));
             let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
                 label: Some("amigo-npr-compute-bind-group"),
                 layout: &pipelines.compute_bind_group_layout,
@@ -277,7 +313,9 @@ impl GpuRealtimeNprRenderer3d {
             }
             {
                 let endpoint_items = topology.edge_count as usize * 2;
-                let work_items = endpoint_head_count.max(endpoint_items).max(topology.edge_count as usize);
+                let work_items = endpoint_head_count
+                    .max(endpoint_items)
+                    .max(topology.edge_count as usize);
                 let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
                     label: Some("amigo-npr-build-endpoint-bins-pass"),
                     timestamp_writes: None,
@@ -325,6 +363,7 @@ impl GpuRealtimeNprRenderer3d {
                     1,
                 );
             }
+            face_id_base = face_id_base.saturating_add(topology.triangle_count);
         }
 
         self.last_frame_has_draw_output = !self.frame_jobs.is_empty();
@@ -406,6 +445,7 @@ fn uniforms_for_job(
     camera_settings: amigo_render_api::Camera3dRenderSettings,
     transform: Transform3,
     settings: &amigo_render_api::NprLineSettings3d,
+    face_id_base: u32,
     overlay: Option<NprDebugOverlay3d>,
 ) -> GpuNprFrameUniforms3d {
     let silhouette_style = super::resolve_npr_kind_style(NprLineKind::Silhouette, settings);
@@ -536,7 +576,7 @@ fn uniforms_for_job(
             gpu_tuning.feature_min_length_multiplier,
             gpu_tuning.feature_alpha_multiplier,
             gpu_tuning.silhouette_min_length_multiplier,
-            0.0,
+            face_id_base as f32,
         ],
         ink_color: [
             settings.ink_color.r,

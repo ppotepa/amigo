@@ -30,8 +30,15 @@ struct GpuNprFrameUniforms3d {
     params11: vec4<f32>,
     params12: vec4<f32>,
     params13: vec4<f32>,
+    params14: vec4<f32>,
+    params15: vec4<f32>,
+    params16: vec4<f32>,
     ink_color: vec4<f32>,
     seed: vec4<u32>,
+}
+
+fn face_id_base() -> u32 {
+    return u32(max(uniforms.params16.w, 0.0));
 }
 
 struct VertexOut {
@@ -120,7 +127,7 @@ fn vs_main(@builtin(vertex_index) vertex_index: u32) -> VertexOut {
         vec4<f32>(ndc, clip_depth, 1.0),
         valid,
     );
-    out.face_id = face_index + 1u;
+    out.face_id = face_id_base() + face_index + 1u;
     return out;
 }
 

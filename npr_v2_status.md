@@ -5,7 +5,7 @@ Powiazany plan: `npr_v2.md`.
 
 ## 0. Postep globalny
 
-- Szacowany postep calego `npr_v2`: okolo 88%.
+- Szacowany postep calego `npr_v2`: okolo 89%.
 - Zrobione: kontrakt, YAML, routing CPU/GPU, debug mode, endpoint bins, owner compaction, `path_segments`, path-level lock/dropout foundation.
 - Zostalo: domkniecie parytetu wizualnego CPU/GPU, lepszy graph walk i stabilniejsze `path_t/path_id`, dalsze dopasowanie stylizacji do `cpu_reference`.
 
@@ -32,6 +32,11 @@ Powiazany plan: `npr_v2.md`.
 - GPU path walk zachowuje juz tez punkt `penultimate` dla dluzszych extension chainow.
 - To daje bogatsze `path_t` i lepiej odwzorowuje wieloodcinkowa strukture sciezki,
   szczegolnie tam, gdzie extension ma wiecej niz 2 hopy.
+- `gpu_realtime` buduje teraz `face-id/depth` globalnie dla calej ramki:
+  - target nie jest juz czyszczony per mesh,
+  - wszystkie meshe GPU sa najpierw rasteryzowane do wspolnego `face-id/depth`,
+  - dopiero potem kazdy job przechodzi swoje compute passy.
+- `face-id` dostalo per-job `face_id_base`, wiec identyfikatory trojkatow nie koliduja juz miedzy meshami GPU w tej samej ramce.
 
 ## 1. Co zostalo zrobione
 
@@ -293,8 +298,7 @@ Do sprawdzenia:
 - normalizacja clip/NDC/screen,
 - depth compare,
 - owner compaction,
-- zakres face id dla wielu meshy,
-- czyszczenie targetow per frame.
+- debug widoki parity dla owner/face id.
 
 ### 3.4. Presety nie sa jeszcze semantycznie identyczne w obu strategiach
 
@@ -370,6 +374,10 @@ Docelowo powinien byc tez kontrolowany przez YAML.
    - Debug pass dla face id.
    - Debug pass dla owner edge.
    - Porownanie CPU/GPU na jednym modelu i jednej kamerze.
+   - Status: czesciowo zrobione.
+   - `face-id/depth` jest juz globalne na poziomie calej ramki dla wszystkich GPU meshy.
+   - `face_id_base` eliminuje kolizje trojkatow miedzy meshami.
+   - Zostaje dalsze dopracowanie samplingu owner/debug parity.
 
 9. Dodac debug mode do YAML.
    - Status: bazowo zrobione.

@@ -163,9 +163,14 @@ fn screen_to_face_id_texel(screen: vec2<f32>) -> vec2<i32> {
     return clamp(texel, vec2<i32>(0, 0), max(dims - vec2<i32>(1, 1), vec2<i32>(0, 0)));
 }
 
+fn face_id_base() -> u32 {
+    return u32(max(uniforms.params16.w, 0.0));
+}
+
 fn face_id_matches(edge: GpuNprEdge3d, face_id: u32) -> bool {
-    let face0 = edge.face0 + 1u;
-    let face1 = edge.face1 + 1u;
+    let base = face_id_base();
+    let face0 = base + edge.face0 + 1u;
+    let face1 = base + edge.face1 + 1u;
     return face_id == face0 || (edge.face_count > 1u && face_id == face1);
 }
 
