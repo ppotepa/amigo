@@ -359,7 +359,7 @@ fn cs_main(@builtin(global_invocation_id) id: vec3<u32>) {
         hop_count,
         total_length,
     );
-    let stable_path_id = select(computed_path_id, state.path_id, state.path_id != 0u);
+    let stable_path_id = computed_path_id;
     let owner_t0 = clamp(start_walk.extra_length / total_length, 0.0, 1.0);
     let owner_t1 = clamp((start_walk.extra_length + length_px) / total_length, owner_t0, 1.0);
     let owner_mid = vec4<f32>(

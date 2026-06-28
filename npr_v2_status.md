@@ -5,7 +5,7 @@ Powiazany plan: `npr_v2.md`.
 
 ## 0. Postep globalny
 
-- Szacowany postep calego `npr_v2`: okolo 97%.
+- Szacowany postep calego `npr_v2`: okolo 98%.
 - Zrobione: kontrakt, YAML, routing CPU/GPU, debug mode, endpoint bins, owner compaction, `path_segments`, path-level lock/dropout foundation.
 - Zostalo: domkniecie parytetu wizualnego CPU/GPU, lepszy graph walk i stabilniejsze `path_t/path_id`, dalsze dopasowanie stylizacji do `cpu_reference`.
 
@@ -304,6 +304,15 @@ Glowne pliki:
   - uzywa `path_id`,
   - uzywa `path_t` cell,
   - jest bardziej spójny wzdluz calej sciezki.
+- `emit_path_segments` nie preferuje juz `state.path_id` z lokalnego edge-state.
+  Finalna kreska dostaje teraz kanoniczne `computed_path_id` wyliczane z:
+  - kind,
+  - skanonizowanych endpointow path,
+  - hop count,
+  - dlugosci path.
+- `connect_paths` i `relax_path_owners` nie mieszaja juz `edge_id` do `path_id`.
+  To zmniejsza ryzyko, ze identyfikacja sciezki bedzie skakac przy zmianie ownera
+  albo przy przejsciu miedzy sasiednimi edge tego samego chainu.
 - `build_strokes` dalej nie jest pelnym path rendererem, bo `path_t/path walk` sa jeszcze uproszczone.
 - GPU frame buffers maja teraz tez osobny bufor `path_states`.
 

@@ -71,8 +71,8 @@ fn cs_main(@builtin(global_invocation_id) id: vec3<u32>) {
         1u
         + select(0u, 1u, valid_state(link.start_next, state.kind))
         + select(0u, 1u, valid_state(link.end_next, state.kind));
-    let edge_id = seg.kind_edge.y;
-    let path_id = hash_u32(owner ^ (state.kind * 0x9E3779B1u) ^ (edge_id * 0x85EBCA77u));
+    let path_id =
+        hash_u32(owner ^ (state.kind * 0x9E3779B1u) ^ (segment_count * 0x85EBCA77u));
     path_states[edge_index] = GpuNprPathState3d(
         owner,
         path_id,
