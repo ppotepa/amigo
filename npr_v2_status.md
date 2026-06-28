@@ -170,11 +170,21 @@ Glowne pliki:
 - `R` przelacza automatyczny obrot modelu.
 - Presety sa plikami YAML i maja odpowiedniki GPU oraz CPU reference.
 - Zamiast latajacego tekstu 3D dodano stale UI/debug overlay z modelem, presetem, strategia i wybranymi statystykami.
+- Overlay jest teraz karmiony live przez `RenderFrameStatsService -> Rhai RuntimeApi`, wiec scena pokazuje:
+  - liczbe meshy GPU/CPU,
+  - liczbe path,
+  - edges/triangles dla GPU,
+  - pojemnosci `path_states/path_segments/stroke_segments`,
+  - aktywny `npr_debug_mode`.
 
 Glowne pliki:
 
 - `crates/3d/mesh/src/lib.rs`
 - `crates/3d/mesh/src/scene_command.rs`
+- `crates/scripting/rhai/src/bindings/runtime.rs`
+- `crates/scripting/rhai/src/bindings/world_root.rs`
+- `crates/scripting/rhai/src/runtime/plugin.rs`
+- `crates/scripting/rhai/src/runtime/script_runtime/constructors.rs`
 - `crates/scripting/rhai/src/bindings/mesh3d.rs`
 - `mods/playground-npr/scenes/comic-lines/scene.yml`
 - `mods/playground-npr/scenes/comic-lines/scene.rhai`

@@ -134,6 +134,15 @@ fn refresh_hud(world_api, dt) {
     let input_map = input::active_map(world_api);
     let runtime_backend = world_api.runtime.render_backend();
     let dev_mode = on_off(world_api.runtime.dev_mode());
+    let npr_gpu_meshes = world_api.runtime.npr_gpu_meshes();
+    let npr_cpu_meshes = world_api.runtime.npr_cpu_meshes();
+    let npr_paths = world_api.runtime.npr_paths();
+    let npr_gpu_edges = world_api.runtime.npr_gpu_edges();
+    let npr_gpu_triangles = world_api.runtime.npr_gpu_triangles();
+    let npr_path_states_capacity = world_api.runtime.npr_path_states_capacity();
+    let npr_path_segments_capacity = world_api.runtime.npr_path_segments_capacity();
+    let npr_stroke_segments_capacity = world_api.runtime.npr_stroke_segments_capacity();
+    let npr_debug_mode = world_api.runtime.npr_debug_mode();
 
     world_api.ui.set_text(
         "playground-npr-hud.root.model",
@@ -162,6 +171,14 @@ fn refresh_hud(world_api, dt) {
     world_api.ui.set_text(
         "playground-npr-hud.root.runtime",
         "Runtime  " + runtime_backend + " | dev " + dev_mode + " | map " + input_map,
+    );
+    world_api.ui.set_text(
+        "playground-npr-hud.root.stats_a",
+        "NPR      gpu " + npr_gpu_meshes + " cpu " + npr_cpu_meshes + " | paths " + npr_paths + " | mode " + npr_debug_mode,
+    );
+    world_api.ui.set_text(
+        "playground-npr-hud.root.stats_b",
+        "GPU      edges " + npr_gpu_edges + " tris " + npr_gpu_triangles + " | buffers " + npr_path_states_capacity + "/" + npr_path_segments_capacity + "/" + npr_stroke_segments_capacity,
     );
 }
 

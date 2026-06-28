@@ -1,6 +1,7 @@
 use crate::handles::EntityRef;
 use amigo_capabilities::{DEFAULT_CAPABILITY_VERSION, register_domain_plugin};
 use amigo_editor_api::{InspectRequest, InspectRequestService, InspectSource, InspectSubject};
+use amigo_render_api::RenderFrameStatsService;
 use amigo_runtime_control::{ControlValue, RuntimeControlService};
 
 pub struct RhaiScriptingPlugin;
@@ -84,6 +85,7 @@ impl RuntimePlugin for RhaiScriptingPlugin {
         let launch_selection = registry.resolve::<LaunchSelection>();
         let mod_catalog = registry.resolve::<ModCatalog>();
         let diagnostics = registry.resolve::<RuntimeDiagnostics>();
+        let render_stats = registry.resolve::<RenderFrameStatsService>();
         let command_queue = registry.resolve::<ScriptCommandQueue>();
         let event_queue = registry.resolve::<ScriptEventQueue>();
         let console_queue = registry.resolve::<DevConsoleQueue>();
@@ -113,6 +115,7 @@ impl RuntimePlugin for RhaiScriptingPlugin {
                 launch_selection,
                 mod_catalog,
                 diagnostics,
+                render_stats,
                 command_queue,
                 event_queue,
                 console_queue,

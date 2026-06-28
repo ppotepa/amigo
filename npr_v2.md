@@ -24,6 +24,7 @@ Za wdrożone fundamenty uznajemy już:
 - pierwszą generację `endpoint_bins`, `path_links` i `path_segments`,
 - globalny `face-id/depth` dla wszystkich meshy GPU w ramce,
 - rozszerzone statystyki GPU NPR w runtime i overlay/debug.
+- `RenderFrameStatsService` moze byc wystawiony do Rhai overlayu, zeby scena miala stale porownanie CPU/GPU bez 3D tekstu i bez dodatkowych debugowych entity.
 
 To oznacza, że dalsze prace z tego planu nie zaczynają od zera.
 Ich celem jest domknięcie parytetu wizualnego CPU/GPU, a nie ponowne projektowanie całego kontraktu NPR.

@@ -589,6 +589,24 @@ entities:
                 color: "#5A4A34FF"
                 word_wrap: true
             - type: text
+              id: stats_a
+              text: "NPR      gpu 0 cpu 0 | paths 0"
+              font: playground-npr/fonts/debug-ui
+              style:
+                width: 298.0
+                font_size: 14.0
+                color: "#5A4A34FF"
+                word_wrap: true
+            - type: text
+              id: stats_b
+              text: "GPU      edges 0 tris 0 | buffers 0/0/0"
+              font: playground-npr/fonts/debug-ui
+              style:
+                width: 298.0
+                font_size: 14.0
+                color: "#5A4A34FF"
+                word_wrap: true
+            - type: text
               id: help
               text: "1-6 model | Up/Down style | G strategy | F camera | R rotate | T temporal"
               font: playground-npr/fonts/debug-ui
