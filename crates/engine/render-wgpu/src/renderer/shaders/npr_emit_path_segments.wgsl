@@ -50,6 +50,9 @@ struct PathWalkResult {
     point: vec2<f32>,
     depth: f32,
     extra_length: f32,
+    near_point: vec2<f32>,
+    near_depth: f32,
+    near_length: f32,
     hops: u32,
 }
 
@@ -137,34 +140,6 @@ fn stable_path_id(
     );
 }
 
-fn path_segment_flags(
-    segment_slot: u32,
-    has_start_extension: bool,
-    has_end_extension: bool,
-) -> u32 {
-    var flags = PATH_FLAG_EMIT;
-    if (segment_slot == 0u) {
-        flags = flags | PATH_FLAG_CONNECTED_END;
-        return flags;
-    }
-    if (segment_slot == 1u) {
-        if (has_start_extension) {
-            flags = flags | PATH_FLAG_CONNECTED_START;
-        }
-        flags = flags | PATH_FLAG_CONNECTED_END;
-        return flags;
-    }
-    if (segment_slot == 2u) {
-        flags = flags | PATH_FLAG_CONNECTED_START;
-        if (has_end_extension) {
-            flags = flags | PATH_FLAG_CONNECTED_END;
-        }
-        return flags;
-    }
-    flags = flags | PATH_FLAG_CONNECTED_START;
-    return flags;
-}
-
 fn max_chain_cosine() -> f32 {
     return clamp(uniforms.params15.x, -0.999, 0.999);
 }
@@ -178,7 +153,8 @@ fn walk_path_endpoint(
     initial_length: f32,
     first_next: u32,
 ) -> PathWalkResult {
-    var result = PathWalkResult(anchor_point, anchor_depth, 0.0, 0u);
+    var result =
+        PathWalkResult(anchor_point, anchor_depth, 0.0, anchor_point, anchor_depth, 0.0, 0u);
     var current_anchor = anchor_point;
     var current_depth = anchor_depth;
     var current_direction = initial_direction;
@@ -238,6 +214,11 @@ fn walk_path_endpoint(
         result.point = far_point;
         result.depth = far_depth;
         result.extra_length = result.extra_length + segment_len;
+        if (result.hops == 0u) {
+            result.near_point = far_point;
+            result.near_depth = far_depth;
+            result.near_length = segment_len;
+        }
         result.hops = result.hops + 1u;
 
         previous_edge = next_edge;
@@ -257,8 +238,8 @@ fn cs_main(@builtin(global_invocation_id) id: vec3<u32>) {
     if (source_index >= u32(arrayLength(&path_segments))) {
         return;
     }
-    let edge_index = source_index / 4u;
-    let segment_slot = source_index % 4u;
+    let edge_index = source_index / 6u;
+    let segment_slot = source_index % 6u;
 
     if (edge_index >= u32(arrayLength(&visible_segments)) || edge_index >= u32(arrayLength(&path_links))) {
         return;
@@ -312,6 +293,10 @@ fn cs_main(@builtin(global_invocation_id) id: vec3<u32>) {
     let importance = path_importance(visible.kind_edge.x, avg_depth);
     let has_start_extension = start_walk.extra_length > 0.0001;
     let has_end_extension = end_walk.extra_length > 0.0001;
+    let split_start_extension =
+        start_walk.hops > 1u && distance(final_start.xy, start_walk.near_point) > 0.0001;
+    let split_end_extension =
+        end_walk.hops > 1u && distance(final_end.xy, end_walk.near_point) > 0.0001;
     let hop_count = start_walk.hops + end_walk.hops;
     let stable_path_id = stable_path_id(
         visible.kind_edge.x,
@@ -328,9 +313,21 @@ fn cs_main(@builtin(global_invocation_id) id: vec3<u32>) {
         1.0,
     );
     let owner_mid_t = clamp((owner_t0 + owner_t1) * 0.5, owner_t0, owner_t1);
+    let start_near = vec4<f32>(start_walk.near_point, start_walk.near_depth, visible.start.w);
+    let end_near = vec4<f32>(end_walk.near_point, end_walk.near_depth, visible.end.w);
+    let start_outer_t1 = clamp(
+        (start_walk.extra_length - start_walk.near_length) / total_length,
+        0.0,
+        owner_t0,
+    );
+    let end_inner_t1 = clamp(
+        owner_t1 + end_walk.near_length / total_length,
+        owner_t1,
+        1.0,
+    );
 
     if (segment_slot == 0u) {
-        if (!has_start_extension) {
+        if (!(has_start_extension && split_start_extension)) {
             return;
         }
         let emit_index = atomicAdd(&indirect_args[2], 1u);
@@ -345,26 +342,31 @@ fn cs_main(@builtin(global_invocation_id) id: vec3<u32>) {
                 stable_path_id,
                 visible.kind_edge.x,
                 hop_count,
-                path_segment_flags(segment_slot, has_start_extension, has_end_extension),
+                PATH_FLAG_EMIT | PATH_FLAG_CONNECTED_END,
             ),
-            vec4<f32>(0.0, owner_t0, total_length, importance),
+            vec4<f32>(0.0, start_outer_t1, total_length, importance),
         );
     } else if (segment_slot == 1u) {
+        if (!has_start_extension) {
+            return;
+        }
         let emit_index = atomicAdd(&indirect_args[2], 1u);
         if (emit_index >= u32(arrayLength(&path_segments))) {
             _ = atomicSub(&indirect_args[2], 1u);
             return;
         }
         path_segments[emit_index] = GpuNprPathSegment3d(
+            select(final_start, start_near, split_start_extension),
             visible.start,
-            owner_mid,
             vec4<u32>(
                 stable_path_id,
                 visible.kind_edge.x,
                 hop_count,
-                path_segment_flags(segment_slot, has_start_extension, has_end_extension),
+                PATH_FLAG_EMIT
+                    | select(0u, PATH_FLAG_CONNECTED_START, split_start_extension)
+                    | PATH_FLAG_CONNECTED_END,
             ),
-            vec4<f32>(owner_t0, owner_mid_t, total_length, importance),
+            vec4<f32>(select(0.0, start_outer_t1, split_start_extension), owner_t0, total_length, importance),
         );
     } else if (segment_slot == 2u) {
         let emit_index = atomicAdd(&indirect_args[2], 1u);
@@ -379,14 +381,13 @@ fn cs_main(@builtin(global_invocation_id) id: vec3<u32>) {
                 stable_path_id,
                 visible.kind_edge.x,
                 hop_count,
-                path_segment_flags(segment_slot, has_start_extension, has_end_extension),
+                PATH_FLAG_EMIT
+                    | select(0u, PATH_FLAG_CONNECTED_START, has_start_extension)
+                    | PATH_FLAG_CONNECTED_END,
             ),
-            vec4<f32>(owner_mid_t, owner_t1, total_length, importance),
+            vec4<f32>(owner_t0, owner_mid_t, total_length, importance),
         );
-    } else {
-        if (!has_end_extension) {
-            return;
-        }
+    } else if (segment_slot == 3u) {
         let emit_index = atomicAdd(&indirect_args[2], 1u);
         if (emit_index >= u32(arrayLength(&path_segments))) {
             _ = atomicSub(&indirect_args[2], 1u);
@@ -399,9 +400,53 @@ fn cs_main(@builtin(global_invocation_id) id: vec3<u32>) {
                 stable_path_id,
                 visible.kind_edge.x,
                 hop_count,
-                path_segment_flags(segment_slot, has_start_extension, has_end_extension),
+                PATH_FLAG_EMIT
+                    | PATH_FLAG_CONNECTED_START
+                    | select(0u, PATH_FLAG_CONNECTED_END, has_end_extension),
             ),
-            vec4<f32>(owner_t1, 1.0, total_length, importance),
+            vec4<f32>(owner_mid_t, owner_t1, total_length, importance),
+        );
+    } else if (segment_slot == 4u) {
+        if (!has_end_extension) {
+            return;
+        }
+        let emit_index = atomicAdd(&indirect_args[2], 1u);
+        if (emit_index >= u32(arrayLength(&path_segments))) {
+            _ = atomicSub(&indirect_args[2], 1u);
+            return;
+        }
+        path_segments[emit_index] = GpuNprPathSegment3d(
+            visible.end,
+            select(final_end, end_near, split_end_extension),
+            vec4<u32>(
+                stable_path_id,
+                visible.kind_edge.x,
+                hop_count,
+                PATH_FLAG_EMIT
+                    | PATH_FLAG_CONNECTED_START
+                    | select(0u, PATH_FLAG_CONNECTED_END, split_end_extension),
+            ),
+            vec4<f32>(owner_t1, select(1.0, end_inner_t1, split_end_extension), total_length, importance),
+        );
+    } else {
+        if (!(has_end_extension && split_end_extension)) {
+            return;
+        }
+        let emit_index = atomicAdd(&indirect_args[2], 1u);
+        if (emit_index >= u32(arrayLength(&path_segments))) {
+            _ = atomicSub(&indirect_args[2], 1u);
+            return;
+        }
+        path_segments[emit_index] = GpuNprPathSegment3d(
+            end_near,
+            final_end,
+            vec4<u32>(
+                stable_path_id,
+                visible.kind_edge.x,
+                hop_count,
+                PATH_FLAG_EMIT | PATH_FLAG_CONNECTED_START,
+            ),
+            vec4<f32>(end_inner_t1, 1.0, total_length, importance),
         );
     }
 }
