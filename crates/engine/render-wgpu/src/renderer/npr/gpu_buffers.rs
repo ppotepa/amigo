@@ -7,7 +7,7 @@ use crate::renderer::CachedMeshGeometry3d;
 
 use super::{
     gpu_edges_from_geometry, gpu_triangles_from_geometry, gpu_vertices_from_geometry,
-    GpuNprEndpointEntry3d, GpuNprFrameUniforms3d,
+    GpuNprEndpointEntry3d, GpuNprFrameUniforms3d, GpuNprPathSegment3d,
 };
 
 #[derive(Debug)]
@@ -38,6 +38,7 @@ pub(crate) struct NprGpuFrameBuffers3d {
     pub endpoint_heads: wgpu::Buffer,
     pub endpoint_entries: wgpu::Buffer,
     pub path_links: wgpu::Buffer,
+    pub path_segments: wgpu::Buffer,
     pub stroke_segments: wgpu::Buffer,
     pub indirect_args: wgpu::Buffer,
     pub uniforms: wgpu::Buffer,
@@ -46,6 +47,7 @@ pub(crate) struct NprGpuFrameBuffers3d {
     pub endpoint_heads_capacity: u64,
     pub endpoint_entries_capacity: u64,
     pub path_links_capacity: u64,
+    pub path_segments_capacity: u64,
     pub stroke_segments_capacity: u64,
 }
 
@@ -108,6 +110,7 @@ impl NprGpuResources3d {
         endpoint_heads_capacity: u64,
         endpoint_entries_capacity: u64,
         path_links_capacity: u64,
+        path_segments_capacity: u64,
         stroke_segments_capacity: u64,
     ) -> &NprGpuFrameBuffers3d {
         let recreate = self.frame_buffers.as_ref().is_none_or(|buffers| {
@@ -116,6 +119,7 @@ impl NprGpuResources3d {
                 || buffers.endpoint_heads_capacity < endpoint_heads_capacity
                 || buffers.endpoint_entries_capacity < endpoint_entries_capacity
                 || buffers.path_links_capacity < path_links_capacity
+                || buffers.path_segments_capacity < path_segments_capacity
                 || buffers.stroke_segments_capacity < stroke_segments_capacity
         });
         if recreate {
@@ -126,6 +130,7 @@ impl NprGpuResources3d {
                 endpoint_heads_capacity,
                 endpoint_entries_capacity,
                 path_links_capacity,
+                path_segments_capacity,
                 stroke_segments_capacity,
             ));
         }
@@ -143,6 +148,7 @@ impl NprGpuResources3d {
                     + buffers.endpoint_heads_capacity
                     + buffers.endpoint_entries_capacity
                     + buffers.path_links_capacity
+                    + buffers.path_segments_capacity
                     + buffers.stroke_segments_capacity
             })
             .unwrap_or(0)
@@ -222,6 +228,7 @@ fn create_frame_buffers(
     endpoint_heads_capacity: u64,
     endpoint_entries_capacity: u64,
     path_links_capacity: u64,
+    path_segments_capacity: u64,
     stroke_segments_capacity: u64,
 ) -> NprGpuFrameBuffers3d {
     NprGpuFrameBuffers3d {
@@ -250,6 +257,11 @@ fn create_frame_buffers(
             "amigo-npr-path-links",
             path_links_capacity,
         ),
+        path_segments: create_empty_buffer(
+            device,
+            "amigo-npr-path-segments",
+            path_segments_capacity.max(std::mem::size_of::<GpuNprPathSegment3d>() as u64),
+        ),
         stroke_segments: create_empty_buffer(
             device,
             "amigo-npr-stroke-segments",
@@ -266,6 +278,7 @@ fn create_frame_buffers(
         endpoint_heads_capacity,
         endpoint_entries_capacity,
         path_links_capacity,
+        path_segments_capacity,
         stroke_segments_capacity,
     }
 }

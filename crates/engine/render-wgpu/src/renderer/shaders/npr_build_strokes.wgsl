@@ -44,6 +44,13 @@ struct GpuNprPathLink3d {
     flags: u32,
 }
 
+struct GpuNprPathSegment3d {
+    start: vec4<f32>,
+    end: vec4<f32>,
+    path: vec4<u32>,
+    metrics: vec4<f32>,
+}
+
 struct NprStrokeSegmentVertex {
     start: vec2<f32>,
     end: vec2<f32>,
@@ -110,6 +117,7 @@ const PATH_FLAG_CONNECTED_END: u32 = 4u;
 @group(0) @binding(8) var<uniform> uniforms: GpuNprFrameUniforms3d;
 @group(0) @binding(9) var<storage, read_write> indirect_args: array<atomic<u32>>;
 @group(0) @binding(10) var<storage, read_write> path_links: array<GpuNprPathLink3d>;
+@group(0) @binding(13) var<storage, read_write> path_segments: array<GpuNprPathSegment3d>;
 
 fn rotate_euler(v: vec3<f32>, rotation: vec3<f32>) -> vec3<f32> {
     let cx = cos(rotation.x);
@@ -247,8 +255,10 @@ fn effective_dropout_amount(kind: u32) -> f32 {
 fn should_drop_segment_instance(
     kind: u32,
     pass_index: u32,
-    edge_id: u32,
+    path_id: u32,
     render_length: f32,
+    path_t0: f32,
+    path_t1: f32,
 ) -> bool {
     if (pass_index >= u32(uniforms.params5.x)) {
         return false;
@@ -263,8 +273,15 @@ fn should_drop_segment_instance(
     }
     let coverage = clamp(render_length / max(min_segment_px * 4.0, 1.0), 0.25, 1.0);
     let chance = effective * coverage;
+    let path_t_mid = clamp((path_t0 + path_t1) * 0.5, 0.0, 1.0);
+    let dropout_cells = max(uniforms.params4.w, 4.0);
+    let cell = u32(floor(path_t_mid * dropout_cells));
     let roll = signed_noise_01(
-        uniforms.seed.x ^ uniforms.seed.y ^ edge_id ^ (pass_index * 92821u) ^ 0xA5D3u
+        uniforms.seed.x
+        ^ uniforms.seed.y
+        ^ path_id
+        ^ (pass_index * 92821u)
+        ^ (cell * 0xA5D3u)
     );
     return roll < chance;
 }
@@ -274,12 +291,16 @@ fn connection_offset_multiplier(
     connected_end: bool,
     pass_index: u32,
     render_length: f32,
+    path_length: f32,
+    path_t0: f32,
+    path_t1: f32,
 ) -> f32 {
     let is_search = pass_index >= u32(uniforms.params5.x);
     let start_lock_px = max(bitcast<f32>(uniforms.seed.z), 0.0);
     let end_lock_px = max(bitcast<f32>(uniforms.seed.w), 0.0);
     let lock_span = clamp((start_lock_px + end_lock_px) / max(render_length, 1.0), 0.0, 1.0);
-    let lock_factor = 1.0 - lock_span * 0.45;
+    let path_lock = path_endpoint_lock_weight(path_t0, path_t1, path_length);
+    let lock_factor = (1.0 - lock_span * 0.45) * path_lock;
     if (connected_start && connected_end) {
         return select(0.12, 0.25, is_search) * lock_factor;
     }
@@ -295,8 +316,10 @@ fn endpoint_tangent_drift_px(
     pass_index: u32,
     connected: bool,
     render_length: f32,
+    path_length: f32,
     salt: u32,
     endpoint_lock_px: f32,
+    path_t: f32,
 ) -> f32 {
     if (connected) {
         return 0.0;
@@ -306,7 +329,8 @@ fn endpoint_tangent_drift_px(
         return 0.0;
     }
     let lock_factor =
-        1.0 - clamp(endpoint_lock_px / max(render_length, 1.0), 0.0, 0.85) * 0.55;
+        (1.0 - clamp(endpoint_lock_px / max(render_length, 1.0), 0.0, 0.85) * 0.55)
+        * path_endpoint_lock_at(path_t, path_length);
     let drift = coherent_signed_noise_1d(
         uniforms.seed.x ^ uniforms.seed.y,
         edge_id,
@@ -315,6 +339,24 @@ fn endpoint_tangent_drift_px(
         977u + salt,
     );
     return drift * max(kind_wobble_px(kind), 0.05) * tangent_scale * lock_factor;
+}
+
+fn path_endpoint_lock_at(path_t: f32, path_length: f32) -> f32 {
+    let start_lock_px = max(bitcast<f32>(uniforms.seed.z), 0.0);
+    let end_lock_px = max(bitcast<f32>(uniforms.seed.w), 0.0);
+    let start_lock_t = clamp(start_lock_px / max(path_length, 1.0), 0.0, 0.5);
+    let end_lock_t = clamp(end_lock_px / max(path_length, 1.0), 0.0, 0.5);
+    let t = clamp(path_t, 0.0, 1.0);
+    let start_weight = smoothstep(0.0, max(start_lock_t, 0.0001), t);
+    let end_weight = smoothstep(0.0, max(end_lock_t, 0.0001), 1.0 - t);
+    return clamp(start_weight * end_weight, 0.0, 1.0);
+}
+
+fn path_endpoint_lock_weight(path_t0: f32, path_t1: f32, path_length: f32) -> f32 {
+    let a = path_endpoint_lock_at(path_t0, path_length);
+    let b = path_endpoint_lock_at(path_t1, path_length);
+    let mid = path_endpoint_lock_at((path_t0 + path_t1) * 0.5, path_length);
+    return clamp(min(a, min(b, mid)), 0.0, 1.0);
 }
 
 fn coherent_signed_noise_1d(seed: u32, edge_id: u32, pass_index: u32, position: f32, salt: u32) -> f32 {
@@ -1428,182 +1470,47 @@ fn endpoint_taper(
 
 @compute @workgroup_size(64)
 fn cs_main(@builtin(global_invocation_id) id: vec3<u32>) {
-    let edge_index = id.x;
-    if (edge_index >= u32(arrayLength(&edges))) {
+    let path_segment_index = id.x;
+    let path_segment_count = atomicLoad(&indirect_args[2]);
+    if (
+        path_segment_index >= path_segment_count
+        || path_segment_index >= u32(arrayLength(&path_segments))
+    ) {
         return;
     }
 
-    let visible = visible_segments[edge_index];
-    if (visible.start.w < 0.5 || visible.end.w < 0.5) {
-        return;
-    }
-    let path_link = path_links[edge_index];
-    if ((path_link.flags & PATH_FLAG_EMIT) == 0u) {
-        return;
-    }
-    if (path_link.owner_edge != edge_index) {
+    let segment = path_segments[path_segment_index];
+    if (segment.start.w < 0.5 || segment.end.w < 0.5) {
         return;
     }
 
-    let screen_a = visible.start.xy;
-    let screen_b = visible.end.xy;
-    let line_length = distance(screen_a, screen_b);
-    if (line_length < uniforms.params0.w) {
-        return;
-    }
-
-    let kind = visible.kind_edge.x;
+    let kind = segment.path.y;
     if (kind == KIND_NONE) {
         return;
     }
     let primary_pass_count = max(u32(uniforms.params5.x), 1u);
-    let edge_id = visible.kind_edge.y;
-    let edge = edges[edge_index];
-    let line_depth = (visible.start.z + visible.end.z) * 0.5;
-    let seed32 = uniforms.seed.x ^ uniforms.seed.y;
-    let contour_line = kind == KIND_BOUNDARY || kind == KIND_SILHOUETTE;
-    let structural_line = kind == KIND_CREASE || kind == KIND_SEAM || kind == KIND_FEATURE;
-    let primary_line = contour_line || structural_line;
-    if (!primary_line) {
-        if (!should_emit_segment_instance(
-            edge_index,
-            edge,
-            screen_a,
-            screen_b,
-            line_length,
-            0.0,
-            0.0,
-            0xffffffffu,
-            0xffffffffu,
-        )) {
-            return;
-        }
-    }
-    let start_next_edge = path_link.start_next;
-    let end_next_edge = path_link.end_next;
-    let connected_start =
-        (path_link.flags & PATH_FLAG_CONNECTED_START) != 0u && start_next_edge != 0xffffffffu;
-    let connected_end =
-        (path_link.flags & PATH_FLAG_CONNECTED_END) != 0u && end_next_edge != 0xffffffffu;
-    let start_depth = visible.start.z;
-    let end_depth = visible.end.z;
-    let start_direction = normalize(screen_a - screen_b);
-    let end_direction = normalize(screen_b - screen_a);
-    let connected_start_score = select(
-        0.0,
-        endpoint_connection_score(
-            start_next_edge,
-            kind,
-            screen_a,
-            start_depth,
-            start_direction,
-            line_length,
-        ),
-        connected_start,
-    );
-    let connected_end_score = select(
-        0.0,
-        endpoint_connection_score(
-            end_next_edge,
-            kind,
-            screen_b,
-            end_depth,
-            end_direction,
-            line_length,
-        ),
-        connected_end,
-    );
-    let current_repr_score =
-        representative_edge_score(edge_index, max(connected_start_score, connected_end_score), line_length);
-    let neighbor_repr_score =
-        neighbor_representative_score(
-            line_length,
-            start_next_edge,
-            end_next_edge,
-            connected_start_score,
-            connected_end_score,
-        );
-    let canonical_owner_pick = canonical_chain_owner_index(
-        edge_index,
-        edge,
-        kind,
-        screen_a,
-        screen_b,
-        line_length,
-        start_direction,
-        end_direction,
-        start_depth,
-        end_depth,
-        connected_start_score,
-        connected_end_score,
-        start_next_edge,
-        end_next_edge,
-    );
-    let canonical_owner = canonical_owner_pick.owner;
-    if (canonical_owner != edge_index) {
+    let path_id = segment.path.x;
+    let path_flags = segment.path.w;
+    let edge_id = path_id;
+    let screen_a = segment.start.xy;
+    let screen_b = segment.end.xy;
+    let path_t0 = clamp(segment.metrics.x, 0.0, 1.0);
+    let path_t1 = clamp(segment.metrics.y, 0.0, 1.0);
+    let path_t_mid = clamp((path_t0 + path_t1) * 0.5, 0.0, 1.0);
+    let path_length = max(segment.metrics.z, distance(screen_a, screen_b));
+    let local_segment_length = distance(screen_a, screen_b);
+    let line_depth = (segment.start.z + segment.end.z) * 0.5;
+    var render_start_mut = screen_a;
+    var render_end_mut = screen_b;
+    var render_length = local_segment_length;
+    if (render_length < uniforms.params0.w) {
         return;
     }
-    let chain_quality = max(connected_start_score, connected_end_score);
-    var render_start_mut = select(
-        screen_a,
-        terminal_endpoint_walk(
-            screen_a,
-            start_depth,
-            start_direction,
-            line_length,
-            start_next_edge,
-            kind,
-        ),
-        connected_start,
-    );
-    var render_end_mut = select(
-        screen_b,
-        terminal_endpoint_walk(
-            screen_b,
-            end_depth,
-            end_direction,
-            line_length,
-            end_next_edge,
-            kind,
-        ),
-        connected_end,
-    );
-    let chained_start_point = select(
-        screen_a,
-        chained_endpoint_walk(
-            screen_a,
-            start_depth,
-            start_direction,
-            line_length,
-            start_next_edge,
-            kind,
-        ),
-        connected_start,
-    );
-    let chained_end_point = select(
-        screen_b,
-        chained_endpoint_walk(
-            screen_b,
-            end_depth,
-            end_direction,
-            line_length,
-            end_next_edge,
-            kind,
-        ),
-        connected_end,
-    );
-    render_start_mut = mix(render_start_mut, chained_start_point, 0.18);
-    render_end_mut = mix(render_end_mut, chained_end_point, 0.18);
-    let chained_span = distance(render_start_mut, render_end_mut);
-    let viability =
-        emit_viability_score(
-            current_repr_score,
-            neighbor_repr_score,
-            local_chain_centrality(connected_start, connected_end),
-            line_length,
-            chained_span,
-        );
-    var render_length = distance(render_start_mut, render_end_mut);
+    let importance = segment.metrics.w;
+    let seed32 = uniforms.seed.x ^ uniforms.seed.y;
+    let connected_start = (path_flags & PATH_FLAG_CONNECTED_START) != 0u;
+    let connected_end = (path_flags & PATH_FLAG_CONNECTED_END) != 0u;
+    let chain_quality = select(0.42, 0.86, connected_start && connected_end);
     let max_render_length = npr_gpu_max_render_length_px();
     if (render_length > max_render_length) {
         let trunc_direction = normalize(render_end_mut - render_start_mut);
@@ -1614,7 +1521,7 @@ fn cs_main(@builtin(global_invocation_id) id: vec3<u32>) {
         return;
     }
     let viewport_diagonal = length(uniforms.viewport_half.xy) * 2.0;
-    if (render_length > min(viewport_diagonal * 0.82, max(line_length * 3.2, line_length + 96.0))) {
+    if (render_length > min(viewport_diagonal * 0.82, max(local_segment_length * 3.2, local_segment_length + 96.0))) {
         return;
     }
     let base_direction = normalize(screen_b - screen_a);
@@ -1625,14 +1532,11 @@ fn cs_main(@builtin(global_invocation_id) id: vec3<u32>) {
     if (kind == KIND_CONTACT && (!connected_start || !connected_end || chain_quality < 0.72)) {
         return;
     }
-    if (
-        render_length > max(line_length * 2.8, line_length + 40.0)
-        && (!connected_start || !connected_end || chain_quality < 0.82)
-    ) {
-        return;
-    }
-    let importance = importance_from_depth(kind, line_depth);
-    let search_pass_count = u32(uniforms.params5.y);
+    let search_pass_count = select(
+        0u,
+        u32(uniforms.params5.y),
+        kind != KIND_SILHOUETTE && kind != KIND_CONTACT,
+    );
     let total_pass_count = primary_pass_count + search_pass_count;
 
     for (var pass_index: u32 = 0u; pass_index < total_pass_count; pass_index = pass_index + 1u) {
@@ -1647,7 +1551,14 @@ fn cs_main(@builtin(global_invocation_id) id: vec3<u32>) {
                 pass_render_length = search_max_length;
             }
         }
-        if (should_drop_segment_instance(kind, pass_index, edge_id, pass_render_length)) {
+        if (should_drop_segment_instance(
+            kind,
+            pass_index,
+            path_id,
+            pass_render_length,
+            path_t0,
+            path_t1,
+        )) {
             continue;
         }
         let segment_count = select(1u, 2u, pass_render_length >= npr_gpu_max_segment_length_px());
@@ -1656,22 +1567,22 @@ fn cs_main(@builtin(global_invocation_id) id: vec3<u32>) {
             _ = atomicSub(&indirect_args[1], segment_count);
             return;
         }
-        let width_start = pass_width(kind, pass_index, importance, 0.0);
-        let width_mid = pass_width(kind, pass_index, importance, 0.5);
-        let width_end = pass_width(kind, pass_index, importance, 1.0);
-        let alpha_start = pass_alpha(kind, pass_index, importance, 0.0);
-        let alpha_mid = pass_alpha(kind, pass_index, importance, 0.5);
-        let alpha_end = pass_alpha(kind, pass_index, importance, 1.0);
+        let width_start = pass_width(kind, pass_index, importance, path_t0);
+        let width_mid = pass_width(kind, pass_index, importance, path_t_mid);
+        let width_end = pass_width(kind, pass_index, importance, path_t1);
+        let alpha_start = pass_alpha(kind, pass_index, importance, path_t0);
+        let alpha_mid = pass_alpha(kind, pass_index, importance, path_t_mid);
+        let alpha_end = pass_alpha(kind, pass_index, importance, path_t1);
         let width_noise_start =
-            coherent_signed_noise_1d(seed32, edge_id, pass_index, 7.0, 503u)
+            coherent_signed_noise_1d(seed32, edge_id, pass_index, path_t0 * 13.0 + 7.0, 503u)
             * uniforms.params10.x
             * uniforms.params6.z;
         let width_noise_mid =
-            coherent_signed_noise_1d(seed32, edge_id, pass_index, 9.0, 503u)
+            coherent_signed_noise_1d(seed32, edge_id, pass_index, path_t_mid * 13.0 + 9.0, 503u)
             * uniforms.params10.x
             * uniforms.params6.z;
         let width_noise_end =
-            coherent_signed_noise_1d(seed32, edge_id, pass_index, 11.0, 503u)
+            coherent_signed_noise_1d(seed32, edge_id, pass_index, path_t1 * 13.0 + 11.0, 503u)
             * uniforms.params10.x
             * uniforms.params6.z;
         let tapering = endpoint_taper(
@@ -1687,26 +1598,26 @@ fn cs_main(@builtin(global_invocation_id) id: vec3<u32>) {
             seed32,
             edge_id,
             pass_index,
-            f32(edge_index % 101u) * uniforms.params10.y + 3.0,
+            path_t_mid * 19.0 + f32(path_id % 101u) * uniforms.params10.y + 3.0,
             919u,
         ) * kind_wobble_px(kind) * uniforms.params7.y * pass_wobble;
         let micro = coherent_signed_noise_1d(
             seed32,
             edge_id,
             pass_index,
-            f32(edge_index % 71u) * uniforms.params10.w + 13.0,
+            path_t_mid * 29.0 + f32(path_id % 71u) * uniforms.params10.w + 13.0,
             991u,
         ) * uniforms.params10.z * pass_wobble;
         let debug_color = debug_color_for_overlay(
             kind,
             pass_index,
-            canonical_owner,
-            edge_index,
+            path_id,
+            path_segment_index,
             connected_start,
             connected_end,
-            current_repr_score,
-            neighbor_repr_score,
-            viability,
+            importance,
+            importance,
+            chain_quality,
             tapering.x,
             tapering.z,
         );
@@ -1718,8 +1629,17 @@ fn cs_main(@builtin(global_invocation_id) id: vec3<u32>) {
         );
         let raw_offset =
             (pass_offset(edge_id, pass_index) + wobble + micro)
-            * connection_offset_multiplier(connected_start, connected_end, pass_index, pass_render_length);
+            * connection_offset_multiplier(
+                connected_start,
+                connected_end,
+                pass_index,
+                pass_render_length,
+                path_length,
+                path_t0,
+                path_t1,
+            );
         let base_overshoot = pass_overshoot(kind, pass_index);
+        let path_lock_weight = path_endpoint_lock_weight(path_t0, path_t1, path_length);
         let render_direction = normalize(pass_render_end - pass_render_start);
         let drift_start = endpoint_tangent_drift_px(
             kind,
@@ -1727,8 +1647,10 @@ fn cs_main(@builtin(global_invocation_id) id: vec3<u32>) {
             pass_index,
             connected_start,
             pass_render_length,
+            path_length,
             17u,
             bitcast<f32>(uniforms.seed.z),
+            path_t0,
         );
         let drift_end = endpoint_tangent_drift_px(
             kind,
@@ -1736,8 +1658,10 @@ fn cs_main(@builtin(global_invocation_id) id: vec3<u32>) {
             pass_index,
             connected_end,
             pass_render_length,
+            path_length,
             41u,
             bitcast<f32>(uniforms.seed.w),
+            path_t1,
         );
         let stylized_start = pass_render_start + render_direction * drift_start;
         let stylized_end = pass_render_end + render_direction * drift_end;
@@ -1746,7 +1670,7 @@ fn cs_main(@builtin(global_invocation_id) id: vec3<u32>) {
             seed32,
             edge_id,
             pass_index,
-            f32(edge_index % 131u) * uniforms.params10.y + 19.0,
+            path_t_mid * 37.0 + f32(path_id % 131u) * uniforms.params10.y + 19.0,
             1237u,
         );
         let curve_offset =
@@ -1754,12 +1678,20 @@ fn cs_main(@builtin(global_invocation_id) id: vec3<u32>) {
             * kind_wobble_px(kind)
             * uniforms.params7.y
             * pass_wobble
-            * connection_offset_multiplier(connected_start, connected_end, pass_index, pass_render_length)
+            * connection_offset_multiplier(
+                connected_start,
+                connected_end,
+                pass_index,
+                pass_render_length,
+                path_length,
+                path_t0,
+                path_t1,
+            )
             * select(0.35, 0.12, debug_mode != 0u);
         let stylized_mid = (stylized_start + stylized_end) * 0.5 + render_normal * curve_offset;
         let mid_width = max(width_mid + width_noise_mid, 0.25);
         let mid_alpha = select(alpha_mid, debug_color.a, debug_mode != 0u);
-        let overshoot = debug_overlay_overshoot(debug_mode, base_overshoot);
+        let overshoot = debug_overlay_overshoot(debug_mode, base_overshoot * path_lock_weight);
         stroke_segments[out_index].start = stylized_start;
         stroke_segments[out_index].end = select(stylized_end, stylized_mid, segment_count > 1u);
         stroke_segments[out_index].color = vec4<f32>(debug_color.rgb, debug_color.a);

@@ -9,6 +9,23 @@ Aktualny stan wdrożenia, w tym które etapy są już zrobione częściowo albo 
 
 Ten dokument zastępuje poprzedni plan. Najważniejsza korekta względem wersji 1: w aktualnym źródle część fundamentów już istnieje (`NprRenderStrategy3d`, `NprFillMode3d`, `NprGpuRealtimeTuning3d`, `GpuStableComic`, routing CPU/GPU, podstawowy GPU pipeline). Brakiem nie jest już samo przełączenie strategii, tylko pełny path model na GPU: endpoint bins, path walk, path-level stylizacja, debug mode i frame-level multi-mesh face-id.
 
+## Status planu vs implementacja
+
+Ten plik opisuje stan docelowy i kolejność dalszych prac.
+Nie jest changelogiem.
+
+Za wdrożone fundamenty uznajemy już:
+
+- jawne strategie `gpu_realtime` i `cpu_reference`,
+- routing CPU/GPU bez `auto` i bez `hybrid`,
+- osobne moduły NPR po stronie `render-wgpu`,
+- podstawowy GPU pipeline z face-id, projection i classify,
+- warstwę debugowania GPU w danych/runtime,
+- pierwszą generację `endpoint_bins`, `path_links` i `path_segments`.
+
+To oznacza, że dalsze prace z tego planu nie zaczynają od zera.
+Ich celem jest domknięcie parytetu wizualnego CPU/GPU, a nie ponowne projektowanie całego kontraktu NPR.
+
 ---
 
 ## 0. Definicja sukcesu

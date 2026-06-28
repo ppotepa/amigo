@@ -9,6 +9,7 @@ use crate::renderer::{
 use super::NprGpuResources3d;
 
 const NPR_GPU_SEGMENTS_PER_STROKE_PASS: usize = 2;
+const NPR_GPU_PATH_SEGMENTS_PER_CHAIN: usize = 4;
 
 #[derive(Debug, Clone)]
 pub(crate) struct NprGpuMeshJob3d {
@@ -128,6 +129,13 @@ impl GpuRealtimeNprRenderer3d {
         let path_links_capacity =
             (self.frame_jobs.iter().map(|job| job.geometry.edge_count()).sum::<usize>()
                 * std::mem::size_of::<super::GpuNprPathLink3d>()) as u64;
+        let path_segments_capacity =
+            (self
+                .frame_jobs
+                .iter()
+                .map(|job| job.geometry.edge_count() * NPR_GPU_PATH_SEGMENTS_PER_CHAIN)
+                .sum::<usize>()
+                * std::mem::size_of::<super::GpuNprPathSegment3d>()) as u64;
         let stroke_segments_capacity = (self
             .frame_jobs
             .iter()
@@ -146,6 +154,7 @@ impl GpuRealtimeNprRenderer3d {
             endpoint_heads_capacity.max(64),
             endpoint_entries_capacity.max(64),
             path_links_capacity.max(64),
+            path_segments_capacity.max(64),
             stroke_segments_capacity.max(64),
         );
         let (face_id_view, depth_view) = {
@@ -240,6 +249,7 @@ impl GpuRealtimeNprRenderer3d {
                     storage_binding(10, &frame_buffers.path_links),
                     storage_binding(11, &frame_buffers.endpoint_heads),
                     storage_binding(12, &frame_buffers.endpoint_entries),
+                    storage_binding(13, &frame_buffers.path_segments),
                 ],
             });
 
@@ -287,12 +297,33 @@ impl GpuRealtimeNprRenderer3d {
             }
             {
                 let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                    label: Some("amigo-npr-emit-path-segments-pass"),
+                    timestamp_writes: None,
+                });
+                pass.set_pipeline(&pipelines.emit_path_segments_pipeline);
+                pass.set_bind_group(0, &bind_group, &[]);
+                pass.dispatch_workgroups(
+                    workgroup_count(
+                        topology.edge_count as usize * NPR_GPU_PATH_SEGMENTS_PER_CHAIN,
+                    ),
+                    1,
+                    1,
+                );
+            }
+            {
+                let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
                     label: Some("amigo-npr-build-strokes-pass"),
                     timestamp_writes: None,
                 });
                 pass.set_pipeline(&pipelines.build_strokes_pipeline);
                 pass.set_bind_group(0, &bind_group, &[]);
-                pass.dispatch_workgroups(workgroup_count(topology.edge_count as usize), 1, 1);
+                pass.dispatch_workgroups(
+                    workgroup_count(
+                        topology.edge_count as usize * NPR_GPU_PATH_SEGMENTS_PER_CHAIN,
+                    ),
+                    1,
+                    1,
+                );
             }
         }
 

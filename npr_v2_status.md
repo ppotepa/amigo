@@ -3,6 +3,20 @@
 Status: aktualny zapis tego, co zostalo wdrozone i co zostaje do naprawy po pierwszej implementacji `gpu_realtime`.
 Powiazany plan: `npr_v2.md`.
 
+## 0. Postep globalny
+
+- Szacowany postep calego `npr_v2`: okolo 85%.
+- Zrobione: kontrakt, YAML, routing CPU/GPU, debug mode, endpoint bins, owner compaction, `path_segments`, path-level lock/dropout foundation.
+- Zostalo: domkniecie parytetu wizualnego CPU/GPU, lepszy graph walk i stabilniejsze `path_t/path_id`, dalsze dopasowanie stylizacji do `cpu_reference`.
+
+## 0.1. Co wnosi ta paczka
+
+- GPU final przestal byc tylko raw-edge lokalnym `visible_segments -> strokes`.
+- Doszedl osobny etap `emit_path_segments`.
+- `build_strokes` czyta teraz kompaktowane `path_segments`.
+- `path_id` jest stabilniejszy i nie zalezy wprost od owner edge.
+- Lock, overshoot, drift i dropout zaczely korzystac z semantyki calej path, a nie tylko pojedynczego segmentu.
+
 ## 1. Co zostalo zrobione
 
 ### 1.1. Kontrakt render-api
@@ -112,17 +126,60 @@ Glowne pliki:
   - `classify_edges`,
   - `build_endpoint_bins`,
   - `compact_owners`,
+  - `emit_path_segments`,
   - `build_strokes`.
 - Dodano GPU endpoint buffers:
   - `endpoint_heads`,
   - `endpoint_entries`.
+- Dodano GPU path buffer:
+  - `path_segments`.
 - `compact_owners` korzysta teraz z endpoint bucketow budowanych per frame w screen space,
   zamiast polegac wylacznie na statycznych `next_a/next_b`.
 - `build_strokes` zaczal korzystac z `path_links` jako zrodla:
   - owner edge,
   - start/end continuation,
   - connected start/end flags.
-- `build_strokes` dalej nie jest pelnym path rendererem, ale przestal byc czysto raw-edge lokalny.
+- `emit_path_segments` wydziela teraz osobny krok:
+  - owner edge -> path segment,
+  - path flags -> segment metadata,
+  - path length / importance -> metrics.
+- `emit_path_segments` kompaktuje teraz tylko realnie istniejace segmenty do zwartego bufora przez atomic counter,
+  zamiast polegac wylacznie na sztywnych slotach.
+- `emit_path_segments` robi juz prosty `path walk` po `path_links`:
+  - rozszerza owner segment w obie strony,
+  - akumuluje chain length,
+  - aktualizuje final start/end dla `path_segments`.
+- `emit_path_segments` zapisuje juz bardziej stabilna tozsamosc:
+  - `path_id` jest oparty o skwantowane konce walked chainu, kind, hop count i bucket dlugosci,
+  - `path_id` jest juz kierunkowo kanoniczny, wiec odwrocenie chainu nie powinno zmieniac identyfikatora,
+  - `path_id` nie zalezy juz bezposrednio od owner edge,
+  - `path.z` niesie podstawowa informacje o liczbie hopow chainu.
+- `emit_path_segments` emituje teraz dwa segmenty na walked chain:
+  - segment A: path start -> owner start,
+  - segment B: owner start -> owner mid,
+  - segment C: owner mid -> owner end,
+  - segment D: owner end -> path end.
+- To daje lepsze `path_t` dla `build_strokes` niz wczesniejszy pojedynczy owner segment albo podzial na tylko 2 czesci.
+- Kazdy z 4 segmentow ma teraz wlasne lokalne `connected_start/connected_end`,
+  zamiast odziedziczyc flagi calej sciezki 1:1.
+- `build_strokes` czyta juz `path_segments` jako glowny input finalnej kreski.
+- `build_strokes` czyta tylko rzeczywiscie wyemitowane `path_segments`, nie caly teoretyczny bufor slotow.
+- `build_strokes` zaczal uzywac `path_id` i `path_t` do stylizacji.
+- `build_strokes` ma juz path-level endpoint lock:
+  - wobble jest tlumione przy koncach path,
+  - tangent drift jest tlumiony przy koncach path,
+  - overshoot jest tlumiony przy koncach path.
+- Path-level endpoint lock liczy sie juz od prawdziwej dlugosci path, a nie od globalnego `max_render_length_px`.
+- `build_strokes` nie traktuje juz kazdego `path_segment` jak calej sciezki:
+  - geometria/stroke split opiera sie na lokalnej dlugosci segmentu,
+  - `path_length` zostaje zachowane osobno dla semantyki stylu.
+- Wewnetrzne laczenia segmentow sa juz oznaczane jako connected lokalnie,
+  wiec taper/overshoot nie sa stosowane tak agresywnie w srodku chainu.
+- Dropout w GPU nie jest juz tylko segment-local random:
+  - uzywa `path_id`,
+  - uzywa `path_t` cell,
+  - jest bardziej spójny wzdluz calej sciezki.
+- `build_strokes` dalej nie jest pelnym path rendererem, bo `path_t/path walk` sa jeszcze uproszczone.
 
 Glowne pliki:
 
@@ -131,6 +188,7 @@ Glowne pliki:
 - `crates/engine/render-wgpu/src/renderer/shaders/npr_classify_edges.wgsl`
 - `crates/engine/render-wgpu/src/renderer/shaders/npr_build_endpoint_bins.wgsl`
 - `crates/engine/render-wgpu/src/renderer/shaders/npr_compact_owners.wgsl`
+- `crates/engine/render-wgpu/src/renderer/shaders/npr_emit_path_segments.wgsl`
 - `crates/engine/render-wgpu/src/renderer/shaders/npr_build_strokes.wgsl`
 
 ### 1.7. Debug GPU NPR
@@ -171,6 +229,9 @@ Glowne pliki:
 - Ostatni etap endpoint bins kompiluje sie poprawnie dla:
   - `amigo-render-wgpu`,
   - `amigo-app`.
+- Ostatni etap `emit_path_segments -> build_strokes(path_segments)` tez kompiluje sie poprawnie dla:
+  - `amigo-render-wgpu`,
+  - `amigo-app`.
 
 ## 3. Znane problemy
 
@@ -192,7 +253,7 @@ Brakuje GPU odpowiednika:
 - search/correction passes zgodnych z CPU.
 
 To jest glowna roznica wizualna miedzy CPU i GPU.
-Obecny stan jest juz lepszy niz czyste `visible_segments`, bo `endpoint bins`, `path_links` i owner compaction sa aktywne, ale to nadal nie jest pelny `NprStrokePath`.
+Obecny stan jest juz lepszy niz czyste `visible_segments`, bo `endpoint bins`, `path_links`, owner compaction i `path_segments` sa aktywne, ale to nadal nie jest pelny `NprStrokePath`.
 
 ### 3.3. Face-id / owner sampling wymaga dopracowania
 
@@ -252,7 +313,9 @@ Docelowo powinien byc tez kontrolowany przez YAML.
    - Rejection po angle/depth/kind.
    - Status: czesciowo zrobione.
    - `path_links` i owner compaction juz korzystaja z endpoint bucketow,
-     ale finalny render nadal nie jest budowany z osobnego `path_segments` bufora.
+     a finalny render jest juz budowany z osobnego `path_segments` bufora.
+   - Jest juz prosty walk owner->neighbor po `path_links`.
+   - Brakuje jeszcze stabilnego `path_id`, wielosegmentowego graph walku i path-level `t`.
 
 4. Ujednolic stylizacje CPU/GPU.
    - Wydzielic wspolny model preset -> resolved style.
@@ -262,6 +325,13 @@ Docelowo powinien byc tez kontrolowany przez YAML.
    - Noise po `path_id + t`.
    - Endpoint lock.
    - Pressure/alpha curves po arc length.
+   - Status: czesciowo zrobione.
+   - Obecny `build_strokes` czyta juz `path_segments`, uzywa `path_id` i `path_t`.
+   - `path_t` nie jest juz sztywne `0/0.5/1`, bo walked chain jest dzielony na 4 segmenty.
+   - Endpoint lock per path jest juz czesciowo aktywny.
+   - `path_id` jest stabilniejsze i nie zalezy juz od owner edge index ani od kierunku chainu.
+   - Dropout jest juz bardziej path-level niz edge-level.
+   - Nadal brakuje prawdziwego `t` po pelnym wielosegmentowym luku i bardziej zaawansowanego path graphu.
 
 6. Zrobic path-level dropout.
    - Nie punktowy random.
