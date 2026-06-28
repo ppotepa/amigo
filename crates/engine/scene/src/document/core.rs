@@ -1,4 +1,4 @@
-use super::components::SceneComponentDocument;
+use super::components::{NprPreset3dDocument, SceneComponentDocument};
 use super::defaults::*;
 use super::render_values::{SceneTransform2Document, SceneTransform3Document, SceneVec2Document};
 use super::visual2d::{PostFx2dDocument, SceneVisual2dDocument};
@@ -22,6 +22,8 @@ pub struct SceneDocument {
     pub activation_sets: Vec<SceneActivationSetDocument>,
     #[serde(default)]
     pub visual2d: SceneVisual2dDocument,
+    #[serde(default)]
+    pub npr_presets: Vec<NprPreset3dDocument>,
     #[serde(default)]
     pub state: BTreeMap<String, SceneStateValueDocument>,
     #[serde(default)]

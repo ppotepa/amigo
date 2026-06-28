@@ -1,16 +1,26 @@
 use amigo_assets::AssetKey;
 use amigo_core::AmigoResult;
 use amigo_runtime::Runtime;
+use crate::MeshSceneService;
 use amigo_scene::{Mesh3dSceneCommand, SceneCommand};
 use amigo_scripting_api::{RuntimeScriptCommandHandler, ScriptCommand};
 
 pub struct Mesh3dScriptCommandContext<'a> {
     pub selected_mod: &'a str,
+    pub mesh_scene_service: Option<&'a MeshSceneService>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Mesh3dScriptCommandOutcome {
     Submit(SceneCommand),
+    AppliedNprPreset {
+        entity_name: String,
+        preset_id: String,
+    },
+    SetNprTemporalPathSmoothing {
+        entity_name: String,
+        enabled: bool,
+    },
     Unhandled,
 }
 
@@ -37,6 +47,33 @@ pub fn handle_mesh3d_script_command(
                 )),
             })
         }
+        ("apply_npr_preset", [entity_name, preset_id]) => {
+            let Some(mesh_scene_service) = ctx.mesh_scene_service else {
+                return Mesh3dScriptCommandOutcome::Unhandled;
+            };
+            if mesh_scene_service.apply_npr_preset(entity_name, preset_id) {
+                Mesh3dScriptCommandOutcome::AppliedNprPreset {
+                    entity_name: entity_name.clone(),
+                    preset_id: preset_id.clone(),
+                }
+            } else {
+                Mesh3dScriptCommandOutcome::Unhandled
+            }
+        }
+        ("set_npr_temporal_path_smoothing", [entity_name, enabled]) => {
+            let Some(mesh_scene_service) = ctx.mesh_scene_service else {
+                return Mesh3dScriptCommandOutcome::Unhandled;
+            };
+            let enabled = enabled == "true" || enabled == "1" || enabled == "on";
+            if mesh_scene_service.set_npr_temporal_path_smoothing(entity_name, enabled) {
+                Mesh3dScriptCommandOutcome::SetNprTemporalPathSmoothing {
+                    entity_name: entity_name.clone(),
+                    enabled,
+                }
+            } else {
+                Mesh3dScriptCommandOutcome::Unhandled
+            }
+        }
         _ => Mesh3dScriptCommandOutcome::Unhandled,
     }
 }
@@ -49,16 +86,28 @@ impl RuntimeScriptCommandHandler for Mesh3dScriptCommandHandler {
     }
 
     fn can_handle(&self, command: &ScriptCommand) -> bool {
-        command.namespace == "3d.mesh" && command.name == "spawn" && command.arguments.len() == 3
+        command.namespace == "3d.mesh"
+            && ((command.name == "spawn" && command.arguments.len() == 3)
+                || (command.name == "apply_npr_preset" && command.arguments.len() == 2)
+                || (command.name == "set_npr_temporal_path_smoothing"
+                    && command.arguments.len() == 2))
     }
 
     fn handle(&self, runtime: &Runtime, command: ScriptCommand) -> AmigoResult<()> {
         let scene_command_queue = runtime.required::<amigo_scene::SceneCommandQueue>()?;
-        match handle_mesh3d_script_command(Mesh3dScriptCommandContext { selected_mod: "" }, command)
-        {
+        let mesh_scene_service = runtime.resolve::<MeshSceneService>();
+        match handle_mesh3d_script_command(
+            Mesh3dScriptCommandContext {
+                selected_mod: "",
+                mesh_scene_service: mesh_scene_service.as_deref(),
+            },
+            command,
+        ) {
             Mesh3dScriptCommandOutcome::Submit(scene_command) => {
                 scene_command_queue.submit(scene_command);
             }
+            Mesh3dScriptCommandOutcome::AppliedNprPreset { .. } => {}
+            Mesh3dScriptCommandOutcome::SetNprTemporalPathSmoothing { .. } => {}
             Mesh3dScriptCommandOutcome::Unhandled => {}
         }
         Ok(())

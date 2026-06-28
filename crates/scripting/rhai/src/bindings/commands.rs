@@ -46,6 +46,32 @@ pub fn queue_asset_reload(
     queue_placeholder_command(command_queue, "asset", "reload", vec![asset_key.to_owned()])
 }
 
+pub fn queue_mesh3d_apply_npr_preset(
+    command_queue: Option<&Arc<ScriptCommandQueue>>,
+    entity_name: &str,
+    preset_id: &str,
+) -> bool {
+    queue_placeholder_command(
+        command_queue,
+        "3d.mesh",
+        "apply_npr_preset",
+        vec![entity_name.to_owned(), preset_id.to_owned()],
+    )
+}
+
+pub fn queue_mesh3d_set_npr_temporal_path_smoothing(
+    command_queue: Option<&Arc<ScriptCommandQueue>>,
+    entity_name: &str,
+    enabled: bool,
+) -> bool {
+    queue_placeholder_command(
+        command_queue,
+        "3d.mesh",
+        "set_npr_temporal_path_smoothing",
+        vec![entity_name.to_owned(), enabled.to_string()],
+    )
+}
+
 pub fn queue_audio_play(command_queue: Option<&Arc<ScriptCommandQueue>>, clip_name: &str) -> bool {
     queue_placeholder_command(command_queue, "audio", "play", vec![clip_name.to_owned()])
 }

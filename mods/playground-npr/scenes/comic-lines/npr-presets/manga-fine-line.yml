@@ -1,0 +1,43 @@
+kind: npr-preset-3d
+schema_version: 1
+id: manga_fine_line
+label: Manga Fine Line
+settings:
+  strategy: gpu_realtime
+  fill_mode: none
+  style_preset: rough_comic_ink
+  stroke_tool: ink_pen
+  feature_angle_degrees: 38.0
+  min_screen_length_px: 1.5
+  ink_color: "#050505FF"
+  width_px: 1.28
+  silhouette_width_multiplier: 1.72
+  boundary_width_multiplier: 1.0
+  feature_width_multiplier: 0.48
+  distance_width_falloff: 0.08
+  width_pressure_curve: [0.5, 0.92, 1.08, 0.42]
+  alpha_pressure_curve: [0.8, 1.0, 0.98, 0.68]
+  depth_pressure: 0.20
+  humanization: 0.18
+  line_confidence: 0.86
+  temporal_stability: 0.97
+  visibility_hysteresis_frames: 3
+  endpoint_snap_px: 1.15
+  path_simplify_px: 0.42
+  straightness: 0.9
+  taper: 0.9
+  stroke_wobble_px: 0.12
+  stroke_wobble_frequency: 0.2
+  micro_wobble_px: 0.02
+  micro_wobble_frequency: 1.0
+  pressure_jitter: 0.035
+  local_angular_drift_degrees: 0.18
+  overshoot_px: 0.55
+  undershoot_px: 0.0
+  pass_offset_px: 0.04
+  dropout: 0.0
+  dropout_segment_min_px: 14.0
+  passes: 1
+  search_line_count: 0
+  search_line_alpha: 0.0
+  seed: 45005

@@ -1,0 +1,8 @@
+kind: font-2d
+schema_version: 1
+id: debug-ui
+label: NPR Debug UI Font
+format: truetype
+
+source:
+  asset: core/fonts/console-mono

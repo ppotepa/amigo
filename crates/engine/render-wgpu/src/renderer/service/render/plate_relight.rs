@@ -773,7 +773,7 @@ fn same_canvas_size(a: Vec2, b: Vec2) -> bool {
 }
 
 fn draw_plate_relight_debug_skip(
-    renderer: &WgpuSceneRenderer,
+    renderer: &mut WgpuSceneRenderer,
     target: &mut WgpuOffscreenTarget,
     color: ColorRgba,
 ) -> AmigoResult<()> {
@@ -794,6 +794,7 @@ fn draw_plate_relight_debug_skip(
         wgpu::LoadOp::Clear(wgpu::Color::BLACK),
         &[],
         &[batch],
+        &[],
         &[],
     )
 }

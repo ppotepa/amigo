@@ -23,6 +23,15 @@ impl ConsoleCommandHandler for RenderConsoleCommandHandler {
                 dev_only: true,
             },
             ConsoleCommandDescriptor {
+                name: "render.npr",
+                aliases: &["npr.stats"],
+                category: "render",
+                help: "Show focused NPR stroke rendering diagnostics.",
+                usage: "render.npr",
+                examples: &["render.npr", "npr.stats"],
+                dev_only: true,
+            },
+            ConsoleCommandDescriptor {
                 name: "render.plan",
                 aliases: &[],
                 category: "render",
@@ -149,6 +158,7 @@ impl ConsoleCommandHandler for RenderConsoleCommandHandler {
                 command.name.as_str(),
                 "render.stats"
                     | "fps"
+                    | "npr.stats"
                     | "render.window"
                     | "camera.capture"
                     | "camera.focus.plan"
@@ -188,7 +198,7 @@ impl ConsoleCommandHandler for RenderConsoleCommandHandler {
                     Err(error) => return ConsoleCommandResult::error(error.to_string()),
                 };
                 ConsoleCommandResult::ok(format!(
-                    "frame={} window={}x{} tilemaps={} sprites={} layered={} layers={} routes={} global_lights={} lightmaps={} light_groups={} vectors={} beacons={} text2d={} particles={} meshes3d={} materials3d={} text3d={} game_ui={} debug_ui={} ui_overlays={} post_fx={} graph_nodes={}",
+                    "frame={} window={}x{} tilemaps={} sprites={} layered={} layers={} routes={} global_lights={} lightmaps={} light_groups={} vectors={} beacons={} text2d={} particles={} meshes3d={} npr3d={} npr_gpu={} npr_cpu={} npr_paths={} npr_boundary={} npr_silhouette={} npr_crease={} npr_seam={} npr_feature={} npr_contact={} npr_samples={} npr_vertices={} npr_primary_passes={} npr_search_passes={} npr_dropout_intervals={} npr_cache_hit={} npr_cache_miss={} npr_path_build_us={:.2} npr_stabilize_us={:.2} npr_stroke_vertices_us={:.2} npr_path_project_us={:.2} npr_path_visibility_us={:.2} npr_path_edge_sample_us={:.2} npr_path_stitch_us={:.2} npr_visible_edges={} npr_fragments={} offscreen_color_writes={} offscreen_color_reallocs={} offscreen_color_upload_bytes={} offscreen_color_capacity_bytes={} materials3d={} text3d={} game_ui={} debug_ui={} ui_overlays={} post_fx={} graph_nodes={}",
                     stats.frame_index,
                     stats.window_width,
                     stats.window_height,
@@ -205,6 +215,36 @@ impl ConsoleCommandHandler for RenderConsoleCommandHandler {
                     stats.world_2d_text,
                     stats.world_2d_particles,
                     stats.world_3d_meshes,
+                    stats.world_3d_npr_meshes,
+                    stats.world_3d_npr_gpu_realtime_meshes,
+                    stats.world_3d_npr_cpu_reference_meshes,
+                    stats.world_3d_npr_paths,
+                    stats.world_3d_npr_boundary_paths,
+                    stats.world_3d_npr_silhouette_paths,
+                    stats.world_3d_npr_crease_paths,
+                    stats.world_3d_npr_seam_paths,
+                    stats.world_3d_npr_feature_paths,
+                    stats.world_3d_npr_contact_paths,
+                    stats.world_3d_npr_brush_samples,
+                    stats.world_3d_npr_strip_vertices,
+                    stats.world_3d_npr_primary_passes,
+                    stats.world_3d_npr_search_passes,
+                    stats.world_3d_npr_dropout_intervals,
+                    stats.world_3d_npr_cached_plan_hits,
+                    stats.world_3d_npr_cached_plan_misses,
+                    stats.world_3d_npr_path_build_us,
+                    stats.world_3d_npr_stabilize_us,
+                    stats.world_3d_npr_stroke_vertices_us,
+                    stats.world_3d_npr_path_project_us,
+                    stats.world_3d_npr_path_visibility_us,
+                    stats.world_3d_npr_path_edge_sample_us,
+                    stats.world_3d_npr_path_stitch_us,
+                    stats.world_3d_npr_path_visible_edges,
+                    stats.world_3d_npr_path_fragments,
+                    stats.offscreen_color_buffer_writes,
+                    stats.offscreen_color_buffer_reallocs,
+                    stats.offscreen_color_upload_bytes,
+                    stats.offscreen_color_buffer_capacity_bytes,
                     stats.world_3d_materials,
                     stats.world_3d_text,
                     stats.game_ui_overlays,
@@ -212,6 +252,49 @@ impl ConsoleCommandHandler for RenderConsoleCommandHandler {
                     stats.ui_overlays,
                     stats.post_fx_effects,
                     stats.render_graph_nodes
+                ))
+            }
+            "render.npr" | "npr.stats" => {
+                let stats = match ctx.required::<RenderFrameStatsService>() {
+                    Ok(service) => service.snapshot(),
+                    Err(error) => return ConsoleCommandResult::error(error.to_string()),
+                };
+                ConsoleCommandResult::ok(format!(
+                    "npr meshes={} gpu_meshes={} cpu_meshes={} gpu(edges={} triangles={} topology_uploads={} buffer_capacity={}) paths={} kinds(boundary={} silhouette={} crease={} seam={} feature={} contact={}) samples={} vertices={} passes(primary={} search={}) dropout_intervals={} cache(hit={} miss={}) stage_us(path_build={:.2} stabilize={:.2} stroke_vertices={:.2}) path_build_breakdown_us(project={:.2} visibility={:.2} edge_sample={:.2} stitch={:.2}) visible_edges={} fragments={} upload(color_writes={} color_reallocs={} color_bytes={} color_capacity={})",
+                    stats.world_3d_npr_meshes,
+                    stats.world_3d_npr_gpu_realtime_meshes,
+                    stats.world_3d_npr_cpu_reference_meshes,
+                    stats.world_3d_npr_gpu_realtime_enqueued_edges,
+                    stats.world_3d_npr_gpu_realtime_enqueued_triangles,
+                    stats.world_3d_npr_gpu_realtime_topology_uploads,
+                    stats.world_3d_npr_gpu_realtime_buffer_capacity_bytes,
+                    stats.world_3d_npr_paths,
+                    stats.world_3d_npr_boundary_paths,
+                    stats.world_3d_npr_silhouette_paths,
+                    stats.world_3d_npr_crease_paths,
+                    stats.world_3d_npr_seam_paths,
+                    stats.world_3d_npr_feature_paths,
+                    stats.world_3d_npr_contact_paths,
+                    stats.world_3d_npr_brush_samples,
+                    stats.world_3d_npr_strip_vertices,
+                    stats.world_3d_npr_primary_passes,
+                    stats.world_3d_npr_search_passes,
+                    stats.world_3d_npr_dropout_intervals,
+                    stats.world_3d_npr_cached_plan_hits,
+                    stats.world_3d_npr_cached_plan_misses,
+                    stats.world_3d_npr_path_build_us,
+                    stats.world_3d_npr_stabilize_us,
+                    stats.world_3d_npr_stroke_vertices_us,
+                    stats.world_3d_npr_path_project_us,
+                    stats.world_3d_npr_path_visibility_us,
+                    stats.world_3d_npr_path_edge_sample_us,
+                    stats.world_3d_npr_path_stitch_us,
+                    stats.world_3d_npr_path_visible_edges,
+                    stats.world_3d_npr_path_fragments,
+                    stats.offscreen_color_buffer_writes,
+                    stats.offscreen_color_buffer_reallocs,
+                    stats.offscreen_color_upload_bytes,
+                    stats.offscreen_color_buffer_capacity_bytes,
                 ))
             }
             "render.plan" => {
@@ -519,6 +602,24 @@ mod tests {
         let alias = ParsedConsoleCommand {
             raw: "materials".to_owned(),
             name: "materials".to_owned(),
+            args: Vec::new(),
+        };
+
+        assert!(handler.can_handle(&command));
+        assert!(handler.can_handle(&alias));
+    }
+
+    #[test]
+    fn render_console_handles_npr_stats() {
+        let handler = RenderConsoleCommandHandler;
+        let command = ParsedConsoleCommand {
+            raw: "render.npr".to_owned(),
+            name: "render.npr".to_owned(),
+            args: Vec::new(),
+        };
+        let alias = ParsedConsoleCommand {
+            raw: "npr.stats".to_owned(),
+            name: "npr.stats".to_owned(),
             args: Vec::new(),
         };
 

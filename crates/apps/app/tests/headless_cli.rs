@@ -25,6 +25,31 @@ fn app_headless_cli_runs_selected_mod_and_scene() {
 }
 
 #[test]
+fn app_headless_cli_runs_playground_npr_comic_lines_scene() {
+    let output = Command::new(env!("CARGO_BIN_EXE_amigo-app"))
+        .current_dir(workspace_root())
+        .args(["--mod=playground-npr", "--scene=comic-lines", "--dev"])
+        .output()
+        .expect("app binary should run");
+
+    assert!(
+        output.status.success(),
+        "app should succeed: stdout=`{}` stderr=`{}`",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("root mod: playground-npr"));
+    assert!(stdout.contains("active scene: comic-lines"));
+    assert!(stdout.contains("scene document components: Camera3D x1, CameraController3D x1, InputActionMap x1"));
+    assert!(stdout.contains("playground-npr/meshes/soldier (mesh-3d)"));
+    assert!(stdout.contains("scene.plugin(amigo.rendering.3d.scene-command.NprPreset3d)"));
+    assert!(stdout.contains("3d.mesh.apply_npr_preset(playground-npr-model-1-soldier, rough_comic_ink)"));
+    assert!(stdout.contains("7 final, 8 kinds, 9 dropout, 0 width/alpha"));
+}
+
+#[test]
 fn app_headless_cli_rejects_missing_scene() {
     let output = Command::new(env!("CARGO_BIN_EXE_amigo-app"))
         .current_dir(workspace_root())

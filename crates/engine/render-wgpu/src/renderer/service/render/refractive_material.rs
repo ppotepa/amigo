@@ -93,6 +93,7 @@ pub(super) fn execute_refractive_material_2d(
         &mask_batches,
         &mask_color_batches,
         &[],
+        &[],
     )?;
 
     let uniform = aggregate_uniform(target, &active_candidates);

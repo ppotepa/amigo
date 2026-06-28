@@ -36,6 +36,14 @@ impl WgpuSceneRenderer {
         &self.render_materials_last_summary
     }
 
+    pub fn npr_stroke_stats_3d(&self) -> NprStrokeFrameStats3d {
+        self.npr_stroke_stats_3d
+    }
+
+    pub fn offscreen_upload_stats(&self) -> crate::renderer::service::WgpuOffscreenUploadStats {
+        self.offscreen_upload_stats
+    }
+
     pub(crate) fn set_render_materials_last_summary(&mut self, summary: impl Into<String>) {
         self.render_materials_last_summary = summary.into();
     }
@@ -66,6 +74,7 @@ mod glyphs;
 mod graph;
 mod lightmap2d;
 mod math;
+mod npr;
 mod particles;
 mod pipelines;
 mod render_types;
@@ -92,6 +101,7 @@ use world_3d::*;
 pub(crate) use cached_resources::*;
 pub(crate) use lightmap2d::lit_particle_color;
 pub(crate) use math::sprite_color;
+pub(crate) use npr::*;
 pub(crate) use particles::append_particle_light_primitive_vertices;
 pub(crate) use particles::append_particle_primitive_vertices;
 pub(crate) use particles::color_batch_vertices;
@@ -107,6 +117,8 @@ pub(crate) use world_2d::append_tilemap_primitive_color_vertices;
 pub(crate) use world_2d::{
     append_vector_primitive_vertices, vector_primitive_viewport_fit_transform,
 };
+pub(crate) use world_3d::NprLineKind;
+pub use world_3d::NprStrokeFrameStats3d;
 
 pub use service::{
     WgpuEmergencyOverlayLevel, WgpuEmergencyOverlayLine, WgpuFrameRenderRequest,

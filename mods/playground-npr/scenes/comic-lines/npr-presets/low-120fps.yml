@@ -1,0 +1,48 @@
+kind: npr-preset-3d
+schema_version: 1
+id: low_120fps
+label: Low 120 FPS
+settings:
+  strategy: gpu_realtime
+  fill_mode: none
+  style_preset: rough_comic_ink
+  stroke_tool: technical_pen
+  suggestive: false
+  contact: false
+  contact_ground_y: 0.0
+  contact_threshold: 0.04
+  feature_angle_degrees: 52.0
+  min_screen_length_px: 5.0
+  ink_color: "#101010FF"
+  width_px: 1.85
+  silhouette_width_multiplier: 1.55
+  boundary_width_multiplier: 0.85
+  feature_width_multiplier: 0.32
+  distance_width_falloff: 0.04
+  width_pressure_curve: [0.95, 1.0, 1.0, 0.92]
+  alpha_pressure_curve: [0.95, 1.0, 1.0, 0.92]
+  depth_pressure: 0.04
+  humanization: 0.08
+  line_confidence: 0.95
+  temporal_stability: 0.96
+  visibility_hysteresis_frames: 1
+  visibility_max_dimension_px: 512.0
+  endpoint_snap_px: 3.0
+  path_simplify_px: 2.0
+  straightness: 0.95
+  taper: 0.12
+  stroke_wobble_px: 0.04
+  stroke_wobble_frequency: 0.05
+  micro_wobble_px: 0.0
+  micro_wobble_frequency: 0.0
+  pressure_jitter: 0.0
+  local_angular_drift_degrees: 0.0
+  overshoot_px: 0.0
+  undershoot_px: 0.0
+  pass_offset_px: 0.0
+  dropout: 0.0
+  dropout_segment_min_px: 16.0
+  passes: 1
+  search_line_count: 0
+  search_line_alpha: 0.0
+  seed: 52017

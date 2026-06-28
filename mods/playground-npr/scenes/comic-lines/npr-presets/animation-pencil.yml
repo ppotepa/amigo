@@ -1,0 +1,43 @@
+kind: npr-preset-3d
+schema_version: 1
+id: animation_pencil
+label: Animation Pencil
+settings:
+  strategy: gpu_realtime
+  fill_mode: none
+  style_preset: rough_comic_ink
+  stroke_tool: pencil
+  feature_angle_degrees: 30.0
+  min_screen_length_px: 1.8
+  ink_color: "#3A3730E8"
+  width_px: 1.8
+  silhouette_width_multiplier: 1.32
+  boundary_width_multiplier: 0.95
+  feature_width_multiplier: 0.72
+  distance_width_falloff: 0.13
+  width_pressure_curve: [0.62, 0.95, 0.98, 0.58]
+  alpha_pressure_curve: [0.58, 0.86, 0.82, 0.48]
+  depth_pressure: 0.10
+  humanization: 0.64
+  line_confidence: 0.62
+  temporal_stability: 0.94
+  visibility_hysteresis_frames: 2
+  endpoint_snap_px: 2.1
+  path_simplify_px: 0.9
+  straightness: 0.48
+  taper: 0.76
+  stroke_wobble_px: 0.62
+  stroke_wobble_frequency: 0.28
+  micro_wobble_px: 0.16
+  micro_wobble_frequency: 1.55
+  pressure_jitter: 0.14
+  local_angular_drift_degrees: 1.35
+  overshoot_px: 0.95
+  undershoot_px: 0.25
+  pass_offset_px: 0.32
+  dropout: 0.025
+  dropout_segment_min_px: 8.0
+  passes: 2
+  search_line_count: 1
+  search_line_alpha: 0.12
+  seed: 44004

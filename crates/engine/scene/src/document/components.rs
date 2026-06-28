@@ -45,98 +45,356 @@ pub enum NprLine3dDocument {
     Settings(NprLine3dSettingsDocument),
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 pub struct NprLine3dSettingsDocument {
     #[serde(default = "default_bool_true")]
     pub enabled: bool,
-    #[serde(default = "default_bool_true")]
-    pub boundary: bool,
-    #[serde(default = "default_bool_true")]
-    pub silhouette: bool,
-    #[serde(default = "default_bool_true")]
-    pub feature: bool,
-    #[serde(default = "default_npr_feature_angle_degrees")]
-    pub feature_angle_degrees: f32,
-    #[serde(default = "default_npr_min_screen_length_px")]
-    pub min_screen_length_px: f32,
-    #[serde(default = "default_npr_ink_color")]
-    pub ink_color: String,
-    #[serde(default = "default_npr_width_px")]
-    pub width_px: f32,
-    #[serde(default = "default_npr_width_jitter_px")]
-    pub width_jitter_px: f32,
-    #[serde(default = "default_npr_path_jitter_px")]
-    pub path_jitter_px: f32,
-    #[serde(default = "default_npr_endpoint_quant_px")]
-    pub endpoint_quant_px: f32,
-    #[serde(default = "default_npr_path_simplify_px")]
-    pub path_simplify_px: f32,
-    #[serde(default = "default_npr_taper")]
-    pub taper: f32,
-    #[serde(default = "default_npr_overshoot_px")]
-    pub overshoot_px: f32,
-    #[serde(default = "default_npr_dropout")]
-    pub dropout: f32,
-    #[serde(default = "default_npr_passes")]
-    pub passes: u8,
-    #[serde(default = "default_npr_seed")]
-    pub seed: u64,
+    #[serde(default)]
+    pub strategy: Option<String>,
+    #[serde(default)]
+    pub fill_mode: Option<String>,
+    #[serde(default)]
+    pub style_preset: Option<String>,
+    #[serde(default)]
+    pub stroke_tool: Option<String>,
+    #[serde(default)]
+    pub boundary: Option<bool>,
+    #[serde(default)]
+    pub silhouette: Option<bool>,
+    #[serde(default)]
+    pub feature: Option<bool>,
+    #[serde(default)]
+    pub suggestive: Option<bool>,
+    #[serde(default)]
+    pub contact: Option<bool>,
+    #[serde(default)]
+    pub contact_ground_y: Option<f32>,
+    #[serde(default)]
+    pub contact_threshold: Option<f32>,
+    #[serde(default)]
+    pub feature_angle_degrees: Option<f32>,
+    #[serde(default)]
+    pub min_screen_length_px: Option<f32>,
+    #[serde(default)]
+    pub ink_color: Option<String>,
+    #[serde(default)]
+    pub humanization: Option<f32>,
+    #[serde(default)]
+    pub line_confidence: Option<f32>,
+    #[serde(default)]
+    pub temporal_stability: Option<f32>,
+    #[serde(default)]
+    pub temporal_path_smoothing: Option<bool>,
+    #[serde(default)]
+    pub visibility_hysteresis_frames: Option<u8>,
+    #[serde(default)]
+    pub visibility_max_dimension_px: Option<f32>,
+    #[serde(default)]
+    pub width_px: Option<f32>,
+    #[serde(default)]
+    pub tool_width_multiplier: Option<f32>,
+    #[serde(default)]
+    pub tool_alpha_multiplier: Option<f32>,
+    #[serde(default)]
+    pub tool_wobble_multiplier: Option<f32>,
+    #[serde(default)]
+    pub tool_pressure_jitter_multiplier: Option<f32>,
+    #[serde(default)]
+    pub tool_dropout_multiplier: Option<f32>,
+    #[serde(default)]
+    pub tool_search_multiplier: Option<f32>,
+    #[serde(default)]
+    pub silhouette_width_multiplier: Option<f32>,
+    #[serde(default)]
+    pub boundary_width_multiplier: Option<f32>,
+    #[serde(default)]
+    pub feature_width_multiplier: Option<f32>,
+    #[serde(default)]
+    pub distance_width_falloff: Option<f32>,
+    #[serde(default)]
+    pub depth_pressure: Option<f32>,
+    #[serde(default)]
+    pub depth_alpha: Option<f32>,
+    #[serde(default)]
+    pub width_pressure_curve: Option<[f32; 4]>,
+    #[serde(default)]
+    pub alpha_pressure_curve: Option<[f32; 4]>,
+    #[serde(default)]
+    pub endpoint_snap_px: Option<f32>,
+    #[serde(default)]
+    pub endpoint_lock_start_px: Option<f32>,
+    #[serde(default)]
+    pub endpoint_lock_end_px: Option<f32>,
+    #[serde(default)]
+    pub path_simplify_px: Option<f32>,
+    #[serde(default)]
+    pub straightness: Option<f32>,
+    #[serde(default)]
+    pub taper: Option<f32>,
+    #[serde(default)]
+    pub stroke_wobble_px: Option<f32>,
+    #[serde(default)]
+    pub stroke_wobble_frequency: Option<f32>,
+    #[serde(default)]
+    pub micro_wobble_px: Option<f32>,
+    #[serde(default)]
+    pub micro_wobble_frequency: Option<f32>,
+    #[serde(default)]
+    pub pressure_jitter: Option<f32>,
+    #[serde(default)]
+    pub local_angular_drift_degrees: Option<f32>,
+    #[serde(default)]
+    pub overshoot_px: Option<f32>,
+    #[serde(default)]
+    pub undershoot_px: Option<f32>,
+    #[serde(default)]
+    pub pass_offset_px: Option<f32>,
+    #[serde(default)]
+    pub dropout: Option<f32>,
+    #[serde(default)]
+    pub dropout_segment_min_px: Option<f32>,
+    #[serde(default)]
+    pub passes: Option<NprLine3dPassesFieldDocument>,
+    #[serde(default)]
+    pub search_line_count: Option<u8>,
+    #[serde(default)]
+    pub search_line_alpha: Option<f32>,
+    #[serde(default)]
+    pub seed: Option<u64>,
+    #[serde(default)]
+    pub gpu_realtime_tuning: Option<NprGpuRealtimeTuningDocument>,
+    #[serde(default)]
+    pub silhouette_override: Option<NprLine3dKindOverrideDocument>,
+    #[serde(default)]
+    pub boundary_override: Option<NprLine3dKindOverrideDocument>,
+    #[serde(default)]
+    pub feature_override: Option<NprLine3dKindOverrideDocument>,
+    #[serde(default)]
+    pub tool: Option<NprLine3dToolDocument>,
+    #[serde(default)]
+    pub trajectory: Option<NprLine3dTrajectoryDocument>,
+    #[serde(default)]
+    pub pressure: Option<NprLine3dPressureDocument>,
+    #[serde(default)]
+    pub opacity: Option<NprLine3dOpacityDocument>,
+    #[serde(default)]
+    pub endpoints: Option<NprLine3dEndpointsDocument>,
+    #[serde(default)]
+    pub breakup: Option<NprLine3dBreakupDocument>,
+    #[serde(default)]
+    pub depth: Option<NprLine3dDepthDocument>,
+    #[serde(default)]
+    pub confidence: Option<NprLine3dConfidenceDocument>,
+    #[serde(default)]
+    pub class_overrides: Option<NprLine3dClassOverridesDocument>,
+    #[serde(default)]
+    pub performance: Option<NprLine3dPerformanceDocument>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+pub struct NprGpuRealtimeTuningDocument {
+    #[serde(default)]
+    pub max_render_length_px: Option<f32>,
+    #[serde(default)]
+    pub max_segment_length_px: Option<f32>,
+    #[serde(default)]
+    pub max_terminal_walk_edges: Option<u32>,
+    #[serde(default)]
+    pub max_chained_walk_edges: Option<u32>,
+    #[serde(default)]
+    pub max_chain_angle_degrees: Option<f32>,
+    #[serde(default)]
+    pub search_enabled: Option<bool>,
+    #[serde(default)]
+    pub search_max_render_length_px: Option<f32>,
+    #[serde(default)]
+    pub search_alpha_multiplier: Option<f32>,
+    #[serde(default)]
+    pub feature_min_length_multiplier: Option<f32>,
+    #[serde(default)]
+    pub feature_alpha_multiplier: Option<f32>,
+    #[serde(default)]
+    pub silhouette_min_length_multiplier: Option<f32>,
 }
 
 fn default_bool_true() -> bool {
     true
 }
 
-fn default_npr_feature_angle_degrees() -> f32 {
-    32.0
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(untagged)]
+pub enum NprPreset3dDocument {
+    Ref(String),
+    Source { source: String },
+    Definition(NprPreset3dDefinitionDocument),
 }
 
-fn default_npr_min_screen_length_px() -> f32 {
-    2.0
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct NprPreset3dDefinitionDocument {
+    pub id: String,
+    #[serde(default)]
+    pub label: String,
+    #[serde(default)]
+    pub settings: NprLine3dSettingsDocument,
 }
 
-fn default_npr_ink_color() -> String {
-    "#100E0BFF".to_owned()
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+pub struct NprLine3dKindOverrideDocument {
+    #[serde(default)]
+    pub width_multiplier: Option<f32>,
+    #[serde(default)]
+    pub wobble_px: Option<f32>,
+    #[serde(default)]
+    pub dropout: Option<f32>,
+    #[serde(default)]
+    pub taper: Option<f32>,
+    #[serde(default)]
+    pub overshoot_px: Option<f32>,
+    #[serde(default)]
+    pub alpha_multiplier: Option<f32>,
 }
 
-fn default_npr_width_px() -> f32 {
-    2.4
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+pub struct NprLine3dToolDocument {
+    #[serde(default)]
+    pub kind: Option<String>,
+    #[serde(default)]
+    pub base_width_px: Option<f32>,
+    #[serde(default)]
+    pub base_alpha: Option<f32>,
+    #[serde(default)]
+    pub width_multiplier: Option<f32>,
+    #[serde(default)]
+    pub alpha_multiplier: Option<f32>,
+    #[serde(default)]
+    pub wobble_multiplier: Option<f32>,
+    #[serde(default)]
+    pub pressure_jitter_multiplier: Option<f32>,
+    #[serde(default)]
+    pub dropout_multiplier: Option<f32>,
+    #[serde(default)]
+    pub search_multiplier: Option<f32>,
 }
 
-fn default_npr_width_jitter_px() -> f32 {
-    0.55
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+pub struct NprLine3dTrajectoryDocument {
+    #[serde(default)]
+    pub path_adherence: Option<f32>,
+    #[serde(default)]
+    pub straightness: Option<f32>,
+    #[serde(default)]
+    pub humanization: Option<f32>,
+    #[serde(default)]
+    pub gesture_offset_px: Option<f32>,
+    #[serde(default)]
+    pub gesture_frequency_per_100px: Option<f32>,
+    #[serde(default)]
+    pub micro_offset_px: Option<f32>,
+    #[serde(default)]
+    pub micro_frequency_per_100px: Option<f32>,
+    #[serde(default)]
+    pub angular_drift_degrees: Option<f32>,
+    #[serde(default)]
+    pub endpoint_snap_px: Option<f32>,
+    #[serde(default)]
+    pub path_simplify_px: Option<f32>,
 }
 
-fn default_npr_path_jitter_px() -> f32 {
-    0.75
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+pub struct NprLine3dPressureDocument {
+    #[serde(default)]
+    pub width_curve: Option<[f32; 4]>,
+    #[serde(default)]
+    pub jitter: Option<f32>,
 }
 
-fn default_npr_endpoint_quant_px() -> f32 {
-    2.5
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+pub struct NprLine3dOpacityDocument {
+    #[serde(default)]
+    pub alpha_curve: Option<[f32; 4]>,
+    #[serde(default)]
+    pub base_alpha: Option<f32>,
 }
 
-fn default_npr_path_simplify_px() -> f32 {
-    0.6
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+pub struct NprLine3dEndpointsDocument {
+    #[serde(default)]
+    pub taper: Option<f32>,
+    #[serde(default)]
+    pub lock_start_px: Option<f32>,
+    #[serde(default)]
+    pub lock_end_px: Option<f32>,
+    #[serde(default)]
+    pub overshoot_start_px: Option<f32>,
+    #[serde(default)]
+    pub overshoot_end_px: Option<f32>,
+    #[serde(default)]
+    pub overshoot_px: Option<f32>,
+    #[serde(default)]
+    pub undershoot_end_px: Option<f32>,
+    #[serde(default)]
+    pub undershoot_px: Option<f32>,
 }
 
-fn default_npr_taper() -> f32 {
-    0.65
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+pub struct NprLine3dBreakupDocument {
+    #[serde(default)]
+    pub amount: Option<f32>,
+    #[serde(default)]
+    pub dropout: Option<f32>,
+    #[serde(default)]
+    pub min_gap_px: Option<f32>,
+    #[serde(default)]
+    pub min_visible_segment_px: Option<f32>,
 }
 
-fn default_npr_overshoot_px() -> f32 {
-    1.8
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+pub struct NprLine3dPerformanceDocument {
+    #[serde(default)]
+    pub visibility_max_dimension_px: Option<f32>,
 }
 
-fn default_npr_dropout() -> f32 {
-    0.035
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+pub struct NprLine3dDepthDocument {
+    #[serde(default)]
+    pub width_influence: Option<f32>,
+    #[serde(default)]
+    pub alpha_influence: Option<f32>,
 }
 
-fn default_npr_passes() -> u8 {
-    2
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+pub struct NprLine3dConfidenceDocument {
+    #[serde(default)]
+    pub line_confidence: Option<f32>,
 }
 
-fn default_npr_seed() -> u64 {
-    2002
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+pub struct NprLine3dPassesDocument {
+    #[serde(default)]
+    pub primary_count: Option<u8>,
+    #[serde(default)]
+    pub search_count: Option<u8>,
+    #[serde(default)]
+    pub search_alpha: Option<f32>,
+    #[serde(default)]
+    pub search_offset_px: Option<f32>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(untagged)]
+pub enum NprLine3dPassesFieldDocument {
+    Count(u8),
+    Plan(NprLine3dPassesDocument),
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+pub struct NprLine3dClassOverridesDocument {
+    #[serde(default)]
+    pub silhouette: Option<NprLine3dKindOverrideDocument>,
+    #[serde(default)]
+    pub boundary: Option<NprLine3dKindOverrideDocument>,
+    #[serde(default)]
+    pub feature: Option<NprLine3dKindOverrideDocument>,
 }
 
 fn default_camera_controller_3d_mode() -> String {

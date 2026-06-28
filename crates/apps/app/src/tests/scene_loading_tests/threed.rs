@@ -1,6 +1,7 @@
 use super::super::*;
 
 use std::fs;
+use amigo_3d_mesh::MeshSceneService;
 
 #[test]
 fn playground_3d_main_scene_bootstraps() {
@@ -125,6 +126,49 @@ fn playground_npr_comic_lines_scene_bootstraps() {
     );
     assert!(summary.failed_assets.is_empty());
     assert!(summary.pending_asset_loads.is_empty());
+}
+
+#[test]
+fn playground_npr_comic_lines_bootstrap_applies_gpu_realtime_preset_to_soldier() {
+    let (runtime, _summary) = bootstrap_with_options(
+        BootstrapOptions::new(mods_root())
+            .with_active_mods(vec!["core".to_owned(), "playground-npr".to_owned()])
+            .with_startup_mod("playground-npr")
+            .with_startup_scene("comic-lines")
+            .with_dev_mode(true),
+    )
+    .expect("npr comic lines playground bootstrap should succeed");
+
+    let meshes = runtime
+        .resolve::<MeshSceneService>()
+        .expect("mesh scene service should exist");
+    let soldier = meshes
+        .commands()
+        .into_iter()
+        .find(|command| command.entity_name == "playground-npr-model-1-soldier")
+        .expect("soldier mesh command should exist after bootstrap");
+    let npr = soldier
+        .mesh
+        .npr
+        .expect("soldier should have hydrated NPR settings after preset application");
+
+    assert_eq!(
+        npr.render_strategy,
+        amigo_render_api::NprRenderStrategy3d::GpuRealtime
+    );
+    assert!(
+        npr.ink_color.a > 0.9,
+        "target_60fps preset should keep opaque ink alpha, got {}",
+        npr.ink_color.a
+    );
+    assert!(
+        npr.ink_color.r < 0.1 && npr.ink_color.g < 0.1 && npr.ink_color.b < 0.1,
+        "target_60fps preset should keep dark ink color, got rgba({}, {}, {}, {})",
+        npr.ink_color.r,
+        npr.ink_color.g,
+        npr.ink_color.b,
+        npr.ink_color.a
+    );
 }
 
 #[test]

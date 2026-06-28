@@ -1,0 +1,47 @@
+kind: npr-preset-3d
+schema_version: 1
+id: cinematic_12fps_cpu_reference
+label: Cinematic 12 FPS CPU Reference
+settings:
+  strategy: cpu_reference
+  fill_mode: none
+  style_preset: rough_comic_ink
+  stroke_tool: ink_pen
+  suggestive: false
+  contact: false
+  contact_ground_y: 0.0
+  contact_threshold: 0.10
+  feature_angle_degrees: 32.0
+  min_screen_length_px: 2.0
+  ink_color: "#12100DFF"
+  width_px: 2.25
+  silhouette_width_multiplier: 1.45
+  boundary_width_multiplier: 1.0
+  feature_width_multiplier: 0.68
+  distance_width_falloff: 0.14
+  width_pressure_curve: [0.72, 1.03, 0.98, 0.68]
+  alpha_pressure_curve: [0.78, 1.0, 0.92, 0.66]
+  depth_pressure: 0.18
+  humanization: 0.55
+  line_confidence: 0.74
+  temporal_stability: 0.92
+  visibility_hysteresis_frames: 2
+  endpoint_snap_px: 1.8
+  path_simplify_px: 0.8
+  straightness: 0.58
+  taper: 0.72
+  stroke_wobble_px: 0.55
+  stroke_wobble_frequency: 0.22
+  micro_wobble_px: 0.10
+  micro_wobble_frequency: 1.15
+  pressure_jitter: 0.12
+  local_angular_drift_degrees: 1.1
+  overshoot_px: 1.4
+  undershoot_px: 0.15
+  pass_offset_px: 0.22
+  dropout: 0.035
+  dropout_segment_min_px: 8.0
+  passes: 2
+  search_line_count: 1
+  search_line_alpha: 0.16
+  seed: 41017

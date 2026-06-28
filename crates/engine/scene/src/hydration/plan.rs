@@ -22,9 +22,10 @@ use crate::{
     LightGroup2dSourceSceneCommand, LightMap2dChannelDocument, LightMap2dChannelSceneCommand,
     LightMap2dSourceKindSceneCommand, LightMap2dSourceRefDocument, LightMap2dSourceRefSceneCommand,
     LightMap2dSourceSceneCommand, LightRoute2dSceneCommand, Material3dSceneCommand,
-    Mesh3dSceneCommand, MotionController2dSceneCommand, OpticalLayerRole2dDocument,
-    OpticalLayerRole2dSceneCommand, Parallax2dSceneCommand, PhysicsSpawner3dSceneCommand,
-    PhysicsWorld3dSceneCommand, PostFx2dDocument, ProjectileEmitter2dSceneCommand,
+    Mesh3dSceneCommand, MotionController2dSceneCommand, NprPreset3dSceneCommand,
+    OpticalLayerRole2dDocument, OpticalLayerRole2dSceneCommand, Parallax2dSceneCommand,
+    PhysicsSpawner3dSceneCommand, PhysicsWorld3dSceneCommand, PostFx2dDocument,
+    ProjectileEmitter2dSceneCommand,
     RenderContributions2dSceneCommand, RenderContributionsDocument, RenderDepth2dDocument,
     RenderDepth2dSceneCommand, RenderDepthMode2dDocument, RenderDepthMode2dSceneCommand,
     RenderLayer2dSceneCommand, RigidBody3dSceneCommand, SceneCommand, SceneComponentDocument,
@@ -42,9 +43,10 @@ use crate::{
     lifetime_plugin_scene_command, light_group_2d_plugin_scene_command,
     light_route_2d_plugin_scene_command, lightmap_2d_source_plugin_scene_command,
     material_3d_plugin_scene_command, mesh_3d_plugin_scene_command,
-    motion_controller_2d_plugin_scene_command, parallax_2d_plugin_scene_command,
-    physics_spawner_3d_plugin_scene_command, physics_world_3d_plugin_scene_command,
-    projectile_emitter_2d_plugin_scene_command, render_layer_2d_plugin_scene_command,
+    motion_controller_2d_plugin_scene_command, npr_preset_3d_plugin_scene_command,
+    parallax_2d_plugin_scene_command, physics_spawner_3d_plugin_scene_command,
+    physics_world_3d_plugin_scene_command, projectile_emitter_2d_plugin_scene_command,
+    render_layer_2d_plugin_scene_command,
     rigid_body_3d_plugin_scene_command, script_component_plugin_scene_command,
     static_box_collider_3d_plugin_scene_command, static_collider_2d_plugin_scene_command,
     text_3d_plugin_scene_command, tilemap_marker_2d_plugin_scene_command,
@@ -95,6 +97,7 @@ pub fn build_scene_hydration_plan_with_component_hydrators(
     let mut commands = Vec::new();
 
     hydrate_visual2d(source_mod, document, &mut commands)?;
+    hydrate_npr_presets(source_mod, document, &mut commands)?;
 
     for entity in &document.entities {
         let entity_name = entity.display_name();
@@ -211,6 +214,33 @@ pub fn build_scene_hydration_plan_with_component_hydrators(
     }
 
     Ok(SceneHydrationPlan { commands })
+}
+
+fn hydrate_npr_presets(
+    source_mod: &str,
+    document: &SceneDocument,
+    commands: &mut Vec<SceneCommand>,
+) -> SceneDocumentResult<()> {
+    for preset in &document.npr_presets {
+        let crate::document::NprPreset3dDocument::Definition(preset) = preset else {
+            continue;
+        };
+        let settings = npr_line_settings_3d_from_settings_document(
+            &preset.settings,
+            &document.scene.id,
+            &preset.id,
+            "NprPreset3D",
+        )?;
+        commands.push(SceneCommand::Plugin {
+            command: npr_preset_3d_plugin_scene_command(NprPreset3dSceneCommand {
+                source_mod: source_mod.to_owned(),
+                id: preset.id.clone(),
+                label: preset.label.clone(),
+                settings,
+            }),
+        });
+    }
+    Ok(())
 }
 
 fn hydrate_plugin_component_payload(

@@ -1,0 +1,43 @@
+kind: npr-preset-3d
+schema_version: 1
+id: clean_comic_ink
+label: Clean Comic Ink
+settings:
+  strategy: gpu_realtime
+  fill_mode: none
+  style_preset: rough_comic_ink
+  stroke_tool: ink_pen
+  feature_angle_degrees: 34.0
+  min_screen_length_px: 2.2
+  ink_color: "#0B0B0BFF"
+  width_px: 2.1
+  silhouette_width_multiplier: 1.5
+  boundary_width_multiplier: 1.0
+  feature_width_multiplier: 0.62
+  distance_width_falloff: 0.1
+  width_pressure_curve: [0.8, 1.0, 1.0, 0.78]
+  alpha_pressure_curve: [0.92, 1.0, 0.98, 0.86]
+  depth_pressure: 0.12
+  humanization: 0.22
+  line_confidence: 0.92
+  temporal_stability: 0.96
+  visibility_hysteresis_frames: 3
+  endpoint_snap_px: 1.35
+  path_simplify_px: 0.55
+  straightness: 0.86
+  taper: 0.52
+  stroke_wobble_px: 0.18
+  stroke_wobble_frequency: 0.16
+  micro_wobble_px: 0.03
+  micro_wobble_frequency: 0.9
+  pressure_jitter: 0.04
+  local_angular_drift_degrees: 0.25
+  overshoot_px: 0.7
+  undershoot_px: 0.0
+  pass_offset_px: 0.08
+  dropout: 0.0
+  dropout_segment_min_px: 12.0
+  passes: 1
+  search_line_count: 0
+  search_line_alpha: 0.0
+  seed: 42001

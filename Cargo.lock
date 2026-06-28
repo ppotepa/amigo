@@ -436,6 +436,7 @@ version = "0.1.0"
 dependencies = [
  "amigo-symbol-explorer",
  "anyhow",
+ "flate2",
  "notify",
  "regex",
  "serde",

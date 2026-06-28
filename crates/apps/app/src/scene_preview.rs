@@ -210,6 +210,24 @@ impl ScenePreviewHost {
         Ok(())
     }
 
+    pub fn apply_mesh3d_npr_preset(
+        &mut self,
+        entity_name: impl Into<String>,
+        preset_id: impl Into<String>,
+    ) -> AmigoResult<()> {
+        self.bootstrap()?;
+        let runtime = self.runtime()?;
+        let script_commands =
+            crate::runtime_context::required::<amigo_scripting_api::ScriptCommandQueue>(runtime)?;
+        script_commands.submit(amigo_scripting_api::ScriptCommand::new(
+            "3d.mesh",
+            "apply_npr_preset",
+            vec![entity_name.into(), preset_id.into()],
+        ));
+        crate::orchestration::stabilize_runtime_queues(runtime)?;
+        Ok(())
+    }
+
     fn tick_runtime_frame(&mut self, delta_seconds: f32) -> AmigoResult<()> {
         {
             let runtime = self.runtime()?;

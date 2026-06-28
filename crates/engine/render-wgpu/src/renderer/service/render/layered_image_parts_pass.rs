@@ -57,5 +57,5 @@ pub(super) fn execute_layered_image_parts_to_offscreen(
         );
     }
 
-    renderer.render_offscreen_batches(target, pass_load.to_load_op(), &texture_batches, &[], &[])
+    renderer.render_offscreen_batches(target, pass_load.to_load_op(), &texture_batches, &[], &[], &[])
 }

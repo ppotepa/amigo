@@ -111,6 +111,19 @@ startup_scene = "comic-lines"
 hosted_default = true
 
 [[profiles]]
+id = "playground-npr-release"
+label = "NPR Comic Lines Release"
+description = "Release NPR profile targeting the comic line rendering workbench."
+cargo_profile = "release"
+window_backend = "winit"
+input_backend = "winit"
+render_backend = "wgpu"
+script_backend = "rhai"
+root_mod = "playground-npr"
+startup_scene = "comic-lines"
+hosted_default = true
+
+[[profiles]]
 id = "playground-sidescroller"
 label = "Sidescroller Demo"
 description = "Hosted 2D profile targeting the sidescroller vertical slice."

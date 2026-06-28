@@ -1,0 +1,43 @@
+kind: npr-preset-3d
+schema_version: 1
+id: heavy_noir_ink_cpu_reference
+label: Heavy Noir Ink CPU Reference
+settings:
+  strategy: cpu_reference
+  fill_mode: none
+  style_preset: rough_comic_ink
+  stroke_tool: brush
+  feature_angle_degrees: 29.0
+  min_screen_length_px: 2.8
+  ink_color: "#030303FF"
+  width_px: 3.65
+  silhouette_width_multiplier: 1.75
+  boundary_width_multiplier: 1.1
+  feature_width_multiplier: 0.42
+  distance_width_falloff: 0.16
+  width_pressure_curve: [0.78, 1.2, 1.14, 0.7]
+  alpha_pressure_curve: [0.86, 1.0, 0.98, 0.78]
+  depth_pressure: 0.28
+  humanization: 0.42
+  line_confidence: 0.82
+  temporal_stability: 0.95
+  visibility_hysteresis_frames: 3
+  endpoint_snap_px: 1.75
+  path_simplify_px: 0.9
+  straightness: 0.62
+  taper: 0.5
+  stroke_wobble_px: 0.36
+  stroke_wobble_frequency: 0.18
+  micro_wobble_px: 0.08
+  micro_wobble_frequency: 1.0
+  pressure_jitter: 0.1
+  local_angular_drift_degrees: 0.65
+  overshoot_px: 1.9
+  undershoot_px: 0.0
+  pass_offset_px: 0.12
+  dropout: 0.008
+  dropout_segment_min_px: 12.0
+  passes: 2
+  search_line_count: 0
+  search_line_alpha: 0.0
+  seed: 48008

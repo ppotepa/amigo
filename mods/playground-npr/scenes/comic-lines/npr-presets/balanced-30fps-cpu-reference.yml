@@ -1,0 +1,47 @@
+kind: npr-preset-3d
+schema_version: 1
+id: balanced_30fps_cpu_reference
+label: Balanced 30 FPS CPU Reference
+settings:
+  strategy: cpu_reference
+  fill_mode: none
+  style_preset: rough_comic_ink
+  stroke_tool: ink_pen
+  suggestive: false
+  contact: false
+  contact_ground_y: 0.0
+  contact_threshold: 0.08
+  feature_angle_degrees: 36.0
+  min_screen_length_px: 2.8
+  ink_color: "#12100DFF"
+  width_px: 2.15
+  silhouette_width_multiplier: 1.45
+  boundary_width_multiplier: 0.96
+  feature_width_multiplier: 0.58
+  distance_width_falloff: 0.12
+  width_pressure_curve: [0.78, 1.0, 0.96, 0.70]
+  alpha_pressure_curve: [0.84, 1.0, 0.94, 0.72]
+  depth_pressure: 0.12
+  humanization: 0.42
+  line_confidence: 0.80
+  temporal_stability: 0.92
+  visibility_hysteresis_frames: 2
+  endpoint_snap_px: 2.0
+  path_simplify_px: 1.1
+  straightness: 0.70
+  taper: 0.58
+  stroke_wobble_px: 0.34
+  stroke_wobble_frequency: 0.18
+  micro_wobble_px: 0.06
+  micro_wobble_frequency: 0.90
+  pressure_jitter: 0.07
+  local_angular_drift_degrees: 0.65
+  overshoot_px: 0.9
+  undershoot_px: 0.08
+  pass_offset_px: 0.16
+  dropout: 0.018
+  dropout_segment_min_px: 10.0
+  passes: 1
+  search_line_count: 0
+  search_line_alpha: 0.0
+  seed: 43017

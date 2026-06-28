@@ -10,8 +10,8 @@ use crate::{
     ComponentSchemaRegistry, EntitySelector, InputActionMapSceneCommand,
     PluginComponentHydrationContext, PluginComponentHydrator, SceneCommand, SceneComponentPayload,
     SceneComponentSchemaProvider, SceneDocumentError, SceneEntitySelectorDocument,
-    SceneEntitySelectorKindDocument, load_scene_document_from_path, load_scene_document_from_str,
-    load_scene_document_from_str_with_component_schemas,
+    SceneEntitySelectorKindDocument, compile_scene_document_from_path, load_scene_document_from_path,
+    load_scene_document_from_str, load_scene_document_from_str_with_component_schemas,
 };
 use serde_yaml::{Mapping, Value};
 
@@ -170,6 +170,15 @@ fn mesh_command(command: &SceneCommand) -> Option<&crate::Mesh3dSceneCommand> {
     }
 }
 
+fn npr_preset_command(command: &SceneCommand) -> Option<&crate::NprPreset3dSceneCommand> {
+    match command {
+        SceneCommand::Plugin { command } => {
+            command.payload_as::<crate::NprPreset3dSceneCommand>()
+        }
+        _ => None,
+    }
+}
+
 fn material_command(command: &SceneCommand) -> Option<&crate::Material3dSceneCommand> {
     match command {
         SceneCommand::Plugin { command } => command.payload_as::<crate::Material3dSceneCommand>(),
@@ -182,6 +191,17 @@ fn text3d_command(command: &SceneCommand) -> Option<&crate::Text3dSceneCommand> 
         SceneCommand::Plugin { command } => command.payload_as::<crate::Text3dSceneCommand>(),
         _ => None,
     }
+}
+
+fn first_mesh_npr_settings(document_yaml: &str) -> amigo_render_api::NprLineSettings3d {
+    let document = load_scene_document_from_str(document_yaml).expect("scene document should parse");
+    let plan = build_scene_hydration_plan("playground-npr", &document)
+        .expect("scene document should hydrate");
+    plan.commands
+        .iter()
+        .find_map(mesh_command)
+        .and_then(|command| command.npr.clone())
+        .expect("mesh command with NPR settings should exist")
 }
 
 fn static_box_collider3d_command(
@@ -731,6 +751,8 @@ fn builds_hydration_plan_for_playground_npr_mesh_switches() {
     for action in [
         "npr.camera_toggle",
         "npr.model_autorotate_toggle",
+        "npr.preset_previous",
+        "npr.preset_next",
         "npr.fly_forward",
         "npr.fly_strafe",
         "npr.fly_lift",
@@ -773,7 +795,26 @@ fn builds_hydration_plan_for_playground_npr_mesh_switches() {
     assert!(soldier_npr.boundary);
     assert!(soldier_npr.silhouette);
     assert!(soldier_npr.feature);
-    assert_eq!(soldier_npr.feature_angle_degrees, 34.0);
+    assert_eq!(
+        soldier_npr.style_preset,
+        amigo_render_api::NprStylePreset3d::GpuStableComic
+    );
+    assert_eq!(
+        soldier_npr.render_strategy,
+        amigo_render_api::NprRenderStrategy3d::GpuRealtime
+    );
+    assert_eq!(soldier_npr.feature_angle_degrees, 42.0);
+    assert_eq!(soldier_npr.humanization, 0.16);
+    assert_eq!(soldier_npr.endpoint_snap_px, 1.1);
+    assert_eq!(soldier_npr.endpoint_lock_start_px, 6.0);
+    assert_eq!(soldier_npr.endpoint_lock_end_px, 7.0);
+    assert_eq!(soldier_npr.tool_width_multiplier, 1.0);
+    assert_eq!(soldier_npr.tool_alpha_multiplier, 1.0);
+    assert_eq!(soldier_npr.tool_wobble_multiplier, 1.0);
+    assert_eq!(soldier_npr.passes, 1);
+    assert_eq!(soldier_npr.search_line_count, 0);
+    assert!(!soldier_npr.gpu_realtime_tuning.search_enabled);
+    assert_eq!(soldier_npr.gpu_realtime_tuning.max_chained_walk_edges, 2);
 
     let fox_mesh = mesh_commands
         .iter()
@@ -784,9 +825,420 @@ fn builds_hydration_plan_for_playground_npr_mesh_switches() {
         .npr
         .as_ref()
         .expect("npr settings block should enable NPR line settings");
-    assert_eq!(fox_npr.feature_angle_degrees, 34.0);
+    assert_eq!(fox_npr.feature_angle_degrees, 42.0);
     assert_eq!(fox_npr.seed, 1505);
-    assert_eq!(fox_npr.passes, 2);
+    assert_eq!(fox_npr.passes, 1);
+    assert_eq!(fox_npr.search_line_count, 0);
+    assert!(!fox_npr.gpu_realtime_tuning.search_enabled);
+}
+
+#[test]
+fn compiled_playground_npr_scene_registers_file_backed_npr_presets() {
+    let workspace_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .and_then(|path| path.parent())
+        .and_then(|path| path.parent())
+        .expect("workspace root should exist")
+        .to_path_buf();
+
+    let compiled = compile_scene_document_from_path(
+        workspace_root.join("mods/playground-npr/scenes/comic-lines/scene.yml"),
+        workspace_root.join("mods/playground-npr"),
+        "playground-npr",
+    )
+    .expect("playground npr scene should compile");
+
+    assert_eq!(compiled.document.npr_presets.len(), 30);
+
+    let plan = build_scene_hydration_plan("playground-npr", &compiled.document)
+        .expect("compiled playground npr plan should build");
+    let presets = plan
+        .commands
+        .iter()
+        .filter_map(npr_preset_command)
+        .collect::<Vec<_>>();
+
+    assert_eq!(presets.len(), 30);
+    let default_gpu = presets
+        .iter()
+        .find(|preset| preset.id == "default_gpu_comic")
+        .expect("default gpu comic preset should be registered");
+    assert_eq!(
+        default_gpu.settings.style_preset,
+        amigo_render_api::NprStylePreset3d::GpuStableComic
+    );
+    assert_eq!(
+        default_gpu.settings.render_strategy,
+        amigo_render_api::NprRenderStrategy3d::GpuRealtime
+    );
+    assert_eq!(default_gpu.settings.passes, 1);
+    assert_eq!(default_gpu.settings.search_line_count, 0);
+    assert!(!default_gpu.settings.gpu_realtime_tuning.search_enabled);
+    assert!(presets.iter().any(|preset| {
+        preset.id == "default_gpu_comic"
+            && (preset.settings.humanization - 0.16).abs() < f32::EPSILON
+            && preset.settings.render_strategy == amigo_render_api::NprRenderStrategy3d::GpuRealtime
+            && preset.settings.stroke_tool == amigo_render_api::NprStrokeTool3d::TechnicalPen
+            && (preset.settings.alpha_pressure_curve[3] - 0.9).abs() < f32::EPSILON
+            && (preset.settings.depth_alpha - 0.04).abs() < f32::EPSILON
+            && (preset.settings.tool_width_multiplier - 1.0).abs() < f32::EPSILON
+            && (preset.settings.tool_alpha_multiplier - 1.0).abs() < f32::EPSILON
+            && (preset.settings.tool_dropout_multiplier - 1.0).abs() < f32::EPSILON
+            && (preset.settings.endpoint_lock_start_px - 6.0).abs() < f32::EPSILON
+            && (preset.settings.endpoint_lock_end_px - 7.0).abs() < f32::EPSILON
+            && !preset.settings.suggestive
+            && !preset.settings.contact
+            && (preset.settings.contact_ground_y - 0.0).abs() < f32::EPSILON
+            && (preset.settings.contact_threshold - 0.08).abs() < f32::EPSILON
+            && !preset.settings.gpu_realtime_tuning.search_enabled
+    }));
+    assert_playground_npr_cpu_reference_presets_match_gpu_presets(&presets);
+    assert!(presets.iter().any(|preset| {
+        preset.id == "heavy_noir_ink"
+            && preset.settings.width_px > 3.5
+            && preset.settings.stroke_tool == amigo_render_api::NprStrokeTool3d::Brush
+    }));
+    assert!(presets.iter().any(|preset| {
+        preset.id == "default_gpu_comic_cpu_reference"
+            && (preset.settings.humanization - 0.16).abs() < f32::EPSILON
+            && preset.settings.render_strategy == amigo_render_api::NprRenderStrategy3d::CpuReference
+            && preset.settings.stroke_tool == amigo_render_api::NprStrokeTool3d::TechnicalPen
+            && !preset.settings.suggestive
+            && !preset.settings.contact
+    }));
+    assert!(presets.iter().any(|preset| {
+        preset.id == "technical_comic_line"
+            && preset.settings.humanization < 0.1
+            && preset.settings.render_strategy == amigo_render_api::NprRenderStrategy3d::GpuRealtime
+            && preset.settings.straightness >= 1.0
+            && preset.settings.stroke_tool == amigo_render_api::NprStrokeTool3d::TechnicalPen
+    }));
+}
+
+fn assert_playground_npr_cpu_reference_presets_match_gpu_presets(
+    presets: &[&crate::render_commands::NprPreset3dSceneCommand],
+) {
+    for gpu_id in [
+        "default_gpu_comic",
+        "rough_comic_ink",
+        "clean_comic_ink",
+        "loose_pencil",
+        "animation_pencil",
+        "manga_fine_line",
+        "european_clear_line",
+        "dry_brush_ink",
+        "heavy_noir_ink",
+        "storyboard_marker",
+        "technical_comic_line",
+        "cinematic_12fps",
+        "balanced_30fps",
+        "target_60fps",
+        "low_120fps",
+    ] {
+        let cpu_id = format!("{gpu_id}_cpu_reference");
+        let gpu = presets
+            .iter()
+            .find(|preset| preset.id == gpu_id)
+            .unwrap_or_else(|| panic!("gpu preset `{gpu_id}` should be registered"));
+        let cpu_reference = presets
+            .iter()
+            .find(|preset| preset.id == cpu_id)
+            .unwrap_or_else(|| panic!("cpu reference preset `{cpu_id}` should be registered"));
+        assert_eq!(
+            gpu.settings.render_strategy,
+            amigo_render_api::NprRenderStrategy3d::GpuRealtime
+        );
+        assert_eq!(
+            cpu_reference.settings.render_strategy,
+            amigo_render_api::NprRenderStrategy3d::CpuReference
+        );
+        let mut normalized_cpu_reference = cpu_reference.settings.clone();
+        normalized_cpu_reference.render_strategy = amigo_render_api::NprRenderStrategy3d::GpuRealtime;
+        assert_eq!(
+            normalized_cpu_reference, gpu.settings,
+            "CPU reference preset `{cpu_id}` should match GPU preset `{gpu_id}` except render strategy"
+        );
+    }
+}
+
+#[test]
+fn assert_all_playground_npr_cpu_reference_presets_match_gpu_presets() {
+    let workspace_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .and_then(|path| path.parent())
+        .and_then(|path| path.parent())
+        .expect("workspace root should exist")
+        .to_path_buf();
+
+    let compiled = compile_scene_document_from_path(
+        workspace_root.join("mods/playground-npr/scenes/comic-lines/scene.yml"),
+        workspace_root.join("mods/playground-npr"),
+        "playground-npr",
+    )
+    .expect("playground npr scene should compile");
+
+    let plan = build_scene_hydration_plan("playground-npr", &compiled.document)
+        .expect("compiled playground npr plan should build");
+    let presets = plan
+        .commands
+        .iter()
+        .filter_map(npr_preset_command)
+        .collect::<Vec<_>>();
+
+    assert_playground_npr_cpu_reference_presets_match_gpu_presets(&presets);
+}
+
+#[test]
+fn mesh3d_npr_grouped_schema_hydrates_to_line_settings() {
+    let document = load_scene_document_from_str(
+        r##"
+version: 1
+scene:
+  id: grouped-npr
+entities:
+  - id: model
+    name: grouped-npr-model
+    components:
+      - type: Mesh3D
+        mesh: playground-npr/meshes/soldier
+        npr:
+          enabled: true
+          style_preset: rough_comic_ink
+          fill_mode: none
+          suggestive: true
+          contact: true
+          contact_ground_y: -0.2
+          contact_threshold: 0.16
+          tool:
+            kind: pencil
+            base_width_px: 3.25
+            base_alpha: 0.72
+            width_multiplier: 1.4
+            alpha_multiplier: 0.8
+            wobble_multiplier: 1.7
+            pressure_jitter_multiplier: 2.0
+            dropout_multiplier: 1.6
+            search_multiplier: 1.5
+          trajectory:
+            path_adherence: 0.44
+            humanization: 0.81
+            gesture_offset_px: 0.9
+            gesture_frequency_per_100px: 0.33
+            micro_offset_px: 0.22
+            micro_frequency_per_100px: 2.4
+            angular_drift_degrees: 2.0
+            endpoint_snap_px: 2.8
+            path_simplify_px: 1.1
+          pressure:
+            width_curve: [0.4, 0.9, 0.8, 0.3]
+            jitter: 0.21
+          opacity:
+            alpha_curve: [0.3, 0.8, 0.7, 0.2]
+          endpoints:
+            taper: 0.5
+            lock_start_px: 8.0
+            lock_end_px: 9.0
+            overshoot_end_px: 1.9
+            undershoot_end_px: 0.4
+          breakup:
+            amount: 0.12
+            min_gap_px: 6.0
+          depth:
+            width_influence: 0.25
+            alpha_influence: 0.18
+          confidence:
+            line_confidence: 0.63
+          passes:
+            primary_count: 3
+            search_count: 2
+            search_alpha: 0.19
+            search_offset_px: 0.7
+          class_overrides:
+            silhouette:
+              width_multiplier: 1.7
+              alpha_multiplier: 0.95
+"##,
+    )
+    .expect("grouped NPR scene should parse");
+
+    let plan = build_scene_hydration_plan("playground-npr", &document)
+        .expect("grouped NPR scene should build hydration plan");
+    let mesh = plan
+        .commands
+        .iter()
+        .find_map(mesh_command)
+        .expect("mesh command should hydrate");
+    let npr = mesh.npr.as_ref().expect("NPR settings should hydrate");
+
+    assert_eq!(npr.stroke_tool, amigo_render_api::NprStrokeTool3d::Pencil);
+    assert_eq!(npr.fill_mode, amigo_render_api::NprFillMode3d::None);
+    assert!(npr.suggestive);
+    assert!(npr.contact);
+    assert_eq!(npr.contact_ground_y, -0.2);
+    assert_eq!(npr.contact_threshold, 0.16);
+    assert_eq!(npr.width_px, 3.25);
+    assert!((npr.ink_color.a - 0.72).abs() < f32::EPSILON);
+    assert_eq!(npr.tool_width_multiplier, 1.4);
+    assert_eq!(npr.tool_alpha_multiplier, 0.8);
+    assert_eq!(npr.tool_wobble_multiplier, 1.7);
+    assert_eq!(npr.tool_pressure_jitter_multiplier, 2.0);
+    assert_eq!(npr.tool_dropout_multiplier, 1.6);
+    assert_eq!(npr.tool_search_multiplier, 1.5);
+    assert_eq!(npr.straightness, 0.44);
+    assert_eq!(npr.humanization, 0.81);
+    assert_eq!(npr.stroke_wobble_px, 0.9);
+    assert_eq!(npr.stroke_wobble_frequency, 0.33);
+    assert_eq!(npr.micro_wobble_px, 0.22);
+    assert_eq!(npr.micro_wobble_frequency, 2.4);
+    assert_eq!(npr.local_angular_drift_degrees, 2.0);
+    assert_eq!(npr.endpoint_snap_px, 2.8);
+    assert_eq!(npr.path_simplify_px, 1.1);
+    assert_eq!(npr.width_pressure_curve, [0.4, 0.9, 0.8, 0.3]);
+    assert_eq!(npr.alpha_pressure_curve, [0.3, 0.8, 0.7, 0.2]);
+    assert_eq!(npr.taper, 0.5);
+    assert_eq!(npr.endpoint_lock_start_px, 8.0);
+    assert_eq!(npr.endpoint_lock_end_px, 9.0);
+    assert_eq!(npr.overshoot_px, 1.9);
+    assert_eq!(npr.undershoot_px, 0.4);
+    assert_eq!(npr.dropout, 0.12);
+    assert_eq!(npr.dropout_segment_min_px, 6.0);
+    assert_eq!(npr.depth_pressure, 0.25);
+    assert_eq!(npr.depth_alpha, 0.18);
+    assert_eq!(npr.line_confidence, 0.63);
+    assert_eq!(npr.passes, 3);
+    assert_eq!(npr.search_line_count, 2);
+    assert_eq!(npr.search_line_alpha, 0.19);
+    assert_eq!(npr.pass_offset_px, 0.7);
+    assert_eq!(
+        npr.silhouette_override
+            .expect("silhouette override should hydrate")
+            .width_multiplier,
+        Some(1.7)
+    );
+}
+
+#[test]
+fn mesh3d_npr_defaults_strategy_to_gpu_realtime() {
+    let npr = first_mesh_npr_settings(
+        r#"
+version: 1
+scene:
+  id: npr-gpu-default
+entities:
+  - id: model
+    name: model
+    components:
+      - type: Mesh3D
+        mesh: playground-npr/meshes/soldier
+        npr:
+          enabled: true
+"#,
+    );
+
+    assert_eq!(
+        npr.render_strategy,
+        amigo_render_api::NprRenderStrategy3d::GpuRealtime
+    );
+}
+
+#[test]
+fn mesh3d_npr_hydrates_cpu_reference_strategy() {
+    let npr = first_mesh_npr_settings(
+        r#"
+version: 1
+scene:
+  id: npr-cpu-reference
+entities:
+  - id: model
+    name: model
+    components:
+      - type: Mesh3D
+        mesh: playground-npr/meshes/soldier
+        npr:
+          enabled: true
+          strategy: cpu_reference
+"#,
+    );
+
+    assert_eq!(
+        npr.render_strategy,
+        amigo_render_api::NprRenderStrategy3d::CpuReference
+    );
+}
+
+#[test]
+fn mesh3d_npr_rejects_hybrid_strategy() {
+    let error = load_scene_document_from_str(
+        r#"
+version: 1
+scene:
+  id: npr-invalid-hybrid
+entities:
+  - id: model
+    name: model
+    components:
+      - type: Mesh3D
+        mesh: playground-npr/meshes/soldier
+        npr:
+          enabled: true
+          strategy: hybrid
+"#,
+    )
+    .and_then(|document| build_scene_hydration_plan("playground-npr", &document))
+    .expect_err("hybrid strategy should be rejected");
+
+    let message = error.to_string();
+    assert!(message.contains("unsupported Mesh3D.npr.strategy `hybrid`"));
+}
+
+#[test]
+fn mesh3d_npr_rejects_auto_strategy() {
+    let error = load_scene_document_from_str(
+        r#"
+version: 1
+scene:
+  id: npr-invalid-auto
+entities:
+  - id: model
+    name: model
+    components:
+      - type: Mesh3D
+        mesh: playground-npr/meshes/soldier
+        npr:
+          enabled: true
+          strategy: auto
+"#,
+    )
+    .and_then(|document| build_scene_hydration_plan("playground-npr", &document))
+    .expect_err("auto strategy should be rejected");
+
+    let message = error.to_string();
+    assert!(message.contains("unsupported Mesh3D.npr.strategy `auto`"));
+}
+
+#[test]
+fn mesh3d_npr_rejects_gpu_alias_strategy() {
+    let error = load_scene_document_from_str(
+        r#"
+version: 1
+scene:
+  id: npr-invalid-gpu-alias
+entities:
+  - id: model
+    name: model
+    components:
+      - type: Mesh3D
+        mesh: playground-npr/meshes/soldier
+        npr:
+          enabled: true
+          strategy: gpu
+"#,
+    )
+    .and_then(|document| build_scene_hydration_plan("playground-npr", &document))
+    .expect_err("gpu alias strategy should be rejected");
+
+    let message = error.to_string();
+    assert!(message.contains("invalid Mesh3D.npr.strategy `gpu`"));
 }
 
 #[test]

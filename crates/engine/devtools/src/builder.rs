@@ -379,13 +379,56 @@ fn push_render_lines(
     ));
     lines.push(body_line(
         format!(
-            "3d meshes={} materials={} text={}",
+            "3d meshes={} npr={} gpu={} cpu={} paths={} samples={} vertices={} materials={} text={}",
             snapshot.render_stats.world_3d_meshes,
+            snapshot.render_stats.world_3d_npr_meshes,
+            snapshot.render_stats.world_3d_npr_gpu_realtime_meshes,
+            snapshot.render_stats.world_3d_npr_cpu_reference_meshes,
+            snapshot.render_stats.world_3d_npr_paths,
+            snapshot.render_stats.world_3d_npr_brush_samples,
+            snapshot.render_stats.world_3d_npr_strip_vertices,
             snapshot.render_stats.world_3d_materials,
             snapshot.render_stats.world_3d_text,
         ),
         theme.text,
     ));
+    if snapshot.render_stats.world_3d_npr_meshes > 0 {
+        lines.push(body_line(
+            format!(
+                "npr gpu edges={} triangles={} topology_uploads={} buffer_capacity={}",
+                snapshot.render_stats.world_3d_npr_gpu_realtime_enqueued_edges,
+                snapshot.render_stats.world_3d_npr_gpu_realtime_enqueued_triangles,
+                snapshot.render_stats.world_3d_npr_gpu_realtime_topology_uploads,
+                snapshot
+                    .render_stats
+                    .world_3d_npr_gpu_realtime_buffer_capacity_bytes,
+            ),
+            theme.text,
+        ));
+        lines.push(body_line(
+            format!(
+                "npr kinds boundary={} silhouette={} crease={} seam={} feature={} contact={}",
+                snapshot.render_stats.world_3d_npr_boundary_paths,
+                snapshot.render_stats.world_3d_npr_silhouette_paths,
+                snapshot.render_stats.world_3d_npr_crease_paths,
+                snapshot.render_stats.world_3d_npr_seam_paths,
+                snapshot.render_stats.world_3d_npr_feature_paths,
+                snapshot.render_stats.world_3d_npr_contact_paths,
+            ),
+            theme.text,
+        ));
+        lines.push(body_line(
+            format!(
+                "npr passes primary={} search={} dropout_intervals={} cache_hit={} cache_miss={}",
+                snapshot.render_stats.world_3d_npr_primary_passes,
+                snapshot.render_stats.world_3d_npr_search_passes,
+                snapshot.render_stats.world_3d_npr_dropout_intervals,
+                snapshot.render_stats.world_3d_npr_cached_plan_hits,
+                snapshot.render_stats.world_3d_npr_cached_plan_misses,
+            ),
+            theme.text,
+        ));
+    }
     if matches!(mode, DebugOverlayLayoutMode::Full) {
         lines.push(body_line(
             format!(

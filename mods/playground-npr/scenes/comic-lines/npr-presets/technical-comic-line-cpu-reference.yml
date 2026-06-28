@@ -1,0 +1,43 @@
+kind: npr-preset-3d
+schema_version: 1
+id: technical_comic_line_cpu_reference
+label: Technical Comic Line CPU Reference
+settings:
+  strategy: cpu_reference
+  fill_mode: none
+  style_preset: rough_comic_ink
+  stroke_tool: technical_pen
+  feature_angle_degrees: 42.0
+  min_screen_length_px: 1.2
+  ink_color: "#080808FF"
+  width_px: 1.45
+  silhouette_width_multiplier: 1.35
+  boundary_width_multiplier: 1.0
+  feature_width_multiplier: 0.9
+  distance_width_falloff: 0.04
+  width_pressure_curve: [0.96, 1.0, 1.0, 0.96]
+  alpha_pressure_curve: [1.0, 1.0, 1.0, 1.0]
+  depth_pressure: 0.0
+  humanization: 0.04
+  line_confidence: 0.98
+  temporal_stability: 0.99
+  visibility_hysteresis_frames: 4
+  endpoint_snap_px: 0.75
+  path_simplify_px: 0.28
+  straightness: 1.0
+  taper: 0.08
+  stroke_wobble_px: 0.02
+  stroke_wobble_frequency: 0.08
+  micro_wobble_px: 0.0
+  micro_wobble_frequency: 0.5
+  pressure_jitter: 0.0
+  local_angular_drift_degrees: 0.0
+  overshoot_px: 0.0
+  undershoot_px: 0.0
+  pass_offset_px: 0.0
+  dropout: 0.0
+  dropout_segment_min_px: 24.0
+  passes: 1
+  search_line_count: 0
+  search_line_alpha: 0.0
+  seed: 50010

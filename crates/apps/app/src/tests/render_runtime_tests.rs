@@ -8,7 +8,7 @@ use amigo_light_2d_plugin::{GlobalLight2dSceneService, LightGroup2dSceneService}
 
 #[test]
 #[ignore = "requires a local WGPU adapter for offscreen readback"]
-fn playground_npr_preview_renders_fill_and_ink_edges() {
+fn playground_npr_preview_renders_paper_and_ink_edges() {
     let frame = crate::capture_scene_preview(
         crate::ScenePreviewOptions::new(mods_root(), "playground-npr", "comic-lines", 320, 240)
             .with_active_mods(vec!["core".to_owned(), "playground-npr".to_owned()])
@@ -16,7 +16,46 @@ fn playground_npr_preview_renders_fill_and_ink_edges() {
     )
     .expect("npr scene preview should render offscreen");
 
+    assert_npr_preview_has_paper_and_ink(&frame, "gpu_realtime default_gpu_comic", 800, 80);
+}
+
+#[test]
+#[ignore = "requires a local WGPU adapter for offscreen readback"]
+fn playground_npr_preview_renders_gpu_and_cpu_reference_default_gpu_comic() {
+    let mut host = crate::ScenePreviewHost::new(
+        crate::ScenePreviewOptions::new(mods_root(), "playground-npr", "comic-lines", 320, 240)
+            .with_active_mods(vec!["core".to_owned(), "playground-npr".to_owned()])
+            .with_warmup_frames(2),
+    );
+    let gpu_frame = host
+        .capture_rgba8()
+        .expect("gpu npr scene preview should render offscreen");
+    assert_npr_preview_has_paper_and_ink(&gpu_frame, "gpu_realtime default_gpu_comic", 800, 80);
+
+    host.apply_mesh3d_npr_preset(
+        "playground-npr-model-1-soldier",
+        "default_gpu_comic_cpu_reference",
+    )
+    .expect("cpu reference npr preset should apply");
+    host.warmup(1)
+        .expect("cpu reference npr scene preview should advance");
+    let cpu_frame = host
+        .capture_rgba8()
+        .expect("cpu reference npr scene preview should render offscreen");
+    assert_npr_preview_has_paper_and_ink(&cpu_frame, "cpu_reference default_gpu_comic", 200, 120);
+    assert_npr_ink_masks_are_similar(&gpu_frame, &cpu_frame, "default_gpu_comic");
+}
+
+fn assert_npr_preview_has_paper_and_ink(
+    frame: &crate::ScenePreviewFrame,
+    label: &str,
+    min_dark_pixels: usize,
+    min_adjacent_ink_pixels: usize,
+) {
     let bright_pixels = count_bright_pixels(&frame.pixels_rgba8);
+    let dark_pixels = count_dark_pixels(&frame.pixels_rgba8);
+    let nonwhite_pixels = count_nonwhite_pixels(&frame.pixels_rgba8);
+    let min_luma = min_pixel_luma(&frame.pixels_rgba8);
     let ink_edge_pixels = count_dark_pixels_adjacent_to_bright(
         &frame.pixels_rgba8,
         frame.width as usize,
@@ -25,11 +64,15 @@ fn playground_npr_preview_renders_fill_and_ink_edges() {
 
     assert!(
         bright_pixels > 200,
-        "NPR preview should contain visible model fill pixels, got {bright_pixels}"
+        "{label} NPR preview should contain visible paper/background pixels, got {bright_pixels}"
     );
     assert!(
-        ink_edge_pixels > 20,
-        "NPR preview should contain dark ink pixels adjacent to model fill, got {ink_edge_pixels}"
+        dark_pixels > min_dark_pixels,
+        "{label} NPR preview should contain a visible ink drawing, got dark={dark_pixels}, nonwhite={nonwhite_pixels}, bright={bright_pixels}, min_luma={min_luma}, adjacent_ink={ink_edge_pixels}"
+    );
+    assert!(
+        ink_edge_pixels > min_adjacent_ink_pixels,
+        "{label} NPR preview should contain dark ink pixels adjacent to model fill, got {ink_edge_pixels}; dark={dark_pixels}, nonwhite={nonwhite_pixels}, bright={bright_pixels}, min_luma={min_luma}"
     );
 }
 
@@ -40,13 +83,144 @@ fn count_bright_pixels(pixels: &[u8]) -> usize {
         .count()
 }
 
+fn assert_npr_ink_masks_are_similar(
+    gpu_frame: &crate::ScenePreviewFrame,
+    cpu_frame: &crate::ScenePreviewFrame,
+    label: &str,
+) {
+    assert_eq!(gpu_frame.width, cpu_frame.width);
+    assert_eq!(gpu_frame.height, cpu_frame.height);
+    let gpu_mask = ink_edge_mask(
+        &gpu_frame.pixels_rgba8,
+        gpu_frame.width as usize,
+        gpu_frame.height as usize,
+    );
+    let cpu_mask = ink_edge_mask(
+        &cpu_frame.pixels_rgba8,
+        cpu_frame.width as usize,
+        cpu_frame.height as usize,
+    );
+    let gpu_stats = mask_stats(&gpu_mask, gpu_frame.width as usize, gpu_frame.height as usize);
+    let cpu_stats = mask_stats(&cpu_mask, cpu_frame.width as usize, cpu_frame.height as usize);
+    let count_ratio = if cpu_stats.count == 0 {
+        0.0
+    } else {
+        gpu_stats.count as f32 / cpu_stats.count as f32
+    };
+    let centroid_dx = (gpu_stats.centroid_x - cpu_stats.centroid_x).abs();
+    let centroid_dy = (gpu_stats.centroid_y - cpu_stats.centroid_y).abs();
+    let bbox_intersects = gpu_stats.count > 0
+        && cpu_stats.count > 0
+        && gpu_stats.min_x <= cpu_stats.max_x
+        && gpu_stats.max_x >= cpu_stats.min_x
+        && gpu_stats.min_y <= cpu_stats.max_y
+        && gpu_stats.max_y >= cpu_stats.min_y;
+    assert!(
+        bbox_intersects
+            && (0.30..=3.00).contains(&count_ratio)
+            && centroid_dx <= gpu_frame.width as f32 * 0.14
+            && centroid_dy <= gpu_frame.height as f32 * 0.18,
+        "{label} GPU/CPU NPR ink masks should occupy the same model region for A/B parity smoke test, got count_ratio={count_ratio:.3}, centroid_dx={centroid_dx:.2}, centroid_dy={centroid_dy:.2}, bbox_intersects={bbox_intersects}, gpu={gpu_stats:?}, cpu={cpu_stats:?}"
+    );
+}
+
+#[derive(Debug)]
+struct MaskStats {
+    count: usize,
+    min_x: usize,
+    min_y: usize,
+    max_x: usize,
+    max_y: usize,
+    centroid_x: f32,
+    centroid_y: f32,
+}
+
+fn mask_stats(mask: &[bool], width: usize, height: usize) -> MaskStats {
+    let mut count = 0usize;
+    let mut min_x = width;
+    let mut min_y = height;
+    let mut max_x = 0usize;
+    let mut max_y = 0usize;
+    let mut sum_x = 0usize;
+    let mut sum_y = 0usize;
+
+    for y in 0..height {
+        for x in 0..width {
+            if !mask[y * width + x] {
+                continue;
+            }
+            count += 1;
+            min_x = min_x.min(x);
+            min_y = min_y.min(y);
+            max_x = max_x.max(x);
+            max_y = max_y.max(y);
+            sum_x += x;
+            sum_y += y;
+        }
+    }
+
+    if count == 0 {
+        return MaskStats {
+            count,
+            min_x: 0,
+            min_y: 0,
+            max_x: 0,
+            max_y: 0,
+            centroid_x: 0.0,
+            centroid_y: 0.0,
+        };
+    }
+
+    MaskStats {
+        count,
+        min_x,
+        min_y,
+        max_x,
+        max_y,
+        centroid_x: sum_x as f32 / count as f32,
+        centroid_y: sum_y as f32 / count as f32,
+    }
+}
+
+fn ink_edge_mask(pixels: &[u8], width: usize, height: usize) -> Vec<bool> {
+    let mut mask = vec![false; width.saturating_mul(height)];
+    for y in 1..height.saturating_sub(1) {
+        for x in 1..width.saturating_sub(1) {
+            let index = (y * width + x) * 4;
+            let pixel = &pixels[index..index + 4];
+            if pixel_luma(pixel) > 100 {
+                continue;
+            }
+            let has_bright_neighbor = [
+                (x - 1, y),
+                (x + 1, y),
+                (x, y - 1),
+                (x, y + 1),
+                (x - 1, y - 1),
+                (x + 1, y - 1),
+                (x - 1, y + 1),
+                (x + 1, y + 1),
+            ]
+            .into_iter()
+            .any(|(nx, ny)| {
+                let neighbor = (ny * width + nx) * 4;
+                pixel_luma(&pixels[neighbor..neighbor + 4]) > 150
+            });
+            if has_bright_neighbor {
+                mask[y * width + x] = true;
+            }
+        }
+    }
+    mask
+}
+
 fn count_dark_pixels_adjacent_to_bright(pixels: &[u8], width: usize, height: usize) -> usize {
     let mut count = 0;
     for y in 1..height.saturating_sub(1) {
         for x in 1..width.saturating_sub(1) {
             let index = (y * width + x) * 4;
             let pixel = &pixels[index..index + 4];
-            if pixel_luma(pixel) > 35 {
+            if pixel_luma(pixel) > 100 {
                 continue;
             }
             let has_bright_neighbor = [
@@ -70,6 +244,28 @@ fn count_dark_pixels_adjacent_to_bright(pixels: &[u8], width: usize, height: usi
         }
     }
     count
+}
+
+fn count_dark_pixels(pixels: &[u8]) -> usize {
+    pixels
+        .chunks_exact(4)
+        .filter(|rgba| pixel_luma(rgba) <= 100)
+        .count()
+}
+
+fn count_nonwhite_pixels(pixels: &[u8]) -> usize {
+    pixels
+        .chunks_exact(4)
+        .filter(|rgba| rgba[0] < 245 || rgba[1] < 245 || rgba[2] < 245)
+        .count()
+}
+
+fn min_pixel_luma(pixels: &[u8]) -> u8 {
+    pixels
+        .chunks_exact(4)
+        .map(pixel_luma)
+        .min()
+        .unwrap_or(255)
 }
 
 fn pixel_luma(rgba: &[u8]) -> u8 {

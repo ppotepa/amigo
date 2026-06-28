@@ -16,8 +16,8 @@ use super::defaults::{default_entity_lifecycle_flag, default_scene_document_vers
 use super::render_values::{SceneTransform2Document, SceneTransform3Document};
 use super::visual2d::{PostFx2dDocument, SceneVisual2dDocument};
 use super::{
-    SceneComponentDocument, is_builtin_component_type, is_rejected_retired_component_type,
-    plugin_component_document,
+    NprPreset3dDocument, SceneComponentDocument, is_builtin_component_type,
+    is_rejected_retired_component_type, plugin_component_document,
 };
 use crate::{ComponentSchemaRegistry, SceneDocumentError, SceneDocumentResult};
 
@@ -36,6 +36,8 @@ struct RawSceneDocument {
     activation_sets: Vec<SceneActivationSetDocument>,
     #[serde(default)]
     visual2d: SceneVisual2dDocument,
+    #[serde(default)]
+    npr_presets: Vec<NprPreset3dDocument>,
     #[serde(default)]
     state: BTreeMap<String, SceneStateValueDocument>,
     #[serde(default)]
@@ -120,6 +122,7 @@ pub(crate) fn parse_scene_document_value(
         audio_cues: raw.audio_cues,
         activation_sets: raw.activation_sets,
         visual2d: raw.visual2d,
+        npr_presets: raw.npr_presets,
         state: raw.state,
         entities: raw
             .entities

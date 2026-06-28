@@ -4,6 +4,8 @@ pub const MATERIAL_3D_PLUGIN_SCENE_COMMAND_TYPE: &str =
 pub const TEXT_3D_PLUGIN_SCENE_COMMAND_TYPE: &str = "amigo.rendering.3d.scene-command.Text3d";
 pub const CAMERA_CONTROLLER_3D_PLUGIN_SCENE_COMMAND_TYPE: &str =
     "amigo.camera.camera-core.scene-command.CameraController3d";
+pub const NPR_PRESET_3D_PLUGIN_SCENE_COMMAND_TYPE: &str =
+    "amigo.rendering.3d.scene-command.NprPreset3d";
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Mesh3dSceneCommand {
@@ -64,6 +66,42 @@ impl Mesh3dSceneCommand {
             npr: None,
         }
     }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct NprPreset3dSceneCommand {
+    pub source_mod: String,
+    pub id: String,
+    pub label: String,
+    pub settings: amigo_render_api::NprLineSettings3d,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct NprPreset3dPluginSceneCommandPayload(pub NprPreset3dSceneCommand);
+
+impl crate::PluginSceneCommandPayload for NprPreset3dPluginSceneCommandPayload {
+    fn command_type(&self) -> &'static str {
+        NPR_PRESET_3D_PLUGIN_SCENE_COMMAND_TYPE
+    }
+
+    fn command_as_any(&self) -> &dyn std::any::Any {
+        &self.0
+    }
+
+    fn eq_payload(&self, other: &dyn crate::PluginSceneCommandPayload) -> bool {
+        other
+            .command_as_any()
+            .downcast_ref::<NprPreset3dSceneCommand>()
+            .is_some_and(|command| command == &self.0)
+    }
+}
+
+pub fn npr_preset_3d_plugin_scene_command(
+    command: NprPreset3dSceneCommand,
+) -> crate::PluginSceneCommand {
+    crate::PluginSceneCommand::new(std::sync::Arc::new(
+        NprPreset3dPluginSceneCommandPayload(command),
+    ))
 }
 
 #[derive(Debug, Clone, PartialEq)]

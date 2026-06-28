@@ -79,6 +79,12 @@ impl WgpuSceneRenderer {
             texture_cache: BTreeMap::new(),
             mesh_3d_geometry_cache: BTreeMap::new(),
             lightmap_2d_image_cache: BTreeMap::new(),
+            npr_cpu_reference: crate::renderer::CpuReferenceNprRenderer3d::default(),
+            npr_gpu_realtime: crate::renderer::GpuRealtimeNprRenderer3d::default(),
+            npr_stroke_stats_3d: crate::renderer::NprStrokeFrameStats3d::default(),
+            offscreen_color_vertex_buffers: Vec::new(),
+            offscreen_npr_stroke_segment_vertex_buffers: Vec::new(),
+            offscreen_upload_stats: crate::renderer::service::WgpuOffscreenUploadStats::default(),
             font_atlas_cache: BTreeMap::new(),
             font_missing_glyph_warnings: BTreeSet::new(),
             frame_graph_executor: crate::renderer::graph::WgpuFrameGraphExecutor::default(),
@@ -89,6 +95,7 @@ impl WgpuSceneRenderer {
             plate_relight_last_summary: "plate_relight: not run yet".to_owned(),
             render_materials_last_summary: "render.materials: not run yet".to_owned(),
             frame_diagnostics: Vec::new(),
+            frame_counter: 0,
         }
     }
 }
