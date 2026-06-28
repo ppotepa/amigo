@@ -5,7 +5,7 @@ Powiazany plan: `npr_v2.md`.
 
 ## 0. Postep globalny
 
-- Szacowany postep calego `npr_v2`: okolo 92%.
+- Szacowany postep calego `npr_v2`: okolo 93%.
 - Zrobione: kontrakt, YAML, routing CPU/GPU, debug mode, endpoint bins, owner compaction, `path_segments`, path-level lock/dropout foundation.
 - Zostalo: domkniecie parytetu wizualnego CPU/GPU, lepszy graph walk i stabilniejsze `path_t/path_id`, dalsze dopasowanie stylizacji do `cpu_reference`.
 
@@ -75,6 +75,14 @@ Powiazany plan: `npr_v2.md`.
 - `compact_owners` wymaga teraz tez wzajemnosci polaczenia:
   - kandydat start/end musi lokalnie wybierac z powrotem biezacy edge,
   - redukuje to falszywe polaczenia jednostronne i poprawia spoistosc grafu path.
+- Doszedl osobny GPU seam `path_states`:
+  - `connect_paths` zapisuje teraz jawny stan path per edge,
+  - `path_states` niosa `owner_segment`, `path_id`, `kind`, `flags`, `segment_count`,
+  - `emit_path_segments` przestalo polegac wylacznie na `link.owner_edge == edge_index` jako jedynym zrodle autorytetu.
+- To porzadkuje architekture:
+  - `compact_owners` zostaje etapem wyboru lokalnych polaczen,
+  - `connect_paths` zostaje etapem budowy jawnego stanu path,
+  - `emit_path_segments` czyta juz ten stan zamiast samemu zgadywac wszystko od zera.
 - Statystyki GPU NPR zostaly rozszerzone:
   - `frame_jobs`,
   - `projected_vertices_capacity`,
@@ -213,6 +221,8 @@ Glowne pliki:
   - owner edge -> path segment,
   - path flags -> segment metadata,
   - path length / importance -> metrics.
+- `emit_path_segments` czyta teraz tez `path_states`,
+  wiec `path_id` i owner path sa juz rozdzielone od samego `path_links`.
 - `emit_path_segments` kompaktuje teraz tylko realnie istniejace segmenty do zwartego bufora przez atomic counter,
   zamiast polegac wylacznie na sztywnych slotach.
 - `emit_path_segments` robi juz prosty `path walk` po `path_links`:
@@ -258,6 +268,7 @@ Glowne pliki:
   - uzywa `path_t` cell,
   - jest bardziej spójny wzdluz calej sciezki.
 - `build_strokes` dalej nie jest pelnym path rendererem, bo `path_t/path walk` sa jeszcze uproszczone.
+- GPU frame buffers maja teraz tez osobny bufor `path_states`.
 
 Glowne pliki:
 
@@ -266,6 +277,7 @@ Glowne pliki:
 - `crates/engine/render-wgpu/src/renderer/shaders/npr_classify_edges.wgsl`
 - `crates/engine/render-wgpu/src/renderer/shaders/npr_build_endpoint_bins.wgsl`
 - `crates/engine/render-wgpu/src/renderer/shaders/npr_compact_owners.wgsl`
+- `crates/engine/render-wgpu/src/renderer/shaders/npr_connect_paths.wgsl`
 - `crates/engine/render-wgpu/src/renderer/shaders/npr_emit_path_segments.wgsl`
 - `crates/engine/render-wgpu/src/renderer/shaders/npr_build_strokes.wgsl`
 

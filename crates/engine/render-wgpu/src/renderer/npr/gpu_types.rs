@@ -82,6 +82,17 @@ pub(crate) struct GpuNprPathSegment3d {
 
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default)]
+pub(crate) struct GpuNprPathState3d {
+    pub owner_segment: u32,
+    pub path_id: u32,
+    pub kind: u32,
+    pub flags: u32,
+    pub segment_count: u32,
+    pub _pad0: [u32; 3],
+}
+
+#[repr(C)]
+#[derive(Clone, Copy, Debug, Default)]
 pub(crate) struct GpuNprFrameUniforms3d {
     pub model_translation: [f32; 4],
     pub model_rotation: [f32; 4],

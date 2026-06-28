@@ -37,6 +37,7 @@ pub(crate) struct NprGpuFrameStats3d {
     pub endpoint_entries_capacity: usize,
     pub path_links_capacity: usize,
     pub path_segments_capacity: usize,
+    pub path_states_capacity: usize,
     pub stroke_segments_capacity: usize,
     pub debug_mode: &'static str,
 }
@@ -145,6 +146,9 @@ impl GpuRealtimeNprRenderer3d {
                 .map(|job| job.geometry.edge_count() * NPR_GPU_PATH_SEGMENTS_PER_CHAIN)
                 .sum::<usize>()
                 * std::mem::size_of::<super::GpuNprPathSegment3d>()) as u64;
+        let path_states_capacity =
+            (self.frame_jobs.iter().map(|job| job.geometry.edge_count()).sum::<usize>()
+                * std::mem::size_of::<super::GpuNprPathState3d>()) as u64;
         let stroke_segments_capacity = (self
             .frame_jobs
             .iter()
@@ -164,6 +168,7 @@ impl GpuRealtimeNprRenderer3d {
             endpoint_entries_capacity.max(64),
             path_links_capacity.max(64),
             path_segments_capacity.max(64),
+            path_states_capacity.max(64),
             stroke_segments_capacity.max(64),
         );
         let (face_id_view, depth_view) = {
@@ -295,6 +300,7 @@ impl GpuRealtimeNprRenderer3d {
                     storage_binding(11, &frame_buffers.endpoint_heads),
                     storage_binding(12, &frame_buffers.endpoint_entries),
                     storage_binding(13, &frame_buffers.path_segments),
+                    storage_binding(14, &frame_buffers.path_states),
                 ],
             });
 
@@ -339,6 +345,15 @@ impl GpuRealtimeNprRenderer3d {
                     timestamp_writes: None,
                 });
                 pass.set_pipeline(&pipelines.compact_owners_pipeline);
+                pass.set_bind_group(0, &bind_group, &[]);
+                pass.dispatch_workgroups(workgroup_count(topology.edge_count as usize), 1, 1);
+            }
+            {
+                let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                    label: Some("amigo-npr-connect-paths-pass"),
+                    timestamp_writes: None,
+                });
+                pass.set_pipeline(&pipelines.connect_paths_pipeline);
                 pass.set_bind_group(0, &bind_group, &[]);
                 pass.dispatch_workgroups(workgroup_count(topology.edge_count as usize), 1, 1);
             }
@@ -408,6 +423,7 @@ impl GpuRealtimeNprRenderer3d {
             endpoint_entries_capacity: buffer_capacities.endpoint_entries,
             path_links_capacity: buffer_capacities.path_links,
             path_segments_capacity: buffer_capacities.path_segments,
+            path_states_capacity: buffer_capacities.path_states,
             stroke_segments_capacity: buffer_capacities.stroke_segments,
             debug_mode,
         })

@@ -1,6 +1,6 @@
 use crate::renderer::shaders::{
     NPR_BUILD_ENDPOINT_BINS_SHADER, NPR_BUILD_STROKES_SHADER, NPR_CLASSIFY_EDGES_SHADER,
-    NPR_COMPACT_OWNERS_SHADER, NPR_EMIT_PATH_SEGMENTS_SHADER, NPR_FACE_ID_SHADER,
+    NPR_COMPACT_OWNERS_SHADER, NPR_CONNECT_PATHS_SHADER, NPR_EMIT_PATH_SEGMENTS_SHADER, NPR_FACE_ID_SHADER,
     NPR_PROJECT_VERTICES_SHADER,
 };
 
@@ -14,6 +14,7 @@ pub(crate) struct NprGpuPipelines3d {
     pub classify_edges_pipeline: wgpu::ComputePipeline,
     pub build_endpoint_bins_pipeline: wgpu::ComputePipeline,
     pub compact_owners_pipeline: wgpu::ComputePipeline,
+    pub connect_paths_pipeline: wgpu::ComputePipeline,
     pub emit_path_segments_pipeline: wgpu::ComputePipeline,
     pub build_strokes_pipeline: wgpu::ComputePipeline,
 }
@@ -90,6 +91,7 @@ impl NprGpuPipelines3d {
                     storage_entry(11, false),
                     storage_entry(12, false),
                     storage_entry(13, false),
+                    storage_entry(14, false),
                 ],
             });
         let compute_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
@@ -133,6 +135,12 @@ impl NprGpuPipelines3d {
             NPR_EMIT_PATH_SEGMENTS_SHADER,
             &compute_layout,
         );
+        let connect_paths_pipeline = create_compute_pipeline(
+            device,
+            "amigo-npr-connect-paths-pipeline",
+            NPR_CONNECT_PATHS_SHADER,
+            &compute_layout,
+        );
         Self {
             face_id_pipeline,
             face_id_bind_group_layout,
@@ -141,6 +149,7 @@ impl NprGpuPipelines3d {
             classify_edges_pipeline,
             build_endpoint_bins_pipeline,
             compact_owners_pipeline,
+            connect_paths_pipeline,
             emit_path_segments_pipeline,
             build_strokes_pipeline,
         }

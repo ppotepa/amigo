@@ -11,6 +11,15 @@ struct GpuNprPathLink3d {
     flags: u32,
 }
 
+struct GpuNprPathState3d {
+    owner_segment: u32,
+    path_id: u32,
+    kind: u32,
+    flags: u32,
+    segment_count: u32,
+    _pad0: vec3<u32>,
+}
+
 struct GpuNprPathSegment3d {
     start: vec4<f32>,
     end: vec4<f32>,
@@ -69,6 +78,7 @@ const PATH_FLAG_CONNECTED_END: u32 = 4u;
 @group(0) @binding(9) var<storage, read_write> indirect_args: array<atomic<u32>>;
 @group(0) @binding(10) var<storage, read> path_links: array<GpuNprPathLink3d>;
 @group(0) @binding(13) var<storage, read_write> path_segments: array<GpuNprPathSegment3d>;
+@group(0) @binding(14) var<storage, read> path_states: array<GpuNprPathState3d>;
 
 fn path_importance(kind: u32, depth01: f32) -> f32 {
     let depth_factor = clamp(1.18 - depth01 * 0.38, 0.72, 1.18);
@@ -265,10 +275,11 @@ fn cs_main(@builtin(global_invocation_id) id: vec3<u32>) {
 
     let visible = visible_segments[edge_index];
     let link = path_links[edge_index];
+    let state = path_states[edge_index];
     if (visible.kind_edge.x == KIND_NONE || visible.start.w <= 0.5 || visible.end.w <= 0.5) {
         return;
     }
-    if ((link.flags & PATH_FLAG_EMIT) == 0u || link.owner_edge != edge_index) {
+    if ((state.flags & PATH_FLAG_EMIT) == 0u || state.owner_segment != edge_index) {
         return;
     }
 
@@ -324,13 +335,14 @@ fn cs_main(@builtin(global_invocation_id) id: vec3<u32>) {
         && distance(final_end.xy, end_walk.penultimate_point) > 0.0001
         && distance(end_walk.penultimate_point, end_walk.near_point) > 0.0001;
     let hop_count = start_walk.hops + end_walk.hops;
-    let stable_path_id = stable_path_id(
+    let computed_path_id = stable_path_id(
         visible.kind_edge.x,
         final_start.xy,
         final_end.xy,
         hop_count,
         total_length,
     );
+    let stable_path_id = select(computed_path_id, state.path_id, state.path_id != 0u);
     let owner_t0 = clamp(start_walk.extra_length / total_length, 0.0, 1.0);
     let owner_t1 = clamp((start_walk.extra_length + length_px) / total_length, owner_t0, 1.0);
     let owner_mid = vec4<f32>(
