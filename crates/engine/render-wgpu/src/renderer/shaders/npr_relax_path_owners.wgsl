@@ -49,6 +49,14 @@ fn maybe_relax_owner(current_owner: u32, neighbor_index: u32, kind: u32) -> u32 
     return min(current_owner, path_states[neighbor_index].owner_segment);
 }
 
+fn propagated_segment_count(current_count: u32, neighbor_index: u32, kind: u32) -> u32 {
+    if (!valid_state(neighbor_index, kind)) {
+        return current_count;
+    }
+    let neighbor_count = path_states[neighbor_index].segment_count;
+    return max(current_count, min(neighbor_count + 1u, 16u));
+}
+
 @compute @workgroup_size(64)
 fn cs_main(@builtin(global_invocation_id) id: vec3<u32>) {
     let edge_index = id.x;
@@ -67,10 +75,12 @@ fn cs_main(@builtin(global_invocation_id) id: vec3<u32>) {
     owner = maybe_relax_owner(owner, link.start_next, state.kind);
     owner = maybe_relax_owner(owner, link.end_next, state.kind);
 
-    let segment_count =
+    var segment_count =
         1u
         + select(0u, 1u, valid_state(link.start_next, state.kind))
         + select(0u, 1u, valid_state(link.end_next, state.kind));
+    segment_count = propagated_segment_count(segment_count, link.start_next, state.kind);
+    segment_count = propagated_segment_count(segment_count, link.end_next, state.kind);
     let path_id =
         hash_u32(owner ^ (state.kind * 0x9E3779B1u) ^ (segment_count * 0x85EBCA77u));
     path_states[edge_index] = GpuNprPathState3d(

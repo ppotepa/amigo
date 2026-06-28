@@ -313,6 +313,13 @@ Glowne pliki:
 - `connect_paths` i `relax_path_owners` nie mieszaja juz `edge_id` do `path_id`.
   To zmniejsza ryzyko, ze identyfikacja sciezki bedzie skakac przy zmianie ownera
   albo przy przejsciu miedzy sasiednimi edge tego samego chainu.
+- `relax_path_owners` propaguje teraz tez `segment_count` dalej niz tylko bezposredni sasiedzi.
+  Dzięki temu:
+  - `path_coherence`,
+  - `importance`,
+  - width/alpha modulation,
+  - search gating
+  lepiej odrozniaja prawdziwie dluzsze chainy od lokalnych 2-3 edge fragmentow.
 - `build_strokes` dalej nie jest pelnym path rendererem, bo `path_t/path walk` sa jeszcze uproszczone.
 - GPU frame buffers maja teraz tez osobny bufor `path_states`.
 
