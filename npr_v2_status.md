@@ -5,7 +5,7 @@ Powiazany plan: `npr_v2.md`.
 
 ## 0. Postep globalny
 
-- Szacowany postep calego `npr_v2`: okolo 90%.
+- Szacowany postep calego `npr_v2`: okolo 91%.
 - Zrobione: kontrakt, YAML, routing CPU/GPU, debug mode, endpoint bins, owner compaction, `path_segments`, path-level lock/dropout foundation.
 - Zostalo: domkniecie parytetu wizualnego CPU/GPU, lepszy graph walk i stabilniejsze `path_t/path_id`, dalsze dopasowanie stylizacji do `cpu_reference`.
 
@@ -40,6 +40,9 @@ Powiazany plan: `npr_v2.md`.
 - `compact_owners` wybiera teraz bardziej kanonicznego ownera dla stabilnego lokalnego chainu:
   - przy `connected_both + chain_compactable` owner moze zostac zkanonizowany do najmniejszego stabilnego kandydata,
   - zmniejsza to skakanie ownera miedzy sasiednimi edge przy malych zmianach kamery.
+- `compact_owners` wymaga teraz tez wzajemnosci polaczenia:
+  - kandydat start/end musi lokalnie wybierac z powrotem biezacy edge,
+  - redukuje to falszywe polaczenia jednostronne i poprawia spoistosc grafu path.
 
 ## 1. Co zostalo zrobione
 
@@ -347,6 +350,7 @@ Docelowo powinien byc tez kontrolowany przez YAML.
      a finalny render jest juz budowany z osobnego `path_segments` bufora.
    - Jest juz prosty walk owner->neighbor po `path_links`.
    - Lokalny owner graph jest juz stabilniejszy dzieki kanonicznemu wyborowi ownera w kompaktowalnym chainie.
+   - Polaczenia w `path_links` sa juz tez filtrowane przez wzajemnosc wyboru sasiedniego edge.
    - Brakuje jeszcze stabilnego `path_id`, wielosegmentowego graph walku i path-level `t`.
 
 4. Ujednolic stylizacje CPU/GPU.

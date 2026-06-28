@@ -331,6 +331,57 @@ fn best_endpoint_candidate_from_bins(
     return best;
 }
 
+fn reciprocal_connection_ok(
+    current_edge_index: u32,
+    current_kind: u32,
+    candidate_pick: EndpointCandidatePick,
+) -> bool {
+    if (
+        candidate_pick.edge_index == 0xffffffffu
+        || candidate_pick.edge_index >= u32(arrayLength(&visible_segments))
+    ) {
+        return false;
+    }
+    let candidate_visible = visible_segments[candidate_pick.edge_index];
+    if (
+        candidate_visible.kind_edge.x != current_kind
+        || candidate_visible.start.w <= 0.5
+        || candidate_visible.end.w <= 0.5
+    ) {
+        return false;
+    }
+
+    let anchor_point = select(
+        candidate_visible.start.xy,
+        candidate_visible.end.xy,
+        candidate_pick.matched_start,
+    );
+    let anchor_depth = select(
+        candidate_visible.start.z,
+        candidate_visible.end.z,
+        candidate_pick.matched_start,
+    );
+    let far_point = select(
+        candidate_visible.end.xy,
+        candidate_visible.start.xy,
+        candidate_pick.matched_start,
+    );
+    let candidate_length = visible_segment_length(candidate_pick.edge_index);
+    if (candidate_length <= 0.0) {
+        return false;
+    }
+    let direction = normalize(anchor_point - far_point);
+    let back_pick = best_endpoint_candidate_from_bins(
+        candidate_pick.edge_index,
+        current_kind,
+        anchor_point,
+        anchor_depth,
+        direction,
+        candidate_length,
+    );
+    return back_pick.edge_index == current_edge_index && back_pick.score >= 0.66;
+}
+
 @compute @workgroup_size(64)
 fn cs_main(@builtin(global_invocation_id) id: vec3<u32>) {
     let edge_index = id.x;
@@ -370,8 +421,10 @@ fn cs_main(@builtin(global_invocation_id) id: vec3<u32>) {
         current_length,
     );
 
-    let connected_start = start_pick.score >= 0.72;
-    let connected_end = end_pick.score >= 0.72;
+    let connected_start =
+        start_pick.score >= 0.72 && reciprocal_connection_ok(edge_index, kind, start_pick);
+    let connected_end =
+        end_pick.score >= 0.72 && reciprocal_connection_ok(edge_index, kind, end_pick);
     let connected_both = connected_start && connected_end;
 
     if (kind == KIND_CONTACT && (!connected_both || current_length < max(uniforms.params0.w * 3.0, 8.0))) {
