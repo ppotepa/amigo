@@ -1,13 +1,13 @@
 # Amigo NPR GPU/CPU Parity - Plan naprawczy v2, pełna implementacja
 
-Status: plan implementacji po review aktualnego źródła z `concat.zip`.
+Status: plan implementacji po review aktualnego źródła i po pierwszej serii wdrożeń GPU NPR.
 Zakres: renderowanie kreski komiksowej/NPR dla 3D. Bez hatchingu, halftone, painterly, fill shading i watercolor.
 Cel: `gpu_realtime` ma dawać prawie taki sam rysunek jak `cpu_reference`, ale wykonany ścieżką GPU bez `auto`, bez `hybrid`, bez cichego fallbacku GPU -> CPU.
 
 Ten plik jest kanonicznym planem docelowym.
 Aktualny stan wdrożenia, w tym które etapy są już zrobione częściowo albo w całości, jest śledzony wyłącznie w `npr_v2_status.md`.
 
-Ten dokument zastępuje poprzedni plan. Najważniejsza korekta względem wersji 1: w aktualnym źródle część fundamentów już istnieje (`NprRenderStrategy3d`, `NprFillMode3d`, `NprGpuRealtimeTuning3d`, `GpuStableComic`, routing CPU/GPU, podstawowy GPU pipeline). Brakiem nie jest już samo przełączenie strategii, tylko pełny path model na GPU: endpoint bins, path walk, path-level stylizacja, debug mode i frame-level multi-mesh face-id.
+Ten dokument zastępuje poprzedni plan. Najważniejsza korekta względem wersji 1: w aktualnym źródle część fundamentów już istnieje (`NprRenderStrategy3d`, `NprFillMode3d`, `NprGpuRealtimeTuning3d`, `GpuStableComic`, routing CPU/GPU, podstawowy GPU pipeline). Brakiem nie jest już samo przełączenie strategii, tylko domknięcie pełnego modelu path na GPU i jego parytetu z CPU reference.
 
 ## Status planu vs implementacja
 
@@ -21,10 +21,18 @@ Za wdrożone fundamenty uznajemy już:
 - osobne moduły NPR po stronie `render-wgpu`,
 - podstawowy GPU pipeline z face-id, projection i classify,
 - warstwę debugowania GPU w danych/runtime,
-- pierwszą generację `endpoint_bins`, `path_links` i `path_segments`.
+- pierwszą generację `endpoint_bins`, `path_links` i `path_segments`,
+- globalny `face-id/depth` dla wszystkich meshy GPU w ramce,
+- rozszerzone statystyki GPU NPR w runtime i overlay/debug.
 
 To oznacza, że dalsze prace z tego planu nie zaczynają od zera.
 Ich celem jest domknięcie parytetu wizualnego CPU/GPU, a nie ponowne projektowanie całego kontraktu NPR.
+
+## Status dokumentów
+
+- `npr_v2.md` = plan docelowy i docelowa architektura.
+- `npr_v2_status.md` = stan wdrożenia, lista rzeczy zrobionych i lista braków.
+- Jeżeli te pliki są sprzeczne, prawdą o bieżącym stanie implementacji jest `npr_v2_status.md`.
 
 ---
 

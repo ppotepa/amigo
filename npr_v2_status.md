@@ -9,6 +9,38 @@ Powiazany plan: `npr_v2.md`.
 - Zrobione: kontrakt, YAML, routing CPU/GPU, debug mode, endpoint bins, owner compaction, `path_segments`, path-level lock/dropout foundation.
 - Zostalo: domkniecie parytetu wizualnego CPU/GPU, lepszy graph walk i stabilniejsze `path_t/path_id`, dalsze dopasowanie stylizacji do `cpu_reference`.
 
+## 0.2. Stan wprost
+
+### Domkniete
+
+- Kontrakt `gpu_realtime` / `cpu_reference`.
+- Domyslny GPU runtime bez `auto` i bez `hybrid`.
+- Routing YAML -> scene hydration -> mesh runtime -> render loop.
+- Playground controls dla presetow, modeli, strategii i debug mode.
+- Podstawowy GPU pipeline:
+  - `face-id`,
+  - `project_vertices`,
+  - `classify_edges`,
+  - `endpoint bins`,
+  - `owner compaction`,
+  - `emit_path_segments`,
+  - `build_strokes`.
+
+### Dziala, ale nie ma jeszcze pelnego parytetu
+
+- GPU path walk i identyfikacja sciezki.
+- GPU `path_t` i `path_id`.
+- GPU dropout, endpoint lock, taper i search shaping.
+- Zgodnosc presetow CPU/GPU.
+- Temporal/path smoothing w ujeciach granicznych.
+
+### Nadal do zrobienia
+
+- Dalsze ograniczenie falszywych dlugich chainow dla niektorych presetow i katow kamery.
+- Lepsza zgodnosc GPU z CPU dla pressure/alpha/humanization/search.
+- Cleanup tymczasowych hintow `next_*` / `alt_next_*` po pelnym przejsciu na mocniejszy path graph.
+- Ostateczne strojenie budzetow, limitow i debug stats pod GPU realtime.
+
 ## 0.1. Co wnosi ta paczka
 
 - GPU final przestal byc tylko raw-edge lokalnym `visible_segments -> strokes`.
@@ -258,6 +290,62 @@ Glowne pliki:
 - `amigo-symbol-explorer` indeksuje teraz `wgsl`.
 
 Glowne pliki:
+
+## 2. Co zostalo do domkniecia
+
+### 2.1. Path graph GPU
+
+- Obecny GPU path graph jest juz wyraznie lepszy od wersji owner-edge-only, ale nadal jest uproszczony.
+- Trzeba dalej poprawic przejscie od `path_links` do finalnej semantycznej sciezki tak, aby GPU dalo ten sam obrys i te same wewnetrzne linie co CPU reference.
+
+Glowne pliki:
+
+- `crates/engine/render-wgpu/src/renderer/shaders/npr_compact_owners.wgsl`
+- `crates/engine/render-wgpu/src/renderer/shaders/npr_emit_path_segments.wgsl`
+- `crates/engine/render-wgpu/src/renderer/shaders/npr_build_strokes.wgsl`
+- `crates/engine/render-wgpu/src/renderer/npr/gpu_realtime.rs`
+
+### 2.2. Parytet presetow CPU/GPU
+
+- Nie wszystkie presety daja jeszcze rownie czytelny wynik na GPU jak na CPU.
+- Trzeba doprowadzic do tego, zeby preset zmienial charakter kreski, a nie tylko gestosc losowych chainow.
+
+Glowne pliki:
+
+- `crates/engine/render-wgpu/src/renderer/npr/style.rs`
+- `crates/engine/render-wgpu/src/renderer/shaders/npr_build_strokes.wgsl`
+- `mods/playground-npr/scenes/comic-lines/npr-presets/*.yml`
+
+### 2.3. Stabilnosc temporalna
+
+- Efekt "kreska zostaje i wraca" jest juz wystawiony jako feature, ale dalej wymaga dostrojenia pod GPU.
+- Chodzi o to, zeby wlaczenie temporal bylo kontrolowane i czytelne, a nie zeby maskowalo bledy grafu path.
+
+Glowne pliki:
+
+- `crates/engine/render-wgpu/src/renderer/shaders/npr_build_strokes.wgsl`
+- `mods/playground-npr/scenes/comic-lines/scene.rhai`
+- `mods/playground-npr/scenes/comic-lines/scene.yml`
+
+### 2.4. Debug i diagnostyka
+
+- Statystyki sa juz bogatsze, ale trzeba je nadal wykorzystac do szybkiego porownywania CPU vs GPU.
+- Finalnie overlay powinien pomagac stroic path graph i preset, a nie tylko wyswietlac surowe liczby.
+
+Glowne pliki:
+
+- `crates/engine/render-api/src/stats.rs`
+- `crates/apps/app/src/render_runtime.rs`
+- `mods/playground-npr/scenes/comic-lines/scene.rhai`
+
+## 3. Definicja "gotowe"
+
+Za realne domkniecie `npr_v2` uznajemy dopiero sytuacje, w ktorej:
+
+- GPU i CPU daja bardzo podobny obrys i podobna logike linii wewnetrznych dla tych samych presetow.
+- GPU nie pokazuje przypadkowych dlugich kresek, prostokatow ani niestabilnych chainow zaleznych od kata kamery.
+- Preset na GPU zmienia charakter kreski w sposob przewidywalny i porownywalny do CPU reference.
+- Overlay/debug stats wystarczaja, zeby roznice CPU/GPU diagnozowac bez zgadywania.
 
 - `crates/tools/amigo-codemap/**`
 - `crates/tools/amigo-symbol-explorer/src/scan/files.rs`
