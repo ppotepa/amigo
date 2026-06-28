@@ -134,6 +134,15 @@ pub(crate) fn build_render_frame_for_session(
             world_3d_npr_gpu_realtime_enqueued_triangles: 0,
             world_3d_npr_gpu_realtime_topology_uploads: 0,
             world_3d_npr_gpu_realtime_buffer_capacity_bytes: 0,
+            world_3d_npr_gpu_realtime_frame_jobs: 0,
+            world_3d_npr_gpu_realtime_projected_vertices_capacity: 0,
+            world_3d_npr_gpu_realtime_visible_segments_capacity: 0,
+            world_3d_npr_gpu_realtime_endpoint_heads_capacity: 0,
+            world_3d_npr_gpu_realtime_endpoint_entries_capacity: 0,
+            world_3d_npr_gpu_realtime_path_links_capacity: 0,
+            world_3d_npr_gpu_realtime_path_segments_capacity: 0,
+            world_3d_npr_gpu_realtime_stroke_segments_capacity: 0,
+            world_3d_npr_gpu_realtime_debug_mode: String::new(),
             world_3d_npr_paths: 0,
             world_3d_npr_boundary_paths: 0,
             world_3d_npr_silhouette_paths: 0,
@@ -234,6 +243,23 @@ pub(crate) fn build_render_frame_for_session(
         stats.world_3d_npr_gpu_realtime_topology_uploads = npr.gpu_realtime_topology_uploads;
         stats.world_3d_npr_gpu_realtime_buffer_capacity_bytes =
             npr.gpu_realtime_buffer_capacity_bytes;
+        stats.world_3d_npr_gpu_realtime_frame_jobs = npr.gpu_realtime_frame_jobs;
+        stats.world_3d_npr_gpu_realtime_projected_vertices_capacity =
+            npr.gpu_realtime_projected_vertices_capacity;
+        stats.world_3d_npr_gpu_realtime_visible_segments_capacity =
+            npr.gpu_realtime_visible_segments_capacity;
+        stats.world_3d_npr_gpu_realtime_endpoint_heads_capacity =
+            npr.gpu_realtime_endpoint_heads_capacity;
+        stats.world_3d_npr_gpu_realtime_endpoint_entries_capacity =
+            npr.gpu_realtime_endpoint_entries_capacity;
+        stats.world_3d_npr_gpu_realtime_path_links_capacity =
+            npr.gpu_realtime_path_links_capacity;
+        stats.world_3d_npr_gpu_realtime_path_segments_capacity =
+            npr.gpu_realtime_path_segments_capacity;
+        stats.world_3d_npr_gpu_realtime_stroke_segments_capacity =
+            npr.gpu_realtime_stroke_segments_capacity;
+        stats.world_3d_npr_gpu_realtime_debug_mode =
+            npr.gpu_realtime_debug_mode.clone();
         stats.world_3d_npr_paths = npr.paths;
         stats.world_3d_npr_boundary_paths = npr.boundary_paths;
         stats.world_3d_npr_silhouette_paths = npr.silhouette_paths;

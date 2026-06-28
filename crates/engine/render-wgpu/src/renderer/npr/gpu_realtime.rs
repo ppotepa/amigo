@@ -30,6 +30,15 @@ pub(crate) struct NprGpuFrameStats3d {
     pub enqueued_triangles: usize,
     pub topology_uploads: usize,
     pub buffer_capacity_bytes: u64,
+    pub frame_jobs: usize,
+    pub projected_vertices_capacity: usize,
+    pub visible_segments_capacity: usize,
+    pub endpoint_heads_capacity: usize,
+    pub endpoint_entries_capacity: usize,
+    pub path_links_capacity: usize,
+    pub path_segments_capacity: usize,
+    pub stroke_segments_capacity: usize,
+    pub debug_mode: &'static str,
 }
 
 #[derive(Debug, Default)]
@@ -367,6 +376,21 @@ impl GpuRealtimeNprRenderer3d {
         }
 
         self.last_frame_has_draw_output = !self.frame_jobs.is_empty();
+        let buffer_capacities = self.resources.frame_buffer_capacities();
+        let debug_mode = if self.frame_jobs.is_empty() {
+            "none"
+        } else {
+            let first = self.frame_jobs[0].settings.gpu_realtime_tuning.debug_mode.as_str();
+            if self
+                .frame_jobs
+                .iter()
+                .all(|job| job.settings.gpu_realtime_tuning.debug_mode.as_str() == first)
+            {
+                first
+            } else {
+                "mixed"
+            }
+        };
         Ok(NprGpuFrameStats3d {
             meshes: self.frame_jobs.len(),
             projected_vertices: total_vertices,
@@ -377,6 +401,15 @@ impl GpuRealtimeNprRenderer3d {
             enqueued_triangles: total_triangles,
             topology_uploads,
             buffer_capacity_bytes: self.resources.frame_buffer_capacity_bytes(),
+            frame_jobs: self.frame_jobs.len(),
+            projected_vertices_capacity: buffer_capacities.projected_vertices,
+            visible_segments_capacity: buffer_capacities.visible_segments,
+            endpoint_heads_capacity: buffer_capacities.endpoint_heads,
+            endpoint_entries_capacity: buffer_capacities.endpoint_entries,
+            path_links_capacity: buffer_capacities.path_links,
+            path_segments_capacity: buffer_capacities.path_segments,
+            stroke_segments_capacity: buffer_capacities.stroke_segments,
+            debug_mode,
         })
     }
 

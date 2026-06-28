@@ -37,7 +37,7 @@ impl WgpuSceneRenderer {
     }
 
     pub fn npr_stroke_stats_3d(&self) -> NprStrokeFrameStats3d {
-        self.npr_stroke_stats_3d
+        self.npr_stroke_stats_3d.clone()
     }
 
     pub fn offscreen_upload_stats(&self) -> crate::renderer::service::WgpuOffscreenUploadStats {

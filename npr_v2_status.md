@@ -5,7 +5,7 @@ Powiazany plan: `npr_v2.md`.
 
 ## 0. Postep globalny
 
-- Szacowany postep calego `npr_v2`: okolo 91%.
+- Szacowany postep calego `npr_v2`: okolo 92%.
 - Zrobione: kontrakt, YAML, routing CPU/GPU, debug mode, endpoint bins, owner compaction, `path_segments`, path-level lock/dropout foundation.
 - Zostalo: domkniecie parytetu wizualnego CPU/GPU, lepszy graph walk i stabilniejsze `path_t/path_id`, dalsze dopasowanie stylizacji do `cpu_reference`.
 
@@ -43,6 +43,17 @@ Powiazany plan: `npr_v2.md`.
 - `compact_owners` wymaga teraz tez wzajemnosci polaczenia:
   - kandydat start/end musi lokalnie wybierac z powrotem biezacy edge,
   - redukuje to falszywe polaczenia jednostronne i poprawia spoistosc grafu path.
+- Statystyki GPU NPR zostaly rozszerzone:
+  - `frame_jobs`,
+  - `projected_vertices_capacity`,
+  - `visible_segments_capacity`,
+  - `endpoint_heads_capacity`,
+  - `endpoint_entries_capacity`,
+  - `path_links_capacity`,
+  - `path_segments_capacity`,
+  - `stroke_segments_capacity`,
+  - `debug_mode`.
+- Te pola przechodza juz do `RenderFrameStats`, wiec dalszy tuning GPU path graphu mozna opierac na konkretnych liczbach runtime, a nie tylko na jednym zbiorczym `buffer_capacity_bytes`.
 
 ## 1. Co zostalo zrobione
 

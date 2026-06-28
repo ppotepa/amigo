@@ -214,7 +214,7 @@ pub(crate) struct NprEntityPathHistory3d {
     paths: BTreeMap<u64, NprTemporalPathState3d>,
 }
 
-#[derive(Debug, Clone, Copy, Default)]
+#[derive(Debug, Clone, Default)]
 pub struct NprStrokeFrameStats3d {
     pub meshes: usize,
     pub gpu_realtime_meshes: usize,
@@ -223,6 +223,15 @@ pub struct NprStrokeFrameStats3d {
     pub gpu_realtime_enqueued_triangles: usize,
     pub gpu_realtime_topology_uploads: usize,
     pub gpu_realtime_buffer_capacity_bytes: u64,
+    pub gpu_realtime_frame_jobs: usize,
+    pub gpu_realtime_projected_vertices_capacity: usize,
+    pub gpu_realtime_visible_segments_capacity: usize,
+    pub gpu_realtime_endpoint_heads_capacity: usize,
+    pub gpu_realtime_endpoint_entries_capacity: usize,
+    pub gpu_realtime_path_links_capacity: usize,
+    pub gpu_realtime_path_segments_capacity: usize,
+    pub gpu_realtime_stroke_segments_capacity: usize,
+    pub gpu_realtime_debug_mode: String,
     pub paths: usize,
     pub boundary_paths: usize,
     pub silhouette_paths: usize,
@@ -285,6 +294,27 @@ impl NprStrokeFrameStats3d {
         self.gpu_realtime_enqueued_triangles += other.gpu_realtime_enqueued_triangles;
         self.gpu_realtime_topology_uploads += other.gpu_realtime_topology_uploads;
         self.gpu_realtime_buffer_capacity_bytes += other.gpu_realtime_buffer_capacity_bytes;
+        self.gpu_realtime_frame_jobs += other.gpu_realtime_frame_jobs;
+        self.gpu_realtime_projected_vertices_capacity +=
+            other.gpu_realtime_projected_vertices_capacity;
+        self.gpu_realtime_visible_segments_capacity +=
+            other.gpu_realtime_visible_segments_capacity;
+        self.gpu_realtime_endpoint_heads_capacity +=
+            other.gpu_realtime_endpoint_heads_capacity;
+        self.gpu_realtime_endpoint_entries_capacity +=
+            other.gpu_realtime_endpoint_entries_capacity;
+        self.gpu_realtime_path_links_capacity += other.gpu_realtime_path_links_capacity;
+        self.gpu_realtime_path_segments_capacity +=
+            other.gpu_realtime_path_segments_capacity;
+        self.gpu_realtime_stroke_segments_capacity +=
+            other.gpu_realtime_stroke_segments_capacity;
+        if self.gpu_realtime_debug_mode.is_empty() {
+            self.gpu_realtime_debug_mode = other.gpu_realtime_debug_mode.clone();
+        } else if !other.gpu_realtime_debug_mode.is_empty()
+            && self.gpu_realtime_debug_mode != other.gpu_realtime_debug_mode
+        {
+            self.gpu_realtime_debug_mode = "mixed".to_owned();
+        }
         self.paths += other.paths;
         self.boundary_paths += other.boundary_paths;
         self.silhouette_paths += other.silhouette_paths;

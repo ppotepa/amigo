@@ -466,6 +466,27 @@ pub(super) fn execute_world_to_offscreen(
         gpu_npr_stats.topology_uploads;
     renderer.npr_stroke_stats_3d.gpu_realtime_buffer_capacity_bytes +=
         gpu_npr_stats.buffer_capacity_bytes;
+    renderer.npr_stroke_stats_3d.gpu_realtime_frame_jobs += gpu_npr_stats.frame_jobs;
+    renderer.npr_stroke_stats_3d.gpu_realtime_projected_vertices_capacity +=
+        gpu_npr_stats.projected_vertices_capacity;
+    renderer.npr_stroke_stats_3d.gpu_realtime_visible_segments_capacity +=
+        gpu_npr_stats.visible_segments_capacity;
+    renderer.npr_stroke_stats_3d.gpu_realtime_endpoint_heads_capacity +=
+        gpu_npr_stats.endpoint_heads_capacity;
+    renderer.npr_stroke_stats_3d.gpu_realtime_endpoint_entries_capacity +=
+        gpu_npr_stats.endpoint_entries_capacity;
+    renderer.npr_stroke_stats_3d.gpu_realtime_path_links_capacity +=
+        gpu_npr_stats.path_links_capacity;
+    renderer.npr_stroke_stats_3d.gpu_realtime_path_segments_capacity +=
+        gpu_npr_stats.path_segments_capacity;
+    renderer.npr_stroke_stats_3d.gpu_realtime_stroke_segments_capacity +=
+        gpu_npr_stats.stroke_segments_capacity;
+    if renderer.npr_stroke_stats_3d.gpu_realtime_debug_mode.is_empty() {
+        renderer.npr_stroke_stats_3d.gpu_realtime_debug_mode =
+            gpu_npr_stats.debug_mode.to_owned();
+    } else if renderer.npr_stroke_stats_3d.gpu_realtime_debug_mode != gpu_npr_stats.debug_mode {
+        renderer.npr_stroke_stats_3d.gpu_realtime_debug_mode = "mixed".to_owned();
+    }
     target.queue.submit(Some(npr_encoder.finish()));
 
     {

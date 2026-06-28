@@ -58,6 +58,17 @@ pub(crate) struct NprGpuResources3d {
     pub(crate) frame_buffers: Option<NprGpuFrameBuffers3d>,
 }
 
+#[derive(Debug, Clone, Copy, Default)]
+pub(crate) struct NprGpuBufferCapacities3d {
+    pub projected_vertices: usize,
+    pub visible_segments: usize,
+    pub endpoint_heads: usize,
+    pub endpoint_entries: usize,
+    pub path_links: usize,
+    pub path_segments: usize,
+    pub stroke_segments: usize,
+}
+
 impl NprGpuResources3d {
     pub(crate) fn ensure_topology_uploaded(
         &mut self,
@@ -152,6 +163,34 @@ impl NprGpuResources3d {
                     + buffers.stroke_segments_capacity
             })
             .unwrap_or(0)
+    }
+
+    pub(crate) fn frame_buffer_capacities(&self) -> NprGpuBufferCapacities3d {
+        self.frame_buffers
+            .as_ref()
+            .map(|buffers| NprGpuBufferCapacities3d {
+                projected_vertices: (buffers.projected_vertices_capacity
+                    / std::mem::size_of::<super::GpuNprProjectedVertex3d>() as u64)
+                    as usize,
+                visible_segments: (buffers.visible_segments_capacity
+                    / std::mem::size_of::<super::GpuNprVisibleSegment3d>() as u64)
+                    as usize,
+                endpoint_heads: (buffers.endpoint_heads_capacity
+                    / std::mem::size_of::<u32>() as u64) as usize,
+                endpoint_entries: (buffers.endpoint_entries_capacity
+                    / std::mem::size_of::<GpuNprEndpointEntry3d>() as u64)
+                    as usize,
+                path_links: (buffers.path_links_capacity
+                    / std::mem::size_of::<super::GpuNprPathLink3d>() as u64)
+                    as usize,
+                path_segments: (buffers.path_segments_capacity
+                    / std::mem::size_of::<GpuNprPathSegment3d>() as u64)
+                    as usize,
+                stroke_segments: (buffers.stroke_segments_capacity
+                    / std::mem::size_of::<crate::renderer::NprStrokeSegmentVertex>() as u64)
+                    as usize,
+            })
+            .unwrap_or_default()
     }
 }
 
