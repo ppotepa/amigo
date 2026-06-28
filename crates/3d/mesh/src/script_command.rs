@@ -21,6 +21,10 @@ pub enum Mesh3dScriptCommandOutcome {
         entity_name: String,
         enabled: bool,
     },
+    SetNprRenderStrategy {
+        entity_name: String,
+        strategy: amigo_render_api::NprRenderStrategy3d,
+    },
     SetNprGpuDebugMode {
         entity_name: String,
         debug_mode: amigo_render_api::NprGpuDebugMode3d,
@@ -78,6 +82,22 @@ pub fn handle_mesh3d_script_command(
                 Mesh3dScriptCommandOutcome::Unhandled
             }
         }
+        ("set_npr_render_strategy", [entity_name, strategy]) => {
+            let Some(mesh_scene_service) = ctx.mesh_scene_service else {
+                return Mesh3dScriptCommandOutcome::Unhandled;
+            };
+            let Some(strategy) = npr_render_strategy_from_script(strategy) else {
+                return Mesh3dScriptCommandOutcome::Unhandled;
+            };
+            if mesh_scene_service.set_npr_render_strategy(entity_name, strategy) {
+                Mesh3dScriptCommandOutcome::SetNprRenderStrategy {
+                    entity_name: entity_name.clone(),
+                    strategy,
+                }
+            } else {
+                Mesh3dScriptCommandOutcome::Unhandled
+            }
+        }
         ("set_npr_gpu_debug_mode", [entity_name, debug_mode]) => {
             let Some(mesh_scene_service) = ctx.mesh_scene_service else {
                 return Mesh3dScriptCommandOutcome::Unhandled;
@@ -98,6 +118,14 @@ pub fn handle_mesh3d_script_command(
     }
 }
 
+fn npr_render_strategy_from_script(value: &str) -> Option<amigo_render_api::NprRenderStrategy3d> {
+    match value.trim() {
+        "gpu_realtime" => Some(amigo_render_api::NprRenderStrategy3d::GpuRealtime),
+        "cpu_reference" => Some(amigo_render_api::NprRenderStrategy3d::CpuReference),
+        _ => None,
+    }
+}
+
 pub struct Mesh3dScriptCommandHandler;
 
 impl RuntimeScriptCommandHandler for Mesh3dScriptCommandHandler {
@@ -111,6 +139,7 @@ impl RuntimeScriptCommandHandler for Mesh3dScriptCommandHandler {
                 || (command.name == "apply_npr_preset" && command.arguments.len() == 2)
                 || (command.name == "set_npr_temporal_path_smoothing"
                     && command.arguments.len() == 2)
+                || (command.name == "set_npr_render_strategy" && command.arguments.len() == 2)
                 || (command.name == "set_npr_gpu_debug_mode" && command.arguments.len() == 2))
     }
 
@@ -129,6 +158,7 @@ impl RuntimeScriptCommandHandler for Mesh3dScriptCommandHandler {
             }
             Mesh3dScriptCommandOutcome::AppliedNprPreset { .. } => {}
             Mesh3dScriptCommandOutcome::SetNprTemporalPathSmoothing { .. } => {}
+            Mesh3dScriptCommandOutcome::SetNprRenderStrategy { .. } => {}
             Mesh3dScriptCommandOutcome::SetNprGpuDebugMode { .. } => {}
             Mesh3dScriptCommandOutcome::Unhandled => {}
         }

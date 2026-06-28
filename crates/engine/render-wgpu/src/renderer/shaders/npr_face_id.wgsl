@@ -35,6 +35,9 @@ struct GpuNprFrameUniforms3d {
     params16: vec4<f32>,
     ink_color: vec4<f32>,
     seed: vec4<u32>,
+    pipeline0: vec4<u32>,
+    pipeline1: vec4<u32>,
+    material_roles0: vec4<u32>,
 }
 
 fn face_id_base() -> u32 {

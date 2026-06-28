@@ -45,7 +45,8 @@ fn app_headless_cli_runs_playground_npr_comic_lines_scene() {
     assert!(stdout.contains("scene document components: Camera3D x1, CameraController3D x1, InputActionMap x1"));
     assert!(stdout.contains("playground-npr/meshes/soldier (mesh-3d)"));
     assert!(stdout.contains("scene.plugin(amigo.rendering.3d.scene-command.NprPreset3d)"));
-    assert!(stdout.contains("3d.mesh.apply_npr_preset(playground-npr-model-1-soldier, rough_comic_ink)"));
+    assert!(stdout
+        .contains("3d.mesh.apply_npr_preset(playground-npr-model-1-soldier, default_gpu_comic)"));
     assert!(stdout.contains("7 final, 8 kinds, 9 dropout, 0 width/alpha"));
 }
 

@@ -3,7 +3,7 @@ scene:
   id: comic-lines
   label: Comic Lines Workbench
   description: >
-    NPR workbench based on npr.html. Press 1-6 to switch staged GLB models
+    NPR workbench based on npr.html. Press 1-2 to switch staged GLB models
     and inspect mesh-cache comic line rendering.
 
 npr_presets:
@@ -37,6 +37,8 @@ npr_presets:
   - ./npr-presets/low-120fps-cpu-reference.yml
   - ./npr-presets/rough-comic-ink.yml
   - ./npr-presets/rough-comic-ink-cpu-reference.yml
+  - ./npr-presets/akira.yml
+  - ./npr-presets/akira-cpu-reference.yml
 
 entities:
   - id: controls
@@ -52,18 +54,12 @@ entities:
           npr.select_2:
             kind: button
             pressed: ["2"]
-          npr.select_3:
+          npr.animation_previous:
             kind: button
-            pressed: ["3"]
-          npr.select_4:
+            pressed: ["<", ","]
+          npr.animation_next:
             kind: button
-            pressed: ["4"]
-          npr.select_5:
-            kind: button
-            pressed: ["5"]
-          npr.select_6:
-            kind: button
-            pressed: ["6"]
+            pressed: [">", "."]
           npr.camera_toggle:
             kind: button
             pressed: ["F"]
@@ -192,8 +188,8 @@ entities:
           gpu_realtime_tuning:
             max_render_length_px: 56.0
             max_segment_length_px: 18.0
-            max_terminal_walk_edges: 1
-            max_chained_walk_edges: 2
+            max_terminal_walk_edges: 0
+            max_chained_walk_edges: 0
             max_chain_angle_degrees: 32.0
             search_enabled: false
             search_max_render_length_px: 24.0
@@ -207,142 +203,28 @@ entities:
         render_order: 0
         shading: unlit
 
-  - id: model-2-box-textured
-    name: playground-npr-model-2-box-textured
+  - id: model-2-khronos-male
+    name: playground-npr-model-2-khronos-male
     visible: false
     transform3:
-      translation: { x: 0.0, y: 0.0, z: 0.0 }
+      translation: { x: 0.0, y: -0.05, z: 0.0 }
       rotation_euler: { x: 0.0, y: 0.35, z: 0.0 }
-      scale: { x: 1.7, y: 1.7, z: 1.7 }
+      scale: { x: 1.55, y: 1.55, z: 1.55 }
     components:
       - type: Mesh3D
-        mesh: playground-npr/meshes/box-source
+        mesh: playground-npr/meshes/khronos-male
         npr:
           strategy: gpu_realtime
           fill_mode: none
           style_preset: gpu_stable_comic
           stroke_tool: technical_pen
-          feature_angle_degrees: 44.0
-          min_screen_length_px: 2.6
-          visibility_max_dimension_px: 720.0
-          width_px: 2.05
-          humanization: 0.14
-          line_confidence: 0.95
-          temporal_stability: 0.97
-          temporal_path_smoothing: false
-          visibility_hysteresis_frames: 3
-          endpoint_snap_px: 1.0
-          endpoint_lock_start_px: 6.0
-          endpoint_lock_end_px: 7.0
-          path_simplify_px: 1.35
-          straightness: 0.90
-          taper: 0.30
-          stroke_wobble_px: 0.08
-          micro_wobble_px: 0.015
-          pressure_jitter: 0.015
-          local_angular_drift_degrees: 0.12
-          overshoot_px: 0.22
-          undershoot_px: 0.02
-          passes: 1
-          search_line_count: 0
-          search_line_alpha: 0.0
-          seed: 1202
-          gpu_realtime_tuning:
-            max_render_length_px: 52.0
-            max_segment_length_px: 18.0
-            max_terminal_walk_edges: 1
-            max_chained_walk_edges: 2
-            max_chain_angle_degrees: 30.0
-            search_enabled: false
-            search_max_render_length_px: 24.0
-            search_alpha_multiplier: 0.35
-            feature_min_length_multiplier: 1.75
-            feature_alpha_multiplier: 0.70
-            silhouette_min_length_multiplier: 0.75
-      - type: Material3D
-        label: textured-box-paper-fill
-        albedo: "#F4F1E8FF"
-        render_order: 0
-        shading: unlit
-
-  - id: model-3-box-interleaved
-    name: playground-npr-model-3-box-interleaved
-    visible: false
-    transform3:
-      translation: { x: 0.0, y: 0.0, z: 0.0 }
-      rotation_euler: { x: 0.0, y: -0.25, z: 0.0 }
-      scale: { x: 1.7, y: 1.7, z: 1.7 }
-    components:
-      - type: Mesh3D
-        mesh: playground-npr/meshes/box-interleaved
-        npr:
-          strategy: gpu_realtime
-          fill_mode: none
-          style_preset: gpu_stable_comic
-          stroke_tool: technical_pen
-          feature_angle_degrees: 44.0
-          min_screen_length_px: 2.6
-          visibility_max_dimension_px: 720.0
-          width_px: 2.0
-          humanization: 0.14
-          line_confidence: 0.95
-          temporal_stability: 0.97
-          temporal_path_smoothing: false
-          visibility_hysteresis_frames: 3
-          endpoint_snap_px: 1.0
-          endpoint_lock_start_px: 6.0
-          endpoint_lock_end_px: 7.0
-          path_simplify_px: 1.35
-          straightness: 0.90
-          taper: 0.30
-          stroke_wobble_px: 0.08
-          micro_wobble_px: 0.015
-          pressure_jitter: 0.015
-          local_angular_drift_degrees: 0.12
-          overshoot_px: 0.22
-          undershoot_px: 0.02
-          passes: 1
-          search_line_count: 0
-          search_line_alpha: 0.0
-          seed: 1303
-          gpu_realtime_tuning:
-            max_render_length_px: 52.0
-            max_segment_length_px: 18.0
-            max_terminal_walk_edges: 1
-            max_chained_walk_edges: 2
-            max_chain_angle_degrees: 30.0
-            search_enabled: false
-            search_max_render_length_px: 24.0
-            search_alpha_multiplier: 0.35
-            feature_min_length_multiplier: 1.75
-            feature_alpha_multiplier: 0.70
-            silhouette_min_length_multiplier: 0.75
-      - type: Material3D
-        label: interleaved-box-paper-fill
-        albedo: "#F4F1E8FF"
-        render_order: 0
-        shading: unlit
-
-  - id: model-4-box-animated
-    name: playground-npr-model-4-box-animated
-    visible: false
-    transform3:
-      translation: { x: 0.0, y: 0.0, z: 0.0 }
-      rotation_euler: { x: 0.0, y: 0.15, z: 0.0 }
-      scale: { x: 1.7, y: 1.7, z: 1.7 }
-    components:
-      - type: Mesh3D
-        mesh: playground-npr/meshes/box-animated
-        npr:
-          strategy: gpu_realtime
-          fill_mode: none
-          style_preset: gpu_stable_comic
-          stroke_tool: technical_pen
+          black_mass_material_ids: [4, 5, 6, 7, 11, 12, 13]
+          ink_detail_material_ids: [6, 7, 11, 12, 13]
           feature_angle_degrees: 42.0
           min_screen_length_px: 2.4
           visibility_max_dimension_px: 720.0
-          width_px: 2.10
-          humanization: 0.17
+          width_px: 2.0
+          humanization: 0.16
           line_confidence: 0.94
           temporal_stability: 0.97
           temporal_path_smoothing: false
@@ -350,7 +232,7 @@ entities:
           endpoint_snap_px: 1.1
           endpoint_lock_start_px: 6.0
           endpoint_lock_end_px: 7.0
-          path_simplify_px: 1.30
+          path_simplify_px: 1.25
           straightness: 0.88
           taper: 0.32
           stroke_wobble_px: 0.10
@@ -362,12 +244,12 @@ entities:
           passes: 1
           search_line_count: 0
           search_line_alpha: 0.0
-          seed: 1404
+          seed: 1202
           gpu_realtime_tuning:
             max_render_length_px: 56.0
             max_segment_length_px: 18.0
-            max_terminal_walk_edges: 1
-            max_chained_walk_edges: 2
+            max_terminal_walk_edges: 0
+            max_chained_walk_edges: 0
             max_chain_angle_degrees: 32.0
             search_enabled: false
             search_max_render_length_px: 24.0
@@ -376,123 +258,7 @@ entities:
             feature_alpha_multiplier: 0.72
             silhouette_min_length_multiplier: 0.75
       - type: Material3D
-        label: animated-box-paper-fill
-        albedo: "#F4F1E8FF"
-        render_order: 0
-        shading: unlit
-
-  - id: model-5-fox
-    name: playground-npr-model-5-fox
-    visible: false
-    transform3:
-      translation: { x: 0.0, y: -0.2, z: 0.0 }
-      rotation_euler: { x: -1.5707963, y: -0.35, z: 0.0 }
-      scale: { x: 1.45, y: 1.45, z: 1.45 }
-    components:
-      - type: Mesh3D
-        mesh: playground-npr/meshes/fox-source
-        npr:
-          strategy: gpu_realtime
-          fill_mode: none
-          style_preset: gpu_stable_comic
-          stroke_tool: technical_pen
-          feature_angle_degrees: 42.0
-          min_screen_length_px: 2.5
-          visibility_max_dimension_px: 720.0
-          width_px: 2.15
-          humanization: 0.18
-          line_confidence: 0.94
-          temporal_stability: 0.97
-          temporal_path_smoothing: false
-          visibility_hysteresis_frames: 3
-          endpoint_snap_px: 1.15
-          endpoint_lock_start_px: 6.0
-          endpoint_lock_end_px: 7.0
-          path_simplify_px: 1.35
-          straightness: 0.86
-          taper: 0.34
-          stroke_wobble_px: 0.10
-          micro_wobble_px: 0.02
-          pressure_jitter: 0.02
-          local_angular_drift_degrees: 0.16
-          overshoot_px: 0.25
-          undershoot_px: 0.02
-          passes: 1
-          search_line_count: 0
-          search_line_alpha: 0.0
-          seed: 1505
-          gpu_realtime_tuning:
-            max_render_length_px: 56.0
-            max_segment_length_px: 18.0
-            max_terminal_walk_edges: 1
-            max_chained_walk_edges: 2
-            max_chain_angle_degrees: 32.0
-            search_enabled: false
-            search_max_render_length_px: 24.0
-            search_alpha_multiplier: 0.35
-            feature_min_length_multiplier: 1.70
-            feature_alpha_multiplier: 0.72
-            silhouette_min_length_multiplier: 0.75
-      - type: Material3D
-        label: fox-paper-fill
-        albedo: "#F4F1E8FF"
-        render_order: 0
-        shading: unlit
-
-  - id: model-6-cesium-man
-    name: playground-npr-model-6-cesium-man
-    visible: false
-    transform3:
-      translation: { x: 0.0, y: -0.05, z: 0.0 }
-      rotation_euler: { x: -1.5707963, y: 0.4, z: 0.0 }
-      scale: { x: 1.55, y: 1.55, z: 1.55 }
-    components:
-      - type: Mesh3D
-        mesh: playground-npr/meshes/cesium-man
-        npr:
-          strategy: gpu_realtime
-          fill_mode: none
-          style_preset: gpu_stable_comic
-          stroke_tool: technical_pen
-          feature_angle_degrees: 44.0
-          min_screen_length_px: 2.6
-          visibility_max_dimension_px: 720.0
-          width_px: 1.95
-          humanization: 0.15
-          line_confidence: 0.95
-          temporal_stability: 0.97
-          temporal_path_smoothing: false
-          visibility_hysteresis_frames: 3
-          endpoint_snap_px: 1.05
-          endpoint_lock_start_px: 6.0
-          endpoint_lock_end_px: 7.0
-          path_simplify_px: 1.35
-          straightness: 0.90
-          taper: 0.30
-          stroke_wobble_px: 0.08
-          micro_wobble_px: 0.015
-          pressure_jitter: 0.015
-          local_angular_drift_degrees: 0.12
-          overshoot_px: 0.22
-          undershoot_px: 0.02
-          passes: 1
-          search_line_count: 0
-          search_line_alpha: 0.0
-          seed: 1606
-          gpu_realtime_tuning:
-            max_render_length_px: 52.0
-            max_segment_length_px: 18.0
-            max_terminal_walk_edges: 1
-            max_chained_walk_edges: 2
-            max_chain_angle_degrees: 30.0
-            search_enabled: false
-            search_max_render_length_px: 24.0
-            search_alpha_multiplier: 0.35
-            feature_min_length_multiplier: 1.75
-            feature_alpha_multiplier: 0.70
-            silhouette_min_length_multiplier: 0.75
-      - type: Material3D
-        label: cesium-man-paper-fill
+        label: khronos-male-paper-fill
         albedo: "#F4F1E8FF"
         render_order: 0
         shading: unlit
@@ -542,6 +308,14 @@ entities:
             - type: text
               id: preset
               text: "Preset   Default GPU Comic"
+              font: playground-npr/fonts/debug-ui
+              style:
+                width: 298.0
+                font_size: 15.0
+                color: "#17120CFF"
+            - type: text
+              id: animation
+              text: "Anim     Static | no clips"
               font: playground-npr/fonts/debug-ui
               style:
                 width: 298.0
@@ -608,7 +382,7 @@ entities:
                 word_wrap: true
             - type: text
               id: help
-              text: "1-6 model | Up/Down style | G strategy | F camera | R rotate | T temporal"
+              text: "1-2 model | Up/Down style | G backend | F camera | R rotate | T temporal"
               font: playground-npr/fonts/debug-ui
               style:
                 width: 298.0

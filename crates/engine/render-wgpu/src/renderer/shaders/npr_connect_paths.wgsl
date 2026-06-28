@@ -27,6 +27,10 @@ const PATH_FLAG_EMIT: u32 = 1u;
 @group(0) @binding(10) var<storage, read> path_links: array<GpuNprPathLink3d>;
 @group(0) @binding(14) var<storage, read_write> path_states: array<GpuNprPathState3d>;
 
+fn active_edge_count() -> u32 {
+    return min(u32(arrayLength(&path_states)), u32(arrayLength(&visible_segments)));
+}
+
 fn hash_u32(value: u32) -> u32 {
     var x = value;
     x = ((x >> 16u) ^ x) * 0x45d9f3bu;
@@ -35,7 +39,7 @@ fn hash_u32(value: u32) -> u32 {
 }
 
 fn valid_edge(index: u32, kind: u32) -> bool {
-    if (index == 0xffffffffu || index >= u32(arrayLength(&visible_segments))) {
+    if (index == 0xffffffffu || index >= active_edge_count()) {
         return false;
     }
     let seg = visible_segments[index];
@@ -52,7 +56,7 @@ fn maybe_adopt(current: u32, candidate: u32, kind: u32) -> u32 {
 @compute @workgroup_size(64)
 fn cs_main(@builtin(global_invocation_id) id: vec3<u32>) {
     let edge_index = id.x;
-    if (edge_index >= u32(arrayLength(&path_states)) || edge_index >= u32(arrayLength(&visible_segments))) {
+    if (edge_index >= active_edge_count()) {
         return;
     }
 

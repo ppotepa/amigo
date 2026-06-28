@@ -53,11 +53,8 @@ pub(crate) fn npr_straightness_wobble_multiplier(
         amigo_render_api::NprStrokeTool3d::Marker => 0.82,
         amigo_render_api::NprStrokeTool3d::TechnicalPen => 0.22,
     };
-    ((1.0 - straightness)
-        * 1.55
-        * tool_multiplier
-        * settings.tool_wobble_multiplier.max(0.0))
-    .clamp(0.0, 2.5)
+    ((1.0 - straightness) * 1.55 * tool_multiplier * settings.tool_wobble_multiplier.max(0.0))
+        .clamp(0.0, 2.5)
 }
 
 pub(crate) fn npr_tool_width_multiplier(settings: &amigo_render_api::NprLineSettings3d) -> f32 {
@@ -95,9 +92,7 @@ pub(crate) fn npr_tool_pressure_jitter_multiplier(
     (base * settings.tool_pressure_jitter_multiplier.max(0.0)).clamp(0.0, 4.0)
 }
 
-pub(crate) fn npr_tool_dropout_multiplier(
-    settings: &amigo_render_api::NprLineSettings3d,
-) -> f32 {
+pub(crate) fn npr_tool_dropout_multiplier(settings: &amigo_render_api::NprLineSettings3d) -> f32 {
     let base = match settings.stroke_tool {
         amigo_render_api::NprStrokeTool3d::InkPen => 1.0,
         amigo_render_api::NprStrokeTool3d::Pencil => 2.35,

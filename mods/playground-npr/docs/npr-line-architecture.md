@@ -1,274 +1,94 @@
 # NPR Comic Line Rendering Architecture
 
-Scope for this phase: silhouettes, boundaries, and feature lines only.
-Hatching, halftones, painterly fill, and paper simulation are deferred.
+Scope for V1: realtime comic/NPR stroke rendering for 3D meshes in the
+`playground-npr/comic-lines` workbench.
 
-## What `npr.html` Proves
+V1 includes silhouettes, boundaries, creases/seams/features, material ink roles,
+stable GPU path stitching, CPU reference rendering, and optional sparse
+character hatch strokes. It does not include global hatching, halftone,
+painterly fill, watercolor, or runtime GLB skinning/clip evaluation.
 
-The prototype is not just a post effect. It builds lines from mesh topology and
-camera visibility:
+## Runtime Contract
 
-- `buildFaceIdVisibilityBuffer` rasterizes face id, depth, material, and tone.
-- `classifyEdges` marks boundary, silhouette, and feature edges.
-- `visibleFragmentsForEdge` clips edges by face-id/depth visibility.
-- `buildPathsForFragments` joins fragments into stable drawable paths.
-- `drawStyledPath` adds humanized stroke width, jitter, taper, dry gaps, and multi-pass ink.
-- `renderDrawing` draws the final paper/comic image with progressive reveal.
+NPR intent is authored in scene YAML and preset YAML:
 
-The engine version should keep the same conceptual stages, but move the costly
-visibility and stroke expansion work into explicit contracts and GPU-friendly
-buffers.
+```yaml
+npr:
+  strategy: gpu_realtime # or cpu_reference
+  pipeline:
+    candidate_strategy: character_semantic
+    path_strategy: stable_stroked_paths
+    stroke_strategy: akira_ink
+    fill_strategy: material_black_mass
+    hatching_strategy: sparse_character_hatching
+    budget_strategy: face_and_silhouette_priority
+    temporal_strategy: stable_arc_length
+```
 
-## Target Pipeline
+Rules:
+
+- `gpu_realtime` and `cpu_reference` are explicit strategies.
+- Missing `strategy` defaults to `gpu_realtime`.
+- There is no `auto`, no `hybrid`, and no silent GPU -> CPU fallback.
+- CPU reference is a correctness/reference path, not an automatic rescue path.
+- Preset pairs should match except for `render_strategy`.
+
+## Current Pipeline
 
 ```text
 Mesh3D asset
-  -> NprMeshCache
-  -> NprVisibleEdgePlan
-  -> NprStrokePlan
-  -> WGPU stroke renderer
-  -> optional post stages later
+  -> cached static topology
+  -> GPU face-id/depth pass
+  -> GPU edge classification
+  -> endpoint bins / owner compaction
+  -> path links / path states / relaxed owners
+  -> path segments
+  -> stroke segments
+  -> WGPU stroke draw
 ```
 
-## Data Contracts
+The CPU reference path keeps the older projected-edge -> visible-fragment ->
+stitched-path -> stylized-stroke model. It remains useful for parity checks and
+debugging because it is easier to inspect than the GPU path.
 
-ADD `crates/engine/render-api/src/npr_3d.rs`
+## Character Ink V1
 
-Intent:
+Character-oriented presets such as `akira` use explicit pipeline strategies
+rather than renderer-side guesses from entity or model names.
 
-- describe backend-neutral NPR input and output packets;
-- avoid renderer-side guessing from mesh names or material debug labels;
-- keep hatching and halftones out of the first contract.
+Implemented V1 roles:
 
-Initial model:
+- `black_mass_material_ids` for solid black material fills.
+- `ink_detail_material_ids` for preserving shorter face/eye/brow detail lines.
+- `character_semantic` candidate filtering.
+- `akira_ink` stroke shaping.
+- `sparse_character_hatching` as short stroke-level hatches, not halftone.
 
-```rust
-pub struct NprLine3dCommand {
-    pub entity_id: u64,
-    pub entity_name: String,
-    pub mesh_asset: AssetKey,
-    pub transform: Transform3,
-    pub style: NprStrokeStyle3d,
-    pub extraction: NprLineExtraction3d,
-}
+Still out of V1:
 
-pub struct NprLineExtraction3d {
-    pub boundary: bool,
-    pub silhouette: bool,
-    pub feature: bool,
-    pub feature_angle_degrees: f32,
-    pub min_screen_length_px: f32,
-    pub visibility: NprVisibilityMode3d,
-}
+- authored `ink_guides`;
+- apparent ridges / full curvature line families;
+- global halftone/screentone;
+- runtime skinned GLB animation evaluation.
 
-pub struct NprStrokeStyle3d {
-    pub ink_color: ColorRgba,
-    pub width_px: f32,
-    pub width_jitter_px: f32,
-    pub path_jitter_px: f32,
-    pub taper: f32,
-    pub overshoot_px: f32,
-    pub dropout: f32,
-    pub passes: u8,
-    pub seed: u64,
-}
-```
+## Workbench
 
-ADD `plugins/rendering/npr-lines`
+`mods/playground-npr/scenes/comic-lines` is now a real NPR workbench, not a
+procedural placeholder. It stages two static GLB targets:
 
-Intent:
+- Soldier;
+- Khronos Male.
 
-- own authored NPR line intent;
-- hydrate scene documents into `NprLine3dCommand`;
-- expose diagnostics for cache hits, visible edge count, stroke count, and GPU budgets.
-
-Do not add this behavior to `apps/app`.
-
-## Mesh Cache
-
-ADD `crates/engine/render-api` cache-facing models or a small `crates/3d/npr-cache`
-crate after the importer boundary is chosen.
-
-Cache immutable topology per mesh asset:
-
-- vertex positions, normals, tangents, UVs;
-- triangle list after triangulation;
-- material id per face;
-- edge table with adjacent face ids;
-- boundary flags;
-- crease candidate flags by rest-pose normal angle;
-- stable edge ids and chain ids;
-- mesh bounds and LOD bins.
-
-Runtime input should never rebuild adjacency every frame.
-
-For static meshes:
-
-- bake cache once when the asset is prepared;
-- reuse cache until the asset changes.
-
-For skinned/animated meshes:
-
-- cache topology once;
-- update skinned vertex positions/normals separately;
-- keep edge ids stable across animation frames.
-
-## Visibility
-
-The `npr.html` software face-id buffer should become a GPU prepass:
-
-```text
-mesh prepass
-  -> depth texture
-  -> face_id texture R32Uint
-  -> optional normal/tone texture
-```
-
-Then edge visibility can be evaluated by:
-
-- compute shader sampling edge points against `face_id` and depth;
-- CPU fallback only for tests and small debug meshes.
-
-Use CPU extraction only as a correctness oracle. It will not scale for real
-comic-game scenes.
-
-## Stroke Generation
-
-Stroke generation should be deterministic and stable:
-
-- stable seed = mesh asset id + edge id + chain id + style seed;
-- human jitter should be screen-space but temporally stable under small camera motion;
-- taper, pressure, dry gaps, and overshoot are style attributes, not random per frame;
-- path simplification happens after visibility clipping.
-
-The renderer should expand strokes from compact path buffers:
-
-```text
-NprStrokePath {
-  path_id,
-  stroke_type,
-  depth,
-  first_point,
-  point_count,
-  style_id,
-}
-
-NprStrokePoint {
-  position_px,
-  depth,
-  tangent,
-  pressure,
-  noise_phase,
-}
-```
-
-The GPU path should expand line segments into quads/joins in a stroke pipeline.
-Avoid generating a large CPU vertex mesh every frame unless a debug mode asks
-for it.
-
-## Draw Order
-
-Use explicit ordering:
-
-1. optional flat/tone fill from normal material path;
-2. boundary lines;
-3. feature/crease lines;
-4. silhouette lines;
-5. optional progressive reveal mask.
-
-Silhouettes should be thicker and allowed to overshoot more than internal
-feature lines.
-
-## Scene Authoring
-
-The first supported authoring seam is deliberately simple: `Mesh3D.npr`.
-Use a boolean for the default comic-line style:
-
-```yaml
-- type: Mesh3D
-  mesh: playground-npr/meshes/box-source
-  npr: true
-```
-
-Use a settings block when a mesh needs a different line profile:
-
-```yaml
-- type: Mesh3D
-  mesh: playground-npr/meshes/fox-source
-  npr:
-    enabled: true
-    feature_angle_degrees: 30.0
-    min_screen_length_px: 2.0
-    ink_color: "#12100DFF"
-    width_px: 2.6
-    width_jitter_px: 0.6
-    path_jitter_px: 0.8
-    taper: 0.68
-    overshoot_px: 2.0
-    dropout: 0.025
-    passes: 2
-    seed: 2602
-```
-
-This keeps scene authoring compact while still hydrating into an explicit
-renderer-facing contract. A future scene-level preset can set defaults for all
-meshes, but per-mesh opt-in should remain the runtime source of truth.
-
-## Implementation Plan
-
-READ `npr.html`
-
-- symbols: `buildFaceIdVisibilityBuffer`, `classifyEdges`,
-  `visibleFragmentsForEdge`, `buildPathsForFragments`, `drawStyledPath`;
-- intent: keep algorithmic behavior without copying browser architecture.
-
-READ `crates/engine/render-api/src/commands_3d.rs`
-
-- intent: extend renderer-facing 3D contracts.
-
-READ `crates/engine/render-wgpu/src/renderer/world_3d.rs`
-
-- intent: replace debug-cube-only mesh rendering with imported mesh geometry before
-  relying on real silhouettes.
-
-ADD `plugins/rendering/npr-lines`
-
-- intent: domain-owned NPR diagnostics, presets, and tests after the renderer
-  consumes the existing `Mesh3D.npr` contract.
-
-ADD `crates/engine/render-api/src/npr_3d.rs`
-
-- intent: backend-neutral line extraction and stroke plan contracts.
-
-MODIFY `crates/engine/render-wgpu`
-
-- intent: add a WGPU stroke renderer and, later, a face-id/depth prepass.
-
-MODIFY `crates/runtime/bundles`
-
-- intent: bridge NPR line commands into the render packet, not into `apps/app`.
-
-ADD tests:
-
-- cache builds stable topology ids for a static mesh;
-- silhouette toggles when camera crosses an edge normal;
-- feature angle threshold changes feature edge count;
-- style seed produces stable jitter;
-- hatching and halftone fields are absent in the phase-one contract.
+The HUD reports model, preset, backend strategy, debug view, frame stats, and
+NPR GPU/CPU counters. The animation row is explicit: Khronos Male is a static
+mesh in V1 because the current 3D renderer does not evaluate GLB skinning clips.
 
 ## Performance Rules
 
-- cache topology once per mesh asset;
-- do not rebuild adjacency per frame;
-- use GPU face-id/depth prepass for visibility;
-- use compact stroke path buffers and GPU line expansion;
-- keep deterministic seeds stable to avoid temporal buzzing;
-- expose budgets: max edges, max stroke points, max passes, max visible fragments;
-- add diagnostics before adding visual tuning controls.
-
-## Current Workbench Limitation
-
-`mods/playground-npr/scenes/comic-lines` is intentionally a shell. It loads
-`Mesh3D` commands and GLB descriptors, but the current WGPU path still renders
-debug procedural meshes. Real comic lines require the importer/cache and NPR
-stroke renderer described above.
+- Cache immutable mesh topology per asset.
+- Keep GPU path execution bounded; avoid unbounded endpoint bucket traversal.
+- Do not read back GPU visibility or stroke buffers during normal frames.
+- Clamp indirect draw counts to actual stroke buffer capacity.
+- Use diagnostics and smoke tests before increasing path walk budgets.
+- Keep CPU reference and GPU realtime visually comparable through shared
+  presets and explicit strategy fields.

@@ -58,6 +58,8 @@ pub struct NprLine3dSettingsDocument {
     #[serde(default)]
     pub stroke_tool: Option<String>,
     #[serde(default)]
+    pub pipeline: Option<NprPipelineStrategiesDocument>,
+    #[serde(default)]
     pub boundary: Option<bool>,
     #[serde(default)]
     pub silhouette: Option<bool>,
@@ -71,6 +73,10 @@ pub struct NprLine3dSettingsDocument {
     pub contact_ground_y: Option<f32>,
     #[serde(default)]
     pub contact_threshold: Option<f32>,
+    #[serde(default)]
+    pub black_mass_material_ids: Option<Vec<u32>>,
+    #[serde(default)]
+    pub ink_detail_material_ids: Option<Vec<u32>>,
     #[serde(default)]
     pub feature_angle_degrees: Option<f32>,
     #[serde(default)]
@@ -217,6 +223,24 @@ pub struct NprGpuRealtimeTuningDocument {
     pub feature_alpha_multiplier: Option<f32>,
     #[serde(default)]
     pub silhouette_min_length_multiplier: Option<f32>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+pub struct NprPipelineStrategiesDocument {
+    #[serde(default)]
+    pub candidate_strategy: Option<String>,
+    #[serde(default)]
+    pub path_strategy: Option<String>,
+    #[serde(default)]
+    pub stroke_strategy: Option<String>,
+    #[serde(default)]
+    pub fill_strategy: Option<String>,
+    #[serde(default)]
+    pub hatching_strategy: Option<String>,
+    #[serde(default)]
+    pub budget_strategy: Option<String>,
+    #[serde(default)]
+    pub temporal_strategy: Option<String>,
 }
 
 fn default_bool_true() -> bool {

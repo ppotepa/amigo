@@ -5,6 +5,14 @@ label: Default GPU Comic CPU Reference
 settings:
   strategy: cpu_reference
   fill_mode: none
+  pipeline:
+    candidate_strategy: geometry_edges
+    path_strategy: stable_stroked_paths
+    stroke_strategy: technical_ink
+    fill_strategy: none
+    hatching_strategy: none
+    budget_strategy: edge_visibility
+    temporal_strategy: path_history
   style_preset: gpu_stable_comic
   stroke_tool: technical_pen
   boundary: true
@@ -13,13 +21,13 @@ settings:
   suggestive: false
   contact: false
   feature_angle_degrees: 42.0
-  min_screen_length_px: 2.4
+  min_screen_length_px: 1.2
   visibility_max_dimension_px: 720.0
-  ink_color: "#12100DFF"
-  width_px: 2.0
-  silhouette_width_multiplier: 1.48
-  boundary_width_multiplier: 0.96
-  feature_width_multiplier: 0.52
+  ink_color: "#080706FF"
+  width_px: 3.8
+  silhouette_width_multiplier: 1.65
+  boundary_width_multiplier: 1.15
+  feature_width_multiplier: 0.8
   distance_width_falloff: 0.08
   width_pressure_curve: [0.88, 1.0, 0.98, 0.84]
   alpha_pressure_curve: [0.94, 1.0, 0.98, 0.90]
@@ -52,10 +60,10 @@ settings:
   seed: 50060
   gpu_realtime_tuning:
     debug_mode: final
-    max_render_length_px: 56.0
+    max_render_length_px: 72.0
     max_segment_length_px: 18.0
-    max_terminal_walk_edges: 1
-    max_chained_walk_edges: 2
+    max_terminal_walk_edges: 0
+    max_chained_walk_edges: 1
     max_chain_angle_degrees: 32.0
     search_enabled: false
     search_max_render_length_px: 24.0

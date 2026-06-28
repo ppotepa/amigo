@@ -67,7 +67,7 @@ fn interactive_host_handler_selects_playground_npr_model_with_digit_keys() {
         .resolve::<SceneService>()
         .expect("scene service should exist");
     assert!(scene.is_visible("playground-npr-model-1-soldier"));
-    assert!(!scene.is_visible("playground-npr-model-6-cesium-man"));
+    assert!(!scene.is_visible("playground-npr-model-2-khronos-male"));
 
     let mut handler = InteractiveRuntimeHostHandler::new(
         amigo_session::RuntimeSession::from_runtime(
@@ -80,7 +80,7 @@ fn interactive_host_handler_selects_playground_npr_model_with_digit_keys() {
 
     handler
         .on_input_event(InputEvent::Key {
-            key: KeyCode::Digit6,
+            key: KeyCode::Digit2,
             pressed: true,
         })
         .expect("digit input event should be accepted");
@@ -95,7 +95,95 @@ fn interactive_host_handler_selects_playground_npr_model_with_digit_keys() {
         .resolve::<SceneService>()
         .expect("scene service should exist after update");
     assert!(!scene.is_visible("playground-npr-model-1-soldier"));
-    assert!(scene.is_visible("playground-npr-model-6-cesium-man"));
+    assert!(scene.is_visible("playground-npr-model-2-khronos-male"));
+}
+
+#[test]
+fn interactive_host_handler_toggles_playground_npr_strategy_without_replacing_preset() {
+    let (runtime, summary) = bootstrap_with_options(
+        BootstrapOptions::new(mods_root())
+            .with_active_mods(vec!["core".to_owned(), "playground-npr".to_owned()])
+            .with_startup_mod("playground-npr")
+            .with_startup_scene("comic-lines")
+            .with_dev_mode(true),
+    )
+    .expect("npr comic lines playground bootstrap should succeed");
+
+    let initial = runtime
+        .resolve::<amigo_3d_mesh::MeshSceneService>()
+        .expect("mesh scene service should exist")
+        .commands()
+        .into_iter()
+        .find(|command| command.entity_name == "playground-npr-model-1-soldier")
+        .expect("soldier mesh command should exist")
+        .mesh
+        .npr
+        .expect("soldier should have npr");
+    assert_eq!(
+        initial.render_strategy,
+        amigo_render_api::NprRenderStrategy3d::GpuRealtime
+    );
+
+    let mut handler = InteractiveRuntimeHostHandler::new(
+        amigo_session::RuntimeSession::from_runtime(
+            runtime,
+            amigo_session::RuntimeSessionProfile::Game,
+        ),
+        summary,
+    )
+    .expect("interactive host handler should initialize");
+
+    handler
+        .on_input_event(InputEvent::Key {
+            key: KeyCode::G,
+            pressed: true,
+        })
+        .expect("strategy toggle input event should be accepted");
+    handler
+        .session
+        .run_phase(amigo_runtime::SystemPhase::Update)
+        .expect("npr strategy toggle update should run");
+    process_placeholder_bridges(handler.session.runtime())
+        .expect("queued npr strategy command should be applied");
+    handler
+        .on_input_event(InputEvent::Key {
+            key: KeyCode::G,
+            pressed: false,
+        })
+        .expect("strategy toggle key release should be accepted");
+    handler
+        .session
+        .runtime()
+        .resolve::<amigo_input_api::InputState>()
+        .expect("input state should exist")
+        .clear_frame_transients();
+    handler
+        .session
+        .run_phase(amigo_runtime::SystemPhase::Update)
+        .expect("npr strategy key release update should run");
+
+    let updated = handler
+        .session
+        .runtime()
+        .resolve::<amigo_3d_mesh::MeshSceneService>()
+        .expect("mesh scene service should exist after toggle")
+        .commands()
+        .into_iter()
+        .find(|command| command.entity_name == "playground-npr-model-1-soldier")
+        .expect("soldier mesh command should still exist")
+        .mesh
+        .npr
+        .expect("soldier should still have npr");
+    assert_eq!(
+        updated.render_strategy,
+        amigo_render_api::NprRenderStrategy3d::CpuReference
+    );
+    let mut normalized = updated;
+    normalized.render_strategy = initial.render_strategy;
+    assert_eq!(
+        normalized, initial,
+        "G should only switch NPR backend strategy, not replace the active preset style"
+    );
 }
 
 #[test]

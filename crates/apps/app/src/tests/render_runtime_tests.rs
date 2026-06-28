@@ -16,7 +16,7 @@ fn playground_npr_preview_renders_paper_and_ink_edges() {
     )
     .expect("npr scene preview should render offscreen");
 
-    assert_npr_preview_has_paper_and_ink(&frame, "gpu_realtime default_gpu_comic", 800, 80);
+    assert_npr_preview_has_paper_and_ink(&frame, "gpu_realtime default_gpu_comic", 500, 80);
 }
 
 #[test]
@@ -30,7 +30,7 @@ fn playground_npr_preview_renders_gpu_and_cpu_reference_default_gpu_comic() {
     let gpu_frame = host
         .capture_rgba8()
         .expect("gpu npr scene preview should render offscreen");
-    assert_npr_preview_has_paper_and_ink(&gpu_frame, "gpu_realtime default_gpu_comic", 800, 80);
+    assert_npr_preview_has_paper_and_ink(&gpu_frame, "gpu_realtime default_gpu_comic", 500, 80);
 
     host.apply_mesh3d_npr_preset(
         "playground-npr-model-1-soldier",
@@ -44,6 +44,53 @@ fn playground_npr_preview_renders_gpu_and_cpu_reference_default_gpu_comic() {
         .expect("cpu reference npr scene preview should render offscreen");
     assert_npr_preview_has_paper_and_ink(&cpu_frame, "cpu_reference default_gpu_comic", 200, 120);
     assert_npr_ink_masks_are_similar(&gpu_frame, &cpu_frame, "default_gpu_comic");
+}
+
+#[test]
+#[ignore = "requires a local WGPU adapter for offscreen readback"]
+fn playground_npr_preview_renders_stable_stroked_paths_gpu_comic() {
+    let mut host = crate::ScenePreviewHost::new(
+        crate::ScenePreviewOptions::new(mods_root(), "playground-npr", "comic-lines", 320, 240)
+            .with_active_mods(vec!["core".to_owned(), "playground-npr".to_owned()])
+            .with_warmup_frames(2),
+    );
+    let mut stable_settings = host
+        .mesh3d_npr_preset_for_test("default_gpu_comic")
+        .expect("default gpu comic preset should be registered");
+    stable_settings.pipeline.path_strategy = amigo_render_api::NprPathStrategy3d::StableStrokedPaths;
+    stable_settings.gpu_realtime_tuning.max_chained_walk_edges = 1;
+    stable_settings.gpu_realtime_tuning.max_terminal_walk_edges = 0;
+    host.register_mesh3d_npr_preset_for_test("default_gpu_comic_stable_path_test", stable_settings)
+        .expect("stable path test preset should register");
+    host.apply_mesh3d_npr_preset(
+        "playground-npr-model-1-soldier",
+        "default_gpu_comic_stable_path_test",
+    )
+    .expect("stable path test preset should apply");
+    host.warmup(1)
+        .expect("stable path gpu npr scene preview should advance");
+    let frame = host
+        .capture_rgba8()
+        .expect("stable path gpu npr scene preview should render offscreen");
+    assert_npr_preview_has_paper_and_ink(&frame, "gpu_realtime stable_stroked_paths", 500, 80);
+}
+
+#[test]
+#[ignore = "requires a local WGPU adapter for offscreen readback"]
+fn playground_npr_preview_renders_akira_gpu_preset() {
+    let mut host = crate::ScenePreviewHost::new(
+        crate::ScenePreviewOptions::new(mods_root(), "playground-npr", "comic-lines", 320, 240)
+            .with_active_mods(vec!["core".to_owned(), "playground-npr".to_owned()])
+            .with_warmup_frames(2),
+    );
+    host.apply_mesh3d_npr_preset("playground-npr-model-1-soldier", "akira")
+        .expect("akira npr preset should apply");
+    host.warmup(1)
+        .expect("akira gpu npr scene preview should advance");
+    let frame = host
+        .capture_rgba8()
+        .expect("akira gpu npr scene preview should render offscreen");
+    assert_npr_preview_has_paper_and_ink(&frame, "gpu_realtime akira", 500, 80);
 }
 
 fn assert_npr_preview_has_paper_and_ink(

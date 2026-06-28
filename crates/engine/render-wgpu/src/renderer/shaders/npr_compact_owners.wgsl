@@ -34,7 +34,8 @@ struct GpuNprEndpointEntry3d {
     next_plus_one: u32,
     kind: u32,
     bin: vec2<i32>,
-    _pad0: vec2<u32>,
+    endpoint_vertex: u32,
+    _pad0: u32,
 }
 
 struct GpuNprFrameUniforms3d {
@@ -63,6 +64,9 @@ struct GpuNprFrameUniforms3d {
     params16: vec4<f32>,
     ink_color: vec4<f32>,
     seed: vec4<u32>,
+    pipeline0: vec4<u32>,
+    pipeline1: vec4<u32>,
+    material_roles0: vec4<u32>,
 }
 
 struct EndpointCandidatePick {
@@ -82,6 +86,7 @@ const PATH_FLAG_EMIT: u32 = 1u;
 const PATH_FLAG_CONNECTED_START: u32 = 2u;
 const PATH_FLAG_CONNECTED_END: u32 = 4u;
 const ENDPOINT_FLAG_MATCHED_START: u32 = 1u;
+const MAX_ENDPOINT_BUCKET_SCAN: u32 = 32u;
 
 @group(0) @binding(2) var<storage, read> edges: array<GpuNprEdge3d>;
 @group(0) @binding(5) var<storage, read_write> visible_segments: array<GpuNprVisibleSegment3d>;
@@ -89,6 +94,10 @@ const ENDPOINT_FLAG_MATCHED_START: u32 = 1u;
 @group(0) @binding(10) var<storage, read_write> path_links: array<GpuNprPathLink3d>;
 @group(0) @binding(11) var<storage, read_write> endpoint_heads: array<atomic<u32>>;
 @group(0) @binding(12) var<storage, read_write> endpoint_entries: array<GpuNprEndpointEntry3d>;
+
+fn active_edge_count() -> u32 {
+    return min(uniforms.pipeline1.w, u32(arrayLength(&visible_segments)));
+}
 
 fn quantized_anchor_bin(point: vec2<f32>) -> vec2<i32> {
     let quant = max(uniforms.params12.w, 0.5);
@@ -104,7 +113,7 @@ fn endpoint_bucket_index(kind: u32, bin: vec2<i32>) -> u32 {
 }
 
 fn visible_segment_length(edge_index: u32) -> f32 {
-    if (edge_index == 0xffffffffu || edge_index >= u32(arrayLength(&visible_segments))) {
+    if (edge_index == 0xffffffffu || edge_index >= active_edge_count()) {
         return 0.0;
     }
     let visible = visible_segments[edge_index];
@@ -122,12 +131,20 @@ fn max_chain_degree_for_kind(kind: u32) -> u32 {
     return select(2u, 3u, kind == KIND_SILHOUETTE);
 }
 
+fn is_primary_contour(kind: u32) -> bool {
+    return kind == KIND_BOUNDARY || kind == KIND_SILHOUETTE;
+}
+
+fn is_detail_line(kind: u32) -> bool {
+    return kind == KIND_CREASE || kind == KIND_SEAM || kind == KIND_FEATURE || kind == KIND_CONTACT;
+}
+
 fn degree_penalty(edge: GpuNprEdge3d) -> f32 {
     return f32(max(edge.degree_a, 1u) - 1u + max(edge.degree_b, 1u) - 1u) * 1.35;
 }
 
 fn representative_edge_score(edge_index: u32, current_length: f32, connection_score: f32) -> f32 {
-    if (edge_index == 0xffffffffu || edge_index >= u32(arrayLength(&visible_segments))) {
+    if (edge_index == 0xffffffffu || edge_index >= active_edge_count()) {
         return -1e9;
     }
     let edge_length = visible_segment_length(edge_index);
@@ -161,6 +178,7 @@ fn endpoint_degree_for_entry(edge: GpuNprEdge3d, entry: GpuNprEndpointEntry3d) -
 fn edge_connection_score_from_entry(
     current_edge_index: u32,
     current_kind: u32,
+    current_endpoint_vertex: u32,
     anchor_point: vec2<f32>,
     anchor_depth: f32,
     current_direction: vec2<f32>,
@@ -175,11 +193,14 @@ fn edge_connection_score_from_entry(
     if (
         next_edge_index == 0xffffffffu
         || next_edge_index == current_edge_index
-        || next_edge_index >= u32(arrayLength(&visible_segments))
+        || next_edge_index >= active_edge_count()
     ) {
         return 0.0;
     }
     if (candidate_entry.kind != current_kind) {
+        return 0.0;
+    }
+    if (candidate_entry.endpoint_vertex != current_endpoint_vertex) {
         return 0.0;
     }
 
@@ -219,6 +240,16 @@ fn edge_connection_score_from_entry(
     let depth_gap = abs(anchor_depth - matched_depth_for_entry(candidate_entry, next));
     let visible_length = visible_segment_length(next_edge_index);
     let length_ratio = visible_length / max(current_length, 1.0);
+    let balanced_length_ratio = min(length_ratio, 1.0 / max(length_ratio, 0.0001));
+    if (is_detail_line(current_kind) && alignment < max(npr_gpu_max_chain_angle_cos(), 0.86)) {
+        return 0.0;
+    }
+    if (is_detail_line(current_kind) && balanced_length_ratio < 0.42) {
+        return 0.0;
+    }
+    if (is_detail_line(current_kind) && depth_gap > 0.035) {
+        return 0.0;
+    }
     let cost =
         (gap / endpoint_snap)
         + bin_gap * 0.8
@@ -226,7 +257,9 @@ fn edge_connection_score_from_entry(
         + depth_gap * 2.1
         + abs(current_length - visible_length) / max(max(current_length, visible_length), 1.0) * 3.2
         + select(0.0, 0.85, degree != 1u);
-    return (1.0 / (1.0 + cost * 0.18)) + clamp(length_ratio, 0.0, 2.0) * 0.18;
+    let raw_score = (1.0 / (1.0 + cost * 0.18)) + clamp(length_ratio, 0.0, 2.0) * 0.18;
+    let detail_scale = select(1.0, clamp((alignment - 0.82) * 4.0, 0.0, 1.0), is_detail_line(current_kind));
+    return raw_score * detail_scale;
 }
 
 fn better_candidate(current: EndpointCandidatePick, candidate: EndpointCandidatePick) -> EndpointCandidatePick {
@@ -265,6 +298,7 @@ fn adopt_owner_if_stable(
 fn scan_bucket_candidates(
     current_edge_index: u32,
     current_kind: u32,
+    current_endpoint_vertex: u32,
     anchor_point: vec2<f32>,
     anchor_depth: f32,
     current_direction: vec2<f32>,
@@ -275,10 +309,12 @@ fn scan_bucket_candidates(
     let bucket_index = endpoint_bucket_index(current_kind, bin);
     var best = current_best;
     var head_plus_one = atomicLoad(&endpoint_heads[bucket_index]);
+    var scanned = 0u;
     loop {
-        if (head_plus_one == 0u) {
+        if (head_plus_one == 0u || scanned >= MAX_ENDPOINT_BUCKET_SCAN) {
             break;
         }
+        scanned = scanned + 1u;
         let entry_index = head_plus_one - 1u;
         if (entry_index >= u32(arrayLength(&endpoint_entries))) {
             break;
@@ -287,13 +323,15 @@ fn scan_bucket_candidates(
         let score = edge_connection_score_from_entry(
             current_edge_index,
             current_kind,
+            current_endpoint_vertex,
             anchor_point,
             anchor_depth,
             current_direction,
             current_length,
             entry_index,
         );
-        if (score > 0.0) {
+        let score_threshold = select(0.05, 0.64, is_detail_line(current_kind));
+        if (score >= score_threshold) {
             best = better_candidate(
                 best,
                 EndpointCandidatePick(entry.edge_index, score, entry_is_matched_start(entry)),
@@ -307,6 +345,7 @@ fn scan_bucket_candidates(
 fn best_endpoint_candidate_from_bins(
     current_edge_index: u32,
     current_kind: u32,
+    current_endpoint_vertex: u32,
     anchor_point: vec2<f32>,
     anchor_depth: f32,
     current_direction: vec2<f32>,
@@ -319,6 +358,7 @@ fn best_endpoint_candidate_from_bins(
             best = scan_bucket_candidates(
                 current_edge_index,
                 current_kind,
+                current_endpoint_vertex,
                 anchor_point,
                 anchor_depth,
                 current_direction,
@@ -338,7 +378,7 @@ fn reciprocal_connection_ok(
 ) -> bool {
     if (
         candidate_pick.edge_index == 0xffffffffu
-        || candidate_pick.edge_index >= u32(arrayLength(&visible_segments))
+        || candidate_pick.edge_index >= active_edge_count()
     ) {
         return false;
     }
@@ -354,6 +394,12 @@ fn reciprocal_connection_ok(
     let anchor_point = select(
         candidate_visible.start.xy,
         candidate_visible.end.xy,
+        candidate_pick.matched_start,
+    );
+    let candidate_edge = edges[candidate_pick.edge_index];
+    let anchor_vertex = select(
+        candidate_edge.b,
+        candidate_edge.a,
         candidate_pick.matched_start,
     );
     let anchor_depth = select(
@@ -374,6 +420,7 @@ fn reciprocal_connection_ok(
     let back_pick = best_endpoint_candidate_from_bins(
         candidate_pick.edge_index,
         current_kind,
+        anchor_vertex,
         anchor_point,
         anchor_depth,
         direction,
@@ -385,7 +432,7 @@ fn reciprocal_connection_ok(
 @compute @workgroup_size(64)
 fn cs_main(@builtin(global_invocation_id) id: vec3<u32>) {
     let edge_index = id.x;
-    if (edge_index >= u32(arrayLength(&visible_segments))) {
+    if (edge_index >= active_edge_count()) {
         return;
     }
 
@@ -407,6 +454,7 @@ fn cs_main(@builtin(global_invocation_id) id: vec3<u32>) {
     let start_pick = best_endpoint_candidate_from_bins(
         edge_index,
         kind,
+        edge.a,
         visible.start.xy,
         visible.start.z,
         normalize(visible.start.xy - visible.end.xy),
@@ -415,6 +463,7 @@ fn cs_main(@builtin(global_invocation_id) id: vec3<u32>) {
     let end_pick = best_endpoint_candidate_from_bins(
         edge_index,
         kind,
+        edge.b,
         visible.end.xy,
         visible.end.z,
         normalize(visible.end.xy - visible.start.xy),

@@ -2,43 +2,44 @@ import "pkg:amigo.std/input" as input;
 
 fn model_entity(world_api, index) {
     if index == 1 { return world_api.entities.named("playground-npr-model-1-soldier"); }
-    if index == 2 { return world_api.entities.named("playground-npr-model-2-box-textured"); }
-    if index == 3 { return world_api.entities.named("playground-npr-model-3-box-interleaved"); }
-    if index == 4 { return world_api.entities.named("playground-npr-model-4-box-animated"); }
-    if index == 5 { return world_api.entities.named("playground-npr-model-5-fox"); }
-    world_api.entities.named("playground-npr-model-6-cesium-man")
+    world_api.entities.named("playground-npr-model-2-khronos-male")
 }
 
 fn model_entity_name(index) {
     if index == 1 { return "playground-npr-model-1-soldier"; }
-    if index == 2 { return "playground-npr-model-2-box-textured"; }
-    if index == 3 { return "playground-npr-model-3-box-interleaved"; }
-    if index == 4 { return "playground-npr-model-4-box-animated"; }
-    if index == 5 { return "playground-npr-model-5-fox"; }
-    "playground-npr-model-6-cesium-man"
+    "playground-npr-model-2-khronos-male"
 }
 
 fn hide_all_models(world_api) {
     model_entity(world_api, 1).hide();
     model_entity(world_api, 2).hide();
-    model_entity(world_api, 3).hide();
-    model_entity(world_api, 4).hide();
-    model_entity(world_api, 5).hide();
-    model_entity(world_api, 6).hide();
 }
 
 fn active_model_name(index) {
     if index == 1 { return "Soldier"; }
-    if index == 2 { return "BoxTextured"; }
-    if index == 3 { return "BoxInterleaved"; }
-    if index == 4 { return "BoxAnimated"; }
-    if index == 5 { return "Fox"; }
-    if index == 6 { return "CesiumMan"; }
-    "Unknown"
+    "Khronos Male"
+}
+
+fn animation_count(model_index) {
+    1
+}
+
+fn animation_label(model_index, animation_index) {
+    if model_index == 2 {
+        return "Static mesh";
+    }
+    "Static"
+}
+
+fn animation_status_label(model_index) {
+    if model_index == 2 {
+        return "skinning unsupported in V1";
+    }
+    "no clips";
 }
 
 fn npr_preset_count() {
-    15
+    16
 }
 
 fn npr_style_base_id(index) {
@@ -56,15 +57,12 @@ fn npr_style_base_id(index) {
     if index == 11 { return "storyboard_marker"; }
     if index == 12 { return "cinematic_12fps"; }
     if index == 13 { return "low_120fps"; }
-    "rough_comic_ink"
+    if index == 14 { return "rough_comic_ink"; }
+    "akira"
 }
 
-fn npr_preset_id(index, strategy) {
-    let base = npr_style_base_id(index);
-    if strategy == "cpu_reference" {
-        return base + "_cpu_reference";
-    }
-    base
+fn npr_preset_id(index) {
+    npr_style_base_id(index)
 }
 
 fn npr_preset_label(index) {
@@ -82,7 +80,8 @@ fn npr_preset_label(index) {
     if index == 11 { return "Storyboard Marker"; }
     if index == 12 { return "Cinematic 12 FPS"; }
     if index == 13 { return "Low 120 FPS"; }
-    "Rough Comic Ink"
+    if index == 14 { return "Rough Comic Ink"; }
+    "Akira"
 }
 
 fn npr_debug_view_label(view_id) {
@@ -128,6 +127,7 @@ fn preset_index_label(index) {
 
 fn refresh_hud(world_api, dt) {
     let model_index = world_api.state.get_int("active_npr_model");
+    let animation_index = world_api.state.get_int("active_npr_animation");
     let preset_index = world_api.state.get_int("active_npr_preset");
     let strategy = world_api.state.get_string("active_npr_strategy");
     let debug_view = world_api.state.get_string("npr_debug_view");
@@ -153,8 +153,12 @@ fn refresh_hud(world_api, dt) {
         "Preset   " + preset_index_label(preset_index) + " " + npr_preset_label(preset_index),
     );
     world_api.ui.set_text(
+        "playground-npr-hud.root.animation",
+        "Anim     " + animation_label(model_index, animation_index) + " | " + animation_status_label(model_index),
+    );
+    world_api.ui.set_text(
         "playground-npr-hud.root.strategy",
-        "Strategy " + strategy + " | G toggle",
+        "Backend  " + strategy + " | G toggle",
     );
     world_api.ui.set_text(
         "playground-npr-hud.root.camera",
@@ -182,13 +186,9 @@ fn refresh_hud(world_api, dt) {
     );
 }
 
-fn apply_active_npr_preset(world_api) {
-    let model_index = world_api.state.get_int("active_npr_model");
-    let preset_index = world_api.state.get_int("active_npr_preset");
+fn apply_active_npr_runtime_overrides(world_api, entity_name) {
     let strategy = world_api.state.get_string("active_npr_strategy");
-    let preset_id = npr_preset_id(preset_index, strategy);
-    let entity_name = model_entity_name(model_index);
-    world_api.mesh3d.apply_npr_preset(entity_name, preset_id);
+    world_api.mesh3d.set_npr_render_strategy(entity_name, strategy);
     world_api.mesh3d.set_npr_temporal_path_smoothing(
         entity_name,
         world_api.state.get_bool("npr_temporal_path_smoothing"),
@@ -197,6 +197,15 @@ fn apply_active_npr_preset(world_api) {
         entity_name,
         npr_debug_mode_from_view_id(world_api.state.get_string("npr_debug_view")),
     );
+}
+
+fn apply_active_npr_preset(world_api) {
+    let model_index = world_api.state.get_int("active_npr_model");
+    let preset_index = world_api.state.get_int("active_npr_preset");
+    let preset_id = npr_preset_id(preset_index);
+    let entity_name = model_entity_name(model_index);
+    world_api.mesh3d.apply_npr_preset(entity_name, preset_id);
+    apply_active_npr_runtime_overrides(world_api, entity_name);
     world_api.dev.event("playground-npr.preset-selected", npr_preset_label(preset_index));
     refresh_hud(world_api, 0.0);
 }
@@ -208,10 +217,20 @@ fn step_npr_preset(world_api, delta) {
     apply_active_npr_preset(world_api);
 }
 
+fn step_model_animation(world_api, delta) {
+    let model_index = world_api.state.get_int("active_npr_model");
+    let count = animation_count(model_index);
+    let next = (world_api.state.get_int("active_npr_animation") + delta + count) % count;
+    world_api.state.set_int("active_npr_animation", next);
+    world_api.dev.event("playground-npr.animation-unavailable", animation_status_label(model_index));
+    refresh_hud(world_api, 0.0);
+}
+
 fn select_model(world_api, index) {
     hide_all_models(world_api);
     model_entity(world_api, index).show();
     world_api.state.set_int("active_npr_model", index);
+    world_api.state.set_int("active_npr_animation", 0);
     apply_active_npr_preset(world_api);
     world_api.dev.event("playground-npr.model-selected", active_model_name(index));
     refresh_hud(world_api, 0.0);
@@ -245,8 +264,12 @@ fn toggle_npr_temporal_path_smoothing(world_api) {
 
 fn set_npr_strategy(world_api, strategy) {
     world_api.state.set_string("active_npr_strategy", strategy);
-    apply_active_npr_preset(world_api);
+    apply_active_npr_runtime_overrides(
+        world_api,
+        model_entity_name(world_api.state.get_int("active_npr_model")),
+    );
     world_api.dev.event("playground-npr.strategy-selected", strategy);
+    refresh_hud(world_api, 0.0);
 }
 
 fn toggle_npr_strategy(world_api) {
@@ -297,10 +320,6 @@ fn rotate_active_model(world_api, dt) {
     let index = world_api.state.get_int("active_npr_model");
     if index == 1 { model_entity(world_api, 1).rotate_3d(0.0, 0.32 * dt, 0.0); }
     if index == 2 { model_entity(world_api, 2).rotate_3d(0.0, 0.28 * dt, 0.0); }
-    if index == 3 { model_entity(world_api, 3).rotate_3d(0.0, -0.30 * dt, 0.0); }
-    if index == 4 { model_entity(world_api, 4).rotate_3d(0.0, 0.26 * dt, 0.0); }
-    if index == 5 { model_entity(world_api, 5).rotate_3d(0.0, -0.18 * dt, 0.0); }
-    if index == 6 { model_entity(world_api, 6).rotate_3d(0.0, 0.20 * dt, 0.0); }
 }
 
 fn on_enter() {
@@ -310,23 +329,22 @@ fn on_enter() {
     world.state.set_bool("npr_temporal_path_smoothing", false);
     world.state.set_string("active_npr_strategy", "gpu_realtime");
     world.state.set_int("active_npr_preset", 0);
+    world.state.set_int("active_npr_animation", 0);
     world.state.set_string("npr_debug_view", "camera.final");
     world.camera.set_main_debug_view("camera.final");
     select_model(world, 1);
     refresh_hud(world, 0.0);
     let scene_id = world.scene.current_id();
     world.dev.event("playground-npr.scene-ready", scene_id);
-    world.dev.log("playground-npr comic lines workbench: 1-6 models, ArrowUp/ArrowDown styles, G strategy toggle, V debug cycle, 7 final, 8 kinds, 9 dropout, 0 width/alpha, LMB orbit, wheel zoom, F freelook, R autorotate, T temporal smoothing");
+    world.dev.log("playground-npr comic lines workbench: 1-2 models, ArrowUp/ArrowDown styles, G backend toggle, V debug cycle, 7 final, 8 kinds, 9 dropout, 0 width/alpha, LMB orbit, wheel zoom, F freelook, R autorotate, T temporal smoothing; GLB skinned clips are not executed in V1");
 }
 
 fn update(dt) {
     world.state.set_float("npr_last_dt", dt);
     if input::pressed(world, "npr.select_1") { select_model(world, 1); }
     if input::pressed(world, "npr.select_2") { select_model(world, 2); }
-    if input::pressed(world, "npr.select_3") { select_model(world, 3); }
-    if input::pressed(world, "npr.select_4") { select_model(world, 4); }
-    if input::pressed(world, "npr.select_5") { select_model(world, 5); }
-    if input::pressed(world, "npr.select_6") { select_model(world, 6); }
+    if input::pressed(world, "npr.animation_previous") { step_model_animation(world, -1); }
+    if input::pressed(world, "npr.animation_next") { step_model_animation(world, 1); }
     if input::pressed(world, "npr.camera_toggle") {
         world.state.set_bool("npr_camera_freelook", !world.state.get_bool("npr_camera_freelook"));
         refresh_hud(world, dt);

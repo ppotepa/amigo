@@ -92,7 +92,7 @@ fn playground_npr_comic_lines_scene_bootstraps() {
         summary
             .scene_entities
             .iter()
-            .any(|entity| entity == "playground-npr-model-6-cesium-man")
+            .any(|entity| entity == "playground-npr-model-2-khronos-male")
     );
     assert!(
         summary
@@ -102,9 +102,9 @@ fn playground_npr_comic_lines_scene_bootstraps() {
     );
     assert!(
         summary
-            .text_entities_3d
+            .scene_entities
             .iter()
-            .any(|entity| entity == "playground-npr-title")
+            .any(|entity| entity == "playground-npr-hud")
     );
     assert!(
         summary
@@ -116,13 +116,13 @@ fn playground_npr_comic_lines_scene_bootstraps() {
         summary
             .prepared_assets
             .iter()
-            .any(|asset| asset == "playground-npr/meshes/cesium-man (mesh-3d)")
+            .any(|asset| asset == "playground-npr/meshes/khronos-male (mesh-3d)")
     );
     assert!(
         summary
             .prepared_assets
             .iter()
-            .any(|asset| asset == "playground-npr/fonts/debug-3d (font-3d)")
+            .any(|asset| asset == "playground-npr/fonts/debug-ui (font-2d)")
     );
     assert!(summary.failed_assets.is_empty());
     assert!(summary.pending_asset_loads.is_empty());

@@ -1,13 +1,42 @@
-# Amigo NPR v2 - status wdrozenia
+# Amigo NPR V1 - status wdrozenia
 
 Status: aktualny zapis tego, co zostalo wdrozone i co zostaje do naprawy po pierwszej implementacji `gpu_realtime`.
 Powiazany plan: `npr_v2.md`.
 
 ## 0. Postep globalny
 
-- Szacowany postep calego `npr_v2`: okolo 98%.
-- Zrobione: kontrakt, YAML, routing CPU/GPU, debug mode, endpoint bins, owner compaction, `path_segments`, path-level lock/dropout foundation.
-- Zostalo: domkniecie parytetu wizualnego CPU/GPU, lepszy graph walk i stabilniejsze `path_t/path_id`, dalsze dopasowanie stylizacji do `cpu_reference`.
+- Szacowany postep bazowego routingu/pipeline NPR V1: okolo 99%.
+- Szacowany postep `akira` / character manga ink V1: okolo 85%.
+- Zrobione: kontrakt, YAML, routing CPU/GPU, debug mode, endpoint bins, owner compaction, connect/relax path owners, `path_segments`, path-level lock/dropout foundation.
+- Zostalo: domkniecie parytetu wizualnego CPU/GPU, mocniejszy graph walk i stabilniejsze `path_t/path_id`, dalsze dopasowanie stylizacji do `cpu_reference` oraz domkniecie character manga ink w ramach V1: semantic line roles, importance score, line budget, pelniejsze material black fills i authored ink guides.
+- Usunieta blokada startu `gpu_realtime` na czesci adapterow WGPU: compute bind group zostal rozbity na osobne layouty per pass, zamiast jednego ukladu przekraczajacego limit 8 storage bufferow na shader stage.
+- Naprawiony drugi blad walidacji WGPU po rozbiciu layoutow: shadery GPU NPR deklaruja teraz `read` dla buforow, ktore sa tylko czytane, zamiast wymagac `read_write` niezgodnego z layoutem pipeline'u.
+- Naprawione uzycie `indirect_args`: licznik `path_segments` zostal przeniesiony poza pierwsze cztery pola `DrawIndirectArgs`, zeby compute pass nie nadpisywal `first_vertex` przed `draw_indirect`.
+- Offscreen UI upload nie uzywa juz `create_buffer_init` dla `amigo-offscreen-ui-color-vertices` / `amigo-offscreen-ui-texture-vertices`; bufor jest tworzony jawnie i wypelniany przez `queue.write_buffer`, co omija panic w `get_mapped_range`.
+- GPU NPR command buffer jest teraz submitowany razem z offscreen render command bufferem po CPU uploadach. Usuwa to startup panic `Queue::write_buffer: Buffer with 'amigo-offscreen-ui-color-vertices' label is invalid`, ktory wynikal z submitu GPU NPR przed kolejnymi uploadami UI.
+- Presety NPR moga juz deklarowac `pipeline` z osobnymi strategiami `candidate/path/stroke/fill/hatching/budget/temporal`; `akira` i `akira_cpu_reference` uzywaja tego kontraktu jako pierwsze presety pod character manga ink.
+- Strategie `pipeline` sa juz kodowane do uniformow GPU (`pipeline0`, `pipeline1`), a `build_strokes` uzywa pierwszego zachowania `akira_ink` / character budget do wzmocnienia silhouette i przygaszenia technicznych feature/contact lines.
+- `path_strategy` steruje juz emission: `direct_visible_segments` zachowuje prosty segment-local path, a `stable_stroked_paths` uruchamia GPU path walk.
+- Default GPU Comic i Akira V1 uzywaja teraz `stable_stroked_paths` z konserwatywnym `max_chained_walk_edges: 1`. Kontrolowane offscreen smoke testy potwierdzaja widoczny ink output oraz zgodnosc regionu GPU/CPU reference dla defaultu.
+- Sciezka `stable_stroked_paths` dispatchuje path graph MVP miedzy `classify_edges` i `emit_path_segments`: `clear_endpoint_heads`, `build_endpoint_bins`, `compact_owners`, `connect_paths`, dwie iteracje `relax_path_owners`, a dopiero potem `emit_path_segments` i `build_strokes`. Path graph jest aktywny dla wybranych presetow, ale nadal wymaga dalszego strojenia przed luzowaniem chain budgetu.
+- `endpoint_heads` sa czyszczone osobnym compute passem `npr_clear_endpoint_heads`, a nie w tym samym dispatchu, ktory wpisuje endpointy. Usuwa to race condition pomiedzy atomic clear i atomic insert.
+- Uniform GPU niesie teraz realne `edge_count`, `vertex_count` i `triangle_count` aktualnego joba. Shadery `build_endpoint_bins`, `compact_owners`, `emit_path_segments` i `build_strokes` odcinaja `visible_segments` po aktywnym `edge_count`, zamiast traktowac pojemnosc bufora jako liczbe poprawnych edge'y. To zmniejsza ryzyko losowych linii po zmianie modelu, presetow albo po alokacji wiekszego bufora.
+- `character_semantic` / character budget wplywa juz przed stroke build: klasyfikacja GPU podnosi progi feature/contact i chroni silhouette nizszym progiem dlugosci.
+- Bufor finalnych `stroke_segments` skaluje sie juz z liczba slotow `path_segments` na edge, wiec odblokowany GPU path walk nie ucina wiekszosci wygenerowanych segmentow przez zbyt mala pojemnosc outputu.
+- `material_black_mass` ma pierwszy jawny V1 hook: `NprLineSettings3d.black_mass_material_ids` przechodzi z YAML, jest kodowane do GPU bitmaski i render loop rysuje czarny fill dla wskazanych material IDs bez zgadywania po nazwie modelu.
+- `black_mass_material_ids` jest traktowane jako modelowy override: `apply_npr_preset` zachowuje istniejaca liste, gdy preset jej nie definiuje. Akira preset nie zawiera juz globalnych material IDs, a Khronos Male deklaruje je w swoim `Mesh3D.npr`.
+- Doszla druga jawna rola materialowa V1: `ink_detail_material_ids`. Khronos Male deklaruje material IDs twarzy/oczu/brwi jako detail ink, GPU classify obniza dla nich prog feature/seam, a CPU reference uzywa zgodnego lokalnego progu dlugosci bez luzowania calego modelu.
+- Khronos Male ma test regresji statycznego importu GLB: loader musi wczytac materialy body, hair i face/eye detail, zeby uniknac regresji typu "widac tylko twarz" wynikajacej z czesciowego importu geometrii.
+- GPU endpoint binning zapisuje teraz jawny `endpoint_vertex`, a `compact_owners` laczy kandydatow tylko wtedy, gdy endpointy reprezentuja ten sam source vertex. Partial visibility endpoints dostaja invalid vertex i nie trafiaja do endpoint bins. To ogranicza fałszywe dlugie chainy wynikajace z samej bliskosci ekranowej bez fizycznego polaczenia w geometrii.
+- Dla primary contour (`silhouette` / `boundary`) endpoint vertex ma mala tolerancje widocznosci przy prawie pelnych runach (`t` blisko 0/1), co odzyskuje czesc ciaglosci obrysu bez luzowania feature/seam/crease lines.
+- Naprawiony live crash hosted WGPU po kilku klatkach (`Queue::write_buffer: amigo-offscreen-ui-color-vertices is invalid`). Przyczyna byla wczesniejsza utrata/invalidacja stanu GPU przez zbyt kosztowny `compact_owners` endpoint bucket scan i zbyt szeroki indirect draw budget, a UI buffer byl tylko pierwszym miejscem raportowania bledu.
+- `compact_owners` ma teraz twardy limit skanowania endpoint bucketu (`MAX_ENDPOINT_BUCKET_SCAN`), wiec compute pass jest bounded i nie moze wejsc w ekstremalnie drogi linked-list traversal.
+- `build_strokes` jest domkniety dodatkowym GPU pass `npr_clamp_indirect_args`, ktory przycina licznik instancji draw do realnej pojemnosci `stroke_segments` bez readbacku i bez CPU fallbacku.
+- GPU `stroke_segments` capacity jest teraz budzetowane per `NprBudgetStrategy3d`, zamiast traktowac surowy iloczyn `edge_count * path_slots * passes * segments` jako realny draw budget. Dla Soldiera default spadl z okolo 43 MB do okolo 4.8 MB bufora stroke instances.
+- GPU path quality zostalo dodatkowo zaostrzone dla detali: `compact_owners` wymaga teraz mocniejszego alignmentu, bardziej zbalansowanych dlugosci i mniejszego depth gap dla `crease/seam/feature/contact`, ale nie zaostrza `silhouette/boundary`.
+- `build_strokes` ma pierwszy runtime line suppression dla short/low-coherence detail segments w `akira_ink` i character budget. Sylwetka i boundary sa chronione, a techniczne krotkie feature/contact lines bez kontekstu sciezki sa odrzucane przed generowaniem passow.
+- `sparse_character_hatching` nie jest juz martwym polem kontraktu: GPU `build_strokes` umie dodac jeden krotki, deterministyczny hatch-pass dla wybranych wewnetrznych feature lines, gdy preset jawnie ustawi `pipeline.hatching_strategy: sparse_character_hatching`. Pojemnosc `stroke_segments` uwzglednia ten dodatkowy pass.
+- CPU reference ma zgodny V1 odpowiednik sparse character hatching: `build_npr_stroke_pass_plan` dodaje krotki `Hatch` pass tylko dla wewnetrznych feature lines w character/akira budget, z deterministycznym zakresem `active_t0/active_t1`. Akira i Akira CPU Reference maja teraz wlaczone `sparse_character_hatching`.
 
 ## 0.2. Stan wprost
 
@@ -17,18 +46,23 @@ Powiazany plan: `npr_v2.md`.
 - Domyslny GPU runtime bez `auto` i bez `hybrid`.
 - Routing YAML -> scene hydration -> mesh runtime -> render loop.
 - Playground controls dla presetow, modeli, strategii i debug mode.
+- Kontrakt preset-level pipeline strategies w `NprLineSettings3d`.
+- Kodowanie preset-level pipeline strategies do uniformow GPU.
 - Podstawowy GPU pipeline:
   - `face-id`,
   - `project_vertices`,
   - `classify_edges`,
   - `endpoint bins`,
   - `owner compaction`,
+  - `connect_paths`,
+  - `relax_path_owners`,
   - `emit_path_segments`,
   - `build_strokes`.
 
 ### Dziala, ale nie ma jeszcze pelnego parytetu
 
-- GPU path walk i identyfikacja sciezki.
+- `stable_stroked_paths` jako aktywny V1 runtime dla defaultowego viewportu i Akiry przy konserwatywnym chain budget.
+- GPU path walk i identyfikacja sciezki w `stable_stroked_paths`; sciezka jest zaimplementowana i przechodzi kontrolowane offscreen smoke testy dla defaultu/Akiry.
 - GPU `path_t` i `path_id`.
 - GPU dropout, endpoint lock, taper i search shaping.
 - Zgodnosc presetow CPU/GPU.
@@ -36,10 +70,65 @@ Powiazany plan: `npr_v2.md`.
 
 ### Nadal do zrobienia
 
+- Dalsza walidacja `stable_stroked_paths` na innych modelach, presetach i katach kamery przed zwiekszeniem `max_chained_walk_edges` powyzej 1.
 - Dalsze ograniczenie falszywych dlugich chainow dla niektorych presetow i katow kamery.
 - Lepsza zgodnosc GPU z CPU dla pressure/alpha/humanization/search.
 - Cleanup tymczasowych hintow `next_*` / `alt_next_*` po pelnym przejsciu na mocniejszy path graph.
 - Ostateczne strojenie budzetow, limitow i debug stats pod GPU realtime.
+- Prawdziwe animacje skinned GLB dla Khronos Male nie sa wykonywane runtime'owo w V1; obecny loader renderuje statyczna geometrie mesha. HUD i log sceny opisuja to teraz jawnie jako `skinning unsupported in V1`, zeby scena nie udawala gotowego clip/skinning evaluation.
+- Character NPR dla `akira` jest czescia zakresu V1, ale nie jest jeszcze wykonany runtime'owo:
+  - runtime execution strategii `akira_ink` i `budget` ma pierwszy etap w GPU stroke shaderze;
+  - runtime execution strategii `character_semantic` ma pierwszy etap w GPU candidate filtering;
+  - runtime execution strategii `material_black_mass` ma pierwszy etap oparty o jawne `black_mass_material_ids`;
+  - runtime execution strategii `stable_arc_length` nie jest jeszcze pelne;
+  - semantic roles dla postaci (`FaceDetail`, `HairMassBoundary`, `MuscleForm`, `ClothFold`);
+  - importance scoring i line budget/suppression;
+  - bogatsze material ink roles poza prostym `black_mass_material_ids` / `ink_detail_material_ids`;
+  - authored `ink_guides` dla twarzy, wlosow, miesni i fald ubrania;
+  - apparent ridges / lepsze suggestive contours;
+  - dalsze strojenie sparse character hatching zamiast globalnego halftone.
+
+### Akira V1 status
+
+- Zrobione:
+  - plikowy preset `akira` i `akira_cpu_reference`;
+  - line-only tusz: czarna kreska, mocna sylwetka, cienkie feature lines, brak search/dropout;
+  - deklaracja pipeline: `character_semantic`, `stable_stroked_paths`, `akira_ink`, `material_black_mass`, `stable_arc_length`;
+  - propagacja pipeline do GPU uniformow;
+  - pierwsze shaderowe zachowanie `akira_ink`: mocniejsza silhouette, slabsze feature/contact, mniej wobble detali;
+  - `akira` V1 uzywa teraz `stable_stroked_paths` z konserwatywnym `max_chained_walk_edges: 1`;
+  - `character_semantic` w GPU classify filtruje slabe feature/contact przy zachowaniu silhouette;
+  - `sparse_character_hatching` jest wlaczone w Akirze jako V1 stroke-level feature, z odpowiednikiem w CPU reference;
+  - capacity GPU stroke output jest policzone od liczby slotow path walk, nie tylko od liczby surowych edge'y;
+  - `black_mass_material_ids` dla Khronos Male sa zapisane przy modelu, nie w globalnym presecie: hair `4,5`, mouth/iris/brow/lash/eyeline `6,7,11,12,13`;
+  - `ink_detail_material_ids` dla Khronos Male sa zapisane przy modelu: mouth/iris/brow/lash/eyeline `6,7,11,12,13`;
+  - render loop rysuje czarne masy tylko gdy preset deklaruje `pipeline.fill_strategy: material_black_mass` i niepusta liste material IDs;
+  - GPU classify i CPU reference uzywaja detail material role do zachowania krotszych linii twarzy/oczu/brwi;
+  - test loadera Khronos Male potwierdza, ze statyczny import obejmuje body, hair i face/eye detail material IDs;
+  - rejestracja w scenie i HUD/preset switching.
+- Do zrobienia w tym samym V1:
+  - pelniejsze wykonanie `character_semantic` w runtime;
+  - dalsze strojenie material black masses dla wlosow/oczu/cieni;
+  - `ink_guides` i role linii dla twarzy/wlosow/ubran;
+  - line budget/importance scoring;
+  - dalsze strojenie sparse character hatching po porownaniu z realnym viewportem.
+
+### Ostatnia weryfikacja runtime
+
+- `cargo test -p amigo-app playground_npr_preview_renders_gpu_and_cpu_reference_default_gpu_comic -- --ignored --nocapture` przechodzi na lokalnym WGPU adapterze.
+- `cargo test -p amigo-app playground_npr_preview_renders_paper_and_ink_edges -- --ignored --nocapture` przechodzi na lokalnym WGPU adapterze.
+- `cargo test -p amigo-app playground_npr_preview_renders_stable_stroked_paths_gpu_comic -- --ignored --nocapture` przechodzi na lokalnym WGPU adapterze.
+- `cargo test -p amigo-app playground_npr_preview_renders_akira_gpu_preset -- --ignored --nocapture` przechodzi na lokalnym WGPU adapterze.
+- `cargo test -p amigo-scene compiled_playground_npr_scene_registers_file_backed_npr_presets` przechodzi.
+- `cargo test -p amigo-render-wgpu npr` przechodzi.
+- `cargo test -p amigo-app npr` przechodzi; cztery testy offscreen pozostaja ignorowane w zwyklym filtrze, bo wymagaja lokalnego adaptera i readbacku.
+- Headless smoke dla sceny `playground-npr/comic-lines` przechodzi jako czesc `cargo test -p amigo-app npr`.
+- `cargo test -p amigo-render-api`, `cargo test -p amigo-3d-mesh`, `cargo test -p amigo-input-actions`, `cargo test -p amigo-input-api`, `cargo test -p amigo-input-winit` i `cargo test -p amigo-scripting-rhai` przechodza po ostatniej walidacji.
+- `cargo test -p amigo-render-wgpu` i `cargo test -p amigo-scene` przechodza jako pelne wlascicielskie crate checks.
+- `cargo build -p amigo-launcher` przechodzi.
+- Hosted smoke `target\debug\amigo-launcher.exe --profile playground-npr --hosted` przezywa kontrolowane 12 sekund na lokalnym adapterze WGPU bez panic/validation error; proces zostal zakonczony recznie po czasie testu.
+- Po dodatkowym zaostrzeniu `compact_owners` i `build_strokes` powtorzono `cargo test -p amigo-render-wgpu npr`, `cargo test -p amigo-app playground_npr_preview -- --ignored --nocapture --test-threads=1` oraz hosted smoke 12 sekund; wszystkie przeszly.
+- Pelne `cargo test -p amigo-app` nadal nie jest zielona bramka dla tej paczki: padaja niezalezne od NPR testy hot-reload/scen innych playgroundow oraz jeden stary invariant zostal juz zaktualizowany na obecny `submit_wgpu_frame_render_request` flow. Zakres NPR jest walidowany filtrami `npr` i offscreen smoke testami powyzej.
 
 ## 0.1. Co wnosi ta paczka
 
@@ -75,6 +164,14 @@ Powiazany plan: `npr_v2.md`.
 - `compact_owners` wymaga teraz tez wzajemnosci polaczenia:
   - kandydat start/end musi lokalnie wybierac z powrotem biezacy edge,
   - redukuje to falszywe polaczenia jednostronne i poprawia spoistosc grafu path.
+- `compact_owners` wymaga teraz zgodnosci topologicznego endpoint vertex:
+  - endpoint entry niesie `endpoint_vertex`,
+  - endpoint entry jest emitowany tylko dla rzeczywistego poczatku/konca source edge,
+  - ucięte przez visibility fragmenty ze srodka edge nie sa juz traktowane jak topologiczny join,
+  - `silhouette` i `boundary` moga zachowac endpoint, jezeli widoczny run jest bardzo blisko prawdziwego konca edge,
+  - feature/seam/crease pozostaja restrykcyjne i nie dostaja takiej tolerancji,
+  - kandydat nie przechodzi scoringu, jezeli dotyka innego source vertex,
+  - redukuje to przypadki, w ktorych bliskie ekranowo, ale niepolaczone czesci modelu byly zszywane w jedna kreske.
 - Doszedl osobny GPU seam `path_states`:
   - `connect_paths` zapisuje teraz jawny stan path per edge,
   - `path_states` niosa `owner_segment`, `path_id`, `kind`, `flags`, `segment_count`,
@@ -427,7 +524,7 @@ Glowne pliki:
 
 ## 3. Definicja "gotowe"
 
-Za realne domkniecie `npr_v2` uznajemy dopiero sytuacje, w ktorej:
+Za realne domkniecie bazowego NPR V1 uznajemy dopiero sytuacje, w ktorej:
 
 - GPU i CPU daja bardzo podobny obrys i podobna logike linii wewnetrznych dla tych samych presetow.
 - GPU nie pokazuje przypadkowych dlugich kresek, prostokatow ani niestabilnych chainow zaleznych od kata kamery.
@@ -571,6 +668,14 @@ Docelowo powinien byc tez kontrolowany przez YAML.
    - Status: czesciowo zrobione.
    - `face-id/depth` jest juz globalne na poziomie calej ramki dla wszystkich GPU meshy.
    - `face_id_base` eliminuje kolizje trojkatow miedzy meshami.
+   - Naprawiono blad zasobow GPU: kazdy GPU NPR mesh/job ma teraz osobny uniform buffer.
+     Wczesniej jeden globalny uniform buffer byl nadpisywany podczas nagrywania jednego command buffera,
+     przez co passy mogly widziec ostatni zestaw uniformow zamiast wlasnego.
+   - Dodano trace GPU NPR na stdout:
+     pierwsze 4 ramki loguja sie zawsze, a pelny trace wlacza `AMIGO_NPR_GPU_TRACE=1`.
+     Log obejmuje jobs, meshe, rozmiary buforow, face-id target, uniform size i ostatni krok przed `write_buffer`.
+   - Trace GPU NPR czysci terminal na pierwszej ramce i ma kolorowe poziomy `START`, `INFO`, `JOB`, `STEP`, `ALLOC`, `WRITE`, `OK`.
+     Clear mozna wylaczyc przez `AMIGO_NPR_GPU_TRACE_CLEAR=0`, a kolory przez `AMIGO_NPR_GPU_TRACE_COLOR=0` albo `NO_COLOR=1`.
    - Zostaje dalsze dopracowanie samplingu owner/debug parity.
 
 9. Dodac debug mode do YAML.

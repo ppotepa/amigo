@@ -1115,7 +1115,7 @@ fn render_runtime_uses_only_frame_graph_render_flow() {
         "amigo_runtime_bundles::default_wgpu_render_extractor_registry_for_runtime(runtime)",
         "WgpuFrameCompositionBuilder::build(&render_packet)",
         "build_frame_graph_from_plan(",
-        "renderer.render_frame_request(render_request)?",
+        "submit_wgpu_frame_render_request(",
     ] {
         assert!(
             source.contains(required),

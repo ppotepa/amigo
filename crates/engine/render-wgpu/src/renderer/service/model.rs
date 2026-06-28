@@ -6,8 +6,8 @@ use amigo_math::Vec2;
 use crate::renderer::service::pipeline_registry::WgpuPipelineRegistry;
 use crate::renderer::service::{CachedFontAtlas, WgpuEmergencyOverlayLine};
 use crate::renderer::{
-    CachedLightMap2dImage, CachedMeshGeometry3d, CachedTextureResource,
-    CpuReferenceNprRenderer3d, GpuRealtimeNprRenderer3d, NprStrokeFrameStats3d,
+    CachedLightMap2dImage, CachedMeshGeometry3d, CachedTextureResource, CpuReferenceNprRenderer3d,
+    GpuRealtimeNprRenderer3d, NprStrokeFrameStats3d,
 };
 
 pub(crate) const POST_FX_EXECUTOR_BLUR: &str = "screen_space.blur";

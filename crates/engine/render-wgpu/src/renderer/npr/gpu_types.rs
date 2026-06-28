@@ -14,7 +14,7 @@ pub(crate) struct GpuNprTriangle3d {
     pub indices: [u32; 4],
     pub normal: [f32; 4],
     pub material_id: u32,
-    pub _pad0: [u32; 3],
+    pub _pad0: [u32; 7],
 }
 
 #[repr(C)]
@@ -33,7 +33,7 @@ pub(crate) struct GpuNprEdge3d {
     pub degree_b: u32,
     pub alt_next_a: u32,
     pub alt_next_b: u32,
-    pub _pad0: [u32; 2],
+    pub _pad0: [u32; 3],
 }
 
 #[repr(C)]
@@ -68,7 +68,8 @@ pub(crate) struct GpuNprEndpointEntry3d {
     pub next_plus_one: u32,
     pub kind: u32,
     pub bin: [i32; 2],
-    pub _pad0: [u32; 2],
+    pub endpoint_vertex: u32,
+    pub _pad0: u32,
 }
 
 #[repr(C)]
@@ -88,7 +89,7 @@ pub(crate) struct GpuNprPathState3d {
     pub kind: u32,
     pub flags: u32,
     pub segment_count: u32,
-    pub _pad0: [u32; 3],
+    pub _pad0: [u32; 7],
 }
 
 #[repr(C)]
@@ -119,6 +120,9 @@ pub(crate) struct GpuNprFrameUniforms3d {
     pub params16: [f32; 4],
     pub ink_color: [f32; 4],
     pub seed: [u32; 4],
+    pub pipeline0: [u32; 4],
+    pub pipeline1: [u32; 4],
+    pub material_roles0: [u32; 4],
 }
 
 pub(crate) fn gpu_vertices_from_geometry(geometry: &CachedMeshGeometry3d) -> Vec<GpuNprVertex3d> {
@@ -149,16 +153,11 @@ pub(crate) fn gpu_edges_from_geometry(geometry: &CachedMeshGeometry3d) -> Vec<Gp
         vertex_edges[edge.b].push(edge_index);
     }
 
-    edges.iter()
+    edges
+        .iter()
         .enumerate()
         .map(|(edge_index, edge)| {
-            gpu_edge_from_mesh_edge(
-                geometry.vertices(),
-                edges,
-                &vertex_edges,
-                edge_index,
-                edge,
-            )
+            gpu_edge_from_mesh_edge(geometry.vertices(), edges, &vertex_edges, edge_index, edge)
         })
         .collect()
 }
@@ -173,7 +172,7 @@ fn gpu_triangle_from_mesh_triangle(triangle: &MeshTriangle3d) -> GpuNprTriangle3
         ],
         normal: vec3_to_gpu4(triangle.normal),
         material_id: triangle.material_id.unwrap_or(u32::MAX),
-        _pad0: [0; 3],
+        _pad0: [0; 7],
     }
 }
 
@@ -186,10 +185,8 @@ pub(crate) fn gpu_edge_from_mesh_edge(
 ) -> GpuNprEdge3d {
     let face0 = edge.faces.first().copied().unwrap_or(usize::MAX) as u32;
     let face1 = edge.faces.get(1).copied().unwrap_or(usize::MAX) as u32;
-    let next_a =
-        best_edge_continuations(vertices, edges, vertex_edges, edge_index, edge.a, edge.b);
-    let next_b =
-        best_edge_continuations(vertices, edges, vertex_edges, edge_index, edge.b, edge.a);
+    let next_a = best_edge_continuations(vertices, edges, vertex_edges, edge_index, edge.a, edge.b);
+    let next_b = best_edge_continuations(vertices, edges, vertex_edges, edge_index, edge.b, edge.a);
     GpuNprEdge3d {
         a: edge.a as u32,
         b: edge.b as u32,
@@ -200,11 +197,17 @@ pub(crate) fn gpu_edge_from_mesh_edge(
         edge_id: edge.edge_id as u32,
         next_a: next_a[0].map(|index| index as u32).unwrap_or(u32::MAX),
         next_b: next_b[0].map(|index| index as u32).unwrap_or(u32::MAX),
-        degree_a: vertex_edges[edge.a].len().saturating_sub(1).min(u32::MAX as usize) as u32,
-        degree_b: vertex_edges[edge.b].len().saturating_sub(1).min(u32::MAX as usize) as u32,
+        degree_a: vertex_edges[edge.a]
+            .len()
+            .saturating_sub(1)
+            .min(u32::MAX as usize) as u32,
+        degree_b: vertex_edges[edge.b]
+            .len()
+            .saturating_sub(1)
+            .min(u32::MAX as usize) as u32,
         alt_next_a: next_a[1].map(|index| index as u32).unwrap_or(u32::MAX),
         alt_next_b: next_b[1].map(|index| index as u32).unwrap_or(u32::MAX),
-        _pad0: [0; 2],
+        _pad0: [0; 3],
     }
 }
 
@@ -288,11 +291,20 @@ fn vec3_to_gpu4(value: Vec3) -> [f32; 4] {
 }
 
 #[allow(dead_code)]
-fn normalized_depth(
-    depth: f32,
-    camera_settings: amigo_render_api::Camera3dRenderSettings,
-) -> f32 {
+fn normalized_depth(depth: f32, camera_settings: amigo_render_api::Camera3dRenderSettings) -> f32 {
     ((depth - camera_settings.near_clip)
         / (camera_settings.far_clip - camera_settings.near_clip).max(0.0001))
-        .clamp(0.0, 1.0)
+    .clamp(0.0, 1.0)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{GpuNprEdge3d, GpuNprPathState3d, GpuNprTriangle3d};
+
+    #[test]
+    fn gpu_npr_storage_structs_match_wgsl_array_stride() {
+        assert_eq!(std::mem::size_of::<GpuNprTriangle3d>(), 64);
+        assert_eq!(std::mem::size_of::<GpuNprEdge3d>(), 64);
+        assert_eq!(std::mem::size_of::<GpuNprPathState3d>(), 48);
+    }
 }

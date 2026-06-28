@@ -71,7 +71,9 @@ pub(crate) enum NprDebugOverlay3d {
 }
 
 impl NprDebugOverlay3d {
-    pub(crate) fn from_camera_debug_view(view: &amigo_render_api::CameraDebugView2d) -> Option<Self> {
+    pub(crate) fn from_camera_debug_view(
+        view: &amigo_render_api::CameraDebugView2d,
+    ) -> Option<Self> {
         match view.as_str() {
             "npr.line_kinds" | "npr.kinds" => Some(Self::LineKinds),
             "npr.raw_paths" | "npr.paths" => Some(Self::RawPaths),
@@ -124,6 +126,7 @@ struct NprStableBrushPath {
 enum NprStrokePassKind {
     Primary,
     Search,
+    Hatch,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -148,6 +151,8 @@ struct NprStrokeGesture {
 struct NprStrokePassPlan {
     kind: NprStrokePassKind,
     pass_index: u8,
+    active_t0: f32,
+    active_t1: f32,
     wobble_px: f32,
     width_multiplier: f32,
     color: ColorRgba,
@@ -259,10 +264,7 @@ pub struct NprStrokeFrameStats3d {
 }
 
 impl NprStrokeFrameStats3d {
-    pub(crate) fn record_strategy(
-        &mut self,
-        strategy: amigo_render_api::NprRenderStrategy3d,
-    ) {
+    pub(crate) fn record_strategy(&mut self, strategy: amigo_render_api::NprRenderStrategy3d) {
         match strategy {
             amigo_render_api::NprRenderStrategy3d::GpuRealtime => self.gpu_realtime_meshes += 1,
             amigo_render_api::NprRenderStrategy3d::CpuReference => self.cpu_reference_meshes += 1,
@@ -284,6 +286,7 @@ impl NprStrokeFrameStats3d {
         match pass.kind {
             NprStrokePassKind::Primary => self.primary_passes += 1,
             NprStrokePassKind::Search => self.search_passes += 1,
+            NprStrokePassKind::Hatch => {}
         }
     }
 
@@ -298,18 +301,13 @@ impl NprStrokeFrameStats3d {
         self.gpu_realtime_frame_jobs += other.gpu_realtime_frame_jobs;
         self.gpu_realtime_projected_vertices_capacity +=
             other.gpu_realtime_projected_vertices_capacity;
-        self.gpu_realtime_visible_segments_capacity +=
-            other.gpu_realtime_visible_segments_capacity;
-        self.gpu_realtime_endpoint_heads_capacity +=
-            other.gpu_realtime_endpoint_heads_capacity;
-        self.gpu_realtime_endpoint_entries_capacity +=
-            other.gpu_realtime_endpoint_entries_capacity;
+        self.gpu_realtime_visible_segments_capacity += other.gpu_realtime_visible_segments_capacity;
+        self.gpu_realtime_endpoint_heads_capacity += other.gpu_realtime_endpoint_heads_capacity;
+        self.gpu_realtime_endpoint_entries_capacity += other.gpu_realtime_endpoint_entries_capacity;
         self.gpu_realtime_path_links_capacity += other.gpu_realtime_path_links_capacity;
         self.gpu_realtime_path_states_capacity += other.gpu_realtime_path_states_capacity;
-        self.gpu_realtime_path_segments_capacity +=
-            other.gpu_realtime_path_segments_capacity;
-        self.gpu_realtime_stroke_segments_capacity +=
-            other.gpu_realtime_stroke_segments_capacity;
+        self.gpu_realtime_path_segments_capacity += other.gpu_realtime_path_segments_capacity;
+        self.gpu_realtime_stroke_segments_capacity += other.gpu_realtime_stroke_segments_capacity;
         if self.gpu_realtime_debug_mode.is_empty() {
             self.gpu_realtime_debug_mode = other.gpu_realtime_debug_mode.clone();
         } else if !other.gpu_realtime_debug_mode.is_empty()
@@ -426,6 +424,63 @@ pub(crate) fn append_mesh_triangles(
     }
 }
 
+pub(crate) fn append_mesh_black_mass_triangles(
+    triangles: &mut Vec<ProjectedTriangle>,
+    viewport: &Viewport,
+    camera: Transform3,
+    camera_settings: amigo_render_api::Camera3dRenderSettings,
+    geometry: &CachedMeshGeometry3d,
+    transform: Transform3,
+    material_ids: &[u32],
+    render_order: i32,
+) {
+    if material_ids.is_empty() {
+        return;
+    }
+    let black = ColorRgba::new(0.0, 0.0, 0.0, 1.0);
+    for triangle in &geometry.triangles {
+        let Some(material_id) = triangle.material_id else {
+            continue;
+        };
+        if !material_ids.contains(&material_id) {
+            continue;
+        }
+        let world = triangle
+            .indices
+            .map(|index| transform_point_3d(geometry.vertices[index], transform));
+        let projected = world.map(|point| {
+            project_point_with_camera(
+                point,
+                camera,
+                *viewport,
+                camera_settings.fov_y_degrees,
+                camera_settings.near_clip,
+                camera_settings.far_clip,
+            )
+        });
+        let [Some(a), Some(b), Some(c)] = projected else {
+            continue;
+        };
+        let normal = normalize(cross(sub(world[1], world[0]), sub(world[2], world[0])));
+        let center = triangle_center(world);
+        if dot(normal, sub(camera.translation, center)) <= 0.0 {
+            continue;
+        }
+        if !projected_triangle_is_sane([a.position, b.position, c.position]) {
+            continue;
+        }
+        if !projected_triangle_overlaps_viewport([a.position, b.position, c.position]) {
+            continue;
+        }
+        triangles.push(ProjectedTriangle {
+            points: [a.position, b.position, c.position],
+            color: black,
+            depth: (a.depth + b.depth + c.depth) / 3.0,
+            render_order,
+        });
+    }
+}
+
 #[cfg(test)]
 pub(crate) fn append_mesh_npr_line_vertices(
     vertices: &mut Vec<ColorVertex>,
@@ -473,13 +528,8 @@ pub(crate) fn append_mesh_npr_line_vertices_with_history_and_stats(
     let paths = path_build_result.paths;
     let path_build_us = path_build_start.elapsed().as_secs_f64() * 1_000_000.0;
     let stabilize_start = std::time::Instant::now();
-    let stabilized = stabilize_npr_paths_for_entity(
-        history,
-        frame_index,
-        entity_name,
-        settings,
-        paths,
-    );
+    let stabilized =
+        stabilize_npr_paths_for_entity(history, frame_index, entity_name, settings, paths);
     let stabilize_us = stabilize_start.elapsed().as_secs_f64() * 1_000_000.0;
     let mut stats = NprStrokeFrameStats3d {
         paths: stabilized.len(),
@@ -699,6 +749,7 @@ fn collect_npr_edge_fragments_for_mesh(
     if worker_count <= 1 || geometry.edges.len() < 4096 {
         return collect_npr_edge_fragments_for_chunk(
             &geometry.edges,
+            &geometry.triangles,
             viewport,
             settings,
             visibility,
@@ -720,6 +771,7 @@ fn collect_npr_edge_fragments_for_mesh(
                     chunk_index,
                     collect_npr_edge_fragments_for_chunk(
                         chunk,
+                        &geometry.triangles,
                         viewport,
                         settings,
                         visibility,
@@ -764,6 +816,7 @@ fn collect_npr_edge_fragments_for_mesh(
 
 fn collect_npr_edge_fragments_for_chunk(
     edges: &[MeshEdge3d],
+    triangles: &[MeshTriangle3d],
     viewport: &Viewport,
     settings: &amigo_render_api::NprLineSettings3d,
     visibility: &NprFaceVisibilityBuffer,
@@ -821,9 +874,9 @@ fn collect_npr_edge_fragments_for_chunk(
                 .filter_map(|face| face_view_alignment.get(face).copied())
                 .fold(f32::INFINITY, f32::min)
                 <= 0.35;
-        let Some(kind) =
-            npr_line_kind_for_edge(settings, boundary, silhouette, crease, seam, suggestive, contact)
-        else {
+        let Some(kind) = npr_line_kind_for_edge(
+            settings, boundary, silhouette, crease, seam, suggestive, contact,
+        ) else {
             continue;
         };
         let Some(a) = projected_vertices.get(edge.a).and_then(|point| *point) else {
@@ -836,7 +889,8 @@ fn collect_npr_edge_fragments_for_chunk(
             continue;
         }
         let screen_length = screen_segment_length_px(a.position, b.position, viewport);
-        if screen_length < settings.min_screen_length_px.max(0.0) {
+        let min_screen_length_px = npr_edge_min_screen_length_px(settings, edge, triangles);
+        if screen_length < min_screen_length_px {
             continue;
         }
         visible_edges += 1;
@@ -848,7 +902,7 @@ fn collect_npr_edge_fragments_for_chunk(
             a,
             b,
             viewport,
-            settings.min_screen_length_px,
+            min_screen_length_px,
         ));
     }
 
@@ -856,6 +910,33 @@ fn collect_npr_edge_fragments_for_chunk(
         fragments,
         visible_edges,
     }
+}
+
+fn npr_edge_min_screen_length_px(
+    settings: &amigo_render_api::NprLineSettings3d,
+    edge: &MeshEdge3d,
+    triangles: &[MeshTriangle3d],
+) -> f32 {
+    let base = settings.min_screen_length_px.max(0.0);
+    if npr_edge_touches_material_ids(edge, triangles, &settings.ink_detail_material_ids) {
+        base * 0.55
+    } else {
+        base
+    }
+}
+
+fn npr_edge_touches_material_ids(
+    edge: &MeshEdge3d,
+    triangles: &[MeshTriangle3d],
+    material_ids: &[u32],
+) -> bool {
+    !material_ids.is_empty()
+        && edge.faces.iter().copied().any(|face| {
+            triangles
+                .get(face)
+                .and_then(|triangle| triangle.material_id)
+                .is_some_and(|material_id| material_ids.contains(&material_id))
+        })
 }
 
 #[cfg(test)]
@@ -871,8 +952,9 @@ fn append_npr_paths_as_vertices(
     };
     for path in paths {
         stats.record_path_kind(path.kind);
-        let _ =
-            append_npr_styled_path_vertices(vertices, None, viewport, path, settings, None, &mut stats);
+        let _ = append_npr_styled_path_vertices(
+            vertices, None, viewport, path, settings, None, &mut stats,
+        );
     }
     stats
 }
@@ -905,17 +987,16 @@ fn stabilize_npr_paths_for_entity(
         } else {
             best_npr_previous_path_match(&history.paths, &consumed_previous_ids, &path)
         };
-        let blended = if let (true, Some(previous_id)) =
-            (temporal_path_smoothing, matched_previous_id)
-        {
-            let previous = history
-                .paths
-                .get(&previous_id)
-                .expect("matched NPR history key should exist");
-            blend_npr_stroke_path(&previous.path, path, settings.temporal_stability)
-        } else {
-            path
-        };
+        let blended =
+            if let (true, Some(previous_id)) = (temporal_path_smoothing, matched_previous_id) {
+                let previous = history
+                    .paths
+                    .get(&previous_id)
+                    .expect("matched NPR history key should exist");
+                blend_npr_stroke_path(&previous.path, path, settings.temporal_stability)
+            } else {
+                path
+            };
         let cached_plan = matched_previous_id
             .and_then(|previous_id| history.paths.get(&previous_id))
             .and_then(|state| state.cached_plan.clone());
@@ -989,8 +1070,7 @@ fn best_npr_previous_path_match(
                 .map(|score| (*path_id, score))
         })
         .min_by(|(_, left), (_, right)| {
-            left.partial_cmp(right)
-                .unwrap_or(std::cmp::Ordering::Equal)
+            left.partial_cmp(right).unwrap_or(std::cmp::Ordering::Equal)
         })
         .map(|(path_id, _)| path_id)
 }
@@ -1058,10 +1138,10 @@ fn npr_path_endpoint_distance_score(previous: &NprStrokePath, current: &NprStrok
     let Some(current_end) = current.points.last().copied() else {
         return f32::INFINITY;
     };
-    let forward = distance_vec2(previous_start, current_start)
-        + distance_vec2(previous_end, current_end);
-    let reversed = distance_vec2(previous_start, current_end)
-        + distance_vec2(previous_end, current_start);
+    let forward =
+        distance_vec2(previous_start, current_start) + distance_vec2(previous_end, current_end);
+    let reversed =
+        distance_vec2(previous_start, current_end) + distance_vec2(previous_end, current_start);
     forward.min(reversed) * 0.5
 }
 
@@ -1080,7 +1160,12 @@ fn blend_npr_stroke_path(
         .points
         .iter()
         .zip(current.points.iter())
-        .map(|(prev, curr)| Vec2::new(curr.x * (1.0 - hold) + prev.x * hold, curr.y * (1.0 - hold) + prev.y * hold))
+        .map(|(prev, curr)| {
+            Vec2::new(
+                curr.x * (1.0 - hold) + prev.x * hold,
+                curr.y * (1.0 - hold) + prev.y * hold,
+            )
+        })
         .collect::<Vec<_>>();
     let arc_lengths_px = current.arc_lengths_px.clone();
     NprStrokePath {
@@ -1091,10 +1176,7 @@ fn blend_npr_stroke_path(
     }
 }
 
-fn prune_stale_npr_history(
-    history: &mut BTreeMap<u64, NprTemporalPathState3d>,
-    frame_index: u64,
-) {
+fn prune_stale_npr_history(history: &mut BTreeMap<u64, NprTemporalPathState3d>, frame_index: u64) {
     let stale = history
         .iter()
         .filter_map(|(key, state)| {
@@ -1117,7 +1199,8 @@ impl WgpuSceneRenderer {
             return Arc::clone(cached);
         }
 
-        let geometry = Arc::new(mesh_geometry_from_asset(assets, mesh_asset).unwrap_or_else(cube_geometry));
+        let geometry =
+            Arc::new(mesh_geometry_from_asset(assets, mesh_asset).unwrap_or_else(cube_geometry));
         self.mesh_3d_geometry_cache
             .insert(cache_key, Arc::clone(&geometry));
         geometry
@@ -1149,48 +1232,31 @@ fn load_glb_geometry(path: &std::path::Path) -> Result<CachedMeshGeometry3d, glt
     let mut vertices = Vec::new();
     let mut triangles = Vec::new();
 
-    for mesh in document.meshes() {
-        for primitive in mesh.primitives() {
-            let material_id = primitive.material().index().map(|index| index as u32);
-            let reader = primitive
-                .reader(|buffer| buffers.get(buffer.index()).map(|data| data.0.as_slice()));
-            let Some(positions) = reader.read_positions() else {
-                continue;
-            };
-            let base_index = vertices.len();
-            vertices
-                .extend(positions.map(|position| Vec3::new(position[0], position[1], position[2])));
-            if let Some(indices) = reader.read_indices() {
-                let indices = indices.into_u32().collect::<Vec<_>>();
-                for chunk in indices.chunks_exact(3) {
-                    push_imported_triangle(
-                        &mut triangles,
-                        &vertices,
-                        [
-                            base_index + chunk[0] as usize,
-                            base_index + chunk[1] as usize,
-                            base_index + chunk[2] as usize,
-                        ],
-                        material_id,
-                    );
-                }
-            } else {
-                let count = vertices.len() - base_index;
-                for chunk_start in (0..count).step_by(3) {
-                    if chunk_start + 2 >= count {
-                        break;
-                    }
-                    push_imported_triangle(
-                        &mut triangles,
-                        &vertices,
-                        [
-                            base_index + chunk_start,
-                            base_index + chunk_start + 1,
-                            base_index + chunk_start + 2,
-                        ],
-                        material_id,
-                    );
-                }
+    if let Some(scene) = document
+        .default_scene()
+        .or_else(|| document.scenes().next())
+    {
+        for node in scene.nodes() {
+            append_gltf_node_geometry(
+                &mut vertices,
+                &mut triangles,
+                &buffers,
+                node,
+                GltfNodeTransform3d::IDENTITY,
+            );
+        }
+    }
+
+    if vertices.is_empty() {
+        for mesh in document.meshes() {
+            for primitive in mesh.primitives() {
+                append_gltf_primitive_geometry(
+                    &mut vertices,
+                    &mut triangles,
+                    &buffers,
+                    primitive,
+                    GltfNodeTransform3d::IDENTITY,
+                );
             }
         }
     }
@@ -1203,6 +1269,170 @@ fn load_glb_geometry(path: &std::path::Path) -> Result<CachedMeshGeometry3d, glt
         triangles,
         edges,
     })
+}
+
+fn append_gltf_node_geometry(
+    vertices: &mut Vec<Vec3>,
+    triangles: &mut Vec<MeshTriangle3d>,
+    buffers: &[gltf::buffer::Data],
+    node: gltf::Node<'_>,
+    parent_transform: GltfNodeTransform3d,
+) {
+    let node_transform = parent_transform.then(GltfNodeTransform3d::from_node(&node));
+    if let Some(mesh) = node.mesh() {
+        for primitive in mesh.primitives() {
+            append_gltf_primitive_geometry(vertices, triangles, buffers, primitive, node_transform);
+        }
+    }
+    for child in node.children() {
+        append_gltf_node_geometry(vertices, triangles, buffers, child, node_transform);
+    }
+}
+
+fn append_gltf_primitive_geometry(
+    vertices: &mut Vec<Vec3>,
+    triangles: &mut Vec<MeshTriangle3d>,
+    buffers: &[gltf::buffer::Data],
+    primitive: gltf::Primitive<'_>,
+    transform: GltfNodeTransform3d,
+) {
+    let material_id = primitive.material().index().map(|index| index as u32);
+    let reader =
+        primitive.reader(|buffer| buffers.get(buffer.index()).map(|data| data.0.as_slice()));
+    let Some(positions) = reader.read_positions() else {
+        return;
+    };
+    let base_index = vertices.len();
+    vertices.extend(positions.map(|position| {
+        transform.transform_point(Vec3::new(position[0], position[1], position[2]))
+    }));
+    if let Some(indices) = reader.read_indices() {
+        let indices = indices.into_u32().collect::<Vec<_>>();
+        for chunk in indices.chunks_exact(3) {
+            push_imported_triangle(
+                triangles,
+                vertices,
+                [
+                    base_index + chunk[0] as usize,
+                    base_index + chunk[1] as usize,
+                    base_index + chunk[2] as usize,
+                ],
+                material_id,
+            );
+        }
+    } else {
+        let count = vertices.len() - base_index;
+        for chunk_start in (0..count).step_by(3) {
+            if chunk_start + 2 >= count {
+                break;
+            }
+            push_imported_triangle(
+                triangles,
+                vertices,
+                [
+                    base_index + chunk_start,
+                    base_index + chunk_start + 1,
+                    base_index + chunk_start + 2,
+                ],
+                material_id,
+            );
+        }
+    }
+}
+
+#[derive(Clone, Copy)]
+struct GltfNodeTransform3d {
+    matrix: [f32; 16],
+}
+
+impl GltfNodeTransform3d {
+    const IDENTITY: Self = Self {
+        matrix: [
+            1.0, 0.0, 0.0, 0.0, //
+            0.0, 1.0, 0.0, 0.0, //
+            0.0, 0.0, 1.0, 0.0, //
+            0.0, 0.0, 0.0, 1.0,
+        ],
+    };
+
+    fn from_node(node: &gltf::Node<'_>) -> Self {
+        let (translation, rotation, scale) = node.transform().decomposed();
+        let [mut x, mut y, mut z, mut w] = rotation;
+        let length = (x * x + y * y + z * z + w * w).sqrt();
+        if length > f32::EPSILON {
+            x /= length;
+            y /= length;
+            z /= length;
+            w /= length;
+        } else {
+            x = 0.0;
+            y = 0.0;
+            z = 0.0;
+            w = 1.0;
+        }
+
+        let xx = x * x;
+        let yy = y * y;
+        let zz = z * z;
+        let xy = x * y;
+        let xz = x * z;
+        let yz = y * z;
+        let wx = w * x;
+        let wy = w * y;
+        let wz = w * z;
+        let [sx, sy, sz] = scale;
+
+        Self {
+            matrix: [
+                (1.0 - 2.0 * (yy + zz)) * sx,
+                (2.0 * (xy - wz)) * sy,
+                (2.0 * (xz + wy)) * sz,
+                translation[0],
+                (2.0 * (xy + wz)) * sx,
+                (1.0 - 2.0 * (xx + zz)) * sy,
+                (2.0 * (yz - wx)) * sz,
+                translation[1],
+                (2.0 * (xz - wy)) * sx,
+                (2.0 * (yz + wx)) * sy,
+                (1.0 - 2.0 * (xx + yy)) * sz,
+                translation[2],
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+            ],
+        }
+    }
+
+    fn then(self, child: Self) -> Self {
+        let mut out = [0.0; 16];
+        for row in 0..4 {
+            for col in 0..4 {
+                out[row * 4 + col] = self.matrix[row * 4] * child.matrix[col]
+                    + self.matrix[row * 4 + 1] * child.matrix[4 + col]
+                    + self.matrix[row * 4 + 2] * child.matrix[8 + col]
+                    + self.matrix[row * 4 + 3] * child.matrix[12 + col];
+            }
+        }
+        Self { matrix: out }
+    }
+
+    fn transform_point(self, point: Vec3) -> Vec3 {
+        Vec3::new(
+            self.matrix[0] * point.x
+                + self.matrix[1] * point.y
+                + self.matrix[2] * point.z
+                + self.matrix[3],
+            self.matrix[4] * point.x
+                + self.matrix[5] * point.y
+                + self.matrix[6] * point.z
+                + self.matrix[7],
+            self.matrix[8] * point.x
+                + self.matrix[9] * point.y
+                + self.matrix[10] * point.z
+                + self.matrix[11],
+        )
+    }
 }
 
 fn push_imported_triangle(
@@ -1844,7 +2074,10 @@ fn push_npr_stroke_path(
             .collect::<Vec<_>>();
         let sorted_source_edges = sorted_npr_source_edges(&source_edges);
         let path_id = stable_path_id(kind, &source_edges);
-        let avg_depth = fragments.iter().map(|fragment| fragment.avg_depth).sum::<f32>()
+        let avg_depth = fragments
+            .iter()
+            .map(|fragment| fragment.avg_depth)
+            .sum::<f32>()
             / fragments.len() as f32;
         paths.push(NprStrokePath {
             path_id,
@@ -1932,10 +2165,20 @@ fn best_npr_path_continuation(
         .copied()
         .filter(|entry| !visited[entry.fragment_index])
         .min_by(|left, right| {
-            let left_score =
-                npr_path_join_score(nodes[left.fragment_index].fragment, left.endpoint, join_key, entry_tangent, viewport);
-            let right_score =
-                npr_path_join_score(nodes[right.fragment_index].fragment, right.endpoint, join_key, entry_tangent, viewport);
+            let left_score = npr_path_join_score(
+                nodes[left.fragment_index].fragment,
+                left.endpoint,
+                join_key,
+                entry_tangent,
+                viewport,
+            );
+            let right_score = npr_path_join_score(
+                nodes[right.fragment_index].fragment,
+                right.endpoint,
+                join_key,
+                entry_tangent,
+                viewport,
+            );
             left_score
                 .partial_cmp(&right_score)
                 .unwrap_or(std::cmp::Ordering::Equal)
@@ -2012,8 +2255,8 @@ fn build_npr_stable_brush_path(path: &NprStrokePath, viewport: &Viewport) -> Npr
 
         let steps = (segment_length / NPR_BRUSH_RESAMPLE_SPACING_PX).floor() as usize;
         for step in 1..=steps {
-            let local_t = (step as f32 * NPR_BRUSH_RESAMPLE_SPACING_PX / segment_length)
-                .clamp(0.0, 1.0);
+            let local_t =
+                (step as f32 * NPR_BRUSH_RESAMPLE_SPACING_PX / segment_length).clamp(0.0, 1.0);
             if local_t >= 1.0 {
                 continue;
             }
@@ -2074,17 +2317,11 @@ fn npr_depth_alpha_multiplier(
     crate::renderer::npr_depth_alpha_multiplier(importance, settings)
 }
 
-fn npr_pressure_multiplier(
-    t: f32,
-    settings: &amigo_render_api::NprLineSettings3d,
-) -> f32 {
+fn npr_pressure_multiplier(t: f32, settings: &amigo_render_api::NprLineSettings3d) -> f32 {
     crate::renderer::npr_pressure_multiplier(t, settings)
 }
 
-fn npr_alpha_pressure_multiplier(
-    t: f32,
-    settings: &amigo_render_api::NprLineSettings3d,
-) -> f32 {
+fn npr_alpha_pressure_multiplier(t: f32, settings: &amigo_render_api::NprLineSettings3d) -> f32 {
     crate::renderer::npr_alpha_pressure_multiplier(t, settings)
 }
 
@@ -2117,10 +2354,9 @@ fn npr_endpoint_lock(
     path_length_px: f32,
     settings: &amigo_render_api::NprLineSettings3d,
 ) -> f32 {
-    let start_t = (settings.endpoint_lock_start_px.max(0.0) / path_length_px.max(1.0))
-        .clamp(0.0, 0.45);
-    let end_t = (settings.endpoint_lock_end_px.max(0.0) / path_length_px.max(1.0))
-        .clamp(0.0, 0.45);
+    let start_t =
+        (settings.endpoint_lock_start_px.max(0.0) / path_length_px.max(1.0)).clamp(0.0, 0.45);
+    let end_t = (settings.endpoint_lock_end_px.max(0.0) / path_length_px.max(1.0)).clamp(0.0, 0.45);
     if start_t > 0.0 && t <= start_t {
         (t / start_t).clamp(0.0, 1.0)
     } else if end_t > 0.0 && t >= 1.0 - end_t {
@@ -2196,14 +2432,15 @@ fn build_npr_stroke_pass_plan(
     gesture: NprStrokeGesture,
 ) -> Vec<NprStrokePassPlan> {
     let primary_passes = settings.passes.min(8);
-    let mut passes = Vec::with_capacity(
-        primary_passes as usize + settings.search_line_count as usize,
-    );
+    let mut passes =
+        Vec::with_capacity(primary_passes as usize + settings.search_line_count as usize + 1);
 
     for pass in 0..primary_passes {
         passes.push(NprStrokePassPlan {
             kind: NprStrokePassKind::Primary,
             pass_index: pass,
+            active_t0: 0.0,
+            active_t1: 1.0,
             wobble_px: gesture.dynamics.base_wobble_px
                 * npr_pass_jitter_multiplier(primary_passes, pass),
             width_multiplier: npr_pass_width_multiplier(primary_passes, pass),
@@ -2228,6 +2465,8 @@ fn build_npr_stroke_pass_plan(
         passes.push(NprStrokePassPlan {
             kind: NprStrokePassKind::Search,
             pass_index: primary_passes.saturating_add(search_pass),
+            active_t0: 0.0,
+            active_t1: 1.0,
             wobble_px: gesture.dynamics.base_wobble_px * 1.18,
             width_multiplier: 0.78,
             color: ColorRgba::new(
@@ -2246,7 +2485,86 @@ fn build_npr_stroke_pass_plan(
         });
     }
 
+    if let Some(hatch_pass) =
+        build_npr_sparse_character_hatch_pass(path, settings, gesture, primary_passes, search_count)
+    {
+        passes.push(hatch_pass);
+    }
+
     passes
+}
+
+fn build_npr_sparse_character_hatch_pass(
+    path: &NprStrokePath,
+    settings: &amigo_render_api::NprLineSettings3d,
+    gesture: NprStrokeGesture,
+    primary_passes: u8,
+    search_count: u8,
+) -> Option<NprStrokePassPlan> {
+    if settings.pipeline.hatching_strategy
+        != amigo_render_api::NprHatchingStrategy3d::SparseCharacterHatching
+    {
+        return None;
+    }
+    if !(settings.pipeline.candidate_strategy
+        == amigo_render_api::NprCandidateStrategy3d::CharacterSemantic
+        || settings.pipeline.stroke_strategy == amigo_render_api::NprStrokeStrategy3d::AkiraInk
+        || matches!(
+            settings.pipeline.budget_strategy,
+            amigo_render_api::NprBudgetStrategy3d::FaceAndSilhouettePriority
+                | amigo_render_api::NprBudgetStrategy3d::CharacterReadability
+        ))
+    {
+        return None;
+    }
+    if !matches!(
+        path.kind,
+        NprLineKind::Crease | NprLineKind::Seam | NprLineKind::Feature
+    ) {
+        return None;
+    }
+    if !(8.0..=44.0).contains(&gesture.path_length_px) {
+        return None;
+    }
+
+    let roll = deterministic_noise(settings.seed, gesture.path_seed, 37, 0);
+    let chance = if settings.pipeline.stroke_strategy == amigo_render_api::NprStrokeStrategy3d::AkiraInk {
+        0.30
+    } else {
+        0.18
+    };
+    if roll >= chance {
+        return None;
+    }
+
+    let center = (0.42
+        + deterministic_signed_noise(settings.seed, gesture.path_seed, 41, 0) * 0.18)
+        .clamp(0.25, 0.75);
+    let hatch_length_px =
+        7.0 + deterministic_noise(settings.seed, gesture.path_seed, 43, 0) * 9.0;
+    let half_t = (hatch_length_px * 0.5 / gesture.path_length_px.max(1.0)).clamp(0.04, 0.28);
+    let active_t0 = (center - half_t).clamp(0.0, 1.0);
+    let active_t1 = (center + half_t).clamp(active_t0, 1.0);
+    if active_t1 - active_t0 <= 0.02 {
+        return None;
+    }
+
+    let pass_index = primary_passes.saturating_add(search_count);
+    Some(NprStrokePassPlan {
+        kind: NprStrokePassKind::Hatch,
+        pass_index,
+        active_t0,
+        active_t1,
+        wobble_px: gesture.dynamics.base_wobble_px * 0.55,
+        width_multiplier: 0.24,
+        color: ColorRgba::new(
+            settings.ink_color.r,
+            settings.ink_color.g,
+            settings.ink_color.b,
+            (settings.ink_color.a * gesture.style.alpha_multiplier * 0.38).clamp(0.0, 0.58),
+        ),
+        overshoot_px: 0.0,
+    })
 }
 
 fn build_npr_dropout_mask(
@@ -2258,10 +2576,9 @@ fn build_npr_dropout_mask(
     if !gesture.dynamics.protected_silhouette && gesture.style.dropout > 0.0 {
         let complexity_multiplier =
             (1.0 - (gesture.dynamics.edge_complexity.min(12.0) - 1.0) * 0.01).max(0.0);
-        let effective_dropout = (gesture.style.dropout
-            * npr_tool_dropout_multiplier(settings)
-            * complexity_multiplier)
-            .clamp(0.0, 0.85);
+        let effective_dropout =
+            (gesture.style.dropout * npr_tool_dropout_multiplier(settings) * complexity_multiplier)
+                .clamp(0.0, 0.85);
         let path_length = gesture.path_length_px.max(1.0);
         let interval_count = (effective_dropout * path_length / 64.0).ceil() as usize;
         let interval_count = interval_count.min(8);
@@ -2345,6 +2662,10 @@ fn npr_stroke_plan_settings_signature(settings: &amigo_render_api::NprLineSettin
     hash = mix_u64(hash, settings.passes as u64);
     hash = mix_u64(hash, settings.search_line_count as u64);
     hash = mix_u64(hash, settings.search_line_alpha.to_bits() as u64);
+    hash = mix_u64(hash, settings.pipeline.candidate_strategy as u64);
+    hash = mix_u64(hash, settings.pipeline.stroke_strategy as u64);
+    hash = mix_u64(hash, settings.pipeline.hatching_strategy as u64);
+    hash = mix_u64(hash, settings.pipeline.budget_strategy as u64);
     hash = mix_u64(hash, settings.dropout.to_bits() as u64);
     hash = mix_u64(hash, settings.dropout_segment_min_px.to_bits() as u64);
     hash = mix_u64(hash, settings.tool_dropout_multiplier.to_bits() as u64);
@@ -2369,7 +2690,10 @@ impl NprDropoutMask {
         segment_t1: f32,
         segment_length_px: f32,
     ) -> bool {
-        if pass.kind == NprStrokePassKind::Search || segment_length_px <= f32::EPSILON {
+        if pass.kind == NprStrokePassKind::Search
+            || pass.kind == NprStrokePassKind::Hatch
+            || segment_length_px <= f32::EPSILON
+        {
             return true;
         }
         !self.intervals.iter().any(|interval| {
@@ -2399,7 +2723,8 @@ fn append_npr_styled_path_vertices(
         return build_empty_npr_cached_stroke_plan(settings);
     }
     stats.brush_samples += brush_path.samples.len();
-    let plan = if let Some(plan) = cached_plan.filter(|plan| plan.is_compatible(settings, gesture)) {
+    let plan = if let Some(plan) = cached_plan.filter(|plan| plan.is_compatible(settings, gesture))
+    {
         stats.cached_plan_hits += 1;
         plan.clone()
     } else {
@@ -2417,8 +2742,21 @@ fn append_npr_styled_path_vertices(
                 brush_path.samples[point_index].point,
                 viewport,
             );
-            let segment_t0 = brush_path.samples[point_index - 1].arc_length_px / brush_path.length_px;
+            let segment_t0 =
+                brush_path.samples[point_index - 1].arc_length_px / brush_path.length_px;
             let segment_t1 = brush_path.samples[point_index].arc_length_px / brush_path.length_px;
+            if segment_t1 < pass.active_t0 || segment_t0 > pass.active_t1 {
+                let before_vertices = vertices.len();
+                if let Some(segments) = npr_stroke_segments.as_deref_mut() {
+                    append_npr_stroke_strip_segments(segments, viewport, &strip_samples);
+                    stats.strip_vertices += strip_samples.len().saturating_sub(1) * 6;
+                } else {
+                    append_npr_stroke_strip_vertices(vertices, viewport, &strip_samples);
+                    stats.strip_vertices += vertices.len().saturating_sub(before_vertices);
+                }
+                strip_samples.clear();
+                continue;
+            }
             if !plan
                 .dropout
                 .keeps_segment(pass, segment_t0, segment_t1, segment_length)
@@ -2480,10 +2818,22 @@ fn append_npr_debug_path_vertices(
 ) {
     match overlay {
         NprDebugOverlay3d::LineKinds => {
-            append_npr_debug_polyline(vertices, viewport, &path.points, npr_line_kind_debug_color(path.kind), 2.0);
+            append_npr_debug_polyline(
+                vertices,
+                viewport,
+                &path.points,
+                npr_line_kind_debug_color(path.kind),
+                2.0,
+            );
         }
         NprDebugOverlay3d::RawPaths => {
-            append_npr_debug_polyline(vertices, viewport, &path.points, npr_path_id_debug_color(path.path_id), 1.5);
+            append_npr_debug_polyline(
+                vertices,
+                viewport,
+                &path.points,
+                npr_path_id_debug_color(path.path_id),
+                1.5,
+            );
         }
         NprDebugOverlay3d::Dropout => {
             append_npr_dropout_debug_vertices(vertices, viewport, path, settings);
@@ -2683,10 +3033,8 @@ fn npr_stroke_strip_sample(
         * npr_pressure_multiplier(distance_t, settings)
         * npr_taper_multiplier(distance_t, gesture.style.taper)
         * npr_distance_width_multiplier(gesture.importance, settings)
-        + width_noise
-            * settings.pressure_jitter
-            * npr_tool_pressure_jitter_multiplier(settings))
-        .max(0.25);
+        + width_noise * settings.pressure_jitter * npr_tool_pressure_jitter_multiplier(settings))
+    .max(0.25);
     let pass_offset = npr_pass_offset_px(brush_path.path_id, distance_t, settings, pass.pass_index);
     let color = ColorRgba::new(
         pass.color.r,
@@ -2696,7 +3044,7 @@ fn npr_stroke_strip_sample(
             * npr_alpha_pressure_multiplier(distance_t, settings)
             * npr_tool_alpha_multiplier(settings)
             * npr_depth_alpha_multiplier(gesture.importance, settings))
-            .clamp(0.0, 1.0),
+        .clamp(0.0, 1.0),
     );
 
     NprStrokeStripSample {
@@ -2889,7 +3237,8 @@ fn humanize_npr_brush_sample(
         arc_t * settings.micro_wobble_frequency.max(0.01) * 100.0 + 13.0,
         991,
     );
-    let tangent_scale = settings.local_angular_drift_degrees.to_radians().sin() * settings.humanization;
+    let tangent_scale =
+        settings.local_angular_drift_degrees.to_radians().sin() * settings.humanization;
     let px = point.x * viewport.half_width
         + normal.x * primary * wobble_px * endpoint_lock
         + normal.x * micro * micro_wobble_px * endpoint_lock
@@ -3170,21 +3519,13 @@ mod tests {
         }
     }
 
-    fn test_npr_path_with_kind(
-        id: u64,
-        kind: NprLineKind,
-        points: &[(f32, f32)],
-    ) -> NprStrokePath {
+    fn test_npr_path_with_kind(id: u64, kind: NprLineKind, points: &[(f32, f32)]) -> NprStrokePath {
         let mut path = test_npr_path(id, points);
         path.kind = kind;
         path
     }
 
-    fn test_npr_path_with_edges(
-        id: u64,
-        edges: Vec<u64>,
-        points: &[(f32, f32)],
-    ) -> NprStrokePath {
+    fn test_npr_path_with_edges(id: u64, edges: Vec<u64>, points: &[(f32, f32)]) -> NprStrokePath {
         let mut path = test_npr_path(id, points);
         path.sorted_source_edges = sorted_npr_source_edges(&edges);
         path.source_edges = edges;
@@ -3206,7 +3547,9 @@ mod tests {
             Some(NprDebugOverlay3d::Dropout)
         );
         assert_eq!(
-            NprDebugOverlay3d::from_camera_debug_view(&amigo_render_api::CameraDebugView2d::final_output()),
+            NprDebugOverlay3d::from_camera_debug_view(
+                &amigo_render_api::CameraDebugView2d::final_output()
+            ),
             None
         );
     }
@@ -3366,6 +3709,42 @@ mod tests {
     }
 
     #[test]
+    fn loads_playground_npr_khronos_male_full_character_geometry() {
+        let workspace_root = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .parent()
+            .and_then(|path| path.parent())
+            .and_then(|path| path.parent())
+            .expect("workspace root should exist")
+            .to_path_buf();
+        let path = workspace_root
+            .join("mods/playground-npr/source-models/khronos/male/source/rigged.glb");
+        let geometry =
+            load_glb_geometry(&path).expect("playground npr Khronos male glb should import");
+        let material_ids = geometry
+            .triangles
+            .iter()
+            .filter_map(|triangle| triangle.material_id)
+            .collect::<std::collections::BTreeSet<_>>();
+
+        assert!(
+            material_ids.contains(&0),
+            "body skin material should be imported"
+        );
+        assert!(
+            material_ids.contains(&4) && material_ids.contains(&5),
+            "hair materials should be imported"
+        );
+        assert!(
+            material_ids.contains(&6) && material_ids.contains(&13),
+            "face detail materials should be imported"
+        );
+        assert!(
+            geometry.triangles.len() > 10_000,
+            "full character should contain body, hair, and face triangles"
+        );
+    }
+
+    #[test]
     #[ignore = "manual NPR benchmark; run with --ignored --nocapture"]
     fn benchmark_playground_npr_soldier_rotation_cpu_stroke_workload() {
         let workspace_root = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -3514,15 +3893,13 @@ mod tests {
             }
 
             timings_us.sort_by(|left, right| {
-                left.partial_cmp(right)
-                    .unwrap_or(std::cmp::Ordering::Equal)
+                left.partial_cmp(right).unwrap_or(std::cmp::Ordering::Equal)
             });
             let measured = timings_us.len().max(1);
             let measured_f64 = measured as f64;
             let mean_us = timings_us.iter().sum::<f64>() / measured_f64;
             let median_us = timings_us[measured / 2];
-            let p95_us =
-                timings_us[((measured as f32 * 0.95).floor() as usize).min(measured - 1)];
+            let p95_us = timings_us[((measured as f32 * 0.95).floor() as usize).min(measured - 1)];
             let avg_paths = totals.paths as f64 / measured_f64;
             let avg_samples = totals.brush_samples as f64 / measured_f64;
             let avg_vertices = totals.strip_vertices as f64 / measured_f64;
@@ -3702,6 +4079,65 @@ mod tests {
         assert_eq!(
             npr_line_kind_for_edge(&settings, false, false, false, true, false, false),
             Some(NprLineKind::Seam)
+        );
+    }
+
+    #[test]
+    fn npr_ink_detail_material_edges_use_lower_cpu_length_threshold() {
+        let settings = amigo_render_api::NprLineSettings3d {
+            min_screen_length_px: 10.0,
+            ink_detail_material_ids: vec![7],
+            ..amigo_render_api::NprLineSettings3d::default()
+        };
+        let edge = MeshEdge3d {
+            edge_id: 1,
+            a: 0,
+            b: 1,
+            faces: vec![0, 1],
+            material_seam: false,
+        };
+        let triangles = vec![
+            MeshTriangle3d {
+                indices: [0, 1, 2],
+                normal: Vec3::new(0.0, 0.0, 1.0),
+                material_id: Some(7),
+            },
+            MeshTriangle3d {
+                indices: [1, 3, 2],
+                normal: Vec3::new(0.0, 0.0, 1.0),
+                material_id: Some(2),
+            },
+        ];
+
+        assert_eq!(
+            npr_edge_min_screen_length_px(&settings, &edge, &triangles),
+            5.5
+        );
+    }
+
+    #[test]
+    fn npr_non_ink_detail_material_edges_keep_cpu_length_threshold() {
+        let settings = amigo_render_api::NprLineSettings3d {
+            min_screen_length_px: 10.0,
+            ink_detail_material_ids: vec![7],
+            ..amigo_render_api::NprLineSettings3d::default()
+        };
+        let edge = MeshEdge3d {
+            edge_id: 1,
+            a: 0,
+            b: 1,
+            faces: vec![0],
+            material_seam: false,
+        };
+        let triangles = vec![MeshTriangle3d {
+            indices: [0, 1, 2],
+            normal: Vec3::new(0.0, 0.0, 1.0),
+            material_id: Some(2),
+        }];
+
+        assert_eq!(
+            npr_edge_min_screen_length_px(&settings, &edge, &triangles),
+            10.0
         );
     }
 
@@ -4124,21 +4560,22 @@ mod tests {
 
         assert!(brush_path.samples.len() > path.points.len());
         assert_eq!(brush_path.samples[0].point, path.points[0]);
-        assert_eq!(brush_path.samples.last().expect("last sample").point, path.points[1]);
-        assert!(brush_path
-            .samples
-            .windows(2)
-            .all(|window| window[1].arc_length_px >= window[0].arc_length_px));
+        assert_eq!(
+            brush_path.samples.last().expect("last sample").point,
+            path.points[1]
+        );
+        assert!(
+            brush_path
+                .samples
+                .windows(2)
+                .all(|window| window[1].arc_length_px >= window[0].arc_length_px)
+        );
     }
 
     #[test]
     fn npr_stroke_pass_plan_does_not_search_duplicate_silhouettes() {
         let silhouette = test_npr_path(910, &[(-0.5, 0.0), (0.5, 0.0)]);
-        let feature = test_npr_path_with_kind(
-            911,
-            NprLineKind::Crease,
-            &[(-0.5, 0.0), (0.5, 0.0)],
-        );
+        let feature = test_npr_path_with_kind(911, NprLineKind::Crease, &[(-0.5, 0.0), (0.5, 0.0)]);
         let settings = amigo_render_api::NprLineSettings3d {
             style_preset: amigo_render_api::NprStylePreset3d::RoughComicInk,
             stroke_tool: amigo_render_api::NprStrokeTool3d::Pencil,
@@ -4163,9 +4600,11 @@ mod tests {
         );
 
         assert_eq!(silhouette_plan.len(), 1);
-        assert!(silhouette_plan
-            .iter()
-            .all(|pass| pass.kind == NprStrokePassKind::Primary));
+        assert!(
+            silhouette_plan
+                .iter()
+                .all(|pass| pass.kind == NprStrokePassKind::Primary)
+        );
         assert_eq!(feature_plan.len(), 4);
         assert_eq!(
             feature_plan
@@ -4174,6 +4613,43 @@ mod tests {
                 .count(),
             3
         );
+    }
+
+    #[test]
+    fn npr_sparse_character_hatching_adds_short_cpu_hatch_pass_for_feature_lines() {
+        let settings = amigo_render_api::NprLineSettings3d {
+            pipeline: amigo_render_api::NprPipelineStrategies3d {
+                candidate_strategy: amigo_render_api::NprCandidateStrategy3d::CharacterSemantic,
+                stroke_strategy: amigo_render_api::NprStrokeStrategy3d::AkiraInk,
+                hatching_strategy: amigo_render_api::NprHatchingStrategy3d::SparseCharacterHatching,
+                budget_strategy: amigo_render_api::NprBudgetStrategy3d::FaceAndSilhouettePriority,
+                ..amigo_render_api::NprPipelineStrategies3d::default()
+            },
+            passes: 1,
+            search_line_count: 0,
+            width_px: 2.0,
+            seed: 101084,
+            ..amigo_render_api::NprLineSettings3d::default()
+        };
+
+        let hatch_plan = (900..1100)
+            .find_map(|path_id| {
+                let path = test_npr_path_with_kind(
+                    path_id,
+                    NprLineKind::Feature,
+                    &[(-0.03, 0.0), (0.03, 0.0)],
+                );
+                let plan =
+                    build_npr_stroke_pass_plan(&path, &settings, build_npr_stroke_gesture(&path, &settings));
+                plan.into_iter()
+                    .find(|pass| pass.kind == NprStrokePassKind::Hatch)
+            })
+            .expect("sparse hatching should deterministically select some feature paths");
+
+        assert!(hatch_plan.active_t0 >= 0.0);
+        assert!(hatch_plan.active_t1 <= 1.0);
+        assert!(hatch_plan.active_t1 - hatch_plan.active_t0 < 0.8);
+        assert!(hatch_plan.color.a < settings.ink_color.a);
     }
 
     #[test]
@@ -4233,13 +4709,19 @@ mod tests {
             &mut second_stats,
         );
 
-        assert_eq!(first_plan.settings_signature, second_plan.settings_signature);
+        assert_eq!(
+            first_plan.settings_signature,
+            second_plan.settings_signature
+        );
         assert_eq!(first_plan.length_bucket_px, second_plan.length_bucket_px);
         assert_eq!(
             first_plan.dropout.intervals.len(),
             second_plan.dropout.intervals.len()
         );
-        assert_eq!(vertex_signature(&vertices), vertex_signature(&second_vertices));
+        assert_eq!(
+            vertex_signature(&vertices),
+            vertex_signature(&second_vertices)
+        );
     }
 
     #[test]

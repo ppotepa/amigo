@@ -1,14 +1,3 @@
-struct GpuNprVertex3d {
-    position: vec4<f32>,
-}
-
-struct GpuNprTriangle3d {
-    indices: vec4<u32>,
-    normal: vec4<f32>,
-    material_id: u32,
-    _pad0: vec3<u32>,
-}
-
 struct GpuNprEdge3d {
     a: u32,
     b: u32,
@@ -24,11 +13,6 @@ struct GpuNprEdge3d {
     alt_next_a: u32,
     alt_next_b: u32,
     _pad0: vec2<u32>,
-}
-
-struct GpuNprProjectedVertex3d {
-    ndc_depth: vec4<f32>,
-    screen: vec4<f32>,
 }
 
 struct GpuNprVisibleSegment3d {
@@ -95,6 +79,9 @@ struct GpuNprFrameUniforms3d {
     params16: vec4<f32>,
     ink_color: vec4<f32>,
     seed: vec4<u32>,
+    pipeline0: vec4<u32>,
+    pipeline1: vec4<u32>,
+    material_roles0: vec4<u32>,
 }
 
 const KIND_NONE: u32 = 0u;
@@ -107,84 +94,130 @@ const KIND_CONTACT: u32 = 6u;
 const PATH_FLAG_EMIT: u32 = 1u;
 const PATH_FLAG_CONNECTED_START: u32 = 2u;
 const PATH_FLAG_CONNECTED_END: u32 = 4u;
+const CANDIDATE_CHARACTER_SEMANTIC: u32 = 1u;
+const STROKE_AKIRA_INK: u32 = 1u;
+const HATCHING_SPARSE_CHARACTER: u32 = 1u;
+const BUDGET_FACE_SILHOUETTE_PRIORITY: u32 = 1u;
+const BUDGET_CHARACTER_READABILITY: u32 = 2u;
 
-@group(0) @binding(0) var<storage, read> vertices: array<GpuNprVertex3d>;
-@group(0) @binding(1) var<storage, read> triangles: array<GpuNprTriangle3d>;
 @group(0) @binding(2) var<storage, read> edges: array<GpuNprEdge3d>;
-@group(0) @binding(3) var<storage, read_write> projected_vertices: array<GpuNprProjectedVertex3d>;
-@group(0) @binding(5) var<storage, read_write> visible_segments: array<GpuNprVisibleSegment3d>;
+@group(0) @binding(5) var<storage, read> visible_segments: array<GpuNprVisibleSegment3d>;
 @group(0) @binding(6) var<storage, read_write> stroke_segments: array<NprStrokeSegmentVertex>;
 @group(0) @binding(8) var<uniform> uniforms: GpuNprFrameUniforms3d;
 @group(0) @binding(9) var<storage, read_write> indirect_args: array<atomic<u32>>;
-@group(0) @binding(10) var<storage, read_write> path_links: array<GpuNprPathLink3d>;
-@group(0) @binding(13) var<storage, read_write> path_segments: array<GpuNprPathSegment3d>;
+@group(0) @binding(13) var<storage, read> path_segments: array<GpuNprPathSegment3d>;
 
-fn rotate_euler(v: vec3<f32>, rotation: vec3<f32>) -> vec3<f32> {
-    let cx = cos(rotation.x);
-    let sx = sin(rotation.x);
-    let cy = cos(rotation.y);
-    let sy = sin(rotation.y);
-    let cz = cos(rotation.z);
-    let sz = sin(rotation.z);
-
-    let rx = vec3<f32>(v.x, v.y * cx - v.z * sx, v.y * sx + v.z * cx);
-    let ry = vec3<f32>(rx.x * cy + rx.z * sy, rx.y, -rx.x * sy + rx.z * cy);
-    return vec3<f32>(ry.x * cz - ry.y * sz, ry.x * sz + ry.y * cz, ry.z);
+fn active_edge_count() -> u32 {
+    return min(uniforms.pipeline1.w, u32(arrayLength(&visible_segments)));
 }
 
-fn transform_vertex(vertex_index: u32) -> vec3<f32> {
-    let local = vertices[vertex_index].position.xyz * uniforms.model_scale.xyz;
-    return rotate_euler(local, uniforms.model_rotation.xyz) + uniforms.model_translation.xyz;
+fn uses_character_semantic_candidates() -> bool {
+    return uniforms.pipeline0.x == CANDIDATE_CHARACTER_SEMANTIC;
 }
 
-fn transformed_normal(face_index: u32) -> vec3<f32> {
-    if (face_index >= u32(arrayLength(&triangles))) {
-        return vec3<f32>(0.0, 0.0, 0.0);
-    }
-    let triangle = triangles[face_index];
-    let a = transform_vertex(triangle.indices.x);
-    let b = transform_vertex(triangle.indices.y);
-    let c = transform_vertex(triangle.indices.z);
-    return normalize(cross(b - a, c - a));
+fn uses_akira_ink() -> bool {
+    return uniforms.pipeline0.z == STROKE_AKIRA_INK;
 }
 
-fn triangle_center(face_index: u32) -> vec3<f32> {
-    if (face_index >= u32(arrayLength(&triangles))) {
-        return uniforms.model_translation.xyz;
-    }
-    let triangle = triangles[face_index];
-    let a = transform_vertex(triangle.indices.x);
-    let b = transform_vertex(triangle.indices.y);
-    let c = transform_vertex(triangle.indices.z);
-    return (a + b + c) / 3.0;
+fn uses_character_budget() -> bool {
+    return uniforms.pipeline1.y == BUDGET_FACE_SILHOUETTE_PRIORITY
+        || uniforms.pipeline1.y == BUDGET_CHARACTER_READABILITY;
 }
 
-fn triangle_front(face_index: u32) -> bool {
-    let world_normal = transformed_normal(face_index);
-    let to_camera = normalize(uniforms.camera_translation.xyz - triangle_center(face_index));
-    return dot(world_normal, to_camera) > 0.0;
+fn uses_sparse_character_hatching() -> bool {
+    return uniforms.pipeline1.x == HATCHING_SPARSE_CHARACTER;
 }
 
-fn feature_edge(edge: GpuNprEdge3d) -> bool {
-    if (edge.face_count < 2u || edge.face0 >= u32(arrayLength(&triangles)) || edge.face1 >= u32(arrayLength(&triangles))) {
+fn is_internal_feature_kind(kind: u32) -> bool {
+    return kind == KIND_CREASE || kind == KIND_SEAM || kind == KIND_FEATURE;
+}
+
+fn should_emit_sparse_character_hatch(
+    kind: u32,
+    render_length: f32,
+    connected_start: bool,
+    connected_end: bool,
+    chain_quality: f32,
+    path_coherence: f32,
+    path_t_mid: f32,
+    path_id: u32,
+) -> bool {
+    if (!uses_sparse_character_hatching()) {
         return false;
     }
-    return dot(transformed_normal(edge.face0), transformed_normal(edge.face1)) <= uniforms.params2.w;
+    if (!(uses_character_semantic_candidates() || uses_akira_ink() || uses_character_budget())) {
+        return false;
+    }
+    if (!is_internal_feature_kind(kind)) {
+        return false;
+    }
+    if (render_length < 8.0 || render_length > 44.0) {
+        return false;
+    }
+    let connected_count = u32(connected_start) + u32(connected_end);
+    if (connected_count == 2u && chain_quality > 0.82) {
+        return false;
+    }
+    if (path_coherence < 0.52) {
+        return false;
+    }
+
+    let cell = u32(floor(clamp(path_t_mid, 0.0, 1.0) * 37.0));
+    let roll = signed_noise_01(
+        uniforms.seed.x
+            ^ uniforms.seed.y
+            ^ path_id
+            ^ (cell * 0x9e37u)
+            ^ (kind * 0x85ebu)
+    );
+    let chance = select(0.18, 0.30, uses_akira_ink()) * clamp(1.1 - chain_quality * 0.34, 0.55, 1.0);
+    return roll < chance;
+}
+
+fn should_suppress_detail_segment(
+    kind: u32,
+    render_length: f32,
+    path_length: f32,
+    connected_start: bool,
+    connected_end: bool,
+    chain_quality: f32,
+    path_coherence: f32,
+) -> bool {
+    if (!(is_internal_feature_kind(kind) || kind == KIND_CONTACT)) {
+        return false;
+    }
+
+    let connected_count = u32(connected_start) + u32(connected_end);
+    let strict_budget = uses_character_budget() || uses_akira_ink();
+    let min_detail_length = max(uniforms.params0.w * select(1.8, 2.6, strict_budget), select(5.0, 8.0, strict_budget));
+    if (render_length < min_detail_length && connected_count < 2u) {
+        return true;
+    }
+
+    if (strict_budget && connected_count == 0u && path_length < max(render_length * 1.35, render_length + 8.0)) {
+        return true;
+    }
+
+    if (strict_budget && chain_quality < 0.58 && path_coherence < 0.72 && render_length < 18.0) {
+        return true;
+    }
+
+    if (kind == KIND_CONTACT && (connected_count < 2u || chain_quality < 0.72)) {
+        return true;
+    }
+
+    return false;
 }
 
 fn kind_width_multiplier(kind: u32) -> f32 {
     if (kind == KIND_SILHOUETTE) {
-        return uniforms.params3.x;
+        return uniforms.params3.x * select(1.0, 1.08, uses_akira_ink());
     }
     if (kind == KIND_CONTACT) {
-        return max(uniforms.params3.z, 1.0);
+        return max(uniforms.params3.z, 1.0) * select(1.0, 0.72, uses_character_budget());
     }
-    if (
-        kind == KIND_CREASE
-        || kind == KIND_SEAM
-        || kind == KIND_FEATURE
-    ) {
-        return uniforms.params3.z;
+    if (is_internal_feature_kind(kind)) {
+        return uniforms.params3.z * select(1.0, 0.74, uses_akira_ink() || uses_character_budget());
     }
     return uniforms.params3.y;
 }
@@ -196,12 +229,9 @@ fn kind_alpha_multiplier(kind: u32) -> f32 {
     if (kind == KIND_CONTACT) {
         return uniforms.params4.z * 0.94;
     }
-    if (
-        kind == KIND_CREASE
-        || kind == KIND_SEAM
-        || kind == KIND_FEATURE
-    ) {
-        return uniforms.params4.z * uniforms.params16.y * 0.82;
+    if (is_internal_feature_kind(kind)) {
+        let akira_scale = select(1.0, 0.82, uses_akira_ink());
+        return uniforms.params4.z * uniforms.params16.y * 0.82 * akira_scale;
     }
     return uniforms.params4.y;
 }
@@ -213,12 +243,8 @@ fn kind_wobble_px(kind: u32) -> f32 {
     if (kind == KIND_CONTACT) {
         return uniforms.params12.z * 0.625;
     }
-    if (
-        kind == KIND_CREASE
-        || kind == KIND_SEAM
-        || kind == KIND_FEATURE
-    ) {
-        return uniforms.params12.z;
+    if (is_internal_feature_kind(kind)) {
+        return uniforms.params12.z * select(1.0, 0.65, uses_akira_ink());
     }
     return uniforms.params12.y;
 }
@@ -606,7 +632,7 @@ fn endpoint_connection_score(
     current_direction: vec2<f32>,
     current_length: f32,
 ) -> f32 {
-    if (next_edge_index == 0xffffffffu || next_edge_index >= u32(arrayLength(&visible_segments))) {
+    if (next_edge_index == 0xffffffffu || next_edge_index >= active_edge_count()) {
         return 0.0;
     }
     let next = visible_segments[next_edge_index];
@@ -1024,7 +1050,7 @@ fn best_follow_edge_index(
 }
 
 fn visible_segment_length(edge_index: u32) -> f32 {
-    if (edge_index == 0xffffffffu || edge_index >= u32(arrayLength(&visible_segments))) {
+    if (edge_index == 0xffffffffu || edge_index >= active_edge_count()) {
         return 0.0;
     }
     let visible = visible_segments[edge_index];
@@ -1251,7 +1277,7 @@ fn chain_owner_from_endpoint(
     var accumulated_span = 0.0;
 
     for (var hop: u32 = 0u; hop < npr_gpu_max_chained_walk_edges(); hop = hop + 1u) {
-        if (edge_index == 0xffffffffu || edge_index >= u32(arrayLength(&visible_segments))) {
+        if (edge_index == 0xffffffffu || edge_index >= active_edge_count()) {
             break;
         }
 
@@ -1501,7 +1527,7 @@ fn endpoint_taper(
 @compute @workgroup_size(64)
 fn cs_main(@builtin(global_invocation_id) id: vec3<u32>) {
     let path_segment_index = id.x;
-    let path_segment_count = atomicLoad(&indirect_args[2]);
+    let path_segment_count = atomicLoad(&indirect_args[4]);
     if (
         path_segment_index >= path_segment_count
         || path_segment_index >= u32(arrayLength(&path_segments))
@@ -1573,6 +1599,17 @@ fn cs_main(@builtin(global_invocation_id) id: vec3<u32>) {
     if (kind == KIND_CONTACT && (!connected_start || !connected_end || chain_quality < 0.72)) {
         return;
     }
+    if (should_suppress_detail_segment(
+        kind,
+        render_length,
+        path_length,
+        connected_start,
+        connected_end,
+        chain_quality,
+        path_coherence,
+    )) {
+        return;
+    }
     let search_enabled = should_enable_search_passes(
         kind,
         edge_id,
@@ -1589,19 +1626,41 @@ fn cs_main(@builtin(global_invocation_id) id: vec3<u32>) {
         path_coherence - 0.72,
     );
     let search_pass_count = select(0u, u32(uniforms.params5.y), search_enabled);
-    let total_pass_count = primary_pass_count + search_pass_count;
+    let hatch_enabled = should_emit_sparse_character_hatch(
+        kind,
+        render_length,
+        connected_start,
+        connected_end,
+        chain_quality,
+        path_coherence,
+        path_t_mid,
+        path_id,
+    );
+    let hatch_start_index = primary_pass_count + search_pass_count;
+    let hatch_pass_count = select(0u, 1u, hatch_enabled);
+    let total_pass_count = hatch_start_index + hatch_pass_count;
 
     for (var pass_index: u32 = 0u; pass_index < total_pass_count; pass_index = pass_index + 1u) {
+        let is_hatch_pass = pass_index >= hatch_start_index;
         var pass_render_start = render_start_mut;
         var pass_render_end = render_end_mut;
         var pass_render_length = render_length;
-        if (pass_index >= primary_pass_count) {
+        if (pass_index >= primary_pass_count && !is_hatch_pass) {
             let search_max_length = npr_gpu_search_max_render_length_px();
             if (pass_render_length > search_max_length) {
                 let trunc_direction = normalize(pass_render_end - pass_render_start);
                 pass_render_end = pass_render_start + trunc_direction * search_max_length;
                 pass_render_length = search_max_length;
             }
+        }
+        if (is_hatch_pass) {
+            let hatch_noise = signed_noise_01(seed32 ^ path_id ^ u32(path_t_mid * 4096.0) ^ 0x51edu);
+            let hatch_length = min(pass_render_length, mix(7.0, 16.0, hatch_noise));
+            let hatch_center = mix(pass_render_start, pass_render_end, clamp(0.42 + signed_noise(seed32 ^ path_id ^ 0xabcdu) * 0.18, 0.25, 0.75));
+            let hatch_direction = normalize(pass_render_end - pass_render_start);
+            pass_render_start = hatch_center - hatch_direction * (hatch_length * 0.5);
+            pass_render_end = hatch_center + hatch_direction * (hatch_length * 0.5);
+            pass_render_length = hatch_length;
         }
         if (should_drop_segment_instance(
             kind,
@@ -1621,23 +1680,36 @@ fn cs_main(@builtin(global_invocation_id) id: vec3<u32>) {
                 select(
                     1u,
                     2u,
-                    pass_render_length >= max_segment_length,
+                    pass_render_length >= max_segment_length && !is_hatch_pass,
                 ),
                 3u,
-                pass_render_length >= max_segment_length * 1.9
-                    || (pass_render_length >= max_segment_length * 1.15 && path_span >= 0.22),
+                !is_hatch_pass
+                    && (
+                        pass_render_length >= max_segment_length * 1.9
+                        || (pass_render_length >= max_segment_length * 1.15 && path_span >= 0.22)
+                    ),
             );
         let out_index = atomicAdd(&indirect_args[1], segment_count);
         if (out_index + segment_count > u32(arrayLength(&stroke_segments))) {
             _ = atomicSub(&indirect_args[1], segment_count);
             return;
         }
-        let width_start = pass_width(kind, pass_index, importance, path_t0, path_coherence);
-        let width_mid = pass_width(kind, pass_index, importance, path_t_mid, path_coherence);
-        let width_end = pass_width(kind, pass_index, importance, path_t1, path_coherence);
-        let alpha_start = pass_alpha(kind, pass_index, importance, path_t0, path_coherence);
-        let alpha_mid = pass_alpha(kind, pass_index, importance, path_t_mid, path_coherence);
-        let alpha_end = pass_alpha(kind, pass_index, importance, path_t1, path_coherence);
+        var width_start = pass_width(kind, pass_index, importance, path_t0, path_coherence);
+        var width_mid = pass_width(kind, pass_index, importance, path_t_mid, path_coherence);
+        var width_end = pass_width(kind, pass_index, importance, path_t1, path_coherence);
+        var alpha_start = pass_alpha(kind, pass_index, importance, path_t0, path_coherence);
+        var alpha_mid = pass_alpha(kind, pass_index, importance, path_t_mid, path_coherence);
+        var alpha_end = pass_alpha(kind, pass_index, importance, path_t1, path_coherence);
+        if (is_hatch_pass) {
+            let hatch_width = max(uniforms.params1.x * kind_width_multiplier(kind) * 0.24, 0.25);
+            let hatch_alpha = clamp(uniforms.ink_color.w * kind_alpha_multiplier(kind) * 0.38, 0.0, 0.58);
+            width_start = hatch_width * 0.72;
+            width_mid = hatch_width;
+            width_end = hatch_width * 0.62;
+            alpha_start = hatch_alpha * 0.72;
+            alpha_mid = hatch_alpha;
+            alpha_end = hatch_alpha * 0.58;
+        }
         let width_noise_start =
             coherent_signed_noise_1d(seed32, edge_id, pass_index, path_t0 * 13.0 + 7.0, 503u)
             * uniforms.params10.x

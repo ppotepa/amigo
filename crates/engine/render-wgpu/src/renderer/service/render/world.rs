@@ -10,9 +10,7 @@ enum NprMeshRenderRoute {
     CpuReference,
 }
 
-fn npr_mesh_render_route(
-    settings: &amigo_render_api::NprLineSettings3d,
-) -> NprMeshRenderRoute {
+fn npr_mesh_render_route(settings: &amigo_render_api::NprLineSettings3d) -> NprMeshRenderRoute {
     match settings.render_strategy {
         amigo_render_api::NprRenderStrategy3d::GpuRealtime => NprMeshRenderRoute::GpuRealtime,
         amigo_render_api::NprRenderStrategy3d::CpuReference => NprMeshRenderRoute::CpuReference,
@@ -242,9 +240,11 @@ pub(super) fn execute_world_to_offscreen(
             let shading = material
                 .map(|material| material.shading)
                 .unwrap_or_default();
-            let render_fill = command.mesh.npr.as_ref().is_none_or(|npr| {
-                npr.fill_mode == amigo_render_api::NprFillMode3d::Shaded
-            });
+            let render_fill = command
+                .mesh
+                .npr
+                .as_ref()
+                .is_none_or(|npr| npr.fill_mode == amigo_render_api::NprFillMode3d::Shaded);
             if render_fill {
                 append_mesh_triangles(
                     &mut projected_triangles,
@@ -258,6 +258,23 @@ pub(super) fn execute_world_to_offscreen(
                     render_order,
                     shading,
                 );
+            }
+            if let Some(npr) = command.mesh.npr.as_ref() {
+                if npr.pipeline.fill_strategy
+                    == amigo_render_api::NprInkFillStrategy3d::MaterialBlackMass
+                    && !npr.black_mass_material_ids.is_empty()
+                {
+                    append_mesh_black_mass_triangles(
+                        &mut projected_triangles,
+                        &viewport,
+                        camera,
+                        camera_settings,
+                        &geometry,
+                        transform,
+                        &npr.black_mass_material_ids,
+                        render_order + 1,
+                    );
+                }
             }
             if let Some(npr) = command.mesh.npr.as_ref() {
                 match npr_mesh_render_route(npr) {
@@ -296,17 +313,21 @@ pub(super) fn execute_world_to_offscreen(
                         renderer
                             .npr_stroke_stats_3d
                             .record_strategy(amigo_render_api::NprRenderStrategy3d::GpuRealtime);
-                        renderer.npr_gpu_realtime.enqueue_mesh(
-                            &command.entity_name,
-                            &command.mesh.mesh_asset,
-                            &geometry,
-                            transform,
-                            npr,
-                        ).map_err(|error| amigo_core::AmigoError::Message(format!(
-                            "NPR gpu_realtime enqueue failed for `{}`: {}",
-                            command.entity_name,
-                            error
-                        )))?;
+                        renderer
+                            .npr_gpu_realtime
+                            .enqueue_mesh(
+                                &command.entity_name,
+                                &command.mesh.mesh_asset,
+                                &geometry,
+                                transform,
+                                npr,
+                            )
+                            .map_err(|error| {
+                                amigo_core::AmigoError::Message(format!(
+                                    "NPR gpu_realtime enqueue failed for `{}`: {}",
+                                    command.entity_name, error
+                                ))
+                            })?;
                     }
                 }
             }
@@ -462,42 +483,54 @@ pub(super) fn execute_world_to_offscreen(
     renderer.npr_stroke_stats_3d.gpu_realtime_enqueued_edges += gpu_npr_stats.classified_edges;
     renderer.npr_stroke_stats_3d.gpu_realtime_enqueued_triangles +=
         gpu_npr_stats.enqueued_triangles;
-    renderer.npr_stroke_stats_3d.gpu_realtime_topology_uploads +=
-        gpu_npr_stats.topology_uploads;
-    renderer.npr_stroke_stats_3d.gpu_realtime_buffer_capacity_bytes +=
-        gpu_npr_stats.buffer_capacity_bytes;
+    renderer.npr_stroke_stats_3d.gpu_realtime_topology_uploads += gpu_npr_stats.topology_uploads;
+    renderer
+        .npr_stroke_stats_3d
+        .gpu_realtime_buffer_capacity_bytes += gpu_npr_stats.buffer_capacity_bytes;
     renderer.npr_stroke_stats_3d.gpu_realtime_frame_jobs += gpu_npr_stats.frame_jobs;
-    renderer.npr_stroke_stats_3d.gpu_realtime_projected_vertices_capacity +=
-        gpu_npr_stats.projected_vertices_capacity;
-    renderer.npr_stroke_stats_3d.gpu_realtime_visible_segments_capacity +=
-        gpu_npr_stats.visible_segments_capacity;
-    renderer.npr_stroke_stats_3d.gpu_realtime_endpoint_heads_capacity +=
-        gpu_npr_stats.endpoint_heads_capacity;
-    renderer.npr_stroke_stats_3d.gpu_realtime_endpoint_entries_capacity +=
-        gpu_npr_stats.endpoint_entries_capacity;
-    renderer.npr_stroke_stats_3d.gpu_realtime_path_links_capacity +=
-        gpu_npr_stats.path_links_capacity;
-    renderer.npr_stroke_stats_3d.gpu_realtime_path_states_capacity +=
-        gpu_npr_stats.path_states_capacity;
-    renderer.npr_stroke_stats_3d.gpu_realtime_path_segments_capacity +=
-        gpu_npr_stats.path_segments_capacity;
-    renderer.npr_stroke_stats_3d.gpu_realtime_stroke_segments_capacity +=
-        gpu_npr_stats.stroke_segments_capacity;
-    if renderer.npr_stroke_stats_3d.gpu_realtime_debug_mode.is_empty() {
-        renderer.npr_stroke_stats_3d.gpu_realtime_debug_mode =
-            gpu_npr_stats.debug_mode.to_owned();
+    renderer
+        .npr_stroke_stats_3d
+        .gpu_realtime_projected_vertices_capacity += gpu_npr_stats.projected_vertices_capacity;
+    renderer
+        .npr_stroke_stats_3d
+        .gpu_realtime_visible_segments_capacity += gpu_npr_stats.visible_segments_capacity;
+    renderer
+        .npr_stroke_stats_3d
+        .gpu_realtime_endpoint_heads_capacity += gpu_npr_stats.endpoint_heads_capacity;
+    renderer
+        .npr_stroke_stats_3d
+        .gpu_realtime_endpoint_entries_capacity += gpu_npr_stats.endpoint_entries_capacity;
+    renderer
+        .npr_stroke_stats_3d
+        .gpu_realtime_path_links_capacity += gpu_npr_stats.path_links_capacity;
+    renderer
+        .npr_stroke_stats_3d
+        .gpu_realtime_path_states_capacity += gpu_npr_stats.path_states_capacity;
+    renderer
+        .npr_stroke_stats_3d
+        .gpu_realtime_path_segments_capacity += gpu_npr_stats.path_segments_capacity;
+    renderer
+        .npr_stroke_stats_3d
+        .gpu_realtime_stroke_segments_capacity += gpu_npr_stats.stroke_segments_capacity;
+    if renderer
+        .npr_stroke_stats_3d
+        .gpu_realtime_debug_mode
+        .is_empty()
+    {
+        renderer.npr_stroke_stats_3d.gpu_realtime_debug_mode = gpu_npr_stats.debug_mode.to_owned();
     } else if renderer.npr_stroke_stats_3d.gpu_realtime_debug_mode != gpu_npr_stats.debug_mode {
         renderer.npr_stroke_stats_3d.gpu_realtime_debug_mode = "mixed".to_owned();
     }
-    target.queue.submit(Some(npr_encoder.finish()));
+    let npr_command_buffer = npr_encoder.finish();
 
     {
         let vertices = color_batch_vertices(&mut color_batches, ParticleBlendMode2d::Alpha);
         append_ui_overlay_vertices(vertices, &viewport, &ui_color_primitives);
     }
 
-    renderer.render_offscreen_batches(
+    renderer.render_offscreen_batches_after_command_buffers(
         target,
+        vec![npr_command_buffer],
         selection
             .pass_load
             .to_load_op_with_clear(ctx.scene_view.background_color()),
@@ -541,6 +574,27 @@ impl WgpuSceneRenderer {
         npr_stroke_segment_batches: &[NprStrokeSegmentBatch],
         ui_texture_batches: &[TextureBatch],
     ) -> AmigoResult<()> {
+        self.render_offscreen_batches_after_command_buffers(
+            target,
+            Vec::new(),
+            load_op,
+            texture_batches,
+            color_batches,
+            npr_stroke_segment_batches,
+            ui_texture_batches,
+        )
+    }
+
+    pub(super) fn render_offscreen_batches_after_command_buffers(
+        &mut self,
+        target: &mut WgpuOffscreenTarget,
+        mut prelude_command_buffers: Vec<wgpu::CommandBuffer>,
+        load_op: wgpu::LoadOp<wgpu::Color>,
+        texture_batches: &[TextureBatch],
+        color_batches: &[ColorBatch],
+        npr_stroke_segment_batches: &[NprStrokeSegmentBatch],
+        ui_texture_batches: &[TextureBatch],
+    ) -> AmigoResult<()> {
         let texture_batches = texture_batches
             .iter()
             .filter(|batch| !batch.vertices.is_empty())
@@ -558,14 +612,11 @@ impl WgpuSceneRenderer {
             .filter(|batch| !batch.vertices.is_empty())
             .collect::<Vec<_>>();
 
-        let mut encoder = target
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("amigo-offscreen-render-encoder"),
-            });
-
         self.upload_offscreen_color_vertex_buffers(target, &color_batches);
-        self.upload_offscreen_npr_stroke_segment_vertex_buffers(target, &npr_stroke_segment_batches);
+        self.upload_offscreen_npr_stroke_segment_vertex_buffers(
+            target,
+            &npr_stroke_segment_batches,
+        );
         let texture_vertex_buffers = texture_batches
             .iter()
             .map(|batch| {
@@ -590,6 +641,12 @@ impl WgpuSceneRenderer {
                     })
             })
             .collect::<Vec<_>>();
+
+        let mut encoder = target
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("amigo-offscreen-render-encoder"),
+            });
 
         {
             let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
@@ -651,7 +708,8 @@ impl WgpuSceneRenderer {
             }
         }
 
-        target.queue.submit(Some(encoder.finish()));
+        prelude_command_buffers.push(encoder.finish());
+        target.queue.submit(prelude_command_buffers);
         Ok(())
     }
 
@@ -674,10 +732,11 @@ impl WgpuSceneRenderer {
             let contents = vertices_as_bytes(&batch.vertices);
             let required_bytes = contents.len() as u64;
             if self.offscreen_color_vertex_buffers.len() <= index {
-                self.offscreen_color_vertex_buffers.push(create_dynamic_color_vertex_buffer(
-                    &target.device,
-                    required_bytes,
-                ));
+                self.offscreen_color_vertex_buffers
+                    .push(create_dynamic_color_vertex_buffer(
+                        &target.device,
+                        required_bytes,
+                    ));
                 self.offscreen_upload_stats.color_buffer_reallocs += 1;
             } else if self.offscreen_color_vertex_buffers[index].capacity_bytes < required_bytes {
                 self.offscreen_color_vertex_buffers[index] =
@@ -707,18 +766,20 @@ impl WgpuSceneRenderer {
         batches: &[&NprStrokeSegmentBatch],
     ) {
         self.offscreen_upload_stats.npr_stroke_segment_buffer_writes = 0;
-        self.offscreen_upload_stats.npr_stroke_segment_buffer_reallocs = 0;
+        self.offscreen_upload_stats
+            .npr_stroke_segment_buffer_reallocs = 0;
         self.offscreen_upload_stats.npr_stroke_segment_upload_bytes = 0;
         for (index, batch) in batches.iter().enumerate() {
             let contents = npr_stroke_segment_vertices_as_bytes(&batch.vertices);
             let required_bytes = contents.len() as u64;
             if self.offscreen_npr_stroke_segment_vertex_buffers.len() <= index {
-                self.offscreen_npr_stroke_segment_vertex_buffers
-                    .push(create_dynamic_vertex_buffer(
+                self.offscreen_npr_stroke_segment_vertex_buffers.push(
+                    create_dynamic_vertex_buffer(
                         &target.device,
                         required_bytes,
                         "amigo-offscreen-npr-stroke-segment-vertices-dynamic",
-                    ));
+                    ),
+                );
                 self.offscreen_upload_stats
                     .npr_stroke_segment_buffer_reallocs += 1;
             } else if self.offscreen_npr_stroke_segment_vertex_buffers[index].capacity_bytes
@@ -792,7 +853,10 @@ mod tests {
             ..amigo_render_api::NprLineSettings3d::default()
         };
 
-        assert_eq!(npr_mesh_render_route(&settings), NprMeshRenderRoute::GpuRealtime);
+        assert_eq!(
+            npr_mesh_render_route(&settings),
+            NprMeshRenderRoute::GpuRealtime
+        );
     }
 
     #[test]

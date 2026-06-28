@@ -1,7 +1,7 @@
-# Amigo NPR GPU/CPU Parity - Plan naprawczy v2, pełna implementacja
+# Amigo NPR GPU/CPU Parity - Plan naprawczy V1, pełna implementacja
 
 Status: plan implementacji po review aktualnego źródła i po pierwszej serii wdrożeń GPU NPR.
-Zakres: renderowanie kreski komiksowej/NPR dla 3D. Bez hatchingu, halftone, painterly, fill shading i watercolor.
+Zakres: renderowanie kreski komiksowej/NPR dla 3D. Bez globalnego hatchingu, halftone, painterly, fill shading i watercolor. V1 dopuszcza tylko oszczedne character hatch strokes jako wariant stroke rendering, gdy preset jawnie ustawi `pipeline.hatching_strategy`.
 Cel: `gpu_realtime` ma dawać prawie taki sam rysunek jak `cpu_reference`, ale wykonany ścieżką GPU bez `auto`, bez `hybrid`, bez cichego fallbacku GPU -> CPU.
 
 Ten plik jest kanonicznym planem docelowym.
@@ -20,6 +20,7 @@ Za wdrożone fundamenty uznajemy już:
 - routing CPU/GPU bez `auto` i bez `hybrid`,
 - osobne moduły NPR po stronie `render-wgpu`,
 - podstawowy GPU pipeline z face-id, projection i classify,
+- kontrakt `NprPipelineStrategies3d` w presetach (`candidate/path/stroke/fill/hatching/budget/temporal`),
 - warstwę debugowania GPU w danych/runtime,
 - pierwszą generację `endpoint_bins`, `path_links` i `path_segments`,
 - globalny `face-id/depth` dla wszystkich meshy GPU w ramce,
@@ -34,6 +35,318 @@ Ich celem jest domknięcie parytetu wizualnego CPU/GPU, a nie ponowne projektowa
 - `npr_v2.md` = plan docelowy i docelowa architektura.
 - `npr_v2_status.md` = stan wdrożenia, lista rzeczy zrobionych i lista braków.
 - Jeżeli te pliki są sprzeczne, prawdą o bieżącym stanie implementacji jest `npr_v2_status.md`.
+
+---
+
+## 0A. Rozszerzenie celu: character manga ink
+
+Ten plan nie konczy sie na parytecie CPU/GPU dla obecnego edge-renderera.
+Dla modeli postaci, szczegolnie presetu `akira`, kolejnym celem jest przejscie
+z "renderer krawedzi ze stylizacja" do "renderer decyzji rysunkowych".
+
+Najwazniejsza korekta kierunku:
+
+- halftone i globalny hatching nie sa teraz glowna blokada jakosci postaci;
+- glowna blokada to brak semantycznej selekcji kreski, brak `ink_guides`,
+  brak czarnych mas materialowych i brak profili stroke per rola rysunkowa;
+- `humanization` i `wobble` nie moga byc traktowane jako substytut ludzkiego
+  prowadzenia tuszu.
+
+Docelowy pipeline dla postaci:
+
+```text
+Mesh geometry / skinned pose
+  -> raw NPR candidates
+  -> character semantic candidates
+  -> importance scoring
+  -> line budget / suppression
+  -> role-specific stroke synthesis
+  -> temporal coherent stroke parameterization
+  -> GPU stroke rendering
+```
+
+Preset ma deklarować, jakich strategii używa na każdym poziomie pipeline.
+To jest osobne od wyboru backendu `strategy: gpu_realtime | cpu_reference`.
+Backend mówi, gdzie wykonujemy pracę; `pipeline` mówi, jaki model rysunkowy ma
+być wykonany.
+
+Minimalny kontrakt YAML:
+
+```yaml
+npr:
+  strategy: gpu_realtime
+  pipeline:
+    candidate_strategy: character_semantic
+    path_strategy: stable_stroked_paths
+    stroke_strategy: akira_ink
+    fill_strategy: material_black_mass
+    hatching_strategy: none
+    budget_strategy: face_and_silhouette_priority
+    temporal_strategy: stable_arc_length
+```
+
+Zasada V1: preset może wybrać bardziej mangową semantykę, ale renderer nie może
+zgadywać jej po nazwie modelu albo nazwie presetu. Każda warstwa musi być
+jawnie zadeklarowana w danych.
+
+Uwaga implementacyjna: `stable_stroked_paths` jest docelowym kierunkiem dla GPU
+path graphu. W V1 powinien używać konserwatywnego budżetu chain walk, np.
+`max_chained_walk_edges: 1`, dopóki pełny solver path graphu nie będzie mocniej
+zweryfikowany na większej liczbie modeli i kamer.
+
+Nowa warstwa powinna wejsc pomiedzy feature extraction a stroke planning.
+Nie powinna zyc w `apps/app` i nie powinna zgadywac intencji po nazwach encji.
+Powinna byc oparta na jawnych danych assetu, materialu i/lub authored guide
+curves.
+
+### 0A.1. Braki obecnego systemu dla postaci
+
+Obecne klasy:
+
+```text
+silhouette
+boundary
+feature
+suggestive
+contact
+```
+
+sa potrzebne, ale zbyt niskopoziomowe. Dla postaci potrzebne sa role:
+
+```rust
+pub enum MangaInkRole3d {
+    OuterSilhouette,
+    BodyMassBoundary,
+    FaceDetail,
+    HairMassBoundary,
+    HairInnerCut,
+    MuscleForm,
+    ClothFold,
+    ArmorCrease,
+    DamageScratch,
+    ShadowHatch,
+}
+```
+
+Minimalna hierarchia waznosci:
+
+1. outer silhouette;
+2. granice mas ciala: glowa, szyja, barki, tulow, rece, nogi;
+3. twarz: oczy, brwi, nos, usta, linie ekspresji;
+4. wlosy: czarna masa plus kilka wewnetrznych cieczy/cutlines;
+5. ubranie: faldy, pas, rekawy, zgiecia materialu;
+6. anatomia: tylko linie, ktore pomagaja czytac forme;
+7. rysy, pot, brud i damage jako osobna niskopriorytetowa warstwa.
+
+### 0A.2. Character semantic candidates
+
+Dodac neutralny model kandydatow:
+
+```rust
+pub enum LineSource3d {
+    MeshEdge { edge_id: u64 },
+    SuggestiveContour { source_id: u64 },
+    ApparentRidge { source_id: u64 },
+    InkGuide { guide_id: u64 },
+    MaterialBoundary { material_id: u32 },
+    GeneratedHatch { region_id: u64 },
+}
+
+pub struct MangaLineCandidate3d {
+    pub role: MangaInkRole3d,
+    pub source: LineSource3d,
+    pub importance: f32,
+    pub confidence: f32,
+    pub material_id: Option<u32>,
+    pub bone_hint: Option<u32>,
+    pub screen_length_px: f32,
+    pub depth: f32,
+}
+```
+
+Pierwsza implementacja nie musi od razu miec wszystkich zrodel. Kolejnosc:
+
+1. mapowanie istniejacych `silhouette/boundary/feature` na role postaci;
+2. `importance_score` + line budget dla odrzucania technicznych edge'ow;
+3. material roles dla `black_mass`, `face_detail`, `cloth_fold`;
+4. authored `ink_guides`;
+5. apparent ridges / lepsze suggestive contours;
+6. sparse character hatching.
+
+### 0A.3. Ink guides
+
+Assety postaci powinny moc opcjonalnie deklarowac krzywe tuszu, ktorych nie ma
+w geometrii. To jest krytyczne dla twarzy, wlosow, miesni i fald ubrania.
+
+Docelowy szkic YAML:
+
+```yaml
+ink_guides:
+  - id: brow_left
+    role: face_detail
+    anchor: head
+    curve_space: model
+    curve_points: []
+    min_screen_px: 12.0
+    importance: 1.0
+  - id: chest_shadow_fold
+    role: muscle_form
+    material: skin
+    curve_space: model
+    curve_points: []
+    importance: 0.65
+  - id: cloth_knee_fold
+    role: cloth_fold
+    material: pants
+    curve_space: model
+    curve_points: []
+    importance: 0.55
+```
+
+MVP moze zaczac od prostych model-space polyline guides. Pozniej mozna dodac
+anchors barycentric na powierzchni mesha albo UV-space curves.
+
+### 0A.4. Material black fills
+
+Dla postaci manga/akira czarne masy sa wazniejsze niz halftone:
+
+```yaml
+materials:
+  hair:
+    ink_role: black_mass
+    preserve_highlight_shapes: true
+  eyes:
+    ink_role: black_detail
+  skin:
+    ink_role: white_surface
+    form_hatching: sparse
+  pants:
+    ink_role: fold_lines
+  armor:
+    ink_role: hard_surface_contour
+```
+
+Docelowo wymaga to rozszerzenia material contract, a nie hacka w rendererze.
+Najpierw wystarczy rozpoznac role materialow i generowac:
+
+- solid black fill dla hair/eyes/deep shadow;
+- mocniejszy silhouette dla hair mass;
+- sparse inner cutlines dla wlosow;
+- ograniczone fold lines dla cloth.
+
+### 0A.5. Apparent ridges i linie formy
+
+Sama sylwetka jest za uboga dla ciala i twarzy. Druga fala ekstrakcji powinna
+dodac:
+
+- apparent ridges jako view-dependent curvature lines;
+- suggestive contours oparte o radial curvature zero crossings;
+- ridge/valley lines tylko tam, gdzie role/material/importance to uzasadnia;
+- material seams tylko gdy sa oznaczone jako ink-relevant.
+
+Nie rysowac wszystkich curvature lines. Najpierw kandydaci, potem importance
+score i line budget.
+
+### 0A.6. Line budget i suppression
+
+Algorytm dla postaci nie powinien rysowac wszystkiego, co przejdzie prog.
+Powinien wybierac minimum linii, ktore maksymalizuje czytelnosc.
+
+Nowe ustawienia docelowe:
+
+```rust
+pub struct MangaLineBudget3d {
+    pub max_lines_total: u32,
+    pub max_feature_lines: u32,
+    pub max_face_lines: u32,
+    pub max_cloth_fold_lines: u32,
+    pub min_importance_by_distance: f32,
+    pub line_density_by_screen_area: f32,
+}
+```
+
+Priorytet zachowania:
+
+- silhouette i face detail sa chronione;
+- przypadkowe creases z triangulacji sa agresywnie odrzucane;
+- feature lines zbyt geste na malym ekranie znikaja przed form lines;
+- search/overdraw nie dotyczy waznych konturow domyslnie.
+
+### 0A.7. Stroke profiles per rola
+
+Globalny `humanization` zostaje jako master scalar, ale nie powinien definiowac
+charakteru kazdej linii. Potrzebne sa role-specific stroke profiles:
+
+```rust
+pub struct MangaStrokeProfile3d {
+    pub width_px: f32,
+    pub taper_start: f32,
+    pub taper_end: f32,
+    pub pressure_curve: [f32; 4],
+    pub wobble_px: f32,
+    pub micro_wobble_px: f32,
+    pub overshoot_px: f32,
+    pub dropout: f32,
+}
+```
+
+Docelowe profile:
+
+```text
+OuterSilhouette     -> clean_confident_ink
+FaceDetail          -> sharp_short_pen
+HairMassBoundary    -> black_mass_cutline
+HairInnerCut        -> sparse_sharp_cut
+MuscleForm          -> soft_sparse_form_line
+ClothFold           -> broken_light_crease
+DamageScratch       -> scratchy_micro_strokes
+ShadowHatch         -> short_controlled_hatch
+```
+
+### 0A.8. Akira V1 roadmap dla postaci
+
+`akira` jest jednym zakresem V1, wdrazanym etapami. Czarne masy, semantyka
+postaci, hatching i `ink_guides` sa elementami docelowego V1, tylko nie
+wszystkie sa jeszcze zaimplementowane.
+
+```text
+Etap 1 - line-only preset
+  line-only preset
+  mocna sylwetka
+  cienkie feature lines
+  selektywne creases
+  brak globalnego hatchingu
+  brak halftone
+
+Etap 2 - character ink semantics
+  material black fills
+  face ink guides
+  hair ink guides
+  cloth fold guides
+  line importance scoring
+
+Etap 3 - form lines and sparse hatching
+  apparent ridges / better suggestive contours
+  anatomy form lines
+  sparse character hatching
+  stroke profiles per line role
+
+Etap 4 - temporal stroke quality
+  temporal stroke parameterization
+  natural pen model
+  curve/Bezier stroke fitting
+  line density manager
+```
+
+Priorytet implementacji po stabilizacji GPU/CPU parity:
+
+1. dodac role i importance score na istniejacych liniach;
+2. dodac line budget/suppression;
+3. dodac material ink roles i black mass fill;
+4. dodac authored `ink_guides` dla twarzy/wlosow/ubran;
+5. dodac apparent ridges i lepsze suggestive contours;
+6. dodac sparse character hatching;
+7. dopiero potem halftone/screentone.
 
 ---
 
@@ -172,7 +485,7 @@ Linie orientacyjne:
 - `draw_indirect` około linii 285-296.
 - `uniforms_for_job(...)` około linii 330+.
 
-Wniosek do dokumentu: aktywna ścieżka nie robi jeszcze endpoint/path passów. Trzeba dodać je między `classify_edges` i `build_strokes`.
+Stan po ostatniej paczce: aktywna ścieżka `gpu_realtime` robi już path passy między `classify_edges` i `emit_path_segments`: `build_endpoint_bins`, `compact_owners`, `connect_paths` i dwie iteracje `relax_path_owners`. Nadal nie jest to pełny CPU `NprStrokePath`, więc kolejne prace dotyczą jakości grafu, `path_t/path_id` i parytetu stylizacji, a nie samego routingu passów.
 
 Plik: `crates/engine/render-wgpu/src/renderer/npr/gpu_pipelines.rs`
 
@@ -230,8 +543,8 @@ Aktualne fakty:
 
 - `npr_presets:` zaczyna się od `default-gpu-comic.yml`.
 - Presety CPU-reference istnieją obok GPU.
-- Input map ma `G`, `7`, `8`, `9`, `0`, ale nie ma jeszcze dedykowanego `V` dla GPU debug cycle.
-- HUD ma teksty `Strategy`, `Debug`, ale debug nie jest jeszcze jawnie spięty z `gpu_realtime_tuning.debug_mode`.
+- Input map ma `G`, `V`, `7`, `8`, `9`, `0` dla sterowania NPR/debug; skinned clip switching nie jest jeszcze gotowym runtime featurem V1.
+- HUD ma teksty model/preset/animation/backend/debug/frame/runtime/stats, a `V` jest spiete z runtime `gpu_realtime_tuning.debug_mode`. Wiersz animacji pokazuje obecnie statyczny mesh / `skinning unsupported in V1`, zeby nie sugerowac gotowego skinning evaluation.
 
 Plik: `mods/playground-npr/scenes/comic-lines/scene.rhai`
 
@@ -240,9 +553,9 @@ Aktualne symbole:
 - `apply_active_npr_preset(world_api)` około linii 159+.
 - `toggle_npr_strategy(world_api)` około linii 222+.
 - `set_npr_debug_view(world_api, view_id, label)` około linii 230+.
-- input obsługuje debug overlay `7/8/9/0`, ale nie ma `cycle_npr_gpu_debug_mode`.
+- input obsługuje debug overlay `7/8/9/0` oraz `cycle_npr_gpu_debug_mode` pod `V`.
 
-Wniosek do dokumentu: trzeba dopisać API i script bridge dla `V`, inaczej debug mode będzie tylko YAML-owy i statyczny.
+Wniosek do dokumentu: API i script bridge dla `V` są już wdrożone. Dalsze prace przy debug mode powinny dotyczyć treści widoków diagnostycznych, nie samego przełączania.
 
 ---
 
@@ -254,9 +567,9 @@ Stan aktualny:
 
 1. `npr_compact_owners.wgsl` i `compact_owners_pipeline` istnieją.
 2. `GpuNprPathLink3d` i `path_links` istnieją.
-3. Normalna kolejność dispatchy w `gpu_realtime.rs` nie odpala obecnie `compact_owners_pipeline`.
-4. Problem finalnego renderu wynika głównie z tego, że `npr_build_strokes.wgsl` nadal czyta `visible_segments` i robi edge-local/chain-local stylizację zamiast path-level `NprStrokePath`.
-5. Stare `next_a/next_b/alt_next_a/alt_next_b` nadal są w typach i shaderach, więc mogą wracać jako heurystyka. Trzeba je usunąć z normalnej ścieżki albo oznaczyć jako nieautorytatywne hinty debug.
+3. Normalna kolejność dispatchy w `gpu_realtime.rs` odpala już `compact_owners_pipeline`, `connect_paths_pipeline` i `relax_path_owners_pipeline`.
+4. Problem finalnego renderu wynika teraz głównie z tego, że GPU path graph jest nadal MVP i nie odwzorowuje jeszcze pełnego CPU `NprStrokePath` z identycznym stitchingiem, uproszczeniem, historią i stylizacją.
+5. Stare `next_a/next_b/alt_next_a/alt_next_b` nadal są w typach jako hinty topologiczne. Nie mogą być traktowane jako finalny autorytet path ownership bez endpoint-vertex/bucket validation.
 
 Zamiana treści w dokumencie:
 
@@ -1870,7 +2183,7 @@ Cel:
 - utworzyć `GpuNprPathSegment3d` jako finalne wejście do `npr_build_strokes.wgsl`;
 - nadać `path_id`, `t0`, `t1`, `path_length_px`, `importance`.
 
-Minimalny v1:
+Minimalny etap:
 
 ```text
 path_length_px = visible segment length, jeżeli brak pełnej agregacji
@@ -1879,7 +2192,7 @@ t0 = 0.0
 t1 = 1.0
 ```
 
-Pełniejszy v2:
+Pelniejszy etap:
 
 ```text
 path_length_px = suma długości segmentów o tym samym path_id w bounded group
@@ -2522,7 +2835,7 @@ Nie robić:
 - full workspace test;
 - full workspace format;
 - rewrite CPU reference;
-- nowy renderer v2;
+- nowy rownolegly renderer;
 - fallback GPU -> CPU;
 - `auto`/`hybrid`;
 - readback per frame.
@@ -2615,30 +2928,30 @@ Sprawdzić:
 Przed uznaniem NPR GPU za naprawiony:
 
 - [ ] `gpu_realtime` nie używa starego edge-chain owner modelu jako finalnej ścieżki.
-- [ ] `npr_build_strokes.wgsl` czyta `path_segments`, nie `visible_segments` jako główne wejście finalnej kreski.
-- [ ] GPU ma `endpoint_refs`.
-- [ ] GPU ma `endpoint_bins`.
-- [ ] GPU ma `path_states`.
-- [ ] GPU ma `path_segments`.
-- [ ] GPU path ownership jest per `NprLineKind`.
-- [ ] GPU ma path-level `t0/t1/path_length_px`.
-- [ ] GPU taper działa na path, nie na każdym edge osobno.
+- [x] `npr_build_strokes.wgsl` czyta `path_segments`, nie `visible_segments` jako główne wejście finalnej kreski.
+- [x] GPU ma endpoint entries / endpoint bins.
+- [x] GPU endpoint bins są czyszczone per frame.
+- [x] GPU ma `path_states`.
+- [x] GPU ma `path_segments`.
+- [x] GPU path ownership jest per `NprLineKind`.
+- [x] GPU ma path-level `t0/t1/path_length_px`.
+- [x] GPU taper działa na path, nie na każdym edge osobno.
 - [ ] GPU pressure curves odpowiadają CPU.
 - [ ] GPU dropout nie niszczy silhouette.
 - [ ] Search lines nie są włączone dla silhouette.
-- [ ] `gpu_realtime_tuning.debug_mode` działa z YAML.
-- [ ] `V` przełącza debug mode runtime.
-- [ ] HUD pokazuje strategy, preset, model, GPU debug mode.
-- [ ] Multi-mesh face-id jest globalny w obrębie frame.
-- [ ] Face-id nie konfliktuje między meshami.
+- [x] `gpu_realtime_tuning.debug_mode` działa z YAML.
+- [x] `V` przełącza debug mode runtime.
+- [x] HUD pokazuje backend, preset, model i GPU debug mode.
+- [x] Multi-mesh face-id jest globalny w obrębie frame.
+- [x] Face-id nie konfliktuje między meshami.
 - [ ] Preset `default_gpu_comic` ma podobny region tuszu w CPU i GPU.
-- [ ] Presety 0..N działają w obu strategiach.
-- [ ] `G` toggle działa w obie strony.
-- [ ] Brak `auto`.
-- [ ] Brak `hybrid`.
-- [ ] Brak cichego fallbacku.
-- [ ] Brak readbacku w normalnym realtime.
-- [ ] Stary `compact_owners` usunięty albo nieosiągalny w normalnej ścieżce.
+- [x] Presety 0..N są zarejestrowane dla obu strategii.
+- [x] `G` toggle działa w obie strony bez zmiany bazowego presetu.
+- [x] Brak `auto`.
+- [x] Brak `hybrid`.
+- [x] Brak cichego fallbacku.
+- [x] Brak readbacku w normalnym realtime.
+- [x] `compact_owners` uzywa endpoint-vertex/bucket validation i nie jest samodzielnym autorytetem path ownership.
 
 ---
 

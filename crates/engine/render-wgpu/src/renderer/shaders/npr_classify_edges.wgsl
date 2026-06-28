@@ -63,6 +63,9 @@ struct GpuNprFrameUniforms3d {
     params16: vec4<f32>,
     ink_color: vec4<f32>,
     seed: vec4<u32>,
+    pipeline0: vec4<u32>,
+    pipeline1: vec4<u32>,
+    material_roles0: vec4<u32>,
 }
 
 const KIND_NONE: u32 = 0u;
@@ -72,11 +75,14 @@ const KIND_CREASE: u32 = 3u;
 const KIND_SEAM: u32 = 4u;
 const KIND_FEATURE: u32 = 5u;
 const KIND_CONTACT: u32 = 6u;
+const CANDIDATE_CHARACTER_SEMANTIC: u32 = 1u;
+const BUDGET_FACE_SILHOUETTE_PRIORITY: u32 = 1u;
+const BUDGET_CHARACTER_READABILITY: u32 = 2u;
 
 @group(0) @binding(0) var<storage, read> vertices: array<GpuNprVertex3d>;
 @group(0) @binding(1) var<storage, read> triangles: array<GpuNprTriangle3d>;
 @group(0) @binding(2) var<storage, read> edges: array<GpuNprEdge3d>;
-@group(0) @binding(3) var<storage, read_write> projected_vertices: array<GpuNprProjectedVertex3d>;
+@group(0) @binding(3) var<storage, read> projected_vertices: array<GpuNprProjectedVertex3d>;
 @group(0) @binding(4) var face_id_texture: texture_2d<u32>;
 @group(0) @binding(5) var<storage, read_write> visible_segments: array<GpuNprVisibleSegment3d>;
 @group(0) @binding(8) var<uniform> uniforms: GpuNprFrameUniforms3d;
@@ -148,12 +154,55 @@ fn feature_edge(edge: GpuNprEdge3d) -> bool {
     return dot(left, right) <= uniforms.params2.w;
 }
 
+fn uses_character_semantic_candidates() -> bool {
+    return uniforms.pipeline0.x == CANDIDATE_CHARACTER_SEMANTIC;
+}
+
+fn uses_character_budget() -> bool {
+    return uniforms.pipeline1.y == BUDGET_FACE_SILHOUETTE_PRIORITY
+        || uniforms.pipeline1.y == BUDGET_CHARACTER_READABILITY;
+}
+
+fn material_id_in_mask(material_id: u32, mask: u32) -> bool {
+    return material_id < 32u && (mask & (1u << material_id)) != 0u;
+}
+
+fn edge_touches_material_mask(edge: GpuNprEdge3d, mask: u32) -> bool {
+    if (mask == 0u) {
+        return false;
+    }
+    if (edge.face0 < u32(arrayLength(&triangles)) && material_id_in_mask(triangles[edge.face0].material_id, mask)) {
+        return true;
+    }
+    if (edge.face_count > 1u && edge.face1 < u32(arrayLength(&triangles)) && material_id_in_mask(triangles[edge.face1].material_id, mask)) {
+        return true;
+    }
+    return false;
+}
+
+fn edge_touches_ink_detail_material(edge: GpuNprEdge3d) -> bool {
+    return edge_touches_material_mask(edge, uniforms.material_roles0.y);
+}
+
 fn feature_min_length_px() -> f32 {
-    return max(uniforms.params0.w * max(uniforms.params16.x, 0.1) * 1.20, uniforms.params0.w);
+    let semantic_scale = select(1.0, 1.35, uses_character_semantic_candidates() || uses_character_budget());
+    return max(
+        uniforms.params0.w * max(uniforms.params16.x, 0.1) * 1.20 * semantic_scale,
+        uniforms.params0.w,
+    );
+}
+
+fn edge_feature_min_length_px(edge: GpuNprEdge3d) -> f32 {
+    return feature_min_length_px() * select(1.0, 0.55, edge_touches_ink_detail_material(edge));
 }
 
 fn silhouette_min_length_px() -> f32 {
-    return max(uniforms.params0.w * max(uniforms.params16.z, 0.1), uniforms.params0.w);
+    let semantic_scale = select(1.0, 0.82, uses_character_semantic_candidates() || uses_character_budget());
+    return max(uniforms.params0.w * max(uniforms.params16.z, 0.1) * semantic_scale, uniforms.params0.w);
+}
+
+fn contact_min_length_px() -> f32 {
+    return max(feature_min_length_px() * select(1.0, 1.45, uses_character_budget()), 6.0);
 }
 
 fn screen_to_face_id_texel(screen: vec2<f32>) -> vec2<i32> {
@@ -309,15 +358,15 @@ fn cs_main(@builtin(global_invocation_id) id: vec3<u32>) {
     } else if (edge.face_count >= 2u) {
         if (show_silhouette && front0 != front1) {
             kind = KIND_SILHOUETTE;
-        } else if (show_feature && front0 && front1 && edge.material_seam > 0u && line_length >= feature_min_length_px()) {
+        } else if (show_feature && front0 && front1 && edge.material_seam > 0u && line_length >= edge_feature_min_length_px(edge)) {
             kind = KIND_SEAM;
-        } else if (show_feature && front0 && front1 && feature_edge(edge) && line_length >= feature_min_length_px()) {
+        } else if (show_feature && front0 && front1 && feature_edge(edge) && line_length >= edge_feature_min_length_px(edge)) {
             kind = KIND_CREASE;
         } else if (
             show_suggestive
             && front0
             && front1
-            && line_length >= max(feature_min_length_px() * 1.1, 8.0)
+            && line_length >= max(edge_feature_min_length_px(edge) * 1.1, 8.0)
         ) {
             let alignment = min(triangle_view_alignment(edge.face0), triangle_view_alignment(edge.face1));
             let shallow_view = alignment <= 0.18;
@@ -328,7 +377,7 @@ fn cs_main(@builtin(global_invocation_id) id: vec3<u32>) {
         }
     }
 
-    if (kind == KIND_NONE && contact && line_length >= max(feature_min_length_px(), 5.0)) {
+    if (kind == KIND_NONE && contact && line_length >= contact_min_length_px()) {
         kind = KIND_CONTACT;
     }
 
@@ -343,7 +392,7 @@ fn cs_main(@builtin(global_invocation_id) id: vec3<u32>) {
     let run_start = mix(screen_a, screen_b, run.x);
     let run_end = mix(screen_a, screen_b, run.y);
     let run_min_length = select(
-        feature_min_length_px(),
+        select(edge_feature_min_length_px(edge), contact_min_length_px(), kind == KIND_CONTACT),
         silhouette_min_length_px(),
         kind == KIND_SILHOUETTE,
     );
@@ -353,7 +402,11 @@ fn cs_main(@builtin(global_invocation_id) id: vec3<u32>) {
 
     let depth_start = mix(a.ndc_depth.z, b.ndc_depth.z, run.x);
     let depth_end = mix(a.ndc_depth.z, b.ndc_depth.z, run.y);
+    let primary_contour = kind == KIND_SILHOUETTE || kind == KIND_BOUNDARY;
+    let endpoint_tolerance = select(0.001, 0.06, primary_contour);
+    let start_vertex = select(0xffffffffu, edge.a, run.x <= endpoint_tolerance);
+    let end_vertex = select(0xffffffffu, edge.b, run.y >= 1.0 - endpoint_tolerance);
     visible_segments[edge_index].start = vec4<f32>(run_start, depth_start, 1.0);
     visible_segments[edge_index].end = vec4<f32>(run_end, depth_end, 1.0);
-    visible_segments[edge_index].kind_edge = vec4<u32>(kind, edge.edge_id, edge.a, edge.b);
+    visible_segments[edge_index].kind_edge = vec4<u32>(kind, edge.edge_id, start_vertex, end_vertex);
 }

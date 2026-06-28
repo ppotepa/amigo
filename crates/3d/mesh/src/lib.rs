@@ -95,7 +95,18 @@ impl MeshSceneService {
         else {
             return false;
         };
-        command.mesh.npr = Some(settings);
+        let mut resolved = settings;
+        if resolved.black_mass_material_ids.is_empty() {
+            if let Some(existing) = command.mesh.npr.as_ref() {
+                resolved.black_mass_material_ids = existing.black_mass_material_ids.clone();
+            }
+        }
+        if resolved.ink_detail_material_ids.is_empty() {
+            if let Some(existing) = command.mesh.npr.as_ref() {
+                resolved.ink_detail_material_ids = existing.ink_detail_material_ids.clone();
+            }
+        }
+        command.mesh.npr = Some(resolved);
         true
     }
 
@@ -114,6 +125,28 @@ impl MeshSceneService {
             return false;
         };
         npr.temporal_path_smoothing = enabled;
+        true
+    }
+
+    pub fn set_npr_render_strategy(
+        &self,
+        entity_name: &str,
+        strategy: amigo_render_api::NprRenderStrategy3d,
+    ) -> bool {
+        let mut commands = self
+            .commands
+            .lock()
+            .expect("mesh scene service mutex should not be poisoned");
+        let Some(command) = commands
+            .iter_mut()
+            .find(|command| command.entity_name == entity_name)
+        else {
+            return false;
+        };
+        let Some(npr) = command.mesh.npr.as_mut() else {
+            return false;
+        };
+        npr.render_strategy = strategy;
         true
     }
 
@@ -307,7 +340,8 @@ mod tests {
 
         assert!(service.apply_npr_preset("playground-npr-model", "heavy_noir_ink"));
 
-        let npr = service.commands()[0]
+        let commands = service.commands();
+        let npr = commands[0]
             .mesh
             .npr
             .as_ref()
@@ -347,6 +381,77 @@ mod tests {
                 .render_strategy,
             NprRenderStrategy3d::CpuReference
         );
+    }
+
+    #[test]
+    fn apply_npr_preset_preserves_model_ink_material_ids_when_preset_has_none() {
+        let service = MeshSceneService::default();
+        service.queue(MeshDrawCommand {
+            entity_id: 11,
+            entity_name: "playground-npr-model".to_owned(),
+            mesh: Mesh3d {
+                mesh_asset: AssetKey::new("playground-npr/meshes/khronos-male"),
+                transform: Transform3::default(),
+                npr: Some(NprLineSettings3d {
+                    black_mass_material_ids: vec![4, 5, 7],
+                    ink_detail_material_ids: vec![6, 11, 12],
+                    ..NprLineSettings3d::default()
+                }),
+            },
+        });
+        service.register_npr_preset("akira", NprLineSettings3d::default());
+
+        assert!(service.apply_npr_preset("playground-npr-model", "akira"));
+        assert_eq!(
+            service.commands()[0]
+                .mesh
+                .npr
+                .as_ref()
+                .expect("preset should preserve npr")
+                .black_mass_material_ids,
+            vec![4, 5, 7]
+        );
+        assert_eq!(
+            service.commands()[0]
+                .mesh
+                .npr
+                .as_ref()
+                .expect("preset should preserve npr")
+                .ink_detail_material_ids,
+            vec![6, 11, 12]
+        );
+    }
+
+    #[test]
+    fn updates_mesh_npr_render_strategy_without_replacing_style() {
+        let service = MeshSceneService::default();
+        service.queue(MeshDrawCommand {
+            entity_id: 11,
+            entity_name: "playground-npr-model".to_owned(),
+            mesh: Mesh3d {
+                mesh_asset: AssetKey::new("playground-npr/meshes/soldier"),
+                transform: Transform3::default(),
+                npr: Some(NprLineSettings3d {
+                    width_px: 3.25,
+                    seed: 2602,
+                    ..NprLineSettings3d::default()
+                }),
+            },
+        });
+
+        assert!(service.set_npr_render_strategy(
+            "playground-npr-model",
+            NprRenderStrategy3d::CpuReference
+        ));
+        let commands = service.commands();
+        let npr = commands[0]
+            .mesh
+            .npr
+            .as_ref()
+            .expect("mesh should still have npr");
+        assert_eq!(npr.render_strategy, NprRenderStrategy3d::CpuReference);
+        assert_eq!(npr.width_px, 3.25);
+        assert_eq!(npr.seed, 2602);
     }
 
     #[test]
@@ -422,6 +527,52 @@ mod tests {
                 .gpu_realtime_tuning
                 .debug_mode,
             NprGpuDebugMode3d::RawPaths
+        );
+    }
+
+    #[test]
+    fn script_command_sets_mesh_npr_render_strategy() {
+        let service = MeshSceneService::default();
+        service.queue(MeshDrawCommand {
+            entity_id: 11,
+            entity_name: "playground-npr-model".to_owned(),
+            mesh: Mesh3d {
+                mesh_asset: AssetKey::new("playground-npr/meshes/soldier"),
+                transform: Transform3::default(),
+                npr: Some(NprLineSettings3d::default()),
+            },
+        });
+
+        let outcome = handle_mesh3d_script_command(
+            Mesh3dScriptCommandContext {
+                selected_mod: "playground-npr",
+                mesh_scene_service: Some(&service),
+            },
+            ScriptCommand::new(
+                "3d.mesh",
+                "set_npr_render_strategy",
+                vec![
+                    "playground-npr-model".to_owned(),
+                    "cpu_reference".to_owned(),
+                ],
+            ),
+        );
+
+        assert!(matches!(
+            outcome,
+            Mesh3dScriptCommandOutcome::SetNprRenderStrategy {
+                strategy: NprRenderStrategy3d::CpuReference,
+                ..
+            }
+        ));
+        assert_eq!(
+            service.commands()[0]
+                .mesh
+                .npr
+                .as_ref()
+                .expect("script command should preserve npr")
+                .render_strategy,
+            NprRenderStrategy3d::CpuReference
         );
     }
 

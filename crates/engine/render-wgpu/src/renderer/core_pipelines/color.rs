@@ -3,11 +3,11 @@ use super::{
     CORE_COLOR_SCREEN_PIPELINE, CORE_NPR_STROKE_SEGMENT_ALPHA_PIPELINE,
     WgpuCorePipelineCreateContext, WgpuCorePipelineProvider,
 };
-use crate::renderer::{ColorVertex, NprStrokeSegmentVertex};
 use crate::renderer::pipelines::{
     additive_blend_state, create_color_pipeline, multiply_blend_state, screen_blend_state,
 };
 use crate::renderer::shaders::{COLOR_SHADER, NPR_STROKE_SEGMENT_SHADER};
+use crate::renderer::{ColorVertex, NprStrokeSegmentVertex};
 
 pub(crate) struct ColorAlphaPipelineProvider;
 pub(crate) struct ColorAdditivePipelineProvider;

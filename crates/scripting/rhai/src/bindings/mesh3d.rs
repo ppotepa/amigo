@@ -5,7 +5,8 @@ use amigo_scripting_api::ScriptCommandQueue;
 
 use crate::bindings::commands::{
     queue_mesh3d_apply_npr_preset, queue_mesh3d_set_npr_gpu_debug_mode,
-    queue_mesh3d_set_npr_temporal_path_smoothing, queue_mesh3d_spawn,
+    queue_mesh3d_set_npr_render_strategy, queue_mesh3d_set_npr_temporal_path_smoothing,
+    queue_mesh3d_spawn,
 };
 
 #[derive(Clone)]
@@ -36,6 +37,10 @@ impl Mesh3dApi {
         )
     }
 
+    pub fn set_npr_render_strategy(&mut self, entity_name: &str, strategy: &str) -> bool {
+        queue_mesh3d_set_npr_render_strategy(self.command_queue.as_ref(), entity_name, strategy)
+    }
+
     pub fn set_npr_gpu_debug_mode(&mut self, entity_name: &str, debug_mode: &str) -> bool {
         queue_mesh3d_set_npr_gpu_debug_mode(self.command_queue.as_ref(), entity_name, debug_mode)
     }
@@ -50,5 +55,6 @@ pub(crate) fn register_api(engine: &mut rhai::Engine) {
             "set_npr_temporal_path_smoothing",
             Mesh3dApi::set_npr_temporal_path_smoothing,
         )
+        .register_fn("set_npr_render_strategy", Mesh3dApi::set_npr_render_strategy)
         .register_fn("set_npr_gpu_debug_mode", Mesh3dApi::set_npr_gpu_debug_mode);
 }

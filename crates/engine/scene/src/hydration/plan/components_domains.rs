@@ -587,6 +587,15 @@ fn npr_line_settings_3d_from_settings_document(
         resolved.fill_mode =
             npr_fill_mode_3d_from_document(fill_mode, scene_id, entity_id, component_kind)?;
     }
+    if let Some(pipeline) = settings.pipeline.as_ref() {
+        apply_npr_pipeline_strategies_3d(
+            pipeline,
+            &mut resolved,
+            scene_id,
+            entity_id,
+            component_kind,
+        )?;
+    }
     if let Some(stroke_tool) = settings.stroke_tool.as_deref() {
         resolved.stroke_tool =
             npr_stroke_tool_3d_from_document(stroke_tool, scene_id, entity_id, component_kind)?;
@@ -611,6 +620,12 @@ fn npr_line_settings_3d_from_settings_document(
     }
     if let Some(contact_threshold) = settings.contact_threshold {
         resolved.contact_threshold = contact_threshold;
+    }
+    if let Some(black_mass_material_ids) = settings.black_mass_material_ids.as_ref() {
+        resolved.black_mass_material_ids = black_mass_material_ids.clone();
+    }
+    if let Some(ink_detail_material_ids) = settings.ink_detail_material_ids.as_ref() {
+        resolved.ink_detail_material_ids = ink_detail_material_ids.clone();
     }
     if let Some(feature_angle_degrees) = settings.feature_angle_degrees {
         resolved.feature_angle_degrees = feature_angle_degrees;
@@ -1049,6 +1064,192 @@ fn npr_render_strategy_3d_from_document(
             component_kind: component_kind.to_owned(),
             message: format!(
                 "invalid Mesh3D.npr.strategy `{other}`; expected `gpu_realtime` or `cpu_reference`"
+            ),
+        }),
+    }
+}
+
+fn apply_npr_pipeline_strategies_3d(
+    document: &crate::document::NprPipelineStrategiesDocument,
+    resolved: &mut amigo_render_api::NprLineSettings3d,
+    scene_id: &str,
+    entity_id: &str,
+    component_kind: &str,
+) -> SceneDocumentResult<()> {
+    if let Some(value) = document.candidate_strategy.as_deref() {
+        resolved.pipeline.candidate_strategy =
+            npr_candidate_strategy_3d_from_document(value, scene_id, entity_id, component_kind)?;
+    }
+    if let Some(value) = document.path_strategy.as_deref() {
+        resolved.pipeline.path_strategy =
+            npr_path_strategy_3d_from_document(value, scene_id, entity_id, component_kind)?;
+    }
+    if let Some(value) = document.stroke_strategy.as_deref() {
+        resolved.pipeline.stroke_strategy =
+            npr_stroke_strategy_3d_from_document(value, scene_id, entity_id, component_kind)?;
+    }
+    if let Some(value) = document.fill_strategy.as_deref() {
+        resolved.pipeline.fill_strategy =
+            npr_ink_fill_strategy_3d_from_document(value, scene_id, entity_id, component_kind)?;
+    }
+    if let Some(value) = document.hatching_strategy.as_deref() {
+        resolved.pipeline.hatching_strategy =
+            npr_hatching_strategy_3d_from_document(value, scene_id, entity_id, component_kind)?;
+    }
+    if let Some(value) = document.budget_strategy.as_deref() {
+        resolved.pipeline.budget_strategy =
+            npr_budget_strategy_3d_from_document(value, scene_id, entity_id, component_kind)?;
+    }
+    if let Some(value) = document.temporal_strategy.as_deref() {
+        resolved.pipeline.temporal_strategy =
+            npr_temporal_strategy_3d_from_document(value, scene_id, entity_id, component_kind)?;
+    }
+    Ok(())
+}
+
+fn npr_candidate_strategy_3d_from_document(
+    value: &str,
+    scene_id: &str,
+    entity_id: &str,
+    component_kind: &str,
+) -> SceneDocumentResult<amigo_render_api::NprCandidateStrategy3d> {
+    match value.trim() {
+        "geometry_edges" => Ok(amigo_render_api::NprCandidateStrategy3d::GeometryEdges),
+        "character_semantic" => Ok(amigo_render_api::NprCandidateStrategy3d::CharacterSemantic),
+        other => Err(crate::SceneDocumentError::Hydration {
+            scene_id: scene_id.to_owned(),
+            entity_id: entity_id.to_owned(),
+            component_kind: component_kind.to_owned(),
+            message: format!(
+                "invalid Mesh3D.npr.pipeline.candidate_strategy `{other}`; expected `geometry_edges` or `character_semantic`"
+            ),
+        }),
+    }
+}
+
+fn npr_path_strategy_3d_from_document(
+    value: &str,
+    scene_id: &str,
+    entity_id: &str,
+    component_kind: &str,
+) -> SceneDocumentResult<amigo_render_api::NprPathStrategy3d> {
+    match value.trim() {
+        "stable_stroked_paths" => Ok(amigo_render_api::NprPathStrategy3d::StableStrokedPaths),
+        "direct_visible_segments" => Ok(amigo_render_api::NprPathStrategy3d::DirectVisibleSegments),
+        other => Err(crate::SceneDocumentError::Hydration {
+            scene_id: scene_id.to_owned(),
+            entity_id: entity_id.to_owned(),
+            component_kind: component_kind.to_owned(),
+            message: format!(
+                "invalid Mesh3D.npr.pipeline.path_strategy `{other}`; expected `stable_stroked_paths` or `direct_visible_segments`"
+            ),
+        }),
+    }
+}
+
+fn npr_stroke_strategy_3d_from_document(
+    value: &str,
+    scene_id: &str,
+    entity_id: &str,
+    component_kind: &str,
+) -> SceneDocumentResult<amigo_render_api::NprStrokeStrategy3d> {
+    match value.trim() {
+        "comic_ink" => Ok(amigo_render_api::NprStrokeStrategy3d::ComicInk),
+        "akira_ink" => Ok(amigo_render_api::NprStrokeStrategy3d::AkiraInk),
+        "technical_ink" => Ok(amigo_render_api::NprStrokeStrategy3d::TechnicalInk),
+        "rough_pencil" => Ok(amigo_render_api::NprStrokeStrategy3d::RoughPencil),
+        other => Err(crate::SceneDocumentError::Hydration {
+            scene_id: scene_id.to_owned(),
+            entity_id: entity_id.to_owned(),
+            component_kind: component_kind.to_owned(),
+            message: format!(
+                "invalid Mesh3D.npr.pipeline.stroke_strategy `{other}`; expected `comic_ink`, `akira_ink`, `technical_ink`, or `rough_pencil`"
+            ),
+        }),
+    }
+}
+
+fn npr_ink_fill_strategy_3d_from_document(
+    value: &str,
+    scene_id: &str,
+    entity_id: &str,
+    component_kind: &str,
+) -> SceneDocumentResult<amigo_render_api::NprInkFillStrategy3d> {
+    match value.trim() {
+        "none" => Ok(amigo_render_api::NprInkFillStrategy3d::None),
+        "material_black_mass" => Ok(amigo_render_api::NprInkFillStrategy3d::MaterialBlackMass),
+        "binary_manga_shadow" => Ok(amigo_render_api::NprInkFillStrategy3d::BinaryMangaShadow),
+        other => Err(crate::SceneDocumentError::Hydration {
+            scene_id: scene_id.to_owned(),
+            entity_id: entity_id.to_owned(),
+            component_kind: component_kind.to_owned(),
+            message: format!(
+                "invalid Mesh3D.npr.pipeline.fill_strategy `{other}`; expected `none`, `material_black_mass`, or `binary_manga_shadow`"
+            ),
+        }),
+    }
+}
+
+fn npr_hatching_strategy_3d_from_document(
+    value: &str,
+    scene_id: &str,
+    entity_id: &str,
+    component_kind: &str,
+) -> SceneDocumentResult<amigo_render_api::NprHatchingStrategy3d> {
+    match value.trim() {
+        "none" => Ok(amigo_render_api::NprHatchingStrategy3d::None),
+        "sparse_character_hatching" => {
+            Ok(amigo_render_api::NprHatchingStrategy3d::SparseCharacterHatching)
+        }
+        other => Err(crate::SceneDocumentError::Hydration {
+            scene_id: scene_id.to_owned(),
+            entity_id: entity_id.to_owned(),
+            component_kind: component_kind.to_owned(),
+            message: format!(
+                "invalid Mesh3D.npr.pipeline.hatching_strategy `{other}`; expected `none` or `sparse_character_hatching`"
+            ),
+        }),
+    }
+}
+
+fn npr_budget_strategy_3d_from_document(
+    value: &str,
+    scene_id: &str,
+    entity_id: &str,
+    component_kind: &str,
+) -> SceneDocumentResult<amigo_render_api::NprBudgetStrategy3d> {
+    match value.trim() {
+        "edge_visibility" => Ok(amigo_render_api::NprBudgetStrategy3d::EdgeVisibility),
+        "face_and_silhouette_priority" => {
+            Ok(amigo_render_api::NprBudgetStrategy3d::FaceAndSilhouettePriority)
+        }
+        "character_readability" => Ok(amigo_render_api::NprBudgetStrategy3d::CharacterReadability),
+        other => Err(crate::SceneDocumentError::Hydration {
+            scene_id: scene_id.to_owned(),
+            entity_id: entity_id.to_owned(),
+            component_kind: component_kind.to_owned(),
+            message: format!(
+                "invalid Mesh3D.npr.pipeline.budget_strategy `{other}`; expected `edge_visibility`, `face_and_silhouette_priority`, or `character_readability`"
+            ),
+        }),
+    }
+}
+
+fn npr_temporal_strategy_3d_from_document(
+    value: &str,
+    scene_id: &str,
+    entity_id: &str,
+    component_kind: &str,
+) -> SceneDocumentResult<amigo_render_api::NprTemporalStrategy3d> {
+    match value.trim() {
+        "path_history" => Ok(amigo_render_api::NprTemporalStrategy3d::PathHistory),
+        "stable_arc_length" => Ok(amigo_render_api::NprTemporalStrategy3d::StableArcLength),
+        other => Err(crate::SceneDocumentError::Hydration {
+            scene_id: scene_id.to_owned(),
+            entity_id: entity_id.to_owned(),
+            component_kind: component_kind.to_owned(),
+            message: format!(
+                "invalid Mesh3D.npr.pipeline.temporal_strategy `{other}`; expected `path_history` or `stable_arc_length`"
             ),
         }),
     }

@@ -72,6 +72,19 @@ pub fn queue_mesh3d_set_npr_temporal_path_smoothing(
     )
 }
 
+pub fn queue_mesh3d_set_npr_render_strategy(
+    command_queue: Option<&Arc<ScriptCommandQueue>>,
+    entity_name: &str,
+    strategy: &str,
+) -> bool {
+    queue_placeholder_command(
+        command_queue,
+        "3d.mesh",
+        "set_npr_render_strategy",
+        vec![entity_name.to_owned(), strategy.to_owned()],
+    )
+}
+
 pub fn queue_mesh3d_set_npr_gpu_debug_mode(
     command_queue: Option<&Arc<ScriptCommandQueue>>,
     entity_name: &str,

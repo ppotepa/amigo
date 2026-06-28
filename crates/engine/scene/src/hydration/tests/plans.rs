@@ -740,7 +740,7 @@ fn builds_hydration_plan_for_playground_npr_mesh_switches() {
         .find_map(super::plugin_payload::<InputActionMapSceneCommand>)
         .expect("npr input action map should be present");
     assert_eq!(input_map.id, "playground-npr");
-    for index in 1..=6 {
+    for index in 1..=2 {
         assert!(
             input_map
                 .actions
@@ -748,7 +748,17 @@ fn builds_hydration_plan_for_playground_npr_mesh_switches() {
             "missing npr select action for slot {index}"
         );
     }
+    for index in 3..=6 {
+        assert!(
+            !input_map
+                .actions
+                .contains_key(&format!("npr.select_{index}")),
+            "old npr select action for slot {index} should not be present"
+        );
+    }
     for action in [
+        "npr.animation_previous",
+        "npr.animation_next",
         "npr.camera_toggle",
         "npr.model_autorotate_toggle",
         "npr.preset_previous",
@@ -781,7 +791,7 @@ fn builds_hydration_plan_for_playground_npr_mesh_switches() {
         .iter()
         .filter_map(mesh_command)
         .collect::<Vec<_>>();
-    assert_eq!(mesh_commands.len(), 6);
+    assert_eq!(mesh_commands.len(), 2);
 
     let soldier_mesh = mesh_commands
         .iter()
@@ -818,22 +828,36 @@ fn builds_hydration_plan_for_playground_npr_mesh_switches() {
         amigo_render_api::NprGpuDebugMode3d::Final
     );
     assert!(!soldier_npr.gpu_realtime_tuning.search_enabled);
-    assert_eq!(soldier_npr.gpu_realtime_tuning.max_chained_walk_edges, 2);
+    assert_eq!(soldier_npr.gpu_realtime_tuning.max_chained_walk_edges, 0);
+    assert!(soldier_npr.black_mass_material_ids.is_empty());
+    assert!(soldier_npr.ink_detail_material_ids.is_empty());
 
-    let fox_mesh = mesh_commands
+    let khronos_male_mesh = mesh_commands
         .iter()
         .copied()
-        .find(|command| command.entity_name == "playground-npr-model-5-fox")
-        .expect("fox mesh command should be present");
-    let fox_npr = fox_mesh
+        .find(|command| command.entity_name == "playground-npr-model-2-khronos-male")
+        .expect("khronos male mesh command should be present");
+    let khronos_male_npr = khronos_male_mesh
         .npr
         .as_ref()
         .expect("npr settings block should enable NPR line settings");
-    assert_eq!(fox_npr.feature_angle_degrees, 42.0);
-    assert_eq!(fox_npr.seed, 1505);
-    assert_eq!(fox_npr.passes, 1);
-    assert_eq!(fox_npr.search_line_count, 0);
-    assert!(!fox_npr.gpu_realtime_tuning.search_enabled);
+    assert_eq!(
+        khronos_male_mesh.mesh_asset.as_str(),
+        "playground-npr/meshes/khronos-male"
+    );
+    assert_eq!(khronos_male_npr.feature_angle_degrees, 42.0);
+    assert_eq!(khronos_male_npr.seed, 1202);
+    assert_eq!(khronos_male_npr.passes, 1);
+    assert_eq!(khronos_male_npr.search_line_count, 0);
+    assert!(!khronos_male_npr.gpu_realtime_tuning.search_enabled);
+    assert_eq!(
+        khronos_male_npr.black_mass_material_ids,
+        vec![4, 5, 6, 7, 11, 12, 13]
+    );
+    assert_eq!(
+        khronos_male_npr.ink_detail_material_ids,
+        vec![6, 7, 11, 12, 13]
+    );
 }
 
 #[test]
@@ -852,7 +876,7 @@ fn compiled_playground_npr_scene_registers_file_backed_npr_presets() {
     )
     .expect("playground npr scene should compile");
 
-    assert_eq!(compiled.document.npr_presets.len(), 30);
+    assert_eq!(compiled.document.npr_presets.len(), 32);
 
     let plan = build_scene_hydration_plan("playground-npr", &compiled.document)
         .expect("compiled playground npr plan should build");
@@ -862,7 +886,7 @@ fn compiled_playground_npr_scene_registers_file_backed_npr_presets() {
         .filter_map(npr_preset_command)
         .collect::<Vec<_>>();
 
-    assert_eq!(presets.len(), 30);
+    assert_eq!(presets.len(), 32);
     let default_gpu = presets
         .iter()
         .find(|preset| preset.id == "default_gpu_comic")
@@ -921,6 +945,75 @@ fn compiled_playground_npr_scene_registers_file_backed_npr_presets() {
             && preset.settings.straightness >= 1.0
             && preset.settings.stroke_tool == amigo_render_api::NprStrokeTool3d::TechnicalPen
     }));
+    let akira = presets
+        .iter()
+        .find(|preset| preset.id == "akira")
+        .expect("akira preset should be registered");
+    assert_eq!(
+        akira.settings.render_strategy,
+        amigo_render_api::NprRenderStrategy3d::GpuRealtime
+    );
+    assert_eq!(akira.settings.fill_mode, amigo_render_api::NprFillMode3d::None);
+    assert_eq!(
+        akira.settings.stroke_tool,
+        amigo_render_api::NprStrokeTool3d::InkPen
+    );
+    assert!(akira.settings.silhouette);
+    assert!(akira.settings.boundary);
+    assert!(akira.settings.feature);
+    assert!(!akira.settings.suggestive);
+    assert!(!akira.settings.contact);
+    assert!(akira.settings.silhouette_width_multiplier > akira.settings.boundary_width_multiplier);
+    assert!(akira.settings.boundary_width_multiplier > akira.settings.feature_width_multiplier);
+    assert_eq!(akira.settings.search_line_count, 0);
+    assert!(!akira.settings.gpu_realtime_tuning.search_enabled);
+    assert!(akira.settings.temporal_path_smoothing);
+    assert_eq!(
+        akira.settings.pipeline.candidate_strategy,
+        amigo_render_api::NprCandidateStrategy3d::CharacterSemantic
+    );
+    assert_eq!(
+        akira.settings.pipeline.path_strategy,
+        amigo_render_api::NprPathStrategy3d::StableStrokedPaths
+    );
+    assert_eq!(
+        akira.settings.pipeline.stroke_strategy,
+        amigo_render_api::NprStrokeStrategy3d::AkiraInk
+    );
+    assert_eq!(
+        akira.settings.pipeline.fill_strategy,
+        amigo_render_api::NprInkFillStrategy3d::MaterialBlackMass
+    );
+    assert_eq!(
+        akira.settings.pipeline.hatching_strategy,
+        amigo_render_api::NprHatchingStrategy3d::SparseCharacterHatching
+    );
+    assert_eq!(
+        akira.settings.pipeline.budget_strategy,
+        amigo_render_api::NprBudgetStrategy3d::FaceAndSilhouettePriority
+    );
+    assert_eq!(
+        akira.settings.pipeline.temporal_strategy,
+        amigo_render_api::NprTemporalStrategy3d::StableArcLength
+    );
+    assert!(akira.settings.black_mass_material_ids.is_empty());
+    assert!(akira.settings.ink_detail_material_ids.is_empty());
+
+    let akira_cpu = presets
+        .iter()
+        .find(|preset| preset.id == "akira_cpu_reference")
+        .expect("akira cpu reference preset should be registered");
+    assert_eq!(
+        akira_cpu.settings.render_strategy,
+        amigo_render_api::NprRenderStrategy3d::CpuReference
+    );
+    assert_eq!(
+        akira_cpu.settings.fill_mode,
+        amigo_render_api::NprFillMode3d::None
+    );
+    assert_eq!(akira_cpu.settings.pipeline, akira.settings.pipeline);
+    assert!(akira_cpu.settings.black_mass_material_ids.is_empty());
+    assert!(akira_cpu.settings.ink_detail_material_ids.is_empty());
 }
 
 fn assert_playground_npr_cpu_reference_presets_match_gpu_presets(
@@ -942,6 +1035,7 @@ fn assert_playground_npr_cpu_reference_presets_match_gpu_presets(
         "balanced_30fps",
         "target_60fps",
         "low_120fps",
+        "akira",
     ] {
         let cpu_id = format!("{gpu_id}_cpu_reference");
         let gpu = presets

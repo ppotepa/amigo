@@ -6,8 +6,8 @@ use wgpu::util::DeviceExt;
 use crate::renderer::CachedMeshGeometry3d;
 
 use super::{
-    gpu_edges_from_geometry, gpu_triangles_from_geometry, gpu_vertices_from_geometry,
-    GpuNprEndpointEntry3d, GpuNprFrameUniforms3d, GpuNprPathSegment3d, GpuNprPathState3d,
+    GpuNprEndpointEntry3d, GpuNprPathSegment3d, GpuNprPathState3d, gpu_edges_from_geometry,
+    gpu_triangles_from_geometry, gpu_vertices_from_geometry,
 };
 
 #[derive(Debug)]
@@ -35,14 +35,15 @@ pub(crate) struct NprGpuFaceIdTarget3d {
 pub(crate) struct NprGpuFrameBuffers3d {
     pub projected_vertices: wgpu::Buffer,
     pub visible_segments: wgpu::Buffer,
+    #[allow(dead_code)]
     pub endpoint_heads: wgpu::Buffer,
+    #[allow(dead_code)]
     pub endpoint_entries: wgpu::Buffer,
     pub path_links: wgpu::Buffer,
     pub path_segments: wgpu::Buffer,
     pub path_states: wgpu::Buffer,
     pub stroke_segments: wgpu::Buffer,
     pub indirect_args: wgpu::Buffer,
-    pub uniforms: wgpu::Buffer,
     pub projected_vertices_capacity: u64,
     pub visible_segments_capacity: u64,
     pub endpoint_heads_capacity: u64,
@@ -105,9 +106,10 @@ impl NprGpuResources3d {
         width: u32,
         height: u32,
     ) -> &NprGpuFaceIdTarget3d {
-        let recreate = self.face_id_target.as_ref().is_none_or(|target| {
-            target.width != width || target.height != height
-        });
+        let recreate = self
+            .face_id_target
+            .as_ref()
+            .is_none_or(|target| target.width != width || target.height != height);
         if recreate {
             self.face_id_target = Some(create_face_id_target(device, width, height));
         }
@@ -129,7 +131,7 @@ impl NprGpuResources3d {
         stroke_segments_capacity: u64,
     ) -> &NprGpuFrameBuffers3d {
         let recreate = self.frame_buffers.as_ref().is_none_or(|buffers| {
-                buffers.projected_vertices_capacity < projected_vertices_capacity
+            buffers.projected_vertices_capacity < projected_vertices_capacity
                 || buffers.visible_segments_capacity < visible_segments_capacity
                 || buffers.endpoint_heads_capacity < endpoint_heads_capacity
                 || buffers.endpoint_entries_capacity < endpoint_entries_capacity
@@ -222,19 +224,10 @@ fn create_buffer<T>(device: &wgpu::Device, label: &'static str, data: &[T]) -> w
 }
 
 fn slice_as_bytes<T>(data: &[T]) -> &[u8] {
-    unsafe {
-        std::slice::from_raw_parts(
-            data.as_ptr() as *const u8,
-            std::mem::size_of_val(data),
-        )
-    }
+    unsafe { std::slice::from_raw_parts(data.as_ptr() as *const u8, std::mem::size_of_val(data)) }
 }
 
-fn create_face_id_target(
-    device: &wgpu::Device,
-    width: u32,
-    height: u32,
-) -> NprGpuFaceIdTarget3d {
+fn create_face_id_target(device: &wgpu::Device, width: u32, height: u32) -> NprGpuFaceIdTarget3d {
     let size = wgpu::Extent3d {
         width: width.max(1),
         height: height.max(1),
@@ -302,11 +295,7 @@ fn create_frame_buffers(
             "amigo-npr-endpoint-entries",
             endpoint_entries_capacity.max(std::mem::size_of::<GpuNprEndpointEntry3d>() as u64),
         ),
-        path_links: create_empty_buffer(
-            device,
-            "amigo-npr-path-links",
-            path_links_capacity,
-        ),
+        path_links: create_empty_buffer(device, "amigo-npr-path-links", path_links_capacity),
         path_segments: create_empty_buffer(
             device,
             "amigo-npr-path-segments",
@@ -323,11 +312,6 @@ fn create_frame_buffers(
             stroke_segments_capacity,
         ),
         indirect_args: create_empty_buffer(device, "amigo-npr-indirect-args", 64),
-        uniforms: create_uniform_buffer(
-            device,
-            "amigo-npr-frame-uniforms",
-            std::mem::size_of::<GpuNprFrameUniforms3d>() as u64,
-        ),
         projected_vertices_capacity,
         visible_segments_capacity,
         endpoint_heads_capacity,
@@ -347,15 +331,6 @@ fn create_empty_buffer(device: &wgpu::Device, label: &'static str, size: u64) ->
             | wgpu::BufferUsages::COPY_DST
             | wgpu::BufferUsages::VERTEX
             | wgpu::BufferUsages::INDIRECT,
-        mapped_at_creation: false,
-    })
-}
-
-fn create_uniform_buffer(device: &wgpu::Device, label: &'static str, size: u64) -> wgpu::Buffer {
-    device.create_buffer(&wgpu::BufferDescriptor {
-        label: Some(label),
-        size: size.max(16),
-        usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
         mapped_at_creation: false,
     })
 }

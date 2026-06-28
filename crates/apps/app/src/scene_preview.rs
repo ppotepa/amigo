@@ -228,6 +228,34 @@ impl ScenePreviewHost {
         Ok(())
     }
 
+    #[cfg(test)]
+    pub(crate) fn register_mesh3d_npr_preset_for_test(
+        &mut self,
+        preset_id: impl Into<String>,
+        settings: amigo_render_api::NprLineSettings3d,
+    ) -> AmigoResult<()> {
+        self.bootstrap()?;
+        let runtime = self.runtime()?;
+        let mesh_service =
+            crate::runtime_context::required::<amigo_3d_mesh::MeshSceneService>(runtime)?;
+        mesh_service.register_npr_preset(preset_id, settings);
+        Ok(())
+    }
+
+    #[cfg(test)]
+    pub(crate) fn mesh3d_npr_preset_for_test(
+        &mut self,
+        preset_id: &str,
+    ) -> AmigoResult<amigo_render_api::NprLineSettings3d> {
+        self.bootstrap()?;
+        let runtime = self.runtime()?;
+        let mesh_service =
+            crate::runtime_context::required::<amigo_3d_mesh::MeshSceneService>(runtime)?;
+        mesh_service.npr_preset(preset_id).ok_or_else(|| {
+            AmigoError::Message(format!("missing Mesh3D NPR preset `{preset_id}`"))
+        })
+    }
+
     fn tick_runtime_frame(&mut self, delta_seconds: f32) -> AmigoResult<()> {
         {
             let runtime = self.runtime()?;

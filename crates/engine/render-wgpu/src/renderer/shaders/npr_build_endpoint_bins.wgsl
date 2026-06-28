@@ -10,7 +10,8 @@ struct GpuNprEndpointEntry3d {
     next_plus_one: u32,
     kind: u32,
     bin: vec2<i32>,
-    _pad0: vec2<u32>,
+    endpoint_vertex: u32,
+    _pad0: u32,
 }
 
 struct GpuNprFrameUniforms3d {
@@ -39,15 +40,22 @@ struct GpuNprFrameUniforms3d {
     params16: vec4<f32>,
     ink_color: vec4<f32>,
     seed: vec4<u32>,
+    pipeline0: vec4<u32>,
+    pipeline1: vec4<u32>,
+    material_roles0: vec4<u32>,
 }
 
 const KIND_NONE: u32 = 0u;
 const ENDPOINT_FLAG_MATCHED_START: u32 = 1u;
 
-@group(0) @binding(5) var<storage, read_write> visible_segments: array<GpuNprVisibleSegment3d>;
+@group(0) @binding(5) var<storage, read> visible_segments: array<GpuNprVisibleSegment3d>;
 @group(0) @binding(8) var<uniform> uniforms: GpuNprFrameUniforms3d;
 @group(0) @binding(11) var<storage, read_write> endpoint_heads: array<atomic<u32>>;
 @group(0) @binding(12) var<storage, read_write> endpoint_entries: array<GpuNprEndpointEntry3d>;
+
+fn active_edge_count() -> u32 {
+    return min(uniforms.pipeline1.w, u32(arrayLength(&visible_segments)));
+}
 
 fn quantized_anchor_bin(point: vec2<f32>) -> vec2<i32> {
     let quant = max(uniforms.params12.w, 0.5);
@@ -62,18 +70,14 @@ fn endpoint_bucket_index(kind: u32, bin: vec2<i32>) -> u32 {
     return (hx ^ hy ^ hk) & (head_count - 1u);
 }
 
-fn clear_endpoint_entry(entry_index: u32) {
-    endpoint_entries[entry_index] = GpuNprEndpointEntry3d(
-        0xffffffffu,
-        0u,
-        0u,
-        KIND_NONE,
-        vec2<i32>(0, 0),
-        vec2<u32>(0u, 0u),
-    );
-}
-
-fn write_endpoint_entry(entry_index: u32, edge_index: u32, kind: u32, point: vec2<f32>, matched_start: bool) {
+fn write_endpoint_entry(
+    entry_index: u32,
+    edge_index: u32,
+    kind: u32,
+    point: vec2<f32>,
+    matched_start: bool,
+    endpoint_vertex: u32,
+) {
     let bin = quantized_anchor_bin(point);
     let bucket_index = endpoint_bucket_index(kind, bin);
     let previous_head = atomicExchange(&endpoint_heads[bucket_index], entry_index + 1u);
@@ -83,7 +87,8 @@ fn write_endpoint_entry(entry_index: u32, edge_index: u32, kind: u32, point: vec
         previous_head,
         kind,
         bin,
-        vec2<u32>(0u, 0u),
+        endpoint_vertex,
+        0u,
     );
 }
 
@@ -91,11 +96,7 @@ fn write_endpoint_entry(entry_index: u32, edge_index: u32, kind: u32, point: vec
 fn cs_main(@builtin(global_invocation_id) id: vec3<u32>) {
     let item = id.x;
     let entry_count = u32(arrayLength(&endpoint_entries));
-    let edge_count = u32(arrayLength(&visible_segments));
-
-    if (item < entry_count) {
-        clear_endpoint_entry(item);
-    }
+    let edge_count = active_edge_count();
 
     if (item >= edge_count) {
         return;
@@ -112,6 +113,10 @@ fn cs_main(@builtin(global_invocation_id) id: vec3<u32>) {
         return;
     }
 
-    write_endpoint_entry(base_entry, item, kind, visible.start.xy, true);
-    write_endpoint_entry(base_entry + 1u, item, kind, visible.end.xy, false);
+    if (visible.kind_edge.z != 0xffffffffu) {
+        write_endpoint_entry(base_entry, item, kind, visible.start.xy, true, visible.kind_edge.z);
+    }
+    if (visible.kind_edge.w != 0xffffffffu) {
+        write_endpoint_entry(base_entry + 1u, item, kind, visible.end.xy, false, visible.kind_edge.w);
+    }
 }

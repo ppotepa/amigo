@@ -85,6 +85,137 @@ impl NprFillMode3d {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum NprCandidateStrategy3d {
+    #[default]
+    GeometryEdges,
+    CharacterSemantic,
+}
+
+impl NprCandidateStrategy3d {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::GeometryEdges => "geometry_edges",
+            Self::CharacterSemantic => "character_semantic",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum NprPathStrategy3d {
+    StableStrokedPaths,
+    #[default]
+    DirectVisibleSegments,
+}
+
+impl NprPathStrategy3d {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::StableStrokedPaths => "stable_stroked_paths",
+            Self::DirectVisibleSegments => "direct_visible_segments",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum NprStrokeStrategy3d {
+    #[default]
+    ComicInk,
+    AkiraInk,
+    TechnicalInk,
+    RoughPencil,
+}
+
+impl NprStrokeStrategy3d {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::ComicInk => "comic_ink",
+            Self::AkiraInk => "akira_ink",
+            Self::TechnicalInk => "technical_ink",
+            Self::RoughPencil => "rough_pencil",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum NprInkFillStrategy3d {
+    #[default]
+    None,
+    MaterialBlackMass,
+    BinaryMangaShadow,
+}
+
+impl NprInkFillStrategy3d {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::None => "none",
+            Self::MaterialBlackMass => "material_black_mass",
+            Self::BinaryMangaShadow => "binary_manga_shadow",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum NprHatchingStrategy3d {
+    #[default]
+    None,
+    SparseCharacterHatching,
+}
+
+impl NprHatchingStrategy3d {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::None => "none",
+            Self::SparseCharacterHatching => "sparse_character_hatching",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum NprBudgetStrategy3d {
+    #[default]
+    EdgeVisibility,
+    FaceAndSilhouettePriority,
+    CharacterReadability,
+}
+
+impl NprBudgetStrategy3d {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::EdgeVisibility => "edge_visibility",
+            Self::FaceAndSilhouettePriority => "face_and_silhouette_priority",
+            Self::CharacterReadability => "character_readability",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum NprTemporalStrategy3d {
+    #[default]
+    PathHistory,
+    StableArcLength,
+}
+
+impl NprTemporalStrategy3d {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::PathHistory => "path_history",
+            Self::StableArcLength => "stable_arc_length",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct NprPipelineStrategies3d {
+    pub candidate_strategy: NprCandidateStrategy3d,
+    pub path_strategy: NprPathStrategy3d,
+    pub stroke_strategy: NprStrokeStrategy3d,
+    pub fill_strategy: NprInkFillStrategy3d,
+    pub hatching_strategy: NprHatchingStrategy3d,
+    pub budget_strategy: NprBudgetStrategy3d,
+    pub temporal_strategy: NprTemporalStrategy3d,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum NprGpuDebugMode3d {
     Final,
@@ -145,8 +276,8 @@ impl Default for NprGpuRealtimeTuning3d {
             debug_mode: NprGpuDebugMode3d::Final,
             max_render_length_px: 56.0,
             max_segment_length_px: 18.0,
-            max_terminal_walk_edges: 1,
-            max_chained_walk_edges: 2,
+            max_terminal_walk_edges: 0,
+            max_chained_walk_edges: 0,
             max_chain_angle_degrees: 32.0,
             search_enabled: false,
             search_max_render_length_px: 24.0,
@@ -222,6 +353,7 @@ pub struct NprLineSettings3d {
     pub style_preset: NprStylePreset3d,
     pub stroke_tool: NprStrokeTool3d,
     pub render_strategy: NprRenderStrategy3d,
+    pub pipeline: NprPipelineStrategies3d,
     pub gpu_realtime_tuning: NprGpuRealtimeTuning3d,
     pub fill_mode: NprFillMode3d,
     pub boundary: bool,
@@ -231,6 +363,8 @@ pub struct NprLineSettings3d {
     pub contact: bool,
     pub contact_ground_y: f32,
     pub contact_threshold: f32,
+    pub black_mass_material_ids: Vec<u32>,
+    pub ink_detail_material_ids: Vec<u32>,
     pub feature_angle_degrees: f32,
     pub min_screen_length_px: f32,
     pub ink_color: ColorRgba,
@@ -352,6 +486,10 @@ impl NprLineSettings3d {
                 style_preset,
                 stroke_tool: NprStrokeTool3d::TechnicalPen,
                 render_strategy: NprRenderStrategy3d::GpuRealtime,
+                pipeline: NprPipelineStrategies3d {
+                    stroke_strategy: NprStrokeStrategy3d::TechnicalInk,
+                    ..NprPipelineStrategies3d::default()
+                },
                 fill_mode: NprFillMode3d::None,
                 boundary: true,
                 silhouette: true,
@@ -360,6 +498,8 @@ impl NprLineSettings3d {
                 contact: false,
                 contact_ground_y: 0.0,
                 contact_threshold: 0.08,
+                black_mass_material_ids: Vec::new(),
+                ink_detail_material_ids: Vec::new(),
                 feature_angle_degrees: 42.0,
                 min_screen_length_px: 2.4,
                 ink_color: ColorRgba::new(0.070, 0.062, 0.050, 1.0),
@@ -435,6 +575,7 @@ impl NprLineSettings3d {
                 style_preset,
                 stroke_tool: NprStrokeTool3d::InkPen,
                 render_strategy: NprRenderStrategy3d::GpuRealtime,
+                pipeline: NprPipelineStrategies3d::default(),
                 gpu_realtime_tuning: NprGpuRealtimeTuning3d::rough_comic_experimental(),
                 fill_mode: NprFillMode3d::None,
                 boundary: true,
@@ -444,6 +585,8 @@ impl NprLineSettings3d {
                 contact: false,
                 contact_ground_y: 0.0,
                 contact_threshold: 0.08,
+                black_mass_material_ids: Vec::new(),
+                ink_detail_material_ids: Vec::new(),
                 feature_angle_degrees: 32.0,
                 min_screen_length_px: 2.0,
                 ink_color: ColorRgba::new(0.07, 0.062, 0.05, 1.0),
@@ -540,9 +683,36 @@ mod tests {
 
     #[test]
     fn npr_line_settings_default_fill_mode_is_none() {
+        assert_eq!(NprLineSettings3d::default().fill_mode, NprFillMode3d::None);
+    }
+
+    #[test]
+    fn npr_line_settings_default_pipeline_is_geometry_edge_technical_ink() {
+        let settings = NprLineSettings3d::default();
         assert_eq!(
-            NprLineSettings3d::default().fill_mode,
-            NprFillMode3d::None
+            settings.pipeline.candidate_strategy,
+            NprCandidateStrategy3d::GeometryEdges
+        );
+        assert_eq!(
+            settings.pipeline.path_strategy,
+            NprPathStrategy3d::DirectVisibleSegments
+        );
+        assert_eq!(
+            settings.pipeline.stroke_strategy,
+            NprStrokeStrategy3d::TechnicalInk
+        );
+        assert_eq!(settings.pipeline.fill_strategy, NprInkFillStrategy3d::None);
+        assert_eq!(
+            settings.pipeline.hatching_strategy,
+            NprHatchingStrategy3d::None
+        );
+        assert_eq!(
+            settings.pipeline.budget_strategy,
+            NprBudgetStrategy3d::EdgeVisibility
+        );
+        assert_eq!(
+            settings.pipeline.temporal_strategy,
+            NprTemporalStrategy3d::PathHistory
         );
     }
 
