@@ -229,6 +229,7 @@ pub struct NprStrokeFrameStats3d {
     pub gpu_realtime_endpoint_heads_capacity: usize,
     pub gpu_realtime_endpoint_entries_capacity: usize,
     pub gpu_realtime_path_links_capacity: usize,
+    pub gpu_realtime_path_states_capacity: usize,
     pub gpu_realtime_path_segments_capacity: usize,
     pub gpu_realtime_stroke_segments_capacity: usize,
     pub gpu_realtime_debug_mode: String,
@@ -304,6 +305,7 @@ impl NprStrokeFrameStats3d {
         self.gpu_realtime_endpoint_entries_capacity +=
             other.gpu_realtime_endpoint_entries_capacity;
         self.gpu_realtime_path_links_capacity += other.gpu_realtime_path_links_capacity;
+        self.gpu_realtime_path_states_capacity += other.gpu_realtime_path_states_capacity;
         self.gpu_realtime_path_segments_capacity +=
             other.gpu_realtime_path_segments_capacity;
         self.gpu_realtime_stroke_segments_capacity +=

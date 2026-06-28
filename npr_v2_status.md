@@ -5,7 +5,7 @@ Powiazany plan: `npr_v2.md`.
 
 ## 0. Postep globalny
 
-- Szacowany postep calego `npr_v2`: okolo 93%.
+- Szacowany postep calego `npr_v2`: okolo 94%.
 - Zrobione: kontrakt, YAML, routing CPU/GPU, debug mode, endpoint bins, owner compaction, `path_segments`, path-level lock/dropout foundation.
 - Zostalo: domkniecie parytetu wizualnego CPU/GPU, lepszy graph walk i stabilniejsze `path_t/path_id`, dalsze dopasowanie stylizacji do `cpu_reference`.
 
@@ -79,9 +79,14 @@ Powiazany plan: `npr_v2.md`.
   - `connect_paths` zapisuje teraz jawny stan path per edge,
   - `path_states` niosa `owner_segment`, `path_id`, `kind`, `flags`, `segment_count`,
   - `emit_path_segments` przestalo polegac wylacznie na `link.owner_edge == edge_index` jako jedynym zrodle autorytetu.
+- Doszedl tez pierwszy etap `relax_path_owners`:
+  - po `connect_paths` wykonywane sa teraz wielokrotne compute passy propagujace minimalnego ownera po lokalnych linkach,
+  - `path_id` po relax jest stabilizowane juz nie tylko lokalnie, ale tez po sasiednich segmentach tej samej klasy linii,
+  - to dalej nie jest finalny solver grafu sciezek, ale porzadkuje ownership lepiej niz pojedynczy pass.
 - To porzadkuje architekture:
   - `compact_owners` zostaje etapem wyboru lokalnych polaczen,
   - `connect_paths` zostaje etapem budowy jawnego stanu path,
+  - `relax_path_owners` zostaje etapem propagacji ownera/path id,
   - `emit_path_segments` czyta juz ten stan zamiast samemu zgadywac wszystko od zera.
 - Statystyki GPU NPR zostaly rozszerzone:
   - `frame_jobs`,
@@ -90,6 +95,7 @@ Powiazany plan: `npr_v2.md`.
   - `endpoint_heads_capacity`,
   - `endpoint_entries_capacity`,
   - `path_links_capacity`,
+  - `path_states_capacity`,
   - `path_segments_capacity`,
   - `stroke_segments_capacity`,
   - `debug_mode`.

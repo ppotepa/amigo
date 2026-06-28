@@ -10,6 +10,7 @@ use super::NprGpuResources3d;
 
 const NPR_GPU_SEGMENTS_PER_STROKE_PASS: usize = 2;
 const NPR_GPU_PATH_SEGMENTS_PER_CHAIN: usize = 8;
+const NPR_GPU_PATH_RELAX_PASSES: usize = 3;
 
 #[derive(Debug, Clone)]
 pub(crate) struct NprGpuMeshJob3d {
@@ -354,6 +355,15 @@ impl GpuRealtimeNprRenderer3d {
                     timestamp_writes: None,
                 });
                 pass.set_pipeline(&pipelines.connect_paths_pipeline);
+                pass.set_bind_group(0, &bind_group, &[]);
+                pass.dispatch_workgroups(workgroup_count(topology.edge_count as usize), 1, 1);
+            }
+            for _ in 0..NPR_GPU_PATH_RELAX_PASSES {
+                let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                    label: Some("amigo-npr-relax-path-owners-pass"),
+                    timestamp_writes: None,
+                });
+                pass.set_pipeline(&pipelines.relax_path_owners_pipeline);
                 pass.set_bind_group(0, &bind_group, &[]);
                 pass.dispatch_workgroups(workgroup_count(topology.edge_count as usize), 1, 1);
             }

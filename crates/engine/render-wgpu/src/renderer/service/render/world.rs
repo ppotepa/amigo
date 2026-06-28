@@ -477,6 +477,8 @@ pub(super) fn execute_world_to_offscreen(
         gpu_npr_stats.endpoint_entries_capacity;
     renderer.npr_stroke_stats_3d.gpu_realtime_path_links_capacity +=
         gpu_npr_stats.path_links_capacity;
+    renderer.npr_stroke_stats_3d.gpu_realtime_path_states_capacity +=
+        gpu_npr_stats.path_states_capacity;
     renderer.npr_stroke_stats_3d.gpu_realtime_path_segments_capacity +=
         gpu_npr_stats.path_segments_capacity;
     renderer.npr_stroke_stats_3d.gpu_realtime_stroke_segments_capacity +=
