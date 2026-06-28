@@ -94,6 +94,18 @@ fn path_importance(kind: u32, depth01: f32) -> f32 {
     return depth_factor * 0.88;
 }
 
+fn path_importance_with_chain(
+    kind: u32,
+    depth01: f32,
+    hop_count: u32,
+    segment_count: u32,
+) -> f32 {
+    let base = path_importance(kind, depth01);
+    let hop_boost = clamp(1.0 + f32(min(hop_count, 4u)) * 0.035, 1.0, 1.14);
+    let segment_boost = clamp(0.88 + f32(min(segment_count, 6u)) * 0.055, 0.88, 1.16);
+    return clamp(base * hop_boost * segment_boost, 0.72, 1.28);
+}
+
 fn valid_visible_segment(edge_index: u32, kind: u32) -> bool {
     if (edge_index == 0xffffffffu || edge_index >= u32(arrayLength(&visible_segments))) {
         return false;
@@ -317,9 +329,15 @@ fn cs_main(@builtin(global_invocation_id) id: vec3<u32>) {
     if (total_length <= 0.0001) {
         return;
     }
+    let hop_count = start_walk.hops + end_walk.hops;
     let avg_depth =
         (visible.start.z + visible.end.z + start_walk.depth + end_walk.depth) * 0.25;
-    let importance = path_importance(visible.kind_edge.x, avg_depth);
+    let importance = path_importance_with_chain(
+        visible.kind_edge.x,
+        avg_depth,
+        hop_count,
+        state.segment_count,
+    );
     let has_start_extension = start_walk.extra_length > 0.0001;
     let has_end_extension = end_walk.extra_length > 0.0001;
     let split_start_extension =
@@ -334,7 +352,6 @@ fn cs_main(@builtin(global_invocation_id) id: vec3<u32>) {
         end_walk.hops > 2u
         && distance(final_end.xy, end_walk.penultimate_point) > 0.0001
         && distance(end_walk.penultimate_point, end_walk.near_point) > 0.0001;
-    let hop_count = start_walk.hops + end_walk.hops;
     let computed_path_id = stable_path_id(
         visible.kind_edge.x,
         final_start.xy,
@@ -466,8 +483,8 @@ fn cs_main(@builtin(global_invocation_id) id: vec3<u32>) {
             return;
         }
         path_segments[emit_index] = GpuNprPathSegment3d(
+            visible.start,
             owner_mid,
-            visible.end,
             vec4<u32>(
                 stable_path_id,
                 visible.kind_edge.x,
@@ -485,8 +502,8 @@ fn cs_main(@builtin(global_invocation_id) id: vec3<u32>) {
             return;
         }
         path_segments[emit_index] = GpuNprPathSegment3d(
+            owner_mid,
             visible.end,
-            final_end,
             vec4<u32>(
                 stable_path_id,
                 visible.kind_edge.x,

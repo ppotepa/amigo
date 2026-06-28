@@ -5,7 +5,7 @@ Powiazany plan: `npr_v2.md`.
 
 ## 0. Postep globalny
 
-- Szacowany postep calego `npr_v2`: okolo 94%.
+- Szacowany postep calego `npr_v2`: okolo 95%.
 - Zrobione: kontrakt, YAML, routing CPU/GPU, debug mode, endpoint bins, owner compaction, `path_segments`, path-level lock/dropout foundation.
 - Zostalo: domkniecie parytetu wizualnego CPU/GPU, lepszy graph walk i stabilniejsze `path_t/path_id`, dalsze dopasowanie stylizacji do `cpu_reference`.
 
@@ -83,6 +83,14 @@ Powiazany plan: `npr_v2.md`.
   - po `connect_paths` wykonywane sa teraz wielokrotne compute passy propagujace minimalnego ownera po lokalnych linkach,
   - `path_id` po relax jest stabilizowane juz nie tylko lokalnie, ale tez po sasiednich segmentach tej samej klasy linii,
   - to dalej nie jest finalny solver grafu sciezek, ale porzadkuje ownership lepiej niz pojedynczy pass.
+- Naprawiono tez porzadek geometrii owner chainu w `emit_path_segments`:
+  - srodkowe segmenty ownera sa teraz emitowane w logicznej kolejnosci `visible.start -> owner_mid -> visible.end`,
+  - wczesniejszy uklad owner-centric potrafil pomijac pierwszy pol-odcinek ownera i dawac nielogiczne skoki geometrii,
+  - to jest zmiana wysokiego wplywu wizualnego, bo dotyczy samego ksztaltu finalnej kreski, nie tylko jej stylizacji.
+- `importance` path jest teraz delikatnie wzmacniane przez rozmiar chainu:
+  - liczbe hopow,
+  - liczbe segmentow w `path_states`.
+  To nie zastępuje jeszcze pelnego CPU parity, ale lepiej odroznia duze, spojne sciezki od malych lokalnych fragmentow.
 - To porzadkuje architekture:
   - `compact_owners` zostaje etapem wyboru lokalnych polaczen,
   - `connect_paths` zostaje etapem budowy jawnego stanu path,
