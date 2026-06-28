@@ -329,6 +329,13 @@ Glowne pliki:
   - alpha,
   - dropout,
   bo finalna kreska nie dostaje juz tak grubego, zbyt uproszczonego srodka sciezki.
+- `walk_path_endpoint` niesie teraz dodatkowy poziom punktu posredniego (`mid_point/mid_length`),
+  a `emit_path_segments` potrafi z niego korzystac przy wielohopowych extension chainach.
+  To oznacza, ze GPU nie sklada juz dluzszej extension geometrii tylko z:
+  - `near`,
+  - `penultimate`,
+  - `final`,
+  ale ma jeszcze jeden wezel posredni do budowy sensowniejszego luku i lepszego `path_t`.
 - `build_strokes` dalej nie jest pelnym path rendererem, bo `path_t/path walk` sa jeszcze uproszczone.
 - GPU frame buffers maja teraz tez osobny bufor `path_states`.
 
