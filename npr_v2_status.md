@@ -5,7 +5,7 @@ Powiazany plan: `npr_v2.md`.
 
 ## 0. Postep globalny
 
-- Szacowany postep calego `npr_v2`: okolo 95%.
+- Szacowany postep calego `npr_v2`: okolo 96%.
 - Zrobione: kontrakt, YAML, routing CPU/GPU, debug mode, endpoint bins, owner compaction, `path_segments`, path-level lock/dropout foundation.
 - Zostalo: domkniecie parytetu wizualnego CPU/GPU, lepszy graph walk i stabilniejsze `path_t/path_id`, dalsze dopasowanie stylizacji do `cpu_reference`.
 
@@ -91,6 +91,14 @@ Powiazany plan: `npr_v2.md`.
   - liczbe hopow,
   - liczbe segmentow w `path_states`.
   To nie zastępuje jeszcze pelnego CPU parity, ale lepiej odroznia duze, spojne sciezki od malych lokalnych fragmentow.
+- `build_strokes` dostal teraz tez jawna modulacje `path_coherence`:
+  - spójniejsze i dluzsze sciezki dostaja mniej agresywne humanization noise,
+  - dropout jest slabszy dla mocnych chainow,
+  - search lines sa bardziej ograniczane dla sciezek juz wystarczajaco spojnych,
+  - width/alpha sa lekko modulowane przez coherence, zamiast traktowac wszystkie `path_segments` identycznie.
+- To przybliza GPU do CPU reference w warstwie semantyki kreski:
+  - mocne contour paths powinny mniej wygladac jak przypadkowe posklejane odcinki,
+  - slabsze feature/search paths nadal zachowuja bardziej szkicowy charakter.
 - To porzadkuje architekture:
   - `compact_owners` zostaje etapem wyboru lokalnych polaczen,
   - `connect_paths` zostaje etapem budowy jawnego stanu path,

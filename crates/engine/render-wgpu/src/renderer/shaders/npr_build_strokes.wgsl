@@ -259,6 +259,7 @@ fn should_drop_segment_instance(
     render_length: f32,
     path_t0: f32,
     path_t1: f32,
+    path_coherence: f32,
 ) -> bool {
     if (pass_index >= u32(uniforms.params5.x)) {
         return false;
@@ -272,7 +273,7 @@ fn should_drop_segment_instance(
         return false;
     }
     let coverage = clamp(render_length / max(min_segment_px * 4.0, 1.0), 0.25, 1.0);
-    let chance = effective * coverage;
+    let chance = effective * coverage * clamp(1.22 - path_coherence * 0.32, 0.58, 1.18);
     let path_t_mid = clamp((path_t0 + path_t1) * 0.5, 0.0, 1.0);
     let dropout_cells = max(uniforms.params4.w, 4.0);
     let cell = u32(floor(path_t_mid * dropout_cells));
@@ -509,8 +510,26 @@ fn should_enable_search_passes(
     return true;
 }
 
-fn pass_width(kind: u32, pass_index: u32, importance: f32, t: f32) -> f32 {
+fn path_coherence_score(
+    path_length: f32,
+    hop_count: u32,
+    connected_start: bool,
+    connected_end: bool,
+) -> f32 {
+    let length_factor = clamp(path_length / 96.0, 0.2, 1.0);
+    let hop_factor = clamp(f32(min(hop_count, 5u)) / 5.0, 0.0, 1.0);
+    let connection_factor =
+        select(0.72, 1.0, connected_start && connected_end) * select(1.0, 0.88, connected_start != connected_end);
+    return clamp(length_factor * 0.46 + hop_factor * 0.34 + connection_factor * 0.32, 0.35, 1.18);
+}
+
+fn path_humanization_scale(path_coherence: f32) -> f32 {
+    return clamp(1.16 - path_coherence * 0.26, 0.78, 1.08);
+}
+
+fn pass_width(kind: u32, pass_index: u32, importance: f32, t: f32, path_coherence: f32) -> f32 {
     let base = uniforms.params1.x * kind_width_multiplier(kind) * uniforms.params6.x;
+    let coherence_width = clamp(0.94 + path_coherence * 0.1, 0.9, 1.08);
     let is_search = pass_index >= u32(uniforms.params5.x);
     if (is_search) {
         return max(
@@ -518,6 +537,7 @@ fn pass_width(kind: u32, pass_index: u32, importance: f32, t: f32) -> f32 {
                 * 0.78
                 * pressure_multiplier(t)
                 * taper_multiplier(t)
+                * coherence_width
                 * distance_width_multiplier(importance),
             0.25,
         );
@@ -527,13 +547,15 @@ fn pass_width(kind: u32, pass_index: u32, importance: f32, t: f32) -> f32 {
             * primary_pass_width_multiplier(u32(uniforms.params5.x), pass_index)
             * pressure_multiplier(t)
             * taper_multiplier(t)
+            * coherence_width
             * distance_width_multiplier(importance),
         0.25,
     );
 }
 
-fn pass_alpha(kind: u32, pass_index: u32, importance: f32, t: f32) -> f32 {
+fn pass_alpha(kind: u32, pass_index: u32, importance: f32, t: f32, path_coherence: f32) -> f32 {
     let base = uniforms.ink_color.w * kind_alpha_multiplier(kind) * uniforms.params6.y;
+    let coherence_alpha = clamp(0.9 + path_coherence * 0.14, 0.82, 1.08);
     let is_search = pass_index >= u32(uniforms.params5.x);
     if (is_search) {
         return clamp(
@@ -542,6 +564,7 @@ fn pass_alpha(kind: u32, pass_index: u32, importance: f32, t: f32) -> f32 {
                 * npr_gpu_search_alpha_multiplier()
                 * uniforms.params6.y
                 * alpha_pressure_multiplier(t)
+                * coherence_alpha
                 * depth_alpha_multiplier(importance),
             0.0,
             1.0,
@@ -551,6 +574,7 @@ fn pass_alpha(kind: u32, pass_index: u32, importance: f32, t: f32) -> f32 {
         base
             * primary_pass_alpha_multiplier(u32(uniforms.params5.x), pass_index)
             * alpha_pressure_multiplier(t)
+            * coherence_alpha
             * depth_alpha_multiplier(importance),
         0.0,
         1.0,
@@ -1491,6 +1515,7 @@ fn cs_main(@builtin(global_invocation_id) id: vec3<u32>) {
     let primary_pass_count = max(u32(uniforms.params5.x), 1u);
     let path_id = segment.path.x;
     let path_flags = segment.path.w;
+    let hop_count = segment.path.z;
     let edge_id = path_id;
     let screen_a = segment.start.xy;
     let screen_b = segment.end.xy;
@@ -1510,7 +1535,17 @@ fn cs_main(@builtin(global_invocation_id) id: vec3<u32>) {
     let seed32 = uniforms.seed.x ^ uniforms.seed.y;
     let connected_start = (path_flags & PATH_FLAG_CONNECTED_START) != 0u;
     let connected_end = (path_flags & PATH_FLAG_CONNECTED_END) != 0u;
-    let chain_quality = select(0.42, 0.86, connected_start && connected_end);
+    let path_coherence = path_coherence_score(
+        path_length,
+        hop_count,
+        connected_start,
+        connected_end,
+    );
+    let chain_quality = clamp(
+        select(0.42, 0.86, connected_start && connected_end) * path_coherence,
+        0.22,
+        1.1,
+    );
     let max_render_length = npr_gpu_max_render_length_px();
     if (render_length > max_render_length) {
         let trunc_direction = normalize(render_end_mut - render_start_mut);
@@ -1535,7 +1570,10 @@ fn cs_main(@builtin(global_invocation_id) id: vec3<u32>) {
     let search_pass_count = select(
         0u,
         u32(uniforms.params5.y),
-        kind != KIND_SILHOUETTE && kind != KIND_CONTACT,
+        kind != KIND_SILHOUETTE
+            && kind != KIND_CONTACT
+            && path_coherence < 1.02
+            && path_length >= 18.0,
     );
     let total_pass_count = primary_pass_count + search_pass_count;
 
@@ -1558,6 +1596,7 @@ fn cs_main(@builtin(global_invocation_id) id: vec3<u32>) {
             pass_render_length,
             path_t0,
             path_t1,
+            path_coherence,
         )) {
             continue;
         }
@@ -1567,24 +1606,27 @@ fn cs_main(@builtin(global_invocation_id) id: vec3<u32>) {
             _ = atomicSub(&indirect_args[1], segment_count);
             return;
         }
-        let width_start = pass_width(kind, pass_index, importance, path_t0);
-        let width_mid = pass_width(kind, pass_index, importance, path_t_mid);
-        let width_end = pass_width(kind, pass_index, importance, path_t1);
-        let alpha_start = pass_alpha(kind, pass_index, importance, path_t0);
-        let alpha_mid = pass_alpha(kind, pass_index, importance, path_t_mid);
-        let alpha_end = pass_alpha(kind, pass_index, importance, path_t1);
+        let width_start = pass_width(kind, pass_index, importance, path_t0, path_coherence);
+        let width_mid = pass_width(kind, pass_index, importance, path_t_mid, path_coherence);
+        let width_end = pass_width(kind, pass_index, importance, path_t1, path_coherence);
+        let alpha_start = pass_alpha(kind, pass_index, importance, path_t0, path_coherence);
+        let alpha_mid = pass_alpha(kind, pass_index, importance, path_t_mid, path_coherence);
+        let alpha_end = pass_alpha(kind, pass_index, importance, path_t1, path_coherence);
         let width_noise_start =
             coherent_signed_noise_1d(seed32, edge_id, pass_index, path_t0 * 13.0 + 7.0, 503u)
             * uniforms.params10.x
-            * uniforms.params6.z;
+            * uniforms.params6.z
+            * path_humanization_scale(path_coherence);
         let width_noise_mid =
             coherent_signed_noise_1d(seed32, edge_id, pass_index, path_t_mid * 13.0 + 9.0, 503u)
             * uniforms.params10.x
-            * uniforms.params6.z;
+            * uniforms.params6.z
+            * path_humanization_scale(path_coherence);
         let width_noise_end =
             coherent_signed_noise_1d(seed32, edge_id, pass_index, path_t1 * 13.0 + 11.0, 503u)
             * uniforms.params10.x
-            * uniforms.params6.z;
+            * uniforms.params6.z
+            * path_humanization_scale(path_coherence);
         let tapering = endpoint_taper(
             max(width_start + width_noise_start, 0.25),
             alpha_start,
@@ -1600,14 +1642,14 @@ fn cs_main(@builtin(global_invocation_id) id: vec3<u32>) {
             pass_index,
             path_t_mid * 19.0 + f32(path_id % 101u) * uniforms.params10.y + 3.0,
             919u,
-        ) * kind_wobble_px(kind) * uniforms.params7.y * pass_wobble;
+        ) * kind_wobble_px(kind) * uniforms.params7.y * pass_wobble * path_humanization_scale(path_coherence);
         let micro = coherent_signed_noise_1d(
             seed32,
             edge_id,
             pass_index,
             path_t_mid * 29.0 + f32(path_id % 71u) * uniforms.params10.w + 13.0,
             991u,
-        ) * uniforms.params10.z * pass_wobble;
+        ) * uniforms.params10.z * pass_wobble * path_humanization_scale(path_coherence);
         let debug_color = debug_color_for_overlay(
             kind,
             pass_index,
@@ -1678,6 +1720,7 @@ fn cs_main(@builtin(global_invocation_id) id: vec3<u32>) {
             * kind_wobble_px(kind)
             * uniforms.params7.y
             * pass_wobble
+            * path_humanization_scale(path_coherence)
             * connection_offset_multiplier(
                 connected_start,
                 connected_end,
