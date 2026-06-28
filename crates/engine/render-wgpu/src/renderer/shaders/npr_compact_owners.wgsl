@@ -243,6 +243,25 @@ fn better_candidate(current: EndpointCandidatePick, candidate: EndpointCandidate
     return current;
 }
 
+fn adopt_owner_if_stable(
+    current_owner: u32,
+    current_owner_score: f32,
+    candidate_owner: u32,
+    candidate_score: f32,
+    tolerance: f32,
+) -> u32 {
+    if (candidate_owner == 0xffffffffu) {
+        return current_owner;
+    }
+    if (candidate_score + tolerance < current_owner_score) {
+        return current_owner;
+    }
+    if (candidate_owner < current_owner) {
+        return candidate_owner;
+    }
+    return current_owner;
+}
+
 fn scan_bucket_candidates(
     current_edge_index: u32,
     current_kind: u32,
@@ -394,6 +413,33 @@ fn cs_main(@builtin(global_invocation_id) id: vec3<u32>) {
     if (score_end > best_owner_score + 0.001 || (abs(score_end - best_owner_score) <= 0.001 && end_pick.edge_index < best_owner)) {
         best_owner = end_pick.edge_index;
         best_owner_score = score_end;
+    }
+
+    if (connected_both && chain_compactable) {
+        let owner_tolerance = max(current_length * 0.06, 0.9);
+        var canonical_owner = best_owner;
+        canonical_owner = adopt_owner_if_stable(
+            canonical_owner,
+            best_owner_score,
+            edge_index,
+            self_score,
+            owner_tolerance,
+        );
+        canonical_owner = adopt_owner_if_stable(
+            canonical_owner,
+            best_owner_score,
+            start_pick.edge_index,
+            score_start,
+            owner_tolerance,
+        );
+        canonical_owner = adopt_owner_if_stable(
+            canonical_owner,
+            best_owner_score,
+            end_pick.edge_index,
+            score_end,
+            owner_tolerance,
+        );
+        best_owner = canonical_owner;
     }
 
     if (!primary_line) {

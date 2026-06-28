@@ -5,7 +5,7 @@ Powiazany plan: `npr_v2.md`.
 
 ## 0. Postep globalny
 
-- Szacowany postep calego `npr_v2`: okolo 89%.
+- Szacowany postep calego `npr_v2`: okolo 90%.
 - Zrobione: kontrakt, YAML, routing CPU/GPU, debug mode, endpoint bins, owner compaction, `path_segments`, path-level lock/dropout foundation.
 - Zostalo: domkniecie parytetu wizualnego CPU/GPU, lepszy graph walk i stabilniejsze `path_t/path_id`, dalsze dopasowanie stylizacji do `cpu_reference`.
 
@@ -37,6 +37,9 @@ Powiazany plan: `npr_v2.md`.
   - wszystkie meshe GPU sa najpierw rasteryzowane do wspolnego `face-id/depth`,
   - dopiero potem kazdy job przechodzi swoje compute passy.
 - `face-id` dostalo per-job `face_id_base`, wiec identyfikatory trojkatow nie koliduja juz miedzy meshami GPU w tej samej ramce.
+- `compact_owners` wybiera teraz bardziej kanonicznego ownera dla stabilnego lokalnego chainu:
+  - przy `connected_both + chain_compactable` owner moze zostac zkanonizowany do najmniejszego stabilnego kandydata,
+  - zmniejsza to skakanie ownera miedzy sasiednimi edge przy malych zmianach kamery.
 
 ## 1. Co zostalo zrobione
 
@@ -343,6 +346,7 @@ Docelowo powinien byc tez kontrolowany przez YAML.
    - `path_links` i owner compaction juz korzystaja z endpoint bucketow,
      a finalny render jest juz budowany z osobnego `path_segments` bufora.
    - Jest juz prosty walk owner->neighbor po `path_links`.
+   - Lokalny owner graph jest juz stabilniejszy dzieki kanonicznemu wyborowi ownera w kompaktowalnym chainie.
    - Brakuje jeszcze stabilnego `path_id`, wielosegmentowego graph walku i path-level `t`.
 
 4. Ujednolic stylizacje CPU/GPU.
