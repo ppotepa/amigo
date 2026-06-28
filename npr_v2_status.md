@@ -5,7 +5,7 @@ Powiazany plan: `npr_v2.md`.
 
 ## 0. Postep globalny
 
-- Szacowany postep calego `npr_v2`: okolo 96%.
+- Szacowany postep calego `npr_v2`: okolo 97%.
 - Zrobione: kontrakt, YAML, routing CPU/GPU, debug mode, endpoint bins, owner compaction, `path_segments`, path-level lock/dropout foundation.
 - Zostalo: domkniecie parytetu wizualnego CPU/GPU, lepszy graph walk i stabilniejsze `path_t/path_id`, dalsze dopasowanie stylizacji do `cpu_reference`.
 
@@ -96,6 +96,11 @@ Powiazany plan: `npr_v2.md`.
   - dropout jest slabszy dla mocnych chainow,
   - search lines sa bardziej ograniczane dla sciezek juz wystarczajaco spojnych,
   - width/alpha sa lekko modulowane przez coherence, zamiast traktowac wszystkie `path_segments` identycznie.
+- `should_enable_search_passes()` nie jest juz martwe:
+  - search passes sa teraz wlaczane przez jawny warunek path-level, a nie tylko prosty toggle po kind,
+  - to dodatkowo ogranicza zbedny szkicowy szum na juz stabilnych pathach.
+- Overshoot i endpoint tangent drift dostaly tez modulacje przez `path_coherence`,
+  wiec mocne contour path mniej "plywaja" na koncach niz slabe, szkicowe feature/search paths.
 - To przybliza GPU do CPU reference w warstwie semantyki kreski:
   - mocne contour paths powinny mniej wygladac jak przypadkowe posklejane odcinki,
   - slabsze feature/search paths nadal zachowuja bardziej szkicowy charakter.

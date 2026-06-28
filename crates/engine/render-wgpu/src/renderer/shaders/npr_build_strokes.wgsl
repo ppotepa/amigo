@@ -321,6 +321,7 @@ fn endpoint_tangent_drift_px(
     salt: u32,
     endpoint_lock_px: f32,
     path_t: f32,
+    path_coherence: f32,
 ) -> f32 {
     if (connected) {
         return 0.0;
@@ -339,7 +340,11 @@ fn endpoint_tangent_drift_px(
         f32(edge_id % 89u) * 0.17 + f32(pass_index) * 0.31 + f32(salt) * 0.013,
         977u + salt,
     );
-    return drift * max(kind_wobble_px(kind), 0.05) * tangent_scale * lock_factor;
+    return drift
+        * max(kind_wobble_px(kind), 0.05)
+        * tangent_scale
+        * lock_factor
+        * path_humanization_scale(path_coherence);
 }
 
 fn path_endpoint_lock_at(path_t: f32, path_length: f32) -> f32 {
@@ -581,7 +586,7 @@ fn pass_alpha(kind: u32, pass_index: u32, importance: f32, t: f32, path_coherenc
     );
 }
 
-fn pass_overshoot(kind: u32, pass_index: u32) -> f32 {
+fn pass_overshoot(kind: u32, pass_index: u32, path_coherence: f32) -> f32 {
     let base = select(
         uniforms.params1.y,
         uniforms.params4.w,
@@ -589,7 +594,8 @@ fn pass_overshoot(kind: u32, pass_index: u32) -> f32 {
     );
     let is_search = pass_index >= u32(uniforms.params5.x);
     let clamped = min(base, 0.5);
-    return select(clamped, min(max(clamped, uniforms.params11.w), 0.15), is_search);
+    let coherence_scale = clamp(0.86 + path_coherence * 0.16, 0.82, 1.05);
+    return select(clamped, min(max(clamped, uniforms.params11.w), 0.15), is_search) * coherence_scale;
 }
 
 fn endpoint_connection_score(
@@ -1567,14 +1573,22 @@ fn cs_main(@builtin(global_invocation_id) id: vec3<u32>) {
     if (kind == KIND_CONTACT && (!connected_start || !connected_end || chain_quality < 0.72)) {
         return;
     }
-    let search_pass_count = select(
-        0u,
-        u32(uniforms.params5.y),
-        kind != KIND_SILHOUETTE
-            && kind != KIND_CONTACT
-            && path_coherence < 1.02
-            && path_length >= 18.0,
+    let search_enabled = should_enable_search_passes(
+        kind,
+        edge_id,
+        edge_id,
+        max(local_segment_length, 1.0),
+        max(path_length, local_segment_length),
+        max(local_segment_length * clamp(1.12 - path_coherence * 0.18, 0.72, 1.08), 1.0),
+        chain_quality,
+        connected_start,
+        connected_end,
+        local_segment_length,
+        render_length,
+        path_length,
+        path_coherence - 0.72,
     );
+    let search_pass_count = select(0u, u32(uniforms.params5.y), search_enabled);
     let total_pass_count = primary_pass_count + search_pass_count;
 
     for (var pass_index: u32 = 0u; pass_index < total_pass_count; pass_index = pass_index + 1u) {
@@ -1680,7 +1694,7 @@ fn cs_main(@builtin(global_invocation_id) id: vec3<u32>) {
                 path_t0,
                 path_t1,
             );
-        let base_overshoot = pass_overshoot(kind, pass_index);
+        let base_overshoot = pass_overshoot(kind, pass_index, path_coherence);
         let path_lock_weight = path_endpoint_lock_weight(path_t0, path_t1, path_length);
         let render_direction = normalize(pass_render_end - pass_render_start);
         let drift_start = endpoint_tangent_drift_px(
@@ -1693,6 +1707,7 @@ fn cs_main(@builtin(global_invocation_id) id: vec3<u32>) {
             17u,
             bitcast<f32>(uniforms.seed.z),
             path_t0,
+            path_coherence,
         );
         let drift_end = endpoint_tangent_drift_px(
             kind,
@@ -1704,6 +1719,7 @@ fn cs_main(@builtin(global_invocation_id) id: vec3<u32>) {
             41u,
             bitcast<f32>(uniforms.seed.w),
             path_t1,
+            path_coherence,
         );
         let stylized_start = pass_render_start + render_direction * drift_start;
         let stylized_end = pass_render_end + render_direction * drift_end;
