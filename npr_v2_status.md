@@ -336,6 +336,12 @@ Glowne pliki:
   - `penultimate`,
   - `final`,
   ale ma jeszcze jeden wezel posredni do budowy sensowniejszego luku i lepszego `path_t`.
+- `build_strokes` potrafi teraz emitowac do 3 ribbon segmentow na pass,
+  zamiast sztywnego 1-2 segment split.
+  Dla dluzszych i szerszych fragmentow path daje to:
+  - wierniejsza aproksymacje krzywizny,
+  - mniej brutalny srodkowy zalom,
+  - lepsze przejscie width/alpha/taper od startu do konca kreski.
 - `build_strokes` dalej nie jest pelnym path rendererem, bo `path_t/path walk` sa jeszcze uproszczone.
 - GPU frame buffers maja teraz tez osobny bufor `path_states`.
 

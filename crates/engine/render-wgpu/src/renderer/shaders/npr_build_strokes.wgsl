@@ -1614,7 +1614,19 @@ fn cs_main(@builtin(global_invocation_id) id: vec3<u32>) {
         )) {
             continue;
         }
-        let segment_count = select(1u, 2u, pass_render_length >= npr_gpu_max_segment_length_px());
+        let max_segment_length = npr_gpu_max_segment_length_px();
+        let path_span = path_t1 - path_t0;
+        let segment_count =
+            select(
+                select(
+                    1u,
+                    2u,
+                    pass_render_length >= max_segment_length,
+                ),
+                3u,
+                pass_render_length >= max_segment_length * 1.9
+                    || (pass_render_length >= max_segment_length * 1.15 && path_span >= 0.22),
+            );
         let out_index = atomicAdd(&indirect_args[1], segment_count);
         if (out_index + segment_count > u32(arrayLength(&stroke_segments))) {
             _ = atomicSub(&indirect_args[1], segment_count);
@@ -1748,39 +1760,74 @@ fn cs_main(@builtin(global_invocation_id) id: vec3<u32>) {
             )
             * select(0.35, 0.12, debug_mode != 0u);
         let stylized_mid = (stylized_start + stylized_end) * 0.5 + render_normal * curve_offset;
+        let stylized_mid_a =
+            mix(stylized_start, stylized_mid, 0.5) + render_normal * (curve_offset * 0.35);
+        let stylized_mid_b =
+            mix(stylized_mid, stylized_end, 0.5) + render_normal * (curve_offset * 0.35);
         let mid_width = max(width_mid + width_noise_mid, 0.25);
+        let end_width_value = max(select(max(width_end + width_noise_end, 0.25), tapering.y, connected_end), 0.25);
+        let mid_a_width = max(mix(tapering.x, mid_width, 0.5), 0.25);
+        let mid_b_width = max(mix(mid_width, end_width_value, 0.5), 0.25);
         let mid_alpha = select(alpha_mid, debug_color.a, debug_mode != 0u);
+        let end_alpha_value = select(alpha_end, tapering.w, connected_end);
+        let mid_a_alpha = select(mix(tapering.z, mid_alpha, 0.5), debug_color.a, debug_mode != 0u);
+        let mid_b_alpha = select(mix(mid_alpha, end_alpha_value, 0.5), debug_color.a, debug_mode != 0u);
         let overshoot = debug_overlay_overshoot(debug_mode, base_overshoot * path_lock_weight);
         stroke_segments[out_index].start = stylized_start;
-        stroke_segments[out_index].end = select(stylized_end, stylized_mid, segment_count > 1u);
+        stroke_segments[out_index].end = select(
+            select(stylized_end, stylized_mid, segment_count > 1u),
+            stylized_mid_a,
+            segment_count > 2u,
+        );
         stroke_segments[out_index].color = vec4<f32>(debug_color.rgb, debug_color.a);
         stroke_segments[out_index].width_px = debug_widths.x;
         stroke_segments[out_index].offset_px = debug_overlay_offset(debug_mode, raw_offset);
         stroke_segments[out_index].overshoot_start_px = select(overshoot, 0.0, connected_start);
         stroke_segments[out_index].overshoot_end_px = select(select(overshoot, 0.0, connected_end), 0.0, segment_count > 1u);
         stroke_segments[out_index].viewport_half = uniforms.viewport_half.xy;
-        stroke_segments[out_index].end_width_px = select(debug_widths.y, mid_width, segment_count > 1u);
+        stroke_segments[out_index].end_width_px = select(
+            select(debug_widths.y, mid_width, segment_count > 1u),
+            mid_a_width,
+            segment_count > 2u,
+        );
         stroke_segments[out_index].end_alpha = select(
-            select(select(alpha_end, tapering.w, connected_end), mid_alpha, segment_count > 1u),
+            select(select(end_alpha_value, mid_alpha, segment_count > 1u), mid_a_alpha, segment_count > 2u),
             debug_color.a,
             debug_mode != 0u,
         );
         if (segment_count > 1u) {
             let second_index = out_index + 1u;
-            stroke_segments[second_index].start = stylized_mid;
-            stroke_segments[second_index].end = stylized_end;
-            stroke_segments[second_index].color = vec4<f32>(debug_color.rgb, mid_alpha);
-            stroke_segments[second_index].width_px = mid_width;
+            stroke_segments[second_index].start = select(stylized_mid, stylized_mid_a, segment_count > 2u);
+            stroke_segments[second_index].end = select(stylized_end, stylized_mid_b, segment_count > 2u);
+            stroke_segments[second_index].color = vec4<f32>(debug_color.rgb, select(mid_alpha, mid_a_alpha, segment_count > 2u));
+            stroke_segments[second_index].width_px = select(mid_width, mid_a_width, segment_count > 2u);
             stroke_segments[second_index].offset_px = debug_overlay_offset(debug_mode, raw_offset);
             stroke_segments[second_index].overshoot_start_px = 0.0;
             stroke_segments[second_index].overshoot_end_px = select(overshoot, 0.0, connected_end);
             stroke_segments[second_index].viewport_half = uniforms.viewport_half.xy;
-            stroke_segments[second_index].end_width_px = debug_widths.y;
+            stroke_segments[second_index].end_width_px = select(debug_widths.y, mid_b_width, segment_count > 2u);
             stroke_segments[second_index].end_alpha = select(
-                select(alpha_end, tapering.w, connected_end),
+                select(end_alpha_value, mid_b_alpha, segment_count > 2u),
                 debug_color.a,
                 debug_mode != 0u,
             );
+            if (segment_count > 2u) {
+                let third_index = out_index + 2u;
+                stroke_segments[third_index].start = stylized_mid_b;
+                stroke_segments[third_index].end = stylized_end;
+                stroke_segments[third_index].color = vec4<f32>(debug_color.rgb, mid_b_alpha);
+                stroke_segments[third_index].width_px = mid_b_width;
+                stroke_segments[third_index].offset_px = debug_overlay_offset(debug_mode, raw_offset);
+                stroke_segments[third_index].overshoot_start_px = 0.0;
+                stroke_segments[third_index].overshoot_end_px = select(overshoot, 0.0, connected_end);
+                stroke_segments[third_index].viewport_half = uniforms.viewport_half.xy;
+                stroke_segments[third_index].end_width_px = debug_widths.y;
+                stroke_segments[third_index].end_alpha = select(
+                    end_alpha_value,
+                    debug_color.a,
+                    debug_mode != 0u,
+                );
+            }
         }
     }
 }

@@ -8,7 +8,7 @@ use crate::renderer::{
 
 use super::NprGpuResources3d;
 
-const NPR_GPU_SEGMENTS_PER_STROKE_PASS: usize = 2;
+const NPR_GPU_SEGMENTS_PER_STROKE_PASS: usize = 3;
 const NPR_GPU_PATH_SEGMENTS_PER_CHAIN: usize = 12;
 const NPR_GPU_PATH_RELAX_PASSES: usize = 3;
 
