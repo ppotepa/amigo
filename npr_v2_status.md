@@ -5,7 +5,7 @@ Powiazany plan: `npr_v2.md`.
 
 ## 0. Postep globalny
 
-- Szacowany postep calego `npr_v2`: okolo 87%.
+- Szacowany postep calego `npr_v2`: okolo 88%.
 - Zrobione: kontrakt, YAML, routing CPU/GPU, debug mode, endpoint bins, owner compaction, `path_segments`, path-level lock/dropout foundation.
 - Zostalo: domkniecie parytetu wizualnego CPU/GPU, lepszy graph walk i stabilniejsze `path_t/path_id`, dalsze dopasowanie stylizacji do `cpu_reference`.
 
@@ -20,15 +20,18 @@ Powiazany plan: `npr_v2.md`.
 - To powinno ograniczyc falszywe dlugie chainy, ktore dawaly losowe kreski niepodobne do obrysu modelu.
 - `emit_path_segments` emituje teraz do 6 segmentow na chain zamiast 4:
   - start outer,
+  - start middle,
   - start inner,
   - owner first half,
   - owner second half,
   - end inner,
+  - end middle,
   - end outer.
 - GPU path walk zachowuje juz pierwszy punkt posredni extension walk,
   wiec path nie jest redukowana od razu do samego `final_start/final_end + owner_mid`.
+- GPU path walk zachowuje juz tez punkt `penultimate` dla dluzszych extension chainow.
 - To daje bogatsze `path_t` i lepiej odwzorowuje wieloodcinkowa strukture sciezki,
-  szczegolnie tam, gdzie extension ma wiecej niz 1 hop.
+  szczegolnie tam, gdzie extension ma wiecej niz 2 hopy.
 
 ## 1. Co zostalo zrobione
 
@@ -173,12 +176,14 @@ Glowne pliki:
   - `path.z` niesie podstawowa informacje o liczbie hopow chainu.
 - `emit_path_segments` emituje teraz dwa segmenty na walked chain:
   - segment A: start outer,
-  - segment B: start inner,
-  - segment C: owner first half,
-  - segment D: owner second half,
-  - segment E: end inner,
-  - segment F: end outer.
-- To daje lepsze `path_t` dla `build_strokes` niz wczesniejszy pojedynczy owner segment albo podzial na tylko 4 czesci owner-centric.
+  - segment B: start middle,
+  - segment C: start inner,
+  - segment D: owner first half,
+  - segment E: owner second half,
+  - segment F: end inner,
+  - segment G: end middle,
+  - segment H: end outer.
+- To daje lepsze `path_t` dla `build_strokes` niz wczesniejszy pojedynczy owner segment albo podzial na tylko 6 czesci owner-centric.
 - Kazdy z 4 segmentow ma teraz wlasne lokalne `connected_start/connected_end`,
   zamiast odziedziczyc flagi calej sciezki 1:1.
 - `build_strokes` czyta juz `path_segments` jako glowny input finalnej kreski.
