@@ -117,6 +117,28 @@ impl MeshSceneService {
         true
     }
 
+    pub fn set_npr_gpu_debug_mode(
+        &self,
+        entity_name: &str,
+        debug_mode: amigo_render_api::NprGpuDebugMode3d,
+    ) -> bool {
+        let mut commands = self
+            .commands
+            .lock()
+            .expect("mesh scene service mutex should not be poisoned");
+        let Some(command) = commands
+            .iter_mut()
+            .find(|command| command.entity_name == entity_name)
+        else {
+            return false;
+        };
+        let Some(npr) = command.mesh.npr.as_mut() else {
+            return false;
+        };
+        npr.gpu_realtime_tuning.debug_mode = debug_mode;
+        true
+    }
+
     pub fn entity_names(&self) -> Vec<String> {
         self.commands()
             .into_iter()
@@ -198,7 +220,7 @@ mod tests {
     use amigo_assets::AssetKey;
     use amigo_editor_api::EditorCapability;
     use amigo_math::Transform3;
-    use amigo_render_api::{NprLineSettings3d, NprRenderStrategy3d};
+    use amigo_render_api::{NprGpuDebugMode3d, NprLineSettings3d, NprRenderStrategy3d};
     use amigo_scene::{Mesh3dSceneCommand, SceneService};
     use amigo_scripting_api::ScriptCommand;
 
@@ -371,6 +393,82 @@ mod tests {
                 .expect("script command should apply preset")
                 .humanization,
             0.82
+        );
+    }
+
+    #[test]
+    fn updates_mesh_gpu_debug_mode() {
+        let service = MeshSceneService::default();
+        service.queue(MeshDrawCommand {
+            entity_id: 11,
+            entity_name: "playground-npr-model".to_owned(),
+            mesh: Mesh3d {
+                mesh_asset: AssetKey::new("playground-npr/meshes/soldier"),
+                transform: Transform3::default(),
+                npr: Some(NprLineSettings3d::default()),
+            },
+        });
+
+        assert!(service.set_npr_gpu_debug_mode(
+            "playground-npr-model",
+            NprGpuDebugMode3d::RawPaths
+        ));
+        assert_eq!(
+            service.commands()[0]
+                .mesh
+                .npr
+                .as_ref()
+                .expect("mesh should still have npr")
+                .gpu_realtime_tuning
+                .debug_mode,
+            NprGpuDebugMode3d::RawPaths
+        );
+    }
+
+    #[test]
+    fn script_command_sets_mesh_gpu_debug_mode() {
+        let service = MeshSceneService::default();
+        service.queue(MeshDrawCommand {
+            entity_id: 11,
+            entity_name: "playground-npr-model".to_owned(),
+            mesh: Mesh3d {
+                mesh_asset: AssetKey::new("playground-npr/meshes/soldier"),
+                transform: Transform3::default(),
+                npr: Some(NprLineSettings3d::default()),
+            },
+        });
+
+        let outcome = handle_mesh3d_script_command(
+            Mesh3dScriptCommandContext {
+                selected_mod: "playground-npr",
+                mesh_scene_service: Some(&service),
+            },
+            ScriptCommand::new(
+                "3d.mesh",
+                "set_npr_gpu_debug_mode",
+                vec![
+                    "playground-npr-model".to_owned(),
+                    "raw_paths".to_owned(),
+                ],
+            ),
+        );
+
+        assert!(matches!(
+            outcome,
+            Mesh3dScriptCommandOutcome::SetNprGpuDebugMode {
+                debug_mode: NprGpuDebugMode3d::RawPaths,
+                ..
+            }
+        ));
+        assert_eq!(
+            service.commands()[0]
+                .mesh
+                .npr
+                .as_ref()
+                .expect("script command should preserve npr")
+                .gpu_realtime_tuning
+                .debug_mode,
+            NprGpuDebugMode3d::RawPaths
         );
     }
 

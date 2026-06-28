@@ -748,7 +748,13 @@ fn npr_line_settings_3d_from_settings_document(
         resolved.seed = seed;
     }
     if let Some(gpu_realtime_tuning) = settings.gpu_realtime_tuning.as_ref() {
-        apply_npr_gpu_realtime_tuning_3d(gpu_realtime_tuning, &mut resolved);
+        apply_npr_gpu_realtime_tuning_3d(
+            gpu_realtime_tuning,
+            &mut resolved,
+            scene_id,
+            entity_id,
+            component_kind,
+        )?;
     }
 
     if let Some(silhouette_override) = settings.silhouette_override.as_ref() {
@@ -935,8 +941,15 @@ fn apply_npr_passes_field_3d(
 fn apply_npr_gpu_realtime_tuning_3d(
     document: &crate::document::NprGpuRealtimeTuningDocument,
     resolved: &mut amigo_render_api::NprLineSettings3d,
-) {
+    scene_id: &str,
+    entity_id: &str,
+    component_kind: &str,
+) -> SceneDocumentResult<()> {
     let mut tuning = resolved.gpu_realtime_tuning;
+    if let Some(value) = document.debug_mode.as_deref() {
+        tuning.debug_mode =
+            npr_gpu_debug_mode_3d_from_document(value, scene_id, entity_id, component_kind)?;
+    }
     if let Some(value) = document.max_render_length_px {
         tuning.max_render_length_px = value;
     }
@@ -971,6 +984,23 @@ fn apply_npr_gpu_realtime_tuning_3d(
         tuning.silhouette_min_length_multiplier = value;
     }
     resolved.gpu_realtime_tuning = tuning.normalized();
+    Ok(())
+}
+
+fn npr_gpu_debug_mode_3d_from_document(
+    value: &str,
+    scene_id: &str,
+    entity_id: &str,
+    component_kind: &str,
+) -> SceneDocumentResult<amigo_render_api::NprGpuDebugMode3d> {
+    amigo_render_api::NprGpuDebugMode3d::parse(value).ok_or_else(|| crate::SceneDocumentError::Hydration {
+        scene_id: scene_id.to_owned(),
+        entity_id: entity_id.to_owned(),
+        component_kind: component_kind.to_owned(),
+        message: format!(
+            "expected Mesh3D.npr.gpu_realtime_tuning.debug_mode to be final, line_kinds, raw_paths, dropout, or width_alpha, got `{value}`"
+        ),
+    })
 }
 
 fn npr_stroke_tool_3d_from_document(

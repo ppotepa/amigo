@@ -16,7 +16,7 @@ settings:
   min_screen_length_px: 2.4
   visibility_max_dimension_px: 720.0
   ink_color: "#12100DFF"
-  width_px: 2.04
+  width_px: 2.0
   silhouette_width_multiplier: 1.48
   boundary_width_multiplier: 0.96
   feature_width_multiplier: 0.52
@@ -51,6 +51,7 @@ settings:
   search_line_alpha: 0.0
   seed: 50060
   gpu_realtime_tuning:
+    debug_mode: final
     max_render_length_px: 56.0
     max_segment_length_px: 18.0
     max_terminal_walk_edges: 1

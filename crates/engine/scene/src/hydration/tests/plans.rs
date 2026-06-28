@@ -813,6 +813,10 @@ fn builds_hydration_plan_for_playground_npr_mesh_switches() {
     assert_eq!(soldier_npr.tool_wobble_multiplier, 1.0);
     assert_eq!(soldier_npr.passes, 1);
     assert_eq!(soldier_npr.search_line_count, 0);
+    assert_eq!(
+        soldier_npr.gpu_realtime_tuning.debug_mode,
+        amigo_render_api::NprGpuDebugMode3d::Final
+    );
     assert!(!soldier_npr.gpu_realtime_tuning.search_enabled);
     assert_eq!(soldier_npr.gpu_realtime_tuning.max_chained_walk_edges, 2);
 
@@ -873,6 +877,10 @@ fn compiled_playground_npr_scene_registers_file_backed_npr_presets() {
     );
     assert_eq!(default_gpu.settings.passes, 1);
     assert_eq!(default_gpu.settings.search_line_count, 0);
+    assert_eq!(
+        default_gpu.settings.gpu_realtime_tuning.debug_mode,
+        amigo_render_api::NprGpuDebugMode3d::Final
+    );
     assert!(!default_gpu.settings.gpu_realtime_tuning.search_enabled);
     assert!(presets.iter().any(|preset| {
         preset.id == "default_gpu_comic"

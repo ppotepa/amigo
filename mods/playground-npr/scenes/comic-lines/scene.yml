@@ -85,6 +85,9 @@ entities:
           npr.debug_final:
             kind: button
             pressed: ["7"]
+          npr.debug_cycle:
+            kind: button
+            pressed: ["V"]
           npr.debug_line_kinds:
             kind: button
             pressed: ["8"]

@@ -103,20 +103,52 @@ Glowne pliki:
   - face-id,
   - projection,
   - edge classification,
+  - endpoint bins,
   - owner compaction,
   - stroke build.
 - GPU renderuje kreski bez budowania CPU `NprFaceVisibilityBuffer`.
 - GPU nie powinno generowac CPU `Vec<NprStrokeSegmentVertex>` dla `gpu_realtime`.
+- GPU dispatcher wykonuje teraz:
+  - `classify_edges`,
+  - `build_endpoint_bins`,
+  - `compact_owners`,
+  - `build_strokes`.
+- Dodano GPU endpoint buffers:
+  - `endpoint_heads`,
+  - `endpoint_entries`.
+- `compact_owners` korzysta teraz z endpoint bucketow budowanych per frame w screen space,
+  zamiast polegac wylacznie na statycznych `next_a/next_b`.
+- `build_strokes` zaczal korzystac z `path_links` jako zrodla:
+  - owner edge,
+  - start/end continuation,
+  - connected start/end flags.
+- `build_strokes` dalej nie jest pelnym path rendererem, ale przestal byc czysto raw-edge lokalny.
 
 Glowne pliki:
 
 - `crates/engine/render-wgpu/src/renderer/shaders/npr_face_id.wgsl`
 - `crates/engine/render-wgpu/src/renderer/shaders/npr_project_vertices.wgsl`
 - `crates/engine/render-wgpu/src/renderer/shaders/npr_classify_edges.wgsl`
+- `crates/engine/render-wgpu/src/renderer/shaders/npr_build_endpoint_bins.wgsl`
 - `crates/engine/render-wgpu/src/renderer/shaders/npr_compact_owners.wgsl`
 - `crates/engine/render-wgpu/src/renderer/shaders/npr_build_strokes.wgsl`
 
-### 1.7. Codemap / tooling
+### 1.7. Debug GPU NPR
+
+- Dodano jawny `debug_mode` do `NprGpuRealtimeTuning3d`.
+- `debug_mode` przechodzi przez:
+  - render-api,
+  - YAML scene/preset hydration,
+  - mesh runtime service,
+  - Rhai bindings,
+  - playground scene.
+- Scena `comic-lines` ma teraz:
+  - `V` jako cycle debug mode,
+  - `7/8/9/0` jako szybkie skoki do wybranych widokow,
+  - reaplikacje debug mode po zmianie presetu/modelu.
+- `debug_mode` jest tez czescia presetow GPU, wiec stan debugowania mozna zapisac jawnie w YAML.
+
+### 1.8. Codemap / tooling
 
 - `amigo-codemap` dostal szybsze stale handling, incremental refresh, persistent anchor cache, coverage dla `concat.zip`, daemon auto-start i lepsze `open-set` / `change-plan`.
 - `amigo-symbol-explorer` indeksuje teraz `wgsl`.
@@ -135,6 +167,10 @@ Glowne pliki:
 - Presety YAML istnieja w wariantach GPU i CPU reference.
 - Czesc presetow GPU zaczyna przypominac CPU reference, szczegolnie tam, gdzie ustawienia sa proste i mniej zalezne od path-level stylizacji.
 - Debug overlay zastapil tekst 3D i pokazuje bardziej praktyczne informacje runtime.
+- Debug GPU mozna teraz wymuszac jawnie w danych i runtime, bez mieszania tego z samym `camera.final`.
+- Ostatni etap endpoint bins kompiluje sie poprawnie dla:
+  - `amigo-render-wgpu`,
+  - `amigo-app`.
 
 ## 3. Znane problemy
 
@@ -147,7 +183,6 @@ Efekt: niektore presety pokazuja dlugie, zwykle kreski albo linie, ktore tylko p
 
 Brakuje GPU odpowiednika:
 
-- endpoint bins,
 - stabilnego path walk,
 - path ids,
 - path-level simplification,
@@ -157,6 +192,7 @@ Brakuje GPU odpowiednika:
 - search/correction passes zgodnych z CPU.
 
 To jest glowna roznica wizualna miedzy CPU i GPU.
+Obecny stan jest juz lepszy niz czyste `visible_segments`, bo `endpoint bins`, `path_links` i owner compaction sa aktywne, ale to nadal nie jest pelny `NprStrokePath`.
 
 ### 3.3. Face-id / owner sampling wymaga dopracowania
 
@@ -204,15 +240,19 @@ Docelowo powinien byc tez kontrolowany przez YAML.
    - Wyjscie: stable stroke paths.
    - Dopiero potem stroke segments.
 
-2. Dodac GPU endpoint binning.
-   - Endpoint quantization w screen space.
-   - Biny per line kind.
-   - Stabilny limit wpisow.
+2. Rozszerzyc obecny compact/path link layer do prawdziwego GPU endpoint binning.
+   - Status: czesciowo zrobione.
+   - Endpoint quantization w screen space juz istnieje.
+   - Biny per line kind juz istnieja.
+   - Brakuje jeszcze pelnego przejscia z endpoint entries do stabilnego path graphu.
 
-3. Dodac GPU path walk.
+3. Rozszerzyc obecny owner/path walk do prawdziwego GPU path walk.
    - Walk po wlascicielach edge/fragment.
    - Limity `max_terminal_walk_edges` i `max_chained_walk_edges`.
    - Rejection po angle/depth/kind.
+   - Status: czesciowo zrobione.
+   - `path_links` i owner compaction juz korzystaja z endpoint bucketow,
+     ale finalny render nadal nie jest budowany z osobnego `path_segments` bufora.
 
 4. Ujednolic stylizacje CPU/GPU.
    - Wydzielic wspolny model preset -> resolved style.
@@ -238,8 +278,9 @@ Docelowo powinien byc tez kontrolowany przez YAML.
    - Porownanie CPU/GPU na jednym modelu i jednej kamerze.
 
 9. Dodac debug mode do YAML.
-   - `gpu_realtime_tuning.debug_mode: final|face_id|owners|fragments|paths|segments`.
-   - Bez readbacku w normalnym renderze.
+   - Status: bazowo zrobione.
+   - `gpu_realtime_tuning.debug_mode` przechodzi juz przez YAML, runtime i scene script.
+   - Do rozszerzenia zostaja tylko dodatkowe widoki parity, jesli beda jeszcze potrzebne.
 
 10. Dodac parity preset audit.
     - Dla kazdego presetu porownac CPU/GPU.
@@ -254,7 +295,7 @@ Docelowo powinien byc tez kontrolowany przez YAML.
 Najkrotsza droga do widocznej poprawy:
 
 1. Naprawic face-id / owner sampling.
-2. Zrobic endpoint binning.
+2. Domknac endpoint bins do pelnego path graphu.
 3. Zrobic pierwszy GPU path walk bez zaawansowanej humanizacji.
 4. Renderowac path segments zamiast raw visible segments.
 5. Dopiero potem przenosic pressure/dropout/search z CPU na GPU.

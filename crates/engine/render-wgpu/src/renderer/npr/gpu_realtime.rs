@@ -116,6 +116,15 @@ impl GpuRealtimeNprRenderer3d {
         let visible_segments_capacity =
             (self.frame_jobs.iter().map(|job| job.geometry.edge_count()).sum::<usize>()
                 * std::mem::size_of::<super::GpuNprVisibleSegment3d>()) as u64;
+        let endpoint_head_count = npr_gpu_endpoint_head_count(total_edges.max(1));
+        let endpoint_heads_capacity =
+            endpoint_head_count as u64 * std::mem::size_of::<u32>() as u64;
+        let endpoint_entries_capacity = (self
+            .frame_jobs
+            .iter()
+            .map(|job| job.geometry.edge_count() * 2)
+            .sum::<usize>()
+            * std::mem::size_of::<super::GpuNprEndpointEntry3d>()) as u64;
         let path_links_capacity =
             (self.frame_jobs.iter().map(|job| job.geometry.edge_count()).sum::<usize>()
                 * std::mem::size_of::<super::GpuNprPathLink3d>()) as u64;
@@ -134,6 +143,8 @@ impl GpuRealtimeNprRenderer3d {
             device,
             projected_capacity.max(64),
             visible_segments_capacity.max(64),
+            endpoint_heads_capacity.max(64),
+            endpoint_entries_capacity.max(64),
             path_links_capacity.max(64),
             stroke_segments_capacity.max(64),
         );
@@ -227,6 +238,8 @@ impl GpuRealtimeNprRenderer3d {
                     uniform_binding(8, &frame_buffers.uniforms),
                     storage_binding(9, &frame_buffers.indirect_args),
                     storage_binding(10, &frame_buffers.path_links),
+                    storage_binding(11, &frame_buffers.endpoint_heads),
+                    storage_binding(12, &frame_buffers.endpoint_entries),
                 ],
             });
 
@@ -245,6 +258,30 @@ impl GpuRealtimeNprRenderer3d {
                     timestamp_writes: None,
                 });
                 pass.set_pipeline(&pipelines.classify_edges_pipeline);
+                pass.set_bind_group(0, &bind_group, &[]);
+                pass.dispatch_workgroups(workgroup_count(topology.edge_count as usize), 1, 1);
+            }
+            {
+                let zero_heads = vec![0u32; endpoint_head_count];
+                queue.write_buffer(&frame_buffers.endpoint_heads, 0, slice_as_bytes(&zero_heads));
+            }
+            {
+                let endpoint_items = topology.edge_count as usize * 2;
+                let work_items = endpoint_head_count.max(endpoint_items).max(topology.edge_count as usize);
+                let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                    label: Some("amigo-npr-build-endpoint-bins-pass"),
+                    timestamp_writes: None,
+                });
+                pass.set_pipeline(&pipelines.build_endpoint_bins_pipeline);
+                pass.set_bind_group(0, &bind_group, &[]);
+                pass.dispatch_workgroups(workgroup_count(work_items), 1, 1);
+            }
+            {
+                let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                    label: Some("amigo-npr-compact-owners-pass"),
+                    timestamp_writes: None,
+                });
+                pass.set_pipeline(&pipelines.compact_owners_pipeline);
                 pass.set_bind_group(0, &bind_group, &[]);
                 pass.dispatch_workgroups(workgroup_count(topology.edge_count as usize), 1, 1);
             }
@@ -318,6 +355,11 @@ fn workgroup_count(items: usize) -> u32 {
     ((items.max(1) as u32).saturating_add(63)) / 64
 }
 
+fn npr_gpu_endpoint_head_count(edge_count: usize) -> usize {
+    let target = (edge_count.max(1) * 4).next_power_of_two();
+    target.max(64)
+}
+
 fn topology_cache_key(mesh_key: &str, geometry: &CachedMeshGeometry3d) -> String {
     format!(
         "{mesh_key}:{}:{}:{}",
@@ -353,12 +395,18 @@ fn uniforms_for_job(
     let tool_dropout = super::npr_tool_dropout_multiplier(settings);
     let straightness_wobble = super::npr_straightness_wobble_multiplier(settings);
     let micro_wobble = settings.micro_wobble_px * settings.humanization * straightness_wobble;
-    let overlay_mode = match overlay {
-        Some(NprDebugOverlay3d::LineKinds) => 1.0,
-        Some(NprDebugOverlay3d::RawPaths) => 2.0,
-        Some(NprDebugOverlay3d::Dropout) => 3.0,
-        Some(NprDebugOverlay3d::WidthAlpha) => 4.0,
-        None => 0.0,
+    let overlay_mode = match settings.gpu_realtime_tuning.debug_mode {
+        amigo_render_api::NprGpuDebugMode3d::Final => match overlay {
+            Some(NprDebugOverlay3d::LineKinds) => 1.0,
+            Some(NprDebugOverlay3d::RawPaths) => 2.0,
+            Some(NprDebugOverlay3d::Dropout) => 3.0,
+            Some(NprDebugOverlay3d::WidthAlpha) => 4.0,
+            None => 0.0,
+        },
+        amigo_render_api::NprGpuDebugMode3d::LineKinds => 1.0,
+        amigo_render_api::NprGpuDebugMode3d::RawPaths => 2.0,
+        amigo_render_api::NprGpuDebugMode3d::Dropout => 3.0,
+        amigo_render_api::NprGpuDebugMode3d::WidthAlpha => 4.0,
     };
     GpuNprFrameUniforms3d {
         model_translation: vec3_to_gpu4(transform.translation, 0.0),

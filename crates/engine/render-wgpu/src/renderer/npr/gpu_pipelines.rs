@@ -1,6 +1,6 @@
 use crate::renderer::shaders::{
-    NPR_BUILD_STROKES_SHADER, NPR_CLASSIFY_EDGES_SHADER, NPR_COMPACT_OWNERS_SHADER, NPR_FACE_ID_SHADER,
-    NPR_PROJECT_VERTICES_SHADER,
+    NPR_BUILD_ENDPOINT_BINS_SHADER, NPR_BUILD_STROKES_SHADER, NPR_CLASSIFY_EDGES_SHADER,
+    NPR_COMPACT_OWNERS_SHADER, NPR_FACE_ID_SHADER, NPR_PROJECT_VERTICES_SHADER,
 };
 
 #[derive(Debug)]
@@ -11,6 +11,7 @@ pub(crate) struct NprGpuPipelines3d {
     pub compute_bind_group_layout: wgpu::BindGroupLayout,
     pub project_vertices_pipeline: wgpu::ComputePipeline,
     pub classify_edges_pipeline: wgpu::ComputePipeline,
+    pub build_endpoint_bins_pipeline: wgpu::ComputePipeline,
     pub compact_owners_pipeline: wgpu::ComputePipeline,
     pub build_strokes_pipeline: wgpu::ComputePipeline,
 }
@@ -84,6 +85,8 @@ impl NprGpuPipelines3d {
                     uniform_entry(8),
                     storage_entry(9, false),
                     storage_entry(10, false),
+                    storage_entry(11, false),
+                    storage_entry(12, false),
                 ],
             });
         let compute_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
@@ -109,6 +112,12 @@ impl NprGpuPipelines3d {
             NPR_BUILD_STROKES_SHADER,
             &compute_layout,
         );
+        let build_endpoint_bins_pipeline = create_compute_pipeline(
+            device,
+            "amigo-npr-build-endpoint-bins-pipeline",
+            NPR_BUILD_ENDPOINT_BINS_SHADER,
+            &compute_layout,
+        );
         let compact_owners_pipeline = create_compute_pipeline(
             device,
             "amigo-npr-compact-owners-pipeline",
@@ -121,6 +130,7 @@ impl NprGpuPipelines3d {
             compute_bind_group_layout,
             project_vertices_pipeline,
             classify_edges_pipeline,
+            build_endpoint_bins_pipeline,
             compact_owners_pipeline,
             build_strokes_pipeline,
         }

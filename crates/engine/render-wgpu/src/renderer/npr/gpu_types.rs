@@ -62,6 +62,17 @@ pub(crate) struct GpuNprPathLink3d {
 
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default)]
+pub(crate) struct GpuNprEndpointEntry3d {
+    pub edge_index: u32,
+    pub flags: u32,
+    pub next_plus_one: u32,
+    pub kind: u32,
+    pub bin: [i32; 2],
+    pub _pad0: [u32; 2],
+}
+
+#[repr(C)]
+#[derive(Clone, Copy, Debug, Default)]
 pub(crate) struct GpuNprFrameUniforms3d {
     pub model_translation: [f32; 4],
     pub model_rotation: [f32; 4],

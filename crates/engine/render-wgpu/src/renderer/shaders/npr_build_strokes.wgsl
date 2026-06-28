@@ -1437,6 +1437,13 @@ fn cs_main(@builtin(global_invocation_id) id: vec3<u32>) {
     if (visible.start.w < 0.5 || visible.end.w < 0.5) {
         return;
     }
+    let path_link = path_links[edge_index];
+    if ((path_link.flags & PATH_FLAG_EMIT) == 0u) {
+        return;
+    }
+    if (path_link.owner_edge != edge_index) {
+        return;
+    }
 
     let screen_a = visible.start.xy;
     let screen_b = visible.end.xy;
@@ -1472,20 +1479,130 @@ fn cs_main(@builtin(global_invocation_id) id: vec3<u32>) {
             return;
         }
     }
-    let connected_start = false;
-    let connected_end = false;
-    let connected_start_score = 0.0;
-    let connected_end_score = 0.0;
-    let start_next_edge = 0xffffffffu;
-    let end_next_edge = 0xffffffffu;
-    let current_repr_score = representative_edge_score(edge_index, 0.0, line_length);
-    let neighbor_repr_score = 0.0;
-    let canonical_owner = edge_index;
-    let chain_quality = 0.0;
-    let chained_span = line_length;
-    let viability = 1.0;
-    var render_start_mut = screen_a;
-    var render_end_mut = screen_b;
+    let start_next_edge = path_link.start_next;
+    let end_next_edge = path_link.end_next;
+    let connected_start =
+        (path_link.flags & PATH_FLAG_CONNECTED_START) != 0u && start_next_edge != 0xffffffffu;
+    let connected_end =
+        (path_link.flags & PATH_FLAG_CONNECTED_END) != 0u && end_next_edge != 0xffffffffu;
+    let start_depth = visible.start.z;
+    let end_depth = visible.end.z;
+    let start_direction = normalize(screen_a - screen_b);
+    let end_direction = normalize(screen_b - screen_a);
+    let connected_start_score = select(
+        0.0,
+        endpoint_connection_score(
+            start_next_edge,
+            kind,
+            screen_a,
+            start_depth,
+            start_direction,
+            line_length,
+        ),
+        connected_start,
+    );
+    let connected_end_score = select(
+        0.0,
+        endpoint_connection_score(
+            end_next_edge,
+            kind,
+            screen_b,
+            end_depth,
+            end_direction,
+            line_length,
+        ),
+        connected_end,
+    );
+    let current_repr_score =
+        representative_edge_score(edge_index, max(connected_start_score, connected_end_score), line_length);
+    let neighbor_repr_score =
+        neighbor_representative_score(
+            line_length,
+            start_next_edge,
+            end_next_edge,
+            connected_start_score,
+            connected_end_score,
+        );
+    let canonical_owner_pick = canonical_chain_owner_index(
+        edge_index,
+        edge,
+        kind,
+        screen_a,
+        screen_b,
+        line_length,
+        start_direction,
+        end_direction,
+        start_depth,
+        end_depth,
+        connected_start_score,
+        connected_end_score,
+        start_next_edge,
+        end_next_edge,
+    );
+    let canonical_owner = canonical_owner_pick.owner;
+    if (canonical_owner != edge_index) {
+        return;
+    }
+    let chain_quality = max(connected_start_score, connected_end_score);
+    var render_start_mut = select(
+        screen_a,
+        terminal_endpoint_walk(
+            screen_a,
+            start_depth,
+            start_direction,
+            line_length,
+            start_next_edge,
+            kind,
+        ),
+        connected_start,
+    );
+    var render_end_mut = select(
+        screen_b,
+        terminal_endpoint_walk(
+            screen_b,
+            end_depth,
+            end_direction,
+            line_length,
+            end_next_edge,
+            kind,
+        ),
+        connected_end,
+    );
+    let chained_start_point = select(
+        screen_a,
+        chained_endpoint_walk(
+            screen_a,
+            start_depth,
+            start_direction,
+            line_length,
+            start_next_edge,
+            kind,
+        ),
+        connected_start,
+    );
+    let chained_end_point = select(
+        screen_b,
+        chained_endpoint_walk(
+            screen_b,
+            end_depth,
+            end_direction,
+            line_length,
+            end_next_edge,
+            kind,
+        ),
+        connected_end,
+    );
+    render_start_mut = mix(render_start_mut, chained_start_point, 0.18);
+    render_end_mut = mix(render_end_mut, chained_end_point, 0.18);
+    let chained_span = distance(render_start_mut, render_end_mut);
+    let viability =
+        emit_viability_score(
+            current_repr_score,
+            neighbor_repr_score,
+            local_chain_centrality(connected_start, connected_end),
+            line_length,
+            chained_span,
+        );
     var render_length = distance(render_start_mut, render_end_mut);
     let max_render_length = npr_gpu_max_render_length_px();
     if (render_length > max_render_length) {
@@ -1515,7 +1632,7 @@ fn cs_main(@builtin(global_invocation_id) id: vec3<u32>) {
         return;
     }
     let importance = importance_from_depth(kind, line_depth);
-    let search_pass_count = 0u;
+    let search_pass_count = u32(uniforms.params5.y);
     let total_pass_count = primary_pass_count + search_pass_count;
 
     for (var pass_index: u32 = 0u; pass_index < total_pass_count; pass_index = pass_index + 1u) {

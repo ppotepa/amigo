@@ -194,6 +194,8 @@ pub struct NprLine3dSettingsDocument {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 pub struct NprGpuRealtimeTuningDocument {
     #[serde(default)]
+    pub debug_mode: Option<String>,
+    #[serde(default)]
     pub max_render_length_px: Option<f32>,
     #[serde(default)]
     pub max_segment_length_px: Option<f32>,

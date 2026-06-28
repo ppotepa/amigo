@@ -86,7 +86,46 @@ impl NprFillMode3d {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
+pub enum NprGpuDebugMode3d {
+    Final,
+    LineKinds,
+    RawPaths,
+    Dropout,
+    WidthAlpha,
+}
+
+impl Default for NprGpuDebugMode3d {
+    fn default() -> Self {
+        Self::Final
+    }
+}
+
+impl NprGpuDebugMode3d {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Final => "final",
+            Self::LineKinds => "line_kinds",
+            Self::RawPaths => "raw_paths",
+            Self::Dropout => "dropout",
+            Self::WidthAlpha => "width_alpha",
+        }
+    }
+
+    pub fn parse(value: &str) -> Option<Self> {
+        match value.trim() {
+            "final" | "camera.final" => Some(Self::Final),
+            "line_kinds" | "npr.line_kinds" | "npr.kinds" => Some(Self::LineKinds),
+            "raw_paths" | "npr.raw_paths" | "npr.paths" => Some(Self::RawPaths),
+            "dropout" | "npr.dropout" | "npr.breakup" => Some(Self::Dropout),
+            "width_alpha" | "npr.width_alpha" | "npr.pressure" => Some(Self::WidthAlpha),
+            _ => None,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct NprGpuRealtimeTuning3d {
+    pub debug_mode: NprGpuDebugMode3d,
     pub max_render_length_px: f32,
     pub max_segment_length_px: f32,
     pub max_terminal_walk_edges: u32,
@@ -103,6 +142,7 @@ pub struct NprGpuRealtimeTuning3d {
 impl Default for NprGpuRealtimeTuning3d {
     fn default() -> Self {
         Self {
+            debug_mode: NprGpuDebugMode3d::Final,
             max_render_length_px: 56.0,
             max_segment_length_px: 18.0,
             max_terminal_walk_edges: 1,
@@ -121,6 +161,7 @@ impl Default for NprGpuRealtimeTuning3d {
 impl NprGpuRealtimeTuning3d {
     pub fn rough_comic_experimental() -> Self {
         Self {
+            debug_mode: NprGpuDebugMode3d::Final,
             max_render_length_px: 120.0,
             max_segment_length_px: 32.0,
             max_terminal_walk_edges: 2,
@@ -510,6 +551,23 @@ mod tests {
         let settings = NprLineSettings3d::default();
         assert_eq!(settings.search_line_count, 0);
         assert!(!settings.gpu_realtime_tuning.search_enabled);
+    }
+
+    #[test]
+    fn npr_gpu_debug_mode_parses_runtime_and_yaml_labels() {
+        assert_eq!(
+            NprGpuDebugMode3d::parse("line_kinds"),
+            Some(NprGpuDebugMode3d::LineKinds)
+        );
+        assert_eq!(
+            NprGpuDebugMode3d::parse("npr.raw_paths"),
+            Some(NprGpuDebugMode3d::RawPaths)
+        );
+        assert_eq!(
+            NprGpuDebugMode3d::parse("camera.final"),
+            Some(NprGpuDebugMode3d::Final)
+        );
+        assert!(NprGpuDebugMode3d::parse("weird").is_none());
     }
 }
 

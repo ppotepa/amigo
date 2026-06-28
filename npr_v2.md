@@ -4,6 +4,9 @@ Status: plan implementacji po review aktualnego źródła z `concat.zip`.
 Zakres: renderowanie kreski komiksowej/NPR dla 3D. Bez hatchingu, halftone, painterly, fill shading i watercolor.
 Cel: `gpu_realtime` ma dawać prawie taki sam rysunek jak `cpu_reference`, ale wykonany ścieżką GPU bez `auto`, bez `hybrid`, bez cichego fallbacku GPU -> CPU.
 
+Ten plik jest kanonicznym planem docelowym.
+Aktualny stan wdrożenia, w tym które etapy są już zrobione częściowo albo w całości, jest śledzony wyłącznie w `npr_v2_status.md`.
+
 Ten dokument zastępuje poprzedni plan. Najważniejsza korekta względem wersji 1: w aktualnym źródle część fundamentów już istnieje (`NprRenderStrategy3d`, `NprFillMode3d`, `NprGpuRealtimeTuning3d`, `GpuStableComic`, routing CPU/GPU, podstawowy GPU pipeline). Brakiem nie jest już samo przełączenie strategii, tylko pełny path model na GPU: endpoint bins, path walk, path-level stylizacja, debug mode i frame-level multi-mesh face-id.
 
 ---

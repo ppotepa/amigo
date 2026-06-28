@@ -28,6 +28,15 @@ struct GpuNprPathLink3d {
     flags: u32,
 }
 
+struct GpuNprEndpointEntry3d {
+    edge_index: u32,
+    flags: u32,
+    next_plus_one: u32,
+    kind: u32,
+    bin: vec2<i32>,
+    _pad0: vec2<u32>,
+}
+
 struct GpuNprFrameUniforms3d {
     model_translation: vec4<f32>,
     model_rotation: vec4<f32>,
@@ -56,6 +65,12 @@ struct GpuNprFrameUniforms3d {
     seed: vec4<u32>,
 }
 
+struct EndpointCandidatePick {
+    edge_index: u32,
+    score: f32,
+    matched_start: bool,
+}
+
 const KIND_NONE: u32 = 0u;
 const KIND_BOUNDARY: u32 = 1u;
 const KIND_SILHOUETTE: u32 = 2u;
@@ -66,21 +81,26 @@ const KIND_CONTACT: u32 = 6u;
 const PATH_FLAG_EMIT: u32 = 1u;
 const PATH_FLAG_CONNECTED_START: u32 = 2u;
 const PATH_FLAG_CONNECTED_END: u32 = 4u;
+const ENDPOINT_FLAG_MATCHED_START: u32 = 1u;
 
 @group(0) @binding(2) var<storage, read> edges: array<GpuNprEdge3d>;
 @group(0) @binding(5) var<storage, read_write> visible_segments: array<GpuNprVisibleSegment3d>;
 @group(0) @binding(8) var<uniform> uniforms: GpuNprFrameUniforms3d;
 @group(0) @binding(10) var<storage, read_write> path_links: array<GpuNprPathLink3d>;
+@group(0) @binding(11) var<storage, read_write> endpoint_heads: array<atomic<u32>>;
+@group(0) @binding(12) var<storage, read_write> endpoint_entries: array<GpuNprEndpointEntry3d>;
 
 fn quantized_anchor_bin(point: vec2<f32>) -> vec2<i32> {
     let quant = max(uniforms.params12.w, 0.5);
     return vec2<i32>(round(point / quant));
 }
 
-fn same_anchor_bin(a: vec2<f32>, b: vec2<f32>) -> bool {
-    let qa = quantized_anchor_bin(a);
-    let qb = quantized_anchor_bin(b);
-    return qa.x == qb.x && qa.y == qb.y;
+fn endpoint_bucket_index(kind: u32, bin: vec2<i32>) -> u32 {
+    let head_count = max(u32(arrayLength(&endpoint_heads)), 1u);
+    let hx = bitcast<u32>(bin.x) * 0x9E3779B1u;
+    let hy = bitcast<u32>(bin.y) * 0x85EBCA77u;
+    let hk = kind * 0xC2B2AE3Du;
+    return (hx ^ hy ^ hk) & (head_count - 1u);
 }
 
 fn visible_segment_length(edge_index: u32) -> f32 {
@@ -102,22 +122,11 @@ fn max_chain_degree_for_kind(kind: u32) -> u32 {
     return select(2u, 3u, kind == KIND_SILHOUETTE);
 }
 
-fn anchor_degree(edge: GpuNprEdge3d, anchor_point: vec2<f32>, edge_index: u32) -> u32 {
-    let visible = visible_segments[edge_index];
-    let distance_start = distance(anchor_point, visible.start.xy);
-    let distance_end = distance(anchor_point, visible.end.xy);
-    return select(edge.degree_a, edge.degree_b, distance_end < distance_start);
-}
-
 fn degree_penalty(edge: GpuNprEdge3d) -> f32 {
     return f32(max(edge.degree_a, 1u) - 1u + max(edge.degree_b, 1u) - 1u) * 1.35;
 }
 
-fn representative_edge_score(
-    edge_index: u32,
-    current_length: f32,
-    connection_score: f32,
-) -> f32 {
+fn representative_edge_score(edge_index: u32, current_length: f32, connection_score: f32) -> f32 {
     if (edge_index == 0xffffffffu || edge_index >= u32(arrayLength(&visible_segments))) {
         return -1e9;
     }
@@ -129,44 +138,76 @@ fn representative_edge_score(
     return max(edge_length, current_length * 0.55) + connection_score * 16.0 - degree_penalty(edge);
 }
 
-fn continuation_endpoint(anchor_point: vec2<f32>, next_edge_index: u32) -> vec2<f32> {
-    let next = visible_segments[next_edge_index];
-    let distance_start = distance(anchor_point, next.start.xy);
-    let distance_end = distance(anchor_point, next.end.xy);
-    return select(next.start.xy, next.end.xy, distance_start < distance_end);
+fn entry_is_matched_start(entry: GpuNprEndpointEntry3d) -> bool {
+    return (entry.flags & ENDPOINT_FLAG_MATCHED_START) != 0u;
 }
 
-fn edge_connection_score(
-    edge_index: u32,
-    next_edge_index: u32,
+fn matched_point_for_entry(entry: GpuNprEndpointEntry3d, visible: GpuNprVisibleSegment3d) -> vec2<f32> {
+    return select(visible.end.xy, visible.start.xy, entry_is_matched_start(entry));
+}
+
+fn far_point_for_entry(entry: GpuNprEndpointEntry3d, visible: GpuNprVisibleSegment3d) -> vec2<f32> {
+    return select(visible.start.xy, visible.end.xy, entry_is_matched_start(entry));
+}
+
+fn matched_depth_for_entry(entry: GpuNprEndpointEntry3d, visible: GpuNprVisibleSegment3d) -> f32 {
+    return select(visible.end.z, visible.start.z, entry_is_matched_start(entry));
+}
+
+fn endpoint_degree_for_entry(edge: GpuNprEdge3d, entry: GpuNprEndpointEntry3d) -> u32 {
+    return select(edge.degree_b, edge.degree_a, entry_is_matched_start(entry));
+}
+
+fn edge_connection_score_from_entry(
+    current_edge_index: u32,
+    current_kind: u32,
     anchor_point: vec2<f32>,
+    anchor_depth: f32,
     current_direction: vec2<f32>,
     current_length: f32,
+    candidate_entry_index: u32,
 ) -> f32 {
-    if (next_edge_index == 0xffffffffu || next_edge_index >= u32(arrayLength(&visible_segments))) {
+    if (candidate_entry_index >= u32(arrayLength(&endpoint_entries))) {
         return 0.0;
     }
-    let visible = visible_segments[edge_index];
-    let next = visible_segments[next_edge_index];
+    let candidate_entry = endpoint_entries[candidate_entry_index];
+    let next_edge_index = candidate_entry.edge_index;
     if (
-        next.kind_edge.x == KIND_NONE
-        || next.kind_edge.x != visible.kind_edge.x
-        || next.start.w <= 0.5
-        || next.end.w <= 0.5
+        next_edge_index == 0xffffffffu
+        || next_edge_index == current_edge_index
+        || next_edge_index >= u32(arrayLength(&visible_segments))
     ) {
         return 0.0;
     }
-    let continuation = continuation_endpoint(anchor_point, next_edge_index);
+    if (candidate_entry.kind != current_kind) {
+        return 0.0;
+    }
+
+    let next = visible_segments[next_edge_index];
+    if (next.kind_edge.x == KIND_NONE || next.start.w <= 0.5 || next.end.w <= 0.5) {
+        return 0.0;
+    }
+
+    let continuation = matched_point_for_entry(candidate_entry, next);
     let gap = distance(anchor_point, continuation);
-    let at_degree = anchor_degree(edges[edge_index], anchor_point, edge_index);
-    if (at_degree > max_chain_degree_for_kind(visible.kind_edge.x)) {
-        return 0.0;
-    }
     let endpoint_snap = max(uniforms.params12.w, 0.5);
-    if (!same_anchor_bin(anchor_point, continuation) && gap > endpoint_snap * 1.6) {
+    if (gap > endpoint_snap * 5.5) {
         return 0.0;
     }
-    let next_far = select(next.start.xy, next.end.xy, distance(anchor_point, next.start.xy) < distance(anchor_point, next.end.xy));
+
+    let current_bin = quantized_anchor_bin(anchor_point);
+    let bin_gap = f32(abs(candidate_entry.bin.x - current_bin.x) + abs(candidate_entry.bin.y - current_bin.y));
+    if (bin_gap > 2.0 && gap > endpoint_snap * 1.6) {
+        return 0.0;
+    }
+
+    let next_edge = edges[next_edge_index];
+    let degree = endpoint_degree_for_entry(next_edge, candidate_entry);
+    if (degree > max_chain_degree_for_kind(current_kind)) {
+        return 0.0;
+    }
+
+    let next_far = far_point_for_entry(candidate_entry, next);
     let delta = next_far - continuation;
     let next_length = max(length(delta), 0.0001);
     let next_dir = delta / next_length;
@@ -174,8 +215,101 @@ fn edge_connection_score(
     if (alignment <= npr_gpu_max_chain_angle_cos()) {
         return 0.0;
     }
-    let length_ratio = visible_segment_length(next_edge_index) / max(current_length, 1.0);
-    return alignment + clamp(length_ratio, 0.0, 2.0) * 0.18;
+
+    let depth_gap = abs(anchor_depth - matched_depth_for_entry(candidate_entry, next));
+    let visible_length = visible_segment_length(next_edge_index);
+    let length_ratio = visible_length / max(current_length, 1.0);
+    let cost =
+        (gap / endpoint_snap)
+        + bin_gap * 0.8
+        + (1.0 - clamp(alignment, -1.0, 1.0)) * 14.0
+        + depth_gap * 2.1
+        + abs(current_length - visible_length) / max(max(current_length, visible_length), 1.0) * 3.2
+        + select(0.0, 0.85, degree != 1u);
+    return (1.0 / (1.0 + cost * 0.18)) + clamp(length_ratio, 0.0, 2.0) * 0.18;
+}
+
+fn better_candidate(current: EndpointCandidatePick, candidate: EndpointCandidatePick) -> EndpointCandidatePick {
+    if (candidate.score > current.score + 0.001) {
+        return candidate;
+    }
+    if (
+        abs(candidate.score - current.score) <= 0.001
+        && candidate.edge_index != 0xffffffffu
+        && candidate.edge_index < current.edge_index
+    ) {
+        return candidate;
+    }
+    return current;
+}
+
+fn scan_bucket_candidates(
+    current_edge_index: u32,
+    current_kind: u32,
+    anchor_point: vec2<f32>,
+    anchor_depth: f32,
+    current_direction: vec2<f32>,
+    current_length: f32,
+    bin: vec2<i32>,
+    current_best: EndpointCandidatePick,
+) -> EndpointCandidatePick {
+    let bucket_index = endpoint_bucket_index(current_kind, bin);
+    var best = current_best;
+    var head_plus_one = atomicLoad(&endpoint_heads[bucket_index]);
+    loop {
+        if (head_plus_one == 0u) {
+            break;
+        }
+        let entry_index = head_plus_one - 1u;
+        if (entry_index >= u32(arrayLength(&endpoint_entries))) {
+            break;
+        }
+        let entry = endpoint_entries[entry_index];
+        let score = edge_connection_score_from_entry(
+            current_edge_index,
+            current_kind,
+            anchor_point,
+            anchor_depth,
+            current_direction,
+            current_length,
+            entry_index,
+        );
+        if (score > 0.0) {
+            best = better_candidate(
+                best,
+                EndpointCandidatePick(entry.edge_index, score, entry_is_matched_start(entry)),
+            );
+        }
+        head_plus_one = entry.next_plus_one;
+    }
+    return best;
+}
+
+fn best_endpoint_candidate_from_bins(
+    current_edge_index: u32,
+    current_kind: u32,
+    anchor_point: vec2<f32>,
+    anchor_depth: f32,
+    current_direction: vec2<f32>,
+    current_length: f32,
+) -> EndpointCandidatePick {
+    let base_bin = quantized_anchor_bin(anchor_point);
+    var best = EndpointCandidatePick(0xffffffffu, 0.0, false);
+    for (var offset_y: i32 = -1; offset_y <= 1; offset_y = offset_y + 1) {
+        for (var offset_x: i32 = -1; offset_x <= 1; offset_x = offset_x + 1) {
+            best = scan_bucket_candidates(
+                current_edge_index,
+                current_kind,
+                anchor_point,
+                anchor_depth,
+                current_direction,
+                current_length,
+                base_bin + vec2<i32>(offset_x, offset_y),
+                best,
+            );
+        }
+    }
+    return best;
 }
 
 @compute @workgroup_size(64)
@@ -184,13 +318,9 @@ fn cs_main(@builtin(global_invocation_id) id: vec3<u32>) {
     if (edge_index >= u32(arrayLength(&visible_segments))) {
         return;
     }
+
     visible_segments[edge_index].kind_edge.w = 0u;
-    path_links[edge_index] = GpuNprPathLink3d(
-        edge_index,
-        0xffffffffu,
-        0xffffffffu,
-        0u,
-    );
+    path_links[edge_index] = GpuNprPathLink3d(edge_index, 0xffffffffu, 0xffffffffu, 0u);
 
     let visible = visible_segments[edge_index];
     if (visible.kind_edge.x == KIND_NONE || visible.start.w <= 0.5 || visible.end.w <= 0.5) {
@@ -198,23 +328,32 @@ fn cs_main(@builtin(global_invocation_id) id: vec3<u32>) {
     }
 
     let edge = edges[edge_index];
+    let kind = visible.kind_edge.x;
     let current_length = visible_segment_length(edge_index);
     if (current_length <= 0.0) {
         return;
     }
 
-    let start_dir = normalize(visible.start.xy - visible.end.xy);
-    let end_dir = normalize(visible.end.xy - visible.start.xy);
-    let start_primary = edge_connection_score(edge_index, edge.next_a, visible.start.xy, start_dir, current_length);
-    let start_alt = edge_connection_score(edge_index, edge.alt_next_a, visible.start.xy, start_dir, current_length);
-    let end_primary = edge_connection_score(edge_index, edge.next_b, visible.end.xy, end_dir, current_length);
-    let end_alt = edge_connection_score(edge_index, edge.alt_next_b, visible.end.xy, end_dir, current_length);
-    let start_next_edge = select(edge.next_a, edge.alt_next_a, start_alt > start_primary);
-    let end_next_edge = select(edge.next_b, edge.alt_next_b, end_alt > end_primary);
-    let start_score = max(start_primary, start_alt);
-    let end_score = max(end_primary, end_alt);
-    let connected_both = start_score > 0.72 && end_score > 0.72;
-    let kind = visible.kind_edge.x;
+    let start_pick = best_endpoint_candidate_from_bins(
+        edge_index,
+        kind,
+        visible.start.xy,
+        visible.start.z,
+        normalize(visible.start.xy - visible.end.xy),
+        current_length,
+    );
+    let end_pick = best_endpoint_candidate_from_bins(
+        edge_index,
+        kind,
+        visible.end.xy,
+        visible.end.z,
+        normalize(visible.end.xy - visible.start.xy),
+        current_length,
+    );
+
+    let connected_start = start_pick.score >= 0.72;
+    let connected_end = end_pick.score >= 0.72;
+    let connected_both = connected_start && connected_end;
 
     if (kind == KIND_CONTACT && (!connected_both || current_length < max(uniforms.params0.w * 3.0, 8.0))) {
         return;
@@ -222,8 +361,8 @@ fn cs_main(@builtin(global_invocation_id) id: vec3<u32>) {
 
     if (
         (kind == KIND_CREASE || kind == KIND_SEAM || kind == KIND_FEATURE)
-        && start_score <= 0.0
-        && end_score <= 0.0
+        && !connected_start
+        && !connected_end
         && current_length < max(uniforms.params0.w * 2.5, 7.0)
     ) {
         return;
@@ -236,80 +375,52 @@ fn cs_main(@builtin(global_invocation_id) id: vec3<u32>) {
         || kind == KIND_SEAM
         || kind == KIND_FEATURE;
 
-    let start_neighbor = max(visible_segment_length(edge.next_a), visible_segment_length(edge.alt_next_a));
-    let end_neighbor = max(visible_segment_length(edge.next_b), visible_segment_length(edge.alt_next_b));
-    let chain_span = current_length + max(start_neighbor, 0.0) + max(end_neighbor, 0.0);
+    let start_neighbor = select(0.0, visible_segment_length(start_pick.edge_index), start_pick.edge_index != 0xffffffffu);
+    let end_neighbor = select(0.0, visible_segment_length(end_pick.edge_index), end_pick.edge_index != 0xffffffffu);
+    let chain_span = current_length + start_neighbor + end_neighbor;
     let chain_compactable =
         connected_both
         && chain_span >= max(current_length * 1.18, current_length + 5.0);
 
-    let self_score = representative_edge_score(edge_index, current_length, max(start_score, end_score));
-    let score_start_primary = representative_edge_score(edge.next_a, current_length, start_primary);
-    let score_start_alt = representative_edge_score(edge.alt_next_a, current_length, start_alt);
-    let score_end_primary = representative_edge_score(edge.next_b, current_length, end_primary);
-    let score_end_alt = representative_edge_score(edge.alt_next_b, current_length, end_alt);
+    let self_score = representative_edge_score(edge_index, current_length, max(start_pick.score, end_pick.score));
+    let score_start = representative_edge_score(start_pick.edge_index, current_length, start_pick.score);
+    let score_end = representative_edge_score(end_pick.edge_index, current_length, end_pick.score);
     var best_owner = edge_index;
     var best_owner_score = self_score;
-    if (score_start_primary > best_owner_score + 0.001 || (abs(score_start_primary - best_owner_score) <= 0.001 && edge.next_a < best_owner)) {
-        best_owner = edge.next_a;
-        best_owner_score = score_start_primary;
+    if (score_start > best_owner_score + 0.001 || (abs(score_start - best_owner_score) <= 0.001 && start_pick.edge_index < best_owner)) {
+        best_owner = start_pick.edge_index;
+        best_owner_score = score_start;
     }
-    if (score_start_alt > best_owner_score + 0.001 || (abs(score_start_alt - best_owner_score) <= 0.001 && edge.alt_next_a < best_owner)) {
-        best_owner = edge.alt_next_a;
-        best_owner_score = score_start_alt;
-    }
-    if (score_end_primary > best_owner_score + 0.001 || (abs(score_end_primary - best_owner_score) <= 0.001 && edge.next_b < best_owner)) {
-        best_owner = edge.next_b;
-        best_owner_score = score_end_primary;
-    }
-    if (score_end_alt > best_owner_score + 0.001 || (abs(score_end_alt - best_owner_score) <= 0.001 && edge.alt_next_b < best_owner)) {
-        best_owner = edge.alt_next_b;
-        best_owner_score = score_end_alt;
+    if (score_end > best_owner_score + 0.001 || (abs(score_end - best_owner_score) <= 0.001 && end_pick.edge_index < best_owner)) {
+        best_owner = end_pick.edge_index;
+        best_owner_score = score_end;
     }
 
-    if (primary_line) {
-        var flags = PATH_FLAG_EMIT;
-        if (start_score > 0.72) {
-            flags = flags | PATH_FLAG_CONNECTED_START;
+    if (!primary_line) {
+        let stronger_neighbor_owner =
+            best_owner != edge_index
+            && best_owner_score >= max(self_score * 1.08, self_score + 1.0)
+            && chain_span >= max(current_length * 1.08, current_length + 4.0);
+        if (stronger_neighbor_owner) {
+            return;
         }
-        if (end_score > 0.72) {
-            flags = flags | PATH_FLAG_CONNECTED_END;
-        }
-        path_links[edge_index] = GpuNprPathLink3d(
-            best_owner,
-            start_next_edge,
-            end_next_edge,
-            flags,
-        );
-        visible_segments[edge_index].kind_edge.w = 1u;
-        return;
-    }
-
-    let stronger_neighbor_owner =
-        best_owner != edge_index
-        && best_owner_score >= max(self_score * 1.08, self_score + 1.0)
-        && chain_span >= max(current_length * 1.08, current_length + 4.0);
-    if (stronger_neighbor_owner) {
-        return;
-    }
-
-    if (chain_compactable) {
-        if (best_owner != edge_index) {
+        if (chain_compactable && best_owner != edge_index) {
             return;
         }
     }
 
     var flags = PATH_FLAG_EMIT;
-    if (start_score > 0.72) {
+    if (connected_start) {
         flags = flags | PATH_FLAG_CONNECTED_START;
     }
-    if (end_score > 0.72) {
+    if (connected_end) {
         flags = flags | PATH_FLAG_CONNECTED_END;
     }
+
     path_links[edge_index] = GpuNprPathLink3d(
         best_owner,
-        start_next_edge,
-        end_next_edge,
+        start_pick.edge_index,
+        end_pick.edge_index,
         flags,
     );
     visible_segments[edge_index].kind_edge.w = 1u;

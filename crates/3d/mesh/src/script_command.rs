@@ -21,6 +21,10 @@ pub enum Mesh3dScriptCommandOutcome {
         entity_name: String,
         enabled: bool,
     },
+    SetNprGpuDebugMode {
+        entity_name: String,
+        debug_mode: amigo_render_api::NprGpuDebugMode3d,
+    },
     Unhandled,
 }
 
@@ -74,6 +78,22 @@ pub fn handle_mesh3d_script_command(
                 Mesh3dScriptCommandOutcome::Unhandled
             }
         }
+        ("set_npr_gpu_debug_mode", [entity_name, debug_mode]) => {
+            let Some(mesh_scene_service) = ctx.mesh_scene_service else {
+                return Mesh3dScriptCommandOutcome::Unhandled;
+            };
+            let Some(debug_mode) = amigo_render_api::NprGpuDebugMode3d::parse(debug_mode) else {
+                return Mesh3dScriptCommandOutcome::Unhandled;
+            };
+            if mesh_scene_service.set_npr_gpu_debug_mode(entity_name, debug_mode) {
+                Mesh3dScriptCommandOutcome::SetNprGpuDebugMode {
+                    entity_name: entity_name.clone(),
+                    debug_mode,
+                }
+            } else {
+                Mesh3dScriptCommandOutcome::Unhandled
+            }
+        }
         _ => Mesh3dScriptCommandOutcome::Unhandled,
     }
 }
@@ -90,7 +110,8 @@ impl RuntimeScriptCommandHandler for Mesh3dScriptCommandHandler {
             && ((command.name == "spawn" && command.arguments.len() == 3)
                 || (command.name == "apply_npr_preset" && command.arguments.len() == 2)
                 || (command.name == "set_npr_temporal_path_smoothing"
-                    && command.arguments.len() == 2))
+                    && command.arguments.len() == 2)
+                || (command.name == "set_npr_gpu_debug_mode" && command.arguments.len() == 2))
     }
 
     fn handle(&self, runtime: &Runtime, command: ScriptCommand) -> AmigoResult<()> {
@@ -108,6 +129,7 @@ impl RuntimeScriptCommandHandler for Mesh3dScriptCommandHandler {
             }
             Mesh3dScriptCommandOutcome::AppliedNprPreset { .. } => {}
             Mesh3dScriptCommandOutcome::SetNprTemporalPathSmoothing { .. } => {}
+            Mesh3dScriptCommandOutcome::SetNprGpuDebugMode { .. } => {}
             Mesh3dScriptCommandOutcome::Unhandled => {}
         }
         Ok(())

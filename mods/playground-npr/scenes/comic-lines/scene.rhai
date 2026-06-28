@@ -88,9 +88,18 @@ fn npr_preset_label(index) {
 fn npr_debug_view_label(view_id) {
     if view_id == "camera.final" { return "Final"; }
     if view_id == "npr.line_kinds" { return "LineKinds"; }
+    if view_id == "npr.raw_paths" { return "RawPaths"; }
     if view_id == "npr.dropout" { return "Dropout"; }
     if view_id == "npr.width_alpha" { return "WidthAlpha"; }
     view_id
+}
+
+fn npr_debug_mode_from_view_id(view_id) {
+    if view_id == "npr.line_kinds" { return "line_kinds"; }
+    if view_id == "npr.raw_paths" { return "raw_paths"; }
+    if view_id == "npr.dropout" { return "dropout"; }
+    if view_id == "npr.width_alpha" { return "width_alpha"; }
+    "final"
 }
 
 fn on_off(value) {
@@ -167,6 +176,10 @@ fn apply_active_npr_preset(world_api) {
         entity_name,
         world_api.state.get_bool("npr_temporal_path_smoothing"),
     );
+    world_api.mesh3d.set_npr_gpu_debug_mode(
+        entity_name,
+        npr_debug_mode_from_view_id(world_api.state.get_string("npr_debug_view")),
+    );
     world_api.dev.event("playground-npr.preset-selected", npr_preset_label(preset_index));
     refresh_hud(world_api, 0.0);
 }
@@ -230,8 +243,33 @@ fn toggle_npr_strategy(world_api) {
 fn set_npr_debug_view(world_api, view_id, label) {
     world_api.camera.set_main_debug_view(view_id);
     world_api.state.set_string("npr_debug_view", view_id);
+    world_api.mesh3d.set_npr_gpu_debug_mode(
+        model_entity_name(world_api.state.get_int("active_npr_model")),
+        npr_debug_mode_from_view_id(view_id),
+    );
     world_api.dev.event("playground-npr.debug-view", label);
     refresh_hud(world_api, 0.0);
+}
+
+fn cycle_npr_debug_view(world_api) {
+    let current = world_api.state.get_string("npr_debug_view");
+    if current == "camera.final" {
+        set_npr_debug_view(world_api, "npr.line_kinds", "Line Kinds");
+        return;
+    }
+    if current == "npr.line_kinds" {
+        set_npr_debug_view(world_api, "npr.raw_paths", "Raw Paths");
+        return;
+    }
+    if current == "npr.raw_paths" {
+        set_npr_debug_view(world_api, "npr.dropout", "Dropout");
+        return;
+    }
+    if current == "npr.dropout" {
+        set_npr_debug_view(world_api, "npr.width_alpha", "Width Alpha");
+        return;
+    }
+    set_npr_debug_view(world_api, "camera.final", "Final");
 }
 
 fn rotate_active_model(world_api, dt) {
@@ -261,7 +299,7 @@ fn on_enter() {
     refresh_hud(world, 0.0);
     let scene_id = world.scene.current_id();
     world.dev.event("playground-npr.scene-ready", scene_id);
-    world.dev.log("playground-npr comic lines workbench: 1-6 models, ArrowUp/ArrowDown styles, G strategy toggle, 7 final, 8 kinds, 9 dropout, 0 width/alpha, LMB orbit, wheel zoom, F freelook, R autorotate, T temporal smoothing");
+    world.dev.log("playground-npr comic lines workbench: 1-6 models, ArrowUp/ArrowDown styles, G strategy toggle, V debug cycle, 7 final, 8 kinds, 9 dropout, 0 width/alpha, LMB orbit, wheel zoom, F freelook, R autorotate, T temporal smoothing");
 }
 
 fn update(dt) {
@@ -281,6 +319,7 @@ fn update(dt) {
     if input::pressed(world, "npr.model_autorotate_toggle") { toggle_model_autorotate(world); }
     if input::pressed(world, "npr.temporal_smoothing_toggle") { toggle_npr_temporal_path_smoothing(world); }
     if input::pressed(world, "npr.strategy_toggle") { toggle_npr_strategy(world); }
+    if input::pressed(world, "npr.debug_cycle") { cycle_npr_debug_view(world); }
     if input::pressed(world, "npr.debug_final") { set_npr_debug_view(world, "camera.final", "Final"); }
     if input::pressed(world, "npr.debug_line_kinds") { set_npr_debug_view(world, "npr.line_kinds", "Line Kinds"); }
     if input::pressed(world, "npr.debug_dropout") { set_npr_debug_view(world, "npr.dropout", "Dropout"); }

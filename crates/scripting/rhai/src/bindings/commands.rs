@@ -72,6 +72,19 @@ pub fn queue_mesh3d_set_npr_temporal_path_smoothing(
     )
 }
 
+pub fn queue_mesh3d_set_npr_gpu_debug_mode(
+    command_queue: Option<&Arc<ScriptCommandQueue>>,
+    entity_name: &str,
+    debug_mode: &str,
+) -> bool {
+    queue_placeholder_command(
+        command_queue,
+        "3d.mesh",
+        "set_npr_gpu_debug_mode",
+        vec![entity_name.to_owned(), debug_mode.to_owned()],
+    )
+}
+
 pub fn queue_audio_play(command_queue: Option<&Arc<ScriptCommandQueue>>, clip_name: &str) -> bool {
     queue_placeholder_command(command_queue, "audio", "play", vec![clip_name.to_owned()])
 }
