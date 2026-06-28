@@ -320,6 +320,15 @@ Glowne pliki:
   - width/alpha modulation,
   - search gating
   lepiej odrozniaja prawdziwie dluzsze chainy od lokalnych 2-3 edge fragmentow.
+- `emit_path_segments` ma teraz gestszy owner split:
+  - dla krotszych ownerow zostaje lekki podzial,
+  - dla dluzszych owner chainow srodek path jest dzielony na 4 segmenty zamiast 2.
+  To daje lepsze `path_t0/path_t1` dla:
+  - taper,
+  - pressure,
+  - alpha,
+  - dropout,
+  bo finalna kreska nie dostaje juz tak grubego, zbyt uproszczonego srodka sciezki.
 - `build_strokes` dalej nie jest pelnym path rendererem, bo `path_t/path walk` sa jeszcze uproszczone.
 - GPU frame buffers maja teraz tez osobny bufor `path_states`.
 
