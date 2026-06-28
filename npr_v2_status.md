@@ -16,6 +16,8 @@ Powiazany plan: `npr_v2.md`.
 - `build_strokes` czyta teraz kompaktowane `path_segments`.
 - `path_id` jest stabilniejszy i nie zalezy wprost od owner edge.
 - Lock, overshoot, drift i dropout zaczely korzystac z semantyki calej path, a nie tylko pojedynczego segmentu.
+- `emit_path_segments` odrzuca teraz kontynuacje walk, ktore lamia limit kata, robia zbyt duzy skok glebokosci albo za mocno zmieniaja skale kolejnego segmentu.
+- To powinno ograniczyc falszywe dlugie chainy, ktore dawaly losowe kreski niepodobne do obrysu modelu.
 
 ## 1. Co zostalo zrobione
 
@@ -149,6 +151,10 @@ Glowne pliki:
   - rozszerza owner segment w obie strony,
   - akumuluje chain length,
   - aktualizuje final start/end dla `path_segments`.
+- Walk jest teraz bardziej konserwatywny:
+  - odrzuca kontynuacje ponizej `max_chain_angle_degrees`,
+  - odrzuca za duze skoki depth,
+  - odrzuca agresywne zmiany lokalnej skali segmentu przy dalszych hopach.
 - `emit_path_segments` zapisuje juz bardziej stabilna tozsamosc:
   - `path_id` jest oparty o skwantowane konce walked chainu, kind, hop count i bucket dlugosci,
   - `path_id` jest juz kierunkowo kanoniczny, wiec odwrocenie chainu nie powinno zmieniac identyfikatora,

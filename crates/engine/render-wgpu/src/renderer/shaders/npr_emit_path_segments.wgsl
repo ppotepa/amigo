@@ -165,20 +165,29 @@ fn path_segment_flags(
     return flags;
 }
 
+fn max_chain_cosine() -> f32 {
+    return clamp(uniforms.params15.x, -0.999, 0.999);
+}
+
 fn walk_path_endpoint(
     owner_edge_index: u32,
     kind: u32,
     anchor_point: vec2<f32>,
     anchor_depth: f32,
+    initial_direction: vec2<f32>,
+    initial_length: f32,
     first_next: u32,
 ) -> PathWalkResult {
     var result = PathWalkResult(anchor_point, anchor_depth, 0.0, 0u);
     var current_anchor = anchor_point;
     var current_depth = anchor_depth;
+    var current_direction = initial_direction;
+    var current_length = max(initial_length, 0.0001);
     var next_edge = first_next;
     var previous_edge = owner_edge_index;
     let max_hops = max(u32(uniforms.params14.z), 1u);
     let endpoint_snap = max(uniforms.params12.w, 0.5) * 5.5;
+    let chain_cos = max_chain_cosine();
 
     loop {
         if (next_edge == 0xffffffffu || next_edge == previous_edge || result.hops >= max_hops) {
@@ -210,6 +219,21 @@ fn walk_path_endpoint(
         if (segment_len <= 0.0001) {
             break;
         }
+        let segment_direction = delta / segment_len;
+        let alignment = dot(current_direction, segment_direction);
+        if (alignment < chain_cos) {
+            break;
+        }
+        let depth_gap = abs(current_depth - far_depth);
+        let max_depth_gap = 0.04 + (1.0 - max(alignment, 0.0)) * 0.14;
+        if (depth_gap > max_depth_gap) {
+            break;
+        }
+        let length_ratio =
+            abs(segment_len - current_length) / max(max(segment_len, current_length), 1.0);
+        if (result.hops > 0u && length_ratio > 0.8) {
+            break;
+        }
 
         result.point = far_point;
         result.depth = far_depth;
@@ -219,8 +243,9 @@ fn walk_path_endpoint(
         previous_edge = next_edge;
         current_anchor = far_point;
         current_depth = far_depth;
+        current_direction = segment_direction;
+        current_length = segment_len;
         next_edge = continue_from_matched_side(link, matched_start);
-        _ = current_depth;
     }
 
     return result;
@@ -255,11 +280,15 @@ fn cs_main(@builtin(global_invocation_id) id: vec3<u32>) {
 
     let connected_start = (link.flags & PATH_FLAG_CONNECTED_START) != 0u;
     let connected_end = (link.flags & PATH_FLAG_CONNECTED_END) != 0u;
+    let owner_start_direction = normalize(visible.start.xy - visible.end.xy);
+    let owner_end_direction = normalize(visible.end.xy - visible.start.xy);
     let start_walk = walk_path_endpoint(
         edge_index,
         visible.kind_edge.x,
         visible.start.xy,
         visible.start.z,
+        owner_start_direction,
+        length_px,
         select(0xffffffffu, link.start_next, connected_start),
     );
     let end_walk = walk_path_endpoint(
@@ -267,6 +296,8 @@ fn cs_main(@builtin(global_invocation_id) id: vec3<u32>) {
         visible.kind_edge.x,
         visible.end.xy,
         visible.end.z,
+        owner_end_direction,
+        length_px,
         select(0xffffffffu, link.end_next, connected_end),
     );
 
