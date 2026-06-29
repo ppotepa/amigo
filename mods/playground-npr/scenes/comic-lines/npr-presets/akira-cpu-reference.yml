@@ -9,7 +9,7 @@ settings:
   stroke_tool: ink_pen
   pipeline:
     candidate_strategy: character_semantic
-    path_strategy: stable_stroked_paths
+    path_strategy: direct_visible_segments
     stroke_strategy: akira_ink
     fill_strategy: material_black_mass
     hatching_strategy: sparse_character_hatching

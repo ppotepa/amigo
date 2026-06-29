@@ -6,12 +6,12 @@ use super::super::{
     build_scene_hydration_plan, entity_selector_from_document, scene_key_from_document,
 };
 use crate::{
-    CameraController3dModeSceneCommand, CameraController3dSceneCommand, ComponentHydratorRegistry,
-    ComponentSchemaRegistry, EntitySelector, InputActionMapSceneCommand,
-    PluginComponentHydrationContext, PluginComponentHydrator, SceneCommand, SceneComponentPayload,
-    SceneComponentSchemaProvider, SceneDocumentError, SceneEntitySelectorDocument,
-    SceneEntitySelectorKindDocument, compile_scene_document_from_path, load_scene_document_from_path,
-    load_scene_document_from_str, load_scene_document_from_str_with_component_schemas,
+    compile_scene_document_from_path, load_scene_document_from_path, load_scene_document_from_str,
+    load_scene_document_from_str_with_component_schemas, CameraController3dModeSceneCommand,
+    CameraController3dSceneCommand, ComponentHydratorRegistry, ComponentSchemaRegistry,
+    EntitySelector, InputActionMapSceneCommand, PluginComponentHydrationContext,
+    PluginComponentHydrator, SceneCommand, SceneComponentPayload, SceneComponentSchemaProvider,
+    SceneDocumentError, SceneEntitySelectorDocument, SceneEntitySelectorKindDocument,
 };
 use serde_yaml::{Mapping, Value};
 
@@ -172,9 +172,7 @@ fn mesh_command(command: &SceneCommand) -> Option<&crate::Mesh3dSceneCommand> {
 
 fn npr_preset_command(command: &SceneCommand) -> Option<&crate::NprPreset3dSceneCommand> {
     match command {
-        SceneCommand::Plugin { command } => {
-            command.payload_as::<crate::NprPreset3dSceneCommand>()
-        }
+        SceneCommand::Plugin { command } => command.payload_as::<crate::NprPreset3dSceneCommand>(),
         _ => None,
     }
 }
@@ -194,7 +192,8 @@ fn text3d_command(command: &SceneCommand) -> Option<&crate::Text3dSceneCommand> 
 }
 
 fn first_mesh_npr_settings(document_yaml: &str) -> amigo_render_api::NprLineSettings3d {
-    let document = load_scene_document_from_str(document_yaml).expect("scene document should parse");
+    let document =
+        load_scene_document_from_str(document_yaml).expect("scene document should parse");
     let plan = build_scene_hydration_plan("playground-npr", &document)
         .expect("scene document should hydrate");
     plan.commands
@@ -271,11 +270,10 @@ entities:
             transform: Some(Transform3 { .. })
         } if name == "playground-2d-camera"
     )));
-    assert!(
-        plan.commands.iter().all(|command| {
-            camera_command(command).is_none() && sprite_command(command).is_none()
-        })
-    );
+    assert!(plan
+        .commands
+        .iter()
+        .all(|command| { camera_command(command).is_none() && sprite_command(command).is_none() }));
 }
 
 #[test]
@@ -346,11 +344,10 @@ entities:
 
     let plan = build_scene_hydration_plan("rotten-club", &document).expect("plan should build");
 
-    assert!(
-        plan.commands
-            .iter()
-            .all(|command| text_command(command).is_none())
-    );
+    assert!(plan
+        .commands
+        .iter()
+        .all(|command| text_command(command).is_none()));
 }
 
 #[test]
@@ -382,11 +379,10 @@ entities:
 
     let plan = build_scene_hydration_plan("test-mod", &document).expect("plan should build");
 
-    assert!(
-        plan.commands
-            .iter()
-            .all(|command| sprite_command(command).is_none())
-    );
+    assert!(plan
+        .commands
+        .iter()
+        .all(|command| sprite_command(command).is_none()));
 }
 
 #[test]
@@ -419,11 +415,10 @@ entities:
 
     let plan = build_scene_hydration_plan("test-mod", &document).expect("plan should build");
 
-    assert!(
-        plan.commands
-            .iter()
-            .all(|command| vector_command(command).is_none())
-    );
+    assert!(plan
+        .commands
+        .iter()
+        .all(|command| vector_command(command).is_none()));
 }
 
 #[test]
@@ -447,11 +442,10 @@ entities:
     .expect("scene document should parse");
 
     let plan = build_scene_hydration_plan("test-mod", &document).expect("plan should build");
-    assert!(
-        plan.commands
-            .iter()
-            .all(|command| camera_command(command).is_none())
-    );
+    assert!(plan
+        .commands
+        .iter()
+        .all(|command| camera_command(command).is_none()));
 }
 
 #[test]
@@ -477,11 +471,10 @@ entities:
     .expect("scene document should parse");
 
     let plan = build_scene_hydration_plan("test-mod", &document).expect("plan should build");
-    assert!(
-        plan.commands
-            .iter()
-            .all(|command| beacon_command(command).is_none())
-    );
+    assert!(plan
+        .commands
+        .iter()
+        .all(|command| beacon_command(command).is_none()));
 }
 
 #[test]
@@ -510,11 +503,10 @@ entities:
 
     let plan = build_scene_hydration_plan("test-mod", &document).expect("plan should build");
 
-    assert!(
-        plan.commands
-            .iter()
-            .all(|command| layered_image_command(command).is_none())
-    );
+    assert!(plan
+        .commands
+        .iter()
+        .all(|command| layered_image_command(command).is_none()));
 }
 
 #[test]
@@ -684,11 +676,10 @@ fn builds_hydration_plan_for_playground_2d_main_scene() {
 
     let plan = build_scene_hydration_plan("playground-2d", &document).expect("plan should build");
 
-    assert!(
-        plan.commands.iter().all(|command| {
-            sprite_command(command).is_none() && text_command(command).is_none()
-        })
-    );
+    assert!(plan
+        .commands
+        .iter()
+        .all(|command| { sprite_command(command).is_none() && text_command(command).is_none() }));
 }
 
 #[test]
@@ -784,6 +775,12 @@ fn builds_hydration_plan_for_playground_npr_mesh_switches() {
         controller.switch_action.as_deref(),
         Some("npr.camera_toggle")
     );
+    assert_eq!(
+        controller.orbit_target.as_deref(),
+        Some("playground-npr-model-1-soldier")
+    );
+    assert!((controller.orbit_pan_sensitivity - 0.0014).abs() < f32::EPSILON);
+    assert!((controller.freelook_fast_multiplier - 3.0).abs() < f32::EPSILON);
     assert_eq!(controller.move_forward_action, "npr.fly_forward");
 
     let mesh_commands = plan
@@ -906,7 +903,17 @@ fn compiled_playground_npr_scene_registers_file_backed_npr_presets() {
         amigo_render_api::NprGpuDebugMode3d::Final
     );
     assert!(!default_gpu.settings.gpu_realtime_tuning.search_enabled);
-    assert_eq!(default_gpu.settings.gpu_realtime_tuning.max_chained_walk_edges, 0);
+    assert_eq!(
+        default_gpu
+            .settings
+            .gpu_realtime_tuning
+            .max_chained_walk_edges,
+        0
+    );
+    assert_eq!(
+        default_gpu.settings.pipeline.path_strategy,
+        amigo_render_api::NprPathStrategy3d::DirectVisibleSegments
+    );
     assert!(presets.iter().any(|preset| {
         preset.id == "default_gpu_comic"
             && (preset.settings.humanization - 0.16).abs() < f32::EPSILON
@@ -934,7 +941,8 @@ fn compiled_playground_npr_scene_registers_file_backed_npr_presets() {
     assert!(presets.iter().any(|preset| {
         preset.id == "default_gpu_comic_cpu_reference"
             && (preset.settings.humanization - 0.16).abs() < f32::EPSILON
-            && preset.settings.render_strategy == amigo_render_api::NprRenderStrategy3d::CpuReference
+            && preset.settings.render_strategy
+                == amigo_render_api::NprRenderStrategy3d::CpuReference
             && preset.settings.stroke_tool == amigo_render_api::NprStrokeTool3d::TechnicalPen
             && !preset.settings.suggestive
             && !preset.settings.contact
@@ -954,7 +962,10 @@ fn compiled_playground_npr_scene_registers_file_backed_npr_presets() {
         akira.settings.render_strategy,
         amigo_render_api::NprRenderStrategy3d::GpuRealtime
     );
-    assert_eq!(akira.settings.fill_mode, amigo_render_api::NprFillMode3d::None);
+    assert_eq!(
+        akira.settings.fill_mode,
+        amigo_render_api::NprFillMode3d::None
+    );
     assert_eq!(
         akira.settings.stroke_tool,
         amigo_render_api::NprStrokeTool3d::InkPen
@@ -976,7 +987,7 @@ fn compiled_playground_npr_scene_registers_file_backed_npr_presets() {
     );
     assert_eq!(
         akira.settings.pipeline.path_strategy,
-        amigo_render_api::NprPathStrategy3d::StableStrokedPaths
+        amigo_render_api::NprPathStrategy3d::DirectVisibleSegments
     );
     assert_eq!(
         akira.settings.pipeline.stroke_strategy,
@@ -1064,7 +1075,8 @@ fn assert_playground_npr_cpu_reference_presets_match_gpu_presets(
             amigo_render_api::NprRenderStrategy3d::CpuReference
         );
         let mut normalized_cpu_reference = cpu_reference.settings.clone();
-        normalized_cpu_reference.render_strategy = amigo_render_api::NprRenderStrategy3d::GpuRealtime;
+        normalized_cpu_reference.render_strategy =
+            amigo_render_api::NprRenderStrategy3d::GpuRealtime;
         assert_eq!(
             normalized_cpu_reference, gpu.settings,
             "CPU reference preset `{cpu_id}` should match GPU preset `{gpu_id}` except render strategy"
@@ -1400,11 +1412,10 @@ fn builds_hydration_plan_for_playground_2d_screen_space_preview() {
     let plan = build_scene_hydration_plan("playground-2d", &document)
         .expect("screen-space preview plan should build");
 
-    assert!(
-        plan.commands
-            .iter()
-            .all(|command| sprite_command(command).is_none())
-    );
+    assert!(plan
+        .commands
+        .iter()
+        .all(|command| sprite_command(command).is_none()));
     assert!(plan.commands.iter().any(|command| {
         ui_command(command).is_some_and(|command| command.entity_name == "playground-2d-ui-preview")
     }));

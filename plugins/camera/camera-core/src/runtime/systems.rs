@@ -172,7 +172,23 @@ fn apply_orbit_controller(
     cursor_delta: Vec2,
     state: &mut CameraController3dRuntimeState,
 ) {
-    if input.is_mouse_down(MouseButton::Left) {
+    let shift_down = input.modifiers().shift;
+    if (shift_down && input.is_mouse_down(MouseButton::Left))
+        || input.is_mouse_down(MouseButton::Middle)
+    {
+        let (right, up, _) = camera_basis(state.yaw, state.pitch);
+        let pan_scale = state.distance
+            * state.command.orbit_pan_sensitivity.max(0.0)
+            * state.command.orbit_sensitivity.max(0.0001)
+            / 0.006;
+        state.orbit_target_offset = add_vec3(
+            state.orbit_target_offset,
+            add_vec3(
+                scale_vec3(right, -cursor_delta.x * pan_scale),
+                scale_vec3(up, cursor_delta.y * pan_scale),
+            ),
+        );
+    } else if input.is_mouse_down(MouseButton::Left) {
         state.yaw -= cursor_delta.x * state.command.orbit_sensitivity.max(0.0);
         state.pitch = (state.pitch - cursor_delta.y * state.command.orbit_sensitivity.max(0.0))
             .clamp(-1.45, 1.45);
@@ -194,6 +210,7 @@ fn apply_orbit_controller(
         .and_then(|target| scene.transform_of(target))
         .map(|transform| transform.translation)
         .unwrap_or(Vec3::ZERO);
+    let target = add_vec3(target, state.orbit_target_offset);
 
     let cos_pitch = state.pitch.cos();
     let offset = Vec3::new(
@@ -237,20 +254,24 @@ fn apply_freelook_controller(
             * zoom_factor_from_wheel(-wheel_steps, state.command.orbit_zoom_speed))
         .clamp(0.15, 6.0);
     }
-    let speed =
-        state.command.freelook_speed.max(0.0) * state.freelook_speed_multiplier * delta_seconds;
-    let forward = Vec3::new(-state.yaw.sin(), state.pitch.sin(), -state.yaw.cos());
-    let right = Vec3::new(state.yaw.cos(), 0.0, -state.yaw.sin());
-    let up = Vec3::new(0.0, 1.0, 0.0);
-    transform.translation = add_vec3(
-        transform.translation,
-        scale_vec3(forward, forward_axis * speed),
-    );
-    transform.translation = add_vec3(
-        transform.translation,
-        scale_vec3(right, strafe_axis * speed),
-    );
-    transform.translation = add_vec3(transform.translation, scale_vec3(up, lift_axis * speed));
+    let fast_multiplier = if input.modifiers().shift {
+        state.command.freelook_fast_multiplier.max(1.0)
+    } else {
+        1.0
+    };
+    let speed = state.command.freelook_speed.max(0.0)
+        * state.freelook_speed_multiplier
+        * fast_multiplier
+        * delta_seconds;
+    let (right, up, forward) = camera_basis(state.yaw, state.pitch);
+    let movement = normalize_or_zero(add_vec3(
+        add_vec3(
+            scale_vec3(forward, forward_axis),
+            scale_vec3(right, strafe_axis),
+        ),
+        scale_vec3(up, lift_axis),
+    ));
+    transform.translation = add_vec3(transform.translation, scale_vec3(movement, speed));
 
     let _ = scene.set_transform(&state.command.camera, transform);
 }
@@ -261,6 +282,30 @@ fn add_vec3(left: Vec3, right: Vec3) -> Vec3 {
 
 fn scale_vec3(value: Vec3, scale: f32) -> Vec3 {
     Vec3::new(value.x * scale, value.y * scale, value.z * scale)
+}
+
+fn camera_basis(yaw: f32, pitch: f32) -> (Vec3, Vec3, Vec3) {
+    let sin_yaw = yaw.sin();
+    let cos_yaw = yaw.cos();
+    let sin_pitch = pitch.sin();
+    let cos_pitch = pitch.cos();
+    let right = Vec3::new(cos_yaw, 0.0, -sin_yaw);
+    let up = Vec3::new(-sin_pitch * sin_yaw, cos_pitch, -sin_pitch * cos_yaw);
+    let forward = Vec3::new(-sin_yaw * cos_pitch, -sin_pitch, -cos_yaw * cos_pitch);
+    (
+        normalize_or_zero(right),
+        normalize_or_zero(up),
+        normalize_or_zero(forward),
+    )
+}
+
+fn normalize_or_zero(value: Vec3) -> Vec3 {
+    let length = (value.x * value.x + value.y * value.y + value.z * value.z).sqrt();
+    if length <= f32::EPSILON {
+        Vec3::ZERO
+    } else {
+        scale_vec3(value, 1.0 / length)
+    }
 }
 
 fn normalized_wheel_steps(input: &InputState) -> f32 {

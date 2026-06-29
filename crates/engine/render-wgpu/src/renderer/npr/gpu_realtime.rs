@@ -679,7 +679,11 @@ impl GpuRealtimeNprRenderer3d {
         }
 
         let mut face_id_base = 0u32;
+        let mut path_segment_base = 0u32;
         for (job_index, job) in self.frame_jobs.iter().enumerate() {
+            let edge_count = job.geometry.edge_count() as u32;
+            let path_segment_slot_count =
+                edge_count.saturating_mul(NPR_GPU_PATH_SEGMENTS_PER_CHAIN as u32);
             let uniforms = uniforms_for_job(
                 viewport,
                 camera,
@@ -687,9 +691,11 @@ impl GpuRealtimeNprRenderer3d {
                 job.transform,
                 &job.settings,
                 face_id_base,
+                path_segment_base,
+                path_segment_slot_count,
                 job.geometry.vertex_count() as u32,
                 job.geometry.triangle_count() as u32,
-                job.geometry.edge_count() as u32,
+                edge_count,
                 overlay,
             );
             if trace {
@@ -721,6 +727,7 @@ impl GpuRealtimeNprRenderer3d {
                 );
             }
             face_id_base = face_id_base.saturating_add(job.geometry.triangle_count() as u32);
+            path_segment_base = path_segment_base.saturating_add(path_segment_slot_count);
         }
     }
 
@@ -905,8 +912,10 @@ fn uniforms_for_job(
     transform: Transform3,
     settings: &amigo_render_api::NprLineSettings3d,
     face_id_base: u32,
-    vertex_count: u32,
-    triangle_count: u32,
+    path_segment_base: u32,
+    path_segment_slot_count: u32,
+    _vertex_count: u32,
+    _triangle_count: u32,
     edge_count: u32,
     overlay: Option<NprDebugOverlay3d>,
 ) -> GpuNprFrameUniforms3d {
@@ -1067,8 +1076,8 @@ fn uniforms_for_job(
         material_roles0: [
             gpu_material_id_mask(&settings.black_mass_material_ids),
             gpu_material_id_mask(&settings.ink_detail_material_ids),
-            vertex_count,
-            triangle_count,
+            path_segment_base,
+            path_segment_slot_count,
         ],
     }
 }
@@ -1269,6 +1278,8 @@ mod tests {
             amigo_math::Transform3::default(),
             &settings,
             0,
+            321,
+            654,
             123,
             456,
             789,
@@ -1282,8 +1293,8 @@ mod tests {
             [
                 (1 << 4) | (1 << 5) | (1 << 7) | (1 << 11) | (1 << 12) | (1 << 13),
                 (1 << 6) | (1 << 7) | (1 << 11) | (1 << 12) | (1 << 13),
-                123,
-                456
+                321,
+                654
             ]
         );
     }

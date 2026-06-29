@@ -336,7 +336,7 @@ fn on_enter() {
     refresh_hud(world, 0.0);
     let scene_id = world.scene.current_id();
     world.dev.event("playground-npr.scene-ready", scene_id);
-    world.dev.log("playground-npr comic lines workbench: 1-2 models, ArrowUp/ArrowDown styles, G backend toggle, V debug cycle, 7 final, 8 kinds, 9 dropout, 0 width/alpha, LMB orbit, wheel zoom, F freelook, R autorotate, T temporal smoothing; GLB skinned clips are not executed in V1");
+    world.dev.log("playground-npr comic lines workbench: 1-2 models, ArrowUp/ArrowDown styles, G backend toggle, V debug cycle, 7 final, 8 kinds, 9 dropout, 0 width/alpha, LMB orbit, Shift+LMB or MMB pan, wheel zoom, F freelook, WASD/Space/Q fly, Shift fast fly, R autorotate, T temporal smoothing; GLB skinned clips are not executed in V1");
 }
 
 fn update(dt) {

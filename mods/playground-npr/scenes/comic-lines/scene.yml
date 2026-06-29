@@ -109,15 +109,18 @@ entities:
         camera: playground-npr-camera
         mode: orbit
         switch_action: npr.camera_toggle
+        orbit_target: playground-npr-model-1-soldier
         orbit_distance: 4.2
         orbit_min_distance: 1.2
         orbit_max_distance: 18.0
         orbit_yaw: 0.0
         orbit_pitch: 0.08
         orbit_sensitivity: 0.006
+        orbit_pan_sensitivity: 0.0014
         orbit_zoom_speed: 0.035
         freelook_speed: 3.8
         freelook_sensitivity: 0.004
+        freelook_fast_multiplier: 3.0
         move_forward_action: npr.fly_forward
         move_strafe_action: npr.fly_strafe
         move_lift_action: npr.fly_lift
@@ -150,7 +153,7 @@ entities:
     visible: true
     transform3:
       translation: { x: 0.0, y: -0.05, z: 0.0 }
-      rotation_euler: { x: -1.5707963, y: 0.35, z: 0.0 }
+      rotation_euler: { x: 0.0, y: 0.35, z: 0.0 }
       scale: { x: 1.55, y: 1.55, z: 1.55 }
     components:
       - type: Mesh3D

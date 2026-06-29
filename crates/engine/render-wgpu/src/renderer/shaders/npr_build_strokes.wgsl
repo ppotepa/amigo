@@ -94,6 +94,7 @@ const KIND_CONTACT: u32 = 6u;
 const PATH_FLAG_EMIT: u32 = 1u;
 const PATH_FLAG_CONNECTED_START: u32 = 2u;
 const PATH_FLAG_CONNECTED_END: u32 = 4u;
+const PATH_STRATEGY_DIRECT_VISIBLE_SEGMENTS: u32 = 1u;
 const CANDIDATE_CHARACTER_SEMANTIC: u32 = 1u;
 const STROKE_AKIRA_INK: u32 = 1u;
 const HATCHING_SPARSE_CHARACTER: u32 = 1u;
@@ -109,6 +110,18 @@ const BUDGET_CHARACTER_READABILITY: u32 = 2u;
 
 fn active_edge_count() -> u32 {
     return min(uniforms.pipeline1.w, u32(arrayLength(&visible_segments)));
+}
+
+fn uses_direct_visible_segments() -> bool {
+    return uniforms.pipeline0.y == PATH_STRATEGY_DIRECT_VISIBLE_SEGMENTS;
+}
+
+fn path_segment_base() -> u32 {
+    return uniforms.material_roles0.z;
+}
+
+fn path_segment_slot_count() -> u32 {
+    return uniforms.material_roles0.w;
 }
 
 fn uses_character_semantic_candidates() -> bool {
@@ -1526,10 +1539,14 @@ fn endpoint_taper(
 
 @compute @workgroup_size(64)
 fn cs_main(@builtin(global_invocation_id) id: vec3<u32>) {
-    let path_segment_index = id.x;
-    let path_segment_count = atomicLoad(&indirect_args[4]);
+    var path_segment_index = id.x;
+    var path_segment_count = atomicLoad(&indirect_args[4]);
+    if (uses_direct_visible_segments()) {
+        path_segment_count = path_segment_slot_count();
+        path_segment_index = path_segment_base() + id.x;
+    }
     if (
-        path_segment_index >= path_segment_count
+        id.x >= path_segment_count
         || path_segment_index >= u32(arrayLength(&path_segments))
     ) {
         return;

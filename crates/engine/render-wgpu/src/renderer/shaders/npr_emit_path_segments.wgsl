@@ -108,6 +108,23 @@ fn active_edge_count() -> u32 {
     return min(uniforms.pipeline1.w, u32(arrayLength(&visible_segments)));
 }
 
+fn path_segment_base() -> u32 {
+    return uniforms.material_roles0.z;
+}
+
+fn path_segment_slot_count() -> u32 {
+    return uniforms.material_roles0.w;
+}
+
+fn clear_path_segment(path_segment_index: u32) {
+    path_segments[path_segment_index] = GpuNprPathSegment3d(
+        vec4<f32>(0.0),
+        vec4<f32>(0.0),
+        vec4<u32>(0u),
+        vec4<f32>(0.0),
+    );
+}
+
 fn path_importance(kind: u32, depth01: f32) -> f32 {
     let depth_factor = clamp(1.18 - depth01 * 0.38, 0.72, 1.18);
     if (kind == 2u) {
@@ -197,7 +214,12 @@ fn edge_local_path_id(kind: u32, edge_id: u32) -> u32 {
     return hash_u32(edge_id ^ (kind * 0x9E3779B1u));
 }
 
-fn emit_direct_visible_edge_path_segment(visible: GpuNprVisibleSegment3d, length_px: f32, segment_slot: u32) {
+fn emit_direct_visible_edge_path_segment(
+    visible: GpuNprVisibleSegment3d,
+    length_px: f32,
+    segment_slot: u32,
+    path_segment_index: u32,
+) {
     if (segment_slot != 0u) {
         return;
     }
@@ -206,13 +228,7 @@ fn emit_direct_visible_edge_path_segment(visible: GpuNprVisibleSegment3d, length
     let edge_id = visible.kind_edge.y;
     let avg_depth = (visible.start.z + visible.end.z) * 0.5;
     let importance = path_importance_with_chain(kind, avg_depth, 0u, 1u);
-    let emit_index = atomicAdd(&indirect_args[4], 1u);
-    if (emit_index >= u32(arrayLength(&path_segments))) {
-        _ = atomicSub(&indirect_args[4], 1u);
-        return;
-    }
-
-    path_segments[emit_index] = GpuNprPathSegment3d(
+    path_segments[path_segment_index] = GpuNprPathSegment3d(
         visible.start,
         visible.end,
         vec4<u32>(
@@ -342,9 +358,16 @@ fn walk_path_endpoint(
 @compute @workgroup_size(64)
 fn cs_main(@builtin(global_invocation_id) id: vec3<u32>) {
     let source_index = id.x;
-    if (source_index >= u32(arrayLength(&path_segments))) {
+    let local_path_segment_count = path_segment_slot_count();
+    if (source_index >= local_path_segment_count) {
         return;
     }
+    let path_segment_index = path_segment_base() + source_index;
+    if (path_segment_index >= u32(arrayLength(&path_segments))) {
+        return;
+    }
+    clear_path_segment(path_segment_index);
+
     let edge_index = source_index / PATH_SEGMENTS_PER_VISIBLE_EDGE;
     let segment_slot = source_index % PATH_SEGMENTS_PER_VISIBLE_EDGE;
 
@@ -363,7 +386,7 @@ fn cs_main(@builtin(global_invocation_id) id: vec3<u32>) {
     }
 
     if (uses_direct_visible_segments()) {
-        emit_direct_visible_edge_path_segment(visible, length_px, segment_slot);
+        emit_direct_visible_edge_path_segment(visible, length_px, segment_slot, path_segment_index);
         return;
     }
 

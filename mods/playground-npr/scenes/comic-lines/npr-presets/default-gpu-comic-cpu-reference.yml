@@ -7,7 +7,7 @@ settings:
   fill_mode: none
   pipeline:
     candidate_strategy: geometry_edges
-    path_strategy: stable_stroked_paths
+    path_strategy: direct_visible_segments
     stroke_strategy: technical_ink
     fill_strategy: none
     hatching_strategy: none

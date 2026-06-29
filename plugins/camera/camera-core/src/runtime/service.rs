@@ -10,7 +10,7 @@ use amigo_composite_plugin::{
     FocusBlurDebugView2d, FocusTarget2d, PostFx2dInstance, PostFxHost2dId, PostFxPipelineKind,
     PostFxScope2d, RainGlass2d, ScopedPostFx2dStack, ShutterBlur2d,
 };
-use amigo_math::Vec2;
+use amigo_math::{Vec2, Vec3};
 use amigo_render_api::{
     post_fx_camera_exposure, post_fx_camera_optics, post_fx_color_ramp, post_fx_film_emulsion,
     post_fx_focus_blur, post_fx_rain_glass, post_fx_scan_output, post_fx_shutter_blur,
@@ -72,6 +72,7 @@ pub struct CameraController3dRuntimeState {
     pub pitch: f32,
     pub distance: f32,
     pub freelook_speed_multiplier: f32,
+    pub orbit_target_offset: Vec3,
     pub last_cursor: Option<(f32, f32)>,
 }
 
@@ -85,6 +86,7 @@ impl CameraController3dSceneService {
             pitch: command.orbit_pitch,
             distance: command.orbit_distance.clamp(min_distance, max_distance),
             freelook_speed_multiplier: 1.0,
+            orbit_target_offset: Vec3::ZERO,
             command,
             last_cursor: None,
         };

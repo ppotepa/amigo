@@ -99,9 +99,9 @@ impl crate::PluginSceneCommandPayload for NprPreset3dPluginSceneCommandPayload {
 pub fn npr_preset_3d_plugin_scene_command(
     command: NprPreset3dSceneCommand,
 ) -> crate::PluginSceneCommand {
-    crate::PluginSceneCommand::new(std::sync::Arc::new(
-        NprPreset3dPluginSceneCommandPayload(command),
-    ))
+    crate::PluginSceneCommand::new(std::sync::Arc::new(NprPreset3dPluginSceneCommandPayload(
+        command,
+    )))
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -173,9 +173,11 @@ pub struct CameraController3dSceneCommand {
     pub orbit_yaw: f32,
     pub orbit_pitch: f32,
     pub orbit_sensitivity: f32,
+    pub orbit_pan_sensitivity: f32,
     pub orbit_zoom_speed: f32,
     pub freelook_speed: f32,
     pub freelook_sensitivity: f32,
+    pub freelook_fast_multiplier: f32,
     pub move_forward_action: String,
     pub move_strafe_action: String,
     pub move_lift_action: String,

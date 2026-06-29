@@ -230,39 +230,45 @@ fn hydrate_component_domains(
             orbit_yaw,
             orbit_pitch,
             orbit_sensitivity,
+            orbit_pan_sensitivity,
             orbit_zoom_speed,
             freelook_speed,
             freelook_sensitivity,
+            freelook_fast_multiplier,
             move_forward_action,
             move_strafe_action,
             move_lift_action,
         } => {
             commands.push(SceneCommand::Plugin {
-                command: camera_controller_3d_plugin_scene_command(CameraController3dSceneCommand {
-                    source_mod: source_mod.to_owned(),
-                    entity_name: entity_name.clone(),
-                    camera: camera.clone(),
-                    mode: camera_controller_3d_mode_from_document(
-                        mode,
-                        &document.scene.id,
-                        &entity.id,
-                        component.kind(),
-                    )?,
-                    switch_action: switch_action.clone(),
-                    orbit_target: orbit_target.clone(),
-                    orbit_distance: *orbit_distance,
-                    orbit_min_distance: *orbit_min_distance,
-                    orbit_max_distance: *orbit_max_distance,
-                    orbit_yaw: *orbit_yaw,
-                    orbit_pitch: *orbit_pitch,
-                    orbit_sensitivity: *orbit_sensitivity,
-                    orbit_zoom_speed: *orbit_zoom_speed,
-                    freelook_speed: *freelook_speed,
-                    freelook_sensitivity: *freelook_sensitivity,
-                    move_forward_action: move_forward_action.clone(),
-                    move_strafe_action: move_strafe_action.clone(),
-                    move_lift_action: move_lift_action.clone(),
-                }),
+                command: camera_controller_3d_plugin_scene_command(
+                    CameraController3dSceneCommand {
+                        source_mod: source_mod.to_owned(),
+                        entity_name: entity_name.clone(),
+                        camera: camera.clone(),
+                        mode: camera_controller_3d_mode_from_document(
+                            mode,
+                            &document.scene.id,
+                            &entity.id,
+                            component.kind(),
+                        )?,
+                        switch_action: switch_action.clone(),
+                        orbit_target: orbit_target.clone(),
+                        orbit_distance: *orbit_distance,
+                        orbit_min_distance: *orbit_min_distance,
+                        orbit_max_distance: *orbit_max_distance,
+                        orbit_yaw: *orbit_yaw,
+                        orbit_pitch: *orbit_pitch,
+                        orbit_sensitivity: *orbit_sensitivity,
+                        orbit_pan_sensitivity: *orbit_pan_sensitivity,
+                        orbit_zoom_speed: *orbit_zoom_speed,
+                        freelook_speed: *freelook_speed,
+                        freelook_sensitivity: *freelook_sensitivity,
+                        freelook_fast_multiplier: *freelook_fast_multiplier,
+                        move_forward_action: move_forward_action.clone(),
+                        move_strafe_action: move_strafe_action.clone(),
+                        move_lift_action: move_lift_action.clone(),
+                    },
+                ),
             });
         }
         DomainComponentDocument::TileMapMarker2d {
@@ -577,7 +583,13 @@ fn npr_line_settings_3d_from_settings_document(
     .map(amigo_render_api::NprLineSettings3d::from_preset)
     .unwrap_or_default();
 
-    apply_grouped_npr_line_settings_3d(settings, &mut resolved, scene_id, entity_id, component_kind)?;
+    apply_grouped_npr_line_settings_3d(
+        settings,
+        &mut resolved,
+        scene_id,
+        entity_id,
+        component_kind,
+    )?;
 
     if let Some(strategy) = settings.strategy.as_deref() {
         resolved.render_strategy =
@@ -777,7 +789,8 @@ fn npr_line_settings_3d_from_settings_document(
             Some(npr_line_kind_override_3d_from_document(silhouette_override));
     }
     if let Some(boundary_override) = settings.boundary_override.as_ref() {
-        resolved.boundary_override = Some(npr_line_kind_override_3d_from_document(boundary_override));
+        resolved.boundary_override =
+            Some(npr_line_kind_override_3d_from_document(boundary_override));
     }
     if let Some(feature_override) = settings.feature_override.as_ref() {
         resolved.feature_override = Some(npr_line_kind_override_3d_from_document(feature_override));
@@ -911,7 +924,8 @@ fn apply_grouped_npr_line_settings_3d(
     }
     if let Some(class_overrides) = settings.class_overrides.as_ref() {
         if let Some(silhouette) = class_overrides.silhouette.as_ref() {
-            resolved.silhouette_override = Some(npr_line_kind_override_3d_from_document(silhouette));
+            resolved.silhouette_override =
+                Some(npr_line_kind_override_3d_from_document(silhouette));
         }
         if let Some(boundary) = class_overrides.boundary.as_ref() {
             resolved.boundary_override = Some(npr_line_kind_override_3d_from_document(boundary));

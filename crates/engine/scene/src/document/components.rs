@@ -447,6 +447,10 @@ fn default_camera_controller_3d_sensitivity() -> f32 {
     0.006
 }
 
+fn default_camera_controller_3d_pan_sensitivity() -> f32 {
+    0.0012
+}
+
 fn default_camera_controller_3d_zoom_speed() -> f32 {
     0.035
 }
@@ -457,6 +461,10 @@ fn default_camera_controller_3d_freelook_speed() -> f32 {
 
 fn default_camera_controller_3d_freelook_sensitivity() -> f32 {
     0.004
+}
+
+fn default_camera_controller_3d_freelook_fast_multiplier() -> f32 {
+    3.0
 }
 
 fn default_camera_controller_3d_move_forward_action() -> String {
@@ -506,12 +514,16 @@ pub enum SceneComponentDocumentModel {
         orbit_pitch: f32,
         #[serde(default = "default_camera_controller_3d_sensitivity")]
         orbit_sensitivity: f32,
+        #[serde(default = "default_camera_controller_3d_pan_sensitivity")]
+        orbit_pan_sensitivity: f32,
         #[serde(default = "default_camera_controller_3d_zoom_speed")]
         orbit_zoom_speed: f32,
         #[serde(default = "default_camera_controller_3d_freelook_speed")]
         freelook_speed: f32,
         #[serde(default = "default_camera_controller_3d_freelook_sensitivity")]
         freelook_sensitivity: f32,
+        #[serde(default = "default_camera_controller_3d_freelook_fast_multiplier")]
+        freelook_fast_multiplier: f32,
         #[serde(default = "default_camera_controller_3d_move_forward_action")]
         move_forward_action: String,
         #[serde(default = "default_camera_controller_3d_move_strafe_action")]

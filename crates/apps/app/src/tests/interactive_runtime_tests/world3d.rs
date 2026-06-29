@@ -330,6 +330,60 @@ fn interactive_host_handler_toggles_playground_npr_camera_freelook_with_f() {
     );
 
     handler
+        .on_input_event(InputEvent::ModifiersChanged(
+            amigo_input_api::InputModifiers {
+                shift: true,
+                ..Default::default()
+            },
+        ))
+        .expect("shift modifier should be accepted");
+    handler
+        .on_input_event(InputEvent::MouseButton {
+            button: amigo_input_api::MouseButton::Left,
+            pressed: true,
+        })
+        .expect("orbit pan mouse press should be accepted");
+    handler
+        .on_input_event(InputEvent::CursorMoved { x: 184.0, y: 100.0 })
+        .expect("orbit pan cursor start should be accepted");
+    handler
+        .session
+        .run_phase(amigo_runtime::SystemPhase::Update)
+        .expect("npr orbit pan should record initial cursor");
+    handler
+        .on_input_event(InputEvent::CursorMoved { x: 184.0, y: 142.0 })
+        .expect("orbit pan cursor drag should be accepted");
+    handler
+        .session
+        .run_phase(amigo_runtime::SystemPhase::Update)
+        .expect("npr orbit pan camera update should run");
+    handler
+        .on_input_event(InputEvent::MouseButton {
+            button: amigo_input_api::MouseButton::Left,
+            pressed: false,
+        })
+        .expect("orbit pan mouse release should be accepted");
+    handler
+        .on_input_event(InputEvent::ModifiersChanged(Default::default()))
+        .expect("shift modifier release should be accepted");
+
+    let panned_orbit_camera = handler
+        .session
+        .runtime()
+        .resolve::<SceneService>()
+        .expect("scene service should exist after orbit pan")
+        .transform_of("playground-npr-camera")
+        .expect("npr camera should exist after orbit pan");
+    assert_eq!(
+        panned_orbit_camera.rotation_euler, orbit_camera.rotation_euler,
+        "Shift+LMB should pan the orbit target without rotating the camera"
+    );
+    assert_ne!(
+        panned_orbit_camera.translation, orbit_camera.translation,
+        "Shift+LMB should move the orbit camera framing"
+    );
+
+    handler
         .on_input_event(InputEvent::Key {
             key: KeyCode::F,
             pressed: true,
@@ -439,6 +493,65 @@ fn interactive_host_handler_toggles_playground_npr_camera_freelook_with_f() {
         after_fly.translation, before_fly.translation,
         "W should move the NPR camera in freelook mode"
     );
+    let pitch = -before_fly.rotation_euler.x;
+    let yaw = before_fly.rotation_euler.y;
+    let expected_forward = amigo_math::Vec3::new(
+        -yaw.sin() * pitch.cos(),
+        -pitch.sin(),
+        -yaw.cos() * pitch.cos(),
+    );
+    let forward_delta = amigo_math::Vec3::new(
+        after_fly.translation.x - before_fly.translation.x,
+        after_fly.translation.y - before_fly.translation.y,
+        after_fly.translation.z - before_fly.translation.z,
+    );
+    assert!(
+        dot3(forward_delta, expected_forward) > 0.0,
+        "W should move the NPR camera along the direction it is looking"
+    );
+
+    handler
+        .on_input_event(InputEvent::Key {
+            key: KeyCode::W,
+            pressed: false,
+        })
+        .expect("freelook forward release should be accepted");
+    handler
+        .on_input_event(InputEvent::Key {
+            key: KeyCode::S,
+            pressed: true,
+        })
+        .expect("freelook backward input should be accepted");
+    handler
+        .session
+        .runtime()
+        .resolve::<amigo_session::RuntimeFrameClockService>()
+        .expect("frame clock should exist before backward fly")
+        .force_single_simulation_tick(0.25);
+    handler
+        .session
+        .run_phase(amigo_runtime::SystemPhase::Update)
+        .expect("npr freelook backward camera update should run");
+    let after_back = handler
+        .session
+        .runtime()
+        .resolve::<SceneService>()
+        .expect("scene service should exist after backward fly")
+        .transform_of("playground-npr-camera")
+        .expect("npr camera should exist after backward fly");
+    let backward_delta = amigo_math::Vec3::new(
+        after_back.translation.x - after_fly.translation.x,
+        after_back.translation.y - after_fly.translation.y,
+        after_back.translation.z - after_fly.translation.z,
+    );
+    assert!(
+        dot3(backward_delta, expected_forward) < 0.0,
+        "S should move the NPR camera backward from the look direction"
+    );
+}
+
+fn dot3(left: amigo_math::Vec3, right: amigo_math::Vec3) -> f32 {
+    left.x * right.x + left.y * right.y + left.z * right.z
 }
 
 #[test]
