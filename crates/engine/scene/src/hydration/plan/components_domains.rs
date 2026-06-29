@@ -783,6 +783,9 @@ fn npr_line_settings_3d_from_settings_document(
             component_kind,
         )?;
     }
+    if let Some(camera_response) = settings.camera_response.as_ref() {
+        apply_npr_camera_response_3d(camera_response, &mut resolved);
+    }
 
     if let Some(silhouette_override) = settings.silhouette_override.as_ref() {
         resolved.silhouette_override =
@@ -1012,8 +1015,67 @@ fn apply_npr_gpu_realtime_tuning_3d(
     if let Some(value) = document.silhouette_min_length_multiplier {
         tuning.silhouette_min_length_multiplier = value;
     }
+    if let Some(value) = document.artist_selection_amount {
+        tuning.artist_selection_amount = value;
+    }
+    if let Some(value) = document.artist_trim_amount {
+        tuning.artist_trim_amount = value;
+    }
+    if let Some(value) = document.artist_lift_amount {
+        tuning.artist_lift_amount = value;
+    }
     resolved.gpu_realtime_tuning = tuning.normalized();
     Ok(())
+}
+
+fn apply_npr_camera_response_3d(
+    document: &crate::document::NprCameraResponseDocument,
+    resolved: &mut amigo_render_api::NprLineSettings3d,
+) {
+    let mut response = resolved.camera_response;
+    if let Some(value) = document.enabled {
+        response.enabled = value;
+    }
+    if let Some(value) = document.auto_focus {
+        response.auto_focus = value;
+    }
+    if let Some(value) = document.near_distance {
+        response.near_distance = value;
+    }
+    if let Some(value) = document.far_distance {
+        response.far_distance = value;
+    }
+    if let Some(value) = document.focus_near_band {
+        response.focus_near_band = value;
+    }
+    if let Some(value) = document.focus_far_band {
+        response.focus_far_band = value;
+    }
+    if let Some(value) = document.near_width_boost {
+        response.near_width_boost = value;
+    }
+    if let Some(value) = document.near_detail_boost {
+        response.near_detail_boost = value;
+    }
+    if let Some(value) = document.near_hatching_boost {
+        response.near_hatching_boost = value;
+    }
+    if let Some(value) = document.far_width_falloff {
+        response.far_width_falloff = value;
+    }
+    if let Some(value) = document.far_alpha_falloff {
+        response.far_alpha_falloff = value;
+    }
+    if let Some(value) = document.far_detail_suppression {
+        response.far_detail_suppression = value;
+    }
+    if let Some(value) = document.rim_silhouette_boost {
+        response.rim_silhouette_boost = value;
+    }
+    if let Some(value) = document.front_feature_suppression {
+        response.front_feature_suppression = value;
+    }
+    resolved.camera_response = response.normalized();
 }
 
 fn npr_gpu_debug_mode_3d_from_document(

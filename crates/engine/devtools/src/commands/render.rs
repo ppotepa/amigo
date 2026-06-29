@@ -32,6 +32,15 @@ impl ConsoleCommandHandler for RenderConsoleCommandHandler {
                 dev_only: true,
             },
             ConsoleCommandDescriptor {
+                name: "npr.trace",
+                aliases: &["render.npr.trace"],
+                category: "render",
+                help: "Enable, disable, or show persistent NPR GPU realtime trace logging.",
+                usage: "npr.trace [on|off|status]",
+                examples: &["npr.trace", "npr.trace on", "npr.trace off", "render.npr.trace status"],
+                dev_only: true,
+            },
+            ConsoleCommandDescriptor {
                 name: "render.plan",
                 aliases: &[],
                 category: "render",
@@ -159,6 +168,8 @@ impl ConsoleCommandHandler for RenderConsoleCommandHandler {
                 "render.stats"
                     | "fps"
                     | "npr.stats"
+                    | "npr.trace"
+                    | "render.npr.trace"
                     | "render.window"
                     | "camera.capture"
                     | "camera.focus.plan"
@@ -297,6 +308,7 @@ impl ConsoleCommandHandler for RenderConsoleCommandHandler {
                     stats.offscreen_color_buffer_capacity_bytes,
                 ))
             }
+            "npr.trace" | "render.npr.trace" => handle_npr_trace_command(&command),
             "render.plan" => {
                 let diagnostics = match ctx.required::<RenderCompositionDiagnosticsService>() {
                     Ok(service) => service.snapshot(),
@@ -506,6 +518,69 @@ fn render_camera_capture_diagnostics(summary: &str) -> String {
     }
 }
 
+fn handle_npr_trace_command(command: &ParsedConsoleCommand) -> ConsoleCommandResult {
+    let action = command.args.first().map(String::as_str).unwrap_or("status");
+    match action {
+        "on" | "true" | "1" => {
+            set_npr_trace_env("AMIGO_NPR_GPU_TRACE", "1");
+            ConsoleCommandResult::ok(npr_trace_status_message("enabled"))
+        }
+        "off" | "false" | "0" => {
+            set_npr_trace_env("AMIGO_NPR_GPU_TRACE", "0");
+            ConsoleCommandResult::ok(npr_trace_status_message("disabled"))
+        }
+        "status" => ConsoleCommandResult::ok(npr_trace_status_message("status")),
+        other => ConsoleCommandResult::error(format!(
+            "usage: npr.trace [on|off|status], got `{other}`"
+        )),
+    }
+}
+
+fn npr_trace_status_message(prefix: &str) -> String {
+    format!(
+        "npr.trace {prefix}: persistent={} clear={} color={} env AMIGO_NPR_GPU_TRACE={}",
+        on_off(npr_trace_env_is_true("AMIGO_NPR_GPU_TRACE")),
+        on_off(!npr_trace_env_is_false("AMIGO_NPR_GPU_TRACE_CLEAR")),
+        on_off(std::env::var_os("NO_COLOR").is_none()
+            && !npr_trace_env_is_false("AMIGO_NPR_GPU_TRACE_COLOR")),
+        std::env::var("AMIGO_NPR_GPU_TRACE").unwrap_or_else(|_| "unset".to_owned())
+    )
+}
+
+fn on_off(value: bool) -> &'static str {
+    if value { "on" } else { "off" }
+}
+
+fn npr_trace_env_is_true(name: &str) -> bool {
+    std::env::var(name)
+        .map(|value| {
+            matches!(
+                value.trim().to_ascii_lowercase().as_str(),
+                "1" | "true" | "yes" | "on"
+            )
+        })
+        .unwrap_or(false)
+}
+
+fn npr_trace_env_is_false(name: &str) -> bool {
+    std::env::var(name)
+        .map(|value| {
+            matches!(
+                value.trim().to_ascii_lowercase().as_str(),
+                "0" | "false" | "no" | "off"
+            )
+        })
+        .unwrap_or(false)
+}
+
+fn set_npr_trace_env(name: &str, value: &str) {
+    // This debug command intentionally mutates a process-wide diagnostic flag.
+    // The renderer reads the same env var per frame; no renderer state fallback is introduced.
+    unsafe {
+        std::env::set_var(name, value);
+    }
+}
+
 fn normalize_render_command(command: &mut ParsedConsoleCommand) {
     if command.name != "render" {
         return;
@@ -589,6 +664,24 @@ mod tests {
         assert!(handler.can_handle(&command));
         assert!(handler.can_handle(&alias));
         assert!(handler.can_handle(&camera_alias));
+    }
+
+    #[test]
+    fn render_console_handles_npr_trace() {
+        let handler = RenderConsoleCommandHandler;
+        let command = ParsedConsoleCommand {
+            raw: "npr.trace on".to_owned(),
+            name: "npr.trace".to_owned(),
+            args: vec!["on".to_owned()],
+        };
+        let render_alias = ParsedConsoleCommand {
+            raw: "render.npr.trace status".to_owned(),
+            name: "render.npr.trace".to_owned(),
+            args: vec!["status".to_owned()],
+        };
+
+        assert!(handler.can_handle(&command));
+        assert!(handler.can_handle(&render_alias));
     }
 
     #[test]

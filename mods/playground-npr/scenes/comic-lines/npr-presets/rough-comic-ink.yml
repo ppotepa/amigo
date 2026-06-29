@@ -7,6 +7,8 @@ settings:
   fill_mode: none
   style_preset: rough_comic_ink
   stroke_tool: ink_pen
+  pipeline:
+    path_strategy: stable_stroked_paths
   suggestive: false
   contact: false
   contact_ground_y: 0.0
@@ -22,6 +24,18 @@ settings:
   width_pressure_curve: [0.72, 1.03, 0.98, 0.68]
   alpha_pressure_curve: [0.78, 1.0, 0.92, 0.66]
   depth_pressure: 0.18
+  camera_response:
+    enabled: true
+    near_distance: 2.0
+    far_distance: 10.5
+    near_width_boost: 0.28
+    near_detail_boost: 0.45
+    near_hatching_boost: 0.65
+    far_width_falloff: 0.42
+    far_alpha_falloff: 0.85
+    far_detail_suppression: 0.85
+    rim_silhouette_boost: 0.18
+    front_feature_suppression: 0.20
   humanization: 0.55
   line_confidence: 0.74
   temporal_stability: 0.92

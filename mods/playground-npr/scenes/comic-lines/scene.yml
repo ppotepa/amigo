@@ -7,38 +7,14 @@ scene:
     and inspect mesh-cache comic line rendering.
 
 npr_presets:
-  - ./npr-presets/default-gpu-comic.yml
-  - ./npr-presets/default-gpu-comic-cpu-reference.yml
-  - ./npr-presets/clean-comic-ink.yml
-  - ./npr-presets/clean-comic-ink-cpu-reference.yml
-  - ./npr-presets/technical-comic-line.yml
-  - ./npr-presets/technical-comic-line-cpu-reference.yml
-  - ./npr-presets/target-60fps.yml
-  - ./npr-presets/target-60fps-cpu-reference.yml
-  - ./npr-presets/balanced-30fps.yml
-  - ./npr-presets/balanced-30fps-cpu-reference.yml
-  - ./npr-presets/manga-fine-line.yml
-  - ./npr-presets/manga-fine-line-cpu-reference.yml
-  - ./npr-presets/european-clear-line.yml
-  - ./npr-presets/european-clear-line-cpu-reference.yml
-  - ./npr-presets/animation-pencil.yml
-  - ./npr-presets/animation-pencil-cpu-reference.yml
-  - ./npr-presets/loose-pencil.yml
-  - ./npr-presets/loose-pencil-cpu-reference.yml
-  - ./npr-presets/dry-brush-ink.yml
-  - ./npr-presets/dry-brush-ink-cpu-reference.yml
-  - ./npr-presets/heavy-noir-ink.yml
-  - ./npr-presets/heavy-noir-ink-cpu-reference.yml
-  - ./npr-presets/storyboard-marker.yml
-  - ./npr-presets/storyboard-marker-cpu-reference.yml
   - ./npr-presets/cinematic-12fps.yml
   - ./npr-presets/cinematic-12fps-cpu-reference.yml
-  - ./npr-presets/low-120fps.yml
-  - ./npr-presets/low-120fps-cpu-reference.yml
   - ./npr-presets/rough-comic-ink.yml
   - ./npr-presets/rough-comic-ink-cpu-reference.yml
   - ./npr-presets/akira.yml
   - ./npr-presets/akira-cpu-reference.yml
+  - ./npr-presets/akira-camera-based.yml
+  - ./npr-presets/akira-camera-based-cpu-reference.yml
 
 entities:
   - id: controls
@@ -54,12 +30,18 @@ entities:
           npr.select_2:
             kind: button
             pressed: ["2"]
-          npr.animation_previous:
+          npr.model_previous:
             kind: button
             pressed: ["<", ","]
-          npr.animation_next:
+          npr.model_next:
             kind: button
             pressed: [">", "."]
+          npr.model_scale_down:
+            kind: button
+            pressed: ["-", "NumpadSubtract", "["]
+          npr.model_scale_up:
+            kind: button
+            pressed: ["+", "=", "NumpadAdd", "]"]
           npr.camera_toggle:
             kind: button
             pressed: ["F"]

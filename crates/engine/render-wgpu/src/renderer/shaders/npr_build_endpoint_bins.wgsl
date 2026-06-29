@@ -2,6 +2,7 @@ struct GpuNprVisibleSegment3d {
     start: vec4<f32>,
     end: vec4<f32>,
     kind_edge: vec4<u32>,
+    metrics: vec4<f32>,
 }
 
 struct GpuNprEndpointEntry3d {
@@ -38,6 +39,10 @@ struct GpuNprFrameUniforms3d {
     params14: vec4<f32>,
     params15: vec4<f32>,
     params16: vec4<f32>,
+    params17: vec4<f32>,
+    params18: vec4<f32>,
+    params19: vec4<f32>,
+    params20: vec4<f32>,
     ink_color: vec4<f32>,
     seed: vec4<u32>,
     pipeline0: vec4<u32>,

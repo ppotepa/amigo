@@ -41,3 +41,7 @@ settings:
   search_line_count: 0
   search_line_alpha: 0.0
   seed: 45005
+  gpu_realtime_tuning:
+    artist_selection_amount: 1.15
+    artist_trim_amount: 1.05
+    artist_lift_amount: 1.10

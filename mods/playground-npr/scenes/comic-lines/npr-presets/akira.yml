@@ -9,7 +9,7 @@ settings:
   stroke_tool: ink_pen
   pipeline:
     candidate_strategy: character_semantic
-    path_strategy: direct_visible_segments
+    path_strategy: stable_stroked_paths
     stroke_strategy: akira_ink
     fill_strategy: material_black_mass
     hatching_strategy: sparse_character_hatching
@@ -35,6 +35,18 @@ settings:
   alpha_pressure_curve: [0.96, 1.0, 1.0, 0.92]
   depth_pressure: 0.10
   depth_alpha: 0.02
+  camera_response:
+    enabled: true
+    near_distance: 2.0
+    far_distance: 10.5
+    near_width_boost: 0.42
+    near_detail_boost: 0.90
+    near_hatching_boost: 1.40
+    far_width_falloff: 0.60
+    far_alpha_falloff: 1.05
+    far_detail_suppression: 1.55
+    rim_silhouette_boost: 0.32
+    front_feature_suppression: 0.42
   humanization: 0.20
   line_confidence: 0.94
   temporal_stability: 0.98
@@ -63,17 +75,20 @@ settings:
   seed: 101084
   gpu_realtime_tuning:
     debug_mode: final
-    max_render_length_px: 72.0
-    max_segment_length_px: 18.0
-    max_terminal_walk_edges: 0
-    max_chained_walk_edges: 0
-    max_chain_angle_degrees: 28.0
+    max_render_length_px: 112.0
+    max_segment_length_px: 30.0
+    max_terminal_walk_edges: 2
+    max_chained_walk_edges: 4
+    max_chain_angle_degrees: 42.0
     search_enabled: false
     search_max_render_length_px: 24.0
     search_alpha_multiplier: 0.0
     feature_min_length_multiplier: 1.75
     feature_alpha_multiplier: 0.68
     silhouette_min_length_multiplier: 0.70
+    artist_selection_amount: 1.35
+    artist_trim_amount: 1.15
+    artist_lift_amount: 1.25
   silhouette_override:
     width_multiplier: 1.18
     wobble_px: 0.05

@@ -29,6 +29,10 @@ pub enum Mesh3dScriptCommandOutcome {
         entity_name: String,
         debug_mode: amigo_render_api::NprGpuDebugMode3d,
     },
+    SetMeshAsset {
+        entity_name: String,
+        mesh_key: String,
+    },
     Unhandled,
 }
 
@@ -114,6 +118,19 @@ pub fn handle_mesh3d_script_command(
                 Mesh3dScriptCommandOutcome::Unhandled
             }
         }
+        ("set_mesh_asset", [entity_name, mesh_key]) => {
+            let Some(mesh_scene_service) = ctx.mesh_scene_service else {
+                return Mesh3dScriptCommandOutcome::Unhandled;
+            };
+            if mesh_scene_service.set_mesh_asset(entity_name, AssetKey::new(mesh_key.clone())) {
+                Mesh3dScriptCommandOutcome::SetMeshAsset {
+                    entity_name: entity_name.clone(),
+                    mesh_key: mesh_key.clone(),
+                }
+            } else {
+                Mesh3dScriptCommandOutcome::Unhandled
+            }
+        }
         _ => Mesh3dScriptCommandOutcome::Unhandled,
     }
 }
@@ -140,7 +157,8 @@ impl RuntimeScriptCommandHandler for Mesh3dScriptCommandHandler {
                 || (command.name == "set_npr_temporal_path_smoothing"
                     && command.arguments.len() == 2)
                 || (command.name == "set_npr_render_strategy" && command.arguments.len() == 2)
-                || (command.name == "set_npr_gpu_debug_mode" && command.arguments.len() == 2))
+                || (command.name == "set_npr_gpu_debug_mode" && command.arguments.len() == 2)
+                || (command.name == "set_mesh_asset" && command.arguments.len() == 2))
     }
 
     fn handle(&self, runtime: &Runtime, command: ScriptCommand) -> AmigoResult<()> {
@@ -160,6 +178,7 @@ impl RuntimeScriptCommandHandler for Mesh3dScriptCommandHandler {
             Mesh3dScriptCommandOutcome::SetNprTemporalPathSmoothing { .. } => {}
             Mesh3dScriptCommandOutcome::SetNprRenderStrategy { .. } => {}
             Mesh3dScriptCommandOutcome::SetNprGpuDebugMode { .. } => {}
+            Mesh3dScriptCommandOutcome::SetMeshAsset { .. } => {}
             Mesh3dScriptCommandOutcome::Unhandled => {}
         }
         Ok(())

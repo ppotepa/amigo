@@ -71,3 +71,6 @@ settings:
     feature_min_length_multiplier: 1.65
     feature_alpha_multiplier: 0.72
     silhouette_min_length_multiplier: 0.75
+    artist_selection_amount: 0.85
+    artist_trim_amount: 0.80
+    artist_lift_amount: 0.75

@@ -170,6 +170,8 @@ pub struct NprLine3dSettingsDocument {
     #[serde(default)]
     pub gpu_realtime_tuning: Option<NprGpuRealtimeTuningDocument>,
     #[serde(default)]
+    pub camera_response: Option<NprCameraResponseDocument>,
+    #[serde(default)]
     pub silhouette_override: Option<NprLine3dKindOverrideDocument>,
     #[serde(default)]
     pub boundary_override: Option<NprLine3dKindOverrideDocument>,
@@ -223,6 +225,44 @@ pub struct NprGpuRealtimeTuningDocument {
     pub feature_alpha_multiplier: Option<f32>,
     #[serde(default)]
     pub silhouette_min_length_multiplier: Option<f32>,
+    #[serde(default)]
+    pub artist_selection_amount: Option<f32>,
+    #[serde(default)]
+    pub artist_trim_amount: Option<f32>,
+    #[serde(default)]
+    pub artist_lift_amount: Option<f32>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+pub struct NprCameraResponseDocument {
+    #[serde(default)]
+    pub enabled: Option<bool>,
+    #[serde(default)]
+    pub auto_focus: Option<bool>,
+    #[serde(default)]
+    pub near_distance: Option<f32>,
+    #[serde(default)]
+    pub far_distance: Option<f32>,
+    #[serde(default)]
+    pub focus_near_band: Option<f32>,
+    #[serde(default)]
+    pub focus_far_band: Option<f32>,
+    #[serde(default)]
+    pub near_width_boost: Option<f32>,
+    #[serde(default)]
+    pub near_detail_boost: Option<f32>,
+    #[serde(default)]
+    pub near_hatching_boost: Option<f32>,
+    #[serde(default)]
+    pub far_width_falloff: Option<f32>,
+    #[serde(default)]
+    pub far_alpha_falloff: Option<f32>,
+    #[serde(default)]
+    pub far_detail_suppression: Option<f32>,
+    #[serde(default)]
+    pub rim_silhouette_boost: Option<f32>,
+    #[serde(default)]
+    pub front_feature_suppression: Option<f32>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]

@@ -4,19 +4,6 @@ use crate::renderer::service::WgpuDynamicVertexBuffer;
 use amigo_material_api::MaterialCandidateDecision2d;
 use amigo_render_api::{LightSource2dCommon, RenderAssetSource, RenderLightMap2dSource};
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-enum NprMeshRenderRoute {
-    GpuRealtime,
-    CpuReference,
-}
-
-fn npr_mesh_render_route(settings: &amigo_render_api::NprLineSettings3d) -> NprMeshRenderRoute {
-    match settings.render_strategy {
-        amigo_render_api::NprRenderStrategy3d::GpuRealtime => NprMeshRenderRoute::GpuRealtime,
-        amigo_render_api::NprRenderStrategy3d::CpuReference => NprMeshRenderRoute::CpuReference,
-    }
-}
-
 #[derive(Clone, Copy)]
 pub(super) struct WorldRenderContext<'a> {
     pub scene_view: &'a amigo_render_api::RenderSceneView,
@@ -480,47 +467,7 @@ pub(super) fn execute_world_to_offscreen(
             )));
         }
     };
-    renderer.npr_stroke_stats_3d.gpu_realtime_enqueued_edges += gpu_npr_stats.classified_edges;
-    renderer.npr_stroke_stats_3d.gpu_realtime_enqueued_triangles +=
-        gpu_npr_stats.enqueued_triangles;
-    renderer.npr_stroke_stats_3d.gpu_realtime_topology_uploads += gpu_npr_stats.topology_uploads;
-    renderer
-        .npr_stroke_stats_3d
-        .gpu_realtime_buffer_capacity_bytes += gpu_npr_stats.buffer_capacity_bytes;
-    renderer.npr_stroke_stats_3d.gpu_realtime_frame_jobs += gpu_npr_stats.frame_jobs;
-    renderer
-        .npr_stroke_stats_3d
-        .gpu_realtime_projected_vertices_capacity += gpu_npr_stats.projected_vertices_capacity;
-    renderer
-        .npr_stroke_stats_3d
-        .gpu_realtime_visible_segments_capacity += gpu_npr_stats.visible_segments_capacity;
-    renderer
-        .npr_stroke_stats_3d
-        .gpu_realtime_endpoint_heads_capacity += gpu_npr_stats.endpoint_heads_capacity;
-    renderer
-        .npr_stroke_stats_3d
-        .gpu_realtime_endpoint_entries_capacity += gpu_npr_stats.endpoint_entries_capacity;
-    renderer
-        .npr_stroke_stats_3d
-        .gpu_realtime_path_links_capacity += gpu_npr_stats.path_links_capacity;
-    renderer
-        .npr_stroke_stats_3d
-        .gpu_realtime_path_states_capacity += gpu_npr_stats.path_states_capacity;
-    renderer
-        .npr_stroke_stats_3d
-        .gpu_realtime_path_segments_capacity += gpu_npr_stats.path_segments_capacity;
-    renderer
-        .npr_stroke_stats_3d
-        .gpu_realtime_stroke_segments_capacity += gpu_npr_stats.stroke_segments_capacity;
-    if renderer
-        .npr_stroke_stats_3d
-        .gpu_realtime_debug_mode
-        .is_empty()
-    {
-        renderer.npr_stroke_stats_3d.gpu_realtime_debug_mode = gpu_npr_stats.debug_mode.to_owned();
-    } else if renderer.npr_stroke_stats_3d.gpu_realtime_debug_mode != gpu_npr_stats.debug_mode {
-        renderer.npr_stroke_stats_3d.gpu_realtime_debug_mode = "mixed".to_owned();
-    }
+    renderer.npr_stroke_stats_3d.add_gpu_realtime(gpu_npr_stats);
     let npr_command_buffer = npr_encoder.finish();
 
     {

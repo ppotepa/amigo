@@ -49,6 +49,7 @@ pub(crate) struct GpuNprVisibleSegment3d {
     pub start: [f32; 4],
     pub end: [f32; 4],
     pub kind_edge: [u32; 4],
+    pub metrics: [f32; 4],
 }
 
 #[repr(C)]
@@ -79,6 +80,7 @@ pub(crate) struct GpuNprPathSegment3d {
     pub end: [f32; 4],
     pub path: [u32; 4],
     pub metrics: [f32; 4],
+    pub style_metrics: [f32; 4],
 }
 
 #[repr(C)]
@@ -118,6 +120,10 @@ pub(crate) struct GpuNprFrameUniforms3d {
     pub params14: [f32; 4],
     pub params15: [f32; 4],
     pub params16: [f32; 4],
+    pub params17: [f32; 4],
+    pub params18: [f32; 4],
+    pub params19: [f32; 4],
+    pub params20: [f32; 4],
     pub ink_color: [f32; 4],
     pub seed: [u32; 4],
     pub pipeline0: [u32; 4],
@@ -299,12 +305,17 @@ fn normalized_depth(depth: f32, camera_settings: amigo_render_api::Camera3dRende
 
 #[cfg(test)]
 mod tests {
-    use super::{GpuNprEdge3d, GpuNprPathState3d, GpuNprTriangle3d};
+    use super::{
+        GpuNprEdge3d, GpuNprPathSegment3d, GpuNprPathState3d, GpuNprTriangle3d,
+        GpuNprVisibleSegment3d,
+    };
 
     #[test]
     fn gpu_npr_storage_structs_match_wgsl_array_stride() {
         assert_eq!(std::mem::size_of::<GpuNprTriangle3d>(), 64);
         assert_eq!(std::mem::size_of::<GpuNprEdge3d>(), 64);
+        assert_eq!(std::mem::size_of::<GpuNprVisibleSegment3d>(), 64);
+        assert_eq!(std::mem::size_of::<GpuNprPathSegment3d>(), 80);
         assert_eq!(std::mem::size_of::<GpuNprPathState3d>(), 48);
     }
 }

@@ -16,12 +16,12 @@ fn playground_npr_preview_renders_paper_and_ink_edges() {
     )
     .expect("npr scene preview should render offscreen");
 
-    assert_npr_preview_has_paper_and_ink(&frame, "gpu_realtime default_gpu_comic", 500, 80);
+    assert_npr_preview_has_paper_and_ink(&frame, "gpu_realtime cinematic_12fps", 500, 80);
 }
 
 #[test]
 #[ignore = "requires a local WGPU adapter for offscreen readback"]
-fn playground_npr_preview_renders_gpu_and_cpu_reference_default_gpu_comic() {
+fn playground_npr_preview_renders_gpu_and_cpu_reference_cinematic_12fps() {
     let mut host = crate::ScenePreviewHost::new(
         crate::ScenePreviewOptions::new(mods_root(), "playground-npr", "comic-lines", 320, 240)
             .with_active_mods(vec!["core".to_owned(), "playground-npr".to_owned()])
@@ -30,11 +30,11 @@ fn playground_npr_preview_renders_gpu_and_cpu_reference_default_gpu_comic() {
     let gpu_frame = host
         .capture_rgba8()
         .expect("gpu npr scene preview should render offscreen");
-    assert_npr_preview_has_paper_and_ink(&gpu_frame, "gpu_realtime default_gpu_comic", 500, 80);
+    assert_npr_preview_has_paper_and_ink(&gpu_frame, "gpu_realtime cinematic_12fps", 500, 80);
 
     host.apply_mesh3d_npr_preset(
         "playground-npr-model-1-soldier",
-        "default_gpu_comic_cpu_reference",
+        "cinematic_12fps_cpu_reference",
     )
     .expect("cpu reference npr preset should apply");
     host.warmup(1)
@@ -42,8 +42,8 @@ fn playground_npr_preview_renders_gpu_and_cpu_reference_default_gpu_comic() {
     let cpu_frame = host
         .capture_rgba8()
         .expect("cpu reference npr scene preview should render offscreen");
-    assert_npr_preview_has_paper_and_ink(&cpu_frame, "cpu_reference default_gpu_comic", 200, 120);
-    assert_npr_ink_masks_are_similar(&gpu_frame, &cpu_frame, "default_gpu_comic");
+    assert_npr_preview_has_paper_and_ink(&cpu_frame, "cpu_reference cinematic_12fps", 200, 120);
+    assert_npr_ink_masks_are_similar(&gpu_frame, &cpu_frame, "cinematic_12fps");
 }
 
 #[test]
@@ -55,16 +55,16 @@ fn playground_npr_preview_renders_stable_stroked_paths_gpu_comic() {
             .with_warmup_frames(2),
     );
     let mut stable_settings = host
-        .mesh3d_npr_preset_for_test("default_gpu_comic")
-        .expect("default gpu comic preset should be registered");
+        .mesh3d_npr_preset_for_test("cinematic_12fps")
+        .expect("cinematic 12fps preset should be registered");
     stable_settings.pipeline.path_strategy = amigo_render_api::NprPathStrategy3d::StableStrokedPaths;
     stable_settings.gpu_realtime_tuning.max_chained_walk_edges = 1;
     stable_settings.gpu_realtime_tuning.max_terminal_walk_edges = 0;
-    host.register_mesh3d_npr_preset_for_test("default_gpu_comic_stable_path_test", stable_settings)
+    host.register_mesh3d_npr_preset_for_test("cinematic_12fps_stable_path_test", stable_settings)
         .expect("stable path test preset should register");
     host.apply_mesh3d_npr_preset(
         "playground-npr-model-1-soldier",
-        "default_gpu_comic_stable_path_test",
+        "cinematic_12fps_stable_path_test",
     )
     .expect("stable path test preset should apply");
     host.warmup(1)

@@ -74,6 +74,8 @@ mod glyphs;
 mod graph;
 mod lightmap2d;
 mod math;
+mod mesh_draw;
+mod mesh_geometry;
 mod npr;
 mod particles;
 mod pipelines;
@@ -82,25 +84,28 @@ mod scene;
 mod service;
 mod shaders;
 mod text;
+mod text_3d;
 mod vertices;
 mod viewport;
 mod world_2d;
-mod world_3d;
 
 use assets::*;
 use buffers::*;
 use core_pipelines::*;
 use glyphs::*;
 use math::*;
+use mesh_draw::*;
+pub(crate) use mesh_geometry::*;
 use scene::*;
 use text::*;
+use text_3d::*;
 use vertices::*;
 use world_2d::*;
-use world_3d::*;
 
 pub(crate) use cached_resources::*;
 pub(crate) use lightmap2d::lit_particle_color;
 pub(crate) use math::sprite_color;
+pub use npr::NprStrokeFrameStats3d;
 pub(crate) use npr::*;
 pub(crate) use particles::append_particle_light_primitive_vertices;
 pub(crate) use particles::append_particle_primitive_vertices;
@@ -117,8 +122,6 @@ pub(crate) use world_2d::append_tilemap_primitive_color_vertices;
 pub(crate) use world_2d::{
     append_vector_primitive_vertices, vector_primitive_viewport_fit_transform,
 };
-pub(crate) use world_3d::NprLineKind;
-pub use world_3d::NprStrokeFrameStats3d;
 
 pub use service::{
     WgpuEmergencyOverlayLevel, WgpuEmergencyOverlayLine, WgpuFrameRenderRequest,

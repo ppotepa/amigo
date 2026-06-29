@@ -98,6 +98,19 @@ pub fn queue_mesh3d_set_npr_gpu_debug_mode(
     )
 }
 
+pub fn queue_mesh3d_set_mesh_asset(
+    command_queue: Option<&Arc<ScriptCommandQueue>>,
+    entity_name: &str,
+    mesh_key: &str,
+) -> bool {
+    queue_placeholder_command(
+        command_queue,
+        "3d.mesh",
+        "set_mesh_asset",
+        vec![entity_name.to_owned(), mesh_key.to_owned()],
+    )
+}
+
 pub fn queue_audio_play(command_queue: Option<&Arc<ScriptCommandQueue>>, clip_name: &str) -> bool {
     queue_placeholder_command(command_queue, "audio", "play", vec![clip_name.to_owned()])
 }

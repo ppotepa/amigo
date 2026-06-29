@@ -94,8 +94,8 @@ fn interactive_host_handler_selects_playground_npr_model_with_digit_keys() {
         .runtime()
         .resolve::<SceneService>()
         .expect("scene service should exist after update");
-    assert!(!scene.is_visible("playground-npr-model-1-soldier"));
-    assert!(scene.is_visible("playground-npr-model-2-khronos-male"));
+    assert!(scene.is_visible("playground-npr-model-1-soldier"));
+    assert!(!scene.is_visible("playground-npr-model-2-khronos-male"));
 }
 
 #[test]

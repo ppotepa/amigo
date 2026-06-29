@@ -748,8 +748,8 @@ fn builds_hydration_plan_for_playground_npr_mesh_switches() {
         );
     }
     for action in [
-        "npr.animation_previous",
-        "npr.animation_next",
+        "npr.model_previous",
+        "npr.model_next",
         "npr.camera_toggle",
         "npr.model_autorotate_toggle",
         "npr.preset_previous",
@@ -873,7 +873,7 @@ fn compiled_playground_npr_scene_registers_file_backed_npr_presets() {
     )
     .expect("playground npr scene should compile");
 
-    assert_eq!(compiled.document.npr_presets.len(), 32);
+    assert_eq!(compiled.document.npr_presets.len(), 8);
 
     let plan = build_scene_hydration_plan("playground-npr", &compiled.document)
         .expect("compiled playground npr plan should build");
@@ -883,77 +883,10 @@ fn compiled_playground_npr_scene_registers_file_backed_npr_presets() {
         .filter_map(npr_preset_command)
         .collect::<Vec<_>>();
 
-    assert_eq!(presets.len(), 32);
-    let default_gpu = presets
-        .iter()
-        .find(|preset| preset.id == "default_gpu_comic")
-        .expect("default gpu comic preset should be registered");
-    assert_eq!(
-        default_gpu.settings.style_preset,
-        amigo_render_api::NprStylePreset3d::GpuStableComic
-    );
-    assert_eq!(
-        default_gpu.settings.render_strategy,
-        amigo_render_api::NprRenderStrategy3d::GpuRealtime
-    );
-    assert_eq!(default_gpu.settings.passes, 1);
-    assert_eq!(default_gpu.settings.search_line_count, 0);
-    assert_eq!(
-        default_gpu.settings.gpu_realtime_tuning.debug_mode,
-        amigo_render_api::NprGpuDebugMode3d::Final
-    );
-    assert!(!default_gpu.settings.gpu_realtime_tuning.search_enabled);
-    assert_eq!(
-        default_gpu
-            .settings
-            .gpu_realtime_tuning
-            .max_chained_walk_edges,
-        0
-    );
-    assert_eq!(
-        default_gpu.settings.pipeline.path_strategy,
-        amigo_render_api::NprPathStrategy3d::DirectVisibleSegments
-    );
-    assert!(presets.iter().any(|preset| {
-        preset.id == "default_gpu_comic"
-            && (preset.settings.humanization - 0.16).abs() < f32::EPSILON
-            && preset.settings.render_strategy == amigo_render_api::NprRenderStrategy3d::GpuRealtime
-            && preset.settings.stroke_tool == amigo_render_api::NprStrokeTool3d::TechnicalPen
-            && (preset.settings.alpha_pressure_curve[3] - 0.9).abs() < f32::EPSILON
-            && (preset.settings.depth_alpha - 0.04).abs() < f32::EPSILON
-            && (preset.settings.tool_width_multiplier - 1.0).abs() < f32::EPSILON
-            && (preset.settings.tool_alpha_multiplier - 1.0).abs() < f32::EPSILON
-            && (preset.settings.tool_dropout_multiplier - 1.0).abs() < f32::EPSILON
-            && (preset.settings.endpoint_lock_start_px - 6.0).abs() < f32::EPSILON
-            && (preset.settings.endpoint_lock_end_px - 7.0).abs() < f32::EPSILON
-            && !preset.settings.suggestive
-            && !preset.settings.contact
-            && (preset.settings.contact_ground_y - 0.0).abs() < f32::EPSILON
-            && (preset.settings.contact_threshold - 0.08).abs() < f32::EPSILON
-            && !preset.settings.gpu_realtime_tuning.search_enabled
-    }));
+    assert_eq!(presets.len(), 8);
     assert_playground_npr_cpu_reference_presets_match_gpu_presets(&presets);
-    assert!(presets.iter().any(|preset| {
-        preset.id == "heavy_noir_ink"
-            && preset.settings.width_px > 3.5
-            && preset.settings.stroke_tool == amigo_render_api::NprStrokeTool3d::Brush
-    }));
-    assert!(presets.iter().any(|preset| {
-        preset.id == "default_gpu_comic_cpu_reference"
-            && (preset.settings.humanization - 0.16).abs() < f32::EPSILON
-            && preset.settings.render_strategy
-                == amigo_render_api::NprRenderStrategy3d::CpuReference
-            && preset.settings.stroke_tool == amigo_render_api::NprStrokeTool3d::TechnicalPen
-            && !preset.settings.suggestive
-            && !preset.settings.contact
-    }));
-    assert!(presets.iter().any(|preset| {
-        preset.id == "technical_comic_line"
-            && preset.settings.humanization < 0.1
-            && preset.settings.render_strategy == amigo_render_api::NprRenderStrategy3d::GpuRealtime
-            && preset.settings.straightness >= 1.0
-            && preset.settings.stroke_tool == amigo_render_api::NprStrokeTool3d::TechnicalPen
-    }));
+    assert!(presets.iter().any(|preset| preset.id == "cinematic_12fps"));
+    assert!(presets.iter().any(|preset| preset.id == "rough_comic_ink"));
     let akira = presets
         .iter()
         .find(|preset| preset.id == "akira")
@@ -979,7 +912,7 @@ fn compiled_playground_npr_scene_registers_file_backed_npr_presets() {
     assert!(akira.settings.boundary_width_multiplier > akira.settings.feature_width_multiplier);
     assert_eq!(akira.settings.search_line_count, 0);
     assert!(!akira.settings.gpu_realtime_tuning.search_enabled);
-    assert_eq!(akira.settings.gpu_realtime_tuning.max_chained_walk_edges, 0);
+    assert_eq!(akira.settings.gpu_realtime_tuning.max_chained_walk_edges, 4);
     assert!(akira.settings.temporal_path_smoothing);
     assert_eq!(
         akira.settings.pipeline.candidate_strategy,
@@ -987,7 +920,7 @@ fn compiled_playground_npr_scene_registers_file_backed_npr_presets() {
     );
     assert_eq!(
         akira.settings.pipeline.path_strategy,
-        amigo_render_api::NprPathStrategy3d::DirectVisibleSegments
+        amigo_render_api::NprPathStrategy3d::StableStrokedPaths
     );
     assert_eq!(
         akira.settings.pipeline.stroke_strategy,
@@ -1030,32 +963,57 @@ fn compiled_playground_npr_scene_registers_file_backed_npr_presets() {
             .settings
             .gpu_realtime_tuning
             .max_chained_walk_edges,
-        0
+        4
     );
     assert!(akira_cpu.settings.black_mass_material_ids.is_empty());
     assert!(akira_cpu.settings.ink_detail_material_ids.is_empty());
+
+    let akira_camera_based = presets
+        .iter()
+        .find(|preset| preset.id == "akira_camera_based")
+        .expect("akira camera based preset should be registered");
+    assert_eq!(
+        akira_camera_based.settings.render_strategy,
+        amigo_render_api::NprRenderStrategy3d::GpuRealtime
+    );
+    assert!(akira_camera_based.settings.depth_pressure > akira.settings.depth_pressure);
+    assert!(akira_camera_based.settings.depth_alpha > akira.settings.depth_alpha);
+    assert!(
+        akira_camera_based.settings.distance_width_falloff > akira.settings.distance_width_falloff
+    );
+    assert!(
+        akira_camera_based
+            .settings
+            .gpu_realtime_tuning
+            .feature_min_length_multiplier
+            > akira.settings.gpu_realtime_tuning.feature_min_length_multiplier
+    );
+    assert!(
+        akira_camera_based.settings.feature_width_multiplier < akira.settings.feature_width_multiplier
+    );
+    assert!(akira_camera_based.settings.camera_response.enabled);
+    assert_eq!(
+        akira_camera_based.settings.camera_response.near_distance,
+        2.0
+    );
+    assert_eq!(
+        akira_camera_based.settings.camera_response.far_distance,
+        10.5
+    );
+    assert!(
+        akira_camera_based.settings.camera_response.near_hatching_boost
+            > akira.settings.camera_response.near_hatching_boost
+    );
 }
 
 fn assert_playground_npr_cpu_reference_presets_match_gpu_presets(
     presets: &[&crate::render_commands::NprPreset3dSceneCommand],
 ) {
     for gpu_id in [
-        "default_gpu_comic",
         "rough_comic_ink",
-        "clean_comic_ink",
-        "loose_pencil",
-        "animation_pencil",
-        "manga_fine_line",
-        "european_clear_line",
-        "dry_brush_ink",
-        "heavy_noir_ink",
-        "storyboard_marker",
-        "technical_comic_line",
         "cinematic_12fps",
-        "balanced_30fps",
-        "target_60fps",
-        "low_120fps",
         "akira",
+        "akira_camera_based",
     ] {
         let cpu_id = format!("{gpu_id}_cpu_reference");
         let gpu = presets

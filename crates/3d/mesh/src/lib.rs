@@ -53,6 +53,21 @@ impl MeshSceneService {
         commands.clone()
     }
 
+    pub fn set_mesh_asset(&self, entity_name: &str, mesh_asset: amigo_assets::AssetKey) -> bool {
+        let mut commands = self
+            .commands
+            .lock()
+            .expect("mesh scene service mutex should not be poisoned");
+        let Some(command) = commands
+            .iter_mut()
+            .find(|command| command.entity_name == entity_name)
+        else {
+            return false;
+        };
+        command.mesh.mesh_asset = mesh_asset;
+        true
+    }
+
     pub fn register_npr_preset(
         &self,
         id: impl Into<String>,
@@ -314,6 +329,29 @@ mod tests {
         assert_eq!(
             commands[0].mesh.mesh_asset,
             AssetKey::new("playground-npr/meshes/second")
+        );
+    }
+
+    #[test]
+    fn updates_mesh_asset_for_existing_command() {
+        let service = MeshSceneService::default();
+        service.queue(MeshDrawCommand {
+            entity_id: 11,
+            entity_name: "playground-npr-model".to_owned(),
+            mesh: Mesh3d {
+                mesh_asset: AssetKey::new("playground-npr/meshes/soldier"),
+                transform: Transform3::default(),
+                npr: None,
+            },
+        });
+
+        assert!(service.set_mesh_asset(
+            "playground-npr-model",
+            AssetKey::new("playground-npr/discovered-models/source-models/khronos/male")
+        ));
+        assert_eq!(
+            service.commands()[0].mesh.mesh_asset,
+            AssetKey::new("playground-npr/discovered-models/source-models/khronos/male")
         );
     }
 

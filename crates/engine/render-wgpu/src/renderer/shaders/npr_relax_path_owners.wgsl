@@ -2,6 +2,7 @@ struct GpuNprVisibleSegment3d {
     start: vec4<f32>,
     end: vec4<f32>,
     kind_edge: vec4<u32>,
+    metrics: vec4<f32>,
 }
 
 struct GpuNprPathLink3d {

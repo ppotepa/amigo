@@ -158,12 +158,12 @@ fn playground_npr_comic_lines_bootstrap_applies_gpu_realtime_preset_to_soldier()
     );
     assert!(
         npr.ink_color.a > 0.9,
-        "target_60fps preset should keep opaque ink alpha, got {}",
+        "cinematic_12fps preset should keep opaque ink alpha, got {}",
         npr.ink_color.a
     );
     assert!(
         npr.ink_color.r < 0.1 && npr.ink_color.g < 0.1 && npr.ink_color.b < 0.1,
-        "target_60fps preset should keep dark ink color, got rgba({}, {}, {}, {})",
+        "cinematic_12fps preset should keep dark ink color, got rgba({}, {}, {}, {})",
         npr.ink_color.r,
         npr.ink_color.g,
         npr.ink_color.b,

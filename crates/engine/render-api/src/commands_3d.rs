@@ -268,6 +268,9 @@ pub struct NprGpuRealtimeTuning3d {
     pub feature_min_length_multiplier: f32,
     pub feature_alpha_multiplier: f32,
     pub silhouette_min_length_multiplier: f32,
+    pub artist_selection_amount: f32,
+    pub artist_trim_amount: f32,
+    pub artist_lift_amount: f32,
 }
 
 impl Default for NprGpuRealtimeTuning3d {
@@ -285,6 +288,9 @@ impl Default for NprGpuRealtimeTuning3d {
             feature_min_length_multiplier: 1.65,
             feature_alpha_multiplier: 0.72,
             silhouette_min_length_multiplier: 0.75,
+            artist_selection_amount: 1.0,
+            artist_trim_amount: 1.0,
+            artist_lift_amount: 1.0,
         }
     }
 }
@@ -304,6 +310,9 @@ impl NprGpuRealtimeTuning3d {
             feature_min_length_multiplier: 1.10,
             feature_alpha_multiplier: 0.86,
             silhouette_min_length_multiplier: 0.65,
+            artist_selection_amount: 1.0,
+            artist_trim_amount: 1.0,
+            artist_lift_amount: 1.0,
         }
     }
 
@@ -332,6 +341,15 @@ impl NprGpuRealtimeTuning3d {
         if !self.silhouette_min_length_multiplier.is_finite() {
             self.silhouette_min_length_multiplier = 0.75;
         }
+        if !self.artist_selection_amount.is_finite() {
+            self.artist_selection_amount = 1.0;
+        }
+        if !self.artist_trim_amount.is_finite() {
+            self.artist_trim_amount = 1.0;
+        }
+        if !self.artist_lift_amount.is_finite() {
+            self.artist_lift_amount = 1.0;
+        }
 
         self.max_render_length_px = self.max_render_length_px.clamp(8.0, 512.0);
         self.max_segment_length_px = self.max_segment_length_px.clamp(4.0, 128.0);
@@ -344,6 +362,103 @@ impl NprGpuRealtimeTuning3d {
         self.feature_alpha_multiplier = self.feature_alpha_multiplier.clamp(0.0, 1.0);
         self.silhouette_min_length_multiplier =
             self.silhouette_min_length_multiplier.clamp(0.25, 4.0);
+        self.artist_selection_amount = self.artist_selection_amount.clamp(0.0, 3.0);
+        self.artist_trim_amount = self.artist_trim_amount.clamp(0.0, 3.0);
+        self.artist_lift_amount = self.artist_lift_amount.clamp(0.0, 3.0);
+        self
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct NprCameraResponse3d {
+    pub enabled: bool,
+    pub auto_focus: bool,
+    pub near_distance: f32,
+    pub far_distance: f32,
+    pub focus_near_band: f32,
+    pub focus_far_band: f32,
+    pub near_width_boost: f32,
+    pub near_detail_boost: f32,
+    pub near_hatching_boost: f32,
+    pub far_width_falloff: f32,
+    pub far_alpha_falloff: f32,
+    pub far_detail_suppression: f32,
+    pub rim_silhouette_boost: f32,
+    pub front_feature_suppression: f32,
+}
+
+impl Default for NprCameraResponse3d {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            auto_focus: false,
+            near_distance: 2.0,
+            far_distance: 14.0,
+            focus_near_band: 0.75,
+            focus_far_band: 1.85,
+            near_width_boost: 0.0,
+            near_detail_boost: 0.0,
+            near_hatching_boost: 0.0,
+            far_width_falloff: 0.0,
+            far_alpha_falloff: 0.0,
+            far_detail_suppression: 0.0,
+            rim_silhouette_boost: 0.0,
+            front_feature_suppression: 0.0,
+        }
+    }
+}
+
+impl NprCameraResponse3d {
+    pub fn normalized(mut self) -> Self {
+        if !self.near_distance.is_finite() {
+            self.near_distance = 2.0;
+        }
+        if !self.far_distance.is_finite() {
+            self.far_distance = 14.0;
+        }
+        if !self.focus_near_band.is_finite() {
+            self.focus_near_band = 0.75;
+        }
+        if !self.focus_far_band.is_finite() {
+            self.focus_far_band = 1.85;
+        }
+        if !self.near_width_boost.is_finite() {
+            self.near_width_boost = 0.0;
+        }
+        if !self.near_detail_boost.is_finite() {
+            self.near_detail_boost = 0.0;
+        }
+        if !self.near_hatching_boost.is_finite() {
+            self.near_hatching_boost = 0.0;
+        }
+        if !self.far_width_falloff.is_finite() {
+            self.far_width_falloff = 0.0;
+        }
+        if !self.far_alpha_falloff.is_finite() {
+            self.far_alpha_falloff = 0.0;
+        }
+        if !self.far_detail_suppression.is_finite() {
+            self.far_detail_suppression = 0.0;
+        }
+        if !self.rim_silhouette_boost.is_finite() {
+            self.rim_silhouette_boost = 0.0;
+        }
+        if !self.front_feature_suppression.is_finite() {
+            self.front_feature_suppression = 0.0;
+        }
+
+        self.near_distance = self.near_distance.clamp(0.05, 10_000.0);
+        self.far_distance = self.far_distance.clamp(self.near_distance + 0.05, 10_000.0);
+        self.focus_near_band = self.focus_near_band.clamp(0.05, 1000.0);
+        self.focus_far_band = self.focus_far_band.clamp(self.focus_near_band + 0.05, 1000.0);
+        self.near_width_boost = self.near_width_boost.clamp(0.0, 2.0);
+        self.near_detail_boost = self.near_detail_boost.clamp(0.0, 2.0);
+        self.near_hatching_boost = self.near_hatching_boost.clamp(0.0, 3.0);
+        self.far_width_falloff = self.far_width_falloff.clamp(0.0, 2.0);
+        self.far_alpha_falloff = self.far_alpha_falloff.clamp(0.0, 2.0);
+        self.far_detail_suppression = self.far_detail_suppression.clamp(0.0, 3.0);
+        self.rim_silhouette_boost = self.rim_silhouette_boost.clamp(0.0, 2.0);
+        self.front_feature_suppression = self.front_feature_suppression.clamp(0.0, 2.0);
         self
     }
 }
@@ -355,6 +470,7 @@ pub struct NprLineSettings3d {
     pub render_strategy: NprRenderStrategy3d,
     pub pipeline: NprPipelineStrategies3d,
     pub gpu_realtime_tuning: NprGpuRealtimeTuning3d,
+    pub camera_response: NprCameraResponse3d,
     pub fill_mode: NprFillMode3d,
     pub boundary: bool,
     pub silhouette: bool,
@@ -490,6 +606,7 @@ impl NprLineSettings3d {
                     stroke_strategy: NprStrokeStrategy3d::TechnicalInk,
                     ..NprPipelineStrategies3d::default()
                 },
+                camera_response: NprCameraResponse3d::default(),
                 fill_mode: NprFillMode3d::None,
                 boundary: true,
                 silhouette: true,
@@ -577,6 +694,7 @@ impl NprLineSettings3d {
                 render_strategy: NprRenderStrategy3d::GpuRealtime,
                 pipeline: NprPipelineStrategies3d::default(),
                 gpu_realtime_tuning: NprGpuRealtimeTuning3d::rough_comic_experimental(),
+                camera_response: NprCameraResponse3d::default(),
                 fill_mode: NprFillMode3d::None,
                 boundary: true,
                 silhouette: true,
@@ -721,6 +839,66 @@ mod tests {
         let settings = NprLineSettings3d::default();
         assert_eq!(settings.search_line_count, 0);
         assert!(!settings.gpu_realtime_tuning.search_enabled);
+    }
+
+    #[test]
+    fn npr_gpu_realtime_artist_tuning_defaults_and_clamps() {
+        let default_tuning = NprGpuRealtimeTuning3d::default();
+        assert_eq!(default_tuning.artist_selection_amount, 1.0);
+        assert_eq!(default_tuning.artist_trim_amount, 1.0);
+        assert_eq!(default_tuning.artist_lift_amount, 1.0);
+
+        let normalized = NprGpuRealtimeTuning3d {
+            artist_selection_amount: f32::NAN,
+            artist_trim_amount: -2.0,
+            artist_lift_amount: 9.0,
+            ..NprGpuRealtimeTuning3d::default()
+        }
+        .normalized();
+
+        assert_eq!(normalized.artist_selection_amount, 1.0);
+        assert_eq!(normalized.artist_trim_amount, 0.0);
+        assert_eq!(normalized.artist_lift_amount, 3.0);
+    }
+
+    #[test]
+    fn npr_camera_response_defaults_disabled_and_clamps() {
+        let default_response = NprCameraResponse3d::default();
+        assert!(!default_response.enabled);
+        assert_eq!(default_response.near_hatching_boost, 0.0);
+
+        let normalized = NprCameraResponse3d {
+            enabled: true,
+            auto_focus: true,
+            near_distance: f32::NAN,
+            far_distance: 0.01,
+            focus_near_band: f32::NAN,
+            focus_far_band: 0.02,
+            near_width_boost: f32::NAN,
+            near_detail_boost: 3.5,
+            near_hatching_boost: 9.0,
+            far_width_falloff: -2.0,
+            far_alpha_falloff: 4.0,
+            far_detail_suppression: 5.0,
+            rim_silhouette_boost: 4.0,
+            front_feature_suppression: 4.0,
+        }
+        .normalized();
+
+        assert!(normalized.enabled);
+        assert!(normalized.auto_focus);
+        assert_eq!(normalized.near_distance, 2.0);
+        assert_eq!(normalized.far_distance, 2.05);
+        assert_eq!(normalized.focus_near_band, 0.75);
+        assert_eq!(normalized.focus_far_band, 0.8);
+        assert_eq!(normalized.near_width_boost, 0.0);
+        assert_eq!(normalized.near_detail_boost, 2.0);
+        assert_eq!(normalized.near_hatching_boost, 3.0);
+        assert_eq!(normalized.far_width_falloff, 0.0);
+        assert_eq!(normalized.far_alpha_falloff, 2.0);
+        assert_eq!(normalized.far_detail_suppression, 3.0);
+        assert_eq!(normalized.rim_silhouette_boost, 2.0);
+        assert_eq!(normalized.front_feature_suppression, 2.0);
     }
 
     #[test]

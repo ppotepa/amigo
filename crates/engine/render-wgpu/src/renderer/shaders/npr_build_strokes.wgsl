@@ -19,6 +19,7 @@ struct GpuNprVisibleSegment3d {
     start: vec4<f32>,
     end: vec4<f32>,
     kind_edge: vec4<u32>,
+    metrics: vec4<f32>,
 }
 
 struct GpuNprPathLink3d {
@@ -33,6 +34,7 @@ struct GpuNprPathSegment3d {
     end: vec4<f32>,
     path: vec4<u32>,
     metrics: vec4<f32>,
+    style_metrics: vec4<f32>,
 }
 
 struct NprStrokeSegmentVertex {
@@ -77,6 +79,10 @@ struct GpuNprFrameUniforms3d {
     params14: vec4<f32>,
     params15: vec4<f32>,
     params16: vec4<f32>,
+    params17: vec4<f32>,
+    params18: vec4<f32>,
+    params19: vec4<f32>,
+    params20: vec4<f32>,
     ink_color: vec4<f32>,
     seed: vec4<u32>,
     pipeline0: vec4<u32>,
@@ -145,6 +151,87 @@ fn is_internal_feature_kind(kind: u32) -> bool {
     return kind == KIND_CREASE || kind == KIND_SEAM || kind == KIND_FEATURE;
 }
 
+fn camera_response_enabled() -> bool {
+    return uniforms.params18.x > 0.5;
+}
+
+fn camera_near_strength(depth01: f32) -> f32 {
+    if (!camera_response_enabled()) {
+        return 0.0;
+    }
+    return pow(1.0 - clamp(depth01, 0.0, 1.0), 0.82);
+}
+
+fn camera_far_strength(depth01: f32) -> f32 {
+    if (!camera_response_enabled()) {
+        return 0.0;
+    }
+    return pow(clamp(depth01, 0.0, 1.0), 0.92);
+}
+
+fn camera_focus_near_strength() -> f32 {
+    if (!camera_response_enabled()) {
+        return 0.0;
+    }
+    return pow(1.0 - clamp(uniforms.params20.w, 0.0, 1.0), 0.82);
+}
+
+fn camera_focus_far_strength() -> f32 {
+    if (!camera_response_enabled()) {
+        return 0.0;
+    }
+    return pow(clamp(uniforms.params20.w, 0.0, 1.0), 0.88);
+}
+
+fn camera_detail_keep_strength(kind: u32, depth01: f32) -> f32 {
+    if (!is_internal_feature_kind(kind)) {
+        return 0.0;
+    }
+    let near = max(camera_near_strength(depth01), camera_focus_near_strength() * 0.58);
+    return near * clamp(uniforms.params18.z, 0.0, 2.0);
+}
+
+fn camera_far_detail_suppression(kind: u32, depth01: f32) -> f32 {
+    if (!is_internal_feature_kind(kind) && kind != KIND_CONTACT) {
+        return 0.0;
+    }
+    let far = max(camera_far_strength(depth01), camera_focus_far_strength() * 0.68);
+    return far * clamp(uniforms.params19.z, 0.0, 3.0);
+}
+
+fn camera_width_multiplier(kind: u32, depth01: f32) -> f32 {
+    let near = max(camera_near_strength(depth01), camera_focus_near_strength() * 0.54);
+    let far = max(camera_far_strength(depth01), camera_focus_far_strength() * 0.82);
+    let near_boost = near * clamp(uniforms.params18.y, 0.0, 2.0);
+    let rim_boost = select(0.0, near * clamp(uniforms.params19.w, 0.0, 2.0), kind == KIND_SILHOUETTE);
+    let far_scale = select(0.65, 1.0, is_internal_feature_kind(kind) || kind == KIND_CONTACT);
+    let far_falloff = far * clamp(uniforms.params19.x, 0.0, 2.0) * far_scale;
+    return clamp(1.0 + near_boost + rim_boost - far_falloff, 0.12, 2.35);
+}
+
+fn camera_alpha_multiplier(kind: u32, depth01: f32) -> f32 {
+    let near = max(camera_near_strength(depth01), camera_focus_near_strength() * 0.36);
+    let far = max(camera_far_strength(depth01), camera_focus_far_strength() * 0.88);
+    let detail_scale = select(0.34, 1.0, is_internal_feature_kind(kind) || kind == KIND_CONTACT);
+    let far_falloff = far * clamp(uniforms.params19.y, 0.0, 2.0) * detail_scale;
+    return clamp(1.0 + near * 0.14 - far_falloff, 0.02, 1.22);
+}
+
+fn camera_hatch_chance_multiplier(depth01: f32) -> f32 {
+    let near = max(camera_near_strength(depth01), camera_focus_near_strength() * 0.78);
+    let far = max(camera_far_strength(depth01), camera_focus_far_strength());
+    return clamp(1.0 + near * clamp(uniforms.params18.w, 0.0, 3.0) - far * 0.72, 0.0, 3.4);
+}
+
+fn camera_front_feature_suppression(kind: u32, depth01: f32, path_coherence: f32) -> f32 {
+    if (!is_internal_feature_kind(kind)) {
+        return 0.0;
+    }
+    let front_like = clamp((path_coherence - 0.70) / 0.42, 0.0, 1.0);
+    let far_weight = 0.35 + max(camera_far_strength(depth01), camera_focus_far_strength() * 0.72) * 0.65;
+    return front_like * far_weight * clamp(uniforms.params20.x, 0.0, 2.0);
+}
+
 fn should_emit_sparse_character_hatch(
     kind: u32,
     render_length: f32,
@@ -154,6 +241,7 @@ fn should_emit_sparse_character_hatch(
     path_coherence: f32,
     path_t_mid: f32,
     path_id: u32,
+    depth01: f32,
 ) -> bool {
     if (!uses_sparse_character_hatching()) {
         return false;
@@ -164,7 +252,8 @@ fn should_emit_sparse_character_hatch(
     if (!is_internal_feature_kind(kind)) {
         return false;
     }
-    if (render_length < 8.0 || render_length > 44.0) {
+    let near = camera_near_strength(depth01);
+    if (render_length < mix(8.0, 5.0, near) || render_length > mix(44.0, 68.0, near)) {
         return false;
     }
     let connected_count = u32(connected_start) + u32(connected_end);
@@ -183,7 +272,10 @@ fn should_emit_sparse_character_hatch(
             ^ (cell * 0x9e37u)
             ^ (kind * 0x85ebu)
     );
-    let chance = select(0.18, 0.30, uses_akira_ink()) * clamp(1.1 - chain_quality * 0.34, 0.55, 1.0);
+    let chance =
+        select(0.18, 0.30, uses_akira_ink())
+        * clamp(1.1 - chain_quality * 0.34, 0.55, 1.0)
+        * camera_hatch_chance_multiplier(depth01);
     return roll < chance;
 }
 
@@ -195,6 +287,7 @@ fn should_suppress_detail_segment(
     connected_end: bool,
     chain_quality: f32,
     path_coherence: f32,
+    depth01: f32,
 ) -> bool {
     if (!(is_internal_feature_kind(kind) || kind == KIND_CONTACT)) {
         return false;
@@ -202,7 +295,12 @@ fn should_suppress_detail_segment(
 
     let connected_count = u32(connected_start) + u32(connected_end);
     let strict_budget = uses_character_budget() || uses_akira_ink();
-    let min_detail_length = max(uniforms.params0.w * select(1.8, 2.6, strict_budget), select(5.0, 8.0, strict_budget));
+    let near_keep = camera_detail_keep_strength(kind, depth01);
+    let far_suppress = camera_far_detail_suppression(kind, depth01);
+    let camera_length_scale = clamp(1.0 - near_keep * 0.46 + far_suppress * 0.55, 0.42, 2.35);
+    let min_detail_length =
+        max(uniforms.params0.w * select(1.8, 2.6, strict_budget), select(5.0, 8.0, strict_budget))
+        * camera_length_scale;
     if (render_length < min_detail_length && connected_count < 2u) {
         return true;
     }
@@ -211,7 +309,7 @@ fn should_suppress_detail_segment(
         return true;
     }
 
-    if (strict_budget && chain_quality < 0.58 && path_coherence < 0.72 && render_length < 18.0) {
+    if (strict_budget && chain_quality < 0.58 && path_coherence < 0.72 && render_length < 18.0 * clamp(1.0 - near_keep * 0.35, 0.55, 1.0)) {
         return true;
     }
 
@@ -220,6 +318,157 @@ fn should_suppress_detail_segment(
     }
 
     return false;
+}
+
+fn artist_selection_strength(kind: u32, path_coherence: f32, importance: f32, depth01: f32) -> f32 {
+    if (debug_overlay_mode() != 0u) {
+        return 0.0;
+    }
+    if (kind == KIND_SILHOUETTE) {
+        return 0.0;
+    }
+
+    let artist_amount = clamp(uniforms.params17.x, 0.0, 3.0);
+    if (artist_amount <= 0.001) {
+        return 0.0;
+    }
+    let human = clamp(uniforms.params7.y, 0.0, 1.0);
+    let uncertainty = clamp(1.0 - uniforms.params11.y, 0.0, 1.0);
+    let semantic_scale = select(0.82, 1.12, uses_character_semantic_candidates() || uses_character_budget() || uses_akira_ink());
+    let coherence_scale = clamp(1.12 - path_coherence * 0.36, 0.58, 1.0);
+    let importance_guard = clamp(1.12 - importance * 0.78, 0.24, 1.0);
+    let camera_keep = camera_detail_keep_strength(kind, depth01);
+    let camera_far = camera_far_detail_suppression(kind, depth01);
+    let camera_front = camera_front_feature_suppression(kind, depth01, path_coherence);
+    let camera_scale = clamp(1.0 - camera_keep * 0.62 + camera_far * 0.72 + camera_front * 0.46, 0.18, 2.25);
+    var role_scale = 0.0;
+    if (kind == KIND_BOUNDARY) {
+        role_scale = 0.28;
+    } else if (is_internal_feature_kind(kind)) {
+        role_scale = 1.0;
+    } else if (kind == KIND_CONTACT) {
+        role_scale = 0.72;
+    }
+
+    let akira_bias = select(0.0, 0.055, uses_akira_ink());
+    return clamp(
+        clamp(
+            (human * 0.18 + uncertainty * 0.16 + akira_bias)
+                * role_scale
+                * semantic_scale
+                * coherence_scale
+                * importance_guard,
+            0.0,
+            0.34,
+        ) * artist_amount * camera_scale,
+        0.0,
+        0.65,
+    );
+}
+
+fn should_artist_skip_detail_segment(
+    kind: u32,
+    path_id: u32,
+    render_length: f32,
+    path_coherence: f32,
+    importance: f32,
+    connected_start: bool,
+    connected_end: bool,
+    depth01: f32,
+) -> bool {
+    if (!(is_internal_feature_kind(kind) || kind == KIND_CONTACT)) {
+        return false;
+    }
+    let connected_count = u32(connected_start) + u32(connected_end);
+    if (connected_count == 2u && path_coherence >= 0.82) {
+        return false;
+    }
+
+    let strength = artist_selection_strength(kind, path_coherence, importance, depth01);
+    if (strength <= 0.001) {
+        return false;
+    }
+    let short_scale = clamp(1.25 - render_length / 42.0, 0.28, 1.0);
+    let chance = strength * short_scale * select(1.0, 0.58, connected_count == 2u);
+    let roll = signed_noise_01(
+        uniforms.seed.x
+            ^ uniforms.seed.y
+            ^ path_id
+            ^ (kind * 0x45d9u)
+            ^ (u32(render_length * 17.0) * 0x27d4u)
+            ^ 0xa53u,
+    );
+    return roll < chance;
+}
+
+fn artist_gesture_trim_px(
+    kind: u32,
+    path_id: u32,
+    render_length: f32,
+    path_coherence: f32,
+    importance: f32,
+    connected_start: bool,
+    connected_end: bool,
+    depth01: f32,
+) -> vec2<f32> {
+    let strength = artist_selection_strength(kind, path_coherence, importance, depth01);
+    if (strength <= 0.001 || render_length < max(uniforms.params0.w + 4.0, 8.0)) {
+        return vec2<f32>(0.0, 0.0);
+    }
+
+    let trim_amount = clamp(uniforms.params17.y, 0.0, 3.0);
+    if (trim_amount <= 0.001) {
+        return vec2<f32>(0.0, 0.0);
+    }
+    let max_trim = min(
+        render_length * select(0.06, 0.18, is_internal_feature_kind(kind) || kind == KIND_CONTACT),
+        select(2.0, 7.0, is_internal_feature_kind(kind) || kind == KIND_CONTACT),
+    ) * clamp(strength * 3.2, 0.0, 1.0) * trim_amount;
+    var start_trim = signed_noise_01(uniforms.seed.x ^ path_id ^ (kind * 0x9e37u) ^ 0x1111u) * max_trim;
+    var end_trim = signed_noise_01(uniforms.seed.y ^ path_id ^ (kind * 0x85ebu) ^ 0x2222u) * max_trim;
+    if (connected_start) {
+        start_trim = start_trim * 0.35;
+    }
+    if (connected_end) {
+        end_trim = end_trim * 0.35;
+    }
+
+    let remaining = render_length - start_trim - end_trim;
+    let min_remaining = max(uniforms.params0.w, 5.0);
+    if (remaining < min_remaining) {
+        let scale = clamp((render_length - min_remaining) / max(start_trim + end_trim, 0.001), 0.0, 1.0);
+        start_trim = start_trim * scale;
+        end_trim = end_trim * scale;
+    }
+    return vec2<f32>(max(start_trim, 0.0), max(end_trim, 0.0));
+}
+
+fn artist_lift_alpha(
+    kind: u32,
+    path_id: u32,
+    pass_index: u32,
+    path_t_mid: f32,
+    path_coherence: f32,
+    importance: f32,
+    connected_start: bool,
+    connected_end: bool,
+    depth01: f32,
+) -> vec3<f32> {
+    let strength = artist_selection_strength(kind, path_coherence, importance, depth01);
+    if (strength <= 0.001) {
+        return vec3<f32>(1.0, 1.0, 1.0);
+    }
+    let lift_amount = clamp(uniforms.params17.z, 0.0, 3.0);
+    if (lift_amount <= 0.001) {
+        return vec3<f32>(1.0, 1.0, 1.0);
+    }
+    let endpoint_strength = clamp(strength * select(1.3, 0.72, kind == KIND_BOUNDARY) * lift_amount, 0.0, 0.42);
+    let start_roll = signed_noise_01(uniforms.seed.x ^ path_id ^ pass_index ^ u32(path_t_mid * 8192.0) ^ 0x7001u);
+    let end_roll = signed_noise_01(uniforms.seed.y ^ path_id ^ (pass_index * 1597u) ^ u32(path_t_mid * 4096.0) ^ 0x7002u);
+    let start_scale = 1.0 - endpoint_strength * start_roll * select(1.0, 0.38, connected_start);
+    let end_scale = 1.0 - endpoint_strength * end_roll * select(1.0, 0.38, connected_end);
+    let mid_scale = 1.0 - endpoint_strength * 0.18 * min(start_roll, end_roll);
+    return vec3<f32>(clamp(start_scale, 0.45, 1.0), clamp(mid_scale, 0.72, 1.0), clamp(end_scale, 0.45, 1.0));
 }
 
 fn kind_width_multiplier(kind: u32) -> f32 {
@@ -438,14 +687,16 @@ fn importance_from_depth(kind: u32, depth01: f32) -> f32 {
     return depth_factor * 0.88;
 }
 
-fn distance_width_multiplier(importance: f32) -> f32 {
+fn distance_width_multiplier(kind: u32, importance: f32, depth01: f32) -> f32 {
     let pressure_boost = 1.0 + uniforms.params7.w * (importance - 1.0);
-    return clamp((1.0 - uniforms.params7.z * (1.0 - importance)) * pressure_boost, 0.62, 1.28);
+    return clamp((1.0 - uniforms.params7.z * (1.0 - importance)) * pressure_boost, 0.62, 1.28)
+        * camera_width_multiplier(kind, depth01);
 }
 
-fn depth_alpha_multiplier(importance: f32) -> f32 {
+fn depth_alpha_multiplier(kind: u32, importance: f32, depth01: f32) -> f32 {
     let near = pow(clamp(importance, 0.0, 1.35), 0.8);
-    return clamp(1.0 + uniforms.params11.z * (near - 0.5), 0.35, 1.25);
+    return clamp(1.0 + uniforms.params11.z * (near - 0.5), 0.35, 1.25)
+        * camera_alpha_multiplier(kind, depth01);
 }
 
 fn pressure_multiplier(t: f32) -> f32 {
@@ -571,7 +822,7 @@ fn path_humanization_scale(path_coherence: f32) -> f32 {
     return clamp(1.16 - path_coherence * 0.26, 0.78, 1.08);
 }
 
-fn pass_width(kind: u32, pass_index: u32, importance: f32, t: f32, path_coherence: f32) -> f32 {
+fn pass_width(kind: u32, pass_index: u32, importance: f32, t: f32, path_coherence: f32, depth01: f32) -> f32 {
     let base = uniforms.params1.x * kind_width_multiplier(kind) * uniforms.params6.x;
     let coherence_width = clamp(0.94 + path_coherence * 0.1, 0.9, 1.08);
     let is_search = pass_index >= u32(uniforms.params5.x);
@@ -582,7 +833,7 @@ fn pass_width(kind: u32, pass_index: u32, importance: f32, t: f32, path_coherenc
                 * pressure_multiplier(t)
                 * taper_multiplier(t)
                 * coherence_width
-                * distance_width_multiplier(importance),
+                * distance_width_multiplier(kind, importance, depth01),
             0.25,
         );
     }
@@ -592,12 +843,12 @@ fn pass_width(kind: u32, pass_index: u32, importance: f32, t: f32, path_coherenc
             * pressure_multiplier(t)
             * taper_multiplier(t)
             * coherence_width
-            * distance_width_multiplier(importance),
+            * distance_width_multiplier(kind, importance, depth01),
         0.25,
     );
 }
 
-fn pass_alpha(kind: u32, pass_index: u32, importance: f32, t: f32, path_coherence: f32) -> f32 {
+fn pass_alpha(kind: u32, pass_index: u32, importance: f32, t: f32, path_coherence: f32, depth01: f32) -> f32 {
     let base = uniforms.ink_color.w * kind_alpha_multiplier(kind) * uniforms.params6.y;
     let coherence_alpha = clamp(0.9 + path_coherence * 0.14, 0.82, 1.08);
     let is_search = pass_index >= u32(uniforms.params5.x);
@@ -609,7 +860,7 @@ fn pass_alpha(kind: u32, pass_index: u32, importance: f32, t: f32, path_coherenc
                 * uniforms.params6.y
                 * alpha_pressure_multiplier(t)
                 * coherence_alpha
-                * depth_alpha_multiplier(importance),
+                * depth_alpha_multiplier(kind, importance, depth01),
             0.0,
             1.0,
         );
@@ -619,7 +870,7 @@ fn pass_alpha(kind: u32, pass_index: u32, importance: f32, t: f32, path_coherenc
             * primary_pass_alpha_multiplier(u32(uniforms.params5.x), pass_index)
             * alpha_pressure_multiplier(t)
             * coherence_alpha
-            * depth_alpha_multiplier(importance),
+            * depth_alpha_multiplier(kind, importance, depth01),
         0.0,
         1.0,
     );
@@ -653,6 +904,9 @@ fn endpoint_connection_score(
         return 0.0;
     }
     let match_is_start = continuation_match_is_start(anchor_point, next_edge_index);
+    if (!matched_endpoint_is_valid(next, match_is_start)) {
+        return 0.0;
+    }
     let gap = min(distance(anchor_point, next.start.xy), distance(anchor_point, next.end.xy));
     let endpoint_snap = max(uniforms.params12.w, 0.5);
     if (gap > endpoint_snap * 5.5) {
@@ -751,12 +1005,30 @@ fn continuation_match_is_start(anchor_point: vec2<f32>, next_edge_index: u32) ->
 }
 
 fn continuation_follow_edge(next_edge_index: u32, matched_start: bool) -> u32 {
+    if (next_edge_index == 0xffffffffu || next_edge_index >= active_edge_count()) {
+        return 0xffffffffu;
+    }
+    if (!matched_endpoint_is_valid(visible_segments[next_edge_index], matched_start)) {
+        return 0xffffffffu;
+    }
     let next_edge = edges[next_edge_index];
     return select(next_edge.next_a, next_edge.next_b, matched_start);
 }
 
 fn endpoint_degree(edge: GpuNprEdge3d, matched_start: bool) -> u32 {
     return select(edge.degree_a, edge.degree_b, matched_start);
+}
+
+fn valid_endpoint_vertex(vertex: u32) -> bool {
+    return vertex != 0xffffffffu;
+}
+
+fn visible_endpoint_vertex(visible: GpuNprVisibleSegment3d, matched_start: bool) -> u32 {
+    return select(visible.kind_edge.w, visible.kind_edge.z, matched_start);
+}
+
+fn matched_endpoint_is_valid(visible: GpuNprVisibleSegment3d, matched_start: bool) -> bool {
+    return valid_endpoint_vertex(visible_endpoint_vertex(visible, matched_start));
 }
 
 fn quantized_anchor_bin(point: vec2<f32>) -> vec2<i32> {
@@ -1318,6 +1590,9 @@ fn chain_owner_from_endpoint(
         );
 
         let matched_start = continuation_match_is_start(current_anchor, edge_index);
+        if (!matched_endpoint_is_valid(visible_segments[edge_index], matched_start)) {
+            break;
+        }
         let degree = endpoint_degree(edges[edge_index], matched_start);
         if (degree != 1u) {
             break;
@@ -1393,6 +1668,15 @@ fn should_emit_segment_instance(
 
     let endpoint_snap = max(uniforms.params12.w, 0.5);
     if (line_length > endpoint_snap * 6.0) {
+        return true;
+    }
+
+    let start_match_is_start = continuation_match_is_start(screen_a, start_next_edge);
+    let end_match_is_start = continuation_match_is_start(screen_b, end_next_edge);
+    if (
+        !matched_endpoint_is_valid(visible_segments[start_next_edge], start_match_is_start)
+        || !matched_endpoint_is_valid(visible_segments[end_next_edge], end_match_is_start)
+    ) {
         return true;
     }
 
@@ -1539,12 +1823,8 @@ fn endpoint_taper(
 
 @compute @workgroup_size(64)
 fn cs_main(@builtin(global_invocation_id) id: vec3<u32>) {
-    var path_segment_index = id.x;
-    var path_segment_count = atomicLoad(&indirect_args[4]);
-    if (uses_direct_visible_segments()) {
-        path_segment_count = path_segment_slot_count();
-        path_segment_index = path_segment_base() + id.x;
-    }
+    let path_segment_count = path_segment_slot_count();
+    let path_segment_index = path_segment_base() + id.x;
     if (
         id.x >= path_segment_count
         || path_segment_index >= u32(arrayLength(&path_segments))
@@ -1573,7 +1853,7 @@ fn cs_main(@builtin(global_invocation_id) id: vec3<u32>) {
     let path_t_mid = clamp((path_t0 + path_t1) * 0.5, 0.0, 1.0);
     let path_length = max(segment.metrics.z, distance(screen_a, screen_b));
     let local_segment_length = distance(screen_a, screen_b);
-    let line_depth = (segment.start.z + segment.end.z) * 0.5;
+    let line_depth = clamp(segment.style_metrics.z, 0.0, 1.0);
     var render_start_mut = screen_a;
     var render_end_mut = screen_b;
     var render_length = local_segment_length;
@@ -1624,8 +1904,40 @@ fn cs_main(@builtin(global_invocation_id) id: vec3<u32>) {
         connected_end,
         chain_quality,
         path_coherence,
+        line_depth,
     )) {
         return;
+    }
+    if (should_artist_skip_detail_segment(
+        kind,
+        path_id,
+        render_length,
+        path_coherence,
+        importance,
+        connected_start,
+        connected_end,
+        line_depth,
+    )) {
+        return;
+    }
+    let artist_trim = artist_gesture_trim_px(
+        kind,
+        path_id,
+        render_length,
+        path_coherence,
+        importance,
+        connected_start,
+        connected_end,
+        line_depth,
+    );
+    if (artist_trim.x + artist_trim.y > 0.001) {
+        let trim_direction = normalize(render_end_mut - render_start_mut);
+        render_start_mut = render_start_mut + trim_direction * artist_trim.x;
+        render_end_mut = render_end_mut - trim_direction * artist_trim.y;
+        render_length = distance(render_start_mut, render_end_mut);
+        if (render_length < uniforms.params0.w) {
+            return;
+        }
     }
     let search_enabled = should_enable_search_passes(
         kind,
@@ -1652,6 +1964,7 @@ fn cs_main(@builtin(global_invocation_id) id: vec3<u32>) {
         path_coherence,
         path_t_mid,
         path_id,
+        line_depth,
     );
     let hatch_start_index = primary_pass_count + search_pass_count;
     let hatch_pass_count = select(0u, 1u, hatch_enabled);
@@ -1711,15 +2024,30 @@ fn cs_main(@builtin(global_invocation_id) id: vec3<u32>) {
             _ = atomicSub(&indirect_args[1], segment_count);
             return;
         }
-        var width_start = pass_width(kind, pass_index, importance, path_t0, path_coherence);
-        var width_mid = pass_width(kind, pass_index, importance, path_t_mid, path_coherence);
-        var width_end = pass_width(kind, pass_index, importance, path_t1, path_coherence);
-        var alpha_start = pass_alpha(kind, pass_index, importance, path_t0, path_coherence);
-        var alpha_mid = pass_alpha(kind, pass_index, importance, path_t_mid, path_coherence);
-        var alpha_end = pass_alpha(kind, pass_index, importance, path_t1, path_coherence);
+        var width_start = pass_width(kind, pass_index, importance, path_t0, path_coherence, line_depth);
+        var width_mid = pass_width(kind, pass_index, importance, path_t_mid, path_coherence, line_depth);
+        var width_end = pass_width(kind, pass_index, importance, path_t1, path_coherence, line_depth);
+        var alpha_start = pass_alpha(kind, pass_index, importance, path_t0, path_coherence, line_depth);
+        var alpha_mid = pass_alpha(kind, pass_index, importance, path_t_mid, path_coherence, line_depth);
+        var alpha_end = pass_alpha(kind, pass_index, importance, path_t1, path_coherence, line_depth);
+        let artist_alpha = artist_lift_alpha(
+            kind,
+            path_id,
+            pass_index,
+            path_t_mid,
+            path_coherence,
+            importance,
+            connected_start,
+            connected_end,
+            line_depth,
+        );
+        alpha_start = alpha_start * artist_alpha.x;
+        alpha_mid = alpha_mid * artist_alpha.y;
+        alpha_end = alpha_end * artist_alpha.z;
         if (is_hatch_pass) {
-            let hatch_width = max(uniforms.params1.x * kind_width_multiplier(kind) * 0.24, 0.25);
-            let hatch_alpha = clamp(uniforms.ink_color.w * kind_alpha_multiplier(kind) * 0.38, 0.0, 0.58);
+            let hatch_camera = camera_hatch_chance_multiplier(line_depth);
+            let hatch_width = max(uniforms.params1.x * kind_width_multiplier(kind) * 0.24 * clamp(0.82 + hatch_camera * 0.22, 0.65, 1.65), 0.25);
+            let hatch_alpha = clamp(uniforms.ink_color.w * kind_alpha_multiplier(kind) * 0.38 * clamp(0.72 + hatch_camera * 0.34, 0.25, 1.8), 0.0, 0.74);
             width_start = hatch_width * 0.72;
             width_mid = hatch_width;
             width_end = hatch_width * 0.62;
@@ -1832,12 +2160,18 @@ fn cs_main(@builtin(global_invocation_id) id: vec3<u32>) {
             path_t_mid * 37.0 + f32(path_id % 131u) * uniforms.params10.y + 19.0,
             1237u,
         );
+        let gesture_span_scale =
+            clamp(pass_render_length / max(uniforms.params0.w * 14.0, 24.0), 0.55, 1.65);
+        let connected_gesture_scale =
+            select(0.92, select(1.12, 1.28, connected_start && connected_end), connected_start || connected_end);
         let curve_offset =
             curve_noise
             * kind_wobble_px(kind)
             * uniforms.params7.y
             * pass_wobble
             * path_humanization_scale(path_coherence)
+            * gesture_span_scale
+            * connected_gesture_scale
             * connection_offset_multiplier(
                 connected_start,
                 connected_end,
@@ -1847,7 +2181,7 @@ fn cs_main(@builtin(global_invocation_id) id: vec3<u32>) {
                 path_t0,
                 path_t1,
             )
-            * select(0.35, 0.12, debug_mode != 0u);
+            * select(0.62, 0.12, debug_mode != 0u);
         let stylized_mid = (stylized_start + stylized_end) * 0.5 + render_normal * curve_offset;
         let stylized_mid_a =
             mix(stylized_start, stylized_mid, 0.5) + render_normal * (curve_offset * 0.35);

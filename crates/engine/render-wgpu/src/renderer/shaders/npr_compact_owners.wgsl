@@ -19,6 +19,7 @@ struct GpuNprVisibleSegment3d {
     start: vec4<f32>,
     end: vec4<f32>,
     kind_edge: vec4<u32>,
+    metrics: vec4<f32>,
 }
 
 struct GpuNprPathLink3d {
@@ -62,6 +63,10 @@ struct GpuNprFrameUniforms3d {
     params14: vec4<f32>,
     params15: vec4<f32>,
     params16: vec4<f32>,
+    params17: vec4<f32>,
+    params18: vec4<f32>,
+    params19: vec4<f32>,
+    params20: vec4<f32>,
     ink_color: vec4<f32>,
     seed: vec4<u32>,
     pipeline0: vec4<u32>,
@@ -175,6 +180,14 @@ fn endpoint_degree_for_entry(edge: GpuNprEdge3d, entry: GpuNprEndpointEntry3d) -
     return select(edge.degree_b, edge.degree_a, entry_is_matched_start(entry));
 }
 
+fn valid_endpoint_vertex(vertex: u32) -> bool {
+    return vertex != 0xffffffffu;
+}
+
+fn visible_endpoint_vertex(visible: GpuNprVisibleSegment3d, matched_start: bool) -> u32 {
+    return select(visible.kind_edge.w, visible.kind_edge.z, matched_start);
+}
+
 fn edge_connection_score_from_entry(
     current_edge_index: u32,
     current_kind: u32,
@@ -185,6 +198,9 @@ fn edge_connection_score_from_entry(
     current_length: f32,
     candidate_entry_index: u32,
 ) -> f32 {
+    if (!valid_endpoint_vertex(current_endpoint_vertex)) {
+        return 0.0;
+    }
     if (candidate_entry_index >= u32(arrayLength(&endpoint_entries))) {
         return 0.0;
     }
@@ -198,6 +214,9 @@ fn edge_connection_score_from_entry(
         return 0.0;
     }
     if (candidate_entry.kind != current_kind) {
+        return 0.0;
+    }
+    if (!valid_endpoint_vertex(candidate_entry.endpoint_vertex)) {
         return 0.0;
     }
     if (candidate_entry.endpoint_vertex != current_endpoint_vertex) {
@@ -392,24 +411,26 @@ fn reciprocal_connection_ok(
     }
 
     let anchor_point = select(
-        candidate_visible.start.xy,
         candidate_visible.end.xy,
+        candidate_visible.start.xy,
         candidate_pick.matched_start,
     );
-    let candidate_edge = edges[candidate_pick.edge_index];
     let anchor_vertex = select(
-        candidate_edge.b,
-        candidate_edge.a,
+        candidate_visible.kind_edge.w,
+        candidate_visible.kind_edge.z,
         candidate_pick.matched_start,
     );
+    if (!valid_endpoint_vertex(anchor_vertex)) {
+        return false;
+    }
     let anchor_depth = select(
-        candidate_visible.start.z,
         candidate_visible.end.z,
+        candidate_visible.start.z,
         candidate_pick.matched_start,
     );
     let far_point = select(
-        candidate_visible.end.xy,
         candidate_visible.start.xy,
+        candidate_visible.end.xy,
         candidate_pick.matched_start,
     );
     let candidate_length = visible_segment_length(candidate_pick.edge_index);
@@ -436,7 +457,6 @@ fn cs_main(@builtin(global_invocation_id) id: vec3<u32>) {
         return;
     }
 
-    visible_segments[edge_index].kind_edge.w = 0u;
     path_links[edge_index] = GpuNprPathLink3d(edge_index, 0xffffffffu, 0xffffffffu, 0u);
 
     let visible = visible_segments[edge_index];
@@ -444,8 +464,9 @@ fn cs_main(@builtin(global_invocation_id) id: vec3<u32>) {
         return;
     }
 
-    let edge = edges[edge_index];
     let kind = visible.kind_edge.x;
+    let start_endpoint_vertex = visible_endpoint_vertex(visible, true);
+    let end_endpoint_vertex = visible_endpoint_vertex(visible, false);
     let current_length = visible_segment_length(edge_index);
     if (current_length <= 0.0) {
         return;
@@ -454,7 +475,7 @@ fn cs_main(@builtin(global_invocation_id) id: vec3<u32>) {
     let start_pick = best_endpoint_candidate_from_bins(
         edge_index,
         kind,
-        edge.a,
+        start_endpoint_vertex,
         visible.start.xy,
         visible.start.z,
         normalize(visible.start.xy - visible.end.xy),
@@ -463,7 +484,7 @@ fn cs_main(@builtin(global_invocation_id) id: vec3<u32>) {
     let end_pick = best_endpoint_candidate_from_bins(
         edge_index,
         kind,
-        edge.b,
+        end_endpoint_vertex,
         visible.end.xy,
         visible.end.z,
         normalize(visible.end.xy - visible.start.xy),
@@ -571,5 +592,4 @@ fn cs_main(@builtin(global_invocation_id) id: vec3<u32>) {
         end_pick.edge_index,
         flags,
     );
-    visible_segments[edge_index].kind_edge.w = 1u;
 }

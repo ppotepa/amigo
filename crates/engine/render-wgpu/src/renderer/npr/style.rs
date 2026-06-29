@@ -8,6 +8,48 @@ pub(crate) struct NprResolvedKindStyle {
     pub(crate) alpha_multiplier: f32,
 }
 
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct NprResolvedBrushProfile3d {
+    pub(crate) width_multiplier: f32,
+    pub(crate) alpha_multiplier: f32,
+    pub(crate) pressure_jitter_multiplier: f32,
+    pub(crate) dropout_multiplier: f32,
+    pub(crate) search_multiplier: f32,
+    pub(crate) path_wobble_multiplier: f32,
+    pub(crate) micro_wobble_multiplier: f32,
+}
+
+pub(crate) fn resolve_npr_brush_profile(
+    settings: &amigo_render_api::NprLineSettings3d,
+) -> NprResolvedBrushProfile3d {
+    let (width, alpha, pressure_jitter, dropout, search, path_wobble, micro_wobble) = match settings
+        .stroke_tool
+    {
+        amigo_render_api::NprStrokeTool3d::InkPen => (1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0),
+        amigo_render_api::NprStrokeTool3d::Pencil => (0.84, 0.72, 1.65, 2.35, 1.65, 1.22, 1.55),
+        amigo_render_api::NprStrokeTool3d::Brush => (1.18, 0.96, 1.42, 1.65, 0.72, 1.08, 1.20),
+        amigo_render_api::NprStrokeTool3d::Marker => (1.08, 0.84, 0.58, 0.42, 0.35, 0.82, 0.65),
+        amigo_render_api::NprStrokeTool3d::TechnicalPen => (0.92, 1.0, 0.08, 0.0, 0.0, 0.22, 0.20),
+    };
+    let straightness = settings.straightness.clamp(0.0, 1.0);
+    let path_wobble_multiplier =
+        ((1.0 - straightness) * 1.55 * path_wobble * settings.tool_wobble_multiplier.max(0.0))
+            .clamp(0.0, 2.5);
+
+    NprResolvedBrushProfile3d {
+        width_multiplier: (width * settings.tool_width_multiplier.max(0.0)).clamp(0.05, 4.0),
+        alpha_multiplier: (alpha * settings.tool_alpha_multiplier.max(0.0)).clamp(0.0, 2.0),
+        pressure_jitter_multiplier: (pressure_jitter
+            * settings.tool_pressure_jitter_multiplier.max(0.0))
+        .clamp(0.0, 4.0),
+        dropout_multiplier: (dropout * settings.tool_dropout_multiplier.max(0.0)).clamp(0.0, 5.0),
+        search_multiplier: (search * settings.tool_search_multiplier.max(0.0)).clamp(0.0, 5.0),
+        path_wobble_multiplier,
+        micro_wobble_multiplier: (micro_wobble * settings.tool_wobble_multiplier.max(0.0))
+            .clamp(0.0, 3.0),
+    }
+}
+
 pub(crate) fn npr_distance_width_multiplier(
     importance: f32,
     settings: &amigo_render_api::NprLineSettings3d,
@@ -40,78 +82,6 @@ pub(crate) fn npr_alpha_pressure_multiplier(
     settings: &amigo_render_api::NprLineSettings3d,
 ) -> f32 {
     sample_4_point_curve(settings.alpha_pressure_curve, t.clamp(0.0, 1.0)).clamp(0.0, 1.5)
-}
-
-pub(crate) fn npr_straightness_wobble_multiplier(
-    settings: &amigo_render_api::NprLineSettings3d,
-) -> f32 {
-    let straightness = settings.straightness.clamp(0.0, 1.0);
-    let tool_multiplier = match settings.stroke_tool {
-        amigo_render_api::NprStrokeTool3d::InkPen => 1.0,
-        amigo_render_api::NprStrokeTool3d::Pencil => 1.22,
-        amigo_render_api::NprStrokeTool3d::Brush => 1.08,
-        amigo_render_api::NprStrokeTool3d::Marker => 0.82,
-        amigo_render_api::NprStrokeTool3d::TechnicalPen => 0.22,
-    };
-    ((1.0 - straightness) * 1.55 * tool_multiplier * settings.tool_wobble_multiplier.max(0.0))
-        .clamp(0.0, 2.5)
-}
-
-pub(crate) fn npr_tool_width_multiplier(settings: &amigo_render_api::NprLineSettings3d) -> f32 {
-    let base = match settings.stroke_tool {
-        amigo_render_api::NprStrokeTool3d::InkPen => 1.0,
-        amigo_render_api::NprStrokeTool3d::Pencil => 0.84,
-        amigo_render_api::NprStrokeTool3d::Brush => 1.18,
-        amigo_render_api::NprStrokeTool3d::Marker => 1.08,
-        amigo_render_api::NprStrokeTool3d::TechnicalPen => 0.92,
-    };
-    (base * settings.tool_width_multiplier.max(0.0)).clamp(0.05, 4.0)
-}
-
-pub(crate) fn npr_tool_alpha_multiplier(settings: &amigo_render_api::NprLineSettings3d) -> f32 {
-    let base = match settings.stroke_tool {
-        amigo_render_api::NprStrokeTool3d::InkPen => 1.0,
-        amigo_render_api::NprStrokeTool3d::Pencil => 0.72,
-        amigo_render_api::NprStrokeTool3d::Brush => 0.96,
-        amigo_render_api::NprStrokeTool3d::Marker => 0.84,
-        amigo_render_api::NprStrokeTool3d::TechnicalPen => 1.0,
-    };
-    (base * settings.tool_alpha_multiplier.max(0.0)).clamp(0.0, 2.0)
-}
-
-pub(crate) fn npr_tool_pressure_jitter_multiplier(
-    settings: &amigo_render_api::NprLineSettings3d,
-) -> f32 {
-    let base = match settings.stroke_tool {
-        amigo_render_api::NprStrokeTool3d::InkPen => 1.0,
-        amigo_render_api::NprStrokeTool3d::Pencil => 1.65,
-        amigo_render_api::NprStrokeTool3d::Brush => 1.42,
-        amigo_render_api::NprStrokeTool3d::Marker => 0.58,
-        amigo_render_api::NprStrokeTool3d::TechnicalPen => 0.08,
-    };
-    (base * settings.tool_pressure_jitter_multiplier.max(0.0)).clamp(0.0, 4.0)
-}
-
-pub(crate) fn npr_tool_dropout_multiplier(settings: &amigo_render_api::NprLineSettings3d) -> f32 {
-    let base = match settings.stroke_tool {
-        amigo_render_api::NprStrokeTool3d::InkPen => 1.0,
-        amigo_render_api::NprStrokeTool3d::Pencil => 2.35,
-        amigo_render_api::NprStrokeTool3d::Brush => 1.65,
-        amigo_render_api::NprStrokeTool3d::Marker => 0.42,
-        amigo_render_api::NprStrokeTool3d::TechnicalPen => 0.0,
-    };
-    (base * settings.tool_dropout_multiplier.max(0.0)).clamp(0.0, 5.0)
-}
-
-pub(crate) fn npr_tool_search_multiplier(settings: &amigo_render_api::NprLineSettings3d) -> f32 {
-    let base = match settings.stroke_tool {
-        amigo_render_api::NprStrokeTool3d::InkPen => 1.0,
-        amigo_render_api::NprStrokeTool3d::Pencil => 1.65,
-        amigo_render_api::NprStrokeTool3d::Brush => 0.72,
-        amigo_render_api::NprStrokeTool3d::Marker => 0.35,
-        amigo_render_api::NprStrokeTool3d::TechnicalPen => 0.0,
-    };
-    (base * settings.tool_search_multiplier.max(0.0)).clamp(0.0, 5.0)
 }
 
 pub(crate) fn sample_4_point_curve(points: [f32; 4], t: f32) -> f32 {
@@ -180,5 +150,61 @@ pub(crate) fn resolve_npr_kind_style(
         alpha_multiplier: override_style
             .and_then(|style| style.alpha_multiplier)
             .unwrap_or(1.0),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::resolve_npr_brush_profile;
+
+    #[test]
+    fn brush_profile_makes_pencil_more_exploratory_than_ink() {
+        let ink = amigo_render_api::NprLineSettings3d {
+            stroke_tool: amigo_render_api::NprStrokeTool3d::InkPen,
+            ..amigo_render_api::NprLineSettings3d::default()
+        };
+        let pencil = amigo_render_api::NprLineSettings3d {
+            stroke_tool: amigo_render_api::NprStrokeTool3d::Pencil,
+            ..amigo_render_api::NprLineSettings3d::default()
+        };
+
+        let ink_profile = resolve_npr_brush_profile(&ink);
+        let pencil_profile = resolve_npr_brush_profile(&pencil);
+
+        assert!(pencil_profile.search_multiplier > ink_profile.search_multiplier);
+        assert!(pencil_profile.pressure_jitter_multiplier > ink_profile.pressure_jitter_multiplier);
+        assert!(pencil_profile.dropout_multiplier > ink_profile.dropout_multiplier);
+    }
+
+    #[test]
+    fn brush_profile_makes_technical_pen_stable_and_single_pass() {
+        let technical = amigo_render_api::NprLineSettings3d {
+            stroke_tool: amigo_render_api::NprStrokeTool3d::TechnicalPen,
+            ..amigo_render_api::NprLineSettings3d::default()
+        };
+
+        let profile = resolve_npr_brush_profile(&technical);
+
+        assert_eq!(profile.search_multiplier, 0.0);
+        assert_eq!(profile.dropout_multiplier, 0.0);
+        assert!(profile.path_wobble_multiplier < 0.2);
+        assert!(profile.pressure_jitter_multiplier < 0.2);
+    }
+
+    #[test]
+    fn brush_profile_applies_author_tool_scalars() {
+        let settings = amigo_render_api::NprLineSettings3d {
+            stroke_tool: amigo_render_api::NprStrokeTool3d::InkPen,
+            tool_width_multiplier: 1.5,
+            tool_alpha_multiplier: 0.5,
+            tool_search_multiplier: 0.25,
+            ..amigo_render_api::NprLineSettings3d::default()
+        };
+
+        let profile = resolve_npr_brush_profile(&settings);
+
+        assert_eq!(profile.width_multiplier, 1.5);
+        assert_eq!(profile.alpha_multiplier, 0.5);
+        assert_eq!(profile.search_multiplier, 0.25);
     }
 }

@@ -7,7 +7,7 @@ use crate::renderer::CachedMeshGeometry3d;
 
 use super::{
     GpuNprEndpointEntry3d, GpuNprPathSegment3d, GpuNprPathState3d, gpu_edges_from_geometry,
-    gpu_triangles_from_geometry, gpu_vertices_from_geometry,
+    gpu_triangles_from_geometry, gpu_vertices_from_geometry, slice_as_bytes, topology_cache_key,
 };
 
 #[derive(Debug)]
@@ -206,25 +206,12 @@ impl NprGpuResources3d {
     }
 }
 
-fn topology_cache_key(mesh_key: &str, geometry: &CachedMeshGeometry3d) -> String {
-    format!(
-        "{mesh_key}:{}:{}:{}",
-        geometry.vertex_count(),
-        geometry.triangle_count(),
-        geometry.edge_count()
-    )
-}
-
 fn create_buffer<T>(device: &wgpu::Device, label: &'static str, data: &[T]) -> wgpu::Buffer {
     device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
         label: Some(label),
         contents: slice_as_bytes(data),
         usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
     })
-}
-
-fn slice_as_bytes<T>(data: &[T]) -> &[u8] {
-    unsafe { std::slice::from_raw_parts(data.as_ptr() as *const u8, std::mem::size_of_val(data)) }
 }
 
 fn create_face_id_target(device: &wgpu::Device, width: u32, height: u32) -> NprGpuFaceIdTarget3d {

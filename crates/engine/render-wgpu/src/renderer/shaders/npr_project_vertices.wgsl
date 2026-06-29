@@ -28,6 +28,13 @@ struct GpuNprFrameUniforms3d {
     params11: vec4<f32>,
     params12: vec4<f32>,
     params13: vec4<f32>,
+    params14: vec4<f32>,
+    params15: vec4<f32>,
+    params16: vec4<f32>,
+    params17: vec4<f32>,
+    params18: vec4<f32>,
+    params19: vec4<f32>,
+    params20: vec4<f32>,
     ink_color: vec4<f32>,
     seed: vec4<u32>,
 }
@@ -78,5 +85,5 @@ fn cs_main(@builtin(global_invocation_id) id: vec3<u32>) {
     );
     let clip_depth = clamp((depth - near_clip) / max(far_clip - near_clip, 0.0001), 0.0, 1.0);
     projected_vertices[index].ndc_depth = vec4<f32>(ndc, clip_depth, select(0.0, 1.0, valid));
-    projected_vertices[index].screen = vec4<f32>(ndc * uniforms.viewport_half.xy, clip_depth, 1.0);
+    projected_vertices[index].screen = vec4<f32>(ndc * uniforms.viewport_half.xy, clip_depth, depth);
 }

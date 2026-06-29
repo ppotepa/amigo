@@ -35,6 +35,7 @@ struct GpuNprVisibleSegment3d {
     start: vec4<f32>,
     end: vec4<f32>,
     kind_edge: vec4<u32>,
+    metrics: vec4<f32>,
 }
 
 struct GpuNprFrameUniforms3d {
@@ -61,6 +62,10 @@ struct GpuNprFrameUniforms3d {
     params14: vec4<f32>,
     params15: vec4<f32>,
     params16: vec4<f32>,
+    params17: vec4<f32>,
+    params18: vec4<f32>,
+    params19: vec4<f32>,
+    params20: vec4<f32>,
     ink_color: vec4<f32>,
     seed: vec4<u32>,
     pipeline0: vec4<u32>,
@@ -91,6 +96,20 @@ fn clear_visible_segment(edge_index: u32) {
     visible_segments[edge_index].start = vec4<f32>(0.0, 0.0, 0.0, 0.0);
     visible_segments[edge_index].end = vec4<f32>(0.0, 0.0, 0.0, 0.0);
     visible_segments[edge_index].kind_edge = vec4<u32>(0u, 0u, 0u, 0u);
+    visible_segments[edge_index].metrics = vec4<f32>(0.0);
+}
+
+fn camera_response_enabled() -> bool {
+    return uniforms.params18.x > 0.5;
+}
+
+fn camera_response_depth01(view_depth: f32, fallback_depth01: f32) -> f32 {
+    if (!camera_response_enabled()) {
+        return fallback_depth01;
+    }
+    let near_distance = max(uniforms.params20.y, 0.001);
+    let far_distance = max(uniforms.params20.z, near_distance + 0.001);
+    return clamp((view_depth - near_distance) / (far_distance - near_distance), 0.0, 1.0);
 }
 
 fn rotate_euler(v: vec3<f32>, rotation: vec3<f32>) -> vec3<f32> {
@@ -402,6 +421,10 @@ fn cs_main(@builtin(global_invocation_id) id: vec3<u32>) {
 
     let depth_start = mix(a.ndc_depth.z, b.ndc_depth.z, run.x);
     let depth_end = mix(a.ndc_depth.z, b.ndc_depth.z, run.y);
+    let view_depth_start = mix(a.screen.w, b.screen.w, run.x);
+    let view_depth_end = mix(a.screen.w, b.screen.w, run.y);
+    let style_depth_start = camera_response_depth01(view_depth_start, depth_start);
+    let style_depth_end = camera_response_depth01(view_depth_end, depth_end);
     let primary_contour = kind == KIND_SILHOUETTE || kind == KIND_BOUNDARY;
     let endpoint_tolerance = select(0.001, 0.06, primary_contour);
     let start_vertex = select(0xffffffffu, edge.a, run.x <= endpoint_tolerance);
@@ -409,4 +432,6 @@ fn cs_main(@builtin(global_invocation_id) id: vec3<u32>) {
     visible_segments[edge_index].start = vec4<f32>(run_start, depth_start, 1.0);
     visible_segments[edge_index].end = vec4<f32>(run_end, depth_end, 1.0);
     visible_segments[edge_index].kind_edge = vec4<u32>(kind, edge.edge_id, start_vertex, end_vertex);
+    visible_segments[edge_index].metrics =
+        vec4<f32>(style_depth_start, style_depth_end, view_depth_start, view_depth_end);
 }

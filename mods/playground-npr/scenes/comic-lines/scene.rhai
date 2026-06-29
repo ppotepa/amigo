@@ -1,13 +1,11 @@
 import "pkg:amigo.std/input" as input;
 
 fn model_entity(world_api, index) {
-    if index == 1 { return world_api.entities.named("playground-npr-model-1-soldier"); }
-    world_api.entities.named("playground-npr-model-2-khronos-male")
+    world_api.entities.named("playground-npr-model-1-soldier")
 }
 
 fn model_entity_name(index) {
-    if index == 1 { return "playground-npr-model-1-soldier"; }
-    "playground-npr-model-2-khronos-male"
+    "playground-npr-model-1-soldier"
 }
 
 fn hide_all_models(world_api) {
@@ -15,9 +13,16 @@ fn hide_all_models(world_api) {
     model_entity(world_api, 2).hide();
 }
 
-fn active_model_name(index) {
-    if index == 1 { return "Soldier"; }
-    "Khronos Male"
+fn active_model_name(world_api, index) {
+    let label = world_api.mesh3d.model_label(index - 1);
+    if label != "" { return label; }
+    "Soldier"
+}
+
+fn model_library_count(world_api) {
+    let count = world_api.mesh3d.model_count();
+    if count > 0 { return count; }
+    1
 }
 
 fn animation_count(model_index) {
@@ -39,26 +44,14 @@ fn animation_status_label(model_index) {
 }
 
 fn npr_preset_count() {
-    16
+    4
 }
 
 fn npr_style_base_id(index) {
-    if index == 0 { return "default_gpu_comic"; }
-    if index == 1 { return "clean_comic_ink"; }
-    if index == 2 { return "technical_comic_line"; }
-    if index == 3 { return "target_60fps"; }
-    if index == 4 { return "balanced_30fps"; }
-    if index == 5 { return "manga_fine_line"; }
-    if index == 6 { return "european_clear_line"; }
-    if index == 7 { return "animation_pencil"; }
-    if index == 8 { return "loose_pencil"; }
-    if index == 9 { return "dry_brush_ink"; }
-    if index == 10 { return "heavy_noir_ink"; }
-    if index == 11 { return "storyboard_marker"; }
-    if index == 12 { return "cinematic_12fps"; }
-    if index == 13 { return "low_120fps"; }
-    if index == 14 { return "rough_comic_ink"; }
-    "akira"
+    if index == 0 { return "cinematic_12fps"; }
+    if index == 1 { return "rough_comic_ink"; }
+    if index == 2 { return "akira"; }
+    "akira_camera_based"
 }
 
 fn npr_preset_id(index) {
@@ -66,22 +59,10 @@ fn npr_preset_id(index) {
 }
 
 fn npr_preset_label(index) {
-    if index == 0 { return "Default Comic"; }
-    if index == 1 { return "Clean Comic Ink"; }
-    if index == 2 { return "Technical Comic Line"; }
-    if index == 3 { return "Target 60 FPS"; }
-    if index == 4 { return "Balanced 30 FPS"; }
-    if index == 5 { return "Manga Fine Line"; }
-    if index == 6 { return "European Clear Line"; }
-    if index == 7 { return "Animation Pencil"; }
-    if index == 8 { return "Loose Pencil"; }
-    if index == 9 { return "Dry Brush Ink"; }
-    if index == 10 { return "Heavy Noir Ink"; }
-    if index == 11 { return "Storyboard Marker"; }
-    if index == 12 { return "Cinematic 12 FPS"; }
-    if index == 13 { return "Low 120 FPS"; }
-    if index == 14 { return "Rough Comic Ink"; }
-    "Akira"
+    if index == 0 { return "Cinematic 12 FPS"; }
+    if index == 1 { return "Rough Comic Ink"; }
+    if index == 2 { return "Akira"; }
+    "Akira Camera Based"
 }
 
 fn npr_debug_view_label(view_id) {
@@ -125,6 +106,44 @@ fn preset_index_label(index) {
     prefix + one_based + "/" + npr_preset_count()
 }
 
+fn clamp_value(value, minimum, maximum) {
+    if value < minimum { return minimum; }
+    if value > maximum { return maximum; }
+    value
+}
+
+fn default_model_scale() {
+    1.55
+}
+
+fn active_model_scale(world_api) {
+    let scale = world_api.state.get_float("npr_model_scale");
+    if scale <= 0.0 { return default_model_scale(); }
+    scale
+}
+
+fn active_model_scale_percent(world_api) {
+    (active_model_scale(world_api) * 100.0).to_int()
+}
+
+fn apply_active_model_scale(world_api) {
+    let scale = active_model_scale(world_api);
+    world_api.entities.set_scale_3d(
+        model_entity_name(world_api.state.get_int("active_npr_model")),
+        scale,
+        scale,
+        scale,
+    );
+}
+
+fn step_model_scale(world_api, multiplier) {
+    let next = clamp_value(active_model_scale(world_api) * multiplier, 0.35, 4.0);
+    world_api.state.set_float("npr_model_scale", next);
+    apply_active_model_scale(world_api);
+    world_api.dev.event("playground-npr.model-scale", "" + active_model_scale_percent(world_api) + "%");
+    refresh_hud(world_api, 0.0);
+}
+
 fn refresh_hud(world_api, dt) {
     let model_index = world_api.state.get_int("active_npr_model");
     let animation_index = world_api.state.get_int("active_npr_animation");
@@ -146,7 +165,7 @@ fn refresh_hud(world_api, dt) {
 
     world_api.ui.set_text(
         "playground-npr-hud.root.model",
-        "Model    " + active_model_name(model_index),
+        "Model    " + active_model_name(world_api, model_index),
     );
     world_api.ui.set_text(
         "playground-npr-hud.root.preset",
@@ -154,7 +173,7 @@ fn refresh_hud(world_api, dt) {
     );
     world_api.ui.set_text(
         "playground-npr-hud.root.animation",
-        "Anim     " + animation_label(model_index, animation_index) + " | " + animation_status_label(model_index),
+        "Library  " + model_index + "/" + model_library_count(world_api) + " | scale " + active_model_scale_percent(world_api) + "% | <> GLB | +/-",
     );
     world_api.ui.set_text(
         "playground-npr-hud.root.strategy",
@@ -227,13 +246,24 @@ fn step_model_animation(world_api, delta) {
 }
 
 fn select_model(world_api, index) {
+    let count = model_library_count(world_api);
+    let safe_index = ((index - 1 + count) % count) + 1;
     hide_all_models(world_api);
-    model_entity(world_api, index).show();
-    world_api.state.set_int("active_npr_model", index);
+    model_entity(world_api, safe_index).show();
+    let mesh_asset = world_api.mesh3d.model_asset(safe_index - 1);
+    if mesh_asset != "" {
+        world_api.mesh3d.set_mesh(model_entity_name(safe_index), mesh_asset);
+    }
+    world_api.state.set_int("active_npr_model", safe_index);
     world_api.state.set_int("active_npr_animation", 0);
+    apply_active_model_scale(world_api);
     apply_active_npr_preset(world_api);
-    world_api.dev.event("playground-npr.model-selected", active_model_name(index));
+    world_api.dev.event("playground-npr.model-selected", active_model_name(world_api, safe_index));
     refresh_hud(world_api, 0.0);
+}
+
+fn step_model(world_api, delta) {
+    select_model(world_api, world_api.state.get_int("active_npr_model") + delta);
 }
 
 fn toggle_model_autorotate(world_api) {
@@ -317,34 +347,42 @@ fn rotate_active_model(world_api, dt) {
         return;
     }
 
-    let index = world_api.state.get_int("active_npr_model");
-    if index == 1 { model_entity(world_api, 1).rotate_3d(0.0, 0.32 * dt, 0.0); }
-    if index == 2 { model_entity(world_api, 2).rotate_3d(0.0, 0.28 * dt, 0.0); }
+    model_entity(world_api, world_api.state.get_int("active_npr_model")).rotate_3d(0.0, 0.32 * dt, 0.0);
 }
 
 fn on_enter() {
     world.state.reset_scene();
+    let scanned = world.mesh3d.scan_models("playground-npr");
+    world.dev.event("playground-npr.models-scanned", "" + scanned);
     world.state.set_bool("npr_camera_freelook", false);
     world.state.set_bool("npr_model_autorotate", false);
     world.state.set_bool("npr_temporal_path_smoothing", false);
     world.state.set_string("active_npr_strategy", "gpu_realtime");
     world.state.set_int("active_npr_preset", 0);
     world.state.set_int("active_npr_animation", 0);
+    world.state.set_float("npr_model_scale", default_model_scale());
     world.state.set_string("npr_debug_view", "camera.final");
     world.camera.set_main_debug_view("camera.final");
-    select_model(world, 1);
+    let initial_model = world.mesh3d.model_index_by_label("soldier");
+    if initial_model >= 0 {
+        select_model(world, initial_model + 1);
+    } else {
+        select_model(world, 1);
+    }
     refresh_hud(world, 0.0);
     let scene_id = world.scene.current_id();
     world.dev.event("playground-npr.scene-ready", scene_id);
-    world.dev.log("playground-npr comic lines workbench: 1-2 models, ArrowUp/ArrowDown styles, G backend toggle, V debug cycle, 7 final, 8 kinds, 9 dropout, 0 width/alpha, LMB orbit, Shift+LMB or MMB pan, wheel zoom, F freelook, WASD/Space/Q fly, Shift fast fly, R autorotate, T temporal smoothing; GLB skinned clips are not executed in V1");
+    world.dev.log("playground-npr comic lines workbench: recursive GLB model library under source-models, </> switch models, +/- scale model, ArrowUp/ArrowDown styles, G backend toggle, V debug cycle, 7 final, 8 kinds, 9 dropout, 0 width/alpha, LMB orbit, Shift+LMB or MMB pan, wheel zoom, F freelook, WASD/Space/Q fly, Shift fast fly, R autorotate, T temporal smoothing; GLB skinned clips are not executed in V1");
 }
 
 fn update(dt) {
     world.state.set_float("npr_last_dt", dt);
     if input::pressed(world, "npr.select_1") { select_model(world, 1); }
     if input::pressed(world, "npr.select_2") { select_model(world, 2); }
-    if input::pressed(world, "npr.animation_previous") { step_model_animation(world, -1); }
-    if input::pressed(world, "npr.animation_next") { step_model_animation(world, 1); }
+    if input::pressed(world, "npr.model_previous") { step_model(world, -1); }
+    if input::pressed(world, "npr.model_next") { step_model(world, 1); }
+    if input::pressed(world, "npr.model_scale_down") { step_model_scale(world, 0.9090909); }
+    if input::pressed(world, "npr.model_scale_up") { step_model_scale(world, 1.1); }
     if input::pressed(world, "npr.camera_toggle") {
         world.state.set_bool("npr_camera_freelook", !world.state.get_bool("npr_camera_freelook"));
         refresh_hud(world, dt);
