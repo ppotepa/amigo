@@ -33,6 +33,7 @@ pub struct RenderFrameStats {
     pub world_3d_npr_gpu_realtime_path_segments_capacity: usize,
     pub world_3d_npr_gpu_realtime_stroke_segments_capacity: usize,
     pub world_3d_npr_gpu_realtime_debug_mode: String,
+    pub world_3d_npr_pipeline_plan: String,
     pub world_3d_npr_paths: usize,
     pub world_3d_npr_boundary_paths: usize,
     pub world_3d_npr_silhouette_paths: usize,

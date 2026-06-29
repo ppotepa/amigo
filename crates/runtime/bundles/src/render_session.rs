@@ -303,6 +303,7 @@ pub fn render_game_frame_to_cache(
             world_3d_npr_gpu_realtime_path_segments_capacity: 0,
             world_3d_npr_gpu_realtime_stroke_segments_capacity: 0,
             world_3d_npr_gpu_realtime_debug_mode: String::new(),
+            world_3d_npr_pipeline_plan: String::new(),
             world_3d_npr_paths: 0,
             world_3d_npr_boundary_paths: 0,
             world_3d_npr_silhouette_paths: 0,

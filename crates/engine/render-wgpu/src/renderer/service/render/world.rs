@@ -279,6 +279,7 @@ pub(super) fn execute_world_to_offscreen(
                             npr,
                         );
                         stats.record_strategy(amigo_render_api::NprRenderStrategy3d::CpuReference);
+                        stats.record_pipeline_plan(npr);
                         renderer.npr_stroke_stats_3d.add(stats);
 
                         if let Some(overlay) = npr_debug_overlay {
@@ -300,6 +301,7 @@ pub(super) fn execute_world_to_offscreen(
                         renderer
                             .npr_stroke_stats_3d
                             .record_strategy(amigo_render_api::NprRenderStrategy3d::GpuRealtime);
+                        renderer.npr_stroke_stats_3d.record_pipeline_plan(npr);
                         renderer
                             .npr_gpu_realtime
                             .enqueue_mesh(

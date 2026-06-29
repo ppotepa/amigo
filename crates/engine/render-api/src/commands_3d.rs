@@ -216,7 +216,92 @@ pub struct NprPipelineStrategies3d {
     pub temporal_strategy: NprTemporalStrategy3d,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum NprPipelinePlanWarning3d {
+    AkiraInkWithoutCharacterSemantic,
+    AkiraInkWithoutStableStrokedPaths,
+    AkiraInkWithSearchLines,
+    SparseHatchingWithoutCharacterSemantic,
+    SparseHatchingWithoutCameraResponse,
+    GpuRealtimeWithoutStableArcLength,
+    CpuReferenceWithGpuDebugMode,
+}
+
+impl NprPipelinePlanWarning3d {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::AkiraInkWithoutCharacterSemantic => "akira_ink_without_character_semantic",
+            Self::AkiraInkWithoutStableStrokedPaths => "akira_ink_without_stable_stroked_paths",
+            Self::AkiraInkWithSearchLines => "akira_ink_with_search_lines",
+            Self::SparseHatchingWithoutCharacterSemantic => {
+                "sparse_hatching_without_character_semantic"
+            }
+            Self::SparseHatchingWithoutCameraResponse => "sparse_hatching_without_camera_response",
+            Self::GpuRealtimeWithoutStableArcLength => "gpu_realtime_without_stable_arc_length",
+            Self::CpuReferenceWithGpuDebugMode => "cpu_reference_with_gpu_debug_mode",
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct NprPipelinePlan3d {
+    pub render_strategy: NprRenderStrategy3d,
+    pub style_preset: NprStylePreset3d,
+    pub stroke_tool: NprStrokeTool3d,
+    pub candidate_strategy: NprCandidateStrategy3d,
+    pub path_strategy: NprPathStrategy3d,
+    pub stroke_strategy: NprStrokeStrategy3d,
+    pub fill_strategy: NprInkFillStrategy3d,
+    pub hatching_strategy: NprHatchingStrategy3d,
+    pub budget_strategy: NprBudgetStrategy3d,
+    pub temporal_strategy: NprTemporalStrategy3d,
+    pub fill_mode: NprFillMode3d,
+    pub camera_response_enabled: bool,
+    pub camera_response_auto_focus: bool,
+    pub gpu_debug_mode: NprGpuDebugMode3d,
+    pub warnings: Vec<NprPipelinePlanWarning3d>,
+}
+
+impl NprPipelinePlan3d {
+    pub fn has_warnings(&self) -> bool {
+        !self.warnings.is_empty()
+    }
+
+    pub fn warning_labels(&self) -> Vec<&'static str> {
+        self.warnings.iter().map(|warning| warning.as_str()).collect()
+    }
+
+    pub fn summary_label(&self) -> String {
+        let warnings = if self.warnings.is_empty() {
+            "none".to_owned()
+        } else {
+            self.warning_labels().join("|")
+        };
+        format!(
+            "strategy={} preset={} tool={} candidate={} path={} stroke={} fill={} hatch={} budget={} temporal={} camera={} warnings={}",
+            self.render_strategy.as_str(),
+            self.style_preset.as_str(),
+            self.stroke_tool.as_str(),
+            self.candidate_strategy.as_str(),
+            self.path_strategy.as_str(),
+            self.stroke_strategy.as_str(),
+            self.fill_strategy.as_str(),
+            self.hatching_strategy.as_str(),
+            self.budget_strategy.as_str(),
+            self.temporal_strategy.as_str(),
+            if self.camera_response_auto_focus {
+                "auto_focus"
+            } else if self.camera_response_enabled {
+                "enabled"
+            } else {
+                "off"
+            },
+            warnings
+        )
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum NprGpuDebugMode3d {
     Final,
     LineKinds,
@@ -779,6 +864,64 @@ impl NprLineSettings3d {
     }
 }
 
+impl NprLineSettings3d {
+    pub fn pipeline_plan(&self) -> NprPipelinePlan3d {
+        let mut warnings = Vec::new();
+
+        if self.pipeline.stroke_strategy == NprStrokeStrategy3d::AkiraInk {
+            if self.pipeline.candidate_strategy != NprCandidateStrategy3d::CharacterSemantic {
+                warnings.push(NprPipelinePlanWarning3d::AkiraInkWithoutCharacterSemantic);
+            }
+            if self.pipeline.path_strategy != NprPathStrategy3d::StableStrokedPaths {
+                warnings.push(NprPipelinePlanWarning3d::AkiraInkWithoutStableStrokedPaths);
+            }
+            if self.search_line_count > 0 || self.gpu_realtime_tuning.search_enabled {
+                warnings.push(NprPipelinePlanWarning3d::AkiraInkWithSearchLines);
+            }
+        }
+
+        if self.pipeline.hatching_strategy == NprHatchingStrategy3d::SparseCharacterHatching {
+            if self.pipeline.candidate_strategy != NprCandidateStrategy3d::CharacterSemantic {
+                warnings.push(NprPipelinePlanWarning3d::SparseHatchingWithoutCharacterSemantic);
+            }
+            if !self.camera_response.enabled {
+                warnings.push(NprPipelinePlanWarning3d::SparseHatchingWithoutCameraResponse);
+            }
+        }
+
+        if self.render_strategy == NprRenderStrategy3d::GpuRealtime
+            && self.pipeline.temporal_strategy != NprTemporalStrategy3d::StableArcLength
+            && self.pipeline.stroke_strategy == NprStrokeStrategy3d::AkiraInk
+        {
+            warnings.push(NprPipelinePlanWarning3d::GpuRealtimeWithoutStableArcLength);
+        }
+
+        if self.render_strategy == NprRenderStrategy3d::CpuReference
+            && self.gpu_realtime_tuning.debug_mode != NprGpuDebugMode3d::Final
+        {
+            warnings.push(NprPipelinePlanWarning3d::CpuReferenceWithGpuDebugMode);
+        }
+
+        NprPipelinePlan3d {
+            render_strategy: self.render_strategy,
+            style_preset: self.style_preset,
+            stroke_tool: self.stroke_tool,
+            candidate_strategy: self.pipeline.candidate_strategy,
+            path_strategy: self.pipeline.path_strategy,
+            stroke_strategy: self.pipeline.stroke_strategy,
+            fill_strategy: self.pipeline.fill_strategy,
+            hatching_strategy: self.pipeline.hatching_strategy,
+            budget_strategy: self.pipeline.budget_strategy,
+            temporal_strategy: self.pipeline.temporal_strategy,
+            fill_mode: self.fill_mode,
+            camera_response_enabled: self.camera_response.enabled,
+            camera_response_auto_focus: self.camera_response.auto_focus,
+            gpu_debug_mode: self.gpu_realtime_tuning.debug_mode,
+            warnings,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -832,6 +975,88 @@ mod tests {
             settings.pipeline.temporal_strategy,
             NprTemporalStrategy3d::PathHistory
         );
+    }
+
+    #[test]
+    fn npr_pipeline_plan_resolves_default_framework_layers() {
+        let plan = NprLineSettings3d::default().pipeline_plan();
+
+        assert_eq!(plan.render_strategy, NprRenderStrategy3d::GpuRealtime);
+        assert_eq!(plan.style_preset, NprStylePreset3d::GpuStableComic);
+        assert_eq!(plan.stroke_tool, NprStrokeTool3d::TechnicalPen);
+        assert_eq!(plan.stroke_strategy, NprStrokeStrategy3d::TechnicalInk);
+        assert_eq!(plan.candidate_strategy, NprCandidateStrategy3d::GeometryEdges);
+        assert_eq!(plan.path_strategy, NprPathStrategy3d::DirectVisibleSegments);
+        assert_eq!(plan.fill_strategy, NprInkFillStrategy3d::None);
+        assert_eq!(plan.hatching_strategy, NprHatchingStrategy3d::None);
+        assert_eq!(plan.budget_strategy, NprBudgetStrategy3d::EdgeVisibility);
+        assert_eq!(plan.temporal_strategy, NprTemporalStrategy3d::PathHistory);
+        assert!(!plan.has_warnings());
+    }
+
+    #[test]
+    fn npr_pipeline_plan_accepts_akira_framework_stack() {
+        let mut settings = NprLineSettings3d::default();
+        settings.stroke_tool = NprStrokeTool3d::InkPen;
+        settings.pipeline = NprPipelineStrategies3d {
+            candidate_strategy: NprCandidateStrategy3d::CharacterSemantic,
+            path_strategy: NprPathStrategy3d::StableStrokedPaths,
+            stroke_strategy: NprStrokeStrategy3d::AkiraInk,
+            fill_strategy: NprInkFillStrategy3d::MaterialBlackMass,
+            hatching_strategy: NprHatchingStrategy3d::SparseCharacterHatching,
+            budget_strategy: NprBudgetStrategy3d::FaceAndSilhouettePriority,
+            temporal_strategy: NprTemporalStrategy3d::StableArcLength,
+        };
+        settings.camera_response.enabled = true;
+        settings.camera_response.auto_focus = true;
+        settings.search_line_count = 0;
+        settings.gpu_realtime_tuning.search_enabled = false;
+
+        let plan = settings.pipeline_plan();
+
+        assert_eq!(plan.stroke_tool, NprStrokeTool3d::InkPen);
+        assert_eq!(plan.stroke_strategy, NprStrokeStrategy3d::AkiraInk);
+        assert_eq!(plan.fill_strategy, NprInkFillStrategy3d::MaterialBlackMass);
+        assert_eq!(
+            plan.hatching_strategy,
+            NprHatchingStrategy3d::SparseCharacterHatching
+        );
+        assert!(plan.camera_response_enabled);
+        assert!(plan.camera_response_auto_focus);
+        assert_eq!(
+            plan.summary_label(),
+            "strategy=gpu_realtime preset=gpu_stable_comic tool=ink_pen candidate=character_semantic path=stable_stroked_paths stroke=akira_ink fill=material_black_mass hatch=sparse_character_hatching budget=face_and_silhouette_priority temporal=stable_arc_length camera=auto_focus warnings=none"
+        );
+        assert!(!plan.has_warnings(), "{:?}", plan.warning_labels());
+    }
+
+    #[test]
+    fn npr_pipeline_plan_warns_about_incoherent_akira_stack() {
+        let mut settings = NprLineSettings3d::default();
+        settings.pipeline.stroke_strategy = NprStrokeStrategy3d::AkiraInk;
+        settings.pipeline.hatching_strategy = NprHatchingStrategy3d::SparseCharacterHatching;
+        settings.search_line_count = 1;
+
+        let plan = settings.pipeline_plan();
+
+        assert!(plan
+            .warnings
+            .contains(&NprPipelinePlanWarning3d::AkiraInkWithoutCharacterSemantic));
+        assert!(plan
+            .warnings
+            .contains(&NprPipelinePlanWarning3d::AkiraInkWithoutStableStrokedPaths));
+        assert!(plan
+            .warnings
+            .contains(&NprPipelinePlanWarning3d::AkiraInkWithSearchLines));
+        assert!(plan.warnings.contains(
+            &NprPipelinePlanWarning3d::SparseHatchingWithoutCharacterSemantic
+        ));
+        assert!(plan
+            .warnings
+            .contains(&NprPipelinePlanWarning3d::SparseHatchingWithoutCameraResponse));
+        assert!(plan
+            .warnings
+            .contains(&NprPipelinePlanWarning3d::GpuRealtimeWithoutStableArcLength));
     }
 
     #[test]

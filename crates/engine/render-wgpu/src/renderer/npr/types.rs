@@ -222,6 +222,7 @@ pub struct NprStrokeFrameStats3d {
     pub gpu_realtime_path_segments_capacity: usize,
     pub gpu_realtime_stroke_segments_capacity: usize,
     pub gpu_realtime_debug_mode: String,
+    pub pipeline_plan: String,
     pub paths: usize,
     pub boundary_paths: usize,
     pub silhouette_paths: usize,
@@ -252,6 +253,15 @@ impl NprStrokeFrameStats3d {
         match strategy {
             amigo_render_api::NprRenderStrategy3d::GpuRealtime => self.gpu_realtime_meshes += 1,
             amigo_render_api::NprRenderStrategy3d::CpuReference => self.cpu_reference_meshes += 1,
+        }
+    }
+
+    pub(crate) fn record_pipeline_plan(&mut self, settings: &amigo_render_api::NprLineSettings3d) {
+        let summary = settings.pipeline_plan().summary_label();
+        if self.pipeline_plan.is_empty() {
+            self.pipeline_plan = summary;
+        } else if self.pipeline_plan != summary {
+            self.pipeline_plan = "mixed".to_owned();
         }
     }
 
@@ -298,6 +308,11 @@ impl NprStrokeFrameStats3d {
             && self.gpu_realtime_debug_mode != other.gpu_realtime_debug_mode
         {
             self.gpu_realtime_debug_mode = "mixed".to_owned();
+        }
+        if self.pipeline_plan.is_empty() {
+            self.pipeline_plan = other.pipeline_plan.clone();
+        } else if !other.pipeline_plan.is_empty() && self.pipeline_plan != other.pipeline_plan {
+            self.pipeline_plan = "mixed".to_owned();
         }
         self.paths += other.paths;
         self.boundary_paths += other.boundary_paths;

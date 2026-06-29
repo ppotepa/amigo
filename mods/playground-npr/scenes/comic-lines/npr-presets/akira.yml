@@ -30,23 +30,24 @@ settings:
   silhouette_width_multiplier: 1.82
   boundary_width_multiplier: 1.04
   feature_width_multiplier: 0.50
-  distance_width_falloff: 0.08
+  distance_width_falloff: 0.20
   width_pressure_curve: [0.76, 1.05, 1.02, 0.72]
   alpha_pressure_curve: [0.96, 1.0, 1.0, 0.92]
-  depth_pressure: 0.10
-  depth_alpha: 0.02
+  depth_pressure: 0.24
+  depth_alpha: 0.16
   camera_response:
     enabled: true
+    auto_focus: true
     near_distance: 2.0
     far_distance: 10.5
-    near_width_boost: 0.42
-    near_detail_boost: 0.90
-    near_hatching_boost: 1.40
-    far_width_falloff: 0.60
-    far_alpha_falloff: 1.05
-    far_detail_suppression: 1.55
-    rim_silhouette_boost: 0.32
-    front_feature_suppression: 0.42
+    near_width_boost: 0.52
+    near_detail_boost: 1.15
+    near_hatching_boost: 1.85
+    far_width_falloff: 0.82
+    far_alpha_falloff: 1.35
+    far_detail_suppression: 1.95
+    rim_silhouette_boost: 0.40
+    front_feature_suppression: 0.55
   humanization: 0.20
   line_confidence: 0.94
   temporal_stability: 0.98
@@ -75,20 +76,20 @@ settings:
   seed: 101084
   gpu_realtime_tuning:
     debug_mode: final
-    max_render_length_px: 112.0
-    max_segment_length_px: 30.0
+    max_render_length_px: 124.0
+    max_segment_length_px: 32.0
     max_terminal_walk_edges: 2
-    max_chained_walk_edges: 4
-    max_chain_angle_degrees: 42.0
+    max_chained_walk_edges: 5
+    max_chain_angle_degrees: 44.0
     search_enabled: false
     search_max_render_length_px: 24.0
     search_alpha_multiplier: 0.0
-    feature_min_length_multiplier: 1.75
-    feature_alpha_multiplier: 0.68
+    feature_min_length_multiplier: 1.65
+    feature_alpha_multiplier: 0.70
     silhouette_min_length_multiplier: 0.70
-    artist_selection_amount: 1.35
-    artist_trim_amount: 1.15
-    artist_lift_amount: 1.25
+    artist_selection_amount: 1.00
+    artist_trim_amount: 0.70
+    artist_lift_amount: 1.35
   silhouette_override:
     width_multiplier: 1.18
     wobble_px: 0.05

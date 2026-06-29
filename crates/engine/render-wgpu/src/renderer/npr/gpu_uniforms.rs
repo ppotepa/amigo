@@ -74,6 +74,7 @@ pub(crate) fn uniforms_for_job(
     let feature_style = super::resolve_npr_kind_style(NprLineKind::Feature, settings);
     let gpu_tuning = settings.gpu_realtime_tuning.normalized();
     let camera_response = settings.camera_response.normalized();
+    let pipeline_plan = settings.pipeline_plan();
     let (camera_near_distance, camera_far_distance, camera_focus_distance01) =
         camera_response_distances(camera_response, geometry, camera, transform);
     let brush = super::resolve_npr_brush_profile(settings);
@@ -243,15 +244,15 @@ pub(crate) fn uniforms_for_job(
             settings.endpoint_lock_end_px.to_bits(),
         ],
         pipeline0: [
-            gpu_candidate_strategy(settings.pipeline.candidate_strategy),
-            gpu_path_strategy(settings.pipeline.path_strategy),
-            gpu_stroke_strategy(settings.pipeline.stroke_strategy),
-            gpu_fill_strategy(settings.pipeline.fill_strategy),
+            gpu_candidate_strategy(pipeline_plan.candidate_strategy),
+            gpu_path_strategy(pipeline_plan.path_strategy),
+            gpu_stroke_strategy(pipeline_plan.stroke_strategy),
+            gpu_fill_strategy(pipeline_plan.fill_strategy),
         ],
         pipeline1: [
-            gpu_hatching_strategy(settings.pipeline.hatching_strategy),
-            gpu_budget_strategy(settings.pipeline.budget_strategy),
-            gpu_temporal_strategy(settings.pipeline.temporal_strategy),
+            gpu_hatching_strategy(pipeline_plan.hatching_strategy),
+            gpu_budget_strategy(pipeline_plan.budget_strategy),
+            gpu_temporal_strategy(pipeline_plan.temporal_strategy),
             edge_count,
         ],
         material_roles0: [

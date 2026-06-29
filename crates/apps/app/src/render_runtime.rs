@@ -144,6 +144,7 @@ pub(crate) fn build_render_frame_for_session(
             world_3d_npr_gpu_realtime_path_segments_capacity: 0,
             world_3d_npr_gpu_realtime_stroke_segments_capacity: 0,
             world_3d_npr_gpu_realtime_debug_mode: String::new(),
+            world_3d_npr_pipeline_plan: String::new(),
             world_3d_npr_paths: 0,
             world_3d_npr_boundary_paths: 0,
             world_3d_npr_silhouette_paths: 0,
@@ -263,6 +264,7 @@ pub(crate) fn build_render_frame_for_session(
             npr.gpu_realtime_stroke_segments_capacity;
         stats.world_3d_npr_gpu_realtime_debug_mode =
             npr.gpu_realtime_debug_mode.clone();
+        stats.world_3d_npr_pipeline_plan = npr.pipeline_plan.clone();
         stats.world_3d_npr_paths = npr.paths;
         stats.world_3d_npr_boundary_paths = npr.boundary_paths;
         stats.world_3d_npr_silhouette_paths = npr.silhouette_paths;

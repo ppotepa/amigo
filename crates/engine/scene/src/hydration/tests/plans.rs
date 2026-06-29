@@ -885,6 +885,7 @@ fn compiled_playground_npr_scene_registers_file_backed_npr_presets() {
 
     assert_eq!(presets.len(), 8);
     assert_playground_npr_cpu_reference_presets_match_gpu_presets(&presets);
+    assert_playground_npr_presets_have_coherent_pipeline_plans(&presets);
     assert!(presets.iter().any(|preset| preset.id == "cinematic_12fps"));
     assert!(presets.iter().any(|preset| preset.id == "rough_comic_ink"));
     let akira = presets
@@ -912,7 +913,8 @@ fn compiled_playground_npr_scene_registers_file_backed_npr_presets() {
     assert!(akira.settings.boundary_width_multiplier > akira.settings.feature_width_multiplier);
     assert_eq!(akira.settings.search_line_count, 0);
     assert!(!akira.settings.gpu_realtime_tuning.search_enabled);
-    assert_eq!(akira.settings.gpu_realtime_tuning.max_chained_walk_edges, 4);
+    assert_eq!(akira.settings.gpu_realtime_tuning.max_chained_walk_edges, 5);
+    assert!(akira.settings.camera_response.auto_focus);
     assert!(akira.settings.temporal_path_smoothing);
     assert_eq!(
         akira.settings.pipeline.candidate_strategy,
@@ -942,6 +944,32 @@ fn compiled_playground_npr_scene_registers_file_backed_npr_presets() {
         akira.settings.pipeline.temporal_strategy,
         amigo_render_api::NprTemporalStrategy3d::StableArcLength
     );
+    let akira_plan = akira.settings.pipeline_plan();
+    assert_eq!(
+        akira_plan.stroke_strategy,
+        amigo_render_api::NprStrokeStrategy3d::AkiraInk
+    );
+    assert_eq!(
+        akira_plan.candidate_strategy,
+        amigo_render_api::NprCandidateStrategy3d::CharacterSemantic
+    );
+    assert_eq!(
+        akira_plan.path_strategy,
+        amigo_render_api::NprPathStrategy3d::StableStrokedPaths
+    );
+    assert_eq!(
+        akira_plan.fill_strategy,
+        amigo_render_api::NprInkFillStrategy3d::MaterialBlackMass
+    );
+    assert_eq!(
+        akira_plan.hatching_strategy,
+        amigo_render_api::NprHatchingStrategy3d::SparseCharacterHatching
+    );
+    assert!(
+        !akira_plan.has_warnings(),
+        "akira pipeline plan should be coherent, got {:?}",
+        akira_plan.warning_labels()
+    );
     assert!(akira.settings.black_mass_material_ids.is_empty());
     assert!(akira.settings.ink_detail_material_ids.is_empty());
 
@@ -963,7 +991,7 @@ fn compiled_playground_npr_scene_registers_file_backed_npr_presets() {
             .settings
             .gpu_realtime_tuning
             .max_chained_walk_edges,
-        4
+        5
     );
     assert!(akira_cpu.settings.black_mass_material_ids.is_empty());
     assert!(akira_cpu.settings.ink_detail_material_ids.is_empty());
@@ -992,6 +1020,7 @@ fn compiled_playground_npr_scene_registers_file_backed_npr_presets() {
         akira_camera_based.settings.feature_width_multiplier < akira.settings.feature_width_multiplier
     );
     assert!(akira_camera_based.settings.camera_response.enabled);
+    assert!(akira_camera_based.settings.camera_response.auto_focus);
     assert_eq!(
         akira_camera_based.settings.camera_response.near_distance,
         2.0
@@ -1004,6 +1033,20 @@ fn compiled_playground_npr_scene_registers_file_backed_npr_presets() {
         akira_camera_based.settings.camera_response.near_hatching_boost
             > akira.settings.camera_response.near_hatching_boost
     );
+}
+
+fn assert_playground_npr_presets_have_coherent_pipeline_plans(
+    presets: &[&crate::render_commands::NprPreset3dSceneCommand],
+) {
+    for preset in presets {
+        let plan = preset.settings.pipeline_plan();
+        assert!(
+            !plan.has_warnings(),
+            "preset `{}` should have a coherent NPR pipeline plan, got {:?}",
+            preset.id,
+            plan.warning_labels()
+        );
+    }
 }
 
 fn assert_playground_npr_cpu_reference_presets_match_gpu_presets(

@@ -271,10 +271,15 @@ impl ConsoleCommandHandler for RenderConsoleCommandHandler {
                     Err(error) => return ConsoleCommandResult::error(error.to_string()),
                 };
                 ConsoleCommandResult::ok(format!(
-                    "npr meshes={} gpu_meshes={} cpu_meshes={} gpu(edges={} triangles={} topology_uploads={} buffer_capacity={}) paths={} kinds(boundary={} silhouette={} crease={} seam={} feature={} contact={}) samples={} vertices={} passes(primary={} search={}) dropout_intervals={} cache(hit={} miss={}) stage_us(path_build={:.2} stabilize={:.2} stroke_vertices={:.2}) path_build_breakdown_us(project={:.2} visibility={:.2} edge_sample={:.2} stitch={:.2}) visible_edges={} fragments={} upload(color_writes={} color_reallocs={} color_bytes={} color_capacity={})",
+                    "npr meshes={} gpu_meshes={} cpu_meshes={} plan=[{}] gpu(edges={} triangles={} topology_uploads={} buffer_capacity={}) paths={} kinds(boundary={} silhouette={} crease={} seam={} feature={} contact={}) samples={} vertices={} passes(primary={} search={}) dropout_intervals={} cache(hit={} miss={}) stage_us(path_build={:.2} stabilize={:.2} stroke_vertices={:.2}) path_build_breakdown_us(project={:.2} visibility={:.2} edge_sample={:.2} stitch={:.2}) visible_edges={} fragments={} upload(color_writes={} color_reallocs={} color_bytes={} color_capacity={})",
                     stats.world_3d_npr_meshes,
                     stats.world_3d_npr_gpu_realtime_meshes,
                     stats.world_3d_npr_cpu_reference_meshes,
+                    if stats.world_3d_npr_pipeline_plan.is_empty() {
+                        "none"
+                    } else {
+                        stats.world_3d_npr_pipeline_plan.as_str()
+                    },
                     stats.world_3d_npr_gpu_realtime_enqueued_edges,
                     stats.world_3d_npr_gpu_realtime_enqueued_triangles,
                     stats.world_3d_npr_gpu_realtime_topology_uploads,

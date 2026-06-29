@@ -173,11 +173,13 @@ fn path_importance_with_chain(
     depth01: f32,
     hop_count: u32,
     segment_count: u32,
+    candidate_importance: f32,
 ) -> f32 {
     let base = path_importance(kind, depth01);
     let hop_boost = clamp(1.0 + f32(min(hop_count, 4u)) * 0.035, 1.0, 1.14);
     let segment_boost = clamp(0.88 + f32(min(segment_count, 6u)) * 0.055, 0.88, 1.16);
-    return clamp(base * hop_boost * segment_boost, 0.72, 1.28);
+    let candidate_scale = mix(0.68, 1.18, clamp(candidate_importance, 0.0, 1.0));
+    return clamp(base * hop_boost * segment_boost * candidate_scale, 0.42, 1.32);
 }
 
 fn valid_visible_segment(edge_index: u32, kind: u32) -> bool {
@@ -268,7 +270,7 @@ fn emit_direct_visible_edge_path_segment(
     let kind = visible.kind_edge.x;
     let edge_id = visible.kind_edge.y;
     let avg_depth = (visible.start.z + visible.end.z) * 0.5;
-    let importance = path_importance_with_chain(kind, avg_depth, 0u, 1u);
+    let importance = path_importance_with_chain(kind, avg_depth, 0u, 1u, visible.metrics.z);
     path_segments[path_segment_index] = make_path_segment(
         visible,
         visible.start,
@@ -478,6 +480,7 @@ fn cs_main(@builtin(global_invocation_id) id: vec3<u32>) {
         avg_depth,
         hop_count,
         state.segment_count,
+        visible.metrics.z,
     );
     let has_start_extension = start_walk.extra_length > 0.0001;
     let has_end_extension = end_walk.extra_length > 0.0001;

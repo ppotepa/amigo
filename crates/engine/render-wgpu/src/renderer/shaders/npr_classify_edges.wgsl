@@ -182,6 +182,10 @@ fn uses_character_budget() -> bool {
         || uniforms.pipeline1.y == BUDGET_CHARACTER_READABILITY;
 }
 
+fn is_internal_feature_kind(kind: u32) -> bool {
+    return kind == KIND_CREASE || kind == KIND_SEAM || kind == KIND_FEATURE;
+}
+
 fn material_id_in_mask(material_id: u32, mask: u32) -> bool {
     return material_id < 32u && (mask & (1u << material_id)) != 0u;
 }
@@ -222,6 +226,60 @@ fn silhouette_min_length_px() -> f32 {
 
 fn contact_min_length_px() -> f32 {
     return max(feature_min_length_px() * select(1.0, 1.45, uses_character_budget()), 6.0);
+}
+
+fn edge_curvature_proxy(edge: GpuNprEdge3d, kind: u32) -> f32 {
+    if (kind == KIND_SILHOUETTE || kind == KIND_BOUNDARY || kind == KIND_CONTACT) {
+        return 1.0;
+    }
+    if (edge.face_count < 2u || edge.face0 >= u32(arrayLength(&triangles)) || edge.face1 >= u32(arrayLength(&triangles))) {
+        return 0.0;
+    }
+    let left = transformed_normal(edge.face0);
+    let right = transformed_normal(edge.face1);
+    return clamp(1.0 - abs(dot(left, right)), 0.0, 1.0);
+}
+
+fn edge_semantic_importance(edge: GpuNprEdge3d, kind: u32, line_length: f32, depth01: f32) -> f32 {
+    var base = 0.34;
+    if (kind == KIND_SILHOUETTE) {
+        base = 1.0;
+    } else if (kind == KIND_BOUNDARY) {
+        base = 0.86;
+    } else if (kind == KIND_SEAM) {
+        base = 0.66;
+    } else if (kind == KIND_CREASE) {
+        base = 0.46;
+    } else if (kind == KIND_FEATURE) {
+        base = 0.42;
+    } else if (kind == KIND_CONTACT) {
+        base = 0.50;
+    }
+
+    let curvature = edge_curvature_proxy(edge, kind);
+    let material_detail = select(0.0, 0.26, edge_touches_ink_detail_material(edge));
+    let seam_boost = select(0.0, 0.18, edge.material_seam > 0u || kind == KIND_SEAM);
+    let length_boost = clamp(line_length / 44.0, 0.0, 1.0) * 0.16;
+    let near_boost = (1.0 - clamp(depth01, 0.0, 1.0)) * select(0.04, 0.18, is_internal_feature_kind(kind));
+    let far_penalty = clamp(depth01, 0.0, 1.0) * select(0.0, 0.18, is_internal_feature_kind(kind) || kind == KIND_CONTACT);
+    return clamp(base + curvature * 0.28 + material_detail + seam_boost + length_boost + near_boost - far_penalty, 0.0, 1.28);
+}
+
+fn should_reject_character_edge(edge: GpuNprEdge3d, kind: u32, importance: f32, depth01: f32) -> bool {
+    if (!(uses_character_semantic_candidates() || uses_character_budget())) {
+        return false;
+    }
+    if (kind == KIND_SILHOUETTE || kind == KIND_BOUNDARY) {
+        return false;
+    }
+
+    let material_detail = edge_touches_ink_detail_material(edge);
+    let base_threshold = select(0.38, 0.50, uses_character_budget());
+    let material_relief = select(0.0, 0.18, material_detail);
+    let seam_relief = select(0.0, 0.10, kind == KIND_SEAM || edge.material_seam > 0u);
+    let near_relief = (1.0 - clamp(depth01, 0.0, 1.0)) * 0.14;
+    let threshold = clamp(base_threshold - material_relief - seam_relief - near_relief, 0.18, 0.62);
+    return importance < threshold;
 }
 
 fn screen_to_face_id_texel(screen: vec2<f32>) -> vec2<i32> {
@@ -425,6 +483,11 @@ fn cs_main(@builtin(global_invocation_id) id: vec3<u32>) {
     let view_depth_end = mix(a.screen.w, b.screen.w, run.y);
     let style_depth_start = camera_response_depth01(view_depth_start, depth_start);
     let style_depth_end = camera_response_depth01(view_depth_end, depth_end);
+    let style_depth_mid = (style_depth_start + style_depth_end) * 0.5;
+    let semantic_importance = edge_semantic_importance(edge, kind, distance(run_start, run_end), style_depth_mid);
+    if (should_reject_character_edge(edge, kind, semantic_importance, style_depth_mid)) {
+        return;
+    }
     let primary_contour = kind == KIND_SILHOUETTE || kind == KIND_BOUNDARY;
     let endpoint_tolerance = select(0.001, 0.06, primary_contour);
     let start_vertex = select(0xffffffffu, edge.a, run.x <= endpoint_tolerance);
@@ -433,5 +496,5 @@ fn cs_main(@builtin(global_invocation_id) id: vec3<u32>) {
     visible_segments[edge_index].end = vec4<f32>(run_end, depth_end, 1.0);
     visible_segments[edge_index].kind_edge = vec4<u32>(kind, edge.edge_id, start_vertex, end_vertex);
     visible_segments[edge_index].metrics =
-        vec4<f32>(style_depth_start, style_depth_end, view_depth_start, view_depth_end);
+        vec4<f32>(style_depth_start, style_depth_end, semantic_importance, edge_curvature_proxy(edge, kind));
 }

@@ -29,12 +29,12 @@ settings:
   width_px: 3.15
   silhouette_width_multiplier: 1.92
   boundary_width_multiplier: 1.02
-  feature_width_multiplier: 0.42
-  distance_width_falloff: 0.34
+  feature_width_multiplier: 0.48
+  distance_width_falloff: 0.42
   width_pressure_curve: [0.74, 1.06, 1.04, 0.70]
   alpha_pressure_curve: [0.96, 1.0, 1.0, 0.88]
   depth_pressure: 0.42
-  depth_alpha: 0.26
+  depth_alpha: 0.32
   humanization: 0.22
   line_confidence: 0.92
   temporal_stability: 0.98
@@ -71,12 +71,12 @@ settings:
     search_enabled: false
     search_max_render_length_px: 24.0
     search_alpha_multiplier: 0.0
-    feature_min_length_multiplier: 2.10
-    feature_alpha_multiplier: 0.58
+    feature_min_length_multiplier: 1.80
+    feature_alpha_multiplier: 0.66
     silhouette_min_length_multiplier: 0.62
-    artist_selection_amount: 1.55
-    artist_trim_amount: 1.25
-    artist_lift_amount: 1.45
+    artist_selection_amount: 1.12
+    artist_trim_amount: 0.80
+    artist_lift_amount: 1.58
   camera_response:
     enabled: true
     auto_focus: true
@@ -85,11 +85,11 @@ settings:
     focus_near_band: 0.70
     focus_far_band: 2.40
     near_width_boost: 0.86
-    near_detail_boost: 1.80
+    near_detail_boost: 2.20
     near_hatching_boost: 3.00
     far_width_falloff: 1.18
-    far_alpha_falloff: 1.70
-    far_detail_suppression: 2.65
+    far_alpha_falloff: 1.85
+    far_detail_suppression: 2.85
     rim_silhouette_boost: 0.58
     front_feature_suppression: 0.72
   silhouette_override:
