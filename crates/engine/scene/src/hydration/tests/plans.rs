@@ -906,6 +906,7 @@ fn compiled_playground_npr_scene_registers_file_backed_npr_presets() {
         amigo_render_api::NprGpuDebugMode3d::Final
     );
     assert!(!default_gpu.settings.gpu_realtime_tuning.search_enabled);
+    assert_eq!(default_gpu.settings.gpu_realtime_tuning.max_chained_walk_edges, 0);
     assert!(presets.iter().any(|preset| {
         preset.id == "default_gpu_comic"
             && (preset.settings.humanization - 0.16).abs() < f32::EPSILON
@@ -967,6 +968,7 @@ fn compiled_playground_npr_scene_registers_file_backed_npr_presets() {
     assert!(akira.settings.boundary_width_multiplier > akira.settings.feature_width_multiplier);
     assert_eq!(akira.settings.search_line_count, 0);
     assert!(!akira.settings.gpu_realtime_tuning.search_enabled);
+    assert_eq!(akira.settings.gpu_realtime_tuning.max_chained_walk_edges, 0);
     assert!(akira.settings.temporal_path_smoothing);
     assert_eq!(
         akira.settings.pipeline.candidate_strategy,
@@ -1012,6 +1014,13 @@ fn compiled_playground_npr_scene_registers_file_backed_npr_presets() {
         amigo_render_api::NprFillMode3d::None
     );
     assert_eq!(akira_cpu.settings.pipeline, akira.settings.pipeline);
+    assert_eq!(
+        akira_cpu
+            .settings
+            .gpu_realtime_tuning
+            .max_chained_walk_edges,
+        0
+    );
     assert!(akira_cpu.settings.black_mass_material_ids.is_empty());
     assert!(akira_cpu.settings.ink_detail_material_ids.is_empty());
 }

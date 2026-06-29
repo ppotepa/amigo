@@ -63,7 +63,7 @@ settings:
     max_render_length_px: 72.0
     max_segment_length_px: 18.0
     max_terminal_walk_edges: 0
-    max_chained_walk_edges: 1
+    max_chained_walk_edges: 0
     max_chain_angle_degrees: 32.0
     search_enabled: false
     search_max_render_length_px: 24.0
