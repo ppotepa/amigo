@@ -946,7 +946,30 @@ fn compiled_playground_npr_scene_registers_file_backed_npr_presets() {
     assert!(!toriyama.settings.contact);
     assert_eq!(toriyama.settings.passes, 2);
     assert_eq!(toriyama.settings.search_line_count, 1);
-    assert!(toriyama.settings.line_families.is_empty());
+    assert_eq!(toriyama.settings.brush_profiles.len(), 10);
+    assert_eq!(toriyama.settings.line_families.len(), 3);
+    assert!(
+        toriyama
+            .settings
+            .brush_profiles
+            .contains_key("toriyama_g_pen_dark")
+    );
+    assert_eq!(
+        toriyama
+            .settings
+            .line_families
+            .first()
+            .and_then(|family| family.brush.as_deref()),
+        Some("toriyama_g_pen_dark")
+    );
+    assert!(
+        toriyama
+            .settings
+            .brush_profiles
+            .get("toriyama_maru_detail")
+            .and_then(|brush| brush.ink_color.as_ref())
+            .is_some()
+    );
     assert_eq!(
         toriyama.settings.cpu_strategy_profile,
         amigo_render_api::NprCpuStrategyProfile3d::default()

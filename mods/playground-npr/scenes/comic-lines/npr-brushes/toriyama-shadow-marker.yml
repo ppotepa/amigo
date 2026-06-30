@@ -1,0 +1,27 @@
+kind: npr-brush-3d
+schema_version: 1
+id: toriyama_shadow_marker
+label: Toriyama Shadow Marker
+profile:
+  tool: marker
+  tip: flat
+  ink_color: "#11100ECC"
+  width_multiplier: 1.30
+  alpha_multiplier: 0.82
+  pressure_jitter_multiplier: 0.32
+  dropout_multiplier: 0.12
+  search_multiplier: 0.0
+  path_wobble_multiplier: 0.42
+  micro_wobble_multiplier: 0.24
+  hand_arc_multiplier: 0.72
+  tangent_drift_multiplier: 0.50
+  detail_crispness_multiplier: 0.76
+  taper_multiplier: 0.58
+  overshoot_px: 0.0
+  width_curve: [0.92, 1.0, 1.0, 0.88]
+  alpha_curve: [0.80, 0.86, 0.82, 0.72]
+  angle_bias_degrees: 0.0
+  angle_influence: 0.0
+  nib_width_base_scale: 1.0
+  nib_width_angle_scale: 0.35
+  path_adherence_multiplier: 1.0

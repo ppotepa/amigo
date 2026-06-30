@@ -11,6 +11,75 @@ settings:
     path_strategy: stable_stroked_paths
     fill_strategy: none
     hatching_strategy: none
+  brushes:
+    - mod:scenes/comic-lines/npr-brushes/toriyama-g-pen-dark.yml
+    - mod:scenes/comic-lines/npr-brushes/toriyama-maru-detail.yml
+    - mod:scenes/comic-lines/npr-brushes/toriyama-feature-ink.yml
+    - mod:scenes/comic-lines/npr-brushes/toriyama-soft-pencil.yml
+    - mod:scenes/comic-lines/npr-brushes/toriyama-dry-ink.yml
+    - mod:scenes/comic-lines/npr-brushes/toriyama-flat-brush.yml
+    - mod:scenes/comic-lines/npr-brushes/toriyama-shadow-marker.yml
+    - mod:scenes/comic-lines/npr-brushes/toriyama-hatch-pen.yml
+    - mod:scenes/comic-lines/npr-brushes/toriyama-speed-pen.yml
+    - mod:scenes/comic-lines/npr-brushes/toriyama-technical-clean.yml
+  families:
+    - id: toriyama_outer_contour
+      role: outer_contour
+      priority: 100
+      sources: [silhouette, boundary]
+      brush: toriyama_g_pen_dark
+      preferred_stroke_length_px: 130.0
+      stroke_join_gap_px: 7.0
+      stroke_join_max_angle_degrees: 48.0
+      technical_detail_keep: 0.18
+      technical_detail_preference: 0.05
+      min_screen_length_px: 2.4
+      min_stroke_length_px: 24.0
+      continuation_bias: 0.92
+      breakup_bias: 0.04
+      width_multiplier: 1.0
+      alpha_multiplier: 1.0
+      taper_multiplier: 1.05
+      overshoot_px: 0.82
+    - id: toriyama_form_feature
+      role: detail_ink
+      priority: 72
+      sources: [feature, crease]
+      brush: toriyama_feature_ink
+      preferred_stroke_length_px: 74.0
+      stroke_join_gap_px: 5.4
+      stroke_join_max_angle_degrees: 42.0
+      technical_detail_keep: 0.55
+      technical_detail_preference: 0.66
+      ink_detail_material_preference: 0.72
+      material_seam_preference: 0.20
+      min_screen_length_px: 2.8
+      min_stroke_length_px: 8.0
+      continuation_bias: 0.80
+      breakup_bias: 0.05
+      width_multiplier: 0.92
+      alpha_multiplier: 0.98
+      taper_multiplier: 0.88
+      overshoot_px: 0.22
+    - id: toriyama_face_micro_detail
+      role: detail_ink
+      priority: 84
+      sources: [feature]
+      brush: toriyama_maru_detail
+      preferred_stroke_length_px: 38.0
+      stroke_join_gap_px: 3.2
+      stroke_join_max_angle_degrees: 34.0
+      technical_detail_keep: 0.78
+      technical_detail_preference: 0.82
+      ink_detail_material_preference: 0.95
+      min_screen_length_px: 1.6
+      min_stroke_length_px: 4.0
+      continuation_bias: 0.70
+      breakup_bias: 0.02
+      width_multiplier: 0.70
+      alpha_multiplier: 0.96
+      taper_multiplier: 0.82
+      overshoot_px: 0.08
   boundary: true
   silhouette: true
   feature: true

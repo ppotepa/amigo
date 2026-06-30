@@ -542,6 +542,7 @@ mod tests {
     fn test_brush(nib_width_angle_scale: f32) -> super::super::NprResolvedBrushProfile3d {
         super::super::NprResolvedBrushProfile3d {
             tip: amigo_render_api::NprBrushTip3d::GPen,
+            ink_color: None,
             width_multiplier: 1.0,
             alpha_multiplier: 1.0,
             pressure_jitter_multiplier: 1.0,

@@ -21,6 +21,7 @@ pub(crate) struct NprGestureRoleProfile {
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct NprResolvedBrushProfile3d {
     pub(crate) tip: amigo_render_api::NprBrushTip3d,
+    pub(crate) ink_color: Option<amigo_math::ColorRgba>,
     pub(crate) width_multiplier: f32,
     pub(crate) alpha_multiplier: f32,
     pub(crate) pressure_jitter_multiplier: f32,
@@ -118,6 +119,7 @@ pub(crate) fn resolve_npr_brush_profile_with_traits(
 
     NprResolvedBrushProfile3d {
         tip,
+        ink_color: family_brush.and_then(|brush| brush.ink_color.clone()),
         width_multiplier: (width
             * family_brush
                 .map(|brush| brush.width_multiplier)

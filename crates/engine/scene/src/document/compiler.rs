@@ -290,13 +290,70 @@ fn expand_npr_preset_refs(
             continue;
         };
         let path = resolve_reference(scene_path, mod_root, &source)?;
-        let document = read_yaml(&path)?;
+        let mut document = read_yaml(&path)?;
+        expand_npr_preset_brush_refs(&mut document, &path, mod_root, dependencies)?;
         dependencies.push(SceneDocumentDependency {
             path,
             kind: SceneDocumentDependencyKind::LocalAsset,
         });
         *preset = document;
     }
+    Ok(())
+}
+
+fn expand_npr_preset_brush_refs(
+    preset: &mut Value,
+    preset_path: &Path,
+    mod_root: &Path,
+    dependencies: &mut Vec<SceneDocumentDependency>,
+) -> SceneDocumentResult<()> {
+    let Some(settings) = mapping_get_mut(preset, "settings") else {
+        return Ok(());
+    };
+    let Some(brushes) = mapping_get_mut(settings, "brushes") else {
+        return Ok(());
+    };
+    if brushes.as_mapping().is_some() {
+        return Ok(());
+    }
+    let Some(sources) = brushes.as_sequence() else {
+        return Err(compile_error(
+            "NPR preset settings.brushes must be a mapping or a sequence of brush references",
+        ));
+    };
+
+    let mut profiles = Mapping::new();
+    for source in sources {
+        let source = match source {
+            Value::String(source) => Some(source.clone()),
+            Value::Mapping(mapping) => mapping
+                .get(Value::String("source".to_owned()))
+                .and_then(string_value)
+                .map(str::to_owned),
+            _ => None,
+        }
+        .ok_or_else(|| compile_error("NPR brush reference requires source"))?;
+
+        let path = resolve_reference(preset_path, mod_root, &source)?;
+        let brush = read_yaml(&path)?;
+        dependencies.push(SceneDocumentDependency {
+            path,
+            kind: SceneDocumentDependencyKind::LocalAsset,
+        });
+        let id = mapping_get(&brush, "id")
+            .and_then(string_value)
+            .ok_or_else(|| compile_error("NPR brush document requires id"))?;
+        let profile = mapping_get(&brush, "profile")
+            .cloned()
+            .ok_or_else(|| compile_error(format!("NPR brush `{id}` requires profile")))?;
+        if profiles
+            .insert(Value::String(id.to_owned()), profile)
+            .is_some()
+        {
+            return Err(compile_error(format!("duplicate NPR brush id `{id}`")));
+        }
+    }
+    *brushes = Value::Mapping(profiles);
     Ok(())
 }
 

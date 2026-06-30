@@ -912,6 +912,8 @@ pub struct NprBrushProfileDocument {
     #[serde(default)]
     pub tip: Option<String>,
     #[serde(default)]
+    pub ink_color: Option<String>,
+    #[serde(default)]
     pub width_multiplier: Option<f32>,
     #[serde(default)]
     pub alpha_multiplier: Option<f32>,

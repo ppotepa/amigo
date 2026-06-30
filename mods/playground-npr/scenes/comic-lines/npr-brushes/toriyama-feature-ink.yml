@@ -1,0 +1,27 @@
+kind: npr-brush-3d
+schema_version: 1
+id: toriyama_feature_ink
+label: Toriyama Feature Ink
+profile:
+  tool: ink_pen
+  tip: g_pen
+  ink_color: "#0B0907F6"
+  width_multiplier: 0.76
+  alpha_multiplier: 0.98
+  pressure_jitter_multiplier: 0.50
+  dropout_multiplier: 0.22
+  search_multiplier: 0.5
+  path_wobble_multiplier: 0.70
+  micro_wobble_multiplier: 0.48
+  hand_arc_multiplier: 1.06
+  tangent_drift_multiplier: 0.74
+  detail_crispness_multiplier: 1.05
+  taper_multiplier: 0.92
+  overshoot_px: 0.28
+  width_curve: [0.58, 1.12, 1.00, 0.48]
+  alpha_curve: [0.90, 1.0, 0.98, 0.82]
+  angle_bias_degrees: 1.4
+  angle_influence: 0.20
+  nib_width_base_scale: 0.96
+  nib_width_angle_scale: 0.85
+  path_adherence_multiplier: 0.78

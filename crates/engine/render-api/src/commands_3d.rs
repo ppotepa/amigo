@@ -1675,6 +1675,7 @@ impl Default for NprLineFamilyRole3d {
 pub struct NprBrushProfile3d {
     pub tool: Option<NprStrokeTool3d>,
     pub tip: Option<NprBrushTip3d>,
+    pub ink_color: Option<ColorRgba>,
     pub width_multiplier: f32,
     pub alpha_multiplier: f32,
     pub pressure_jitter_multiplier: f32,
@@ -1701,6 +1702,7 @@ impl Default for NprBrushProfile3d {
         Self {
             tool: None,
             tip: None,
+            ink_color: None,
             width_multiplier: 1.0,
             alpha_multiplier: 1.0,
             pressure_jitter_multiplier: 1.0,

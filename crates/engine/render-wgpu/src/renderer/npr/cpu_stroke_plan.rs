@@ -30,6 +30,7 @@ pub(crate) fn build_npr_stroke_pass_plan(
     let mut passes =
         Vec::with_capacity(primary_passes as usize + settings.search_line_count as usize + 1);
     let synthesis = npr_cpu_stroke_synthesis_profile(settings);
+    let brush_ink_color = brush.ink_color.unwrap_or(settings.ink_color);
 
     for pass in 0..primary_passes {
         passes.push(NprStrokePassPlan {
@@ -41,7 +42,7 @@ pub(crate) fn build_npr_stroke_pass_plan(
                 * npr_pass_jitter_multiplier(primary_passes, pass, synthesis),
             width_multiplier: npr_pass_width_multiplier(primary_passes, pass, synthesis),
             color: npr_pass_color(
-                settings.ink_color,
+                brush_ink_color,
                 primary_passes,
                 pass,
                 gesture.style.alpha_multiplier * gesture.role.alpha_multiplier,
@@ -67,10 +68,10 @@ pub(crate) fn build_npr_stroke_pass_plan(
             wobble_px: gesture.dynamics.base_wobble_px * synthesis.search_wobble_multiplier,
             width_multiplier: synthesis.search_width_multiplier,
             color: ColorRgba::new(
-                settings.ink_color.r,
-                settings.ink_color.g,
-                settings.ink_color.b,
-                (settings.ink_color.a * settings.search_line_alpha * brush.alpha_multiplier)
+                brush_ink_color.r,
+                brush_ink_color.g,
+                brush_ink_color.b,
+                (brush_ink_color.a * settings.search_line_alpha * brush.alpha_multiplier)
                     .clamp(0.0, 1.0),
             ),
             overshoot_px: gesture

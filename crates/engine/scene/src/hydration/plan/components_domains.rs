@@ -1155,11 +1155,17 @@ fn npr_brush_profiles_from_document(
             )?),
             None => None,
         };
+        let ink_color = document
+            .ink_color
+            .as_deref()
+            .map(|value| parse_color_rgba_hex(value, scene_id, entity_id, component_kind))
+            .transpose()?;
         resolved.insert(
             id.clone(),
             amigo_render_api::NprBrushProfile3d {
                 tool,
                 tip,
+                ink_color,
                 width_multiplier: document.width_multiplier.unwrap_or(1.0),
                 alpha_multiplier: document.alpha_multiplier.unwrap_or(1.0),
                 pressure_jitter_multiplier: document.pressure_jitter_multiplier.unwrap_or(1.0),

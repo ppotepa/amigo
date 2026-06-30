@@ -1,0 +1,27 @@
+kind: npr-brush-3d
+schema_version: 1
+id: toriyama_maru_detail
+label: Toriyama Maru Detail
+profile:
+  tool: technical_pen
+  tip: maru_pen
+  ink_color: "#090706F2"
+  width_multiplier: 0.58
+  alpha_multiplier: 0.96
+  pressure_jitter_multiplier: 0.36
+  dropout_multiplier: 0.18
+  search_multiplier: 0.4
+  path_wobble_multiplier: 0.58
+  micro_wobble_multiplier: 0.40
+  hand_arc_multiplier: 0.92
+  tangent_drift_multiplier: 0.68
+  detail_crispness_multiplier: 1.18
+  taper_multiplier: 0.84
+  overshoot_px: 0.16
+  width_curve: [0.64, 1.05, 0.96, 0.54]
+  alpha_curve: [0.88, 1.0, 0.96, 0.78]
+  angle_bias_degrees: 1.0
+  angle_influence: 0.16
+  nib_width_base_scale: 0.92
+  nib_width_angle_scale: 0.45
+  path_adherence_multiplier: 0.76

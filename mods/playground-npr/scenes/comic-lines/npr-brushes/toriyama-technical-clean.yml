@@ -1,0 +1,27 @@
+kind: npr-brush-3d
+schema_version: 1
+id: toriyama_technical_clean
+label: Toriyama Technical Clean
+profile:
+  tool: technical_pen
+  tip: maru_pen
+  ink_color: "#0B0907FF"
+  width_multiplier: 0.50
+  alpha_multiplier: 1.0
+  pressure_jitter_multiplier: 0.06
+  dropout_multiplier: 0.0
+  search_multiplier: 0.0
+  path_wobble_multiplier: 0.18
+  micro_wobble_multiplier: 0.08
+  hand_arc_multiplier: 0.45
+  tangent_drift_multiplier: 0.30
+  detail_crispness_multiplier: 1.30
+  taper_multiplier: 0.72
+  overshoot_px: 0.02
+  width_curve: [0.88, 1.0, 0.96, 0.82]
+  alpha_curve: [0.96, 1.0, 1.0, 0.92]
+  angle_bias_degrees: 0.0
+  angle_influence: 0.0
+  nib_width_base_scale: 0.90
+  nib_width_angle_scale: 0.10
+  path_adherence_multiplier: 1.12
