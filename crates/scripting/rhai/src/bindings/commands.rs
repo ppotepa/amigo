@@ -111,6 +111,28 @@ pub fn queue_mesh3d_set_mesh_asset(
     )
 }
 
+pub fn queue_mesh3d_set_mesh_animation(
+    command_queue: Option<&Arc<ScriptCommandQueue>>,
+    entity_name: &str,
+    clip_index: rhai::INT,
+    time_seconds: rhai::FLOAT,
+    speed: rhai::FLOAT,
+    playing: bool,
+) -> bool {
+    queue_placeholder_command(
+        command_queue,
+        "3d.mesh",
+        "set_mesh_animation",
+        vec![
+            entity_name.to_owned(),
+            clip_index.to_string(),
+            time_seconds.to_string(),
+            speed.to_string(),
+            playing.to_string(),
+        ],
+    )
+}
+
 pub fn queue_audio_play(command_queue: Option<&Arc<ScriptCommandQueue>>, clip_name: &str) -> bool {
     queue_placeholder_command(command_queue, "audio", "play", vec![clip_name.to_owned()])
 }

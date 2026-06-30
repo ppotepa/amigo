@@ -31,10 +31,16 @@ entities:
             pressed: [">", "."]
           npr.model_scale_down:
             kind: button
-            pressed: ["-", "NumpadSubtract", "["]
+            pressed: ["-", "NumpadSubtract"]
           npr.model_scale_up:
             kind: button
-            pressed: ["+", "=", "NumpadAdd", "]"]
+            pressed: ["+", "=", "NumpadAdd"]
+          npr.animation_previous:
+            kind: button
+            pressed: ["["]
+          npr.animation_next:
+            kind: button
+            pressed: ["]"]
           npr.camera_toggle:
             kind: button
             pressed: ["F"]

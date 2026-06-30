@@ -253,6 +253,7 @@ dependencies = [
  "amigo-runtime",
  "amigo-scripting-api",
  "amigo-session",
+ "gltf",
  "serde_yaml",
  "toml 1.1.2+spec-1.1.0",
 ]

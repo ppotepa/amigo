@@ -7,6 +7,16 @@ source:
   file: ../source-models/threejs/Soldier.glb
   provider: Three.js Examples
   url: https://threejs.org/examples/models/gltf/Soldier.glb
+animation_clips:
+  count: 4
+  0:
+    label: Idle
+  1:
+    label: Run
+  2:
+    label: TPose
+  3:
+    label: Walk
 npr:
   cache_profile: comic-lines-character-v1
   intended_role: primary target character for projected-stroke NPR

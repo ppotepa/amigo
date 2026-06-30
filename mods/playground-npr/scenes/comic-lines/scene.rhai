@@ -25,22 +25,32 @@ fn model_library_count(world_api) {
     1
 }
 
-fn animation_count(model_index) {
+fn animation_count(world_api, model_index) {
+    let count = world_api.mesh3d.model_animation_count(model_index - 1);
+    if count > 0 { return count; }
     1
 }
 
-fn animation_label(model_index, animation_index) {
-    if model_index == 2 {
-        return "Static mesh";
-    }
-    "Static"
+fn animation_label(world_api, model_index, animation_index) {
+    world_api.mesh3d.model_animation_label(model_index - 1, animation_index)
 }
 
-fn animation_status_label(model_index) {
-    if model_index == 2 {
-        return "skinning unsupported in V1";
-    }
-    "no clips";
+fn animation_duration(world_api, model_index, animation_index) {
+    let duration = world_api.mesh3d.model_animation_duration(model_index - 1, animation_index);
+    if duration > 0.01 { return duration; }
+    8.0
+}
+
+fn animation_sample_fps() {
+    24.0
+}
+
+fn animation_sample_frame(time_seconds) {
+    (time_seconds * animation_sample_fps()).to_int()
+}
+
+fn animation_status_label(world_api, model_index, animation_index) {
+    animation_label(world_api, model_index, animation_index)
 }
 
 fn npr_preset_count() {
@@ -155,6 +165,7 @@ fn step_model_scale(world_api, multiplier) {
 fn refresh_hud(world_api, dt) {
     let model_index = world_api.state.get_int("active_npr_model");
     let animation_index = world_api.state.get_int("active_npr_animation");
+    let clip_count = animation_count(world_api, model_index);
     let preset_index = world_api.state.get_int("active_npr_preset");
     let strategy = world_api.state.get_string("active_npr_strategy");
     let debug_view = world_api.state.get_string("npr_debug_view");
@@ -181,7 +192,7 @@ fn refresh_hud(world_api, dt) {
     );
     world_api.ui.set_text(
         "playground-npr-hud.root.animation",
-        "Library  " + model_index + "/" + model_library_count(world_api) + " | scale " + active_model_scale_percent(world_api) + "% | <> GLB | +/-",
+        "Anim     " + (animation_index + 1) + "/" + clip_count + " " + animation_label(world_api, model_index, animation_index) + " | [ ] | scale " + active_model_scale_percent(world_api) + "%",
     );
     world_api.ui.set_text(
         "playground-npr-hud.root.strategy",
@@ -246,11 +257,37 @@ fn step_npr_preset(world_api, delta) {
 
 fn step_model_animation(world_api, delta) {
     let model_index = world_api.state.get_int("active_npr_model");
-    let count = animation_count(model_index);
+    let count = animation_count(world_api, model_index);
     let next = (world_api.state.get_int("active_npr_animation") + delta + count) % count;
     world_api.state.set_int("active_npr_animation", next);
-    world_api.dev.event("playground-npr.animation-unavailable", animation_status_label(model_index));
+    world_api.state.set_float("active_npr_animation_time", 0.0);
+    world_api.state.set_int("active_npr_animation_frame", -1);
+    apply_active_model_animation(world_api);
+    world_api.dev.event("playground-npr.animation-selected", animation_status_label(world_api, model_index, next));
     refresh_hud(world_api, 0.0);
+}
+
+fn apply_active_model_animation(world_api) {
+    let model_index = world_api.state.get_int("active_npr_model");
+    let animation_index = world_api.state.get_int("active_npr_animation");
+    let time_seconds = world_api.state.get_float("active_npr_animation_time");
+    world_api.state.set_int("active_npr_animation_frame", animation_sample_frame(time_seconds));
+    world_api.mesh3d.set_animation(model_entity_name(model_index), animation_index, time_seconds);
+}
+
+fn tick_active_model_animation(world_api, dt) {
+    let model_index = world_api.state.get_int("active_npr_model");
+    let animation_index = world_api.state.get_int("active_npr_animation");
+    if animation_count(world_api, model_index) <= 1 {
+        return;
+    }
+    let duration = animation_duration(world_api, model_index, animation_index);
+    let next_time = (world_api.state.get_float("active_npr_animation_time") + dt) % duration;
+    let next_frame = animation_sample_frame(next_time);
+    world_api.state.set_float("active_npr_animation_time", next_time);
+    if next_frame != world_api.state.get_int("active_npr_animation_frame") {
+        apply_active_model_animation(world_api);
+    }
 }
 
 fn select_model(world_api, index) {
@@ -264,7 +301,10 @@ fn select_model(world_api, index) {
     }
     world_api.state.set_int("active_npr_model", safe_index);
     world_api.state.set_int("active_npr_animation", 0);
+    world_api.state.set_float("active_npr_animation_time", 0.0);
+    world_api.state.set_int("active_npr_animation_frame", -1);
     apply_active_model_scale(world_api);
+    apply_active_model_animation(world_api);
     apply_active_npr_preset(world_api);
     world_api.dev.event("playground-npr.model-selected", active_model_name(world_api, safe_index));
     refresh_hud(world_api, 0.0);
@@ -393,6 +433,8 @@ fn on_enter() {
     world.state.set_string("active_npr_strategy", "cpu_reference");
     world.state.set_int("active_npr_preset", 0);
     world.state.set_int("active_npr_animation", 0);
+    world.state.set_float("active_npr_animation_time", 0.0);
+    world.state.set_int("active_npr_animation_frame", -1);
     world.state.set_float("npr_model_scale", default_model_scale());
     world.state.set_string("npr_debug_view", "camera.final");
     world.camera.set_main_debug_view("camera.final");
@@ -405,7 +447,7 @@ fn on_enter() {
     refresh_hud(world, 0.0);
     let scene_id = world.scene.current_id();
     world.dev.event("playground-npr.scene-ready", scene_id);
-    world.dev.log("playground-npr comic lines workbench: CPU reference NPR only, recursive GLB model library under source-models, </> switch models, +/- scale model, ArrowUp/ArrowDown styles, G reasserts CPU, V debug cycle, 7 final, 8 kinds, 9 dropout, 0 width/alpha, LMB orbit, Shift+LMB or MMB pan, wheel zoom, F freelook, WASD/Space/Q fly, Shift fast fly, R autorotate, T temporal smoothing; GLB skinned clips are not executed in V1");
+    world.dev.log("playground-npr comic lines workbench: CPU reference NPR only, recursive GLB model library under source-models, </> switch models, [ ] animation, +/- scale model, ArrowUp/ArrowDown styles, G reasserts CPU, V debug cycle, 7 final, 8 kinds, 9 dropout, 0 width/alpha, LMB orbit, Shift+LMB or MMB pan, wheel zoom, F freelook, WASD/Space/Q fly, Shift fast fly, R autorotate, T temporal smoothing");
 }
 
 fn update(dt) {
@@ -416,6 +458,8 @@ fn update(dt) {
     if input::pressed(world, "npr.model_next") { step_model(world, 1); }
     if input::pressed(world, "npr.model_scale_down") { step_model_scale(world, 0.9090909); }
     if input::pressed(world, "npr.model_scale_up") { step_model_scale(world, 1.1); }
+    if input::pressed(world, "npr.animation_previous") { step_model_animation(world, -1); }
+    if input::pressed(world, "npr.animation_next") { step_model_animation(world, 1); }
     if input::pressed(world, "npr.camera_toggle") {
         world.state.set_bool("npr_camera_freelook", !world.state.get_bool("npr_camera_freelook"));
         refresh_hud(world, dt);
@@ -431,6 +475,7 @@ fn update(dt) {
     if input::pressed(world, "npr.debug_dropout") { set_npr_debug_view(world, "npr.dropout", "Dropout"); }
     if input::pressed(world, "npr.debug_width_alpha") { set_npr_debug_view(world, "npr.width_alpha", "Width Alpha"); }
     world.state.set_string("npr_last_active_input_map", input::active_map(world));
+    tick_active_model_animation(world, dt);
     rotate_active_model(world, dt);
     refresh_hud(world, dt);
 }

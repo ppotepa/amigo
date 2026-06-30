@@ -99,7 +99,7 @@ fn interactive_host_handler_selects_playground_npr_model_with_digit_keys() {
 }
 
 #[test]
-fn interactive_host_handler_toggles_playground_npr_strategy_without_replacing_preset() {
+fn interactive_host_handler_reasserts_playground_npr_cpu_strategy_without_replacing_preset() {
     let (runtime, summary) = bootstrap_with_options(
         BootstrapOptions::new(mods_root())
             .with_active_mods(vec!["core".to_owned(), "playground-npr".to_owned()])
@@ -121,7 +121,7 @@ fn interactive_host_handler_toggles_playground_npr_strategy_without_replacing_pr
         .expect("soldier should have npr");
     assert_eq!(
         initial.render_strategy,
-        amigo_render_api::NprRenderStrategy3d::GpuRealtime
+        amigo_render_api::NprRenderStrategy3d::CpuReference
     );
 
     let mut handler = InteractiveRuntimeHostHandler::new(

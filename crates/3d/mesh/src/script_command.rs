@@ -1,7 +1,7 @@
+use crate::MeshSceneService;
 use amigo_assets::AssetKey;
 use amigo_core::AmigoResult;
 use amigo_runtime::Runtime;
-use crate::MeshSceneService;
 use amigo_scene::{Mesh3dSceneCommand, SceneCommand};
 use amigo_scripting_api::{RuntimeScriptCommandHandler, ScriptCommand};
 
@@ -32,6 +32,11 @@ pub enum Mesh3dScriptCommandOutcome {
     SetMeshAsset {
         entity_name: String,
         mesh_key: String,
+    },
+    SetMeshAnimation {
+        entity_name: String,
+        clip_index: u32,
+        time_seconds: f32,
     },
     Unhandled,
 }
@@ -131,6 +136,38 @@ pub fn handle_mesh3d_script_command(
                 Mesh3dScriptCommandOutcome::Unhandled
             }
         }
+        ("set_mesh_animation", [entity_name, clip_index, time_seconds, speed, playing]) => {
+            let Some(mesh_scene_service) = ctx.mesh_scene_service else {
+                return Mesh3dScriptCommandOutcome::Unhandled;
+            };
+            let Ok(clip_index) = clip_index.parse::<u32>() else {
+                return Mesh3dScriptCommandOutcome::Unhandled;
+            };
+            let Ok(time_seconds) = time_seconds.parse::<f32>() else {
+                return Mesh3dScriptCommandOutcome::Unhandled;
+            };
+            let Ok(speed) = speed.parse::<f32>() else {
+                return Mesh3dScriptCommandOutcome::Unhandled;
+            };
+            let playing = playing == "true" || playing == "1" || playing == "on";
+            if mesh_scene_service.set_mesh_animation(
+                entity_name,
+                amigo_render_api::MeshAnimation3d {
+                    clip_index,
+                    time_seconds,
+                    speed,
+                    playing,
+                },
+            ) {
+                Mesh3dScriptCommandOutcome::SetMeshAnimation {
+                    entity_name: entity_name.clone(),
+                    clip_index,
+                    time_seconds,
+                }
+            } else {
+                Mesh3dScriptCommandOutcome::Unhandled
+            }
+        }
         _ => Mesh3dScriptCommandOutcome::Unhandled,
     }
 }
@@ -158,7 +195,8 @@ impl RuntimeScriptCommandHandler for Mesh3dScriptCommandHandler {
                     && command.arguments.len() == 2)
                 || (command.name == "set_npr_render_strategy" && command.arguments.len() == 2)
                 || (command.name == "set_npr_gpu_debug_mode" && command.arguments.len() == 2)
-                || (command.name == "set_mesh_asset" && command.arguments.len() == 2))
+                || (command.name == "set_mesh_asset" && command.arguments.len() == 2)
+                || (command.name == "set_mesh_animation" && command.arguments.len() == 5))
     }
 
     fn handle(&self, runtime: &Runtime, command: ScriptCommand) -> AmigoResult<()> {
@@ -179,6 +217,7 @@ impl RuntimeScriptCommandHandler for Mesh3dScriptCommandHandler {
             Mesh3dScriptCommandOutcome::SetNprRenderStrategy { .. } => {}
             Mesh3dScriptCommandOutcome::SetNprGpuDebugMode { .. } => {}
             Mesh3dScriptCommandOutcome::SetMeshAsset { .. } => {}
+            Mesh3dScriptCommandOutcome::SetMeshAnimation { .. } => {}
             Mesh3dScriptCommandOutcome::Unhandled => {}
         }
         Ok(())

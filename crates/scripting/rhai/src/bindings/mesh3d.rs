@@ -1,18 +1,16 @@
 use std::sync::Arc;
 
-use amigo_assets::{
-    AssetCatalog, discover_glb_mesh3d_assets, discovered_mesh3d_assets,
-};
+use amigo_assets::{AssetCatalog, AssetKey, discover_glb_mesh3d_assets, discovered_mesh3d_assets};
 use amigo_core::LaunchSelection;
 use amigo_modding::ModCatalog;
 use amigo_scripting_api::ScriptCommandQueue;
 
-use crate::bindings::common::string_array;
 use crate::bindings::commands::{
-    queue_mesh3d_apply_npr_preset, queue_mesh3d_set_npr_gpu_debug_mode,
-    queue_mesh3d_set_npr_render_strategy, queue_mesh3d_set_npr_temporal_path_smoothing,
-    queue_mesh3d_set_mesh_asset, queue_mesh3d_spawn,
+    queue_mesh3d_apply_npr_preset, queue_mesh3d_set_mesh_animation, queue_mesh3d_set_mesh_asset,
+    queue_mesh3d_set_npr_gpu_debug_mode, queue_mesh3d_set_npr_render_strategy,
+    queue_mesh3d_set_npr_temporal_path_smoothing, queue_mesh3d_spawn,
 };
+use crate::bindings::common::string_array;
 
 #[derive(Clone)]
 pub struct Mesh3dApi {
@@ -58,6 +56,22 @@ impl Mesh3dApi {
 
     pub fn set_mesh_asset(&mut self, entity_name: &str, mesh_key: &str) -> bool {
         self.set_mesh(entity_name, mesh_key)
+    }
+
+    pub fn set_animation(
+        &mut self,
+        entity_name: &str,
+        clip_index: rhai::INT,
+        time_seconds: rhai::FLOAT,
+    ) -> bool {
+        queue_mesh3d_set_mesh_animation(
+            self.command_queue.as_ref(),
+            entity_name,
+            clip_index,
+            time_seconds,
+            1.0,
+            true,
+        )
     }
 
     pub fn scan_models(&mut self) -> rhai::INT {
@@ -131,6 +145,66 @@ impl Mesh3dApi {
             .unwrap_or_default()
     }
 
+    pub fn model_animation_count(&mut self, index: rhai::INT) -> rhai::INT {
+        let Some(asset_catalog) = self.asset_catalog.as_ref() else {
+            return 1;
+        };
+        let Some(mesh_key) = self.model_asset_key(index) else {
+            return 1;
+        };
+        asset_catalog
+            .prepared_asset(&mesh_key)
+            .and_then(|prepared| prepared.metadata.get("animation_clips.count").cloned())
+            .and_then(|value| value.parse::<rhai::INT>().ok())
+            .filter(|count| *count > 0)
+            .unwrap_or(1)
+    }
+
+    pub fn model_animation_label(
+        &mut self,
+        index: rhai::INT,
+        animation_index: rhai::INT,
+    ) -> String {
+        let Some(asset_catalog) = self.asset_catalog.as_ref() else {
+            return "Static".to_owned();
+        };
+        let Some(mesh_key) = self.model_asset_key(index) else {
+            return "Static".to_owned();
+        };
+        let key = format!("animation_clips.{animation_index}.label");
+        asset_catalog
+            .prepared_asset(&mesh_key)
+            .and_then(|prepared| prepared.metadata.get(&key).cloned())
+            .filter(|label| !label.is_empty())
+            .unwrap_or_else(|| {
+                if self.model_animation_count(index) > 1 {
+                    format!("Clip {animation_index}")
+                } else {
+                    "Static".to_owned()
+                }
+            })
+    }
+
+    pub fn model_animation_duration(
+        &mut self,
+        index: rhai::INT,
+        animation_index: rhai::INT,
+    ) -> rhai::FLOAT {
+        let Some(asset_catalog) = self.asset_catalog.as_ref() else {
+            return 0.0;
+        };
+        let Some(mesh_key) = self.model_asset_key(index) else {
+            return 0.0;
+        };
+        let key = format!("animation_clips.{animation_index}.duration_seconds");
+        asset_catalog
+            .prepared_asset(&mesh_key)
+            .and_then(|prepared| prepared.metadata.get(&key).cloned())
+            .and_then(|value| value.parse::<rhai::FLOAT>().ok())
+            .filter(|duration| *duration > 0.0)
+            .unwrap_or(0.0)
+    }
+
     pub fn model_index_by_label(&mut self, fragment: &str) -> rhai::INT {
         let Some(asset_catalog) = self.asset_catalog.as_ref() else {
             return -1;
@@ -141,6 +215,14 @@ impl Mesh3dApi {
             .position(|model| model.label.to_ascii_lowercase().contains(&fragment))
             .map(|index| index as rhai::INT)
             .unwrap_or(-1)
+    }
+
+    fn model_asset_key(&self, index: rhai::INT) -> Option<AssetKey> {
+        let asset_catalog = self.asset_catalog.as_ref()?;
+        let index = usize::try_from(index).ok()?;
+        discovered_mesh3d_assets(asset_catalog)
+            .get(index)
+            .map(|model| model.key.clone())
     }
 }
 
@@ -153,15 +235,25 @@ pub(crate) fn register_api(engine: &mut rhai::Engine) {
             "set_npr_temporal_path_smoothing",
             Mesh3dApi::set_npr_temporal_path_smoothing,
         )
-        .register_fn("set_npr_render_strategy", Mesh3dApi::set_npr_render_strategy)
+        .register_fn(
+            "set_npr_render_strategy",
+            Mesh3dApi::set_npr_render_strategy,
+        )
         .register_fn("set_npr_gpu_debug_mode", Mesh3dApi::set_npr_gpu_debug_mode)
         .register_fn("set_mesh", Mesh3dApi::set_mesh)
         .register_fn("set_mesh_asset", Mesh3dApi::set_mesh_asset)
+        .register_fn("set_animation", Mesh3dApi::set_animation)
         .register_fn("scan_models", Mesh3dApi::scan_models)
         .register_fn("scan_models", Mesh3dApi::scan_models_for_mod)
         .register_fn("models", Mesh3dApi::models)
         .register_fn("model_count", Mesh3dApi::model_count)
         .register_fn("model_asset", Mesh3dApi::model_asset)
         .register_fn("model_label", Mesh3dApi::model_label)
+        .register_fn("model_animation_count", Mesh3dApi::model_animation_count)
+        .register_fn("model_animation_label", Mesh3dApi::model_animation_label)
+        .register_fn(
+            "model_animation_duration",
+            Mesh3dApi::model_animation_duration,
+        )
         .register_fn("model_index_by_label", Mesh3dApi::model_index_by_label);
 }

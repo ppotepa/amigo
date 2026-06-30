@@ -92,7 +92,13 @@ impl EntitiesApi {
         y: rhai::FLOAT,
         z: rhai::FLOAT,
     ) -> bool {
-        set_entity_scale_3d(self.scene.as_ref(), entity_name, x as f32, y as f32, z as f32)
+        set_entity_scale_3d(
+            self.scene.as_ref(),
+            entity_name,
+            x as f32,
+            y as f32,
+            z as f32,
+        )
     }
 
     pub fn hide(&mut self, entity_name: &str) -> bool {
@@ -384,8 +390,7 @@ pub fn set_entity_scale_3d(
     y: f32,
     z: f32,
 ) -> bool {
-    if !x.is_finite() || !y.is_finite() || !z.is_finite() || x <= 0.0 || y <= 0.0 || z <= 0.0
-    {
+    if !x.is_finite() || !y.is_finite() || !z.is_finite() || x <= 0.0 || y <= 0.0 || z <= 0.0 {
         return false;
     }
 

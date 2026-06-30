@@ -65,6 +65,26 @@ impl MeshSceneService {
             return false;
         };
         command.mesh.mesh_asset = mesh_asset;
+        command.mesh.animation = None;
+        true
+    }
+
+    pub fn set_mesh_animation(
+        &self,
+        entity_name: &str,
+        animation: amigo_render_api::MeshAnimation3d,
+    ) -> bool {
+        let mut commands = self
+            .commands
+            .lock()
+            .expect("mesh scene service mutex should not be poisoned");
+        let Some(command) = commands
+            .iter_mut()
+            .find(|command| command.entity_name == entity_name)
+        else {
+            return false;
+        };
+        command.mesh.animation = Some(animation);
         true
     }
 
@@ -254,6 +274,7 @@ pub fn queue_mesh_scene_command(
         mesh: Mesh3d {
             mesh_asset: command.mesh_asset.clone(),
             transform: command.transform,
+            animation: None,
             npr: command.npr.clone(),
         },
     });
@@ -286,6 +307,7 @@ mod tests {
             mesh: Mesh3d {
                 mesh_asset: AssetKey::new("playground-3d/meshes/probe"),
                 transform: Transform3::default(),
+                animation: None,
                 npr: None,
             },
         });
@@ -311,6 +333,7 @@ mod tests {
             mesh: Mesh3d {
                 mesh_asset: AssetKey::new("playground-npr/meshes/first"),
                 transform: Transform3::default(),
+                animation: None,
                 npr: None,
             },
         });
@@ -320,6 +343,7 @@ mod tests {
             mesh: Mesh3d {
                 mesh_asset: AssetKey::new("playground-npr/meshes/second"),
                 transform: Transform3::default(),
+                animation: None,
                 npr: None,
             },
         });
@@ -341,6 +365,7 @@ mod tests {
             mesh: Mesh3d {
                 mesh_asset: AssetKey::new("playground-npr/meshes/soldier"),
                 transform: Transform3::default(),
+                animation: None,
                 npr: None,
             },
         });
@@ -364,6 +389,7 @@ mod tests {
             mesh: Mesh3d {
                 mesh_asset: AssetKey::new("playground-npr/meshes/soldier"),
                 transform: Transform3::default(),
+                animation: None,
                 npr: None,
             },
         });
@@ -398,6 +424,7 @@ mod tests {
             mesh: Mesh3d {
                 mesh_asset: AssetKey::new("playground-npr/meshes/soldier"),
                 transform: Transform3::default(),
+                animation: None,
                 npr: None,
             },
         });
@@ -430,6 +457,7 @@ mod tests {
             mesh: Mesh3d {
                 mesh_asset: AssetKey::new("playground-npr/meshes/khronos-male"),
                 transform: Transform3::default(),
+                animation: None,
                 npr: Some(NprLineSettings3d {
                     black_mass_material_ids: vec![4, 5, 7],
                     ink_detail_material_ids: vec![6, 11, 12],
@@ -469,6 +497,7 @@ mod tests {
             mesh: Mesh3d {
                 mesh_asset: AssetKey::new("playground-npr/meshes/soldier"),
                 transform: Transform3::default(),
+                animation: None,
                 npr: Some(NprLineSettings3d {
                     width_px: 3.25,
                     seed: 2602,
@@ -477,10 +506,10 @@ mod tests {
             },
         });
 
-        assert!(service.set_npr_render_strategy(
-            "playground-npr-model",
-            NprRenderStrategy3d::CpuReference
-        ));
+        assert!(
+            service
+                .set_npr_render_strategy("playground-npr-model", NprRenderStrategy3d::CpuReference)
+        );
         let commands = service.commands();
         let npr = commands[0]
             .mesh
@@ -501,6 +530,7 @@ mod tests {
             mesh: Mesh3d {
                 mesh_asset: AssetKey::new("playground-npr/meshes/soldier"),
                 transform: Transform3::default(),
+                animation: None,
                 npr: None,
             },
         });
@@ -548,14 +578,14 @@ mod tests {
             mesh: Mesh3d {
                 mesh_asset: AssetKey::new("playground-npr/meshes/soldier"),
                 transform: Transform3::default(),
+                animation: None,
                 npr: Some(NprLineSettings3d::default()),
             },
         });
 
-        assert!(service.set_npr_gpu_debug_mode(
-            "playground-npr-model",
-            NprGpuDebugMode3d::RawPaths
-        ));
+        assert!(
+            service.set_npr_gpu_debug_mode("playground-npr-model", NprGpuDebugMode3d::RawPaths)
+        );
         assert_eq!(
             service.commands()[0]
                 .mesh
@@ -577,6 +607,7 @@ mod tests {
             mesh: Mesh3d {
                 mesh_asset: AssetKey::new("playground-npr/meshes/soldier"),
                 transform: Transform3::default(),
+                animation: None,
                 npr: Some(NprLineSettings3d::default()),
             },
         });
@@ -623,6 +654,7 @@ mod tests {
             mesh: Mesh3d {
                 mesh_asset: AssetKey::new("playground-npr/meshes/soldier"),
                 transform: Transform3::default(),
+                animation: None,
                 npr: Some(NprLineSettings3d::default()),
             },
         });
@@ -635,10 +667,7 @@ mod tests {
             ScriptCommand::new(
                 "3d.mesh",
                 "set_npr_gpu_debug_mode",
-                vec![
-                    "playground-npr-model".to_owned(),
-                    "raw_paths".to_owned(),
-                ],
+                vec!["playground-npr-model".to_owned(), "raw_paths".to_owned()],
             ),
         );
 

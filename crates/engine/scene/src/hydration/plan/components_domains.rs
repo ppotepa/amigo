@@ -1202,6 +1202,7 @@ fn npr_line_families_from_document(
         .map(|family| {
             Ok(amigo_render_api::NprLineFamily3d {
                 id: family.id.clone(),
+                label: family.label.clone(),
                 enabled: family.enabled,
                 role: match family.role.as_deref() {
                     Some(value) => Some(npr_line_family_role_3d_from_document(

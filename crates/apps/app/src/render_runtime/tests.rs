@@ -272,6 +272,7 @@ fn app_render_extractor_registry_collects_vector_and_ui_data() {
         mesh: Mesh3d {
             mesh_asset: AssetKey::new("playground-3d/meshes/probe"),
             transform: Transform3::default(),
+            animation: None,
             npr: None,
         },
     });
@@ -1039,6 +1040,7 @@ fn rebuilds_mesh_scene_service_from_packet() {
         mesh: Mesh3d {
             mesh_asset: AssetKey::new("playground-3d/meshes/probe"),
             transform: Transform3::default(),
+            animation: None,
             npr: None,
         },
     });

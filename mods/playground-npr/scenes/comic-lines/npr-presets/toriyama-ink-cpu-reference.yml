@@ -11,126 +11,104 @@ settings:
     path_strategy: stable_stroked_paths
     fill_strategy: none
     hatching_strategy: none
+  cpu_strategy_profile:
+    stroke_synthesis:
+      single_pass_alpha: 1.0
+      single_pass_width_multiplier: 1.0
+    tessellation:
+      rail_tangent_smoothing: true
+      resample_spacing_px: 1.25
+      taper_endpoint_floor: 0.52
+      angle_alpha_influence: 0.08
+      min_sample_width_px: 1.05
+      long_stroke_detail_crispness: 0.88
   brushes:
     - mod:scenes/comic-lines/npr-brushes/toriyama-g-pen-dark.yml
-    - mod:scenes/comic-lines/npr-brushes/toriyama-maru-detail.yml
-    - mod:scenes/comic-lines/npr-brushes/toriyama-feature-ink.yml
-    - mod:scenes/comic-lines/npr-brushes/toriyama-soft-pencil.yml
-    - mod:scenes/comic-lines/npr-brushes/toriyama-dry-ink.yml
-    - mod:scenes/comic-lines/npr-brushes/toriyama-flat-brush.yml
-    - mod:scenes/comic-lines/npr-brushes/toriyama-shadow-marker.yml
-    - mod:scenes/comic-lines/npr-brushes/toriyama-hatch-pen.yml
-    - mod:scenes/comic-lines/npr-brushes/toriyama-speed-pen.yml
-    - mod:scenes/comic-lines/npr-brushes/toriyama-technical-clean.yml
   families:
-    - id: toriyama_outer_contour
+    - id: main_contour
+      label: MAIN CONTOUR
       role: outer_contour
       priority: 100
       sources: [silhouette, boundary]
       brush: toriyama_g_pen_dark
-      preferred_stroke_length_px: 130.0
+      preferred_stroke_length_px: 140.0
       stroke_join_gap_px: 7.0
       stroke_join_max_angle_degrees: 48.0
-      technical_detail_keep: 0.18
-      technical_detail_preference: 0.05
-      min_screen_length_px: 2.4
-      min_stroke_length_px: 24.0
-      continuation_bias: 0.92
-      breakup_bias: 0.04
+      technical_detail_keep: 0.0
+      technical_detail_preference: 0.0
+      min_screen_length_px: 2.0
+      min_stroke_length_px: 26.0
+      continuation_bias: 0.94
+      breakup_bias: 0.02
       width_multiplier: 1.0
       alpha_multiplier: 1.0
-      taper_multiplier: 1.05
-      overshoot_px: 0.82
-    - id: toriyama_form_feature
+      taper_multiplier: 1.0
+      overshoot_px: 0.55
+    - id: key_features
+      label: KEY FEATURES
       role: detail_ink
-      priority: 72
+      priority: 88
       sources: [feature, crease]
-      brush: toriyama_feature_ink
-      preferred_stroke_length_px: 74.0
-      stroke_join_gap_px: 5.4
-      stroke_join_max_angle_degrees: 42.0
-      technical_detail_keep: 0.55
+      brush: toriyama_g_pen_dark
+      preferred_stroke_length_px: 136.0
+      stroke_join_gap_px: 8.2
+      stroke_join_max_angle_degrees: 56.0
+      technical_detail_keep: 0.58
       technical_detail_preference: 0.66
-      ink_detail_material_preference: 0.72
-      material_seam_preference: 0.20
+      ink_detail_material_preference: 0.74
+      material_seam_preference: 0.08
       min_screen_length_px: 2.8
-      min_stroke_length_px: 8.0
-      continuation_bias: 0.80
-      breakup_bias: 0.05
-      width_multiplier: 0.92
-      alpha_multiplier: 0.98
-      taper_multiplier: 0.88
-      overshoot_px: 0.22
-    - id: toriyama_face_micro_detail
-      role: detail_ink
-      priority: 84
-      sources: [feature]
-      brush: toriyama_maru_detail
-      preferred_stroke_length_px: 38.0
-      stroke_join_gap_px: 3.2
-      stroke_join_max_angle_degrees: 34.0
-      technical_detail_keep: 0.78
-      technical_detail_preference: 0.82
-      ink_detail_material_preference: 0.95
-      min_screen_length_px: 1.6
-      min_stroke_length_px: 4.0
-      continuation_bias: 0.70
-      breakup_bias: 0.02
-      width_multiplier: 0.70
-      alpha_multiplier: 0.96
-      taper_multiplier: 0.82
-      overshoot_px: 0.08
+      min_stroke_length_px: 26.0
+      continuation_bias: 0.95
+      breakup_bias: 0.005
+      width_multiplier: 0.72
+      alpha_multiplier: 1.0
+      taper_multiplier: 0.96
+      overshoot_px: 0.28
   boundary: true
   silhouette: true
   feature: true
   suggestive: false
   contact: false
-  contact_ground_y: 0.0
-  contact_threshold: 0.10
-  feature_angle_degrees: 34.0
-  min_screen_length_px: 1.8
-  ink_color: "#0B0907FF"
-  width_px: 2.45
-  silhouette_width_multiplier: 1.55
-  boundary_width_multiplier: 1.0
-  feature_width_multiplier: 0.72
-  distance_width_falloff: 0.14
-  width_pressure_curve: [0.68, 1.08, 1.00, 0.58]
-  alpha_pressure_curve: [0.84, 1.0, 0.94, 0.72]
-  depth_pressure: 0.16
+  ink_color: "#050403FF"
+  width_px: 1.9
+  silhouette_width_multiplier: 1.0
+  boundary_width_multiplier: 0.92
+  feature_width_multiplier: 0.46
+  distance_width_falloff: 0.0
+  depth_pressure: 0.0
+  depth_alpha: 0.0
   camera_response:
-    enabled: true
-    near_distance: 2.0
-    far_distance: 10.5
-    near_width_boost: 0.22
-    near_detail_boost: 0.36
+    enabled: false
+    auto_focus: false
+    near_width_boost: 0.0
+    near_detail_boost: 0.0
     near_hatching_boost: 0.0
-    far_width_falloff: 0.34
-    far_alpha_falloff: 0.62
-    far_detail_suppression: 0.62
-    rim_silhouette_boost: 0.16
-    front_feature_suppression: 0.18
-  humanization: 0.50
-  line_confidence: 0.80
-  temporal_stability: 0.92
+    far_width_falloff: 0.0
+    far_alpha_falloff: 0.0
+    far_detail_suppression: 0.0
+    rim_silhouette_boost: 0.0
+    front_feature_suppression: 0.0
+  width_pressure_curve: [0.58, 1.12, 1.04, 0.48]
+  alpha_pressure_curve: [0.94, 1.0, 1.0, 0.90]
+  humanization: 0.20
+  line_confidence: 0.96
+  temporal_stability: 0.96
   temporal_path_smoothing: false
-  visibility_hysteresis_frames: 2
-  endpoint_snap_px: 1.7
-  path_simplify_px: 0.78
-  straightness: 0.60
-  taper: 0.74
-  stroke_wobble_px: 0.46
-  stroke_wobble_frequency: 0.21
-  micro_wobble_px: 0.08
-  micro_wobble_frequency: 1.10
-  pressure_jitter: 0.10
-  local_angular_drift_degrees: 0.92
-  overshoot_px: 1.10
-  undershoot_px: 0.10
-  pass_offset_px: 0.18
-  dropout: 0.020
-  dropout_segment_min_px: 10.0
-  passes: 2
-  search_line_count: 1
-  search_line_alpha: 0.12
+  endpoint_snap_px: 1.2
+  path_simplify_px: 0.95
+  straightness: 0.78
+  taper: 0.72
+  stroke_wobble_px: 0.12
+  stroke_wobble_frequency: 0.14
+  micro_wobble_px: 0.025
+  micro_wobble_frequency: 0.80
+  pressure_jitter: 0.035
+  local_angular_drift_degrees: 0.24
+  overshoot_px: 0.55
+  undershoot_px: 0.0
+  pass_offset_px: 0.0
+  dropout: 0.0
+  passes: 1
+  search_line_count: 0
   seed: 19890401

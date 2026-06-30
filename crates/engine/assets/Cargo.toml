@@ -11,5 +11,6 @@ amigo-core.workspace = true
 amigo-runtime.workspace = true
 amigo-session.workspace = true
 amigo-scripting-api.workspace = true
+gltf.workspace = true
 serde_yaml.workspace = true
 toml.workspace = true

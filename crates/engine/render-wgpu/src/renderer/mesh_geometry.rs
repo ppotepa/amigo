@@ -3,6 +3,7 @@ use std::sync::Arc;
 
 use amigo_math::Vec3;
 use gltf::accessor::{DataType, Dimensions};
+use gltf::animation::util::ReadOutputs;
 use gltf::image::{Data as GltfImageData, Format as GltfImageFormat};
 use gltf::mesh::Semantic;
 
@@ -13,6 +14,9 @@ const NPR_BLACK_MASS_SOLID_LUMA_THRESHOLD: f32 = 0.18;
 const NPR_BLACK_MASS_TEXTURE_AVERAGE_LUMA_THRESHOLD: f32 = 0.14;
 const NPR_BLACK_MASS_TEXTURE_DARK_RATIO_THRESHOLD: f32 = 0.85;
 const NPR_BLACK_MASS_TEXTURE_DARK_LUMA: f32 = 0.22;
+const MESH_ANIMATION_SAMPLE_FPS: f32 = 24.0;
+const MESH_ANIMATION_CACHE_MAX_ENTRIES: usize = 384;
+const MESH_ANIMATION_CACHE_TOKEN: &str = "#anim:";
 
 #[derive(Debug, Clone)]
 pub(crate) struct CachedMeshGeometry3d {
@@ -78,9 +82,10 @@ pub(crate) struct MeshEdge3d {
     pub(crate) material_seam: bool,
 }
 
-pub(crate) fn mesh_geometry_from_asset(
+pub(crate) fn mesh_geometry_from_asset_with_animation(
     assets: &dyn amigo_render_api::RenderAssetSource,
     mesh_asset: &amigo_assets::AssetKey,
+    animation: Option<amigo_render_api::MeshAnimation3d>,
 ) -> Option<CachedMeshGeometry3d> {
     let prepared = assets.prepared_asset(mesh_asset)?;
     if !matches!(prepared.kind, amigo_assets::PreparedAssetKind::Mesh3d) {
@@ -91,41 +96,95 @@ pub(crate) fn mesh_geometry_from_asset(
     if prepared.format.as_deref() != Some("glb") && mesh_path.extension()?.to_str()? != "glb" {
         return None;
     }
-    load_glb_geometry(&mesh_path).ok().filter(|geometry| {
-        !geometry.vertices.is_empty()
-            && !geometry.triangles.is_empty()
-            && !geometry.edges.is_empty()
-    })
+    load_glb_geometry_with_animation(&mesh_path, animation)
+        .ok()
+        .filter(|geometry| {
+            !geometry.vertices.is_empty()
+                && !geometry.triangles.is_empty()
+                && !geometry.edges.is_empty()
+        })
 }
 
 impl WgpuSceneRenderer {
-    pub(crate) fn mesh_geometry_3d(
+    pub(crate) fn mesh_geometry_3d_for_mesh(
         &mut self,
         assets: &dyn amigo_render_api::RenderAssetSource,
-        mesh_asset: &amigo_assets::AssetKey,
+        mesh: &amigo_render_api::Mesh3d,
     ) -> Arc<CachedMeshGeometry3d> {
-        let cache_key = mesh_asset.as_str().to_owned();
+        let cache_key = mesh_geometry_cache_key(&mesh.mesh_asset, mesh.animation);
         if let Some(cached) = self.mesh_3d_geometry_cache.get(&cache_key) {
             return Arc::clone(cached);
         }
 
-        let geometry =
-            Arc::new(mesh_geometry_from_asset(assets, mesh_asset).unwrap_or_else(cube_geometry));
+        let geometry = Arc::new(
+            mesh_geometry_from_asset_with_animation(assets, &mesh.mesh_asset, mesh.animation)
+                .unwrap_or_else(cube_geometry),
+        );
         self.mesh_3d_geometry_cache
-            .insert(cache_key, Arc::clone(&geometry));
+            .insert(cache_key.clone(), Arc::clone(&geometry));
+        prune_mesh_animation_geometry_cache(&mut self.mesh_3d_geometry_cache, &cache_key);
         geometry
     }
 }
 
+fn mesh_geometry_cache_key(
+    mesh_asset: &amigo_assets::AssetKey,
+    animation: Option<amigo_render_api::MeshAnimation3d>,
+) -> String {
+    let Some(animation) = animation else {
+        return mesh_asset.as_str().to_owned();
+    };
+    let sample_tick = mesh_animation_sample_tick(animation.time_seconds);
+    format!(
+        "{}#anim:{}:{}",
+        mesh_asset.as_str(),
+        animation.clip_index,
+        sample_tick
+    )
+}
+
+fn mesh_animation_sample_tick(time_seconds: f32) -> u32 {
+    (time_seconds.max(0.0) * MESH_ANIMATION_SAMPLE_FPS).floor() as u32
+}
+
+fn prune_mesh_animation_geometry_cache(
+    cache: &mut BTreeMap<String, Arc<CachedMeshGeometry3d>>,
+    current_key: &str,
+) {
+    if cache.len() <= MESH_ANIMATION_CACHE_MAX_ENTRIES {
+        return;
+    }
+    let keys = cache
+        .keys()
+        .filter(|key| key.as_str() != current_key && key.contains(MESH_ANIMATION_CACHE_TOKEN))
+        .cloned()
+        .collect::<Vec<_>>();
+    for key in keys {
+        if cache.len() <= MESH_ANIMATION_CACHE_MAX_ENTRIES {
+            break;
+        }
+        cache.remove(&key);
+    }
+}
+
+#[cfg(test)]
 pub(crate) fn load_glb_geometry(
     path: &std::path::Path,
+) -> Result<CachedMeshGeometry3d, gltf::Error> {
+    load_glb_geometry_with_animation(path, None)
+}
+
+pub(crate) fn load_glb_geometry_with_animation(
+    path: &std::path::Path,
+    animation: Option<amigo_render_api::MeshAnimation3d>,
 ) -> Result<CachedMeshGeometry3d, gltf::Error> {
     let (document, buffers, images) = import_gltf_for_geometry(path)?;
     let mut vertices = Vec::new();
     let mut triangles = Vec::new();
     let inferred_black_mass_material_ids =
         collect_inferred_black_mass_material_ids(&document, &images);
-    let node_transforms = collect_gltf_scene_node_transforms(&document);
+    let node_pose = sample_gltf_animation_pose(&document, &buffers, animation);
+    let node_transforms = collect_gltf_scene_node_transforms(&document, node_pose.as_deref());
 
     if let Some(scene) = document
         .default_scene()
@@ -768,6 +827,7 @@ fn gltf_error_is_quantization_extension_validation(error: &gltf::Error) -> bool 
 
 fn collect_gltf_scene_node_transforms(
     document: &gltf::Document,
+    node_pose: Option<&[Option<GltfNodeAnimationOverride3d>]>,
 ) -> Vec<Option<GltfNodeTransform3d>> {
     let mut transforms = vec![None; document.nodes().count()];
     if let Some(scene) = document
@@ -775,7 +835,12 @@ fn collect_gltf_scene_node_transforms(
         .or_else(|| document.scenes().next())
     {
         for node in scene.nodes() {
-            collect_gltf_node_transforms(node, GltfNodeTransform3d::IDENTITY, &mut transforms);
+            collect_gltf_node_transforms(
+                node,
+                GltfNodeTransform3d::IDENTITY,
+                &mut transforms,
+                node_pose,
+            );
         }
     }
     transforms
@@ -785,14 +850,166 @@ fn collect_gltf_node_transforms(
     node: gltf::Node<'_>,
     parent_transform: GltfNodeTransform3d,
     transforms: &mut [Option<GltfNodeTransform3d>],
+    node_pose: Option<&[Option<GltfNodeAnimationOverride3d>]>,
 ) {
-    let node_transform = parent_transform.then(GltfNodeTransform3d::from_node(&node));
+    let node_transform = parent_transform.then(GltfNodeTransform3d::from_node_with_pose(
+        &node,
+        node_pose
+            .and_then(|pose| pose.get(node.index()))
+            .and_then(|pose| *pose),
+    ));
     if let Some(slot) = transforms.get_mut(node.index()) {
         *slot = Some(node_transform);
     }
     for child in node.children() {
-        collect_gltf_node_transforms(child, node_transform, transforms);
+        collect_gltf_node_transforms(child, node_transform, transforms, node_pose);
     }
+}
+
+#[derive(Clone, Copy)]
+struct GltfNodeAnimationOverride3d {
+    translation: Option<[f32; 3]>,
+    rotation: Option<[f32; 4]>,
+    scale: Option<[f32; 3]>,
+}
+
+fn sample_gltf_animation_pose(
+    document: &gltf::Document,
+    buffers: &[gltf::buffer::Data],
+    animation: Option<amigo_render_api::MeshAnimation3d>,
+) -> Option<Vec<Option<GltfNodeAnimationOverride3d>>> {
+    let animation = animation?;
+    let clip = document.animations().nth(animation.clip_index as usize)?;
+    let duration = gltf_animation_duration(&clip, buffers);
+    let time = if duration > f32::EPSILON {
+        animation.time_seconds.max(0.0) % duration
+    } else {
+        animation.time_seconds.max(0.0)
+    };
+    let mut pose = vec![None; document.nodes().count()];
+
+    for channel in clip.channels() {
+        let node_index = channel.target().node().index();
+        let reader =
+            channel.reader(|buffer| buffers.get(buffer.index()).map(|data| data.0.as_slice()));
+        let Some(inputs) = reader
+            .read_inputs()
+            .map(|inputs| inputs.collect::<Vec<_>>())
+        else {
+            continue;
+        };
+        let Some(outputs) = reader.read_outputs() else {
+            continue;
+        };
+        let entry = pose
+            .get_mut(node_index)
+            .expect("gltf channel target node should fit pose")
+            .get_or_insert(GltfNodeAnimationOverride3d {
+                translation: None,
+                rotation: None,
+                scale: None,
+            });
+        match outputs {
+            ReadOutputs::Translations(values) => {
+                let values = values.collect::<Vec<_>>();
+                entry.translation = sample_vec3_channel(&inputs, &values, time);
+            }
+            ReadOutputs::Rotations(values) => {
+                let values = values.into_f32().collect::<Vec<_>>();
+                entry.rotation = sample_quat_channel(&inputs, &values, time);
+            }
+            ReadOutputs::Scales(values) => {
+                let values = values.collect::<Vec<_>>();
+                entry.scale = sample_vec3_channel(&inputs, &values, time);
+            }
+            ReadOutputs::MorphTargetWeights(_) => {}
+        }
+    }
+
+    Some(pose)
+}
+
+fn gltf_animation_duration(animation: &gltf::Animation<'_>, buffers: &[gltf::buffer::Data]) -> f32 {
+    animation
+        .channels()
+        .filter_map(|channel| {
+            let reader =
+                channel.reader(|buffer| buffers.get(buffer.index()).map(|data| data.0.as_slice()));
+            reader.read_inputs()?.last()
+        })
+        .fold(0.0, f32::max)
+}
+
+fn sample_vec3_channel(inputs: &[f32], values: &[[f32; 3]], time: f32) -> Option<[f32; 3]> {
+    let (left, right, t) = sample_channel_window(inputs, values.len(), time)?;
+    let a = values[left];
+    let b = values[right];
+    Some([
+        a[0] + (b[0] - a[0]) * t,
+        a[1] + (b[1] - a[1]) * t,
+        a[2] + (b[2] - a[2]) * t,
+    ])
+}
+
+fn sample_quat_channel(inputs: &[f32], values: &[[f32; 4]], time: f32) -> Option<[f32; 4]> {
+    let (left, right, t) = sample_channel_window(inputs, values.len(), time)?;
+    let a = normalize_quat(values[left]);
+    let mut b = normalize_quat(values[right]);
+    if quat_dot(a, b) < 0.0 {
+        b = [-b[0], -b[1], -b[2], -b[3]];
+    }
+    Some(normalize_quat([
+        a[0] + (b[0] - a[0]) * t,
+        a[1] + (b[1] - a[1]) * t,
+        a[2] + (b[2] - a[2]) * t,
+        a[3] + (b[3] - a[3]) * t,
+    ]))
+}
+
+fn sample_channel_window(
+    inputs: &[f32],
+    value_len: usize,
+    time: f32,
+) -> Option<(usize, usize, f32)> {
+    if inputs.is_empty() || value_len == 0 {
+        return None;
+    }
+    let len = inputs.len().min(value_len);
+    if len == 1 || time <= inputs[0] {
+        return Some((0, 0, 0.0));
+    }
+    for index in 0..len.saturating_sub(1) {
+        let left_time = inputs[index];
+        let right_time = inputs[index + 1];
+        if time <= right_time {
+            let span = (right_time - left_time).max(f32::EPSILON);
+            return Some((
+                index,
+                index + 1,
+                ((time - left_time) / span).clamp(0.0, 1.0),
+            ));
+        }
+    }
+    Some((len - 1, len - 1, 0.0))
+}
+
+fn quat_dot(left: [f32; 4], right: [f32; 4]) -> f32 {
+    left[0] * right[0] + left[1] * right[1] + left[2] * right[2] + left[3] * right[3]
+}
+
+fn normalize_quat(value: [f32; 4]) -> [f32; 4] {
+    let length =
+        (value[0] * value[0] + value[1] * value[1] + value[2] * value[2] + value[3] * value[3])
+            .sqrt();
+    if length <= f32::EPSILON {
+        return [0.0, 0.0, 0.0, 1.0];
+    }
+    [
+        value[0] / length,
+        value[1] / length,
+        value[2] / length,
+        value[3] / length,
+    ]
 }
 
 #[derive(Clone, Copy)]
@@ -811,7 +1028,19 @@ impl GltfNodeTransform3d {
     };
 
     fn from_node(node: &gltf::Node<'_>) -> Self {
+        Self::from_node_with_pose(node, None)
+    }
+
+    fn from_node_with_pose(
+        node: &gltf::Node<'_>,
+        pose: Option<GltfNodeAnimationOverride3d>,
+    ) -> Self {
         let (translation, rotation, scale) = node.transform().decomposed();
+        let translation = pose
+            .and_then(|pose| pose.translation)
+            .unwrap_or(translation);
+        let rotation = pose.and_then(|pose| pose.rotation).unwrap_or(rotation);
+        let scale = pose.and_then(|pose| pose.scale).unwrap_or(scale);
         let [mut x, mut y, mut z, mut w] = rotation;
         let length = (x * x + y * y + z * z + w * w).sqrt();
         if length > f32::EPSILON {
@@ -1161,5 +1390,39 @@ mod tests {
             color_luminance(average),
             dark_ratio
         ));
+    }
+
+    #[test]
+    fn animated_mesh_cache_key_uses_24fps_ticks() {
+        let key = mesh_geometry_cache_key(
+            &amigo_assets::AssetKey::new("playground-npr/meshes/soldier"),
+            Some(amigo_render_api::MeshAnimation3d {
+                clip_index: 1,
+                time_seconds: 0.5,
+                speed: 1.0,
+                playing: true,
+            }),
+        );
+
+        assert_eq!(key, "playground-npr/meshes/soldier#anim:1:12");
+    }
+
+    #[test]
+    fn animated_mesh_cache_pruning_keeps_current_entry() {
+        let mut cache = BTreeMap::new();
+        for index in 0..(MESH_ANIMATION_CACHE_MAX_ENTRIES + 4) {
+            cache.insert(
+                format!("mesh#anim:0:{index}"),
+                Arc::new(CachedMeshGeometry3d::from_test_vertices(vec![Vec3::new(
+                    0.0, 0.0, 0.0,
+                )])),
+            );
+        }
+        let current_key = format!("mesh#anim:0:{}", MESH_ANIMATION_CACHE_MAX_ENTRIES + 3);
+
+        prune_mesh_animation_geometry_cache(&mut cache, &current_key);
+
+        assert!(cache.len() <= MESH_ANIMATION_CACHE_MAX_ENTRIES);
+        assert!(cache.contains_key(&current_key));
     }
 }

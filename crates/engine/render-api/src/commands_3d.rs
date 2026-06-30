@@ -43,7 +43,27 @@ impl Default for Light3dRenderSettings {
 pub struct Mesh3d {
     pub mesh_asset: AssetKey,
     pub transform: Transform3,
+    pub animation: Option<MeshAnimation3d>,
     pub npr: Option<NprLineSettings3d>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct MeshAnimation3d {
+    pub clip_index: u32,
+    pub time_seconds: f32,
+    pub speed: f32,
+    pub playing: bool,
+}
+
+impl Default for MeshAnimation3d {
+    fn default() -> Self {
+        Self {
+            clip_index: 0,
+            time_seconds: 0.0,
+            speed: 1.0,
+            playing: true,
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -1729,6 +1749,7 @@ impl Default for NprBrushProfile3d {
 #[derive(Debug, Clone, PartialEq)]
 pub struct NprLineFamily3d {
     pub id: String,
+    pub label: String,
     pub enabled: bool,
     pub role: Option<NprLineFamilyRole3d>,
     pub priority: i32,
@@ -1755,6 +1776,7 @@ impl Default for NprLineFamily3d {
     fn default() -> Self {
         Self {
             id: String::new(),
+            label: String::new(),
             enabled: true,
             role: None,
             priority: 0,

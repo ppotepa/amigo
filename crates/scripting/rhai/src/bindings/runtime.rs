@@ -72,7 +72,11 @@ impl RuntimeApi {
     pub fn npr_gpu_triangles(&mut self) -> rhai::INT {
         self.render_stats
             .as_ref()
-            .map(|stats| stats.snapshot().world_3d_npr_gpu_realtime_enqueued_triangles as rhai::INT)
+            .map(|stats| {
+                stats
+                    .snapshot()
+                    .world_3d_npr_gpu_realtime_enqueued_triangles as rhai::INT
+            })
             .unwrap_or(0)
     }
 
@@ -87,7 +91,9 @@ impl RuntimeApi {
         self.render_stats
             .as_ref()
             .map(|stats| {
-                stats.snapshot().world_3d_npr_gpu_realtime_path_states_capacity as rhai::INT
+                stats
+                    .snapshot()
+                    .world_3d_npr_gpu_realtime_path_states_capacity as rhai::INT
             })
             .unwrap_or(0)
     }
@@ -96,7 +102,9 @@ impl RuntimeApi {
         self.render_stats
             .as_ref()
             .map(|stats| {
-                stats.snapshot().world_3d_npr_gpu_realtime_path_segments_capacity as rhai::INT
+                stats
+                    .snapshot()
+                    .world_3d_npr_gpu_realtime_path_segments_capacity as rhai::INT
             })
             .unwrap_or(0)
     }
@@ -105,7 +113,9 @@ impl RuntimeApi {
         self.render_stats
             .as_ref()
             .map(|stats| {
-                stats.snapshot().world_3d_npr_gpu_realtime_stroke_segments_capacity as rhai::INT
+                stats
+                    .snapshot()
+                    .world_3d_npr_gpu_realtime_stroke_segments_capacity as rhai::INT
             })
             .unwrap_or(0)
     }
@@ -176,8 +186,17 @@ pub(crate) fn register_api(engine: &mut rhai::Engine) {
         .register_fn("npr_gpu_edges", RuntimeApi::npr_gpu_edges)
         .register_fn("npr_gpu_triangles", RuntimeApi::npr_gpu_triangles)
         .register_fn("npr_paths", RuntimeApi::npr_paths)
-        .register_fn("npr_path_states_capacity", RuntimeApi::npr_path_states_capacity)
-        .register_fn("npr_path_segments_capacity", RuntimeApi::npr_path_segments_capacity)
-        .register_fn("npr_stroke_segments_capacity", RuntimeApi::npr_stroke_segments_capacity)
+        .register_fn(
+            "npr_path_states_capacity",
+            RuntimeApi::npr_path_states_capacity,
+        )
+        .register_fn(
+            "npr_path_segments_capacity",
+            RuntimeApi::npr_path_segments_capacity,
+        )
+        .register_fn(
+            "npr_stroke_segments_capacity",
+            RuntimeApi::npr_stroke_segments_capacity,
+        )
         .register_fn("npr_debug_mode", RuntimeApi::npr_debug_mode);
 }

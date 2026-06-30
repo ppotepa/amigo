@@ -957,6 +957,8 @@ pub struct NprBrushProfileDocument {
 pub struct NprLineFamilyDocument {
     #[serde(default)]
     pub id: String,
+    #[serde(default)]
+    pub label: String,
     #[serde(default = "default_bool_true")]
     pub enabled: bool,
     #[serde(default)]

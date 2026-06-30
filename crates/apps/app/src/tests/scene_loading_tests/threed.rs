@@ -129,7 +129,7 @@ fn playground_npr_comic_lines_scene_bootstraps() {
 }
 
 #[test]
-fn playground_npr_comic_lines_bootstrap_applies_gpu_realtime_preset_to_soldier() {
+fn playground_npr_comic_lines_bootstrap_applies_cpu_reference_preset_to_soldier() {
     let (runtime, _summary) = bootstrap_with_options(
         BootstrapOptions::new(mods_root())
             .with_active_mods(vec!["core".to_owned(), "playground-npr".to_owned()])
@@ -154,16 +154,16 @@ fn playground_npr_comic_lines_bootstrap_applies_gpu_realtime_preset_to_soldier()
 
     assert_eq!(
         npr.render_strategy,
-        amigo_render_api::NprRenderStrategy3d::GpuRealtime
+        amigo_render_api::NprRenderStrategy3d::CpuReference
     );
     assert!(
         npr.ink_color.a > 0.9,
-        "cinematic_12fps preset should keep opaque ink alpha, got {}",
+        "startup NPR preset should keep opaque ink alpha, got {}",
         npr.ink_color.a
     );
     assert!(
         npr.ink_color.r < 0.1 && npr.ink_color.g < 0.1 && npr.ink_color.b < 0.1,
-        "cinematic_12fps preset should keep dark ink color, got rgba({}, {}, {}, {})",
+        "startup NPR preset should keep dark ink color, got rgba({}, {}, {}, {})",
         npr.ink_color.r,
         npr.ink_color.g,
         npr.ink_color.b,

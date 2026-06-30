@@ -931,48 +931,115 @@ fn compiled_playground_npr_scene_registers_file_backed_npr_presets() {
         amigo_render_api::NprRenderStrategy3d::CpuReference
     );
     assert_eq!(
-        toriyama.settings.style_preset,
-        amigo_render_api::NprStylePreset3d::RoughComicInk
-    );
-    assert_eq!(
-        toriyama.settings.stroke_tool,
-        amigo_render_api::NprStrokeTool3d::InkPen
+        toriyama.settings.fill_mode,
+        amigo_render_api::NprFillMode3d::None
     );
     assert!(toriyama.settings.silhouette);
     assert!(toriyama.settings.boundary);
     assert!(toriyama.settings.feature);
     assert!(!toriyama.settings.suggestive);
-    assert!(toriyama.settings.camera_response.enabled);
     assert!(!toriyama.settings.contact);
-    assert_eq!(toriyama.settings.passes, 2);
-    assert_eq!(toriyama.settings.search_line_count, 1);
-    assert_eq!(toriyama.settings.brush_profiles.len(), 10);
-    assert_eq!(toriyama.settings.line_families.len(), 3);
+    assert_eq!(toriyama.settings.brush_profiles.len(), 1);
+    assert_eq!(toriyama.settings.line_families.len(), 2);
     assert!(
         toriyama
             .settings
             .brush_profiles
             .contains_key("toriyama_g_pen_dark")
     );
+    let main_contour = toriyama
+        .settings
+        .line_families
+        .first()
+        .expect("MAIN CONTOUR line family should hydrate first");
+    assert_eq!(main_contour.id, "main_contour");
+    assert_eq!(main_contour.label, "MAIN CONTOUR");
+    assert_eq!(main_contour.brush.as_deref(), Some("toriyama_g_pen_dark"));
+    let key_features = toriyama
+        .settings
+        .line_families
+        .iter()
+        .find(|family| family.id == "key_features")
+        .expect("KEY FEATURES line family should hydrate");
+    assert_eq!(key_features.label, "KEY FEATURES");
+    assert_eq!(key_features.brush.as_deref(), Some("toriyama_g_pen_dark"));
+    assert!(
+        key_features
+            .sources
+            .contains(&amigo_render_api::NprLineSource3d::Feature)
+    );
+    assert!(
+        key_features
+            .sources
+            .contains(&amigo_render_api::NprLineSource3d::Crease)
+    );
+    assert!(key_features.width_multiplier < main_contour.width_multiplier);
+    assert!(key_features.width_multiplier > 0.7);
+    assert_eq!(key_features.alpha_multiplier, 1.0);
+    assert!(
+        key_features.preferred_stroke_length_px.unwrap_or_default()
+            > main_contour.preferred_stroke_length_px.unwrap_or_default() * 0.9
+    );
+    assert!(key_features.stroke_join_gap_px.unwrap_or_default() > 8.0);
+    assert!(
+        key_features
+            .stroke_join_max_angle_degrees
+            .unwrap_or_default()
+            >= 56.0
+    );
+    assert!(key_features.min_stroke_length_px.unwrap_or_default() >= 26.0);
+    assert!(key_features.continuation_bias.unwrap_or_default() >= 0.95);
+    assert!(key_features.breakup_bias.unwrap_or(1.0) < 0.01);
+    assert!((toriyama.settings.width_px - 1.9).abs() < f32::EPSILON);
+    assert_eq!(toriyama.settings.distance_width_falloff, 0.0);
+    assert_eq!(toriyama.settings.depth_pressure, 0.0);
+    assert_eq!(toriyama.settings.depth_alpha, 0.0);
+    assert!(!toriyama.settings.camera_response.enabled);
+    assert!(!toriyama.settings.camera_response.auto_focus);
+    assert_eq!(toriyama.settings.camera_response.near_width_boost, 0.0);
+    assert_eq!(toriyama.settings.camera_response.near_detail_boost, 0.0);
+    assert_eq!(toriyama.settings.camera_response.far_width_falloff, 0.0);
+    assert_eq!(toriyama.settings.camera_response.far_alpha_falloff, 0.0);
+    assert_eq!(
+        toriyama.settings.camera_response.far_detail_suppression,
+        0.0
+    );
+    assert_eq!(
+        toriyama.settings.camera_response.front_feature_suppression,
+        0.0
+    );
+    assert_eq!(toriyama.settings.passes, 1);
+    assert_eq!(toriyama.settings.search_line_count, 0);
     assert_eq!(
         toriyama
             .settings
-            .line_families
-            .first()
-            .and_then(|family| family.brush.as_deref()),
-        Some("toriyama_g_pen_dark")
+            .cpu_strategy_profile
+            .stroke_synthesis
+            .single_pass_alpha,
+        1.0
     );
     assert!(
         toriyama
             .settings
-            .brush_profiles
-            .get("toriyama_maru_detail")
-            .and_then(|brush| brush.ink_color.as_ref())
-            .is_some()
+            .cpu_strategy_profile
+            .tessellation
+            .rail_tangent_smoothing
     );
     assert_eq!(
-        toriyama.settings.cpu_strategy_profile,
-        amigo_render_api::NprCpuStrategyProfile3d::default()
+        toriyama
+            .settings
+            .cpu_strategy_profile
+            .tessellation
+            .min_sample_width_px,
+        1.05
+    );
+    assert_eq!(
+        toriyama
+            .settings
+            .cpu_strategy_profile
+            .tessellation
+            .taper_endpoint_floor,
+        0.52
     );
 }
 

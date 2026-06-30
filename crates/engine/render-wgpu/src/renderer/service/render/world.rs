@@ -218,7 +218,7 @@ pub(super) fn execute_world_to_offscreen(
         for command in ctx.meshes {
             let transform =
                 resolve_transform3(ctx.scene_view, &command.entity_name, command.mesh.transform);
-            let geometry = renderer.mesh_geometry_3d(ctx.assets, &command.mesh.mesh_asset);
+            let geometry = renderer.mesh_geometry_3d_for_mesh(ctx.assets, &command.mesh);
             let material = material_lookup.get(&command.entity_name).copied();
             let color = material
                 .map(|material| material.albedo)
