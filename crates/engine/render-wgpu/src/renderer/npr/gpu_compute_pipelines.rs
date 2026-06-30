@@ -1,8 +1,8 @@
 use crate::renderer::shaders::{
-    NPR_BUILD_ENDPOINT_BINS_SHADER, NPR_BUILD_STROKES_SHADER, NPR_CLAMP_INDIRECT_ARGS_SHADER,
-    NPR_CLASSIFY_EDGES_SHADER, NPR_CLEAR_ENDPOINT_HEADS_SHADER, NPR_COMPACT_OWNERS_SHADER,
-    NPR_CONNECT_PATHS_SHADER, NPR_EMIT_PATH_SEGMENTS_SHADER, NPR_PROJECT_VERTICES_SHADER,
-    NPR_RELAX_PATH_OWNERS_SHADER,
+    NPR_AGGREGATE_PATHS_SHADER, NPR_BUILD_ENDPOINT_BINS_SHADER, NPR_BUILD_STROKES_SHADER,
+    NPR_CLAMP_INDIRECT_ARGS_SHADER, NPR_CLASSIFY_EDGES_SHADER, NPR_CLEAR_ENDPOINT_HEADS_SHADER,
+    NPR_COMPACT_OWNERS_SHADER, NPR_CONNECT_PATHS_SHADER, NPR_EMIT_PATH_SEGMENTS_SHADER,
+    NPR_PROJECT_VERTICES_SHADER, NPR_RELAX_PATH_OWNERS_SHADER,
 };
 
 use super::{
@@ -19,6 +19,7 @@ pub(crate) struct NprGpuComputePipelineSet3d {
     pub compact_owners_bind_group_layout: wgpu::BindGroupLayout,
     pub connect_paths_bind_group_layout: wgpu::BindGroupLayout,
     pub relax_path_owners_bind_group_layout: wgpu::BindGroupLayout,
+    pub aggregate_paths_bind_group_layout: wgpu::BindGroupLayout,
     pub emit_path_segments_bind_group_layout: wgpu::BindGroupLayout,
     pub build_strokes_bind_group_layout: wgpu::BindGroupLayout,
     pub clamp_indirect_args_bind_group_layout: wgpu::BindGroupLayout,
@@ -29,6 +30,7 @@ pub(crate) struct NprGpuComputePipelineSet3d {
     pub compact_owners_pipeline: wgpu::ComputePipeline,
     pub connect_paths_pipeline: wgpu::ComputePipeline,
     pub relax_path_owners_pipeline: wgpu::ComputePipeline,
+    pub aggregate_paths_pipeline: wgpu::ComputePipeline,
     pub emit_path_segments_pipeline: wgpu::ComputePipeline,
     pub build_strokes_pipeline: wgpu::ComputePipeline,
     pub clamp_indirect_args_pipeline: wgpu::ComputePipeline,
@@ -91,6 +93,7 @@ pub(crate) fn create_npr_gpu_compute_pipeline_set(
         "amigo-npr-connect-paths-bind-group-layout",
         &[
             storage_entry(5, true),
+            uniform_entry(8),
             storage_entry(10, true),
             storage_entry(14, false),
         ],
@@ -100,8 +103,20 @@ pub(crate) fn create_npr_gpu_compute_pipeline_set(
         "amigo-npr-relax-path-owners-bind-group-layout",
         &[
             storage_entry(5, true),
+            uniform_entry(8),
             storage_entry(10, true),
             storage_entry(14, false),
+        ],
+    );
+    let aggregate_paths_bind_group_layout = create_compute_bind_group_layout(
+        device,
+        "amigo-npr-aggregate-paths-bind-group-layout",
+        &[
+            storage_entry(5, true),
+            uniform_entry(8),
+            storage_entry(10, true),
+            storage_entry(14, true),
+            storage_entry(15, false),
         ],
     );
     let emit_path_segments_bind_group_layout = create_compute_bind_group_layout(
@@ -126,6 +141,7 @@ pub(crate) fn create_npr_gpu_compute_pipeline_set(
             uniform_entry(8),
             storage_entry(9, false),
             storage_entry(13, true),
+            storage_entry(15, true),
         ],
     );
     let clamp_indirect_args_bind_group_layout = create_compute_bind_group_layout(
@@ -223,6 +239,16 @@ pub(crate) fn create_npr_gpu_compute_pipeline_set(
             &relax_path_owners_bind_group_layout,
         ),
     );
+    let aggregate_paths_pipeline = create_compute_pipeline(
+        device,
+        "amigo-npr-aggregate-paths-pipeline",
+        NPR_AGGREGATE_PATHS_SHADER,
+        &create_compute_pipeline_layout(
+            device,
+            "amigo-npr-aggregate-paths-pipeline-layout",
+            &aggregate_paths_bind_group_layout,
+        ),
+    );
     let clamp_indirect_args_pipeline = create_compute_pipeline(
         device,
         "amigo-npr-clamp-indirect-args-pipeline",
@@ -241,6 +267,7 @@ pub(crate) fn create_npr_gpu_compute_pipeline_set(
         compact_owners_bind_group_layout,
         connect_paths_bind_group_layout,
         relax_path_owners_bind_group_layout,
+        aggregate_paths_bind_group_layout,
         emit_path_segments_bind_group_layout,
         build_strokes_bind_group_layout,
         clamp_indirect_args_bind_group_layout,
@@ -251,6 +278,7 @@ pub(crate) fn create_npr_gpu_compute_pipeline_set(
         compact_owners_pipeline,
         connect_paths_pipeline,
         relax_path_owners_pipeline,
+        aggregate_paths_pipeline,
         emit_path_segments_pipeline,
         build_strokes_pipeline,
         clamp_indirect_args_pipeline,

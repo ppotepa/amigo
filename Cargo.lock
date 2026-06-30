@@ -218,6 +218,7 @@ dependencies = [
  "amigo-ui",
  "amigo-vector-2d-plugin",
  "amigo-window-api",
+ "image",
  "serde_yaml",
 ]
 

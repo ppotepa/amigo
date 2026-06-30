@@ -46,6 +46,11 @@ models:
     url: https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/CesiumMan/glTF-Binary/CesiumMan.glb
     license: Khronos glTF Sample Models license metadata
     role: character silhouette and feature-line reference
+  - id: riders
+    file: khronos/riders.glb
+    provider: Khronos glTF Sample Models
+    license: Khronos glTF Sample Models license metadata
+    role: character silhouette, material-role, and NPR line-density reference
   - id: rigged-hand-obj
     file: ../../../npr.html#OBJ_B64
     provider: local npr.html prototype

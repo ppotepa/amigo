@@ -96,6 +96,17 @@ pub(crate) struct GpuNprPathState3d {
 
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default)]
+pub(crate) struct GpuNprAggregatedPath3d {
+    pub start: [f32; 4],
+    pub end: [f32; 4],
+    pub control: [f32; 4],
+    pub path: [u32; 4],
+    pub metrics: [f32; 4],
+    pub style_metrics: [f32; 4],
+}
+
+#[repr(C)]
+#[derive(Clone, Copy, Debug, Default)]
 pub(crate) struct GpuNprFrameUniforms3d {
     pub model_translation: [f32; 4],
     pub model_rotation: [f32; 4],
@@ -124,6 +135,40 @@ pub(crate) struct GpuNprFrameUniforms3d {
     pub params18: [f32; 4],
     pub params19: [f32; 4],
     pub params20: [f32; 4],
+    pub params21: [f32; 4],
+    pub params22: [f32; 4],
+    pub params23: [f32; 4],
+    pub params24: [f32; 4],
+    pub params25: [f32; 4],
+    pub params26: [f32; 4],
+    pub params27: [f32; 4],
+    pub params28: [f32; 4],
+    pub params29: [f32; 4],
+    pub params30: [f32; 4],
+    pub params31: [f32; 4],
+    pub params32: [f32; 4],
+    pub params33: [f32; 4],
+    pub params34: [f32; 4],
+    pub params35: [f32; 4],
+    pub params36: [f32; 4],
+    pub params37: [f32; 4],
+    pub params38: [f32; 4],
+    pub params39: [f32; 4],
+    pub params40: [f32; 4],
+    pub params41: [f32; 4],
+    pub params42: [f32; 4],
+    pub params43: [f32; 4],
+    pub params44: [f32; 4],
+    pub params45: [f32; 4],
+    pub params46: [f32; 4],
+    pub params47: [f32; 4],
+    pub params48: [f32; 4],
+    pub params49: [f32; 4],
+    pub params50: [f32; 4],
+    pub params51: [f32; 4],
+    pub params52: [f32; 4],
+    pub params53: [f32; 4],
+    pub params54: [f32; 4],
     pub ink_color: [f32; 4],
     pub seed: [u32; 4],
     pub pipeline0: [u32; 4],

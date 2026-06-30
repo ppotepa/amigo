@@ -44,14 +44,13 @@ fn animation_status_label(model_index) {
 }
 
 fn npr_preset_count() {
-    4
+    3
 }
 
 fn npr_style_base_id(index) {
-    if index == 0 { return "cinematic_12fps"; }
-    if index == 1 { return "rough_comic_ink"; }
-    if index == 2 { return "akira"; }
-    "akira_camera_based"
+    if index == 0 { return "cinematic_12fps_cpu_reference"; }
+    if index == 1 { return "rough_comic_ink_cpu_reference"; }
+    "toriyama_contour_ink_cpu_reference"
 }
 
 fn npr_preset_id(index) {
@@ -61,24 +60,37 @@ fn npr_preset_id(index) {
 fn npr_preset_label(index) {
     if index == 0 { return "Cinematic 12 FPS"; }
     if index == 1 { return "Rough Comic Ink"; }
-    if index == 2 { return "Akira"; }
-    "Akira Camera Based"
+    "Toriyama Contour Ink"
 }
 
 fn npr_debug_view_label(view_id) {
     if view_id == "camera.final" { return "Final"; }
     if view_id == "npr.line_kinds" { return "LineKinds"; }
     if view_id == "npr.raw_paths" { return "RawPaths"; }
+    if view_id == "npr.candidate_importance" { return "Importance"; }
+    if view_id == "npr.technical_selection" { return "Technical"; }
+    if view_id == "npr.stroke_length_bucket" { return "Length"; }
+    if view_id == "npr.source_edge_count" { return "SourceEdges"; }
+    if view_id == "npr.stroke_roles" { return "StrokeRoles"; }
+    if view_id == "npr.material_roles" { return "MaterialRoles"; }
     if view_id == "npr.dropout" { return "Dropout"; }
     if view_id == "npr.width_alpha" { return "WidthAlpha"; }
+    if view_id == "npr.chain_hops" { return "ChainHops"; }
     view_id
 }
 
 fn npr_debug_mode_from_view_id(view_id) {
     if view_id == "npr.line_kinds" { return "line_kinds"; }
     if view_id == "npr.raw_paths" { return "raw_paths"; }
+    if view_id == "npr.candidate_importance" { return "candidate_importance"; }
+    if view_id == "npr.technical_selection" { return "technical_selection"; }
+    if view_id == "npr.stroke_length_bucket" { return "stroke_length_bucket"; }
+    if view_id == "npr.source_edge_count" { return "source_edge_count"; }
+    if view_id == "npr.stroke_roles" { return "stroke_roles"; }
+    if view_id == "npr.material_roles" { return "material_roles"; }
     if view_id == "npr.dropout" { return "dropout"; }
     if view_id == "npr.width_alpha" { return "width_alpha"; }
+    if view_id == "npr.chain_hops" { return "chain_hops"; }
     "final"
 }
 
@@ -177,7 +189,7 @@ fn refresh_hud(world_api, dt) {
     );
     world_api.ui.set_text(
         "playground-npr-hud.root.strategy",
-        "Backend  " + strategy + " | G toggle",
+        "Backend  " + strategy + " | CPU only",
     );
     world_api.ui.set_text(
         "playground-npr-hud.root.camera",
@@ -303,11 +315,8 @@ fn set_npr_strategy(world_api, strategy) {
 }
 
 fn toggle_npr_strategy(world_api) {
-    if world_api.state.get_string("active_npr_strategy") == "gpu_realtime" {
-        set_npr_strategy(world_api, "cpu_reference");
-    } else {
-        set_npr_strategy(world_api, "gpu_realtime");
-    }
+    set_npr_strategy(world_api, "cpu_reference");
+    world_api.dev.event("playground-npr.strategy-locked", "cpu_reference");
 }
 
 fn set_npr_debug_view(world_api, view_id, label) {
@@ -332,11 +341,39 @@ fn cycle_npr_debug_view(world_api) {
         return;
     }
     if current == "npr.raw_paths" {
+        set_npr_debug_view(world_api, "npr.candidate_importance", "Importance");
+        return;
+    }
+    if current == "npr.candidate_importance" {
+        set_npr_debug_view(world_api, "npr.technical_selection", "Technical");
+        return;
+    }
+    if current == "npr.technical_selection" {
+        set_npr_debug_view(world_api, "npr.stroke_length_bucket", "Length");
+        return;
+    }
+    if current == "npr.stroke_length_bucket" {
+        set_npr_debug_view(world_api, "npr.source_edge_count", "Source Edges");
+        return;
+    }
+    if current == "npr.source_edge_count" {
+        set_npr_debug_view(world_api, "npr.stroke_roles", "Stroke Roles");
+        return;
+    }
+    if current == "npr.stroke_roles" {
+        set_npr_debug_view(world_api, "npr.material_roles", "Material Roles");
+        return;
+    }
+    if current == "npr.material_roles" {
         set_npr_debug_view(world_api, "npr.dropout", "Dropout");
         return;
     }
     if current == "npr.dropout" {
         set_npr_debug_view(world_api, "npr.width_alpha", "Width Alpha");
+        return;
+    }
+    if current == "npr.width_alpha" {
+        set_npr_debug_view(world_api, "npr.chain_hops", "Chain Hops");
         return;
     }
     set_npr_debug_view(world_api, "camera.final", "Final");
@@ -357,8 +394,8 @@ fn on_enter() {
     world.state.set_bool("npr_camera_freelook", false);
     world.state.set_bool("npr_model_autorotate", false);
     world.state.set_bool("npr_temporal_path_smoothing", false);
-    world.state.set_string("active_npr_strategy", "gpu_realtime");
-    world.state.set_int("active_npr_preset", 0);
+    world.state.set_string("active_npr_strategy", "cpu_reference");
+    world.state.set_int("active_npr_preset", 2);
     world.state.set_int("active_npr_animation", 0);
     world.state.set_float("npr_model_scale", default_model_scale());
     world.state.set_string("npr_debug_view", "camera.final");
@@ -372,7 +409,7 @@ fn on_enter() {
     refresh_hud(world, 0.0);
     let scene_id = world.scene.current_id();
     world.dev.event("playground-npr.scene-ready", scene_id);
-    world.dev.log("playground-npr comic lines workbench: recursive GLB model library under source-models, </> switch models, +/- scale model, ArrowUp/ArrowDown styles, G backend toggle, V debug cycle, 7 final, 8 kinds, 9 dropout, 0 width/alpha, LMB orbit, Shift+LMB or MMB pan, wheel zoom, F freelook, WASD/Space/Q fly, Shift fast fly, R autorotate, T temporal smoothing; GLB skinned clips are not executed in V1");
+    world.dev.log("playground-npr comic lines workbench: CPU reference NPR only, recursive GLB model library under source-models, </> switch models, +/- scale model, ArrowUp/ArrowDown styles, G reasserts CPU, V debug cycle, 7 final, 8 kinds, 9 dropout, 0 width/alpha, LMB orbit, Shift+LMB or MMB pan, wheel zoom, F freelook, WASD/Space/Q fly, Shift fast fly, R autorotate, T temporal smoothing; GLB skinned clips are not executed in V1");
 }
 
 fn update(dt) {

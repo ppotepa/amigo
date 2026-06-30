@@ -1,8 +1,9 @@
 use crate::renderer::{GpuNprFrameUniforms3d, NprStrokeSegmentVertex, Viewport};
 
 use super::{
-    NPR_GPU_PATH_SEGMENTS_PER_CHAIN, NprGpuMeshJob3d, npr_gpu_endpoint_head_count,
-    npr_gpu_pass_count, npr_gpu_stroke_segment_capacity_units, scaled_face_id_dimensions,
+    NprGpuMeshJob3d, npr_gpu_endpoint_head_count, npr_gpu_pass_count,
+    npr_gpu_path_segment_capacity_units, npr_gpu_stroke_segment_capacity_units,
+    scaled_face_id_dimensions,
 };
 
 #[derive(Clone, Copy, Debug, Default)]
@@ -19,6 +20,7 @@ pub(crate) struct NprGpuFramePlan3d {
     pub path_links_capacity: u64,
     pub path_segments_capacity: u64,
     pub path_states_capacity: u64,
+    pub aggregated_paths_capacity: u64,
     pub stroke_segments_capacity: u64,
     pub uniform_size: usize,
 }
@@ -55,6 +57,10 @@ impl NprGpuFramePlan3d {
 
     pub(crate) fn allocated_path_states_capacity(self) -> u64 {
         self.path_states_capacity.max(64)
+    }
+
+    pub(crate) fn allocated_aggregated_paths_capacity(self) -> u64 {
+        self.aggregated_paths_capacity.max(64)
     }
 
     pub(crate) fn allocated_stroke_segments_capacity(self) -> u64 {
@@ -98,13 +104,16 @@ pub(crate) fn build_npr_gpu_frame_plan(
         * std::mem::size_of::<super::GpuNprEndpointEntry3d>()) as u64;
     let path_links_capacity =
         (total_edges * std::mem::size_of::<super::GpuNprPathLink3d>()) as u64;
+    let job_count = frame_jobs.len().max(1);
     let path_segments_capacity = (frame_jobs
         .iter()
-        .map(|job| job.geometry.edge_count() * NPR_GPU_PATH_SEGMENTS_PER_CHAIN)
+        .map(|job| npr_gpu_path_segment_capacity_units(job.geometry.edge_count(), job_count))
         .sum::<usize>()
         * std::mem::size_of::<super::GpuNprPathSegment3d>()) as u64;
     let path_states_capacity =
         (total_edges * std::mem::size_of::<super::GpuNprPathState3d>()) as u64;
+    let aggregated_paths_capacity =
+        (total_edges * std::mem::size_of::<super::GpuNprAggregatedPath3d>()) as u64;
     let stroke_segments_capacity = (frame_jobs
         .iter()
         .map(|job| {
@@ -130,6 +139,7 @@ pub(crate) fn build_npr_gpu_frame_plan(
         path_links_capacity,
         path_segments_capacity,
         path_states_capacity,
+        aggregated_paths_capacity,
         stroke_segments_capacity,
         uniform_size: std::mem::size_of::<GpuNprFrameUniforms3d>(),
     }

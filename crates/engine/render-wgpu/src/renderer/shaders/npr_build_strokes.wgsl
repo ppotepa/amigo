@@ -37,6 +37,15 @@ struct GpuNprPathSegment3d {
     style_metrics: vec4<f32>,
 }
 
+struct GpuNprAggregatedPath3d {
+    start: vec4<f32>,
+    end: vec4<f32>,
+    control: vec4<f32>,
+    path: vec4<u32>,
+    metrics: vec4<f32>,
+    style_metrics: vec4<f32>,
+}
+
 struct NprStrokeSegmentVertex {
     start: vec2<f32>,
     end: vec2<f32>,
@@ -83,6 +92,40 @@ struct GpuNprFrameUniforms3d {
     params18: vec4<f32>,
     params19: vec4<f32>,
     params20: vec4<f32>,
+    params21: vec4<f32>,
+    params22: vec4<f32>,
+    params23: vec4<f32>,
+    params24: vec4<f32>,
+    params25: vec4<f32>,
+    params26: vec4<f32>,
+    params27: vec4<f32>,
+    params28: vec4<f32>,
+    params29: vec4<f32>,
+    params30: vec4<f32>,
+    params31: vec4<f32>,
+    params32: vec4<f32>,
+    params33: vec4<f32>,
+    params34: vec4<f32>,
+    params35: vec4<f32>,
+    params36: vec4<f32>,
+    params37: vec4<f32>,
+    params38: vec4<f32>,
+    params39: vec4<f32>,
+    params40: vec4<f32>,
+    params41: vec4<f32>,
+    params42: vec4<f32>,
+    params43: vec4<f32>,
+    params44: vec4<f32>,
+    params45: vec4<f32>,
+    params46: vec4<f32>,
+    params47: vec4<f32>,
+    params48: vec4<f32>,
+    params49: vec4<f32>,
+    params50: vec4<f32>,
+    params51: vec4<f32>,
+    params52: vec4<f32>,
+    params53: vec4<f32>,
+    params54: vec4<f32>,
     ink_color: vec4<f32>,
     seed: vec4<u32>,
     pipeline0: vec4<u32>,
@@ -103,9 +146,18 @@ const PATH_FLAG_CONNECTED_END: u32 = 4u;
 const PATH_STRATEGY_DIRECT_VISIBLE_SEGMENTS: u32 = 1u;
 const CANDIDATE_CHARACTER_SEMANTIC: u32 = 1u;
 const STROKE_AKIRA_INK: u32 = 1u;
+const STROKE_CONFIDENT_MANGA_INK: u32 = 4u;
 const HATCHING_SPARSE_CHARACTER: u32 = 1u;
 const BUDGET_FACE_SILHOUETTE_PRIORITY: u32 = 1u;
 const BUDGET_CHARACTER_READABILITY: u32 = 2u;
+const FAMILY_ROLE_GENERIC: u32 = 0u;
+const FAMILY_ROLE_OUTER_CONTOUR: u32 = 1u;
+const FAMILY_ROLE_DETAIL_INK: u32 = 2u;
+const FAMILY_ROLE_CLOTH_FOLD: u32 = 3u;
+const FAMILY_ROLE_MATERIAL_CUT: u32 = 4u;
+const FAMILY_ROLE_SHADOW_HATCH: u32 = 5u;
+const FAMILY_ROLE_CONTACT_SHADOW: u32 = 6u;
+const PATH_SEGMENTS_PER_VISIBLE_EDGE: u32 = 3u;
 
 @group(0) @binding(2) var<storage, read> edges: array<GpuNprEdge3d>;
 @group(0) @binding(5) var<storage, read> visible_segments: array<GpuNprVisibleSegment3d>;
@@ -113,6 +165,7 @@ const BUDGET_CHARACTER_READABILITY: u32 = 2u;
 @group(0) @binding(8) var<uniform> uniforms: GpuNprFrameUniforms3d;
 @group(0) @binding(9) var<storage, read_write> indirect_args: array<atomic<u32>>;
 @group(0) @binding(13) var<storage, read> path_segments: array<GpuNprPathSegment3d>;
+@group(0) @binding(15) var<storage, read> aggregated_paths: array<GpuNprAggregatedPath3d>;
 
 fn active_edge_count() -> u32 {
     return min(uniforms.pipeline1.w, u32(arrayLength(&visible_segments)));
@@ -120,6 +173,10 @@ fn active_edge_count() -> u32 {
 
 fn uses_direct_visible_segments() -> bool {
     return uniforms.pipeline0.y == PATH_STRATEGY_DIRECT_VISIBLE_SEGMENTS;
+}
+
+fn is_primary_contour(kind: u32) -> bool {
+    return kind == KIND_BOUNDARY || kind == KIND_SILHOUETTE;
 }
 
 fn path_segment_base() -> u32 {
@@ -130,12 +187,54 @@ fn path_segment_slot_count() -> u32 {
     return uniforms.material_roles0.w;
 }
 
+fn segment_curve_control(
+    segment: GpuNprPathSegment3d,
+    start: vec2<f32>,
+    end: vec2<f32>,
+) -> vec2<f32> {
+    let mid = (start + end) * 0.5;
+    let curve_weight = segment_curve_weight(segment);
+    if (curve_weight <= 0.001) {
+        return mid;
+    }
+
+    let raw_control = segment.style_metrics.xy;
+    let delta = end - start;
+    let length_sq = max(dot(delta, delta), 1.0);
+    let t = clamp(dot(raw_control - start, delta) / length_sq, 0.05, 0.95);
+    let projected = start + delta * t;
+    let lateral = raw_control - projected;
+    let lateral_len = length(lateral);
+    let max_lateral = clamp(sqrt(length_sq) * 0.34, 1.5, 38.0);
+    var clamped_lateral = lateral;
+    if (lateral_len > max_lateral) {
+        clamped_lateral = lateral * (max_lateral / max(lateral_len, 0.0001));
+    }
+    return mix(mid, projected + clamped_lateral, curve_weight);
+}
+
+fn segment_curve_weight(segment: GpuNprPathSegment3d) -> f32 {
+    return clamp(fract(segment.style_metrics.w), 0.0, 0.999);
+}
+
+fn segment_family_role(segment: GpuNprPathSegment3d) -> u32 {
+    return u32(floor(max(segment.style_metrics.w, 0.0)));
+}
+
 fn uses_character_semantic_candidates() -> bool {
     return uniforms.pipeline0.x == CANDIDATE_CHARACTER_SEMANTIC;
 }
 
 fn uses_akira_ink() -> bool {
     return uniforms.pipeline0.z == STROKE_AKIRA_INK;
+}
+
+fn uses_confident_manga_ink() -> bool {
+    return uniforms.pipeline0.z == STROKE_CONFIDENT_MANGA_INK;
+}
+
+fn uses_manga_ink() -> bool {
+    return uses_akira_ink() || uses_confident_manga_ink();
 }
 
 fn uses_character_budget() -> bool {
@@ -246,7 +345,7 @@ fn should_emit_sparse_character_hatch(
     if (!uses_sparse_character_hatching()) {
         return false;
     }
-    if (!(uses_character_semantic_candidates() || uses_akira_ink() || uses_character_budget())) {
+    if (!(uses_character_semantic_candidates() || uses_manga_ink() || uses_character_budget())) {
         return false;
     }
     if (!is_internal_feature_kind(kind)) {
@@ -273,7 +372,7 @@ fn should_emit_sparse_character_hatch(
             ^ (kind * 0x85ebu)
     );
     let chance =
-        select(0.18, 0.30, uses_akira_ink())
+        select(0.18, select(0.30, 0.20, uses_confident_manga_ink()), uses_manga_ink())
         * clamp(1.1 - chain_quality * 0.34, 0.55, 1.0)
         * camera_hatch_chance_multiplier(depth01);
     return roll < chance;
@@ -294,14 +393,22 @@ fn should_suppress_detail_segment(
     }
 
     let connected_count = u32(connected_start) + u32(connected_end);
-    let strict_budget = uses_character_budget() || uses_akira_ink();
+    let strict_budget = uses_confident_manga_ink() || (uses_character_budget() && !uses_akira_ink());
     let near_keep = camera_detail_keep_strength(kind, depth01);
     let far_suppress = camera_far_detail_suppression(kind, depth01);
     let camera_length_scale = clamp(1.0 - near_keep * 0.46 + far_suppress * 0.55, 0.42, 2.35);
+    let family_min_length = max(kind_min_stroke_length_px(kind), uniforms.params0.w);
     let min_detail_length =
-        max(uniforms.params0.w * select(1.8, 2.6, strict_budget), select(5.0, 8.0, strict_budget))
+        max(
+            max(uniforms.params0.w * select(1.8, 2.6, strict_budget), family_min_length),
+            select(5.0, 8.0, strict_budget),
+        )
         * camera_length_scale;
     if (render_length < min_detail_length && connected_count < 2u) {
+        return true;
+    }
+
+    if (connected_count == 0u && path_length < max(family_min_length * 1.18, min_detail_length)) {
         return true;
     }
 
@@ -334,7 +441,7 @@ fn artist_selection_strength(kind: u32, path_coherence: f32, importance: f32, de
     }
     let human = clamp(uniforms.params7.y, 0.0, 1.0);
     let uncertainty = clamp(1.0 - uniforms.params11.y, 0.0, 1.0);
-    let semantic_scale = select(0.82, 1.12, uses_character_semantic_candidates() || uses_character_budget() || uses_akira_ink());
+    let semantic_scale = select(0.82, 1.12, uses_character_semantic_candidates() || uses_character_budget() || uses_manga_ink());
     let coherence_scale = clamp(1.12 - path_coherence * 0.36, 0.58, 1.0);
     let importance_guard = clamp(1.12 - importance * 0.78, 0.24, 1.0);
     let camera_keep = camera_detail_keep_strength(kind, depth01);
@@ -350,7 +457,7 @@ fn artist_selection_strength(kind: u32, path_coherence: f32, importance: f32, de
         role_scale = 0.72;
     }
 
-    let akira_bias = select(0.0, 0.055, uses_akira_ink());
+    let akira_bias = select(0.0, select(0.055, 0.032, uses_confident_manga_ink()), uses_manga_ink());
     return clamp(
         clamp(
             (human * 0.18 + uncertainty * 0.16 + akira_bias)
@@ -472,43 +579,336 @@ fn artist_lift_alpha(
 }
 
 fn kind_width_multiplier(kind: u32) -> f32 {
+    let brush_scale = kind_brush_width_multiplier(kind);
     if (kind == KIND_SILHOUETTE) {
-        return uniforms.params3.x * select(1.0, 1.08, uses_akira_ink());
+        return uniforms.params3.x
+            * brush_scale
+            * select(1.0, select(1.08, 1.05, uses_confident_manga_ink()), uses_manga_ink());
     }
     if (kind == KIND_CONTACT) {
-        return max(uniforms.params3.z, 1.0) * select(1.0, 0.72, uses_character_budget());
+        return max(uniforms.params3.z, 1.0)
+            * kind_brush_width_multiplier(KIND_FEATURE)
+            * select(1.0, 0.72, uses_character_budget() && !uses_akira_ink());
     }
     if (is_internal_feature_kind(kind)) {
-        return uniforms.params3.z * select(1.0, 0.74, uses_akira_ink() || uses_character_budget());
+        var scale = 1.0;
+        if (uses_confident_manga_ink()) {
+            scale = 0.68;
+        } else if (uses_akira_ink()) {
+            scale = 0.96;
+        } else if (uses_character_budget()) {
+            scale = 0.74;
+        }
+        return uniforms.params3.z * brush_scale * scale;
     }
-    return uniforms.params3.y;
+    return uniforms.params3.y * brush_scale;
 }
 
 fn kind_alpha_multiplier(kind: u32) -> f32 {
+    let brush_scale = kind_brush_alpha_multiplier(kind);
     if (kind == KIND_SILHOUETTE) {
-        return uniforms.params4.x;
+        return uniforms.params4.x * brush_scale;
     }
     if (kind == KIND_CONTACT) {
-        return uniforms.params4.z * 0.94;
+        return uniforms.params4.z * kind_brush_alpha_multiplier(KIND_FEATURE) * 0.94;
     }
     if (is_internal_feature_kind(kind)) {
-        let akira_scale = select(1.0, 0.82, uses_akira_ink());
-        return uniforms.params4.z * uniforms.params16.y * 0.82 * akira_scale;
+        var ink_scale = 1.0;
+        if (uses_confident_manga_ink()) {
+            ink_scale = 0.76;
+        } else if (uses_akira_ink()) {
+            ink_scale = 0.96;
+        }
+        let base_feature_alpha = select(0.82, 0.94, uses_akira_ink());
+        return uniforms.params4.z * brush_scale * uniforms.params16.y * base_feature_alpha * ink_scale;
     }
-    return uniforms.params4.y;
+    return uniforms.params4.y * brush_scale;
 }
 
 fn kind_wobble_px(kind: u32) -> f32 {
+    let brush_scale = kind_brush_path_wobble_multiplier(kind);
     if (kind == KIND_SILHOUETTE) {
-        return uniforms.params12.x;
+        return uniforms.params12.x * brush_scale;
     }
     if (kind == KIND_CONTACT) {
-        return uniforms.params12.z * 0.625;
+        return uniforms.params12.z * kind_brush_path_wobble_multiplier(KIND_FEATURE) * 0.625;
     }
     if (is_internal_feature_kind(kind)) {
-        return uniforms.params12.z * select(1.0, 0.65, uses_akira_ink());
+        return uniforms.params12.z
+            * brush_scale
+            * select(1.0, select(0.65, 0.48, uses_confident_manga_ink()), uses_manga_ink());
     }
-    return uniforms.params12.y;
+    return uniforms.params12.y * brush_scale;
+}
+
+fn kind_brush_width_multiplier(kind: u32) -> f32 {
+    if (kind == KIND_SILHOUETTE) {
+        return uniforms.params22.x;
+    }
+    if (kind == KIND_BOUNDARY) {
+        return uniforms.params22.y;
+    }
+    if (kind == KIND_SEAM) {
+        return uniforms.params22.w;
+    }
+    return uniforms.params22.z;
+}
+
+fn kind_brush_alpha_multiplier(kind: u32) -> f32 {
+    if (kind == KIND_SILHOUETTE) {
+        return uniforms.params23.x;
+    }
+    if (kind == KIND_BOUNDARY) {
+        return uniforms.params23.y;
+    }
+    if (kind == KIND_SEAM) {
+        return uniforms.params23.w;
+    }
+    return uniforms.params23.z;
+}
+
+fn kind_brush_path_wobble_multiplier(kind: u32) -> f32 {
+    if (kind == KIND_SILHOUETTE) {
+        return uniforms.params24.x;
+    }
+    if (kind == KIND_BOUNDARY) {
+        return uniforms.params24.y;
+    }
+    if (kind == KIND_SEAM) {
+        return uniforms.params24.w;
+    }
+    return uniforms.params24.z;
+}
+
+fn kind_brush_pressure_jitter_multiplier(kind: u32) -> f32 {
+    if (kind == KIND_SILHOUETTE) {
+        return uniforms.params25.x;
+    }
+    if (kind == KIND_BOUNDARY) {
+        return uniforms.params25.y;
+    }
+    if (kind == KIND_SEAM) {
+        return uniforms.params25.w;
+    }
+    return uniforms.params25.z;
+}
+
+fn kind_taper_value(kind: u32) -> f32 {
+    if (kind == KIND_SILHOUETTE) {
+        return uniforms.params26.x;
+    }
+    if (kind == KIND_BOUNDARY) {
+        return uniforms.params26.y;
+    }
+    if (kind == KIND_SEAM) {
+        return uniforms.params26.w;
+    }
+    return uniforms.params26.z;
+}
+
+fn kind_angle_bias(kind: u32) -> f32 {
+    if (kind == KIND_SILHOUETTE) {
+        return uniforms.params27.x;
+    }
+    if (kind == KIND_BOUNDARY) {
+        return uniforms.params27.y;
+    }
+    if (kind == KIND_SEAM) {
+        return uniforms.params27.w;
+    }
+    return uniforms.params27.z;
+}
+
+fn kind_path_adherence_multiplier(kind: u32) -> f32 {
+    if (kind == KIND_SILHOUETTE) {
+        return uniforms.params43.x;
+    }
+    if (kind == KIND_BOUNDARY) {
+        return uniforms.params43.y;
+    }
+    if (kind == KIND_SEAM) {
+        return uniforms.params43.w;
+    }
+    return uniforms.params43.z;
+}
+
+fn kind_angle_influence(kind: u32) -> f32 {
+    if (kind == KIND_SILHOUETTE) {
+        return uniforms.params44.x;
+    }
+    if (kind == KIND_BOUNDARY) {
+        return uniforms.params44.y;
+    }
+    if (kind == KIND_SEAM) {
+        return uniforms.params44.w;
+    }
+    return uniforms.params44.z;
+}
+
+fn kind_brush_tip(kind: u32) -> u32 {
+    if (kind == KIND_SILHOUETTE) {
+        return u32(uniforms.params50.x);
+    }
+    if (kind == KIND_BOUNDARY) {
+        return u32(uniforms.params50.y);
+    }
+    if (kind == KIND_SEAM) {
+        return u32(uniforms.params50.w);
+    }
+    return u32(uniforms.params50.z);
+}
+
+fn kind_min_stroke_length_px(kind: u32) -> f32 {
+    if (kind == KIND_SILHOUETTE) {
+        return uniforms.params53.x;
+    }
+    if (kind == KIND_BOUNDARY) {
+        return uniforms.params53.y;
+    }
+    if (kind == KIND_CREASE) {
+        return uniforms.params53.w;
+    }
+    if (kind == KIND_SEAM) {
+        return uniforms.params54.x;
+    }
+    if (kind == KIND_CONTACT) {
+        return uniforms.params54.y;
+    }
+    return uniforms.params53.z;
+}
+
+fn role_width_multiplier(role: u32) -> f32 {
+    if (role == FAMILY_ROLE_OUTER_CONTOUR) {
+        return 1.08;
+    }
+    if (role == FAMILY_ROLE_DETAIL_INK) {
+        return 0.82;
+    }
+    if (role == FAMILY_ROLE_CLOTH_FOLD) {
+        return 0.90;
+    }
+    if (role == FAMILY_ROLE_MATERIAL_CUT) {
+        return 0.72;
+    }
+    if (role == FAMILY_ROLE_SHADOW_HATCH) {
+        return 0.58;
+    }
+    if (role == FAMILY_ROLE_CONTACT_SHADOW) {
+        return 0.92;
+    }
+    return 1.0;
+}
+
+fn role_alpha_multiplier(role: u32) -> f32 {
+    if (role == FAMILY_ROLE_OUTER_CONTOUR) {
+        return 1.0;
+    }
+    if (role == FAMILY_ROLE_DETAIL_INK) {
+        return 0.84;
+    }
+    if (role == FAMILY_ROLE_CLOTH_FOLD) {
+        return 0.88;
+    }
+    if (role == FAMILY_ROLE_MATERIAL_CUT) {
+        return 0.76;
+    }
+    if (role == FAMILY_ROLE_SHADOW_HATCH) {
+        return 0.68;
+    }
+    if (role == FAMILY_ROLE_CONTACT_SHADOW) {
+        return 0.90;
+    }
+    return 1.0;
+}
+
+fn role_detail_visibility_multiplier(role: u32, depth01: f32) -> f32 {
+    if (role == FAMILY_ROLE_OUTER_CONTOUR) {
+        return 1.0;
+    }
+    let far = camera_far_strength(depth01);
+    if (role == FAMILY_ROLE_DETAIL_INK) {
+        return clamp(0.92 - far * 0.34, 0.48, 0.92);
+    }
+    if (role == FAMILY_ROLE_CLOTH_FOLD) {
+        return clamp(0.86 - far * 0.28, 0.42, 0.86);
+    }
+    if (role == FAMILY_ROLE_MATERIAL_CUT) {
+        return clamp(0.74 - far * 0.22, 0.36, 0.74);
+    }
+    if (role == FAMILY_ROLE_SHADOW_HATCH) {
+        return clamp(0.68 - far * 0.36, 0.22, 0.68);
+    }
+    return 1.0;
+}
+
+fn role_taper_multiplier(role: u32) -> f32 {
+    if (role == FAMILY_ROLE_OUTER_CONTOUR) {
+        return 0.88;
+    }
+    if (role == FAMILY_ROLE_DETAIL_INK) {
+        return 0.68;
+    }
+    if (role == FAMILY_ROLE_CLOTH_FOLD) {
+        return 0.78;
+    }
+    if (role == FAMILY_ROLE_MATERIAL_CUT) {
+        return 0.72;
+    }
+    if (role == FAMILY_ROLE_SHADOW_HATCH) {
+        return 0.58;
+    }
+    if (role == FAMILY_ROLE_CONTACT_SHADOW) {
+        return 0.92;
+    }
+    return 1.0;
+}
+
+fn role_overshoot_multiplier(role: u32) -> f32 {
+    if (role == FAMILY_ROLE_OUTER_CONTOUR) {
+        return 1.14;
+    }
+    if (role == FAMILY_ROLE_DETAIL_INK) {
+        return 0.32;
+    }
+    if (role == FAMILY_ROLE_CLOTH_FOLD) {
+        return 0.56;
+    }
+    if (role == FAMILY_ROLE_MATERIAL_CUT) {
+        return 0.24;
+    }
+    if (role == FAMILY_ROLE_SHADOW_HATCH) {
+        return 0.0;
+    }
+    if (role == FAMILY_ROLE_CONTACT_SHADOW) {
+        return 0.72;
+    }
+    return 1.0;
+}
+
+fn kind_width_curve(kind: u32) -> vec4<f32> {
+    if (kind == KIND_SILHOUETTE) {
+        return uniforms.params28;
+    }
+    if (kind == KIND_BOUNDARY) {
+        return uniforms.params29;
+    }
+    if (kind == KIND_SEAM) {
+        return uniforms.params31;
+    }
+    return uniforms.params30;
+}
+
+fn kind_alpha_curve(kind: u32) -> vec4<f32> {
+    if (kind == KIND_SILHOUETTE) {
+        return uniforms.params32;
+    }
+    if (kind == KIND_BOUNDARY) {
+        return uniforms.params33;
+    }
+    if (kind == KIND_SEAM) {
+        return uniforms.params35;
+    }
+    return uniforms.params34;
 }
 
 fn hash_u32(value: u32) -> u32 {
@@ -699,18 +1099,18 @@ fn depth_alpha_multiplier(kind: u32, importance: f32, depth01: f32) -> f32 {
         * camera_alpha_multiplier(kind, depth01);
 }
 
-fn pressure_multiplier(t: f32) -> f32 {
-    let shaped = sample_curve4(uniforms.params8, t);
+fn pressure_multiplier(kind: u32, t: f32) -> f32 {
+    let shaped = sample_curve4(kind_width_curve(kind), t);
     return shaped * (0.92 + uniforms.params11.y * 0.12);
 }
 
-fn alpha_pressure_multiplier(t: f32) -> f32 {
-    return clamp(sample_curve4(uniforms.params9, t), 0.0, 1.5);
+fn alpha_pressure_multiplier(kind: u32, t: f32) -> f32 {
+    return clamp(sample_curve4(kind_alpha_curve(kind), t), 0.0, 1.5);
 }
 
-fn taper_multiplier(t: f32) -> f32 {
+fn taper_multiplier(kind: u32, t: f32) -> f32 {
     let endpoint_weight = clamp(min(t, 1.0 - t) * 2.0, 0.0, 1.0);
-    return 1.0 - clamp(uniforms.params5.w, 0.0, 1.0) * (1.0 - max(endpoint_weight, 0.35));
+    return 1.0 - clamp(kind_taper_value(kind), 0.0, 1.5) * (1.0 - max(endpoint_weight, 0.35));
 }
 
 fn pass_offset(edge_id: u32, pass_index: u32) -> f32 {
@@ -822,16 +1222,42 @@ fn path_humanization_scale(path_coherence: f32) -> f32 {
     return clamp(1.16 - path_coherence * 0.26, 0.78, 1.08);
 }
 
-fn pass_width(kind: u32, pass_index: u32, importance: f32, t: f32, path_coherence: f32, depth01: f32) -> f32 {
-    let base = uniforms.params1.x * kind_width_multiplier(kind) * uniforms.params6.x;
+fn brush_angle_response(kind: u32, render_direction: vec2<f32>) -> f32 {
+    let direction_length = length(render_direction);
+    let influence = clamp(kind_angle_influence(kind), 0.0, 1.0);
+    if (direction_length <= 0.0001 || influence <= 0.0001) {
+        return 1.0;
+    }
+    let direction = render_direction / direction_length;
+    let angle = kind_angle_bias(kind);
+    let brush_axis = vec2<f32>(cos(angle), sin(angle));
+    let alignment = abs(dot(direction, brush_axis));
+    let tip = kind_brush_tip(kind);
+    var nib_factor = 0.78 + (1.0 - alignment) * 0.44;
+    if (tip == 0u) {
+        nib_factor = 0.94 + (1.0 - alignment) * 0.12;
+    } else if (tip == 1u) {
+        nib_factor = 0.72 + (1.0 - alignment) * 0.56;
+    } else if (tip == 2u) {
+        nib_factor = 0.80 + (1.0 - alignment) * 0.40;
+    } else if (tip == 3u) {
+        nib_factor = 0.90 + (1.0 - alignment) * 0.16;
+    } else if (tip == 4u) {
+        nib_factor = 0.76 + (1.0 - alignment) * 0.48;
+    }
+    return 1.0 + (nib_factor - 1.0) * influence;
+}
+
+fn pass_width(kind: u32, role: u32, pass_index: u32, importance: f32, t: f32, path_coherence: f32, depth01: f32) -> f32 {
+    let base = uniforms.params1.x * kind_width_multiplier(kind) * uniforms.params6.x * role_width_multiplier(role);
     let coherence_width = clamp(0.94 + path_coherence * 0.1, 0.9, 1.08);
     let is_search = pass_index >= u32(uniforms.params5.x);
     if (is_search) {
         return max(
             base
                 * 0.78
-                * pressure_multiplier(t)
-                * taper_multiplier(t)
+                * pressure_multiplier(kind, t)
+                * taper_multiplier(kind, t)
                 * coherence_width
                 * distance_width_multiplier(kind, importance, depth01),
             0.25,
@@ -840,16 +1266,16 @@ fn pass_width(kind: u32, pass_index: u32, importance: f32, t: f32, path_coherenc
     return max(
         base
             * primary_pass_width_multiplier(u32(uniforms.params5.x), pass_index)
-            * pressure_multiplier(t)
-            * taper_multiplier(t)
+            * pressure_multiplier(kind, t)
+            * taper_multiplier(kind, t)
             * coherence_width
             * distance_width_multiplier(kind, importance, depth01),
         0.25,
     );
 }
 
-fn pass_alpha(kind: u32, pass_index: u32, importance: f32, t: f32, path_coherence: f32, depth01: f32) -> f32 {
-    let base = uniforms.ink_color.w * kind_alpha_multiplier(kind) * uniforms.params6.y;
+fn pass_alpha(kind: u32, role: u32, pass_index: u32, importance: f32, t: f32, path_coherence: f32, depth01: f32) -> f32 {
+    let base = uniforms.ink_color.w * kind_alpha_multiplier(kind) * uniforms.params6.y * role_alpha_multiplier(role);
     let coherence_alpha = clamp(0.9 + path_coherence * 0.14, 0.82, 1.08);
     let is_search = pass_index >= u32(uniforms.params5.x);
     if (is_search) {
@@ -858,9 +1284,10 @@ fn pass_alpha(kind: u32, pass_index: u32, importance: f32, t: f32, path_coherenc
                 * uniforms.params5.z
                 * npr_gpu_search_alpha_multiplier()
                 * uniforms.params6.y
-                * alpha_pressure_multiplier(t)
+                * alpha_pressure_multiplier(kind, t)
                 * coherence_alpha
-                * depth_alpha_multiplier(kind, importance, depth01),
+                * depth_alpha_multiplier(kind, importance, depth01)
+                * role_detail_visibility_multiplier(role, depth01),
             0.0,
             1.0,
         );
@@ -868,24 +1295,32 @@ fn pass_alpha(kind: u32, pass_index: u32, importance: f32, t: f32, path_coherenc
     return clamp(
         base
             * primary_pass_alpha_multiplier(u32(uniforms.params5.x), pass_index)
-            * alpha_pressure_multiplier(t)
+            * alpha_pressure_multiplier(kind, t)
             * coherence_alpha
-            * depth_alpha_multiplier(kind, importance, depth01),
+            * depth_alpha_multiplier(kind, importance, depth01)
+            * role_detail_visibility_multiplier(role, depth01),
         0.0,
         1.0,
     );
 }
 
-fn pass_overshoot(kind: u32, pass_index: u32, path_coherence: f32) -> f32 {
-    let base = select(
-        uniforms.params1.y,
-        uniforms.params4.w,
-        kind == KIND_CREASE || kind == KIND_SEAM || kind == KIND_FEATURE || kind == KIND_CONTACT,
-    );
+fn pass_overshoot(kind: u32, role: u32, pass_index: u32, path_coherence: f32) -> f32 {
+    var base = uniforms.params1.y;
+    if (kind == KIND_SILHOUETTE) {
+        base = uniforms.params21.x;
+    } else if (kind == KIND_BOUNDARY) {
+        base = uniforms.params21.y;
+    } else if (kind == KIND_CREASE || kind == KIND_SEAM || kind == KIND_FEATURE || kind == KIND_CONTACT) {
+        base = uniforms.params21.z;
+    }
     let is_search = pass_index >= u32(uniforms.params5.x);
-    let clamped = min(base, 0.5);
+    let confident_contour =
+        uses_confident_manga_ink() && (kind == KIND_SILHOUETTE || kind == KIND_BOUNDARY);
+    let clamped = min(base, select(0.5, 4.0, confident_contour));
     let coherence_scale = clamp(0.86 + path_coherence * 0.16, 0.82, 1.05);
-    return select(clamped, min(max(clamped, uniforms.params11.w), 0.15), is_search) * coherence_scale;
+    return select(clamped, min(max(clamped, uniforms.params11.w), 0.15), is_search)
+        * role_overshoot_multiplier(role)
+        * coherence_scale;
 }
 
 fn endpoint_connection_score(
@@ -1440,6 +1875,28 @@ fn debug_color_for_kind(kind: u32) -> vec4<f32> {
     return vec4<f32>(1.0, 1.0, 1.0, 1.0);
 }
 
+fn debug_color_for_family_role(role: u32) -> vec4<f32> {
+    if (role == FAMILY_ROLE_OUTER_CONTOUR) {
+        return vec4<f32>(1.0, 0.28, 0.12, 1.0);
+    }
+    if (role == FAMILY_ROLE_DETAIL_INK) {
+        return vec4<f32>(0.18, 0.62, 1.0, 1.0);
+    }
+    if (role == FAMILY_ROLE_CLOTH_FOLD) {
+        return vec4<f32>(1.0, 0.86, 0.16, 1.0);
+    }
+    if (role == FAMILY_ROLE_MATERIAL_CUT) {
+        return vec4<f32>(0.95, 0.18, 1.0, 1.0);
+    }
+    if (role == FAMILY_ROLE_SHADOW_HATCH) {
+        return vec4<f32>(0.46, 0.46, 0.52, 1.0);
+    }
+    if (role == FAMILY_ROLE_CONTACT_SHADOW) {
+        return vec4<f32>(0.2, 1.0, 0.54, 1.0);
+    }
+    return vec4<f32>(0.86, 0.86, 0.86, 1.0);
+}
+
 fn debug_overlay_mode() -> u32 {
     return u32(uniforms.params13.x);
 }
@@ -1479,9 +1936,14 @@ fn debug_color_for_overlay(
     edge_index: u32,
     connected_start: bool,
     connected_end: bool,
+    hop_count: u32,
     current_repr_score: f32,
     neighbor_repr_score: f32,
     viability: f32,
+    family_role: u32,
+    path_length: f32,
+    path_coherence: f32,
+    importance: f32,
     width: f32,
     alpha: f32,
 ) -> vec4<f32> {
@@ -1506,6 +1968,66 @@ fn debug_color_for_overlay(
     if (mode == 4u) {
         return vec4<f32>(clamp(width / 6.0, 0.0, 1.0), clamp(alpha, 0.0, 1.0), 0.25, 1.0);
     }
+    if (mode == 5u) {
+        let hops = clamp(f32(hop_count) / 8.0, 0.0, 1.0);
+        let connection = f32(u32(connected_start) + u32(connected_end)) * 0.5;
+        return vec4<f32>(
+            clamp(1.0 - hops, 0.0, 1.0),
+            clamp(hops * 1.15, 0.0, 1.0),
+            clamp(connection, 0.0, 1.0),
+            1.0,
+        );
+    }
+    if (mode == 6u) {
+        let score = clamp((importance - 0.62) / 0.58, 0.0, 1.0);
+        return vec4<f32>(
+            clamp(1.0 - score, 0.0, 1.0),
+            clamp(score, 0.0, 1.0),
+            0.18 + 0.55 * clamp(path_coherence, 0.0, 1.0),
+            1.0,
+        );
+    }
+    if (mode == 7u) {
+        let role_color = debug_color_for_family_role(family_role);
+        let weak = clamp(1.0 - path_coherence, 0.0, 1.0);
+        let long_unstable = select(0.0, 1.0, path_length > 72.0 && path_coherence < 0.62);
+        let warning = vec3<f32>(1.0, 0.05, 0.05) * max(weak, long_unstable);
+        return vec4<f32>(mix(role_color.rgb, warning, max(weak * 0.65, long_unstable * 0.8)), 1.0);
+    }
+    if (mode == 8u) {
+        let bucket = clamp(path_length / 128.0, 0.0, 1.0);
+        return vec4<f32>(
+            0.16 + bucket * 0.84,
+            clamp(1.0 - abs(bucket - 0.5) * 2.0, 0.0, 1.0),
+            clamp(1.0 - bucket, 0.0, 1.0),
+            1.0,
+        );
+    }
+    if (mode == 9u) {
+        let hops = clamp(f32(hop_count) / 12.0, 0.0, 1.0);
+        let connected = f32(u32(connected_start) + u32(connected_end)) * 0.5;
+        return vec4<f32>(
+            clamp(hops, 0.0, 1.0),
+            clamp(connected, 0.0, 1.0),
+            clamp(1.0 - hops, 0.0, 1.0),
+            1.0,
+        );
+    }
+    if (mode == 10u) {
+        return debug_color_for_family_role(family_role);
+    }
+    if (mode == 11u) {
+        if (family_role == FAMILY_ROLE_MATERIAL_CUT) {
+            return vec4<f32>(1.0, 0.0, 1.0, 1.0);
+        }
+        if (family_role == FAMILY_ROLE_DETAIL_INK) {
+            return vec4<f32>(0.0, 0.55, 1.0, 1.0);
+        }
+        if (family_role == FAMILY_ROLE_SHADOW_HATCH || family_role == FAMILY_ROLE_CONTACT_SHADOW) {
+            return vec4<f32>(0.15, 1.0, 0.28, 1.0);
+        }
+        return vec4<f32>(0.24, 0.24, 0.24, 1.0);
+    }
     let search = pass_index >= u32(uniforms.params5.x);
     let base = uniforms.ink_color.rgb;
     let alpha_out = select(alpha, min(alpha * 1.15, 1.0), search);
@@ -1513,7 +2035,7 @@ fn debug_color_for_overlay(
 }
 
 fn debug_overlay_segment_width(mode: u32, width: f32, end_width: f32) -> vec2<f32> {
-    if (mode == 1u || mode == 2u) {
+    if (mode == 1u || mode == 2u || mode == 6u || mode == 7u || mode == 8u || mode == 9u || mode == 10u || mode == 11u) {
         return vec2<f32>(2.25, 2.25);
     }
     if (mode == 3u) {
@@ -1799,6 +2321,8 @@ fn canonical_chain_owner_index(
 }
 
 fn endpoint_taper(
+    kind: u32,
+    role: u32,
     width: f32,
     alpha: f32,
     depth01: f32,
@@ -1806,7 +2330,21 @@ fn endpoint_taper(
     connected_start: bool,
     connected_end: bool,
 ) -> vec4<f32> {
-    let taper = clamp(uniforms.params5.w, 0.0, 1.0);
+    let taper = clamp(kind_taper_value(kind) * role_taper_multiplier(role), 0.0, 1.5);
+    let manga_outer_contour =
+        uses_manga_ink()
+        && role == FAMILY_ROLE_OUTER_CONTOUR
+        && (kind == KIND_SILHOUETTE || kind == KIND_BOUNDARY);
+    if (manga_outer_contour) {
+        let search = pass_index >= u32(uniforms.params5.x);
+        let search_scale = select(1.0, 0.92, search);
+        return vec4<f32>(
+            width * search_scale,
+            max(width * select(0.98, 0.94, search), 0.5),
+            alpha * search_scale,
+            alpha * select(0.98, 0.92, search),
+        );
+    }
     let near_strength = 1.0 + (1.0 - depth01) * 0.18;
     let far_strength = 1.0 - taper * (0.28 + depth01 * 0.22);
     let search = pass_index >= u32(uniforms.params5.x);
@@ -1832,7 +2370,7 @@ fn cs_main(@builtin(global_invocation_id) id: vec3<u32>) {
         return;
     }
 
-    let segment = path_segments[path_segment_index];
+    var segment = path_segments[path_segment_index];
     if (segment.start.w < 0.5 || segment.end.w < 0.5) {
         return;
     }
@@ -1840,6 +2378,40 @@ fn cs_main(@builtin(global_invocation_id) id: vec3<u32>) {
     let kind = segment.path.y;
     if (kind == KIND_NONE) {
         return;
+    }
+    let source_edge_index = id.x / PATH_SEGMENTS_PER_VISIBLE_EDGE;
+    let source_segment_slot = id.x % PATH_SEGMENTS_PER_VISIBLE_EDGE;
+    var aggregated_polyline = false;
+    var aggregated_polyline_a = vec2<f32>(0.0);
+    var aggregated_polyline_b = vec2<f32>(0.0);
+    if (
+        !uses_direct_visible_segments()
+        && source_segment_slot == 0u
+        && source_edge_index < u32(arrayLength(&aggregated_paths))
+        && is_primary_contour(kind)
+    ) {
+        let aggregated = aggregated_paths[source_edge_index];
+        let aggregated_length = distance(aggregated.start.xy, aggregated.end.xy);
+        let segment_length = distance(segment.start.xy, segment.end.xy);
+        if (
+            aggregated.start.w > 0.5
+            && aggregated.end.w > 0.5
+            && aggregated.path.z == kind
+            && aggregated.style_metrics.w > 0.5
+            && aggregated_length > segment_length + 0.5
+        ) {
+            segment.start = aggregated.start;
+            segment.end = aggregated.end;
+            segment.path.w = segment.path.w | aggregated.path.w;
+            segment.metrics.z = max(segment.metrics.z, aggregated.metrics.x);
+            segment.style_metrics.x = aggregated.control.x;
+            segment.style_metrics.y = aggregated.control.y;
+            segment.style_metrics.z = aggregated.metrics.z;
+            segment.style_metrics.w = aggregated.style_metrics.w;
+            aggregated_polyline = true;
+            aggregated_polyline_a = aggregated.control.xy;
+            aggregated_polyline_b = aggregated.style_metrics.xy;
+        }
     }
     let primary_pass_count = max(u32(uniforms.params5.x), 1u);
     let path_id = segment.path.x;
@@ -1861,6 +2433,7 @@ fn cs_main(@builtin(global_invocation_id) id: vec3<u32>) {
         return;
     }
     let importance = segment.metrics.w;
+    let family_role = segment_family_role(segment);
     let seed32 = uniforms.seed.x ^ uniforms.seed.y;
     let connected_start = (path_flags & PATH_FLAG_CONNECTED_START) != 0u;
     let connected_end = (path_flags & PATH_FLAG_CONNECTED_END) != 0u;
@@ -1875,6 +2448,15 @@ fn cs_main(@builtin(global_invocation_id) id: vec3<u32>) {
         0.22,
         1.1,
     );
+    if (
+        uses_akira_ink()
+        && family_role != FAMILY_ROLE_OUTER_CONTOUR
+        && family_role != FAMILY_ROLE_MATERIAL_CUT
+        && importance < 0.78
+        && (path_coherence < 0.72 || path_length < 42.0)
+    ) {
+        return;
+    }
     let max_render_length = npr_gpu_max_render_length_px();
     if (render_length > max_render_length) {
         let trunc_direction = normalize(render_end_mut - render_start_mut);
@@ -2005,7 +2587,7 @@ fn cs_main(@builtin(global_invocation_id) id: vec3<u32>) {
         }
         let max_segment_length = npr_gpu_max_segment_length_px();
         let path_span = path_t1 - path_t0;
-        let segment_count =
+        let base_segment_count =
             select(
                 select(
                     1u,
@@ -2019,17 +2601,41 @@ fn cs_main(@builtin(global_invocation_id) id: vec3<u32>) {
                         || (pass_render_length >= max_segment_length * 1.15 && path_span >= 0.22)
                     ),
             );
+        let manga_primary_span =
+            uses_manga_ink()
+            && (kind == KIND_SILHOUETTE || kind == KIND_BOUNDARY)
+            && !is_hatch_pass;
+        let curved_confident_span =
+            manga_primary_span
+            && segment_curve_weight(segment) > 0.05
+            && pass_render_length >= max(uniforms.params0.w * 8.0, 18.0);
+        let expressive_outer_contour =
+            manga_primary_span
+            && family_role == FAMILY_ROLE_OUTER_CONTOUR
+            && segment_curve_weight(segment) > 0.12
+            && pass_render_length >= max(uniforms.params0.w * 7.0, 15.0);
+        let confident_segment_count = select(1u, select(2u, 3u, expressive_outer_contour), curved_confident_span);
+        let long_outer_contour =
+            family_role == FAMILY_ROLE_OUTER_CONTOUR
+            && pass_render_length >= max_segment_length * 0.82
+            && segment_curve_weight(segment) > 0.05;
+        let contour_gesture_segment_count = select(
+            confident_segment_count,
+            select(1u, max(base_segment_count, confident_segment_count), long_outer_contour),
+            family_role == FAMILY_ROLE_OUTER_CONTOUR,
+        );
+        let segment_count = select(base_segment_count, contour_gesture_segment_count, manga_primary_span);
         let out_index = atomicAdd(&indirect_args[1], segment_count);
         if (out_index + segment_count > u32(arrayLength(&stroke_segments))) {
             _ = atomicSub(&indirect_args[1], segment_count);
             return;
         }
-        var width_start = pass_width(kind, pass_index, importance, path_t0, path_coherence, line_depth);
-        var width_mid = pass_width(kind, pass_index, importance, path_t_mid, path_coherence, line_depth);
-        var width_end = pass_width(kind, pass_index, importance, path_t1, path_coherence, line_depth);
-        var alpha_start = pass_alpha(kind, pass_index, importance, path_t0, path_coherence, line_depth);
-        var alpha_mid = pass_alpha(kind, pass_index, importance, path_t_mid, path_coherence, line_depth);
-        var alpha_end = pass_alpha(kind, pass_index, importance, path_t1, path_coherence, line_depth);
+        var width_start = pass_width(kind, family_role, pass_index, importance, path_t0, path_coherence, line_depth);
+        var width_mid = pass_width(kind, family_role, pass_index, importance, path_t_mid, path_coherence, line_depth);
+        var width_end = pass_width(kind, family_role, pass_index, importance, path_t1, path_coherence, line_depth);
+        var alpha_start = pass_alpha(kind, family_role, pass_index, importance, path_t0, path_coherence, line_depth);
+        var alpha_mid = pass_alpha(kind, family_role, pass_index, importance, path_t_mid, path_coherence, line_depth);
+        var alpha_end = pass_alpha(kind, family_role, pass_index, importance, path_t1, path_coherence, line_depth);
         let artist_alpha = artist_lift_alpha(
             kind,
             path_id,
@@ -2058,19 +2664,21 @@ fn cs_main(@builtin(global_invocation_id) id: vec3<u32>) {
         let width_noise_start =
             coherent_signed_noise_1d(seed32, edge_id, pass_index, path_t0 * 13.0 + 7.0, 503u)
             * uniforms.params10.x
-            * uniforms.params6.z
+            * kind_brush_pressure_jitter_multiplier(kind)
             * path_humanization_scale(path_coherence);
         let width_noise_mid =
             coherent_signed_noise_1d(seed32, edge_id, pass_index, path_t_mid * 13.0 + 9.0, 503u)
             * uniforms.params10.x
-            * uniforms.params6.z
+            * kind_brush_pressure_jitter_multiplier(kind)
             * path_humanization_scale(path_coherence);
         let width_noise_end =
             coherent_signed_noise_1d(seed32, edge_id, pass_index, path_t1 * 13.0 + 11.0, 503u)
             * uniforms.params10.x
-            * uniforms.params6.z
+            * kind_brush_pressure_jitter_multiplier(kind)
             * path_humanization_scale(path_coherence);
         let tapering = endpoint_taper(
+            kind,
+            family_role,
             max(width_start + width_noise_start, 0.25),
             alpha_start,
             line_depth,
@@ -2079,20 +2687,21 @@ fn cs_main(@builtin(global_invocation_id) id: vec3<u32>) {
             connected_end,
         );
         let pass_wobble = pass_wobble_multiplier(pass_index);
+        let adherence_scale = clamp(1.18 - kind_path_adherence_multiplier(kind) * 0.32, 0.55, 1.15);
         let wobble = coherent_signed_noise_1d(
             seed32,
             edge_id,
             pass_index,
             path_t_mid * 19.0 + f32(path_id % 101u) * uniforms.params10.y + 3.0,
             919u,
-        ) * kind_wobble_px(kind) * uniforms.params7.y * pass_wobble * path_humanization_scale(path_coherence);
+        ) * kind_wobble_px(kind) * uniforms.params7.y * pass_wobble * path_humanization_scale(path_coherence) * adherence_scale;
         let micro = coherent_signed_noise_1d(
             seed32,
             edge_id,
             pass_index,
             path_t_mid * 29.0 + f32(path_id % 71u) * uniforms.params10.w + 13.0,
             991u,
-        ) * uniforms.params10.z * pass_wobble * path_humanization_scale(path_coherence);
+        ) * uniforms.params10.z * pass_wobble * path_humanization_scale(path_coherence) * adherence_scale;
         let debug_color = debug_color_for_overlay(
             kind,
             pass_index,
@@ -2100,9 +2709,14 @@ fn cs_main(@builtin(global_invocation_id) id: vec3<u32>) {
             path_segment_index,
             connected_start,
             connected_end,
+            hop_count,
             importance,
             importance,
             chain_quality,
+            family_role,
+            path_length,
+            path_coherence,
+            importance,
             tapering.x,
             tapering.z,
         );
@@ -2123,8 +2737,17 @@ fn cs_main(@builtin(global_invocation_id) id: vec3<u32>) {
                 path_t0,
                 path_t1,
             );
-        let base_overshoot = pass_overshoot(kind, pass_index, path_coherence);
+        let base_overshoot = pass_overshoot(kind, family_role, pass_index, path_coherence);
         let path_lock_weight = path_endpoint_lock_weight(path_t0, path_t1, path_length);
+        let manga_outer_contour =
+            uses_manga_ink()
+            && family_role == FAMILY_ROLE_OUTER_CONTOUR
+            && (kind == KIND_SILHOUETTE || kind == KIND_BOUNDARY);
+        let overshoot_lock_weight = select(path_lock_weight, max(path_lock_weight, 0.85), manga_outer_contour);
+        let short_confident_gap_bridge =
+            manga_outer_contour
+            && !(connected_start && connected_end)
+            && pass_render_length < max(uniforms.params0.w * 10.0, 34.0);
         let render_direction = normalize(pass_render_end - pass_render_start);
         let drift_start = endpoint_tangent_drift_px(
             kind,
@@ -2150,9 +2773,23 @@ fn cs_main(@builtin(global_invocation_id) id: vec3<u32>) {
             path_t1,
             path_coherence,
         );
-        let stylized_start = pass_render_start + render_direction * drift_start;
-        let stylized_end = pass_render_end + render_direction * drift_end;
-        let render_normal = normalize(vec2<f32>(-render_direction.y, render_direction.x));
+        let contour_bridge_px = select(
+            0.0,
+            clamp(max(pass_render_length * 0.34, uniforms.params0.w * 2.0), 2.0, 9.0),
+            short_confident_gap_bridge,
+        );
+        let bridged_start =
+            pass_render_start - render_direction * select(contour_bridge_px, 0.0, connected_start);
+        let bridged_end =
+            pass_render_end + render_direction * select(contour_bridge_px, 0.0, connected_end);
+        let stylized_start = bridged_start + render_direction * drift_start;
+        let stylized_end = bridged_end + render_direction * drift_end;
+        let angle_response = brush_angle_response(kind, render_direction);
+        let angle_bias = kind_angle_bias(kind);
+        let render_normal = normalize(vec2<f32>(
+            -render_direction.y * cos(angle_bias) - render_direction.x * sin(angle_bias),
+            render_direction.x * cos(angle_bias) - render_direction.y * sin(angle_bias),
+        ));
         let curve_noise = coherent_signed_noise_1d(
             seed32,
             edge_id,
@@ -2170,6 +2807,7 @@ fn cs_main(@builtin(global_invocation_id) id: vec3<u32>) {
             * uniforms.params7.y
             * pass_wobble
             * path_humanization_scale(path_coherence)
+            * adherence_scale
             * gesture_span_scale
             * connected_gesture_scale
             * connection_offset_multiplier(
@@ -2182,20 +2820,35 @@ fn cs_main(@builtin(global_invocation_id) id: vec3<u32>) {
                 path_t1,
             )
             * select(0.62, 0.12, debug_mode != 0u);
-        let stylized_mid = (stylized_start + stylized_end) * 0.5 + render_normal * curve_offset;
-        let stylized_mid_a =
+        let curve_control = segment_curve_control(segment, stylized_start, stylized_end);
+        var stylized_mid = curve_control + render_normal * curve_offset;
+        var stylized_mid_a =
             mix(stylized_start, stylized_mid, 0.5) + render_normal * (curve_offset * 0.35);
-        let stylized_mid_b =
+        var stylized_mid_b =
             mix(stylized_mid, stylized_end, 0.5) + render_normal * (curve_offset * 0.35);
-        let mid_width = max(width_mid + width_noise_mid, 0.25);
-        let end_width_value = max(select(max(width_end + width_noise_end, 0.25), tapering.y, connected_end), 0.25);
-        let mid_a_width = max(mix(tapering.x, mid_width, 0.5), 0.25);
+        if (aggregated_polyline && segment_count > 2u) {
+            stylized_mid_a = aggregated_polyline_a + render_normal * (curve_offset * 0.28);
+            stylized_mid_b = aggregated_polyline_b + render_normal * (curve_offset * 0.28);
+            stylized_mid = (stylized_mid_a + stylized_mid_b) * 0.5;
+        }
+        let mid_width = max((width_mid + width_noise_mid) * angle_response, 0.25);
+        let end_width_value = max(select(max(width_end + width_noise_end, 0.25), tapering.y, connected_end) * angle_response, 0.25);
+        let tapered_start_width = max(tapering.x * angle_response, 0.25);
+        let mid_a_width = max(mix(tapered_start_width, mid_width, 0.5), 0.25);
         let mid_b_width = max(mix(mid_width, end_width_value, 0.5), 0.25);
         let mid_alpha = select(alpha_mid, debug_color.a, debug_mode != 0u);
         let end_alpha_value = select(alpha_end, tapering.w, connected_end);
         let mid_a_alpha = select(mix(tapering.z, mid_alpha, 0.5), debug_color.a, debug_mode != 0u);
         let mid_b_alpha = select(mix(mid_alpha, end_alpha_value, 0.5), debug_color.a, debug_mode != 0u);
-        let overshoot = debug_overlay_overshoot(debug_mode, base_overshoot * path_lock_weight);
+        let ink_bridge_overshoot = select(
+            base_overshoot,
+            max(base_overshoot * 1.95, min(pass_render_length * 0.22, 4.5)),
+            short_confident_gap_bridge,
+        );
+        let overshoot = debug_overlay_overshoot(
+            debug_mode,
+            ink_bridge_overshoot * overshoot_lock_weight,
+        );
         stroke_segments[out_index].start = stylized_start;
         stroke_segments[out_index].end = select(
             select(stylized_end, stylized_mid, segment_count > 1u),

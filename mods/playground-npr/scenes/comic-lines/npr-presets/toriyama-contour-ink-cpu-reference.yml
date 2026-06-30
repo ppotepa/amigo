@@ -1,0 +1,196 @@
+kind: npr-preset-3d
+schema_version: 1
+id: toriyama_contour_ink_cpu_reference
+label: Toriyama Contour Ink CPU Reference
+settings:
+  strategy: cpu_reference
+  fill_mode: none
+  style_preset: rough_comic_ink
+  stroke_tool: brush
+  pipeline:
+    candidate_strategy: character_semantic
+    path_strategy: stable_stroked_paths
+    stroke_strategy: confident_manga_ink
+    fill_strategy: none
+    hatching_strategy: none
+    budget_strategy: face_and_silhouette_priority
+    temporal_strategy: stable_arc_length
+  boundary: false
+  silhouette: true
+  feature: true
+  suggestive: false
+  contact: false
+  contact_ground_y: 0.0
+  contact_threshold: 0.10
+  feature_angle_degrees: 34.0
+  min_screen_length_px: 1.8
+  ink_color: "#000000FF"
+  width_px: 5.10
+  silhouette_width_multiplier: 1.86
+  boundary_width_multiplier: 0.0
+  feature_width_multiplier: 1.22
+  distance_width_falloff: 0.08
+  width_pressure_curve: [0.54, 1.42, 1.18, 0.46]
+  alpha_pressure_curve: [0.98, 1.0, 1.0, 0.96]
+  depth_pressure: 0.06
+  depth_alpha: 0.0
+  humanization: 0.34
+  line_confidence: 0.98
+  temporal_stability: 0.96
+  temporal_path_smoothing: true
+  visibility_hysteresis_frames: 3
+  endpoint_snap_px: 1.2
+  endpoint_lock_start_px: 8.0
+  endpoint_lock_end_px: 10.0
+  path_simplify_px: 1.15
+  straightness: 0.74
+  taper: 0.82
+  stroke_wobble_px: 0.22
+  stroke_wobble_frequency: 0.16
+  micro_wobble_px: 0.045
+  micro_wobble_frequency: 0.90
+  pressure_jitter: 0.055
+  local_angular_drift_degrees: 0.42
+  overshoot_px: 0.85
+  undershoot_px: 0.0
+  pass_offset_px: 0.0
+  dropout: 0.0
+  dropout_segment_min_px: 24.0
+  passes: 1
+  search_line_count: 0
+  search_line_alpha: 0.0
+  seed: 19890426
+  gpu_realtime_tuning:
+    search_enabled: false
+  brushes:
+    contour_brush:
+      tool: brush
+      tip: g_pen
+      width_multiplier: 1.0
+      alpha_multiplier: 1.0
+      pressure_jitter_multiplier: 0.55
+      path_wobble_multiplier: 0.42
+      micro_wobble_multiplier: 0.42
+      hand_arc_multiplier: 0.78
+      tangent_drift_multiplier: 0.64
+      detail_crispness_multiplier: 0.92
+      taper_multiplier: 1.0
+      overshoot_px: 0.85
+      width_curve: [0.54, 1.42, 1.18, 0.46]
+      alpha_curve: [0.98, 1.0, 1.0, 0.96]
+      angle_bias_degrees: 2.0
+      angle_influence: 0.34
+      path_adherence_multiplier: 0.82
+    detail_ink_brush:
+      tool: ink_pen
+      tip: maru_pen
+      width_multiplier: 1.08
+      alpha_multiplier: 1.0
+      pressure_jitter_multiplier: 0.20
+      path_wobble_multiplier: 0.24
+      micro_wobble_multiplier: 0.18
+      hand_arc_multiplier: 0.72
+      tangent_drift_multiplier: 0.38
+      detail_crispness_multiplier: 1.02
+      taper_multiplier: 0.82
+      overshoot_px: 0.14
+      width_curve: [0.58, 1.12, 1.02, 0.46]
+      alpha_curve: [0.96, 1.0, 1.0, 0.94]
+      angle_bias_degrees: 1.4
+      angle_influence: 0.34
+      path_adherence_multiplier: 0.82
+    form_line_brush:
+      tool: ink_pen
+      tip: g_pen
+      width_multiplier: 0.92
+      alpha_multiplier: 0.98
+      pressure_jitter_multiplier: 0.26
+      path_wobble_multiplier: 0.24
+      micro_wobble_multiplier: 0.18
+      hand_arc_multiplier: 0.72
+      tangent_drift_multiplier: 0.42
+      detail_crispness_multiplier: 0.98
+      taper_multiplier: 0.82
+      overshoot_px: 0.20
+      width_curve: [0.56, 1.16, 1.02, 0.42]
+      alpha_curve: [0.84, 1.0, 0.96, 0.78]
+      angle_bias_degrees: 1.0
+      angle_influence: 0.30
+      path_adherence_multiplier: 0.86
+  families:
+    - id: toriyama_outer_contour
+      role: outer_contour
+      priority: 100
+      sources: [silhouette]
+      brush: contour_brush
+      technical_detail_preference: 0.0
+      preferred_stroke_length_px: 150.0
+      stroke_join_gap_px: 8.0
+      stroke_join_max_angle_degrees: 48.0
+      min_screen_length_px: 2.4
+      min_stroke_length_px: 34.0
+      continuation_bias: 0.92
+      breakup_bias: 0.04
+      width_multiplier: 1.0
+      alpha_multiplier: 1.0
+      taper_multiplier: 1.0
+      overshoot_px: 0.85
+    - id: toriyama_feature_detail
+      role: detail_ink
+      priority: 40
+      sources: [feature]
+      brush: detail_ink_brush
+      technical_detail_preference: 0.86
+      ink_detail_material_preference: 0.90
+      material_seam_preference: 0.16
+      preferred_stroke_length_px: 68.0
+      stroke_join_gap_px: 5.75
+      stroke_join_max_angle_degrees: 38.0
+      min_screen_length_px: 3.2
+      min_stroke_length_px: 6.0
+      continuation_bias: 0.78
+      breakup_bias: 0.01
+      width_multiplier: 1.0
+      alpha_multiplier: 1.0
+      taper_multiplier: 0.78
+      overshoot_px: 0.12
+    - id: toriyama_form_lines
+      role: cloth_fold
+      priority: 62
+      sources: [crease, seam]
+      brush: form_line_brush
+      technical_detail_preference: 0.88
+      ink_detail_material_preference: 0.54
+      material_seam_preference: 0.62
+      preferred_stroke_length_px: 86.0
+      stroke_join_gap_px: 7.0
+      stroke_join_max_angle_degrees: 46.0
+      min_screen_length_px: 7.0
+      min_stroke_length_px: 16.0
+      continuation_bias: 0.82
+      breakup_bias: 0.04
+      width_multiplier: 0.86
+      alpha_multiplier: 0.96
+      taper_multiplier: 0.78
+      overshoot_px: 0.18
+  silhouette_override:
+    width_multiplier: 1.22
+    wobble_px: 0.10
+    dropout: 0.0
+    taper: 0.78
+    overshoot_px: 0.95
+    alpha_multiplier: 1.0
+  boundary_override:
+    width_multiplier: 0.0
+    wobble_px: 0.0
+    dropout: 0.0
+    taper: 0.0
+    overshoot_px: 0.0
+    alpha_multiplier: 0.0
+  feature_override:
+    width_multiplier: 1.0
+    wobble_px: 0.055
+    dropout: 0.0
+    taper: 0.54
+    overshoot_px: 0.16
+    alpha_multiplier: 1.0

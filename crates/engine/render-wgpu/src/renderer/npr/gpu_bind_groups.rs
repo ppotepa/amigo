@@ -12,6 +12,7 @@ pub(crate) struct NprGpuStrokeComputeBindGroups3d {
     pub compact_owners: wgpu::BindGroup,
     pub connect_paths: wgpu::BindGroup,
     pub relax_path_owners: wgpu::BindGroup,
+    pub aggregate_paths: wgpu::BindGroup,
     pub emit_path_segments: wgpu::BindGroup,
     pub build_strokes: wgpu::BindGroup,
     pub clamp_indirect_args: wgpu::BindGroup,
@@ -96,6 +97,7 @@ pub(crate) fn create_npr_gpu_stroke_compute_bind_groups(
         layout: &pipelines.connect_paths_bind_group_layout,
         entries: &[
             storage_binding(5, &frame_buffers.visible_segments),
+            uniform_binding(8, uniforms),
             storage_binding(10, &frame_buffers.path_links),
             storage_binding(14, &frame_buffers.path_states),
         ],
@@ -105,8 +107,20 @@ pub(crate) fn create_npr_gpu_stroke_compute_bind_groups(
         layout: &pipelines.relax_path_owners_bind_group_layout,
         entries: &[
             storage_binding(5, &frame_buffers.visible_segments),
+            uniform_binding(8, uniforms),
             storage_binding(10, &frame_buffers.path_links),
             storage_binding(14, &frame_buffers.path_states),
+        ],
+    });
+    let aggregate_paths = device.create_bind_group(&wgpu::BindGroupDescriptor {
+        label: Some("amigo-npr-aggregate-paths-bind-group"),
+        layout: &pipelines.aggregate_paths_bind_group_layout,
+        entries: &[
+            storage_binding(5, &frame_buffers.visible_segments),
+            uniform_binding(8, uniforms),
+            storage_binding(10, &frame_buffers.path_links),
+            storage_binding(14, &frame_buffers.path_states),
+            storage_binding(15, &frame_buffers.aggregated_paths),
         ],
     });
     let emit_path_segments = device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -131,6 +145,7 @@ pub(crate) fn create_npr_gpu_stroke_compute_bind_groups(
             uniform_binding(8, uniforms),
             storage_binding(9, &frame_buffers.indirect_args),
             storage_binding(13, &frame_buffers.path_segments),
+            storage_binding(15, &frame_buffers.aggregated_paths),
         ],
     });
     let clamp_indirect_args = device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -147,6 +162,7 @@ pub(crate) fn create_npr_gpu_stroke_compute_bind_groups(
         compact_owners,
         connect_paths,
         relax_path_owners,
+        aggregate_paths,
         emit_path_segments,
         build_strokes,
         clamp_indirect_args,

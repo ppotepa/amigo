@@ -1,9 +1,9 @@
 use crate::renderer::NprStrokeSegmentVertex;
 
 use super::{
-    NPR_GPU_PATH_SEGMENTS_PER_CHAIN, NprGpuFrameBuffers3d, NprGpuMeshTopologyBuffers3d,
-    NprGpuPipelines3d, create_npr_gpu_face_id_bind_group,
-    create_npr_gpu_stroke_compute_bind_groups, slice_as_bytes, workgroup_count,
+    NprGpuFrameBuffers3d, NprGpuMeshTopologyBuffers3d, NprGpuPipelines3d,
+    create_npr_gpu_face_id_bind_group, create_npr_gpu_stroke_compute_bind_groups, slice_as_bytes,
+    workgroup_count,
 };
 
 pub(crate) fn write_npr_gpu_indirect_args(
@@ -79,6 +79,7 @@ pub(crate) fn run_npr_gpu_stroke_compute_passes(
     uniforms: &wgpu::Buffer,
     face_id_view: &wgpu::TextureView,
     path_strategy: amigo_render_api::NprPathStrategy3d,
+    path_segment_slot_count: usize,
 ) {
     let bind_groups = create_npr_gpu_stroke_compute_bind_groups(
         device,
@@ -135,7 +136,7 @@ pub(crate) fn run_npr_gpu_stroke_compute_passes(
             &bind_groups.connect_paths,
             workgroup_count(topology.edge_count as usize),
         );
-        for _ in 0..2 {
+        for _ in 0..4 {
             run_compute_pass(
                 encoder,
                 "amigo-npr-relax-path-owners-pass",
@@ -144,20 +145,27 @@ pub(crate) fn run_npr_gpu_stroke_compute_passes(
                 workgroup_count(topology.edge_count as usize),
             );
         }
+        run_compute_pass(
+            encoder,
+            "amigo-npr-aggregate-paths-pass",
+            &pipelines.aggregate_paths_pipeline,
+            &bind_groups.aggregate_paths,
+            workgroup_count(topology.edge_count as usize),
+        );
     }
     run_compute_pass(
         encoder,
         "amigo-npr-emit-path-segments-pass",
         &pipelines.emit_path_segments_pipeline,
         &bind_groups.emit_path_segments,
-        workgroup_count(topology.edge_count as usize * NPR_GPU_PATH_SEGMENTS_PER_CHAIN),
+        workgroup_count(path_segment_slot_count),
     );
     run_compute_pass(
         encoder,
         "amigo-npr-build-strokes-pass",
         &pipelines.build_strokes_pipeline,
         &bind_groups.build_strokes,
-        workgroup_count(topology.edge_count as usize * NPR_GPU_PATH_SEGMENTS_PER_CHAIN),
+        workgroup_count(path_segment_slot_count),
     );
     run_compute_pass(
         encoder,

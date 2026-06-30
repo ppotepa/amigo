@@ -142,6 +142,7 @@ pub(crate) fn build_render_frame_for_session(
             world_3d_npr_gpu_realtime_path_links_capacity: 0,
             world_3d_npr_gpu_realtime_path_states_capacity: 0,
             world_3d_npr_gpu_realtime_path_segments_capacity: 0,
+            world_3d_npr_gpu_realtime_aggregated_paths_capacity: 0,
             world_3d_npr_gpu_realtime_stroke_segments_capacity: 0,
             world_3d_npr_gpu_realtime_debug_mode: String::new(),
             world_3d_npr_pipeline_plan: String::new(),
@@ -260,6 +261,8 @@ pub(crate) fn build_render_frame_for_session(
             npr.gpu_realtime_path_states_capacity;
         stats.world_3d_npr_gpu_realtime_path_segments_capacity =
             npr.gpu_realtime_path_segments_capacity;
+        stats.world_3d_npr_gpu_realtime_aggregated_paths_capacity =
+            npr.gpu_realtime_aggregated_paths_capacity;
         stats.world_3d_npr_gpu_realtime_stroke_segments_capacity =
             npr.gpu_realtime_stroke_segments_capacity;
         stats.world_3d_npr_gpu_realtime_debug_mode =

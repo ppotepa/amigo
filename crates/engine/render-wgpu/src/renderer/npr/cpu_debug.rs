@@ -7,6 +7,25 @@ use crate::renderer::{
     screen_segment_length_px,
 };
 
+use super::types::NprRejectedTechnicalCandidate;
+
+pub(crate) fn append_npr_rejected_technical_vertices(
+    vertices: &mut Vec<ColorVertex>,
+    viewport: &Viewport,
+    rejected: &[NprRejectedTechnicalCandidate],
+) {
+    for candidate in rejected {
+        append_npr_debug_segment(
+            vertices,
+            viewport,
+            candidate.p0,
+            candidate.p1,
+            npr_rejected_technical_debug_color(*candidate),
+            1.5,
+        );
+    }
+}
+
 pub(crate) fn append_npr_debug_path_vertices(
     vertices: &mut Vec<ColorVertex>,
     viewport: &Viewport,
@@ -29,8 +48,44 @@ pub(crate) fn append_npr_debug_path_vertices(
                 vertices,
                 viewport,
                 &path.points,
-                npr_path_id_debug_color(path.path_id),
-                1.5,
+                npr_path_topology_debug_color(path),
+                npr_path_debug_width_px(path, viewport),
+            );
+        }
+        NprDebugOverlay3d::CandidateImportance => {
+            append_npr_debug_polyline(
+                vertices,
+                viewport,
+                &path.points,
+                npr_candidate_importance_debug_color(path),
+                2.5,
+            );
+        }
+        NprDebugOverlay3d::TechnicalSelection => {
+            append_npr_debug_polyline(
+                vertices,
+                viewport,
+                &path.points,
+                npr_technical_selection_debug_color(path, viewport),
+                2.25,
+            );
+        }
+        NprDebugOverlay3d::StrokeLengthBucket => {
+            append_npr_debug_polyline(
+                vertices,
+                viewport,
+                &path.points,
+                npr_length_bucket_debug_color(path, viewport),
+                npr_path_debug_width_px(path, viewport),
+            );
+        }
+        NprDebugOverlay3d::SourceEdgeCount => {
+            append_npr_debug_polyline(
+                vertices,
+                viewport,
+                &path.points,
+                npr_source_edge_count_debug_color(path),
+                npr_source_edge_count_debug_width_px(path),
             );
         }
         NprDebugOverlay3d::Dropout => {
@@ -200,4 +255,111 @@ fn npr_path_id_debug_color(path_id: u64) -> ColorRgba {
     let g = deterministic_noise(path_id, 23, 0, 0);
     let b = deterministic_noise(path_id, 37, 0, 0);
     ColorRgba::new(0.25 + r * 0.75, 0.25 + g * 0.75, 0.25 + b * 0.75, 0.88)
+}
+
+fn npr_path_topology_debug_color(path: &NprStrokePath) -> ColorRgba {
+    let base = npr_path_id_debug_color(path.path_id);
+    let source_edge_factor = (path.source_edges.len() as f32 / 10.0).clamp(0.0, 1.0);
+    ColorRgba::new(
+        (base.r * 0.45 + source_edge_factor * 0.55).clamp(0.0, 1.0),
+        base.g,
+        (base.b * 0.65 + (1.0 - source_edge_factor) * 0.35).clamp(0.0, 1.0),
+        base.a,
+    )
+}
+
+fn npr_path_debug_width_px(path: &NprStrokePath, viewport: &Viewport) -> f32 {
+    let length_px = npr_path_length_px(path, viewport);
+    if length_px >= 96.0 {
+        3.5
+    } else if length_px >= 42.0 {
+        2.5
+    } else {
+        1.5
+    }
+}
+
+fn npr_candidate_importance_debug_color(path: &NprStrokePath) -> ColorRgba {
+    let importance = path.candidate_importance.clamp(0.0, 1.0);
+    let source_edge_factor = (path.source_edges.len() as f32 / 8.0).clamp(0.0, 1.0);
+    ColorRgba::new(
+        (1.0 - importance) * 0.95,
+        (importance * 0.85 + source_edge_factor * 0.15).clamp(0.0, 1.0),
+        (0.25 + source_edge_factor * 0.65).clamp(0.0, 1.0),
+        0.92,
+    )
+}
+
+fn npr_technical_selection_debug_color(path: &NprStrokePath, viewport: &Viewport) -> ColorRgba {
+    let length_px = npr_path_length_px(path, viewport);
+    let chain_factor = (path.source_edges.len() as f32 / 6.0).clamp(0.0, 1.0);
+    match path.kind {
+        NprLineKind::Silhouette | NprLineKind::Boundary => ColorRgba::new(0.12, 0.92, 0.20, 0.95),
+        NprLineKind::Contact => ColorRgba::new(0.10, 0.70, 1.0, 0.95),
+        NprLineKind::Crease | NprLineKind::Seam | NprLineKind::Feature => {
+            let kept = if path.technical_detail {
+                path.candidate_importance.clamp(0.0, 1.0) * 0.55
+                    + (length_px / 72.0).clamp(0.0, 1.0) * 0.25
+                    + chain_factor * 0.20
+            } else {
+                0.25
+            };
+            ColorRgba::new(1.0 - kept * 0.35, kept, 0.12, 0.92)
+        }
+    }
+}
+
+fn npr_length_bucket_debug_color(path: &NprStrokePath, viewport: &Viewport) -> ColorRgba {
+    let length_px = npr_path_length_px(path, viewport);
+    if length_px >= 96.0 {
+        ColorRgba::new(0.12, 0.92, 0.25, 0.95)
+    } else if length_px >= 48.0 {
+        ColorRgba::new(1.0, 0.82, 0.10, 0.95)
+    } else {
+        ColorRgba::new(1.0, 0.28, 0.18, 0.95)
+    }
+}
+
+fn npr_source_edge_count_debug_color(path: &NprStrokePath) -> ColorRgba {
+    let source_edges = path.source_edges.len() as f32;
+    let normalized = (source_edges / 10.0).clamp(0.0, 1.0);
+    ColorRgba::new(
+        (0.10 + normalized * 0.25).clamp(0.0, 1.0),
+        (0.22 + normalized * 0.78).clamp(0.0, 1.0),
+        (1.0 - normalized * 0.78).clamp(0.15, 1.0),
+        0.94,
+    )
+}
+
+fn npr_source_edge_count_debug_width_px(path: &NprStrokePath) -> f32 {
+    match path.source_edges.len() {
+        0..=1 => 1.5,
+        2..=3 => 2.25,
+        4..=7 => 3.0,
+        _ => 3.75,
+    }
+}
+
+fn npr_rejected_technical_debug_color(candidate: NprRejectedTechnicalCandidate) -> ColorRgba {
+    let importance = candidate.candidate_importance.clamp(0.0, 1.0);
+    let kind_bias = match candidate.kind {
+        NprLineKind::Crease => 0.12f32,
+        NprLineKind::Seam => 0.08f32,
+        NprLineKind::Feature => 0.16f32,
+        _ => 0.0f32,
+    };
+    let source_bias = ((candidate.source_edge_id % 13) as f32 / 13.0) * 0.10;
+    ColorRgba::new(
+        1.0,
+        (0.10f32 + importance * 0.25f32 + source_bias).clamp(0.0, 1.0),
+        (0.08f32 + kind_bias).clamp(0.0, 1.0),
+        0.82,
+    )
+}
+
+fn npr_path_length_px(path: &NprStrokePath, viewport: &Viewport) -> f32 {
+    path.points
+        .windows(2)
+        .map(|segment| screen_segment_length_px(segment[0], segment[1], viewport))
+        .sum::<f32>()
 }

@@ -80,21 +80,9 @@ impl Display for BootstrapSummary {
             "scene entities: {}",
             app_helpers::display_string_list(&self.scene_entities)
         )?;
-        writeln!(
-            f,
-            "registered assets: {}",
-            app_helpers::display_string_list(&self.registered_assets)
-        )?;
-        writeln!(
-            f,
-            "loaded assets: {}",
-            app_helpers::display_string_list(&self.loaded_assets)
-        )?;
-        writeln!(
-            f,
-            "prepared assets: {}",
-            app_helpers::display_string_list(&self.prepared_assets)
-        )?;
+        write_summary_list(f, "registered assets", &self.registered_assets)?;
+        write_summary_list(f, "loaded assets", &self.loaded_assets)?;
+        write_summary_list(f, "prepared assets", &self.prepared_assets)?;
         writeln!(
             f,
             "failed assets: {}",
@@ -105,11 +93,7 @@ impl Display for BootstrapSummary {
             "pending asset loads: {}",
             app_helpers::display_string_list(&self.pending_asset_loads)
         )?;
-        writeln!(
-            f,
-            "watched reload targets: {}",
-            app_helpers::display_string_list(&self.watched_reload_targets)
-        )?;
+        write_summary_list(f, "watched reload targets", &self.watched_reload_targets)?;
         writeln!(
             f,
             "2d sprite entities: {}",
@@ -175,52 +159,28 @@ impl Display for BootstrapSummary {
             self.audio_output_buffered_samples,
             self.audio_output_last_error.as_deref().unwrap_or("none")
         )?;
-        writeln!(
-            f,
-            "script commands: {}",
-            app_helpers::display_string_list(&self.processed_script_commands)
-        )?;
-        writeln!(
-            f,
-            "audio commands: {}",
-            app_helpers::display_string_list(&self.processed_audio_commands)
-        )?;
-        writeln!(
-            f,
-            "scene commands: {}",
-            app_helpers::display_string_list(&self.processed_scene_commands)
-        )?;
-        writeln!(
-            f,
-            "script events: {}",
-            app_helpers::display_string_list(&self.processed_script_events)
-        )?;
-        writeln!(
-            f,
-            "console commands: {}",
-            app_helpers::display_string_list(&self.console_commands)
-        )?;
-        writeln!(
-            f,
-            "console output: {}",
-            app_helpers::display_string_list(&self.console_output)
-        )?;
-        writeln!(
-            f,
-            "capabilities: {}",
-            app_helpers::display_string_list(&self.capabilities)
-        )?;
-        writeln!(
-            f,
-            "plugins: {}",
-            app_helpers::display_string_list(&self.plugins)
-        )?;
-        write!(
-            f,
-            "services: {}",
-            app_helpers::display_string_list(&self.services)
-        )
+        write_summary_list(f, "script commands", &self.processed_script_commands)?;
+        write_summary_list(f, "audio commands", &self.processed_audio_commands)?;
+        write_summary_list(f, "scene commands", &self.processed_scene_commands)?;
+        write_summary_list(f, "script events", &self.processed_script_events)?;
+        write_summary_list(f, "console commands", &self.console_commands)?;
+        write_summary_list(f, "console output", &self.console_output)?;
+        write_summary_list(f, "capabilities", &self.capabilities)?;
+        write_summary_list(f, "plugins", &self.plugins)?;
+        write_summary_list(f, "services", &self.services)
     }
+}
+
+fn write_summary_list(f: &mut Formatter<'_>, label: &str, values: &[String]) -> fmt::Result {
+    if values.is_empty() {
+        return writeln!(f, "{label}: none");
+    }
+
+    writeln!(f, "{label}:")?;
+    for value in values {
+        writeln!(f, "  - {value}")?;
+    }
+    Ok(())
 }
 
 

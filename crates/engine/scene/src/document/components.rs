@@ -1,4 +1,3 @@
-use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
 use serde_yaml::Value;
@@ -78,9 +77,23 @@ pub struct NprLine3dSettingsDocument {
     #[serde(default)]
     pub ink_detail_material_ids: Option<Vec<u32>>,
     #[serde(default)]
+    pub brushes: Option<BTreeMap<String, NprBrushProfileDocument>>,
+    #[serde(default)]
+    pub families: Option<Vec<NprLineFamilyDocument>>,
+    #[serde(default)]
     pub feature_angle_degrees: Option<f32>,
     #[serde(default)]
     pub min_screen_length_px: Option<f32>,
+    #[serde(default)]
+    pub min_stroke_length_px: Option<f32>,
+    #[serde(default)]
+    pub preferred_stroke_length_px: Option<f32>,
+    #[serde(default)]
+    pub stroke_join_gap_px: Option<f32>,
+    #[serde(default)]
+    pub stroke_join_max_angle_degrees: Option<f32>,
+    #[serde(default)]
+    pub technical_detail_keep: Option<f32>,
     #[serde(default)]
     pub ink_color: Option<String>,
     #[serde(default)]
@@ -281,6 +294,94 @@ pub struct NprPipelineStrategiesDocument {
     pub budget_strategy: Option<String>,
     #[serde(default)]
     pub temporal_strategy: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+pub struct NprBrushProfileDocument {
+    #[serde(default)]
+    pub tool: Option<String>,
+    #[serde(default)]
+    pub tip: Option<String>,
+    #[serde(default)]
+    pub width_multiplier: Option<f32>,
+    #[serde(default)]
+    pub alpha_multiplier: Option<f32>,
+    #[serde(default)]
+    pub pressure_jitter_multiplier: Option<f32>,
+    #[serde(default)]
+    pub dropout_multiplier: Option<f32>,
+    #[serde(default)]
+    pub search_multiplier: Option<f32>,
+    #[serde(default)]
+    pub path_wobble_multiplier: Option<f32>,
+    #[serde(default)]
+    pub micro_wobble_multiplier: Option<f32>,
+    #[serde(default)]
+    pub hand_arc_multiplier: Option<f32>,
+    #[serde(default)]
+    pub tangent_drift_multiplier: Option<f32>,
+    #[serde(default)]
+    pub detail_crispness_multiplier: Option<f32>,
+    #[serde(default)]
+    pub taper_multiplier: Option<f32>,
+    #[serde(default)]
+    pub overshoot_px: Option<f32>,
+    #[serde(default)]
+    pub width_curve: Option<[f32; 4]>,
+    #[serde(default)]
+    pub alpha_curve: Option<[f32; 4]>,
+    #[serde(default)]
+    pub angle_bias_degrees: Option<f32>,
+    #[serde(default)]
+    pub angle_influence: Option<f32>,
+    #[serde(default)]
+    pub path_adherence_multiplier: Option<f32>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+pub struct NprLineFamilyDocument {
+    #[serde(default)]
+    pub id: String,
+    #[serde(default = "default_bool_true")]
+    pub enabled: bool,
+    #[serde(default)]
+    pub role: Option<String>,
+    #[serde(default)]
+    pub priority: Option<i32>,
+    #[serde(default)]
+    pub sources: Vec<String>,
+    #[serde(default)]
+    pub brush: Option<String>,
+    #[serde(default)]
+    pub preferred_stroke_length_px: Option<f32>,
+    #[serde(default)]
+    pub stroke_join_gap_px: Option<f32>,
+    #[serde(default)]
+    pub stroke_join_max_angle_degrees: Option<f32>,
+    #[serde(default)]
+    pub technical_detail_keep: Option<f32>,
+    #[serde(default)]
+    pub min_screen_length_px: Option<f32>,
+    #[serde(default)]
+    pub min_stroke_length_px: Option<f32>,
+    #[serde(default)]
+    pub technical_detail_preference: Option<f32>,
+    #[serde(default)]
+    pub ink_detail_material_preference: Option<f32>,
+    #[serde(default)]
+    pub material_seam_preference: Option<f32>,
+    #[serde(default)]
+    pub continuation_bias: Option<f32>,
+    #[serde(default)]
+    pub breakup_bias: Option<f32>,
+    #[serde(default)]
+    pub width_multiplier: Option<f32>,
+    #[serde(default)]
+    pub alpha_multiplier: Option<f32>,
+    #[serde(default)]
+    pub taper_multiplier: Option<f32>,
+    #[serde(default)]
+    pub overshoot_px: Option<f32>,
 }
 
 fn default_bool_true() -> bool {
@@ -1172,3 +1273,4 @@ pub struct LightMap2dChannelDocument {
     #[serde(default)]
     pub layers: Vec<String>,
 }
+use std::collections::BTreeMap;

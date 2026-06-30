@@ -3,6 +3,9 @@ use crate::renderer::{NprDebugOverlay3d, Viewport};
 use super::{NprGpuFramePlan3d, NprGpuMeshJob3d};
 
 pub(crate) fn npr_gpu_trace_enabled(frame_index: u64) -> bool {
+    if npr_gpu_trace_env_is_false("AMIGO_NPR_GPU_TRACE") {
+        return false;
+    }
     frame_index <= 4
         || std::env::var("AMIGO_NPR_GPU_TRACE")
             .map(|value| {
@@ -58,7 +61,7 @@ pub(crate) fn npr_gpu_trace_frame_plan(frame_index: u64, frame_plan: NprGpuFrame
         frame_index,
         "ALLOC",
         format!(
-            "capacities bytes projected={} visible={} endpoint_heads={} endpoint_entries={} path_links={} path_segments={} path_states={} stroke_segments={} uniform_size={}",
+            "capacities bytes projected={} visible={} endpoint_heads={} endpoint_entries={} path_links={} path_segments={} path_states={} aggregated_paths={} stroke_segments={} uniform_size={}",
             frame_plan.allocated_projected_capacity(),
             frame_plan.allocated_visible_segments_capacity(),
             frame_plan.allocated_endpoint_heads_capacity(),
@@ -66,6 +69,7 @@ pub(crate) fn npr_gpu_trace_frame_plan(frame_index: u64, frame_plan: NprGpuFrame
             frame_plan.allocated_path_links_capacity(),
             frame_plan.allocated_path_segments_capacity(),
             frame_plan.allocated_path_states_capacity(),
+            frame_plan.allocated_aggregated_paths_capacity(),
             frame_plan.allocated_stroke_segments_capacity(),
             frame_plan.uniform_size,
         ),

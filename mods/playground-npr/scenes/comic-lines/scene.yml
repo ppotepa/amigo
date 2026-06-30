@@ -7,14 +7,9 @@ scene:
     and inspect mesh-cache comic line rendering.
 
 npr_presets:
-  - ./npr-presets/cinematic-12fps.yml
   - ./npr-presets/cinematic-12fps-cpu-reference.yml
-  - ./npr-presets/rough-comic-ink.yml
   - ./npr-presets/rough-comic-ink-cpu-reference.yml
-  - ./npr-presets/akira.yml
-  - ./npr-presets/akira-cpu-reference.yml
-  - ./npr-presets/akira-camera-based.yml
-  - ./npr-presets/akira-camera-based-cpu-reference.yml
+  - ./npr-presets/toriyama-contour-ink-cpu-reference.yml
 
 entities:
   - id: controls
@@ -141,7 +136,7 @@ entities:
       - type: Mesh3D
         mesh: playground-npr/meshes/soldier
         npr:
-          strategy: gpu_realtime
+          strategy: cpu_reference
           fill_mode: none
           style_preset: gpu_stable_comic
           stroke_tool: technical_pen
@@ -199,7 +194,7 @@ entities:
       - type: Mesh3D
         mesh: playground-npr/meshes/khronos-male
         npr:
-          strategy: gpu_realtime
+          strategy: cpu_reference
           fill_mode: none
           style_preset: gpu_stable_comic
           stroke_tool: technical_pen
@@ -308,7 +303,7 @@ entities:
                 color: "#17120CFF"
             - type: text
               id: strategy
-              text: "Strategy gpu_realtime"
+              text: "Strategy cpu_reference"
               font: playground-npr/fonts/debug-ui
               style:
                 width: 298.0
@@ -358,7 +353,7 @@ entities:
                 word_wrap: true
             - type: text
               id: stats_b
-              text: "GPU      edges 0 tris 0 | buffers 0/0/0"
+              text: "Render   edges 0 tris 0 | buffers 0/0/0"
               font: playground-npr/fonts/debug-ui
               style:
                 width: 298.0
@@ -367,7 +362,7 @@ entities:
                 word_wrap: true
             - type: text
               id: help
-              text: "1-2 model | Up/Down style | G backend | F camera | R rotate | T temporal"
+              text: "1-2 model | Up/Down style | CPU only | F camera | R rotate | T temporal"
               font: playground-npr/fonts/debug-ui
               style:
                 width: 298.0

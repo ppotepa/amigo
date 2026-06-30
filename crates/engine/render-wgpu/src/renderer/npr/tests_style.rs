@@ -11,6 +11,10 @@ fn test_npr_path(id: u64, points: &[(f32, f32)]) -> NprStrokePath {
     NprStrokePath {
         path_id: id,
         kind: NprLineKind::Silhouette,
+        candidate_importance: 1.0,
+        technical_detail: false,
+        material_detail: false,
+        material_seam: false,
         source_edges: vec![id],
         sorted_source_edges: vec![id],
         arc_lengths_px: npr_path_arc_lengths(&points, &viewport),
@@ -20,21 +24,8 @@ fn test_npr_path(id: u64, points: &[(f32, f32)]) -> NprStrokePath {
     }
 }
 
-fn y_span(vertices: &[ColorVertex]) -> f32 {
-    let min_y = vertices
-        .iter()
-        .map(|vertex| vertex.position[1])
-        .fold(f32::INFINITY, f32::min);
-    let max_y = vertices
-        .iter()
-        .map(|vertex| vertex.position[1])
-        .fold(f32::NEG_INFINITY, f32::max);
-    max_y - min_y
-}
-
 #[test]
 fn npr_straightness_controls_humanized_path_deviation() {
-    let viewport = Viewport::from_dimensions(800.0, 600.0);
     let path = test_npr_path(808, &[(-0.55, 0.0), (-0.15, 0.0), (0.2, 0.0), (0.55, 0.0)]);
     let loose = amigo_render_api::NprLineSettings3d {
         straightness: 0.0,
@@ -52,32 +43,14 @@ fn npr_straightness_controls_humanized_path_deviation() {
         straightness: 1.0,
         ..loose.clone()
     };
-    let mut loose_vertices = Vec::new();
-    let mut straight_vertices = Vec::new();
+    let loose_brush = resolve_npr_brush_profile(NprLineKind::Silhouette, &loose);
+    let straight_brush = resolve_npr_brush_profile(NprLineKind::Silhouette, &straight);
+    let loose_gesture = build_npr_stroke_gesture(&path, &loose);
+    let straight_gesture = build_npr_stroke_gesture(&path, &straight);
 
-    append_npr_styled_path_vertices(
-        &mut loose_vertices,
-        None,
-        &viewport,
-        &path,
-        &loose,
-        None,
-        &mut NprStrokeFrameStats3d::default(),
-    );
-    append_npr_styled_path_vertices(
-        &mut straight_vertices,
-        None,
-        &viewport,
-        &path,
-        &straight,
-        None,
-        &mut NprStrokeFrameStats3d::default(),
-    );
-
-    let loose_span = y_span(&loose_vertices);
-    let straight_span = y_span(&straight_vertices);
     assert!(
-        loose_span > straight_span,
+        loose_brush.path_wobble_multiplier > straight_brush.path_wobble_multiplier
+            && loose_gesture.dynamics.base_wobble_px > straight_gesture.dynamics.base_wobble_px,
         "lower straightness should increase gesture deviation"
     );
 }
@@ -151,10 +124,10 @@ fn npr_stroke_tool_profiles_change_drawing_dynamics() {
         ..amigo_render_api::NprLineSettings3d::default()
     };
 
-    let ink = crate::renderer::resolve_npr_brush_profile(&ink);
-    let pencil = crate::renderer::resolve_npr_brush_profile(&pencil);
-    let brush = crate::renderer::resolve_npr_brush_profile(&brush);
-    let technical = crate::renderer::resolve_npr_brush_profile(&technical);
+    let ink = crate::renderer::resolve_npr_brush_profile(NprLineKind::Silhouette, &ink);
+    let pencil = crate::renderer::resolve_npr_brush_profile(NprLineKind::Silhouette, &pencil);
+    let brush = crate::renderer::resolve_npr_brush_profile(NprLineKind::Silhouette, &brush);
+    let technical = crate::renderer::resolve_npr_brush_profile(NprLineKind::Silhouette, &technical);
 
     assert!(pencil.search_multiplier > ink.search_multiplier);
     assert_eq!(technical.search_multiplier, 0.0);
@@ -176,10 +149,63 @@ fn npr_brush_profile_author_scalars_override_tool_dynamics() {
         ..amigo_render_api::NprLineSettings3d::default()
     };
 
-    let profile = crate::renderer::resolve_npr_brush_profile(&settings);
+    let profile = crate::renderer::resolve_npr_brush_profile(NprLineKind::Silhouette, &settings);
 
     assert_eq!(profile.search_multiplier, 0.0);
     assert_eq!(profile.dropout_multiplier, 0.0);
     assert!(profile.alpha_multiplier < 0.5);
     assert!(profile.width_multiplier > 1.5);
+}
+
+#[test]
+fn npr_line_family_brush_tip_and_role_override_feature_stroke_behavior() {
+    let viewport = Viewport::from_dimensions(800.0, 600.0);
+    let points = vec![Vec2::new(-0.3, 0.0), Vec2::new(0.0, 0.02), Vec2::new(0.28, 0.01)];
+    let settings = amigo_render_api::NprLineSettings3d {
+        pipeline: amigo_render_api::NprPipelineStrategies3d {
+            candidate_strategy: amigo_render_api::NprCandidateStrategy3d::CharacterSemantic,
+            path_strategy: amigo_render_api::NprPathStrategy3d::StableStrokedPaths,
+            stroke_strategy: amigo_render_api::NprStrokeStrategy3d::ConfidentMangaInk,
+            budget_strategy: amigo_render_api::NprBudgetStrategy3d::CharacterReadability,
+            temporal_strategy: amigo_render_api::NprTemporalStrategy3d::StableArcLength,
+            ..amigo_render_api::NprPipelineStrategies3d::default()
+        },
+        brush_profiles: std::collections::BTreeMap::from([(
+            "detail_pen".to_string(),
+            amigo_render_api::NprBrushProfile3d {
+                tool: Some(amigo_render_api::NprStrokeTool3d::TechnicalPen),
+                tip: Some(amigo_render_api::NprBrushTip3d::MaruPen),
+                ..amigo_render_api::NprBrushProfile3d::default()
+            },
+        )]),
+        line_families: vec![amigo_render_api::NprLineFamily3d {
+            id: "detail_ink".to_string(),
+            role: Some(amigo_render_api::NprLineFamilyRole3d::DetailInk),
+            sources: vec![amigo_render_api::NprLineSource3d::Feature],
+            brush: Some("detail_pen".to_string()),
+            ..amigo_render_api::NprLineFamily3d::default()
+        }],
+        ..amigo_render_api::NprLineSettings3d::default()
+    };
+    let path = NprStrokePath {
+        path_id: 404,
+        kind: NprLineKind::Feature,
+        candidate_importance: 1.0,
+        technical_detail: true,
+        material_detail: true,
+        material_seam: false,
+        source_edges: vec![1, 2],
+        sorted_source_edges: vec![1, 2],
+        arc_lengths_px: npr_path_arc_lengths(&points, &viewport),
+        importance: 0.92,
+        closed: false,
+        points,
+    };
+
+    let brush = resolve_npr_brush_profile(NprLineKind::Feature, &settings);
+    let gesture = build_npr_stroke_gesture(&path, &settings);
+
+    assert_eq!(brush.tip, amigo_render_api::NprBrushTip3d::MaruPen);
+    assert!(gesture.role.overshoot_multiplier < 0.3);
+    assert!(gesture.role.detail_crispness > 1.1);
 }

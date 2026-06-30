@@ -2,11 +2,12 @@ use amigo_math::{ColorRgba, Vec2};
 
 use crate::renderer::{
     ColorVertex, NprStableBrushPath, NprStrokeGesture, NprStrokePassPlan, NprStrokeRail,
-    NprStrokeSegmentVertex, NprStrokeStripSample, Viewport, npr_alpha_pressure_multiplier,
-    npr_depth_alpha_multiplier, npr_distance_width_multiplier, npr_pressure_multiplier,
+    NprLineKind, NprStrokeSegmentVertex, NprStrokeStripSample, Viewport, npr_alpha_pressure_multiplier,
+    npr_depth_alpha_multiplier, npr_distance_width_multiplier,
+    npr_preferred_stroke_length_px_with_traits, npr_pressure_multiplier,
 };
 
-use super::{coherent_signed_noise_1d, resolve_npr_brush_profile};
+use super::{NprLineCandidateTraits, coherent_signed_noise_1d, resolve_npr_brush_profile_with_traits};
 
 pub(crate) fn npr_endpoint_lock(
     t: f32,
@@ -48,18 +49,45 @@ pub(crate) fn npr_taper_multiplier(t: f32, taper: f32) -> f32 {
     1.0 - taper.clamp(0.0, 1.0) * (1.0 - endpoint_weight.max(0.35))
 }
 
+fn brush_angle_response(
+    brush: super::NprResolvedBrushProfile3d,
+    tangent: Vec2,
+) -> f32 {
+    let tangent_length = (tangent.x * tangent.x + tangent.y * tangent.y).sqrt();
+    if tangent_length <= f32::EPSILON || brush.angle_influence <= f32::EPSILON {
+        return 1.0;
+    }
+    let direction = Vec2::new(tangent.x / tangent_length, tangent.y / tangent_length);
+    let brush_angle = brush.angle_bias_radians;
+    let brush_axis = Vec2::new(brush_angle.cos(), brush_angle.sin());
+    let alignment = (direction.x * brush_axis.x + direction.y * brush_axis.y).abs();
+    let nib_factor = match brush.tip {
+        amigo_render_api::NprBrushTip3d::Round => 0.94 + (1.0 - alignment) * 0.12,
+        amigo_render_api::NprBrushTip3d::Flat => 0.72 + (1.0 - alignment) * 0.56,
+        amigo_render_api::NprBrushTip3d::GPen => 0.80 + (1.0 - alignment) * 0.40,
+        amigo_render_api::NprBrushTip3d::MaruPen => 0.90 + (1.0 - alignment) * 0.16,
+        amigo_render_api::NprBrushTip3d::DryBrush => 0.76 + (1.0 - alignment) * 0.48,
+    };
+    1.0 + (nib_factor - 1.0) * brush.angle_influence.clamp(0.0, 1.0)
+}
+
 pub(crate) fn humanize_npr_brush_sample(
     brush_path: &NprStableBrushPath,
     index: usize,
     settings: &amigo_render_api::NprLineSettings3d,
+    gesture: NprStrokeGesture,
     pass: u8,
     wobble_px: f32,
     viewport: &Viewport,
 ) -> Vec2 {
-    let brush = resolve_npr_brush_profile(settings);
+    let traits = NprLineCandidateTraits {
+        technical_detail: gesture.technical_detail,
+        material_detail: gesture.material_detail,
+        material_seam: gesture.material_seam,
+    };
+    let brush = resolve_npr_brush_profile_with_traits(gesture.kind, traits, settings);
     let micro_wobble_px = settings.micro_wobble_px
         * settings.humanization
-        * brush.path_wobble_multiplier
         * brush.micro_wobble_multiplier;
     if wobble_px <= 0.0 && micro_wobble_px <= 0.0 {
         return brush_path.samples[index].point;
@@ -74,16 +102,39 @@ pub(crate) fn humanize_npr_brush_sample(
         return brush_path.samples[index].point;
     }
 
-    let normal = Vec2::new(-ty / length, tx / length);
+    let mut normal = Vec2::new(-ty / length, tx / length);
+    if brush.angle_bias_radians.abs() > f32::EPSILON {
+        let cos_theta = brush.angle_bias_radians.cos();
+        let sin_theta = brush.angle_bias_radians.sin();
+        normal = Vec2::new(
+            normal.x * cos_theta - normal.y * sin_theta,
+            normal.x * sin_theta + normal.y * cos_theta,
+        );
+    }
     let point = brush_path.samples[index].point;
     let arc_t = brush_path.samples[index].arc_length_px / brush_path.length_px;
-    let endpoint_lock = npr_endpoint_lock(arc_t, brush_path.length_px, settings);
+    let endpoint_lock = npr_endpoint_lock(arc_t, brush_path.length_px, settings)
+        * brush.path_adherence_multiplier.clamp(0.35, 1.0);
     let primary = coherent_signed_noise_1d(
         settings.seed,
         brush_path.path_id,
         pass as u64,
         arc_t * settings.stroke_wobble_frequency.max(0.01) * 100.0,
         919,
+    );
+    let hand_arc = coherent_signed_noise_1d(
+        settings.seed,
+        brush_path.path_id,
+        pass as u64,
+        arc_t * settings.stroke_wobble_frequency.max(0.01) * 18.0 + 1.7,
+        887,
+    );
+    let bow_seed = coherent_signed_noise_1d(
+        settings.seed,
+        brush_path.path_id,
+        pass as u64,
+        0.5,
+        1061,
     );
     let drift = coherent_signed_noise_1d(
         settings.seed,
@@ -100,16 +151,78 @@ pub(crate) fn humanize_npr_brush_sample(
         991,
     );
     let tangent_scale =
-        settings.local_angular_drift_degrees.to_radians().sin() * settings.humanization;
+        settings.local_angular_drift_degrees.to_radians().sin()
+            * settings.humanization
+            * brush.tangent_drift_multiplier
+            * gesture.role.tangent_drift_multiplier;
+    let preferred_length_px =
+        npr_preferred_stroke_length_px_with_traits(gesture.kind, traits, settings).max(24.0);
+    let hand_arc_scale = ((brush_path.length_px / preferred_length_px)
+        .clamp(0.35, 1.15)
+        * wobble_px
+        * 0.65
+        * brush.hand_arc_multiplier
+        * gesture.role.hand_arc_multiplier)
+        .max(0.0);
+    let bow_scale = npr_seeded_feature_bow_scale(
+        gesture,
+        brush_path.length_px,
+        preferred_length_px,
+        wobble_px,
+        brush.hand_arc_multiplier,
+    );
+    let seeded_bow = (arc_t * std::f32::consts::PI).sin() * bow_seed * bow_scale;
+    let detail_crispness = if brush_path.length_px < preferred_length_px {
+        1.0
+    } else {
+        0.82
+    } * brush.detail_crispness_multiplier
+        * gesture.role.detail_crispness;
     let px = point.x * viewport.half_width
-        + normal.x * primary * wobble_px * endpoint_lock
+        + normal.x * hand_arc * hand_arc_scale * endpoint_lock
+        + normal.x * seeded_bow * endpoint_lock
+        + normal.x * primary * wobble_px * detail_crispness * endpoint_lock
         + normal.x * micro * micro_wobble_px * endpoint_lock
         + (tx / length) * drift * wobble_px * tangent_scale * endpoint_lock;
     let py = point.y * viewport.half_height
-        + normal.y * primary * wobble_px * endpoint_lock
+        + normal.y * hand_arc * hand_arc_scale * endpoint_lock
+        + normal.y * seeded_bow * endpoint_lock
+        + normal.y * primary * wobble_px * detail_crispness * endpoint_lock
         + normal.y * micro * micro_wobble_px * endpoint_lock
         + (ty / length) * drift * wobble_px * tangent_scale * endpoint_lock;
     Vec2::new(px / viewport.half_width, py / viewport.half_height)
+}
+
+fn npr_seeded_feature_bow_scale(
+    gesture: NprStrokeGesture,
+    path_length_px: f32,
+    preferred_length_px: f32,
+    wobble_px: f32,
+    brush_hand_arc_multiplier: f32,
+) -> f32 {
+    if !matches!(
+        gesture.kind,
+        NprLineKind::Feature | NprLineKind::Crease | NprLineKind::Seam
+    ) {
+        return 0.0;
+    }
+    if path_length_px < 18.0 {
+        return 0.0;
+    }
+
+    let length_factor = (path_length_px / preferred_length_px.max(24.0)).clamp(0.35, 1.35);
+    let detail_factor = if gesture.kind == NprLineKind::Feature {
+        1.0
+    } else {
+        0.72
+    };
+    (wobble_px.max(0.18)
+        * 1.15
+        * length_factor
+        * detail_factor
+        * brush_hand_arc_multiplier
+        * gesture.role.hand_arc_multiplier)
+        .clamp(0.0, 2.4)
 }
 
 pub(crate) fn npr_stroke_strip_sample(
@@ -121,15 +234,33 @@ pub(crate) fn npr_stroke_strip_sample(
     distance_t: f32,
     viewport: &Viewport,
 ) -> NprStrokeStripSample {
-    let brush = resolve_npr_brush_profile(settings);
+    let brush = resolve_npr_brush_profile_with_traits(
+        gesture.kind,
+        NprLineCandidateTraits {
+            technical_detail: gesture.technical_detail,
+            material_detail: gesture.material_detail,
+            material_seam: gesture.material_seam,
+        },
+        settings,
+    );
     let point = humanize_npr_brush_sample(
         brush_path,
         point_index,
         settings,
+        gesture,
         pass.pass_index,
         pass.wobble_px,
         viewport,
     );
+    let taper = (gesture.style.taper * gesture.role.taper_multiplier * brush.taper_multiplier)
+        .clamp(0.0, 1.5);
+    let prev = brush_path.samples[point_index.saturating_sub(1)].point;
+    let next = brush_path.samples[(point_index + 1).min(brush_path.samples.len() - 1)].point;
+    let tangent = Vec2::new(
+        (next.x - prev.x) * viewport.half_width,
+        (next.y - prev.y) * viewport.half_height,
+    );
+    let angle_response = brush_angle_response(brush, tangent);
     let width_noise = coherent_signed_noise_1d(
         settings.seed,
         gesture.path_seed,
@@ -139,9 +270,10 @@ pub(crate) fn npr_stroke_strip_sample(
     );
     let width_px = (gesture.dynamics.base_width_px
         * pass.width_multiplier
-        * npr_pressure_multiplier(distance_t, settings)
-        * npr_taper_multiplier(distance_t, gesture.style.taper)
+        * npr_pressure_multiplier(distance_t, settings, brush)
+        * npr_taper_multiplier(distance_t, taper)
         * npr_distance_width_multiplier(gesture.importance, settings)
+        * angle_response
         + width_noise * settings.pressure_jitter * brush.pressure_jitter_multiplier)
         .max(0.25);
     let pass_offset = npr_pass_offset_px(brush_path.path_id, distance_t, settings, pass.pass_index);
@@ -150,9 +282,11 @@ pub(crate) fn npr_stroke_strip_sample(
         pass.color.g,
         pass.color.b,
         (pass.color.a
-            * npr_alpha_pressure_multiplier(distance_t, settings)
+            * npr_alpha_pressure_multiplier(distance_t, brush)
             * brush.alpha_multiplier
-            * npr_depth_alpha_multiplier(gesture.importance, settings))
+            * gesture.role.alpha_multiplier
+            * npr_depth_alpha_multiplier(gesture.importance, settings)
+            * (1.0 + (angle_response - 1.0) * 0.22))
         .clamp(0.0, 1.0),
     );
 

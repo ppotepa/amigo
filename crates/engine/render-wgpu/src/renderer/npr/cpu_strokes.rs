@@ -8,7 +8,10 @@ use crate::renderer::{
     build_npr_cached_stroke_plan, npr_stroke_strip_sample, screen_segment_length_px,
 };
 
-use super::{resolve_npr_brush_profile, resolve_npr_kind_style};
+use super::{
+    NprLineCandidateTraits, resolve_npr_brush_profile_with_traits,
+    resolve_npr_gesture_role_profile_with_traits, resolve_npr_kind_style_with_traits,
+};
 
 const NPR_BRUSH_RESAMPLE_SPACING_PX: f32 = 2.5;
 
@@ -88,26 +91,50 @@ pub(crate) fn build_npr_stroke_gesture(
     path: &NprStrokePath,
     settings: &amigo_render_api::NprLineSettings3d,
 ) -> NprStrokeGesture {
-    let style = resolve_npr_kind_style(path.kind, settings);
-    let brush = resolve_npr_brush_profile(settings);
-    let importance = path.importance.clamp(0.55, 1.35);
+    let traits = NprLineCandidateTraits {
+        technical_detail: path.technical_detail,
+        material_detail: path.material_detail,
+        material_seam: path.material_seam,
+    };
+    let style = resolve_npr_kind_style_with_traits(path.kind, traits, settings);
+    let path_length_px = path.arc_lengths_px.last().copied().unwrap_or(0.0).max(1.0);
+    let role = resolve_npr_gesture_role_profile_with_traits(path.kind, path_length_px, traits, settings);
+    let brush = resolve_npr_brush_profile_with_traits(path.kind, traits, settings);
+    let importance = if path.technical_detail {
+        (path.importance * (0.82 + path.candidate_importance.clamp(0.0, 1.0) * 0.18))
+            .clamp(0.45, 1.2)
+    } else {
+        path.importance.clamp(0.55, 1.35)
+    };
     let dynamics = NprToolDynamics {
         base_width_px: settings.width_px
             * style.width_multiplier
             * importance
             * brush.width_multiplier,
         base_wobble_px: style.wobble_px * settings.humanization * brush.path_wobble_multiplier,
-        effective_overshoot_px: if path.closed { 0.0 } else { style.overshoot_px },
+        effective_overshoot_px: if path.closed {
+            0.0
+        } else {
+            brush
+                .overshoot_px
+                .unwrap_or(style.overshoot_px)
+                * role.overshoot_multiplier
+        },
         edge_complexity: path.source_edges.len().max(1) as f32,
         protected_silhouette: path.kind == NprLineKind::Silhouette && path.importance >= 0.9,
     };
 
     NprStrokeGesture {
+        kind: path.kind,
         path_seed: path.path_id,
-        path_length_px: path.arc_lengths_px.last().copied().unwrap_or(0.0).max(1.0),
+        path_length_px,
         importance,
+        technical_detail: path.technical_detail,
+        material_detail: path.material_detail,
+        material_seam: path.material_seam,
         dynamics,
         style,
+        role,
     }
 }
 

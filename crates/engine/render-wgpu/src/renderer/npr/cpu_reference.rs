@@ -5,11 +5,14 @@ use amigo_math::{Transform3, Vec3};
 use crate::renderer::{
     CachedMeshGeometry3d, ColorVertex, NprDebugOverlay3d, NprEntityPathHistory3d,
     NprPathBuildResult3d, NprPathBuildStats3d, NprStrokeFrameStats3d, NprStrokeSegmentVertex,
-    Viewport, append_npr_debug_path_vertices, append_npr_styled_path_vertices,
-    build_npr_face_visibility_buffer, build_npr_stroke_paths, collect_npr_edge_fragments_for_mesh,
-    cross, dot, normalize, project_point_with_camera, rotate_x, rotate_y, rotate_z, sub,
-    transform_point_3d, triangle_center,
+    Viewport, append_npr_debug_path_vertices, append_npr_rejected_technical_vertices,
+    append_npr_styled_path_vertices,
+    build_npr_face_visibility_buffer, build_npr_stroke_paths_for_settings,
+    collect_npr_edge_fragments_for_mesh, cross, dot, normalize, project_point_with_camera, rotate_x,
+    rotate_y, rotate_z, sub, transform_point_3d, triangle_center,
 };
+
+use super::types::NprRejectedTechnicalCandidate;
 
 #[cfg(test)]
 use crate::renderer::NprStrokePath;
@@ -189,6 +192,22 @@ pub(crate) fn append_mesh_npr_debug_overlay_vertices_with_history(
                 .collect::<Vec<_>>()
         })
         .unwrap_or_default();
+    let mut rejected_technical = Vec::<NprRejectedTechnicalCandidate>::new();
+
+    if overlay == NprDebugOverlay3d::TechnicalSelection {
+        let build_result = build_npr_stroke_paths_for_mesh(
+            viewport,
+            camera,
+            camera_settings,
+            geometry,
+            transform,
+            settings,
+        );
+        rejected_technical = build_result.rejected_technical;
+        if paths.is_empty() {
+            paths = build_result.paths;
+        }
+    }
 
     if paths.is_empty() {
         paths = build_npr_stroke_paths_for_mesh(
@@ -200,6 +219,10 @@ pub(crate) fn append_mesh_npr_debug_overlay_vertices_with_history(
             settings,
         )
         .paths;
+    }
+
+    if overlay == NprDebugOverlay3d::TechnicalSelection {
+        append_npr_rejected_technical_vertices(vertices, viewport, &rejected_technical);
     }
 
     for path in &paths {
@@ -219,6 +242,7 @@ fn build_npr_stroke_paths_for_mesh(
         return NprPathBuildResult3d {
             paths: Vec::new(),
             stats: NprPathBuildStats3d::default(),
+            rejected_technical: Vec::new(),
         };
     }
 
@@ -290,16 +314,12 @@ fn build_npr_stroke_paths_for_mesh(
     );
     let fragments = edge_sample_result.fragments;
     let visible_edges = edge_sample_result.visible_edges;
+    let rejected_technical = edge_sample_result.rejected_technical;
     let edge_sample_us = edge_sample_start.elapsed().as_secs_f64() * 1_000_000.0;
 
     let stitch_start = std::time::Instant::now();
     let fragment_count = fragments.len();
-    let paths = build_npr_stroke_paths(
-        &fragments,
-        viewport,
-        settings.endpoint_snap_px,
-        settings.path_simplify_px,
-    );
+    let paths = build_npr_stroke_paths_for_settings(&fragments, viewport, settings);
     let stitch_us = stitch_start.elapsed().as_secs_f64() * 1_000_000.0;
     NprPathBuildResult3d {
         paths,
@@ -311,6 +331,7 @@ fn build_npr_stroke_paths_for_mesh(
             visible_edges,
             fragments: fragment_count,
         },
+        rejected_technical,
     }
 }
 

@@ -9,6 +9,10 @@ fn npr_fragments_join_into_quantized_stroke_path() {
         NprLineFragment {
             source_edge_id: 11,
             kind: NprLineKind::Feature,
+            candidate_importance: 1.0,
+            technical_detail: true,
+            material_detail: false,
+            material_seam: false,
             p0: Vec2::new(-0.2, 0.0),
             p1: Vec2::new(0.0, 0.0),
             t0: 0.0,
@@ -20,6 +24,10 @@ fn npr_fragments_join_into_quantized_stroke_path() {
         NprLineFragment {
             source_edge_id: 11,
             kind: NprLineKind::Feature,
+            candidate_importance: 1.0,
+            technical_detail: true,
+            material_detail: false,
+            material_seam: false,
             p0: Vec2::new(0.002, 0.001),
             p1: Vec2::new(0.2, 0.0),
             t0: 0.5,
@@ -35,6 +43,81 @@ fn npr_fragments_join_into_quantized_stroke_path() {
     assert_eq!(paths.len(), 1);
     assert_eq!(paths[0].kind, NprLineKind::Feature);
     assert_eq!(paths[0].points.len(), 3);
+}
+
+#[test]
+fn npr_cpu_author_policy_filters_short_technical_strokes() {
+    let viewport = Viewport::from_dimensions(800.0, 600.0);
+    let settings = amigo_render_api::NprLineSettings3d {
+        min_stroke_length_px: 24.0,
+        pipeline: amigo_render_api::NprPipelineStrategies3d {
+            candidate_strategy: amigo_render_api::NprCandidateStrategy3d::CharacterSemantic,
+            budget_strategy: amigo_render_api::NprBudgetStrategy3d::CharacterReadability,
+            ..amigo_render_api::NprPipelineStrategies3d::default()
+        },
+        ..amigo_render_api::NprLineSettings3d::default()
+    };
+    let fragments = vec![NprLineFragment {
+        source_edge_id: 44,
+        kind: NprLineKind::Feature,
+        candidate_importance: 1.0,
+        technical_detail: true,
+        material_detail: false,
+        material_seam: false,
+        p0: Vec2::new(-0.01, 0.0),
+        p1: Vec2::new(0.01, 0.0),
+        t0: 0.0,
+        t1: 1.0,
+        tangent0: Vec2::new(1.0, 0.0),
+        tangent1: Vec2::new(1.0, 0.0),
+        avg_depth: 1.0,
+    }];
+
+    let paths = build_npr_stroke_paths_for_settings(&fragments, &viewport, &settings);
+
+    assert!(paths.is_empty());
+}
+
+#[test]
+fn npr_cpu_author_policy_filters_isolated_detail_ink_paths() {
+    let viewport = Viewport::from_dimensions(800.0, 600.0);
+    let settings = amigo_render_api::NprLineSettings3d {
+        feature: true,
+        min_stroke_length_px: 8.0,
+        preferred_stroke_length_px: 96.0,
+        line_families: vec![amigo_render_api::NprLineFamily3d {
+            role: Some(amigo_render_api::NprLineFamilyRole3d::DetailInk),
+            sources: vec![amigo_render_api::NprLineSource3d::Feature],
+            min_stroke_length_px: Some(8.0),
+            preferred_stroke_length_px: Some(96.0),
+            ..amigo_render_api::NprLineFamily3d::default()
+        }],
+        pipeline: amigo_render_api::NprPipelineStrategies3d {
+            candidate_strategy: amigo_render_api::NprCandidateStrategy3d::CharacterSemantic,
+            budget_strategy: amigo_render_api::NprBudgetStrategy3d::CharacterReadability,
+            ..amigo_render_api::NprPipelineStrategies3d::default()
+        },
+        ..amigo_render_api::NprLineSettings3d::default()
+    };
+    let fragments = vec![NprLineFragment {
+        source_edge_id: 44,
+        kind: NprLineKind::Feature,
+        candidate_importance: 1.0,
+        technical_detail: true,
+        material_detail: false,
+        material_seam: false,
+        p0: Vec2::new(-0.035, 0.0),
+        p1: Vec2::new(0.035, 0.0),
+        t0: 0.0,
+        t1: 1.0,
+        tangent0: Vec2::new(1.0, 0.0),
+        tangent1: Vec2::new(1.0, 0.0),
+        avg_depth: 1.0,
+    }];
+
+    let paths = build_npr_stroke_paths_for_settings(&fragments, &viewport, &settings);
+
+    assert!(paths.is_empty());
 }
 
 #[test]
@@ -101,7 +184,7 @@ fn npr_ink_detail_material_edges_use_lower_cpu_length_threshold() {
     ];
 
     assert_eq!(
-        npr_edge_min_screen_length_px(&settings, &edge, &triangles),
+        npr_edge_min_screen_length_px(&settings, NprLineKind::Feature, &edge, &triangles),
         5.5
     );
 }
@@ -127,7 +210,7 @@ fn npr_non_ink_detail_material_edges_keep_cpu_length_threshold() {
     }];
 
     assert_eq!(
-        npr_edge_min_screen_length_px(&settings, &edge, &triangles),
+        npr_edge_min_screen_length_px(&settings, NprLineKind::Boundary, &edge, &triangles),
         10.0
     );
 }
@@ -185,6 +268,10 @@ fn npr_visibility_fragments_require_owned_face_samples() {
         b,
         &viewport,
         1.0,
+        1.0,
+        false,
+        false,
+        false,
     );
     let hidden = visible_npr_fragments_for_edge(
         &hidden_visibility,
@@ -194,6 +281,10 @@ fn npr_visibility_fragments_require_owned_face_samples() {
         b,
         &viewport,
         1.0,
+        1.0,
+        false,
+        false,
+        false,
     );
 
     assert_eq!(visible.len(), 1);

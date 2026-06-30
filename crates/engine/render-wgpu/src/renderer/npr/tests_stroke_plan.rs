@@ -29,6 +29,10 @@ fn test_npr_path(id: u64, points: &[(f32, f32)]) -> NprStrokePath {
     NprStrokePath {
         path_id: id,
         kind: NprLineKind::Silhouette,
+        candidate_importance: 1.0,
+        technical_detail: false,
+        material_detail: false,
+        material_seam: false,
         source_edges: vec![id],
         sorted_source_edges: vec![id],
         arc_lengths_px: npr_path_arc_lengths(&points, &viewport),

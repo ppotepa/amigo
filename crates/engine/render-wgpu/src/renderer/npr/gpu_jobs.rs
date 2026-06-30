@@ -31,6 +31,7 @@ pub(crate) struct NprGpuFrameStats3d {
     pub path_links_capacity: usize,
     pub path_segments_capacity: usize,
     pub path_states_capacity: usize,
+    pub aggregated_paths_capacity: usize,
     pub stroke_segments_capacity: usize,
     pub debug_mode: &'static str,
 }
@@ -49,6 +50,7 @@ impl NprStrokeFrameStats3d {
         self.gpu_realtime_path_links_capacity += stats.path_links_capacity;
         self.gpu_realtime_path_states_capacity += stats.path_states_capacity;
         self.gpu_realtime_path_segments_capacity += stats.path_segments_capacity;
+        self.gpu_realtime_aggregated_paths_capacity += stats.aggregated_paths_capacity;
         self.gpu_realtime_stroke_segments_capacity += stats.stroke_segments_capacity;
         if self.gpu_realtime_debug_mode.is_empty() {
             self.gpu_realtime_debug_mode = stats.debug_mode.to_owned();

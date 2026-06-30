@@ -808,7 +808,7 @@ fn builds_hydration_plan_for_playground_npr_mesh_switches() {
     );
     assert_eq!(
         soldier_npr.render_strategy,
-        amigo_render_api::NprRenderStrategy3d::GpuRealtime
+        amigo_render_api::NprRenderStrategy3d::CpuReference
     );
     assert_eq!(soldier_npr.feature_angle_degrees, 42.0);
     assert_eq!(soldier_npr.humanization, 0.16);
@@ -873,7 +873,7 @@ fn compiled_playground_npr_scene_registers_file_backed_npr_presets() {
     )
     .expect("playground npr scene should compile");
 
-    assert_eq!(compiled.document.npr_presets.len(), 8);
+    assert_eq!(compiled.document.npr_presets.len(), 3);
 
     let plan = build_scene_hydration_plan("playground-npr", &compiled.document)
         .expect("compiled playground npr plan should build");
@@ -883,156 +883,49 @@ fn compiled_playground_npr_scene_registers_file_backed_npr_presets() {
         .filter_map(npr_preset_command)
         .collect::<Vec<_>>();
 
-    assert_eq!(presets.len(), 8);
-    assert_playground_npr_cpu_reference_presets_match_gpu_presets(&presets);
+    assert_eq!(presets.len(), 3);
+    assert_playground_npr_presets_are_cpu_reference_only(&presets);
     assert_playground_npr_presets_have_coherent_pipeline_plans(&presets);
-    assert!(presets.iter().any(|preset| preset.id == "cinematic_12fps"));
-    assert!(presets.iter().any(|preset| preset.id == "rough_comic_ink"));
-    let akira = presets
+    assert!(
+        presets
+            .iter()
+            .any(|preset| preset.id == "cinematic_12fps_cpu_reference")
+    );
+    assert!(
+        presets
+            .iter()
+            .any(|preset| preset.id == "rough_comic_ink_cpu_reference")
+    );
+    let toriyama = presets
         .iter()
-        .find(|preset| preset.id == "akira")
-        .expect("akira preset should be registered");
+        .find(|preset| preset.id == "toriyama_contour_ink_cpu_reference")
+        .expect("toriyama contour CPU preset should be registered");
+    assert!(toriyama.settings.silhouette);
+    assert!(!toriyama.settings.boundary);
+    assert!(toriyama.settings.feature);
+    assert!(!toriyama.settings.suggestive);
+    assert!(!toriyama.settings.contact);
+    assert_eq!(toriyama.settings.passes, 1);
+    assert_eq!(toriyama.settings.search_line_count, 0);
     assert_eq!(
-        akira.settings.render_strategy,
-        amigo_render_api::NprRenderStrategy3d::GpuRealtime
+        toriyama.settings.pipeline.stroke_strategy,
+        amigo_render_api::NprStrokeStrategy3d::ConfidentMangaInk
     );
-    assert_eq!(
-        akira.settings.fill_mode,
-        amigo_render_api::NprFillMode3d::None
-    );
-    assert_eq!(
-        akira.settings.stroke_tool,
-        amigo_render_api::NprStrokeTool3d::InkPen
-    );
-    assert!(akira.settings.silhouette);
-    assert!(akira.settings.boundary);
-    assert!(akira.settings.feature);
-    assert!(!akira.settings.suggestive);
-    assert!(!akira.settings.contact);
-    assert!(akira.settings.silhouette_width_multiplier > akira.settings.boundary_width_multiplier);
-    assert!(akira.settings.boundary_width_multiplier > akira.settings.feature_width_multiplier);
-    assert_eq!(akira.settings.search_line_count, 0);
-    assert!(!akira.settings.gpu_realtime_tuning.search_enabled);
-    assert_eq!(akira.settings.gpu_realtime_tuning.max_chained_walk_edges, 5);
-    assert!(akira.settings.camera_response.auto_focus);
-    assert!(akira.settings.temporal_path_smoothing);
-    assert_eq!(
-        akira.settings.pipeline.candidate_strategy,
-        amigo_render_api::NprCandidateStrategy3d::CharacterSemantic
-    );
-    assert_eq!(
-        akira.settings.pipeline.path_strategy,
-        amigo_render_api::NprPathStrategy3d::StableStrokedPaths
-    );
-    assert_eq!(
-        akira.settings.pipeline.stroke_strategy,
-        amigo_render_api::NprStrokeStrategy3d::AkiraInk
-    );
-    assert_eq!(
-        akira.settings.pipeline.fill_strategy,
-        amigo_render_api::NprInkFillStrategy3d::MaterialBlackMass
-    );
-    assert_eq!(
-        akira.settings.pipeline.hatching_strategy,
-        amigo_render_api::NprHatchingStrategy3d::SparseCharacterHatching
-    );
-    assert_eq!(
-        akira.settings.pipeline.budget_strategy,
-        amigo_render_api::NprBudgetStrategy3d::FaceAndSilhouettePriority
-    );
-    assert_eq!(
-        akira.settings.pipeline.temporal_strategy,
-        amigo_render_api::NprTemporalStrategy3d::StableArcLength
-    );
-    let akira_plan = akira.settings.pipeline_plan();
-    assert_eq!(
-        akira_plan.stroke_strategy,
-        amigo_render_api::NprStrokeStrategy3d::AkiraInk
-    );
-    assert_eq!(
-        akira_plan.candidate_strategy,
-        amigo_render_api::NprCandidateStrategy3d::CharacterSemantic
-    );
-    assert_eq!(
-        akira_plan.path_strategy,
-        amigo_render_api::NprPathStrategy3d::StableStrokedPaths
-    );
-    assert_eq!(
-        akira_plan.fill_strategy,
-        amigo_render_api::NprInkFillStrategy3d::MaterialBlackMass
-    );
-    assert_eq!(
-        akira_plan.hatching_strategy,
-        amigo_render_api::NprHatchingStrategy3d::SparseCharacterHatching
-    );
+    assert_eq!(toriyama.settings.boundary_width_multiplier, 0.0);
+    assert!(toriyama.settings.feature_width_multiplier > 1.0);
     assert!(
-        !akira_plan.has_warnings(),
-        "akira pipeline plan should be coherent, got {:?}",
-        akira_plan.warning_labels()
+        toriyama.settings.feature_width_multiplier
+            < toriyama.settings.silhouette_width_multiplier
     );
-    assert!(akira.settings.black_mass_material_ids.is_empty());
-    assert!(akira.settings.ink_detail_material_ids.is_empty());
-
-    let akira_cpu = presets
-        .iter()
-        .find(|preset| preset.id == "akira_cpu_reference")
-        .expect("akira cpu reference preset should be registered");
-    assert_eq!(
-        akira_cpu.settings.render_strategy,
-        amigo_render_api::NprRenderStrategy3d::CpuReference
-    );
-    assert_eq!(
-        akira_cpu.settings.fill_mode,
-        amigo_render_api::NprFillMode3d::None
-    );
-    assert_eq!(akira_cpu.settings.pipeline, akira.settings.pipeline);
-    assert_eq!(
-        akira_cpu
-            .settings
-            .gpu_realtime_tuning
-            .max_chained_walk_edges,
-        5
-    );
-    assert!(akira_cpu.settings.black_mass_material_ids.is_empty());
-    assert!(akira_cpu.settings.ink_detail_material_ids.is_empty());
-
-    let akira_camera_based = presets
-        .iter()
-        .find(|preset| preset.id == "akira_camera_based")
-        .expect("akira camera based preset should be registered");
-    assert_eq!(
-        akira_camera_based.settings.render_strategy,
-        amigo_render_api::NprRenderStrategy3d::GpuRealtime
-    );
-    assert!(akira_camera_based.settings.depth_pressure > akira.settings.depth_pressure);
-    assert!(akira_camera_based.settings.depth_alpha > akira.settings.depth_alpha);
-    assert!(
-        akira_camera_based.settings.distance_width_falloff > akira.settings.distance_width_falloff
-    );
-    assert!(
-        akira_camera_based
-            .settings
-            .gpu_realtime_tuning
-            .feature_min_length_multiplier
-            > akira.settings.gpu_realtime_tuning.feature_min_length_multiplier
-    );
-    assert!(
-        akira_camera_based.settings.feature_width_multiplier < akira.settings.feature_width_multiplier
-    );
-    assert!(akira_camera_based.settings.camera_response.enabled);
-    assert!(akira_camera_based.settings.camera_response.auto_focus);
-    assert_eq!(
-        akira_camera_based.settings.camera_response.near_distance,
-        2.0
-    );
-    assert_eq!(
-        akira_camera_based.settings.camera_response.far_distance,
-        10.5
-    );
-    assert!(
-        akira_camera_based.settings.camera_response.near_hatching_boost
-            > akira.settings.camera_response.near_hatching_boost
-    );
+    assert!(toriyama.settings.line_families.iter().any(|family| {
+        family.role == Some(amigo_render_api::NprLineFamilyRole3d::DetailInk)
+            && family.brush.as_deref() == Some("detail_ink_brush")
+    }));
+    assert!(toriyama.settings.line_families.iter().any(|family| {
+        family.role == Some(amigo_render_api::NprLineFamilyRole3d::ClothFold)
+            && family.brush.as_deref() == Some("form_line_brush")
+    }));
+    assert!(!presets.iter().any(|preset| preset.id.contains("akira")));
 }
 
 fn assert_playground_npr_presets_have_coherent_pipeline_plans(
@@ -1049,44 +942,25 @@ fn assert_playground_npr_presets_have_coherent_pipeline_plans(
     }
 }
 
-fn assert_playground_npr_cpu_reference_presets_match_gpu_presets(
+fn assert_playground_npr_presets_are_cpu_reference_only(
     presets: &[&crate::render_commands::NprPreset3dSceneCommand],
 ) {
-    for gpu_id in [
-        "rough_comic_ink",
-        "cinematic_12fps",
-        "akira",
-        "akira_camera_based",
-    ] {
-        let cpu_id = format!("{gpu_id}_cpu_reference");
-        let gpu = presets
-            .iter()
-            .find(|preset| preset.id == gpu_id)
-            .unwrap_or_else(|| panic!("gpu preset `{gpu_id}` should be registered"));
-        let cpu_reference = presets
-            .iter()
-            .find(|preset| preset.id == cpu_id)
-            .unwrap_or_else(|| panic!("cpu reference preset `{cpu_id}` should be registered"));
+    for preset in presets {
         assert_eq!(
-            gpu.settings.render_strategy,
-            amigo_render_api::NprRenderStrategy3d::GpuRealtime
-        );
-        assert_eq!(
-            cpu_reference.settings.render_strategy,
+            preset.settings.render_strategy,
             amigo_render_api::NprRenderStrategy3d::CpuReference
         );
-        let mut normalized_cpu_reference = cpu_reference.settings.clone();
-        normalized_cpu_reference.render_strategy =
-            amigo_render_api::NprRenderStrategy3d::GpuRealtime;
         assert_eq!(
-            normalized_cpu_reference, gpu.settings,
-            "CPU reference preset `{cpu_id}` should match GPU preset `{gpu_id}` except render strategy"
+            preset.settings.render_strategy.as_str(),
+            "cpu_reference",
+            "playground NPR preset `{}` should be CPU-only",
+            preset.id
         );
     }
 }
 
 #[test]
-fn assert_all_playground_npr_cpu_reference_presets_match_gpu_presets() {
+fn assert_all_playground_npr_presets_are_cpu_reference_only() {
     let workspace_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .parent()
         .and_then(|path| path.parent())
@@ -1109,7 +983,7 @@ fn assert_all_playground_npr_cpu_reference_presets_match_gpu_presets() {
         .filter_map(npr_preset_command)
         .collect::<Vec<_>>();
 
-    assert_playground_npr_cpu_reference_presets_match_gpu_presets(&presets);
+    assert_playground_npr_presets_are_cpu_reference_only(&presets);
 }
 
 #[test]
@@ -1281,6 +1155,7 @@ entities:
         npr:
           enabled: true
           strategy: cpu_reference
+          min_stroke_length_px: 26.0
 "#,
     );
 
@@ -1288,6 +1163,7 @@ entities:
         npr.render_strategy,
         amigo_render_api::NprRenderStrategy3d::CpuReference
     );
+    assert_eq!(npr.min_stroke_length_px, 26.0);
 }
 
 #[test]

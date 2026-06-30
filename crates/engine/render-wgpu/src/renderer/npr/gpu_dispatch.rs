@@ -1,5 +1,8 @@
 use crate::renderer::{CachedMeshGeometry3d, Viewport};
 
+pub(crate) const NPR_GPU_WORKGROUP_SIZE: usize = 64;
+pub(crate) const NPR_GPU_MAX_COMPUTE_WORKGROUPS_X: usize = 65_535;
+
 pub(crate) fn scaled_face_id_dimensions(viewport: &Viewport, max_dimension_px: f32) -> (u32, u32) {
     let size = viewport.size();
     let scale = (max_dimension_px / size.x.max(size.y)).min(1.0);
@@ -23,12 +26,14 @@ pub(crate) fn create_job_uniform_buffer(device: &wgpu::Device, uniform_size: u64
 }
 
 pub(crate) fn workgroup_count(items: usize) -> u32 {
-    ((items.max(1) as u32).saturating_add(63)) / 64
+    ((items.max(1) as u32).saturating_add(NPR_GPU_WORKGROUP_SIZE as u32 - 1))
+        / NPR_GPU_WORKGROUP_SIZE as u32
 }
 
 pub(crate) fn npr_gpu_endpoint_head_count(edge_count: usize) -> usize {
     let target = (edge_count.max(1) * 4).next_power_of_two();
-    target.max(64)
+    let dispatch_safe_max = NPR_GPU_WORKGROUP_SIZE * NPR_GPU_MAX_COMPUTE_WORKGROUPS_X;
+    target.min(dispatch_safe_max).max(NPR_GPU_WORKGROUP_SIZE)
 }
 
 pub(crate) fn topology_cache_key(mesh_key: &str, geometry: &CachedMeshGeometry3d) -> String {
@@ -61,5 +66,24 @@ pub(crate) fn texture_binding<'a>(
     wgpu::BindGroupEntry {
         binding,
         resource: wgpu::BindingResource::TextureView(view),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{NPR_GPU_MAX_COMPUTE_WORKGROUPS_X, npr_gpu_endpoint_head_count, workgroup_count};
+
+    #[test]
+    fn endpoint_head_count_stays_inside_single_dispatch_limit() {
+        let riders_edge_count = 703_028usize;
+        let head_count = npr_gpu_endpoint_head_count(riders_edge_count);
+
+        assert!(workgroup_count(head_count) as usize <= NPR_GPU_MAX_COMPUTE_WORKGROUPS_X);
+    }
+
+    #[test]
+    fn endpoint_head_count_keeps_power_of_two_until_dispatch_limit() {
+        assert_eq!(npr_gpu_endpoint_head_count(10), 64);
+        assert_eq!(npr_gpu_endpoint_head_count(18_675), 131_072);
     }
 }

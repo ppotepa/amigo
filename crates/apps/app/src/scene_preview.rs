@@ -1,6 +1,8 @@
 use std::path::PathBuf;
 
+use amigo_assets::{AssetCatalog, AssetKey, PreparedAssetKind};
 use amigo_core::{AmigoError, AmigoResult};
+use amigo_math::Vec3;
 use amigo_render_wgpu::{WgpuOffscreenTarget, WgpuRenderBackend, WgpuSceneRenderer};
 use amigo_runtime::Runtime;
 use amigo_runtime::{SystemPhase, SystemRegistry};
@@ -181,6 +183,11 @@ impl ScenePreviewHost {
         Ok(())
     }
 
+    pub fn prime(&mut self) -> AmigoResult<()> {
+        self.bootstrap()?;
+        self.ensure_runtime_primed()
+    }
+
     pub fn reset_runtime(&mut self) {
         self.runtime = None;
         self.summary = None;
@@ -215,17 +222,163 @@ impl ScenePreviewHost {
         entity_name: impl Into<String>,
         preset_id: impl Into<String>,
     ) -> AmigoResult<()> {
+        self.submit_script_command(
+            "3d.mesh",
+            "apply_npr_preset",
+            vec![entity_name.into(), preset_id.into()],
+        )
+    }
+
+    pub fn set_mesh3d_asset(
+        &mut self,
+        entity_name: impl Into<String>,
+        mesh_key: impl Into<String>,
+    ) -> AmigoResult<()> {
+        self.submit_script_command(
+            "3d.mesh",
+            "set_mesh_asset",
+            vec![entity_name.into(), mesh_key.into()],
+        )
+    }
+
+    pub fn set_mesh3d_npr_render_strategy(
+        &mut self,
+        entity_name: impl Into<String>,
+        strategy: impl Into<String>,
+    ) -> AmigoResult<()> {
+        self.submit_script_command(
+            "3d.mesh",
+            "set_npr_render_strategy",
+            vec![entity_name.into(), strategy.into()],
+        )
+    }
+
+    pub fn set_mesh3d_npr_gpu_debug_mode(
+        &mut self,
+        entity_name: impl Into<String>,
+        debug_mode: impl Into<String>,
+    ) -> AmigoResult<()> {
+        self.submit_script_command(
+            "3d.mesh",
+            "set_npr_gpu_debug_mode",
+            vec![entity_name.into(), debug_mode.into()],
+        )
+    }
+
+    pub fn set_scene_entity_visible(
+        &mut self,
+        entity_name: impl AsRef<str>,
+        visible: bool,
+    ) -> AmigoResult<()> {
+        self.bootstrap()?;
+        let runtime = self.runtime()?;
+        let scene_service = crate::runtime_context::required::<amigo_scene::SceneService>(runtime)?;
+        if scene_service.set_visible(entity_name.as_ref(), visible) {
+            Ok(())
+        } else {
+            Err(AmigoError::Message(format!(
+                "scene entity `{}` was not found",
+                entity_name.as_ref()
+            )))
+        }
+    }
+
+    pub fn set_scene_entity_transform_overrides(
+        &mut self,
+        entity_name: impl AsRef<str>,
+        scale: Option<f32>,
+        translation: Option<Vec3>,
+        rotation_degrees: Option<Vec3>,
+    ) -> AmigoResult<()> {
+        self.bootstrap()?;
+        let runtime = self.runtime()?;
+        let scene_service = crate::runtime_context::required::<amigo_scene::SceneService>(runtime)?;
+        let Some(mut transform) = scene_service.transform_of(entity_name.as_ref()) else {
+            return Err(AmigoError::Message(format!(
+                "scene entity `{}` was not found",
+                entity_name.as_ref()
+            )));
+        };
+
+        if let Some(scale) = scale {
+            transform.scale = Vec3::new(scale, scale, scale);
+        }
+        if let Some(translation) = translation {
+            transform.translation = translation;
+        }
+        if let Some(rotation_degrees) = rotation_degrees {
+            transform.rotation_euler = Vec3::new(
+                rotation_degrees.x.to_radians(),
+                rotation_degrees.y.to_radians(),
+                rotation_degrees.z.to_radians(),
+            );
+        }
+
+        if scene_service.set_transform(entity_name.as_ref(), transform) {
+            Ok(())
+        } else {
+            Err(AmigoError::Message(format!(
+                "scene entity `{}` was not found",
+                entity_name.as_ref()
+            )))
+        }
+    }
+
+    pub fn submit_script_command(
+        &mut self,
+        namespace: impl Into<String>,
+        name: impl Into<String>,
+        arguments: Vec<String>,
+    ) -> AmigoResult<()> {
         self.bootstrap()?;
         let runtime = self.runtime()?;
         let script_commands =
             crate::runtime_context::required::<amigo_scripting_api::ScriptCommandQueue>(runtime)?;
         script_commands.submit(amigo_scripting_api::ScriptCommand::new(
-            "3d.mesh",
-            "apply_npr_preset",
-            vec![entity_name.into(), preset_id.into()],
+            namespace.into(),
+            name.into(),
+            arguments,
         ));
         crate::orchestration::stabilize_runtime_queues(runtime)?;
         Ok(())
+    }
+
+    pub fn mesh3d_asset_key_for_query(&mut self, query: &str) -> AmigoResult<Option<String>> {
+        self.bootstrap()?;
+        let query = query.trim();
+        if query.is_empty() {
+            return Ok(None);
+        }
+
+        let runtime = self.runtime()?;
+        let catalog = crate::runtime_context::required::<AssetCatalog>(runtime)?;
+        if catalog.is_prepared(&AssetKey::new(query.to_owned())) {
+            return Ok(Some(query.to_owned()));
+        }
+
+        let query_lower = query.to_ascii_lowercase();
+        let mut mesh_assets = catalog
+            .prepared_assets()
+            .into_iter()
+            .filter(|asset| matches!(asset.kind, PreparedAssetKind::Mesh3d))
+            .collect::<Vec<_>>();
+        mesh_assets.sort_by(|left, right| left.key.cmp(&right.key));
+
+        let mut matches = mesh_assets
+            .iter()
+            .filter_map(|asset| {
+                mesh3d_asset_query_score(
+                    asset.key.as_str(),
+                    asset.label.as_deref(),
+                    query,
+                    &query_lower,
+                )
+                .map(|score| (score, asset.key.as_str().to_owned()))
+            })
+            .collect::<Vec<_>>();
+        matches.sort_by(|left, right| left.0.cmp(&right.0).then(left.1.cmp(&right.1)));
+
+        Ok(matches.into_iter().next().map(|(_, key)| key))
     }
 
     #[cfg(test)]
@@ -251,9 +404,9 @@ impl ScenePreviewHost {
         let runtime = self.runtime()?;
         let mesh_service =
             crate::runtime_context::required::<amigo_3d_mesh::MeshSceneService>(runtime)?;
-        mesh_service.npr_preset(preset_id).ok_or_else(|| {
-            AmigoError::Message(format!("missing Mesh3D NPR preset `{preset_id}`"))
-        })
+        mesh_service
+            .npr_preset(preset_id)
+            .ok_or_else(|| AmigoError::Message(format!("missing Mesh3D NPR preset `{preset_id}`")))
     }
 
     fn tick_runtime_frame(&mut self, delta_seconds: f32) -> AmigoResult<()> {
@@ -328,6 +481,51 @@ impl ScenePreviewHost {
             AmigoError::Message("scene preview runtime is not bootstrapped".to_owned())
         })
     }
+}
+
+fn mesh3d_asset_query_score(
+    key: &str,
+    label: Option<&str>,
+    query: &str,
+    query_lower: &str,
+) -> Option<u8> {
+    if key == query {
+        return Some(0);
+    }
+
+    let key_lower = key.to_ascii_lowercase();
+    let authored_mesh = key_lower.contains("/meshes/");
+    let discovered_mesh = key_lower.contains("/discovered-models/");
+    let source_penalty = if authored_mesh {
+        0
+    } else if discovered_mesh {
+        2
+    } else {
+        1
+    };
+
+    if authored_mesh
+        && (key_lower.ends_with(&format!("/meshes/{query_lower}"))
+            || key_lower.ends_with(&format!("/meshes/{query_lower}.glb")))
+    {
+        return Some(5);
+    }
+
+    if authored_mesh && key_lower.contains(query_lower) {
+        return Some(10);
+    }
+
+    if label.is_some_and(|label| label.to_ascii_lowercase() == query_lower) {
+        return Some(20 + source_penalty);
+    }
+
+    if label.is_some_and(|label| label.to_ascii_lowercase().contains(query_lower))
+        || key_lower.contains(query_lower)
+    {
+        return Some(40 + source_penalty);
+    }
+
+    None
 }
 
 pub fn capture_scene_preview(options: ScenePreviewOptions) -> AmigoResult<ScenePreviewFrame> {

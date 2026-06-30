@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use amigo_math::{ColorRgba, Vec2};
 
-use super::NprResolvedKindStyle;
+use super::{NprGestureRoleProfile, NprResolvedKindStyle};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum NprLineKind {
@@ -18,6 +18,10 @@ pub(crate) enum NprLineKind {
 pub(crate) enum NprDebugOverlay3d {
     LineKinds,
     RawPaths,
+    CandidateImportance,
+    TechnicalSelection,
+    StrokeLengthBucket,
+    SourceEdgeCount,
     Dropout,
     WidthAlpha,
 }
@@ -29,6 +33,10 @@ impl NprDebugOverlay3d {
         match view.as_str() {
             "npr.line_kinds" | "npr.kinds" => Some(Self::LineKinds),
             "npr.raw_paths" | "npr.paths" => Some(Self::RawPaths),
+            "npr.candidate_importance" | "npr.importance" => Some(Self::CandidateImportance),
+            "npr.technical_selection" | "npr.technical" => Some(Self::TechnicalSelection),
+            "npr.stroke_length_bucket" | "npr.length" => Some(Self::StrokeLengthBucket),
+            "npr.source_edge_count" | "npr.source_edges" => Some(Self::SourceEdgeCount),
             "npr.dropout" | "npr.breakup" => Some(Self::Dropout),
             "npr.width_alpha" | "npr.pressure" => Some(Self::WidthAlpha),
             _ => None,
@@ -40,6 +48,10 @@ impl NprDebugOverlay3d {
 pub(crate) struct NprLineFragment {
     pub(crate) source_edge_id: u64,
     pub(crate) kind: NprLineKind,
+    pub(crate) candidate_importance: f32,
+    pub(crate) technical_detail: bool,
+    pub(crate) material_detail: bool,
+    pub(crate) material_seam: bool,
     pub(crate) p0: Vec2,
     pub(crate) p1: Vec2,
     pub(crate) t0: f32,
@@ -52,17 +64,32 @@ pub(crate) struct NprLineFragment {
 pub(crate) struct NprEdgeSampleResult3d {
     pub(crate) fragments: Vec<NprLineFragment>,
     pub(crate) visible_edges: usize,
+    pub(crate) rejected_technical: Vec<NprRejectedTechnicalCandidate>,
 }
 
 pub(crate) struct NprPathBuildResult3d {
     pub(crate) paths: Vec<NprStrokePath>,
     pub(crate) stats: NprPathBuildStats3d,
+    pub(crate) rejected_technical: Vec<NprRejectedTechnicalCandidate>,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct NprRejectedTechnicalCandidate {
+    pub(crate) source_edge_id: u64,
+    pub(crate) kind: NprLineKind,
+    pub(crate) candidate_importance: f32,
+    pub(crate) p0: Vec2,
+    pub(crate) p1: Vec2,
 }
 
 #[derive(Debug, Clone)]
 pub(crate) struct NprStrokePath {
     pub(crate) path_id: u64,
     pub(crate) kind: NprLineKind,
+    pub(crate) candidate_importance: f32,
+    pub(crate) technical_detail: bool,
+    pub(crate) material_detail: bool,
+    pub(crate) material_seam: bool,
     pub(crate) points: Vec<Vec2>,
     pub(crate) source_edges: Vec<u64>,
     pub(crate) sorted_source_edges: Vec<u64>,
@@ -102,11 +129,16 @@ pub(crate) struct NprToolDynamics {
 
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct NprStrokeGesture {
+    pub(crate) kind: NprLineKind,
     pub(crate) path_seed: u64,
     pub(crate) path_length_px: f32,
     pub(crate) importance: f32,
+    pub(crate) technical_detail: bool,
+    pub(crate) material_detail: bool,
+    pub(crate) material_seam: bool,
     pub(crate) dynamics: NprToolDynamics,
     pub(crate) style: NprResolvedKindStyle,
+    pub(crate) role: NprGestureRoleProfile,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -220,6 +252,7 @@ pub struct NprStrokeFrameStats3d {
     pub gpu_realtime_path_links_capacity: usize,
     pub gpu_realtime_path_states_capacity: usize,
     pub gpu_realtime_path_segments_capacity: usize,
+    pub gpu_realtime_aggregated_paths_capacity: usize,
     pub gpu_realtime_stroke_segments_capacity: usize,
     pub gpu_realtime_debug_mode: String,
     pub pipeline_plan: String,
@@ -301,6 +334,8 @@ impl NprStrokeFrameStats3d {
         self.gpu_realtime_path_links_capacity += other.gpu_realtime_path_links_capacity;
         self.gpu_realtime_path_states_capacity += other.gpu_realtime_path_states_capacity;
         self.gpu_realtime_path_segments_capacity += other.gpu_realtime_path_segments_capacity;
+        self.gpu_realtime_aggregated_paths_capacity +=
+            other.gpu_realtime_aggregated_paths_capacity;
         self.gpu_realtime_stroke_segments_capacity += other.gpu_realtime_stroke_segments_capacity;
         if self.gpu_realtime_debug_mode.is_empty() {
             self.gpu_realtime_debug_mode = other.gpu_realtime_debug_mode.clone();

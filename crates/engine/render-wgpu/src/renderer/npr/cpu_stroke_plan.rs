@@ -6,7 +6,10 @@ use crate::renderer::{
     npr_stroke_plan_settings_signature,
 };
 
-use super::{deterministic_noise, deterministic_signed_noise, resolve_npr_brush_profile};
+use super::{
+    NprLineCandidateTraits, deterministic_noise, deterministic_signed_noise,
+    resolve_npr_brush_profile_with_traits,
+};
 
 pub(crate) fn build_npr_stroke_pass_plan(
     path: &NprStrokePath,
@@ -14,7 +17,15 @@ pub(crate) fn build_npr_stroke_pass_plan(
     gesture: NprStrokeGesture,
 ) -> Vec<NprStrokePassPlan> {
     let primary_passes = settings.passes.min(8);
-    let brush = resolve_npr_brush_profile(settings);
+    let brush = resolve_npr_brush_profile_with_traits(
+        path.kind,
+        NprLineCandidateTraits {
+            technical_detail: path.technical_detail,
+            material_detail: path.material_detail,
+            material_seam: path.material_seam,
+        },
+        settings,
+    );
     let mut passes =
         Vec::with_capacity(primary_passes as usize + settings.search_line_count as usize + 1);
 
@@ -31,7 +42,7 @@ pub(crate) fn build_npr_stroke_pass_plan(
                 settings.ink_color,
                 primary_passes,
                 pass,
-                gesture.style.alpha_multiplier,
+                gesture.style.alpha_multiplier * gesture.role.alpha_multiplier,
             ),
             overshoot_px: gesture.dynamics.effective_overshoot_px,
         });
@@ -89,7 +100,11 @@ fn build_npr_sparse_character_hatch_pass(
     }
     if !(settings.pipeline.candidate_strategy
         == amigo_render_api::NprCandidateStrategy3d::CharacterSemantic
-        || settings.pipeline.stroke_strategy == amigo_render_api::NprStrokeStrategy3d::AkiraInk
+        || matches!(
+            settings.pipeline.stroke_strategy,
+            amigo_render_api::NprStrokeStrategy3d::AkiraInk
+                | amigo_render_api::NprStrokeStrategy3d::ConfidentMangaInk
+        )
         || matches!(
             settings.pipeline.budget_strategy,
             amigo_render_api::NprBudgetStrategy3d::FaceAndSilhouettePriority
@@ -109,12 +124,11 @@ fn build_npr_sparse_character_hatch_pass(
     }
 
     let roll = deterministic_noise(settings.seed, gesture.path_seed, 37, 0);
-    let chance =
-        if settings.pipeline.stroke_strategy == amigo_render_api::NprStrokeStrategy3d::AkiraInk {
-            0.30
-        } else {
-            0.18
-        };
+    let chance = match settings.pipeline.stroke_strategy {
+        amigo_render_api::NprStrokeStrategy3d::AkiraInk => 0.30,
+        amigo_render_api::NprStrokeStrategy3d::ConfidentMangaInk => 0.20,
+        _ => 0.18,
+    };
     if roll >= chance {
         return None;
     }
@@ -142,7 +156,11 @@ fn build_npr_sparse_character_hatch_pass(
             settings.ink_color.r,
             settings.ink_color.g,
             settings.ink_color.b,
-            (settings.ink_color.a * gesture.style.alpha_multiplier * 0.38).clamp(0.0, 0.58),
+            (settings.ink_color.a
+                * gesture.style.alpha_multiplier
+                * gesture.role.alpha_multiplier
+                * 0.38)
+            .clamp(0.0, 0.58),
         ),
         overshoot_px: 0.0,
     })
@@ -155,7 +173,15 @@ pub(crate) fn build_npr_dropout_mask(
 ) -> NprDropoutMask {
     let mut intervals = Vec::new();
     if !gesture.dynamics.protected_silhouette && gesture.style.dropout > 0.0 {
-        let brush = resolve_npr_brush_profile(settings);
+        let brush = resolve_npr_brush_profile_with_traits(
+            gesture.kind,
+            NprLineCandidateTraits {
+                technical_detail: gesture.technical_detail,
+                material_detail: gesture.material_detail,
+                material_seam: gesture.material_seam,
+            },
+            settings,
+        );
         let complexity_multiplier =
             (1.0 - (gesture.dynamics.edge_complexity.min(12.0) - 1.0) * 0.01).max(0.0);
         let effective_dropout =
@@ -199,7 +225,62 @@ pub(crate) fn build_npr_dropout_mask(
         }
     }
 
+    if npr_allows_seeded_long_feature_break(gesture, settings) {
+        for pass in passes
+            .iter()
+            .copied()
+            .filter(|pass| pass.kind == NprStrokePassKind::Primary)
+        {
+            let roll = deterministic_noise(settings.seed, gesture.path_seed, pass.pass_index as u64, 1217);
+            if roll > 0.38 {
+                continue;
+            }
+            let path_length = gesture.path_length_px.max(1.0);
+            let center = (0.38
+                + deterministic_signed_noise(
+                    settings.seed,
+                    gesture.path_seed,
+                    pass.pass_index as u64,
+                    1223,
+                ) * 0.20)
+                .clamp(0.22, 0.78);
+            let gap_px = 7.0
+                + deterministic_noise(settings.seed, gesture.path_seed, pass.pass_index as u64, 1229)
+                    * 10.0;
+            let half_t = (gap_px * 0.5 / path_length).clamp(0.018, 0.070);
+            let t0 = (center - half_t).clamp(0.08, 0.90);
+            let t1 = (center + half_t).clamp(0.10, 0.92);
+            if t1 > t0 {
+                intervals.push(NprDropoutInterval {
+                    pass_index: pass.pass_index,
+                    t0,
+                    t1,
+                });
+            }
+        }
+    }
+
     NprDropoutMask { intervals }
+}
+
+fn npr_allows_seeded_long_feature_break(
+    gesture: NprStrokeGesture,
+    settings: &amigo_render_api::NprLineSettings3d,
+) -> bool {
+    if !matches!(
+        settings.pipeline.stroke_strategy,
+        amigo_render_api::NprStrokeStrategy3d::ConfidentMangaInk
+            | amigo_render_api::NprStrokeStrategy3d::AkiraInk
+    ) {
+        return false;
+    }
+    if !matches!(gesture.kind, NprLineKind::Feature | NprLineKind::Crease | NprLineKind::Seam) {
+        return false;
+    }
+    if gesture.path_length_px < 96.0 {
+        return false;
+    }
+    !gesture.material_detail
 }
 
 pub(crate) fn build_npr_cached_stroke_plan(

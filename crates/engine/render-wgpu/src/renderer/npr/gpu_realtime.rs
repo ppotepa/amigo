@@ -6,8 +6,8 @@ use crate::renderer::{CachedMeshGeometry3d, NprDebugOverlay3d, Viewport};
 
 use super::{
     NprGpuFrameStats3d, NprGpuMeshJob3d, NprGpuResources3d, build_npr_gpu_frame_plan,
-    npr_gpu_trace_enabled, npr_gpu_trace_frame_plan, npr_gpu_trace_frame_start,
-    npr_gpu_trace_line,
+    npr_gpu_path_segment_capacity_units, npr_gpu_trace_enabled, npr_gpu_trace_frame_plan,
+    npr_gpu_trace_frame_start, npr_gpu_trace_line,
     render_npr_gpu_face_id_pass, run_npr_gpu_stroke_compute_passes, topology_cache_key,
     write_npr_gpu_indirect_args, write_npr_gpu_job_uniform_buffers,
 };
@@ -106,6 +106,7 @@ impl GpuRealtimeNprRenderer3d {
             frame_plan.allocated_path_links_capacity(),
             frame_plan.allocated_path_segments_capacity(),
             frame_plan.allocated_path_states_capacity(),
+            frame_plan.allocated_aggregated_paths_capacity(),
             frame_plan.allocated_stroke_segments_capacity(),
         );
         let (face_id_view, depth_view) = {
@@ -149,6 +150,7 @@ impl GpuRealtimeNprRenderer3d {
         write_npr_gpu_indirect_args(queue, frame_buffers, frame_plan.stroke_segments_capacity);
 
         let mut clear_face_id = true;
+        let job_count = self.frame_jobs.len().max(1);
         for (job_index, job) in self.frame_jobs.iter().enumerate() {
             let topology = self
                 .resources
@@ -186,6 +188,8 @@ impl GpuRealtimeNprRenderer3d {
                     )
                 })?;
             let uniforms = &job_uniform_buffers[job_index];
+            let path_segment_slot_count =
+                npr_gpu_path_segment_capacity_units(job.geometry.edge_count(), job_count);
             run_npr_gpu_stroke_compute_passes(
                 device,
                 encoder,
@@ -195,6 +199,7 @@ impl GpuRealtimeNprRenderer3d {
                 uniforms,
                 &face_id_view,
                 job.settings.pipeline.path_strategy,
+                path_segment_slot_count,
             );
         }
 
@@ -234,6 +239,7 @@ impl GpuRealtimeNprRenderer3d {
             path_links_capacity: buffer_capacities.path_links,
             path_segments_capacity: buffer_capacities.path_segments,
             path_states_capacity: buffer_capacities.path_states,
+            aggregated_paths_capacity: buffer_capacities.aggregated_paths,
             stroke_segments_capacity: buffer_capacities.stroke_segments,
             debug_mode,
         })

@@ -18,6 +18,7 @@ pub(crate) fn gpu_stroke_strategy(value: amigo_render_api::NprStrokeStrategy3d) 
     match value {
         amigo_render_api::NprStrokeStrategy3d::ComicInk => 0,
         amigo_render_api::NprStrokeStrategy3d::AkiraInk => 1,
+        amigo_render_api::NprStrokeStrategy3d::ConfidentMangaInk => 4,
         amigo_render_api::NprStrokeStrategy3d::TechnicalInk => 2,
         amigo_render_api::NprStrokeStrategy3d::RoughPencil => 3,
     }

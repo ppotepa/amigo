@@ -2,6 +2,8 @@ use std::collections::BTreeMap;
 use std::sync::Arc;
 
 use amigo_math::Vec3;
+use gltf::accessor::{DataType, Dimensions};
+use gltf::mesh::Semantic;
 
 use crate::renderer::{WgpuSceneRenderer, cross, normalize, sub};
 
@@ -107,7 +109,7 @@ impl WgpuSceneRenderer {
 pub(crate) fn load_glb_geometry(
     path: &std::path::Path,
 ) -> Result<CachedMeshGeometry3d, gltf::Error> {
-    let (document, buffers, _) = gltf::import(path)?;
+    let (document, buffers) = import_gltf_for_geometry(path)?;
     let mut vertices = Vec::new();
     let mut triangles = Vec::new();
 
@@ -176,17 +178,14 @@ fn append_gltf_primitive_geometry(
     transform: GltfNodeTransform3d,
 ) {
     let material_id = primitive.material().index().map(|index| index as u32);
-    let reader =
-        primitive.reader(|buffer| buffers.get(buffer.index()).map(|data| data.0.as_slice()));
-    let Some(positions) = reader.read_positions() else {
+    let Some(positions) = read_gltf_positions(buffers, &primitive) else {
         return;
     };
     let base_index = vertices.len();
-    vertices.extend(positions.map(|position| {
+    vertices.extend(positions.into_iter().map(|position| {
         transform.transform_point(Vec3::new(position[0], position[1], position[2]))
     }));
-    if let Some(indices) = reader.read_indices() {
-        let indices = indices.into_u32().collect::<Vec<_>>();
+    if let Some(indices) = read_gltf_indices(buffers, &primitive) {
         for chunk in indices.chunks_exact(3) {
             push_imported_triangle(
                 triangles,
@@ -217,6 +216,151 @@ fn append_gltf_primitive_geometry(
             );
         }
     }
+}
+
+fn read_gltf_indices(
+    buffers: &[gltf::buffer::Data],
+    primitive: &gltf::Primitive<'_>,
+) -> Option<Vec<u32>> {
+    let accessor = primitive.indices()?;
+    if accessor.dimensions() != Dimensions::Scalar {
+        return None;
+    }
+    let view = accessor.view()?;
+    let buffer = buffers.get(view.buffer().index())?.0.as_slice();
+    let data_type = accessor.data_type();
+    let stride = view.stride().unwrap_or(data_type.size()).max(data_type.size());
+    let start = view.offset().checked_add(accessor.offset())?;
+    let mut result = Vec::with_capacity(accessor.count());
+
+    for index in 0..accessor.count() {
+        let offset = start.checked_add(index.checked_mul(stride)?)?;
+        let value = match data_type {
+            DataType::U8 => *buffer.get(offset)? as u32,
+            DataType::U16 => {
+                u16::from_le_bytes(buffer.get(offset..offset + 2)?.try_into().ok()?) as u32
+            }
+            DataType::U32 => {
+                u32::from_le_bytes(buffer.get(offset..offset + 4)?.try_into().ok()?)
+            }
+            _ => return None,
+        };
+        result.push(value);
+    }
+
+    Some(result)
+}
+
+fn read_gltf_positions(
+    buffers: &[gltf::buffer::Data],
+    primitive: &gltf::Primitive<'_>,
+) -> Option<Vec<[f32; 3]>> {
+    let accessor = primitive.get(&Semantic::Positions)?;
+    if accessor.dimensions() != Dimensions::Vec3 {
+        return None;
+    }
+    let view = accessor.view()?;
+    let buffer = buffers.get(view.buffer().index())?.0.as_slice();
+    let stride = view.stride().unwrap_or(accessor.size()).max(accessor.size());
+    let start = view.offset().checked_add(accessor.offset())?;
+    let data_type = accessor.data_type();
+    let normalized = accessor.normalized();
+    let mut result = Vec::with_capacity(accessor.count());
+
+    for index in 0..accessor.count() {
+        let element_start = start.checked_add(index.checked_mul(stride)?)?;
+        let component_size = data_type.size();
+        let x = read_gltf_component_as_f32(buffer, element_start, data_type, normalized)?;
+        let y = read_gltf_component_as_f32(
+            buffer,
+            element_start.checked_add(component_size)?,
+            data_type,
+            normalized,
+        )?;
+        let z = read_gltf_component_as_f32(
+            buffer,
+            element_start.checked_add(component_size * 2)?,
+            data_type,
+            normalized,
+        )?;
+        result.push([x, y, z]);
+    }
+
+    Some(result)
+}
+
+fn read_gltf_component_as_f32(
+    bytes: &[u8],
+    offset: usize,
+    data_type: DataType,
+    normalized: bool,
+) -> Option<f32> {
+    match data_type {
+        DataType::I8 => {
+            let value = *bytes.get(offset)? as i8;
+            Some(if normalized {
+                (value as f32 / 127.0).max(-1.0)
+            } else {
+                value as f32
+            })
+        }
+        DataType::U8 => {
+            let value = *bytes.get(offset)?;
+            Some(if normalized {
+                value as f32 / 255.0
+            } else {
+                value as f32
+            })
+        }
+        DataType::I16 => {
+            let value = i16::from_le_bytes(bytes.get(offset..offset + 2)?.try_into().ok()?);
+            Some(if normalized {
+                (value as f32 / 32767.0).max(-1.0)
+            } else {
+                value as f32
+            })
+        }
+        DataType::U16 => {
+            let value = u16::from_le_bytes(bytes.get(offset..offset + 2)?.try_into().ok()?);
+            Some(if normalized {
+                value as f32 / 65535.0
+            } else {
+                value as f32
+            })
+        }
+        DataType::U32 => {
+            let value = u32::from_le_bytes(bytes.get(offset..offset + 4)?.try_into().ok()?);
+            Some(value as f32)
+        }
+        DataType::F32 => {
+            let value = f32::from_le_bytes(bytes.get(offset..offset + 4)?.try_into().ok()?);
+            Some(value)
+        }
+    }
+}
+
+fn import_gltf_for_geometry(
+    path: &std::path::Path,
+) -> Result<(gltf::Document, Vec<gltf::buffer::Data>), gltf::Error> {
+    match gltf::import(path) {
+        Ok((document, buffers, _)) => Ok((document, buffers)),
+        Err(error) if gltf_error_is_quantization_extension_validation(&error) => {
+            let file = std::fs::File::open(path)?;
+            let reader = std::io::BufReader::new(file);
+            let gltf = gltf::Gltf::from_reader_without_validation(reader)?;
+            let buffers = gltf
+                .blob
+                .map(|blob| vec![gltf::buffer::Data(blob)])
+                .unwrap_or_default();
+            Ok((gltf.document, buffers))
+        }
+        Err(error) => Err(error),
+    }
+}
+
+fn gltf_error_is_quantization_extension_validation(error: &gltf::Error) -> bool {
+    matches!(error, gltf::Error::Validation(_))
+        && format!("{error:?}").contains("KHR_mesh_quantization")
 }
 
 #[derive(Clone, Copy)]
@@ -486,4 +630,44 @@ fn stable_mesh_edge_id(a: usize, b: usize, faces: &[usize]) -> u64 {
         ^ (b as u64)
         ^ first_face.wrapping_mul(0x9E37_79B9)
         ^ second_face.wrapping_mul(0x85EB_CA77)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn reads_riders_quantized_positions_without_cube_fallback() {
+        let workspace_root = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .parent()
+            .and_then(|path| path.parent())
+            .and_then(|path| path.parent())
+            .expect("workspace root should exist")
+            .to_path_buf();
+        let path = workspace_root.join("mods/playground-npr/source-models/khronos/Riders.glb");
+        if !path.exists() {
+            return;
+        }
+
+        let (document, buffers) =
+            import_gltf_for_geometry(&path).expect("Riders GLB should import for geometry");
+        let primitive = document
+            .meshes()
+            .next()
+            .and_then(|mesh| mesh.primitives().next())
+            .expect("Riders GLB should contain a mesh primitive");
+        let positions = read_gltf_positions(&buffers, &primitive)
+            .expect("quantized Riders POSITION accessor should decode");
+        let indices =
+            read_gltf_indices(&buffers, &primitive).expect("Riders index accessor should decode");
+
+        assert!(
+            positions.len() > 100_000,
+            "Riders should decode real character geometry, not cube fallback"
+        );
+        assert!(
+            indices.len() > 1_000_000,
+            "Riders should decode indexed triangles without gltf utility panics"
+        );
+    }
 }

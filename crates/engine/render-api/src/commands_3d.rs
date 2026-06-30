@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 use amigo_assets::AssetKey;
 use amigo_math::{ColorRgba, Transform3, Vec3};
 
@@ -122,6 +124,7 @@ pub enum NprStrokeStrategy3d {
     #[default]
     ComicInk,
     AkiraInk,
+    ConfidentMangaInk,
     TechnicalInk,
     RoughPencil,
 }
@@ -131,6 +134,7 @@ impl NprStrokeStrategy3d {
         match self {
             Self::ComicInk => "comic_ink",
             Self::AkiraInk => "akira_ink",
+            Self::ConfidentMangaInk => "confident_manga_ink",
             Self::TechnicalInk => "technical_ink",
             Self::RoughPencil => "rough_pencil",
         }
@@ -221,6 +225,9 @@ pub enum NprPipelinePlanWarning3d {
     AkiraInkWithoutCharacterSemantic,
     AkiraInkWithoutStableStrokedPaths,
     AkiraInkWithSearchLines,
+    ConfidentMangaInkWithoutCharacterSemantic,
+    ConfidentMangaInkWithoutStableStrokedPaths,
+    ConfidentMangaInkWithSearchLines,
     SparseHatchingWithoutCharacterSemantic,
     SparseHatchingWithoutCameraResponse,
     GpuRealtimeWithoutStableArcLength,
@@ -233,6 +240,13 @@ impl NprPipelinePlanWarning3d {
             Self::AkiraInkWithoutCharacterSemantic => "akira_ink_without_character_semantic",
             Self::AkiraInkWithoutStableStrokedPaths => "akira_ink_without_stable_stroked_paths",
             Self::AkiraInkWithSearchLines => "akira_ink_with_search_lines",
+            Self::ConfidentMangaInkWithoutCharacterSemantic => {
+                "confident_manga_ink_without_character_semantic"
+            }
+            Self::ConfidentMangaInkWithoutStableStrokedPaths => {
+                "confident_manga_ink_without_stable_stroked_paths"
+            }
+            Self::ConfidentMangaInkWithSearchLines => "confident_manga_ink_with_search_lines",
             Self::SparseHatchingWithoutCharacterSemantic => {
                 "sparse_hatching_without_character_semantic"
             }
@@ -308,6 +322,13 @@ pub enum NprGpuDebugMode3d {
     RawPaths,
     Dropout,
     WidthAlpha,
+    ChainHops,
+    CandidateImportance,
+    TechnicalSelection,
+    StrokeLengthBucket,
+    SourceEdgeCount,
+    StrokeRoles,
+    MaterialRoles,
 }
 
 impl Default for NprGpuDebugMode3d {
@@ -324,6 +345,13 @@ impl NprGpuDebugMode3d {
             Self::RawPaths => "raw_paths",
             Self::Dropout => "dropout",
             Self::WidthAlpha => "width_alpha",
+            Self::ChainHops => "chain_hops",
+            Self::CandidateImportance => "candidate_importance",
+            Self::TechnicalSelection => "technical_selection",
+            Self::StrokeLengthBucket => "stroke_length_bucket",
+            Self::SourceEdgeCount => "source_edge_count",
+            Self::StrokeRoles => "stroke_roles",
+            Self::MaterialRoles => "material_roles",
         }
     }
 
@@ -334,6 +362,20 @@ impl NprGpuDebugMode3d {
             "raw_paths" | "npr.raw_paths" | "npr.paths" => Some(Self::RawPaths),
             "dropout" | "npr.dropout" | "npr.breakup" => Some(Self::Dropout),
             "width_alpha" | "npr.width_alpha" | "npr.pressure" => Some(Self::WidthAlpha),
+            "chain_hops" | "npr.chain_hops" | "npr.hops" => Some(Self::ChainHops),
+            "candidate_importance" | "importance" | "npr.candidate_importance"
+            | "npr.importance" => Some(Self::CandidateImportance),
+            "technical_selection" | "technical" | "npr.technical_selection" => {
+                Some(Self::TechnicalSelection)
+            }
+            "stroke_length_bucket" | "length" | "npr.stroke_length_bucket" => {
+                Some(Self::StrokeLengthBucket)
+            }
+            "source_edge_count" | "source_edges" | "npr.source_edge_count" => {
+                Some(Self::SourceEdgeCount)
+            }
+            "stroke_roles" | "roles" | "npr.stroke_roles" => Some(Self::StrokeRoles),
+            "material_roles" | "npr.material_roles" => Some(Self::MaterialRoles),
             _ => None,
         }
     }
@@ -566,8 +608,15 @@ pub struct NprLineSettings3d {
     pub contact_threshold: f32,
     pub black_mass_material_ids: Vec<u32>,
     pub ink_detail_material_ids: Vec<u32>,
+    pub brush_profiles: BTreeMap<String, NprBrushProfile3d>,
+    pub line_families: Vec<NprLineFamily3d>,
     pub feature_angle_degrees: f32,
     pub min_screen_length_px: f32,
+    pub min_stroke_length_px: f32,
+    pub preferred_stroke_length_px: f32,
+    pub stroke_join_gap_px: f32,
+    pub stroke_join_max_angle_degrees: f32,
+    pub technical_detail_keep: f32,
     pub ink_color: ColorRgba,
     pub humanization: f32,
     pub line_confidence: f32,
@@ -664,6 +713,189 @@ impl Default for NprStylePreset3d {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum NprLineSource3d {
+    Silhouette,
+    Boundary,
+    Feature,
+    Crease,
+    Seam,
+    Contact,
+}
+
+impl NprLineSource3d {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Silhouette => "silhouette",
+            Self::Boundary => "boundary",
+            Self::Feature => "feature",
+            Self::Crease => "crease",
+            Self::Seam => "seam",
+            Self::Contact => "contact",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum NprBrushTip3d {
+    Round,
+    Flat,
+    GPen,
+    MaruPen,
+    DryBrush,
+}
+
+impl NprBrushTip3d {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Round => "round",
+            Self::Flat => "flat",
+            Self::GPen => "g_pen",
+            Self::MaruPen => "maru_pen",
+            Self::DryBrush => "dry_brush",
+        }
+    }
+}
+
+impl Default for NprBrushTip3d {
+    fn default() -> Self {
+        Self::Round
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum NprLineFamilyRole3d {
+    Generic,
+    OuterContour,
+    DetailInk,
+    ClothFold,
+    MaterialCut,
+    ShadowHatch,
+    ContactShadow,
+}
+
+impl NprLineFamilyRole3d {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Generic => "generic",
+            Self::OuterContour => "outer_contour",
+            Self::DetailInk => "detail_ink",
+            Self::ClothFold => "cloth_fold",
+            Self::MaterialCut => "material_cut",
+            Self::ShadowHatch => "shadow_hatch",
+            Self::ContactShadow => "contact_shadow",
+        }
+    }
+}
+
+impl Default for NprLineFamilyRole3d {
+    fn default() -> Self {
+        Self::Generic
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct NprBrushProfile3d {
+    pub tool: Option<NprStrokeTool3d>,
+    pub tip: Option<NprBrushTip3d>,
+    pub width_multiplier: f32,
+    pub alpha_multiplier: f32,
+    pub pressure_jitter_multiplier: f32,
+    pub dropout_multiplier: f32,
+    pub search_multiplier: f32,
+    pub path_wobble_multiplier: f32,
+    pub micro_wobble_multiplier: f32,
+    pub hand_arc_multiplier: f32,
+    pub tangent_drift_multiplier: f32,
+    pub detail_crispness_multiplier: f32,
+    pub taper_multiplier: f32,
+    pub overshoot_px: Option<f32>,
+    pub width_curve: [f32; 4],
+    pub alpha_curve: [f32; 4],
+    pub angle_bias_degrees: f32,
+    pub angle_influence: f32,
+    pub path_adherence_multiplier: f32,
+}
+
+impl Default for NprBrushProfile3d {
+    fn default() -> Self {
+        Self {
+            tool: None,
+            tip: None,
+            width_multiplier: 1.0,
+            alpha_multiplier: 1.0,
+            pressure_jitter_multiplier: 1.0,
+            dropout_multiplier: 1.0,
+            search_multiplier: 1.0,
+            path_wobble_multiplier: 1.0,
+            micro_wobble_multiplier: 1.0,
+            hand_arc_multiplier: 1.0,
+            tangent_drift_multiplier: 1.0,
+            detail_crispness_multiplier: 1.0,
+            taper_multiplier: 1.0,
+            overshoot_px: None,
+            width_curve: [1.0, 1.0, 1.0, 1.0],
+            alpha_curve: [1.0, 1.0, 1.0, 1.0],
+            angle_bias_degrees: 0.0,
+            angle_influence: 0.0,
+            path_adherence_multiplier: 1.0,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct NprLineFamily3d {
+    pub id: String,
+    pub enabled: bool,
+    pub role: Option<NprLineFamilyRole3d>,
+    pub priority: i32,
+    pub sources: Vec<NprLineSource3d>,
+    pub brush: Option<String>,
+    pub preferred_stroke_length_px: Option<f32>,
+    pub stroke_join_gap_px: Option<f32>,
+    pub stroke_join_max_angle_degrees: Option<f32>,
+    pub technical_detail_keep: Option<f32>,
+    pub min_screen_length_px: Option<f32>,
+    pub min_stroke_length_px: Option<f32>,
+    pub technical_detail_preference: Option<f32>,
+    pub ink_detail_material_preference: Option<f32>,
+    pub material_seam_preference: Option<f32>,
+    pub continuation_bias: Option<f32>,
+    pub breakup_bias: Option<f32>,
+    pub width_multiplier: f32,
+    pub alpha_multiplier: f32,
+    pub taper_multiplier: f32,
+    pub overshoot_px: Option<f32>,
+}
+
+impl Default for NprLineFamily3d {
+    fn default() -> Self {
+        Self {
+            id: String::new(),
+            enabled: true,
+            role: None,
+            priority: 0,
+            sources: Vec::new(),
+            brush: None,
+            preferred_stroke_length_px: None,
+            stroke_join_gap_px: None,
+            stroke_join_max_angle_degrees: None,
+            technical_detail_keep: None,
+            min_screen_length_px: None,
+            min_stroke_length_px: None,
+            technical_detail_preference: None,
+            ink_detail_material_preference: None,
+            material_seam_preference: None,
+            continuation_bias: None,
+            breakup_bias: None,
+            width_multiplier: 1.0,
+            alpha_multiplier: 1.0,
+            taper_multiplier: 1.0,
+            overshoot_px: None,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct NprLineKindOverride3d {
     pub width_multiplier: Option<f32>,
@@ -702,8 +934,15 @@ impl NprLineSettings3d {
                 contact_threshold: 0.08,
                 black_mass_material_ids: Vec::new(),
                 ink_detail_material_ids: Vec::new(),
+                brush_profiles: BTreeMap::new(),
+                line_families: Vec::new(),
                 feature_angle_degrees: 42.0,
                 min_screen_length_px: 2.4,
+                min_stroke_length_px: 0.0,
+                preferred_stroke_length_px: 56.0,
+                stroke_join_gap_px: 2.25,
+                stroke_join_max_angle_degrees: 22.0,
+                technical_detail_keep: 0.72,
                 ink_color: ColorRgba::new(0.070, 0.062, 0.050, 1.0),
                 humanization: 0.16,
                 line_confidence: 0.94,
@@ -790,8 +1029,15 @@ impl NprLineSettings3d {
                 contact_threshold: 0.08,
                 black_mass_material_ids: Vec::new(),
                 ink_detail_material_ids: Vec::new(),
+                brush_profiles: BTreeMap::new(),
+                line_families: Vec::new(),
                 feature_angle_degrees: 32.0,
                 min_screen_length_px: 2.0,
+                min_stroke_length_px: 0.0,
+                preferred_stroke_length_px: 48.0,
+                stroke_join_gap_px: 3.0,
+                stroke_join_max_angle_degrees: 28.0,
+                technical_detail_keep: 0.88,
                 ink_color: ColorRgba::new(0.07, 0.062, 0.05, 1.0),
                 humanization: 0.55,
                 line_confidence: 0.74,
@@ -880,6 +1126,20 @@ impl NprLineSettings3d {
             }
         }
 
+        if self.pipeline.stroke_strategy == NprStrokeStrategy3d::ConfidentMangaInk {
+            if self.pipeline.candidate_strategy != NprCandidateStrategy3d::CharacterSemantic {
+                warnings
+                    .push(NprPipelinePlanWarning3d::ConfidentMangaInkWithoutCharacterSemantic);
+            }
+            if self.pipeline.path_strategy != NprPathStrategy3d::StableStrokedPaths {
+                warnings
+                    .push(NprPipelinePlanWarning3d::ConfidentMangaInkWithoutStableStrokedPaths);
+            }
+            if self.search_line_count > 0 || self.gpu_realtime_tuning.search_enabled {
+                warnings.push(NprPipelinePlanWarning3d::ConfidentMangaInkWithSearchLines);
+            }
+        }
+
         if self.pipeline.hatching_strategy == NprHatchingStrategy3d::SparseCharacterHatching {
             if self.pipeline.candidate_strategy != NprCandidateStrategy3d::CharacterSemantic {
                 warnings.push(NprPipelinePlanWarning3d::SparseHatchingWithoutCharacterSemantic);
@@ -891,7 +1151,10 @@ impl NprLineSettings3d {
 
         if self.render_strategy == NprRenderStrategy3d::GpuRealtime
             && self.pipeline.temporal_strategy != NprTemporalStrategy3d::StableArcLength
-            && self.pipeline.stroke_strategy == NprStrokeStrategy3d::AkiraInk
+            && matches!(
+                self.pipeline.stroke_strategy,
+                NprStrokeStrategy3d::AkiraInk | NprStrokeStrategy3d::ConfidentMangaInk
+            )
         {
             warnings.push(NprPipelinePlanWarning3d::GpuRealtimeWithoutStableArcLength);
         }
@@ -1031,6 +1294,39 @@ mod tests {
     }
 
     #[test]
+    fn npr_pipeline_plan_accepts_confident_manga_framework_stack() {
+        let mut settings = NprLineSettings3d::default();
+        settings.stroke_tool = NprStrokeTool3d::InkPen;
+        settings.pipeline = NprPipelineStrategies3d {
+            candidate_strategy: NprCandidateStrategy3d::CharacterSemantic,
+            path_strategy: NprPathStrategy3d::StableStrokedPaths,
+            stroke_strategy: NprStrokeStrategy3d::ConfidentMangaInk,
+            fill_strategy: NprInkFillStrategy3d::MaterialBlackMass,
+            hatching_strategy: NprHatchingStrategy3d::None,
+            budget_strategy: NprBudgetStrategy3d::CharacterReadability,
+            temporal_strategy: NprTemporalStrategy3d::StableArcLength,
+        };
+        settings.camera_response.enabled = true;
+        settings.camera_response.auto_focus = true;
+        settings.search_line_count = 0;
+        settings.gpu_realtime_tuning.search_enabled = false;
+
+        let plan = settings.pipeline_plan();
+
+        assert_eq!(
+            plan.stroke_strategy,
+            NprStrokeStrategy3d::ConfidentMangaInk
+        );
+        assert_eq!(plan.fill_strategy, NprInkFillStrategy3d::MaterialBlackMass);
+        assert_eq!(plan.budget_strategy, NprBudgetStrategy3d::CharacterReadability);
+        assert_eq!(
+            plan.summary_label(),
+            "strategy=gpu_realtime preset=gpu_stable_comic tool=ink_pen candidate=character_semantic path=stable_stroked_paths stroke=confident_manga_ink fill=material_black_mass hatch=none budget=character_readability temporal=stable_arc_length camera=auto_focus warnings=none"
+        );
+        assert!(!plan.has_warnings(), "{:?}", plan.warning_labels());
+    }
+
+    #[test]
     fn npr_pipeline_plan_warns_about_incoherent_akira_stack() {
         let mut settings = NprLineSettings3d::default();
         settings.pipeline.stroke_strategy = NprStrokeStrategy3d::AkiraInk;
@@ -1064,6 +1360,14 @@ mod tests {
         let settings = NprLineSettings3d::default();
         assert_eq!(settings.search_line_count, 0);
         assert!(!settings.gpu_realtime_tuning.search_enabled);
+    }
+
+    #[test]
+    fn npr_brush_tip_and_line_family_role_have_stable_strings() {
+        assert_eq!(NprBrushTip3d::GPen.as_str(), "g_pen");
+        assert_eq!(NprBrushTip3d::MaruPen.as_str(), "maru_pen");
+        assert_eq!(NprLineFamilyRole3d::OuterContour.as_str(), "outer_contour");
+        assert_eq!(NprLineFamilyRole3d::DetailInk.as_str(), "detail_ink");
     }
 
     #[test]
@@ -1139,6 +1443,34 @@ mod tests {
         assert_eq!(
             NprGpuDebugMode3d::parse("camera.final"),
             Some(NprGpuDebugMode3d::Final)
+        );
+        assert_eq!(
+            NprGpuDebugMode3d::parse("npr.chain_hops"),
+            Some(NprGpuDebugMode3d::ChainHops)
+        );
+        assert_eq!(
+            NprGpuDebugMode3d::parse("npr.candidate_importance"),
+            Some(NprGpuDebugMode3d::CandidateImportance)
+        );
+        assert_eq!(
+            NprGpuDebugMode3d::parse("technical_selection"),
+            Some(NprGpuDebugMode3d::TechnicalSelection)
+        );
+        assert_eq!(
+            NprGpuDebugMode3d::parse("npr.stroke_length_bucket"),
+            Some(NprGpuDebugMode3d::StrokeLengthBucket)
+        );
+        assert_eq!(
+            NprGpuDebugMode3d::parse("source_edges"),
+            Some(NprGpuDebugMode3d::SourceEdgeCount)
+        );
+        assert_eq!(
+            NprGpuDebugMode3d::parse("npr.stroke_roles"),
+            Some(NprGpuDebugMode3d::StrokeRoles)
+        );
+        assert_eq!(
+            NprGpuDebugMode3d::parse("material_roles"),
+            Some(NprGpuDebugMode3d::MaterialRoles)
         );
         assert!(NprGpuDebugMode3d::parse("weird").is_none());
     }

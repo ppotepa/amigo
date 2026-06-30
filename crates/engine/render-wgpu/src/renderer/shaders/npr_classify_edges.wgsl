@@ -66,6 +66,40 @@ struct GpuNprFrameUniforms3d {
     params18: vec4<f32>,
     params19: vec4<f32>,
     params20: vec4<f32>,
+    params21: vec4<f32>,
+    params22: vec4<f32>,
+    params23: vec4<f32>,
+    params24: vec4<f32>,
+    params25: vec4<f32>,
+    params26: vec4<f32>,
+    params27: vec4<f32>,
+    params28: vec4<f32>,
+    params29: vec4<f32>,
+    params30: vec4<f32>,
+    params31: vec4<f32>,
+    params32: vec4<f32>,
+    params33: vec4<f32>,
+    params34: vec4<f32>,
+    params35: vec4<f32>,
+    params36: vec4<f32>,
+    params37: vec4<f32>,
+    params38: vec4<f32>,
+    params39: vec4<f32>,
+    params40: vec4<f32>,
+    params41: vec4<f32>,
+    params42: vec4<f32>,
+    params43: vec4<f32>,
+    params44: vec4<f32>,
+    params45: vec4<f32>,
+    params46: vec4<f32>,
+    params47: vec4<f32>,
+    params48: vec4<f32>,
+    params49: vec4<f32>,
+    params50: vec4<f32>,
+    params51: vec4<f32>,
+    params52: vec4<f32>,
+    params53: vec4<f32>,
+    params54: vec4<f32>,
     ink_color: vec4<f32>,
     seed: vec4<u32>,
     pipeline0: vec4<u32>,
@@ -80,7 +114,11 @@ const KIND_CREASE: u32 = 3u;
 const KIND_SEAM: u32 = 4u;
 const KIND_FEATURE: u32 = 5u;
 const KIND_CONTACT: u32 = 6u;
+const SEGMENT_TRAIT_MATERIAL_DETAIL: u32 = 1u;
+const SEGMENT_TRAIT_MATERIAL_SEAM: u32 = 2u;
 const CANDIDATE_CHARACTER_SEMANTIC: u32 = 1u;
+const STROKE_AKIRA_INK: u32 = 1u;
+const STROKE_CONFIDENT_MANGA_INK: u32 = 4u;
 const BUDGET_FACE_SILHOUETTE_PRIORITY: u32 = 1u;
 const BUDGET_CHARACTER_READABILITY: u32 = 2u;
 
@@ -182,6 +220,18 @@ fn uses_character_budget() -> bool {
         || uniforms.pipeline1.y == BUDGET_CHARACTER_READABILITY;
 }
 
+fn uses_confident_manga_ink() -> bool {
+    return uniforms.pipeline0.z == STROKE_CONFIDENT_MANGA_INK;
+}
+
+fn uses_akira_ink() -> bool {
+    return uniforms.pipeline0.z == STROKE_AKIRA_INK;
+}
+
+fn uses_manga_ink() -> bool {
+    return uses_akira_ink() || uses_confident_manga_ink();
+}
+
 fn is_internal_feature_kind(kind: u32) -> bool {
     return kind == KIND_CREASE || kind == KIND_SEAM || kind == KIND_FEATURE;
 }
@@ -207,11 +257,113 @@ fn edge_touches_ink_detail_material(edge: GpuNprEdge3d) -> bool {
     return edge_touches_material_mask(edge, uniforms.material_roles0.y);
 }
 
+fn kind_min_screen_length_px(kind: u32) -> f32 {
+    if (kind == KIND_SILHOUETTE) {
+        return uniforms.params36.x;
+    }
+    if (kind == KIND_BOUNDARY) {
+        return uniforms.params36.y;
+    }
+    if (kind == KIND_CREASE) {
+        return uniforms.params36.w;
+    }
+    if (kind == KIND_SEAM) {
+        return uniforms.params37.x;
+    }
+    if (kind == KIND_CONTACT) {
+        return uniforms.params37.y;
+    }
+    return uniforms.params36.z;
+}
+
+fn kind_technical_detail_keep(kind: u32) -> f32 {
+    if (kind == KIND_SEAM) {
+        return uniforms.params38.x;
+    }
+    if (kind == KIND_CONTACT) {
+        return uniforms.params38.y;
+    }
+    if (kind == KIND_CREASE) {
+        return uniforms.params37.w;
+    }
+    if (kind == KIND_FEATURE) {
+        return uniforms.params37.z;
+    }
+    return 1.0;
+}
+
+fn kind_technical_detail_preference(kind: u32) -> f32 {
+    if (kind == KIND_FEATURE) {
+        return uniforms.params47.x;
+    }
+    if (kind == KIND_CREASE) {
+        return uniforms.params47.y;
+    }
+    if (kind == KIND_SEAM) {
+        return uniforms.params47.z;
+    }
+    if (kind == KIND_CONTACT) {
+        return uniforms.params47.w;
+    }
+    return 0.0;
+}
+
+fn kind_ink_detail_material_preference(kind: u32) -> f32 {
+    if (kind == KIND_FEATURE) {
+        return uniforms.params48.x;
+    }
+    if (kind == KIND_CREASE) {
+        return uniforms.params48.y;
+    }
+    if (kind == KIND_SEAM) {
+        return uniforms.params48.z;
+    }
+    if (kind == KIND_CONTACT) {
+        return uniforms.params48.w;
+    }
+    return 0.0;
+}
+
+fn kind_material_seam_preference(kind: u32) -> f32 {
+    if (kind == KIND_FEATURE) {
+        return uniforms.params49.x;
+    }
+    if (kind == KIND_CREASE) {
+        return uniforms.params49.y;
+    }
+    if (kind == KIND_SEAM) {
+        return uniforms.params49.z;
+    }
+    if (kind == KIND_CONTACT) {
+        return uniforms.params49.w;
+    }
+    return 0.0;
+}
+
+fn kind_preferred_stroke_length_px(kind: u32) -> f32 {
+    if (kind == KIND_SILHOUETTE) {
+        return uniforms.params38.z;
+    }
+    if (kind == KIND_BOUNDARY) {
+        return uniforms.params38.w;
+    }
+    if (kind == KIND_CREASE) {
+        return uniforms.params39.y;
+    }
+    if (kind == KIND_SEAM) {
+        return uniforms.params39.z;
+    }
+    if (kind == KIND_CONTACT) {
+        return uniforms.params39.w;
+    }
+    return uniforms.params39.x;
+}
+
 fn feature_min_length_px() -> f32 {
     let semantic_scale = select(1.0, 1.35, uses_character_semantic_candidates() || uses_character_budget());
     return max(
-        uniforms.params0.w * max(uniforms.params16.x, 0.1) * 1.20 * semantic_scale,
-        uniforms.params0.w,
+        kind_min_screen_length_px(KIND_FEATURE) * max(uniforms.params16.x, 0.1) * 1.20 * semantic_scale,
+        kind_min_screen_length_px(KIND_FEATURE),
     );
 }
 
@@ -221,11 +373,18 @@ fn edge_feature_min_length_px(edge: GpuNprEdge3d) -> f32 {
 
 fn silhouette_min_length_px() -> f32 {
     let semantic_scale = select(1.0, 0.82, uses_character_semantic_candidates() || uses_character_budget());
-    return max(uniforms.params0.w * max(uniforms.params16.z, 0.1) * semantic_scale, uniforms.params0.w);
+    return max(
+        kind_min_screen_length_px(KIND_SILHOUETTE) * max(uniforms.params16.z, 0.1) * semantic_scale,
+        kind_min_screen_length_px(KIND_SILHOUETTE),
+    );
 }
 
 fn contact_min_length_px() -> f32 {
-    return max(feature_min_length_px() * select(1.0, 1.45, uses_character_budget()), 6.0);
+    return max(
+        max(kind_min_screen_length_px(KIND_CONTACT), feature_min_length_px())
+            * select(1.0, 1.45, uses_character_budget()),
+        6.0,
+    );
 }
 
 fn edge_curvature_proxy(edge: GpuNprEdge3d, kind: u32) -> f32 {
@@ -257,12 +416,32 @@ fn edge_semantic_importance(edge: GpuNprEdge3d, kind: u32, line_length: f32, dep
     }
 
     let curvature = edge_curvature_proxy(edge, kind);
-    let material_detail = select(0.0, 0.26, edge_touches_ink_detail_material(edge));
-    let seam_boost = select(0.0, 0.18, edge.material_seam > 0u || kind == KIND_SEAM);
-    let length_boost = clamp(line_length / 44.0, 0.0, 1.0) * 0.16;
+    let technical_pref = kind_technical_detail_preference(kind);
+    let material_pref = kind_ink_detail_material_preference(kind);
+    let seam_pref = kind_material_seam_preference(kind);
+    let material_detail = select(0.0, 0.10 + material_pref * 0.24, edge_touches_ink_detail_material(edge));
+    let seam_boost = select(0.0, 0.06 + seam_pref * 0.20, edge.material_seam > 0u || kind == KIND_SEAM);
+    let preferred_length = max(kind_preferred_stroke_length_px(kind), 24.0);
+    let length_boost = clamp(line_length / max(preferred_length * 0.8, 1.0), 0.0, 1.0) * 0.16;
     let near_boost = (1.0 - clamp(depth01, 0.0, 1.0)) * select(0.04, 0.18, is_internal_feature_kind(kind));
     let far_penalty = clamp(depth01, 0.0, 1.0) * select(0.0, 0.18, is_internal_feature_kind(kind) || kind == KIND_CONTACT);
-    return clamp(base + curvature * 0.28 + material_detail + seam_boost + length_boost + near_boost - far_penalty, 0.0, 1.28);
+    let technical_bias = select(0.0, technical_pref * 0.16, is_internal_feature_kind(kind) || kind == KIND_CONTACT);
+    return clamp(
+        base + curvature * 0.28 + technical_bias + material_detail + seam_boost + length_boost + near_boost - far_penalty,
+        0.0,
+        1.28,
+    );
+}
+
+fn edge_trait_flags(edge: GpuNprEdge3d, kind: u32) -> u32 {
+    var flags = 0u;
+    if (edge_touches_ink_detail_material(edge)) {
+        flags = flags | SEGMENT_TRAIT_MATERIAL_DETAIL;
+    }
+    if (edge.material_seam > 0u || kind == KIND_SEAM) {
+        flags = flags | SEGMENT_TRAIT_MATERIAL_SEAM;
+    }
+    return flags;
 }
 
 fn should_reject_character_edge(edge: GpuNprEdge3d, kind: u32, importance: f32, depth01: f32) -> bool {
@@ -274,11 +453,22 @@ fn should_reject_character_edge(edge: GpuNprEdge3d, kind: u32, importance: f32, 
     }
 
     let material_detail = edge_touches_ink_detail_material(edge);
-    let base_threshold = select(0.38, 0.50, uses_character_budget());
-    let material_relief = select(0.0, 0.18, material_detail);
-    let seam_relief = select(0.0, 0.10, kind == KIND_SEAM || edge.material_seam > 0u);
+    let protected_seam = kind == KIND_SEAM || edge.material_seam > 0u;
+    if (is_internal_feature_kind(kind) && !material_detail && !protected_seam) {
+        let curvature = edge_curvature_proxy(edge, kind);
+        let flat_threshold = select(0.030, 0.055, uses_confident_manga_ink() || uses_akira_ink());
+        if (curvature < flat_threshold) {
+            return true;
+        }
+    }
+    let budget_threshold = select(0.50, 0.40, uses_akira_ink());
+    let base_threshold = select(0.38, budget_threshold, uses_character_budget());
+    let material_relief = select(0.0, 0.08 + kind_ink_detail_material_preference(kind) * 0.22, material_detail);
+    let seam_relief =
+        select(0.0, 0.04 + kind_material_seam_preference(kind) * 0.18, protected_seam);
     let near_relief = (1.0 - clamp(depth01, 0.0, 1.0)) * 0.14;
-    let threshold = clamp(base_threshold - material_relief - seam_relief - near_relief, 0.18, 0.62);
+    let family_relief = kind_technical_detail_keep(kind) * 0.18 + kind_technical_detail_preference(kind) * 0.14;
+    let threshold = clamp(base_threshold - material_relief - seam_relief - near_relief - family_relief, 0.18, 0.62);
     return importance < threshold;
 }
 
@@ -338,7 +528,13 @@ fn edge_contact_candidate(edge: GpuNprEdge3d, front0: bool, front1: bool) -> boo
     return false;
 }
 
-fn edge_visible_run(edge: GpuNprEdge3d, start: vec2<f32>, end: vec2<f32>, line_length: f32) -> vec3<f32> {
+fn edge_visible_run(
+    edge: GpuNprEdge3d,
+    start: vec2<f32>,
+    end: vec2<f32>,
+    line_length: f32,
+    max_gap_samples: u32,
+) -> vec3<f32> {
     let sample_count = u32(clamp(ceil(line_length / 4.0), 7.0, 96.0));
     let step_t = 1.0 / max(f32(sample_count - 1u), 1.0);
     var best_t0 = 0.0;
@@ -347,6 +543,7 @@ fn edge_visible_run(edge: GpuNprEdge3d, start: vec2<f32>, end: vec2<f32>, line_l
     var run_active = false;
     var run_t0 = 0.0;
     var run_last_t = 0.0;
+    var gap_samples = 0u;
 
     for (var i: u32 = 0u; i < sample_count; i = i + 1u) {
         let t = f32(i) * step_t;
@@ -359,15 +556,20 @@ fn edge_visible_run(edge: GpuNprEdge3d, start: vec2<f32>, end: vec2<f32>, line_l
                 run_t0 = t;
             }
             run_last_t = t;
+            gap_samples = 0u;
         } else if (run_active) {
-            let run_t1 = run_last_t;
-            let run_len = run_t1 - run_t0;
-            if (run_len > best_len) {
-                best_len = run_len;
-                best_t0 = run_t0;
-                best_t1 = run_t1;
+            gap_samples = gap_samples + 1u;
+            if (gap_samples > max_gap_samples) {
+                let run_t1 = run_last_t;
+                let run_len = run_t1 - run_t0;
+                if (run_len > best_len) {
+                    best_len = run_len;
+                    best_t0 = run_t0;
+                    best_t1 = run_t1;
+                }
+                run_active = false;
+                gap_samples = 0u;
             }
-            run_active = false;
         }
     }
 
@@ -413,7 +615,17 @@ fn cs_main(@builtin(global_invocation_id) id: vec3<u32>) {
     let screen_a = a.screen.xy;
     let screen_b = b.screen.xy;
     let line_length = distance(screen_a, screen_b);
-    if (line_length < uniforms.params0.w) {
+    let early_min_length = max(
+        min(
+            kind_min_screen_length_px(KIND_BOUNDARY),
+            min(
+                kind_min_screen_length_px(KIND_SILHOUETTE),
+                min(kind_min_screen_length_px(KIND_FEATURE), kind_min_screen_length_px(KIND_CONTACT)),
+            ),
+        ),
+        0.5,
+    );
+    if (line_length < early_min_length) {
         return;
     }
 
@@ -462,17 +674,45 @@ fn cs_main(@builtin(global_invocation_id) id: vec3<u32>) {
         return;
     }
 
-    var run = edge_visible_run(edge, screen_a, screen_b, line_length);
+    let primary_contour = kind == KIND_SILHOUETTE || kind == KIND_BOUNDARY;
+    let max_gap_samples =
+        select(0u, select(2u, 3u, kind == KIND_SILHOUETTE), uses_manga_ink() && primary_contour);
+    var run = edge_visible_run(edge, screen_a, screen_b, line_length, max_gap_samples);
     if (run.z < 0.5) {
         return;
     }
-    let run_start = mix(screen_a, screen_b, run.x);
-    let run_end = mix(screen_a, screen_b, run.y);
-    let run_min_length = select(
-        select(edge_feature_min_length_px(edge), contact_min_length_px(), kind == KIND_CONTACT),
-        silhouette_min_length_px(),
-        kind == KIND_SILHOUETTE,
-    );
+    let run_coverage = run.y - run.x;
+    if (
+        uses_confident_manga_ink()
+        && primary_contour
+        && run_coverage >= select(0.56, 0.48, kind == KIND_SILHOUETTE)
+    ) {
+        run = vec3<f32>(0.0, 1.0, run.z);
+    }
+    let endpoint_tolerance =
+        select(
+            select(0.001, 0.06, primary_contour),
+            select(0.001, select(0.34, 0.42, kind == KIND_SILHOUETTE), primary_contour),
+            uses_manga_ink(),
+        );
+    let raw_run_start = mix(screen_a, screen_b, run.x);
+    let raw_run_end = mix(screen_a, screen_b, run.y);
+    let run_start = select(raw_run_start, screen_a, run.x <= endpoint_tolerance);
+    let run_end = select(raw_run_end, screen_b, run.y >= 1.0 - endpoint_tolerance);
+    var run_min_length = edge_feature_min_length_px(edge);
+    if (kind == KIND_SILHOUETTE) {
+        run_min_length = silhouette_min_length_px();
+    } else if (kind == KIND_BOUNDARY) {
+        run_min_length = kind_min_screen_length_px(KIND_BOUNDARY);
+    } else if (kind == KIND_SEAM) {
+        run_min_length = max(kind_min_screen_length_px(KIND_SEAM), edge_feature_min_length_px(edge));
+    } else if (kind == KIND_CREASE) {
+        run_min_length = max(kind_min_screen_length_px(KIND_CREASE), edge_feature_min_length_px(edge));
+    } else if (kind == KIND_CONTACT) {
+        run_min_length = contact_min_length_px();
+    } else if (kind == KIND_FEATURE) {
+        run_min_length = max(kind_min_screen_length_px(KIND_FEATURE), edge_feature_min_length_px(edge));
+    }
     if (distance(run_start, run_end) < run_min_length) {
         return;
     }
@@ -488,13 +728,11 @@ fn cs_main(@builtin(global_invocation_id) id: vec3<u32>) {
     if (should_reject_character_edge(edge, kind, semantic_importance, style_depth_mid)) {
         return;
     }
-    let primary_contour = kind == KIND_SILHOUETTE || kind == KIND_BOUNDARY;
-    let endpoint_tolerance = select(0.001, 0.06, primary_contour);
     let start_vertex = select(0xffffffffu, edge.a, run.x <= endpoint_tolerance);
     let end_vertex = select(0xffffffffu, edge.b, run.y >= 1.0 - endpoint_tolerance);
     visible_segments[edge_index].start = vec4<f32>(run_start, depth_start, 1.0);
     visible_segments[edge_index].end = vec4<f32>(run_end, depth_end, 1.0);
     visible_segments[edge_index].kind_edge = vec4<u32>(kind, edge.edge_id, start_vertex, end_vertex);
     visible_segments[edge_index].metrics =
-        vec4<f32>(style_depth_start, style_depth_end, semantic_importance, edge_curvature_proxy(edge, kind));
+        vec4<f32>(style_depth_start, style_depth_end, semantic_importance, f32(edge_trait_flags(edge, kind)));
 }

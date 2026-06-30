@@ -3,7 +3,7 @@ use amigo_math::Transform3;
 use crate::renderer::{GpuNprFrameUniforms3d, NprDebugOverlay3d, Viewport};
 
 use super::{
-    NPR_GPU_PATH_SEGMENTS_PER_CHAIN, NprGpuMeshJob3d, create_job_uniform_buffer,
+    NprGpuMeshJob3d, create_job_uniform_buffer, npr_gpu_path_segment_capacity_units,
     npr_gpu_trace_line, slice_as_bytes, uniforms_are_finite, uniforms_for_job,
 };
 
@@ -35,10 +35,11 @@ pub(crate) fn write_npr_gpu_job_uniform_buffers(
 
     let mut face_id_base = 0u32;
     let mut path_segment_base = 0u32;
+    let job_count = frame_jobs.len().max(1);
     for (job_index, job) in frame_jobs.iter().enumerate() {
         let edge_count = job.geometry.edge_count() as u32;
         let path_segment_slot_count =
-            edge_count.saturating_mul(NPR_GPU_PATH_SEGMENTS_PER_CHAIN as u32);
+            npr_gpu_path_segment_capacity_units(job.geometry.edge_count(), job_count) as u32;
         let uniforms = uniforms_for_job(
             viewport,
             camera,
@@ -59,10 +60,14 @@ pub(crate) fn write_npr_gpu_job_uniform_buffers(
                 debug_frame_index,
                 "WRITE",
                 format!(
-                    "job[{job_index}] write persistent uniforms entity={} face_id_base={} triangles={} finite={} cam_near={:.3} cam_far={:.3} focus01={:.3} bytes={uniform_size}",
+                    "job[{job_index}] write persistent uniforms entity={} face_id_base={} triangles={} path_segment_base={} path_segment_slots={} pipeline0={:?} pipeline1={:?} finite={} cam_near={:.3} cam_far={:.3} focus01={:.3} bytes={uniform_size}",
                     job.entity_name,
                     face_id_base,
                     job.geometry.triangle_count(),
+                    path_segment_base,
+                    path_segment_slot_count,
+                    uniforms.pipeline0,
+                    uniforms.pipeline1,
                     uniforms_are_finite(&uniforms),
                     uniforms.params20[1],
                     uniforms.params20[2],

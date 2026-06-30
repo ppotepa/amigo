@@ -6,8 +6,9 @@ use wgpu::util::DeviceExt;
 use crate::renderer::CachedMeshGeometry3d;
 
 use super::{
-    GpuNprEndpointEntry3d, GpuNprPathSegment3d, GpuNprPathState3d, gpu_edges_from_geometry,
-    gpu_triangles_from_geometry, gpu_vertices_from_geometry, slice_as_bytes, topology_cache_key,
+    GpuNprAggregatedPath3d, GpuNprEndpointEntry3d, GpuNprPathSegment3d, GpuNprPathState3d,
+    gpu_edges_from_geometry, gpu_triangles_from_geometry, gpu_vertices_from_geometry,
+    slice_as_bytes, topology_cache_key,
 };
 
 #[derive(Debug)]
@@ -42,6 +43,8 @@ pub(crate) struct NprGpuFrameBuffers3d {
     pub path_links: wgpu::Buffer,
     pub path_segments: wgpu::Buffer,
     pub path_states: wgpu::Buffer,
+    #[allow(dead_code)]
+    pub aggregated_paths: wgpu::Buffer,
     pub stroke_segments: wgpu::Buffer,
     pub indirect_args: wgpu::Buffer,
     pub projected_vertices_capacity: u64,
@@ -51,6 +54,7 @@ pub(crate) struct NprGpuFrameBuffers3d {
     pub path_links_capacity: u64,
     pub path_segments_capacity: u64,
     pub path_states_capacity: u64,
+    pub aggregated_paths_capacity: u64,
     pub stroke_segments_capacity: u64,
 }
 
@@ -70,6 +74,7 @@ pub(crate) struct NprGpuBufferCapacities3d {
     pub path_links: usize,
     pub path_segments: usize,
     pub path_states: usize,
+    pub aggregated_paths: usize,
     pub stroke_segments: usize,
 }
 
@@ -128,6 +133,7 @@ impl NprGpuResources3d {
         path_links_capacity: u64,
         path_segments_capacity: u64,
         path_states_capacity: u64,
+        aggregated_paths_capacity: u64,
         stroke_segments_capacity: u64,
     ) -> &NprGpuFrameBuffers3d {
         let recreate = self.frame_buffers.as_ref().is_none_or(|buffers| {
@@ -138,6 +144,7 @@ impl NprGpuResources3d {
                 || buffers.path_links_capacity < path_links_capacity
                 || buffers.path_segments_capacity < path_segments_capacity
                 || buffers.path_states_capacity < path_states_capacity
+                || buffers.aggregated_paths_capacity < aggregated_paths_capacity
                 || buffers.stroke_segments_capacity < stroke_segments_capacity
         });
         if recreate {
@@ -150,6 +157,7 @@ impl NprGpuResources3d {
                 path_links_capacity,
                 path_segments_capacity,
                 path_states_capacity,
+                aggregated_paths_capacity,
                 stroke_segments_capacity,
             ));
         }
@@ -169,6 +177,7 @@ impl NprGpuResources3d {
                     + buffers.path_links_capacity
                     + buffers.path_segments_capacity
                     + buffers.path_states_capacity
+                    + buffers.aggregated_paths_capacity
                     + buffers.stroke_segments_capacity
             })
             .unwrap_or(0)
@@ -197,6 +206,9 @@ impl NprGpuResources3d {
                     as usize,
                 path_states: (buffers.path_states_capacity
                     / std::mem::size_of::<GpuNprPathState3d>() as u64)
+                    as usize,
+                aggregated_paths: (buffers.aggregated_paths_capacity
+                    / std::mem::size_of::<GpuNprAggregatedPath3d>() as u64)
                     as usize,
                 stroke_segments: (buffers.stroke_segments_capacity
                     / std::mem::size_of::<crate::renderer::NprStrokeSegmentVertex>() as u64)
@@ -259,6 +271,7 @@ fn create_frame_buffers(
     path_links_capacity: u64,
     path_segments_capacity: u64,
     path_states_capacity: u64,
+    aggregated_paths_capacity: u64,
     stroke_segments_capacity: u64,
 ) -> NprGpuFrameBuffers3d {
     NprGpuFrameBuffers3d {
@@ -293,6 +306,11 @@ fn create_frame_buffers(
             "amigo-npr-path-states",
             path_states_capacity.max(std::mem::size_of::<GpuNprPathState3d>() as u64),
         ),
+        aggregated_paths: create_empty_buffer(
+            device,
+            "amigo-npr-aggregated-paths",
+            aggregated_paths_capacity.max(std::mem::size_of::<GpuNprAggregatedPath3d>() as u64),
+        ),
         stroke_segments: create_empty_buffer(
             device,
             "amigo-npr-stroke-segments",
@@ -306,6 +324,7 @@ fn create_frame_buffers(
         path_links_capacity,
         path_segments_capacity,
         path_states_capacity,
+        aggregated_paths_capacity,
         stroke_segments_capacity,
     }
 }

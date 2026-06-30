@@ -57,6 +57,40 @@ struct GpuNprFrameUniforms3d {
     params18: vec4<f32>,
     params19: vec4<f32>,
     params20: vec4<f32>,
+    params21: vec4<f32>,
+    params22: vec4<f32>,
+    params23: vec4<f32>,
+    params24: vec4<f32>,
+    params25: vec4<f32>,
+    params26: vec4<f32>,
+    params27: vec4<f32>,
+    params28: vec4<f32>,
+    params29: vec4<f32>,
+    params30: vec4<f32>,
+    params31: vec4<f32>,
+    params32: vec4<f32>,
+    params33: vec4<f32>,
+    params34: vec4<f32>,
+    params35: vec4<f32>,
+    params36: vec4<f32>,
+    params37: vec4<f32>,
+    params38: vec4<f32>,
+    params39: vec4<f32>,
+    params40: vec4<f32>,
+    params41: vec4<f32>,
+    params42: vec4<f32>,
+    params43: vec4<f32>,
+    params44: vec4<f32>,
+    params45: vec4<f32>,
+    params46: vec4<f32>,
+    params47: vec4<f32>,
+    params48: vec4<f32>,
+    params49: vec4<f32>,
+    params50: vec4<f32>,
+    params51: vec4<f32>,
+    params52: vec4<f32>,
+    params53: vec4<f32>,
+    params54: vec4<f32>,
     ink_color: vec4<f32>,
     seed: vec4<u32>,
     pipeline0: vec4<u32>,
@@ -81,6 +115,12 @@ struct PathWalkResult {
 }
 
 const KIND_NONE: u32 = 0u;
+const KIND_BOUNDARY: u32 = 1u;
+const KIND_SILHOUETTE: u32 = 2u;
+const KIND_CREASE: u32 = 3u;
+const KIND_SEAM: u32 = 4u;
+const KIND_FEATURE: u32 = 5u;
+const KIND_CONTACT: u32 = 6u;
 const PATH_FLAG_EMIT: u32 = 1u;
 const PATH_FLAG_CONNECTED_START: u32 = 2u;
 const PATH_FLAG_CONNECTED_END: u32 = 4u;
@@ -89,6 +129,17 @@ const CANDIDATE_CHARACTER_SEMANTIC: u32 = 1u;
 const BUDGET_FACE_SILHOUETTE_PRIORITY: u32 = 1u;
 const BUDGET_CHARACTER_READABILITY: u32 = 2u;
 const PATH_SEGMENTS_PER_VISIBLE_EDGE: u32 = 3u;
+const STROKE_AKIRA_INK: u32 = 1u;
+const STROKE_CONFIDENT_MANGA_INK: u32 = 4u;
+const SEGMENT_TRAIT_MATERIAL_DETAIL: u32 = 1u;
+const SEGMENT_TRAIT_MATERIAL_SEAM: u32 = 2u;
+const FAMILY_ROLE_GENERIC: u32 = 0u;
+const FAMILY_ROLE_OUTER_CONTOUR: u32 = 1u;
+const FAMILY_ROLE_DETAIL_INK: u32 = 2u;
+const FAMILY_ROLE_CLOTH_FOLD: u32 = 3u;
+const FAMILY_ROLE_MATERIAL_CUT: u32 = 4u;
+const FAMILY_ROLE_SHADOW_HATCH: u32 = 5u;
+const FAMILY_ROLE_CONTACT_SHADOW: u32 = 6u;
 
 @group(0) @binding(5) var<storage, read> visible_segments: array<GpuNprVisibleSegment3d>;
 @group(0) @binding(8) var<uniform> uniforms: GpuNprFrameUniforms3d;
@@ -108,6 +159,23 @@ fn uses_character_semantic_candidates() -> bool {
 fn uses_character_budget() -> bool {
     return uniforms.pipeline1.y == BUDGET_FACE_SILHOUETTE_PRIORITY
         || uniforms.pipeline1.y == BUDGET_CHARACTER_READABILITY;
+}
+
+fn uses_confident_manga_ink() -> bool {
+    return uniforms.pipeline0.z == STROKE_CONFIDENT_MANGA_INK;
+}
+
+fn uses_manga_ink() -> bool {
+    return uniforms.pipeline0.z == STROKE_AKIRA_INK || uses_confident_manga_ink();
+}
+
+fn is_primary_contour(kind: u32) -> bool {
+    return kind == KIND_BOUNDARY || kind == KIND_SILHOUETTE;
+}
+
+fn compatible_endpoint_kind(current_kind: u32, candidate_kind: u32) -> bool {
+    return current_kind == candidate_kind
+        || (uses_manga_ink() && is_primary_contour(current_kind) && is_primary_contour(candidate_kind));
 }
 
 fn active_edge_count() -> u32 {
@@ -132,10 +200,37 @@ fn clear_path_segment(path_segment_index: u32) {
     );
 }
 
-fn path_style_metrics(visible: GpuNprVisibleSegment3d, t0: f32, t1: f32) -> vec4<f32> {
+fn path_style_metrics(
+    visible: GpuNprVisibleSegment3d,
+    kind: u32,
+    t0: f32,
+    t1: f32,
+    curve_point: vec2<f32>,
+    curve_weight: f32,
+) -> vec4<f32> {
     let start_depth = mix(visible.metrics.x, visible.metrics.y, clamp(t0, 0.0, 1.0));
     let end_depth = mix(visible.metrics.x, visible.metrics.y, clamp(t1, 0.0, 1.0));
-    return vec4<f32>(start_depth, end_depth, (start_depth + end_depth) * 0.5, 0.0);
+    let packed_role_curve =
+        f32(selected_line_family_role(kind, visible)) + clamp(curve_weight, 0.0, 0.999);
+    return vec4<f32>(curve_point, (start_depth + end_depth) * 0.5, packed_role_curve);
+}
+
+fn make_path_segment_with_curve(
+    visible: GpuNprVisibleSegment3d,
+    start: vec4<f32>,
+    end: vec4<f32>,
+    path: vec4<u32>,
+    metrics: vec4<f32>,
+    curve_point: vec2<f32>,
+    curve_weight: f32,
+) -> GpuNprPathSegment3d {
+    return GpuNprPathSegment3d(
+        start,
+        end,
+        path,
+        metrics,
+        path_style_metrics(visible, path.y, metrics.x, metrics.y, curve_point, curve_weight),
+    );
 }
 
 fn make_path_segment(
@@ -145,12 +240,14 @@ fn make_path_segment(
     path: vec4<u32>,
     metrics: vec4<f32>,
 ) -> GpuNprPathSegment3d {
-    return GpuNprPathSegment3d(
+    return make_path_segment_with_curve(
+        visible,
         start,
         end,
         path,
         metrics,
-        path_style_metrics(visible, metrics.x, metrics.y),
+        (start.xy + end.xy) * 0.5,
+        0.0,
     );
 }
 
@@ -182,12 +279,62 @@ fn path_importance_with_chain(
     return clamp(base * hop_boost * segment_boost * candidate_scale, 0.42, 1.32);
 }
 
+fn chain_curve_anchor(
+    visible: GpuNprVisibleSegment3d,
+    start_walk: PathWalkResult,
+    end_walk: PathWalkResult,
+    final_start: vec4<f32>,
+    final_end: vec4<f32>,
+) -> vec2<f32> {
+    let path_mid = (final_start.xy + final_end.xy) * 0.5;
+    if (start_walk.hops > 0u && end_walk.hops > 0u) {
+        let start_control = select(start_walk.near_point, start_walk.mid_point, start_walk.hops > 1u);
+        let end_control = select(end_walk.near_point, end_walk.mid_point, end_walk.hops > 1u);
+        return mix((start_control + end_control) * 0.5, (visible.start.xy + visible.end.xy) * 0.5, 0.58);
+    }
+    if (start_walk.hops > 0u) {
+        let start_control = select(start_walk.near_point, start_walk.mid_point, start_walk.hops > 1u);
+        return mix(start_control, visible.start.xy, 0.42);
+    }
+    if (end_walk.hops > 0u) {
+        let end_control = select(end_walk.near_point, end_walk.mid_point, end_walk.hops > 1u);
+        return mix(end_control, visible.end.xy, 0.42);
+    }
+    return path_mid;
+}
+
+fn chain_curve_weight(
+    curve_anchor: vec2<f32>,
+    final_start: vec4<f32>,
+    final_end: vec4<f32>,
+    start_walk: PathWalkResult,
+    end_walk: PathWalkResult,
+    total_length: f32,
+) -> f32 {
+    let hop_count = start_walk.hops + end_walk.hops;
+    if (hop_count == 0u) {
+        return 0.0;
+    }
+    let path_delta = final_end.xy - final_start.xy;
+    let path_len2 = max(dot(path_delta, path_delta), 1.0);
+    let path_len = sqrt(path_len2);
+    let t = clamp(dot(curve_anchor - final_start.xy, path_delta) / path_len2, 0.0, 1.0);
+    let projected = final_start.xy + path_delta * t;
+    let bend_ratio = distance(curve_anchor, projected) / max(path_len, 1.0);
+    let extension_ratio =
+        (start_walk.extra_length + end_walk.extra_length) / max(total_length, 1.0);
+    let hop_boost = f32(min(hop_count, 5u)) * 0.075;
+    let one_sided_chain = (start_walk.hops == 0u) != (end_walk.hops == 0u);
+    let one_sided_boost = select(0.0, 0.10, one_sided_chain);
+    return clamp(extension_ratio * 1.55 + bend_ratio * 2.4 + hop_boost + one_sided_boost, 0.0, 0.92);
+}
+
 fn valid_visible_segment(edge_index: u32, kind: u32) -> bool {
     if (edge_index == 0xffffffffu || edge_index >= active_edge_count()) {
         return false;
     }
     let seg = visible_segments[edge_index];
-    return seg.kind_edge.x == kind && seg.start.w > 0.5 && seg.end.w > 0.5;
+    return compatible_endpoint_kind(kind, seg.kind_edge.x) && seg.start.w > 0.5 && seg.end.w > 0.5;
 }
 
 fn endpoint_match_is_start(anchor: vec2<f32>, seg: GpuNprVisibleSegment3d) -> bool {
@@ -211,7 +358,8 @@ fn visible_endpoint_vertex(seg: GpuNprVisibleSegment3d, matched_start: bool) -> 
 }
 
 fn matched_endpoint_is_valid(seg: GpuNprVisibleSegment3d, matched_start: bool) -> bool {
-    return valid_endpoint_vertex(visible_endpoint_vertex(seg, matched_start));
+    return valid_endpoint_vertex(visible_endpoint_vertex(seg, matched_start))
+        || (uses_manga_ink() && is_primary_contour(seg.kind_edge.x));
 }
 
 fn hash_u32(value: u32) -> u32 {
@@ -270,7 +418,13 @@ fn emit_direct_visible_edge_path_segment(
     let kind = visible.kind_edge.x;
     let edge_id = visible.kind_edge.y;
     let avg_depth = (visible.start.z + visible.end.z) * 0.5;
-    let importance = path_importance_with_chain(kind, avg_depth, 0u, 1u, visible.metrics.z);
+    let trait_strength = kind_trait_strength(kind, visible);
+    let importance = clamp(
+        path_importance_with_chain(kind, avg_depth, 0u, 1u, visible.metrics.z)
+            * (1.0 + trait_strength * 0.12),
+        0.42,
+        1.36,
+    );
     path_segments[path_segment_index] = make_path_segment(
         visible,
         visible.start,
@@ -287,6 +441,219 @@ fn emit_direct_visible_edge_path_segment(
 
 fn max_chain_cosine() -> f32 {
     return clamp(uniforms.params15.x, -0.999, 0.999);
+}
+
+fn kind_preferred_stroke_length_px(kind: u32) -> f32 {
+    if (kind == KIND_SILHOUETTE) {
+        return uniforms.params38.z;
+    }
+    if (kind == KIND_BOUNDARY) {
+        return uniforms.params38.w;
+    }
+    if (kind == KIND_CREASE) {
+        return uniforms.params39.y;
+    }
+    if (kind == KIND_SEAM) {
+        return uniforms.params39.z;
+    }
+    if (kind == KIND_CONTACT) {
+        return uniforms.params39.w;
+    }
+    return uniforms.params39.x;
+}
+
+fn kind_join_gap_px(kind: u32) -> f32 {
+    if (kind == KIND_SILHOUETTE) {
+        return uniforms.params40.x;
+    }
+    if (kind == KIND_BOUNDARY) {
+        return uniforms.params40.y;
+    }
+    if (kind == KIND_CREASE) {
+        return uniforms.params40.w;
+    }
+    if (kind == KIND_SEAM) {
+        return uniforms.params41.x;
+    }
+    if (kind == KIND_CONTACT) {
+        return uniforms.params41.y;
+    }
+    return uniforms.params40.z;
+}
+
+fn kind_chain_angle_cos(kind: u32) -> f32 {
+    if (kind == KIND_SILHOUETTE) {
+        return uniforms.params41.z;
+    }
+    if (kind == KIND_BOUNDARY) {
+        return uniforms.params41.w;
+    }
+    if (kind == KIND_CREASE) {
+        return uniforms.params42.y;
+    }
+    if (kind == KIND_SEAM) {
+        return uniforms.params42.z;
+    }
+    if (kind == KIND_CONTACT) {
+        return uniforms.params42.w;
+    }
+    return uniforms.params42.x;
+}
+
+fn required_chain_angle_cos(kind: u32) -> f32 {
+    let global_limit = max_chain_cosine();
+    let family_limit = kind_chain_angle_cos(kind);
+    if (uses_confident_manga_ink() && is_primary_contour(kind)) {
+        return min(global_limit, family_limit);
+    }
+    return max(global_limit, family_limit);
+}
+
+fn kind_continuation_bias(kind: u32) -> f32 {
+    if (kind == KIND_SILHOUETTE) {
+        return uniforms.params45.x;
+    }
+    if (kind == KIND_BOUNDARY) {
+        return uniforms.params45.y;
+    }
+    if (kind == KIND_CREASE) {
+        return uniforms.params45.w;
+    }
+    if (kind == KIND_SEAM) {
+        return uniforms.params46.x;
+    }
+    if (kind == KIND_CONTACT) {
+        return uniforms.params46.y;
+    }
+    return uniforms.params45.z;
+}
+
+fn kind_breakup_bias(kind: u32) -> f32 {
+    if (kind == KIND_CREASE) {
+        return uniforms.params46.w;
+    }
+    if (kind == KIND_FEATURE) {
+        return uniforms.params46.z;
+    }
+    return 0.5;
+}
+
+fn kind_technical_detail_preference(kind: u32) -> f32 {
+    if (kind == KIND_FEATURE) {
+        return uniforms.params47.x;
+    }
+    if (kind == KIND_CREASE) {
+        return uniforms.params47.y;
+    }
+    if (kind == KIND_SEAM) {
+        return uniforms.params47.z;
+    }
+    if (kind == KIND_CONTACT) {
+        return uniforms.params47.w;
+    }
+    return 0.0;
+}
+
+fn kind_ink_detail_material_preference(kind: u32) -> f32 {
+    if (kind == KIND_FEATURE) {
+        return uniforms.params48.x;
+    }
+    if (kind == KIND_CREASE) {
+        return uniforms.params48.y;
+    }
+    if (kind == KIND_SEAM) {
+        return uniforms.params48.z;
+    }
+    if (kind == KIND_CONTACT) {
+        return uniforms.params48.w;
+    }
+    return 0.0;
+}
+
+fn kind_material_seam_preference(kind: u32) -> f32 {
+    if (kind == KIND_FEATURE) {
+        return uniforms.params49.x;
+    }
+    if (kind == KIND_CREASE) {
+        return uniforms.params49.y;
+    }
+    if (kind == KIND_SEAM) {
+        return uniforms.params49.z;
+    }
+    if (kind == KIND_CONTACT) {
+        return uniforms.params49.w;
+    }
+    return 0.0;
+}
+
+fn kind_line_family_role(kind: u32) -> u32 {
+    if (kind == KIND_SILHOUETTE) {
+        return u32(uniforms.params51.x);
+    }
+    if (kind == KIND_BOUNDARY) {
+        return u32(uniforms.params51.y);
+    }
+    if (kind == KIND_FEATURE) {
+        return u32(uniforms.params51.z);
+    }
+    if (kind == KIND_CREASE) {
+        return u32(uniforms.params51.w);
+    }
+    if (kind == KIND_SEAM) {
+        return u32(uniforms.params52.x);
+    }
+    if (kind == KIND_CONTACT) {
+        return u32(uniforms.params52.y);
+    }
+    return 0u;
+}
+
+fn selected_line_family_role(kind: u32, seg: GpuNprVisibleSegment3d) -> u32 {
+    let base_role = kind_line_family_role(kind);
+    if (kind == KIND_SILHOUETTE || kind == KIND_BOUNDARY) {
+        return select(base_role, FAMILY_ROLE_OUTER_CONTOUR, base_role == FAMILY_ROLE_GENERIC);
+    }
+    if (visible_has_material_seam(seg) || kind == KIND_SEAM) {
+        if (kind_material_seam_preference(kind) >= 0.35 || kind == KIND_SEAM) {
+            return FAMILY_ROLE_MATERIAL_CUT;
+        }
+    }
+    if (visible_has_material_detail(seg) && kind_ink_detail_material_preference(kind) >= 0.35) {
+        return FAMILY_ROLE_DETAIL_INK;
+    }
+    if (kind == KIND_CREASE && kind_technical_detail_preference(kind) >= 0.35) {
+        return FAMILY_ROLE_CLOTH_FOLD;
+    }
+    if (kind == KIND_FEATURE && kind_technical_detail_preference(kind) >= 0.35) {
+        return FAMILY_ROLE_DETAIL_INK;
+    }
+    if (kind == KIND_CONTACT) {
+        return select(base_role, FAMILY_ROLE_CONTACT_SHADOW, base_role == FAMILY_ROLE_GENERIC);
+    }
+    return base_role;
+}
+
+fn visible_trait_flags(seg: GpuNprVisibleSegment3d) -> u32 {
+    return u32(round(seg.metrics.w));
+}
+
+fn visible_has_material_detail(seg: GpuNprVisibleSegment3d) -> bool {
+    return (visible_trait_flags(seg) & SEGMENT_TRAIT_MATERIAL_DETAIL) != 0u;
+}
+
+fn visible_has_material_seam(seg: GpuNprVisibleSegment3d) -> bool {
+    return (visible_trait_flags(seg) & SEGMENT_TRAIT_MATERIAL_SEAM) != 0u;
+}
+
+fn kind_trait_strength(kind: u32, seg: GpuNprVisibleSegment3d) -> f32 {
+    var strength = kind_technical_detail_preference(kind) * 0.35;
+    if (visible_has_material_detail(seg)) {
+        strength = strength + kind_ink_detail_material_preference(kind) * 0.45;
+    }
+    if (visible_has_material_seam(seg) || kind == KIND_SEAM) {
+        strength = strength + kind_material_seam_preference(kind) * 0.55;
+    }
+    return clamp(strength, 0.0, 1.0);
 }
 
 fn walk_path_endpoint(
@@ -319,9 +686,37 @@ fn walk_path_endpoint(
     var current_length = max(initial_length, 0.0001);
     var next_edge = first_next;
     var previous_edge = owner_edge_index;
-    let max_hops = u32(uniforms.params14.z);
-    let endpoint_snap = max(uniforms.params12.w, 0.5) * 5.5;
-    let chain_cos = max_chain_cosine();
+    let max_hops = u32(select(
+        uniforms.params14.z,
+        max(uniforms.params14.z, uniforms.params14.w),
+        uses_manga_ink(),
+    ));
+    let trait_strength = kind_trait_strength(kind, visible_segments[owner_edge_index]);
+    let join_gap_px =
+        max(kind_join_gap_px(kind) * clamp(0.92 + trait_strength * 0.18, 0.72, 1.26), max(uniforms.params12.w, 0.5));
+    let continuation_bias = clamp(kind_continuation_bias(kind) + trait_strength * 0.24, 0.0, 1.0);
+    let breakup_bias = clamp(kind_breakup_bias(kind) - trait_strength * 0.20, 0.0, 1.0);
+    let confident_primary_contour =
+        uses_confident_manga_ink() && is_primary_contour(kind);
+    let adjusted_join_gap_px =
+        join_gap_px
+        * clamp(0.85 + continuation_bias * 0.35 - breakup_bias * 0.15, 0.65, 1.25)
+        * select(1.0, 1.18, confident_primary_contour);
+    let endpoint_snap = join_gap_px * select(1.0, 1.15, uses_manga_ink());
+    let chain_cos_base = required_chain_angle_cos(kind);
+    let chain_cos = clamp(
+        select(chain_cos_base, max(chain_cos_base - 0.10, 0.42), uses_manga_ink())
+            + breakup_bias * 0.08
+            - continuation_bias * 0.06,
+        0.25,
+        0.995,
+    );
+    let preferred_length_px =
+        max(kind_preferred_stroke_length_px(kind) * clamp(0.90 + trait_strength * 0.22, 0.72, 1.24), initial_length);
+    let max_total_length = preferred_length_px
+        * select(1.0, select(1.15, 1.35, is_primary_contour(kind)), uses_manga_ink())
+        * select(1.0, 1.28, confident_primary_contour)
+        * clamp(0.82 + continuation_bias * 0.72 - breakup_bias * 0.28, 0.55, 1.65);
 
     loop {
         if (next_edge == 0xffffffffu || next_edge == previous_edge || result.hops >= max_hops) {
@@ -333,15 +728,18 @@ fn walk_path_endpoint(
 
         let seg = visible_segments[next_edge];
         let link = path_links[next_edge];
-        if ((link.flags & PATH_FLAG_EMIT) == 0u && link.owner_edge != owner_edge_index) {
+        let next_state = path_states[next_edge];
+        let owned_by_path = next_state.owner_segment == owner_edge_index;
+        let locally_owned = link.owner_edge == owner_edge_index || link.owner_edge == next_edge;
+        if ((link.flags & PATH_FLAG_EMIT) == 0u && !owned_by_path && !locally_owned) {
             break;
         }
-        if (link.owner_edge != owner_edge_index && link.owner_edge != next_edge) {
+        if (!owned_by_path && !locally_owned) {
             break;
         }
 
         let gap = endpoint_match_gap(current_anchor, seg);
-        if (gap > endpoint_snap) {
+        if (gap > max(endpoint_snap, adjusted_join_gap_px)) {
             break;
         }
 
@@ -356,19 +754,27 @@ fn walk_path_endpoint(
         if (segment_len <= 0.0001) {
             break;
         }
+        if (initial_length + result.extra_length + segment_len > max_total_length) {
+            break;
+        }
         let segment_direction = delta / segment_len;
         let alignment = dot(current_direction, segment_direction);
         if (alignment < chain_cos) {
             break;
         }
         let depth_gap = abs(current_depth - far_depth);
-        let max_depth_gap = 0.04 + (1.0 - max(alignment, 0.0)) * 0.14;
+        let max_depth_gap = select(
+            0.04 + (1.0 - max(alignment, 0.0)) * 0.14,
+            0.075 + (1.0 - max(alignment, 0.0)) * 0.22,
+            uses_manga_ink(),
+        ) * select(1.0, 1.32, confident_primary_contour);
         if (depth_gap > max_depth_gap) {
             break;
         }
         let length_ratio =
             abs(segment_len - current_length) / max(max(segment_len, current_length), 1.0);
-        if (result.hops > 0u && length_ratio > 0.8) {
+        let max_length_ratio = select(0.8, select(1.35, 1.85, confident_primary_contour), uses_manga_ink());
+        if (result.hops > 0u && length_ratio > max_length_ratio) {
             break;
         }
 
@@ -494,6 +900,43 @@ fn cs_main(@builtin(global_invocation_id) id: vec3<u32>) {
     let stable_path_id = computed_path_id;
     let owner_t0 = clamp(start_walk.extra_length / total_length, 0.0, 1.0);
     let owner_t1 = clamp((start_walk.extra_length + length_px) / total_length, owner_t0, 1.0);
+
+    if (uses_manga_ink()) {
+        if (segment_slot == 0u) {
+            let curve_anchor = chain_curve_anchor(
+                visible,
+                start_walk,
+                end_walk,
+                final_start,
+                final_end,
+            );
+            let curve_weight = chain_curve_weight(
+                curve_anchor,
+                final_start,
+                final_end,
+                start_walk,
+                end_walk,
+                total_length,
+            );
+            path_segments[path_segment_index] = make_path_segment_with_curve(
+                visible,
+                final_start,
+                final_end,
+                vec4<u32>(
+                    stable_path_id,
+                    visible.kind_edge.x,
+                    hop_count,
+                    PATH_FLAG_EMIT
+                        | select(0u, PATH_FLAG_CONNECTED_START, has_start_extension)
+                        | select(0u, PATH_FLAG_CONNECTED_END, has_end_extension),
+                ),
+                vec4<f32>(0.0, 1.0, total_length, importance),
+                curve_anchor,
+                curve_weight,
+            );
+        }
+        return;
+    }
 
     // GPU realtime should read as drawn strokes, not as every topology micro-segment.
     // Emit at most three gesture spans per path: start extension, owner stroke, end extension.

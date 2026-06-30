@@ -639,11 +639,38 @@ fn npr_line_settings_3d_from_settings_document(
     if let Some(ink_detail_material_ids) = settings.ink_detail_material_ids.as_ref() {
         resolved.ink_detail_material_ids = ink_detail_material_ids.clone();
     }
+    if let Some(brushes) = settings.brushes.as_ref() {
+        resolved.brush_profiles = npr_brush_profiles_from_document(
+            brushes,
+            scene_id,
+            entity_id,
+            component_kind,
+        )?;
+    }
+    if let Some(families) = settings.families.as_ref() {
+        resolved.line_families =
+            npr_line_families_from_document(families, scene_id, entity_id, component_kind)?;
+    }
     if let Some(feature_angle_degrees) = settings.feature_angle_degrees {
         resolved.feature_angle_degrees = feature_angle_degrees;
     }
     if let Some(min_screen_length_px) = settings.min_screen_length_px {
         resolved.min_screen_length_px = min_screen_length_px;
+    }
+    if let Some(min_stroke_length_px) = settings.min_stroke_length_px {
+        resolved.min_stroke_length_px = min_stroke_length_px;
+    }
+    if let Some(preferred_stroke_length_px) = settings.preferred_stroke_length_px {
+        resolved.preferred_stroke_length_px = preferred_stroke_length_px;
+    }
+    if let Some(stroke_join_gap_px) = settings.stroke_join_gap_px {
+        resolved.stroke_join_gap_px = stroke_join_gap_px;
+    }
+    if let Some(stroke_join_max_angle_degrees) = settings.stroke_join_max_angle_degrees {
+        resolved.stroke_join_max_angle_degrees = stroke_join_max_angle_degrees;
+    }
+    if let Some(technical_detail_keep) = settings.technical_detail_keep {
+        resolved.technical_detail_keep = technical_detail_keep;
     }
     if let Some(ink_color) = settings.ink_color.as_deref() {
         resolved.ink_color = parse_color_rgba_hex(ink_color, scene_id, entity_id, component_kind)?;
@@ -1089,9 +1116,137 @@ fn npr_gpu_debug_mode_3d_from_document(
         entity_id: entity_id.to_owned(),
         component_kind: component_kind.to_owned(),
         message: format!(
-            "expected Mesh3D.npr.gpu_realtime_tuning.debug_mode to be final, line_kinds, raw_paths, dropout, or width_alpha, got `{value}`"
+            "expected Mesh3D.npr.gpu_realtime_tuning.debug_mode to be final, line_kinds, raw_paths, dropout, width_alpha, chain_hops, candidate_importance, technical_selection, stroke_length_bucket, source_edge_count, stroke_roles, or material_roles, got `{value}`"
         ),
     })
+}
+
+fn npr_brush_profiles_from_document(
+    brushes: &std::collections::BTreeMap<String, crate::document::NprBrushProfileDocument>,
+    scene_id: &str,
+    entity_id: &str,
+    component_kind: &str,
+) -> SceneDocumentResult<std::collections::BTreeMap<String, amigo_render_api::NprBrushProfile3d>> {
+    let mut resolved = std::collections::BTreeMap::new();
+    for (id, document) in brushes {
+        let tool = match document.tool.as_deref() {
+            Some(value) => Some(npr_stroke_tool_3d_from_document(
+                value,
+                scene_id,
+                entity_id,
+                component_kind,
+            )?),
+            None => None,
+        };
+        let tip = match document.tip.as_deref() {
+            Some(value) => Some(npr_brush_tip_3d_from_document(
+                value,
+                scene_id,
+                entity_id,
+                component_kind,
+            )?),
+            None => None,
+        };
+        resolved.insert(
+            id.clone(),
+            amigo_render_api::NprBrushProfile3d {
+                tool,
+                tip,
+                width_multiplier: document.width_multiplier.unwrap_or(1.0),
+                alpha_multiplier: document.alpha_multiplier.unwrap_or(1.0),
+                pressure_jitter_multiplier: document.pressure_jitter_multiplier.unwrap_or(1.0),
+                dropout_multiplier: document.dropout_multiplier.unwrap_or(1.0),
+                search_multiplier: document.search_multiplier.unwrap_or(1.0),
+                path_wobble_multiplier: document.path_wobble_multiplier.unwrap_or(1.0),
+                micro_wobble_multiplier: document.micro_wobble_multiplier.unwrap_or(1.0),
+                hand_arc_multiplier: document.hand_arc_multiplier.unwrap_or(1.0),
+                tangent_drift_multiplier: document.tangent_drift_multiplier.unwrap_or(1.0),
+                detail_crispness_multiplier: document.detail_crispness_multiplier.unwrap_or(1.0),
+                taper_multiplier: document.taper_multiplier.unwrap_or(1.0),
+                overshoot_px: document.overshoot_px,
+                width_curve: document.width_curve.unwrap_or([1.0, 1.0, 1.0, 1.0]),
+                alpha_curve: document.alpha_curve.unwrap_or([1.0, 1.0, 1.0, 1.0]),
+                angle_bias_degrees: document.angle_bias_degrees.unwrap_or(0.0),
+                angle_influence: document.angle_influence.unwrap_or(0.0),
+                path_adherence_multiplier: document.path_adherence_multiplier.unwrap_or(1.0),
+            },
+        );
+    }
+    Ok(resolved)
+}
+
+fn npr_line_families_from_document(
+    families: &[crate::document::NprLineFamilyDocument],
+    scene_id: &str,
+    entity_id: &str,
+    component_kind: &str,
+) -> SceneDocumentResult<Vec<amigo_render_api::NprLineFamily3d>> {
+    families
+        .iter()
+        .map(|family| {
+            Ok(amigo_render_api::NprLineFamily3d {
+                id: family.id.clone(),
+                enabled: family.enabled,
+                role: match family.role.as_deref() {
+                    Some(value) => Some(npr_line_family_role_3d_from_document(
+                        value,
+                        scene_id,
+                        entity_id,
+                        component_kind,
+                    )?),
+                    None => None,
+                },
+                priority: family.priority.unwrap_or(0),
+                sources: family
+                    .sources
+                    .iter()
+                    .map(|value| {
+                        npr_line_source_3d_from_document(value, scene_id, entity_id, component_kind)
+                    })
+                    .collect::<SceneDocumentResult<Vec<_>>>()?,
+                brush: family.brush.clone(),
+                preferred_stroke_length_px: family.preferred_stroke_length_px,
+                stroke_join_gap_px: family.stroke_join_gap_px,
+                stroke_join_max_angle_degrees: family.stroke_join_max_angle_degrees,
+                technical_detail_keep: family.technical_detail_keep,
+                min_screen_length_px: family.min_screen_length_px,
+                min_stroke_length_px: family.min_stroke_length_px,
+                technical_detail_preference: family.technical_detail_preference,
+                ink_detail_material_preference: family.ink_detail_material_preference,
+                material_seam_preference: family.material_seam_preference,
+                continuation_bias: family.continuation_bias,
+                breakup_bias: family.breakup_bias,
+                width_multiplier: family.width_multiplier.unwrap_or(1.0),
+                alpha_multiplier: family.alpha_multiplier.unwrap_or(1.0),
+                taper_multiplier: family.taper_multiplier.unwrap_or(1.0),
+                overshoot_px: family.overshoot_px,
+            })
+        })
+        .collect()
+}
+
+fn npr_line_source_3d_from_document(
+    value: &str,
+    scene_id: &str,
+    entity_id: &str,
+    component_kind: &str,
+) -> SceneDocumentResult<amigo_render_api::NprLineSource3d> {
+    match value.trim() {
+        "silhouette" => Ok(amigo_render_api::NprLineSource3d::Silhouette),
+        "boundary" => Ok(amigo_render_api::NprLineSource3d::Boundary),
+        "feature" => Ok(amigo_render_api::NprLineSource3d::Feature),
+        "crease" => Ok(amigo_render_api::NprLineSource3d::Crease),
+        "seam" => Ok(amigo_render_api::NprLineSource3d::Seam),
+        "contact" => Ok(amigo_render_api::NprLineSource3d::Contact),
+        other => Err(crate::SceneDocumentError::Hydration {
+            scene_id: scene_id.to_owned(),
+            entity_id: entity_id.to_owned(),
+            component_kind: component_kind.to_owned(),
+            message: format!(
+                "invalid NPR line family source `{other}`; expected `silhouette`, `boundary`, `feature`, `crease`, `seam`, or `contact`"
+            ),
+        }),
+    }
 }
 
 fn npr_stroke_tool_3d_from_document(
@@ -1112,6 +1267,54 @@ fn npr_stroke_tool_3d_from_document(
             component_kind: component_kind.to_owned(),
             message: format!(
                 "expected NPR stroke_tool to be ink_pen, pencil, brush, marker, or technical_pen, got `{other}`"
+            ),
+        }),
+    }
+}
+
+fn npr_brush_tip_3d_from_document(
+    value: &str,
+    scene_id: &str,
+    entity_id: &str,
+    component_kind: &str,
+) -> SceneDocumentResult<amigo_render_api::NprBrushTip3d> {
+    match value.trim() {
+        "round" => Ok(amigo_render_api::NprBrushTip3d::Round),
+        "flat" => Ok(amigo_render_api::NprBrushTip3d::Flat),
+        "g_pen" => Ok(amigo_render_api::NprBrushTip3d::GPen),
+        "maru_pen" => Ok(amigo_render_api::NprBrushTip3d::MaruPen),
+        "dry_brush" => Ok(amigo_render_api::NprBrushTip3d::DryBrush),
+        other => Err(crate::SceneDocumentError::Hydration {
+            scene_id: scene_id.to_owned(),
+            entity_id: entity_id.to_owned(),
+            component_kind: component_kind.to_owned(),
+            message: format!(
+                "expected NPR brush tip to be round, flat, g_pen, maru_pen, or dry_brush, got `{other}`"
+            ),
+        }),
+    }
+}
+
+fn npr_line_family_role_3d_from_document(
+    value: &str,
+    scene_id: &str,
+    entity_id: &str,
+    component_kind: &str,
+) -> SceneDocumentResult<amigo_render_api::NprLineFamilyRole3d> {
+    match value.trim() {
+        "generic" => Ok(amigo_render_api::NprLineFamilyRole3d::Generic),
+        "outer_contour" => Ok(amigo_render_api::NprLineFamilyRole3d::OuterContour),
+        "detail_ink" => Ok(amigo_render_api::NprLineFamilyRole3d::DetailInk),
+        "cloth_fold" => Ok(amigo_render_api::NprLineFamilyRole3d::ClothFold),
+        "material_cut" => Ok(amigo_render_api::NprLineFamilyRole3d::MaterialCut),
+        "shadow_hatch" => Ok(amigo_render_api::NprLineFamilyRole3d::ShadowHatch),
+        "contact_shadow" => Ok(amigo_render_api::NprLineFamilyRole3d::ContactShadow),
+        other => Err(crate::SceneDocumentError::Hydration {
+            scene_id: scene_id.to_owned(),
+            entity_id: entity_id.to_owned(),
+            component_kind: component_kind.to_owned(),
+            message: format!(
+                "invalid NPR line family role `{other}`; expected `generic`, `outer_contour`, `detail_ink`, `cloth_fold`, `material_cut`, `shadow_hatch`, or `contact_shadow`"
             ),
         }),
     }
@@ -1232,6 +1435,7 @@ fn npr_stroke_strategy_3d_from_document(
     match value.trim() {
         "comic_ink" => Ok(amigo_render_api::NprStrokeStrategy3d::ComicInk),
         "akira_ink" => Ok(amigo_render_api::NprStrokeStrategy3d::AkiraInk),
+        "confident_manga_ink" => Ok(amigo_render_api::NprStrokeStrategy3d::ConfidentMangaInk),
         "technical_ink" => Ok(amigo_render_api::NprStrokeStrategy3d::TechnicalInk),
         "rough_pencil" => Ok(amigo_render_api::NprStrokeStrategy3d::RoughPencil),
         other => Err(crate::SceneDocumentError::Hydration {
@@ -1239,7 +1443,7 @@ fn npr_stroke_strategy_3d_from_document(
             entity_id: entity_id.to_owned(),
             component_kind: component_kind.to_owned(),
             message: format!(
-                "invalid Mesh3D.npr.pipeline.stroke_strategy `{other}`; expected `comic_ink`, `akira_ink`, `technical_ink`, or `rough_pencil`"
+                "invalid Mesh3D.npr.pipeline.stroke_strategy `{other}`; expected `comic_ink`, `akira_ink`, `confident_manga_ink`, `technical_ink`, or `rough_pencil`"
             ),
         }),
     }
