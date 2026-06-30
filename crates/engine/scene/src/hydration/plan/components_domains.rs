@@ -608,6 +608,10 @@ fn npr_line_settings_3d_from_settings_document(
             component_kind,
         )?;
     }
+    if let Some(profile) = settings.cpu_strategy_profile.as_ref() {
+        resolved.cpu_strategy_profile =
+            npr_cpu_strategy_profile_from_document(profile, scene_id, entity_id, component_kind)?;
+    }
     if let Some(stroke_tool) = settings.stroke_tool.as_deref() {
         resolved.stroke_tool =
             npr_stroke_tool_3d_from_document(stroke_tool, scene_id, entity_id, component_kind)?;
@@ -639,13 +643,17 @@ fn npr_line_settings_3d_from_settings_document(
     if let Some(ink_detail_material_ids) = settings.ink_detail_material_ids.as_ref() {
         resolved.ink_detail_material_ids = ink_detail_material_ids.clone();
     }
-    if let Some(brushes) = settings.brushes.as_ref() {
-        resolved.brush_profiles = npr_brush_profiles_from_document(
-            brushes,
+    if let Some(black_tone_hatching) = settings.black_tone_hatching.as_ref() {
+        resolved.black_tone_hatching = npr_black_tone_hatching_from_document(
+            black_tone_hatching,
             scene_id,
             entity_id,
             component_kind,
         )?;
+    }
+    if let Some(brushes) = settings.brushes.as_ref() {
+        resolved.brush_profiles =
+            npr_brush_profiles_from_document(brushes, scene_id, entity_id, component_kind)?;
     }
     if let Some(families) = settings.families.as_ref() {
         resolved.line_families =
@@ -1168,6 +1176,8 @@ fn npr_brush_profiles_from_document(
                 alpha_curve: document.alpha_curve.unwrap_or([1.0, 1.0, 1.0, 1.0]),
                 angle_bias_degrees: document.angle_bias_degrees.unwrap_or(0.0),
                 angle_influence: document.angle_influence.unwrap_or(0.0),
+                nib_width_base_scale: document.nib_width_base_scale.unwrap_or(1.0),
+                nib_width_angle_scale: document.nib_width_angle_scale.unwrap_or(1.0),
                 path_adherence_multiplier: document.path_adherence_multiplier.unwrap_or(1.0),
             },
         );
@@ -1348,6 +1358,82 @@ fn npr_render_strategy_3d_from_document(
     }
 }
 
+fn npr_black_tone_hatching_from_document(
+    document: &crate::document::NprBlackToneHatchingDocument,
+    scene_id: &str,
+    entity_id: &str,
+    component_kind: &str,
+) -> SceneDocumentResult<amigo_render_api::NprBlackToneHatching3d> {
+    let mut resolved = amigo_render_api::NprBlackToneHatching3d::default();
+    if let Some(enabled) = document.enabled {
+        resolved.enabled = enabled;
+    }
+    if let Some(source) = document.source.as_deref() {
+        resolved.source = npr_black_tone_hatching_source_from_document(
+            source,
+            scene_id,
+            entity_id,
+            component_kind,
+        )?;
+    }
+    if let Some(spacing_px) = document.spacing_px {
+        resolved.spacing_px = spacing_px;
+    }
+    if let Some(length_px) = document.length_px {
+        resolved.length_px = length_px;
+    }
+    if let Some(width_px) = document.width_px {
+        resolved.width_px = width_px;
+    }
+    if let Some(alpha) = document.alpha {
+        resolved.alpha = alpha;
+    }
+    if let Some(density) = document.density {
+        resolved.density = density;
+    }
+    if let Some(tone_threshold) = document.tone_threshold {
+        resolved.tone_threshold = tone_threshold;
+    }
+    if let Some(tone_softness) = document.tone_softness {
+        resolved.tone_softness = tone_softness;
+    }
+    if let Some(angle_degrees) = document.angle_degrees {
+        resolved.angle_degrees = angle_degrees;
+    }
+    if let Some(angle_jitter_degrees) = document.angle_jitter_degrees {
+        resolved.angle_jitter_degrees = angle_jitter_degrees;
+    }
+    if let Some(surface_clip_samples) = document.surface_clip_samples {
+        resolved.surface_clip_samples = surface_clip_samples;
+    }
+    if let Some(max_strokes) = document.max_strokes {
+        resolved.max_strokes = max_strokes;
+    }
+    Ok(resolved.normalized())
+}
+
+fn npr_black_tone_hatching_source_from_document(
+    value: &str,
+    scene_id: &str,
+    entity_id: &str,
+    component_kind: &str,
+) -> SceneDocumentResult<amigo_render_api::NprBlackToneHatchingSource3d> {
+    match value.trim() {
+        "auto" => Ok(amigo_render_api::NprBlackToneHatchingSource3d::Auto),
+        "explicit_materials" => {
+            Ok(amigo_render_api::NprBlackToneHatchingSource3d::ExplicitMaterials)
+        }
+        other => Err(crate::SceneDocumentError::Hydration {
+            scene_id: scene_id.to_owned(),
+            entity_id: entity_id.to_owned(),
+            component_kind: component_kind.to_owned(),
+            message: format!(
+                "invalid Mesh3D.npr.black_tone_hatching.source `{other}`; expected `auto` or `explicit_materials`"
+            ),
+        }),
+    }
+}
+
 fn apply_npr_pipeline_strategies_3d(
     document: &crate::document::NprPipelineStrategiesDocument,
     resolved: &mut amigo_render_api::NprLineSettings3d,
@@ -1384,6 +1470,888 @@ fn apply_npr_pipeline_strategies_3d(
             npr_temporal_strategy_3d_from_document(value, scene_id, entity_id, component_kind)?;
     }
     Ok(())
+}
+
+fn npr_cpu_strategy_profile_from_document(
+    document: &crate::document::NprCpuStrategyProfileDocument,
+    scene_id: &str,
+    entity_id: &str,
+    component_kind: &str,
+) -> SceneDocumentResult<amigo_render_api::NprCpuStrategyProfile3d> {
+    let mut profile = match document.preset.as_deref().map(str::trim) {
+        None | Some("") | Some("default") | Some("neutral") => {
+            amigo_render_api::NprCpuStrategyProfile3d::default()
+        }
+        Some("toriyama_manga_ink") => amigo_render_api::NprCpuStrategyProfile3d::toriyama_manga_ink(),
+        Some(other) => {
+            return Err(crate::SceneDocumentError::Hydration {
+                scene_id: scene_id.to_owned(),
+                entity_id: entity_id.to_owned(),
+                component_kind: component_kind.to_owned(),
+                message: format!(
+                    "invalid Mesh3D.npr.cpu_strategy_profile.preset `{other}`; expected `default`, `neutral`, or `toriyama_manga_ink`"
+                ),
+            });
+        }
+    };
+
+    if let Some(line_selection) = document.line_selection.as_ref() {
+        apply_npr_line_selection_profile(line_selection, &mut profile.line_selection);
+    }
+    if let Some(path_joining) = document.path_joining.as_ref() {
+        apply_npr_path_joining_profile(path_joining, &mut profile.path_joining);
+    }
+    if let Some(break_policy) = document.break_policy.as_ref() {
+        apply_npr_break_policy_profile(break_policy, &mut profile.break_policy);
+    }
+    if let Some(stroke_synthesis) = document.stroke_synthesis.as_ref() {
+        apply_npr_stroke_synthesis_profile(stroke_synthesis, &mut profile.stroke_synthesis);
+    }
+    if let Some(tessellation) = document.tessellation.as_ref() {
+        apply_npr_tessellation_profile(tessellation, &mut profile.tessellation);
+    }
+
+    Ok(profile)
+}
+
+fn apply_npr_line_selection_profile(
+    document: &crate::document::NprLineSelectionProfileDocument,
+    profile: &mut amigo_render_api::NprLineSelectionProfile3d,
+) {
+    if let Some(value) = document.feature_importance {
+        profile.feature_importance = value;
+    }
+    if let Some(value) = document.crease_importance {
+        profile.crease_importance = value;
+    }
+    if let Some(value) = document.seam_importance {
+        profile.seam_importance = value;
+    }
+    if let Some(value) = document.cloth_fold_importance {
+        profile.cloth_fold_importance = value;
+    }
+    if let Some(value) = document.detail_ink_importance {
+        profile.detail_ink_importance = value;
+    }
+    if let Some(value) = document.material_detail_bonus {
+        profile.material_detail_bonus = value;
+    }
+    if let Some(value) = document.material_seam_penalty {
+        profile.material_seam_penalty = value;
+    }
+    if let Some(value) = document.length_weight {
+        profile.length_weight = value;
+    }
+    if let Some(value) = document.angle_weight {
+        profile.angle_weight = value;
+    }
+    if let Some(value) = document.view_weight {
+        profile.view_weight = value;
+    }
+    if let Some(value) = document.depth_weight {
+        profile.depth_weight = value;
+    }
+    if let Some(value) = document.feature_face_bonus {
+        profile.feature_face_bonus = value;
+    }
+    if let Some(value) = document.feature_torso_bonus {
+        profile.feature_torso_bonus = value;
+    }
+    if let Some(value) = document.feature_hand_bonus {
+        profile.feature_hand_bonus = value;
+    }
+    if let Some(value) = document.crease_face_bonus {
+        profile.crease_face_bonus = value;
+    }
+    if let Some(value) = document.crease_torso_bonus {
+        profile.crease_torso_bonus = value;
+    }
+    if let Some(value) = document.crease_hand_bonus {
+        profile.crease_hand_bonus = value;
+    }
+    if let Some(value) = document.seam_torso_bonus {
+        profile.seam_torso_bonus = value;
+    }
+    if let Some(value) = document.seam_hand_bonus {
+        profile.seam_hand_bonus = value;
+    }
+    if let Some(value) = document.readable_face_start_y {
+        profile.readable_face_start_y = value;
+    }
+    if let Some(value) = document.readable_face_height {
+        profile.readable_face_height = value;
+    }
+    if let Some(value) = document.readable_face_half_width {
+        profile.readable_face_half_width = value;
+    }
+    if let Some(value) = document.readable_torso_center_y {
+        profile.readable_torso_center_y = value;
+    }
+    if let Some(value) = document.readable_torso_half_height {
+        profile.readable_torso_half_height = value;
+    }
+    if let Some(value) = document.readable_torso_half_width {
+        profile.readable_torso_half_width = value;
+    }
+    if let Some(value) = document.readable_hand_start_x {
+        profile.readable_hand_start_x = value;
+    }
+    if let Some(value) = document.readable_hand_width {
+        profile.readable_hand_width = value;
+    }
+    if let Some(value) = document.readable_hand_start_y {
+        profile.readable_hand_start_y = value;
+    }
+    if let Some(value) = document.readable_hand_height {
+        profile.readable_hand_height = value;
+    }
+    if let Some(value) = document.short_feature_penalty {
+        profile.short_feature_penalty = value;
+    }
+    if let Some(value) = document.short_crease_penalty {
+        profile.short_crease_penalty = value;
+    }
+    if let Some(value) = document.short_seam_penalty {
+        profile.short_seam_penalty = value;
+    }
+    if let Some(value) = document.readable_region_penalty_relief {
+        profile.readable_region_penalty_relief = value;
+    }
+    if let Some(value) = document.material_detail_penalty_scale {
+        profile.material_detail_penalty_scale = value;
+    }
+    if let Some(value) = document.material_detail_min_screen_length_multiplier {
+        profile.material_detail_min_screen_length_multiplier = value;
+    }
+    if let Some(value) = document.candidate_length_span_min_screen_multiplier {
+        profile.candidate_length_span_min_screen_multiplier = value;
+    }
+    if let Some(value) = document.candidate_depth_weight {
+        profile.candidate_depth_weight = value;
+    }
+    if let Some(value) = document.candidate_depth_min_score {
+        profile.candidate_depth_min_score = value;
+    }
+    if let Some(value) = document.cloth_fold_length_weight {
+        profile.cloth_fold_length_weight = value;
+    }
+    if let Some(value) = document.detail_ink_material_base {
+        profile.detail_ink_material_base = value;
+    }
+    if let Some(value) = document.detail_ink_length_weight {
+        profile.detail_ink_length_weight = value;
+    }
+    if let Some(value) = document.material_cut_seam_base {
+        profile.material_cut_seam_base = value;
+    }
+    if let Some(value) = document.material_cut_length_weight {
+        profile.material_cut_length_weight = value;
+    }
+    if let Some(value) = document.short_crease_base_penalty {
+        profile.short_crease_base_penalty = value;
+    }
+    if let Some(value) = document.short_seam_base_penalty {
+        profile.short_seam_base_penalty = value;
+    }
+    if let Some(value) = document.short_feature_base_penalty {
+        profile.short_feature_base_penalty = value;
+    }
+    if let Some(value) = document.readable_region_relief_scale {
+        profile.readable_region_relief_scale = value;
+    }
+    if let Some(value) = document.detail_keep_importance_weight {
+        profile.detail_keep_importance_weight = value;
+    }
+    if let Some(value) = document.cloth_fold_keep_floor {
+        profile.cloth_fold_keep_floor = value;
+    }
+    if let Some(value) = document.detail_ink_keep_floor {
+        profile.detail_ink_keep_floor = value;
+    }
+    if let Some(value) = document.material_cut_keep_floor {
+        profile.material_cut_keep_floor = value;
+    }
+    if let Some(value) = document.shadow_hatch_keep_floor {
+        profile.shadow_hatch_keep_floor = value;
+    }
+    if let Some(value) = document.contact_shadow_keep_floor {
+        profile.contact_shadow_keep_floor = value;
+    }
+    if let Some(value) = document.generic_feature_keep_floor {
+        profile.generic_feature_keep_floor = value;
+    }
+    if let Some(value) = document.generic_crease_keep_floor {
+        profile.generic_crease_keep_floor = value;
+    }
+    if let Some(value) = document.material_detail_keep_floor_relief {
+        profile.material_detail_keep_floor_relief = value;
+    }
+    if let Some(value) = document.keep_floor_max {
+        profile.keep_floor_max = value;
+    }
+    if let Some(value) = document.dense_edge_start_per_10k_px {
+        profile.dense_edge_start_per_10k_px = value;
+    }
+    if let Some(value) = document.dense_edge_full_per_10k_px {
+        profile.dense_edge_full_per_10k_px = value;
+    }
+    if let Some(value) = document.dense_material_seam_start_ratio {
+        profile.dense_material_seam_start_ratio = value;
+    }
+    if let Some(value) = document.dense_material_seam_full_ratio {
+        profile.dense_material_seam_full_ratio = value;
+    }
+    if let Some(value) = document.dense_boundary_start_ratio {
+        profile.dense_boundary_start_ratio = value;
+    }
+    if let Some(value) = document.dense_boundary_full_ratio {
+        profile.dense_boundary_full_ratio = value;
+    }
+    if let Some(value) = document.dense_technical_min_length_boost {
+        profile.dense_technical_min_length_boost = value;
+    }
+    if let Some(value) = document.dense_boundary_min_length_boost {
+        profile.dense_boundary_min_length_boost = value;
+    }
+    if let Some(value) = document.dense_technical_keep_scale_drop {
+        profile.dense_technical_keep_scale_drop = value;
+    }
+    if let Some(value) = document.dense_keep_floor_boost {
+        profile.dense_keep_floor_boost = value;
+    }
+    if let Some(value) = document.dense_material_detail_keep_floor_boost_scale {
+        profile.dense_material_detail_keep_floor_boost_scale = value;
+    }
+    if let Some(value) = document.dense_material_detail_keep_scale_retention {
+        profile.dense_material_detail_keep_scale_retention = value;
+    }
+    if let Some(value) = document.dense_boundary_outer_contour_threshold {
+        profile.dense_boundary_outer_contour_threshold = value;
+    }
+    if let Some(value) = document.dense_pressure_outer_contour_threshold {
+        profile.dense_pressure_outer_contour_threshold = value;
+    }
+    if let Some(value) = document.dense_seam_pressure_weight {
+        profile.dense_seam_pressure_weight = value;
+    }
+    if let Some(value) = document.dense_boundary_pressure_weight {
+        profile.dense_boundary_pressure_weight = value;
+    }
+    if let Some(value) = document.dense_material_detail_protection {
+        profile.dense_material_detail_protection = value;
+    }
+    if let Some(value) = document.dense_material_detail_min_length_multiplier {
+        profile.dense_material_detail_min_length_multiplier = value;
+    }
+    if let Some(value) = document.dense_quality_relief_start {
+        profile.dense_quality_relief_start = value;
+    }
+    if let Some(value) = document.dense_quality_relief_span {
+        profile.dense_quality_relief_span = value;
+    }
+    if let Some(value) = document.dense_quality_relief_scale {
+        profile.dense_quality_relief_scale = value;
+    }
+    if let Some(value) = document.dense_quality_relief_penalty_scale {
+        profile.dense_quality_relief_penalty_scale = value;
+    }
+    if let Some(value) = document.dense_seam_quality_relief_scale {
+        profile.dense_seam_quality_relief_scale = value;
+    }
+    if let Some(value) = document.dense_seam_penalty_min {
+        profile.dense_seam_penalty_min = value;
+    }
+    if let Some(value) = document.dense_seam_penalty {
+        profile.dense_seam_penalty = value;
+    }
+    if let Some(value) = document.dense_feature_penalty {
+        profile.dense_feature_penalty = value;
+    }
+    if let Some(value) = document.dense_crease_penalty {
+        profile.dense_crease_penalty = value;
+    }
+}
+
+fn apply_npr_path_joining_profile(
+    document: &crate::document::NprPathJoiningProfileDocument,
+    profile: &mut amigo_render_api::NprPathJoiningProfile3d,
+) {
+    if let Some(value) = document.readable_detail_relax_multiplier {
+        profile.readable_detail_relax_multiplier = value;
+    }
+    if let Some(value) = document.readable_detail_importance_relax {
+        profile.readable_detail_importance_relax = value;
+    }
+    if let Some(value) = document.readable_detail_relax_max {
+        profile.readable_detail_relax_max = value;
+    }
+    if let Some(value) = document.continuation_bias_scale {
+        profile.continuation_bias_scale = value;
+    }
+    if let Some(value) = document.readable_continuation_bonus {
+        profile.readable_continuation_bonus = value;
+    }
+    if let Some(value) = document.readable_region_join_bonus {
+        profile.readable_region_join_bonus = value;
+    }
+    if let Some(value) = document.preferred_length_bias_base {
+        profile.preferred_length_bias_base = value;
+    }
+    if let Some(value) = document.gap_weight_base {
+        profile.gap_weight_base = value;
+    }
+    if let Some(value) = document.gap_weight_breakup_scale {
+        profile.gap_weight_breakup_scale = value;
+    }
+    if let Some(value) = document.gap_weight_continuation_scale {
+        profile.gap_weight_continuation_scale = value;
+    }
+    if let Some(value) = document.gap_weight_readable_relax_scale {
+        profile.gap_weight_readable_relax_scale = value;
+    }
+    if let Some(value) = document.gap_weight_min {
+        profile.gap_weight_min = value;
+    }
+    if let Some(value) = document.tangent_weight_base {
+        profile.tangent_weight_base = value;
+    }
+    if let Some(value) = document.tangent_weight_breakup_scale {
+        profile.tangent_weight_breakup_scale = value;
+    }
+    if let Some(value) = document.tangent_weight_continuation_scale {
+        profile.tangent_weight_continuation_scale = value;
+    }
+    if let Some(value) = document.tangent_weight_readable_relax_scale {
+        profile.tangent_weight_readable_relax_scale = value;
+    }
+    if let Some(value) = document.tangent_weight_min {
+        profile.tangent_weight_min = value;
+    }
+    if let Some(value) = document.readability_join_region_scale {
+        profile.readability_join_region_scale = value;
+    }
+    if let Some(value) = document.readability_join_importance_scale {
+        profile.readability_join_importance_scale = value;
+    }
+    if let Some(value) = document.readability_join_continuation_base {
+        profile.readability_join_continuation_base = value;
+    }
+    if let Some(value) = document.readability_join_continuation_scale {
+        profile.readability_join_continuation_scale = value;
+    }
+    if let Some(value) = document.feature_arc_target_degrees {
+        profile.feature_arc_target_degrees = value;
+    }
+    if let Some(value) = document.feature_arc_window_degrees {
+        profile.feature_arc_window_degrees = value;
+    }
+    if let Some(value) = document.feature_arc_bonus {
+        profile.feature_arc_bonus = value;
+    }
+    if let Some(value) = document.crease_arc_target_degrees {
+        profile.crease_arc_target_degrees = value;
+    }
+    if let Some(value) = document.crease_arc_window_degrees {
+        profile.crease_arc_window_degrees = value;
+    }
+    if let Some(value) = document.crease_arc_bonus {
+        profile.crease_arc_bonus = value;
+    }
+    if let Some(value) = document.seam_arc_target_degrees {
+        profile.seam_arc_target_degrees = value;
+    }
+    if let Some(value) = document.seam_arc_window_degrees {
+        profile.seam_arc_window_degrees = value;
+    }
+    if let Some(value) = document.seam_arc_bonus {
+        profile.seam_arc_bonus = value;
+    }
+    if let Some(value) = document.feature_dead_straight_penalty {
+        profile.feature_dead_straight_penalty = value;
+    }
+    if let Some(value) = document.crease_dead_straight_penalty {
+        profile.crease_dead_straight_penalty = value;
+    }
+    if let Some(value) = document.path_importance_chain_bonus_per_edge {
+        profile.path_importance_chain_bonus_per_edge = value;
+    }
+    if let Some(value) = document.path_importance_chain_bonus_max {
+        profile.path_importance_chain_bonus_max = value;
+    }
+    if let Some(value) = document.path_importance_candidate_base {
+        profile.path_importance_candidate_base = value;
+    }
+    if let Some(value) = document.path_importance_candidate_scale {
+        profile.path_importance_candidate_scale = value;
+    }
+    if let Some(value) = document.path_importance_min {
+        profile.path_importance_min = value;
+    }
+    if let Some(value) = document.path_importance_max {
+        profile.path_importance_max = value;
+    }
+    if let Some(value) = document.path_importance_depth_base {
+        profile.path_importance_depth_base = value;
+    }
+    if let Some(value) = document.path_importance_depth_weight {
+        profile.path_importance_depth_weight = value;
+    }
+    if let Some(value) = document.path_importance_depth_min {
+        profile.path_importance_depth_min = value;
+    }
+    if let Some(value) = document.path_importance_depth_max {
+        profile.path_importance_depth_max = value;
+    }
+    if let Some(value) = document.path_importance_silhouette_multiplier {
+        profile.path_importance_silhouette_multiplier = value;
+    }
+    if let Some(value) = document.path_importance_boundary_multiplier {
+        profile.path_importance_boundary_multiplier = value;
+    }
+    if let Some(value) = document.path_importance_crease_multiplier {
+        profile.path_importance_crease_multiplier = value;
+    }
+    if let Some(value) = document.path_importance_seam_multiplier {
+        profile.path_importance_seam_multiplier = value;
+    }
+    if let Some(value) = document.path_importance_feature_multiplier {
+        profile.path_importance_feature_multiplier = value;
+    }
+    if let Some(value) = document.path_importance_contact_multiplier {
+        profile.path_importance_contact_multiplier = value;
+    }
+    if let Some(value) = document.region_feature_face_bonus {
+        profile.region_feature_face_bonus = value;
+    }
+    if let Some(value) = document.region_feature_torso_bonus {
+        profile.region_feature_torso_bonus = value;
+    }
+    if let Some(value) = document.region_feature_hand_bonus {
+        profile.region_feature_hand_bonus = value;
+    }
+    if let Some(value) = document.region_crease_face_bonus {
+        profile.region_crease_face_bonus = value;
+    }
+    if let Some(value) = document.region_crease_torso_bonus {
+        profile.region_crease_torso_bonus = value;
+    }
+    if let Some(value) = document.region_crease_hand_bonus {
+        profile.region_crease_hand_bonus = value;
+    }
+    if let Some(value) = document.region_seam_torso_bonus {
+        profile.region_seam_torso_bonus = value;
+    }
+    if let Some(value) = document.region_seam_hand_bonus {
+        profile.region_seam_hand_bonus = value;
+    }
+    if let Some(value) = document.survival_trait_keep_weight {
+        profile.survival_trait_keep_weight = value;
+    }
+    if let Some(value) = document.survival_base_keep {
+        profile.survival_base_keep = value;
+    }
+    if let Some(value) = document.survival_length_weight {
+        profile.survival_length_weight = value;
+    }
+    if let Some(value) = document.survival_confidence_weight {
+        profile.survival_confidence_weight = value;
+    }
+    if let Some(value) = document.survival_chain_bonus_per_edge {
+        profile.survival_chain_bonus_per_edge = value;
+    }
+    if let Some(value) = document.survival_chain_bonus_max {
+        profile.survival_chain_bonus_max = value;
+    }
+    if let Some(value) = document.survival_cloth_fold_base_bonus {
+        profile.survival_cloth_fold_base_bonus = value;
+    }
+    if let Some(value) = document.survival_cloth_fold_chain_bonus_per_edge {
+        profile.survival_cloth_fold_chain_bonus_per_edge = value;
+    }
+    if let Some(value) = document.survival_cloth_fold_chain_bonus_max {
+        profile.survival_cloth_fold_chain_bonus_max = value;
+    }
+    if let Some(value) = document.survival_detail_material_bonus {
+        profile.survival_detail_material_bonus = value;
+    }
+    if let Some(value) = document.survival_detail_plain_bonus {
+        profile.survival_detail_plain_bonus = value;
+    }
+    if let Some(value) = document.survival_material_cut_seam_bonus {
+        profile.survival_material_cut_seam_bonus = value;
+    }
+    if let Some(value) = document.survival_material_cut_plain_bonus {
+        profile.survival_material_cut_plain_bonus = value;
+    }
+    if let Some(value) = document.survival_long_form_length_weight {
+        profile.survival_long_form_length_weight = value;
+    }
+    if let Some(value) = document.survival_long_form_chain_bonus_per_edge {
+        profile.survival_long_form_chain_bonus_per_edge = value;
+    }
+    if let Some(value) = document.survival_long_form_chain_bonus_max {
+        profile.survival_long_form_chain_bonus_max = value;
+    }
+    if let Some(value) = document.survival_continuation_weight {
+        profile.survival_continuation_weight = value;
+    }
+    if let Some(value) = document.survival_breakup_penalty {
+        profile.survival_breakup_penalty = value;
+    }
+    if let Some(value) = document.isolated_detail_short_ratio {
+        profile.isolated_detail_short_ratio = value;
+    }
+    if let Some(value) = document.isolated_cloth_fold_short_ratio {
+        profile.isolated_cloth_fold_short_ratio = value;
+    }
+    if let Some(value) = document.isolated_material_cut_short_ratio {
+        profile.isolated_material_cut_short_ratio = value;
+    }
+    if let Some(value) = document.min_length_character_readability_multiplier {
+        profile.min_length_character_readability_multiplier = value;
+    }
+    if let Some(value) = document.min_length_silhouette_multiplier {
+        profile.min_length_silhouette_multiplier = value;
+    }
+    if let Some(value) = document.min_length_boundary_multiplier {
+        profile.min_length_boundary_multiplier = value;
+    }
+    if let Some(value) = document.min_length_contact_multiplier {
+        profile.min_length_contact_multiplier = value;
+    }
+    if let Some(value) = document.min_length_crease_multiplier {
+        profile.min_length_crease_multiplier = value;
+    }
+    if let Some(value) = document.min_length_seam_multiplier {
+        profile.min_length_seam_multiplier = value;
+    }
+    if let Some(value) = document.min_length_feature_multiplier {
+        profile.min_length_feature_multiplier = value;
+    }
+}
+
+fn apply_npr_break_policy_profile(
+    document: &crate::document::NprBreakPolicyProfileDocument,
+    profile: &mut amigo_render_api::NprBreakPolicyProfile3d,
+) {
+    if let Some(value) = document.allow_seeded_long_feature_breaks {
+        profile.allow_seeded_long_feature_breaks = value;
+    }
+    if let Some(value) = document.important_feature_break_threshold {
+        profile.important_feature_break_threshold = value;
+    }
+    if let Some(value) = document.long_feature_break_min_length_px {
+        profile.long_feature_break_min_length_px = value;
+    }
+    if let Some(value) = document.long_feature_break_min_complexity {
+        profile.long_feature_break_min_complexity = value;
+    }
+    if let Some(value) = document.long_feature_break_chance {
+        profile.long_feature_break_chance = value;
+    }
+    if let Some(value) = document.long_feature_break_center_t {
+        profile.long_feature_break_center_t = value;
+    }
+    if let Some(value) = document.long_feature_break_center_jitter {
+        profile.long_feature_break_center_jitter = value;
+    }
+    if let Some(value) = document.long_feature_break_center_min_t {
+        profile.long_feature_break_center_min_t = value;
+    }
+    if let Some(value) = document.long_feature_break_center_max_t {
+        profile.long_feature_break_center_max_t = value;
+    }
+    if let Some(value) = document.long_feature_break_min_gap_px {
+        profile.long_feature_break_min_gap_px = value;
+    }
+    if let Some(value) = document.long_feature_break_gap_jitter_px {
+        profile.long_feature_break_gap_jitter_px = value;
+    }
+    if let Some(value) = document.long_feature_break_half_t_min {
+        profile.long_feature_break_half_t_min = value;
+    }
+    if let Some(value) = document.long_feature_break_half_t_max {
+        profile.long_feature_break_half_t_max = value;
+    }
+    if let Some(value) = document.long_feature_break_t0_min {
+        profile.long_feature_break_t0_min = value;
+    }
+    if let Some(value) = document.long_feature_break_t0_max {
+        profile.long_feature_break_t0_max = value;
+    }
+    if let Some(value) = document.long_feature_break_t1_min {
+        profile.long_feature_break_t1_min = value;
+    }
+    if let Some(value) = document.long_feature_break_t1_max {
+        profile.long_feature_break_t1_max = value;
+    }
+    if let Some(value) = document.dropout_complexity_edge_limit {
+        profile.dropout_complexity_edge_limit = value;
+    }
+    if let Some(value) = document.dropout_complexity_drop_per_edge {
+        profile.dropout_complexity_drop_per_edge = value;
+    }
+    if let Some(value) = document.dropout_effective_max {
+        profile.dropout_effective_max = value;
+    }
+    if let Some(value) = document.dropout_interval_length_px {
+        profile.dropout_interval_length_px = value;
+    }
+    if let Some(value) = document.dropout_max_intervals {
+        profile.dropout_max_intervals = value;
+    }
+    if let Some(value) = document.dropout_min_gap_t {
+        profile.dropout_min_gap_t = value;
+    }
+    if let Some(value) = document.dropout_max_gap_t {
+        profile.dropout_max_gap_t = value;
+    }
+    if let Some(value) = document.dropout_edge_margin_t {
+        profile.dropout_edge_margin_t = value;
+    }
+}
+
+fn apply_npr_stroke_synthesis_profile(
+    document: &crate::document::NprStrokeSynthesisProfileDocument,
+    profile: &mut amigo_render_api::NprStrokeSynthesisProfile3d,
+) {
+    if let Some(value) = document.silhouette_pressure {
+        profile.silhouette_pressure = value;
+    }
+    if let Some(value) = document.boundary_pressure {
+        profile.boundary_pressure = value;
+    }
+    if let Some(value) = document.feature_pressure {
+        profile.feature_pressure = value;
+    }
+    if let Some(value) = document.crease_pressure {
+        profile.crease_pressure = value;
+    }
+    if let Some(value) = document.seam_pressure {
+        profile.seam_pressure = value;
+    }
+    if let Some(value) = document.contact_pressure {
+        profile.contact_pressure = value;
+    }
+    if let Some(value) = document.technical_importance_base {
+        profile.technical_importance_base = value;
+    }
+    if let Some(value) = document.technical_candidate_weight {
+        profile.technical_candidate_weight = value;
+    }
+    if let Some(value) = document.technical_importance_min {
+        profile.technical_importance_min = value;
+    }
+    if let Some(value) = document.technical_importance_max {
+        profile.technical_importance_max = value;
+    }
+    if let Some(value) = document.expressive_importance_min {
+        profile.expressive_importance_min = value;
+    }
+    if let Some(value) = document.expressive_importance_max {
+        profile.expressive_importance_max = value;
+    }
+    if let Some(value) = document.protected_silhouette_importance_threshold {
+        profile.protected_silhouette_importance_threshold = value;
+    }
+    if let Some(value) = document.single_pass_jitter_multiplier {
+        profile.single_pass_jitter_multiplier = value;
+    }
+    if let Some(value) = document.single_pass_width_multiplier {
+        profile.single_pass_width_multiplier = value;
+    }
+    if let Some(value) = document.single_pass_alpha {
+        profile.single_pass_alpha = value;
+    }
+    if let Some(value) = document.dual_primary_jitter_multiplier {
+        profile.dual_primary_jitter_multiplier = value;
+    }
+    if let Some(value) = document.dual_secondary_jitter_multiplier {
+        profile.dual_secondary_jitter_multiplier = value;
+    }
+    if let Some(value) = document.dual_primary_width_multiplier {
+        profile.dual_primary_width_multiplier = value;
+    }
+    if let Some(value) = document.dual_secondary_width_multiplier {
+        profile.dual_secondary_width_multiplier = value;
+    }
+    if let Some(value) = document.dual_primary_alpha {
+        profile.dual_primary_alpha = value;
+    }
+    if let Some(value) = document.dual_secondary_alpha {
+        profile.dual_secondary_alpha = value;
+    }
+    if let Some(value) = document.multi_pass_jitter_base {
+        profile.multi_pass_jitter_base = value;
+    }
+    if let Some(value) = document.multi_pass_jitter_step {
+        profile.multi_pass_jitter_step = value;
+    }
+    if let Some(value) = document.multi_pass_width_multiplier {
+        profile.multi_pass_width_multiplier = value;
+    }
+    if let Some(value) = document.multi_pass_alpha {
+        profile.multi_pass_alpha = value;
+    }
+    if let Some(value) = document.search_wobble_multiplier {
+        profile.search_wobble_multiplier = value;
+    }
+    if let Some(value) = document.search_width_multiplier {
+        profile.search_width_multiplier = value;
+    }
+    if let Some(value) = document.hatch_chance_akira {
+        profile.hatch_chance_akira = value;
+    }
+    if let Some(value) = document.hatch_chance_confident_manga {
+        profile.hatch_chance_confident_manga = value;
+    }
+    if let Some(value) = document.hatch_chance_generic {
+        profile.hatch_chance_generic = value;
+    }
+    if let Some(value) = document.hatch_path_length_min_px {
+        profile.hatch_path_length_min_px = value;
+    }
+    if let Some(value) = document.hatch_path_length_max_px {
+        profile.hatch_path_length_max_px = value;
+    }
+    if let Some(value) = document.hatch_center_t {
+        profile.hatch_center_t = value;
+    }
+    if let Some(value) = document.hatch_center_jitter {
+        profile.hatch_center_jitter = value;
+    }
+    if let Some(value) = document.hatch_length_min_px {
+        profile.hatch_length_min_px = value;
+    }
+    if let Some(value) = document.hatch_length_jitter_px {
+        profile.hatch_length_jitter_px = value;
+    }
+    if let Some(value) = document.hatch_half_t_min {
+        profile.hatch_half_t_min = value;
+    }
+    if let Some(value) = document.hatch_half_t_max {
+        profile.hatch_half_t_max = value;
+    }
+    if let Some(value) = document.hatch_wobble_multiplier {
+        profile.hatch_wobble_multiplier = value;
+    }
+    if let Some(value) = document.hatch_width_multiplier {
+        profile.hatch_width_multiplier = value;
+    }
+    if let Some(value) = document.hatch_alpha_multiplier {
+        profile.hatch_alpha_multiplier = value;
+    }
+    if let Some(value) = document.hatch_alpha_max {
+        profile.hatch_alpha_max = value;
+    }
+    if let Some(value) = document.short_detail_boost {
+        profile.short_detail_boost = value;
+    }
+    if let Some(value) = document.short_detail_threshold_px {
+        profile.short_detail_threshold_px = value;
+    }
+    if let Some(value) = document.medium_detail_boost {
+        profile.medium_detail_boost = value;
+    }
+    if let Some(value) = document.medium_detail_threshold_px {
+        profile.medium_detail_threshold_px = value;
+    }
+}
+
+fn apply_npr_tessellation_profile(
+    document: &crate::document::NprTessellationProfileDocument,
+    profile: &mut amigo_render_api::NprTessellationProfile3d,
+) {
+    if let Some(value) = document.rail_tangent_smoothing {
+        profile.rail_tangent_smoothing = value;
+    }
+    if let Some(value) = document.kink_fallback_dot {
+        profile.kink_fallback_dot = value;
+    }
+    if let Some(value) = document.resample_spacing_px {
+        profile.resample_spacing_px = value;
+    }
+    if let Some(value) = document.endpoint_lock_max_t {
+        profile.endpoint_lock_max_t = value;
+    }
+    if let Some(value) = document.taper_endpoint_floor {
+        profile.taper_endpoint_floor = value;
+    }
+    if let Some(value) = document.pass_wobble_max_px {
+        profile.pass_wobble_max_px = value;
+    }
+    if let Some(value) = document.angle_alpha_influence {
+        profile.angle_alpha_influence = value;
+    }
+    if let Some(value) = document.min_sample_width_px {
+        profile.min_sample_width_px = value;
+    }
+    if let Some(value) = document.long_stroke_detail_crispness {
+        profile.long_stroke_detail_crispness = value;
+    }
+    if let Some(value) = document.hand_arc_length_min {
+        profile.hand_arc_length_min = value;
+    }
+    if let Some(value) = document.hand_arc_length_max {
+        profile.hand_arc_length_max = value;
+    }
+    if let Some(value) = document.hand_arc_scale {
+        profile.hand_arc_scale = value;
+    }
+    if let Some(value) = document.preferred_length_floor_px {
+        profile.preferred_length_floor_px = value;
+    }
+    if let Some(value) = document.primary_noise_frequency_scale {
+        profile.primary_noise_frequency_scale = value;
+    }
+    if let Some(value) = document.hand_arc_noise_frequency_scale {
+        profile.hand_arc_noise_frequency_scale = value;
+    }
+    if let Some(value) = document.hand_arc_noise_phase {
+        profile.hand_arc_noise_phase = value;
+    }
+    if let Some(value) = document.tangent_drift_noise_frequency_scale {
+        profile.tangent_drift_noise_frequency_scale = value;
+    }
+    if let Some(value) = document.tangent_drift_noise_phase {
+        profile.tangent_drift_noise_phase = value;
+    }
+    if let Some(value) = document.micro_noise_frequency_scale {
+        profile.micro_noise_frequency_scale = value;
+    }
+    if let Some(value) = document.micro_noise_phase {
+        profile.micro_noise_phase = value;
+    }
+    if let Some(value) = document.width_noise_frequency_scale {
+        profile.width_noise_frequency_scale = value;
+    }
+    if let Some(value) = document.width_noise_phase {
+        profile.width_noise_phase = value;
+    }
+    if let Some(value) = document.bow_min_length_px {
+        profile.bow_min_length_px = value;
+    }
+    if let Some(value) = document.bow_preferred_min_px {
+        profile.bow_preferred_min_px = value;
+    }
+    if let Some(value) = document.bow_length_min {
+        profile.bow_length_min = value;
+    }
+    if let Some(value) = document.bow_length_max {
+        profile.bow_length_max = value;
+    }
+    if let Some(value) = document.bow_wobble_floor_px {
+        profile.bow_wobble_floor_px = value;
+    }
+    if let Some(value) = document.bow_scale {
+        profile.bow_scale = value;
+    }
+    if let Some(value) = document.bow_non_feature_factor {
+        profile.bow_non_feature_factor = value;
+    }
+    if let Some(value) = document.bow_max_px {
+        profile.bow_max_px = value;
+    }
 }
 
 fn npr_candidate_strategy_3d_from_document(

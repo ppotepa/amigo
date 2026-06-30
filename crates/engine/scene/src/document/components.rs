@@ -1,4 +1,3 @@
-
 use serde::{Deserialize, Serialize};
 use serde_yaml::Value;
 
@@ -59,6 +58,8 @@ pub struct NprLine3dSettingsDocument {
     #[serde(default)]
     pub pipeline: Option<NprPipelineStrategiesDocument>,
     #[serde(default)]
+    pub cpu_strategy_profile: Option<NprCpuStrategyProfileDocument>,
+    #[serde(default)]
     pub boundary: Option<bool>,
     #[serde(default)]
     pub silhouette: Option<bool>,
@@ -76,6 +77,8 @@ pub struct NprLine3dSettingsDocument {
     pub black_mass_material_ids: Option<Vec<u32>>,
     #[serde(default)]
     pub ink_detail_material_ids: Option<Vec<u32>>,
+    #[serde(default)]
+    pub black_tone_hatching: Option<NprBlackToneHatchingDocument>,
     #[serde(default)]
     pub brushes: Option<BTreeMap<String, NprBrushProfileDocument>>,
     #[serde(default)]
@@ -279,6 +282,36 @@ pub struct NprCameraResponseDocument {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+pub struct NprBlackToneHatchingDocument {
+    #[serde(default)]
+    pub enabled: Option<bool>,
+    #[serde(default)]
+    pub source: Option<String>,
+    #[serde(default)]
+    pub spacing_px: Option<f32>,
+    #[serde(default)]
+    pub length_px: Option<f32>,
+    #[serde(default)]
+    pub width_px: Option<f32>,
+    #[serde(default)]
+    pub alpha: Option<f32>,
+    #[serde(default)]
+    pub density: Option<f32>,
+    #[serde(default)]
+    pub tone_threshold: Option<f32>,
+    #[serde(default)]
+    pub tone_softness: Option<f32>,
+    #[serde(default)]
+    pub angle_degrees: Option<f32>,
+    #[serde(default)]
+    pub angle_jitter_degrees: Option<f32>,
+    #[serde(default)]
+    pub surface_clip_samples: Option<u8>,
+    #[serde(default)]
+    pub max_strokes: Option<u32>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 pub struct NprPipelineStrategiesDocument {
     #[serde(default)]
     pub candidate_strategy: Option<String>,
@@ -294,6 +327,582 @@ pub struct NprPipelineStrategiesDocument {
     pub budget_strategy: Option<String>,
     #[serde(default)]
     pub temporal_strategy: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+pub struct NprCpuStrategyProfileDocument {
+    #[serde(default)]
+    pub preset: Option<String>,
+    #[serde(default)]
+    pub line_selection: Option<NprLineSelectionProfileDocument>,
+    #[serde(default)]
+    pub path_joining: Option<NprPathJoiningProfileDocument>,
+    #[serde(default)]
+    pub break_policy: Option<NprBreakPolicyProfileDocument>,
+    #[serde(default)]
+    pub stroke_synthesis: Option<NprStrokeSynthesisProfileDocument>,
+    #[serde(default)]
+    pub tessellation: Option<NprTessellationProfileDocument>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+pub struct NprLineSelectionProfileDocument {
+    #[serde(default)]
+    pub feature_importance: Option<f32>,
+    #[serde(default)]
+    pub crease_importance: Option<f32>,
+    #[serde(default)]
+    pub seam_importance: Option<f32>,
+    #[serde(default)]
+    pub cloth_fold_importance: Option<f32>,
+    #[serde(default)]
+    pub detail_ink_importance: Option<f32>,
+    #[serde(default)]
+    pub material_detail_bonus: Option<f32>,
+    #[serde(default)]
+    pub material_seam_penalty: Option<f32>,
+    #[serde(default)]
+    pub length_weight: Option<f32>,
+    #[serde(default)]
+    pub angle_weight: Option<f32>,
+    #[serde(default)]
+    pub view_weight: Option<f32>,
+    #[serde(default)]
+    pub depth_weight: Option<f32>,
+    #[serde(default)]
+    pub feature_face_bonus: Option<f32>,
+    #[serde(default)]
+    pub feature_torso_bonus: Option<f32>,
+    #[serde(default)]
+    pub feature_hand_bonus: Option<f32>,
+    #[serde(default)]
+    pub crease_face_bonus: Option<f32>,
+    #[serde(default)]
+    pub crease_torso_bonus: Option<f32>,
+    #[serde(default)]
+    pub crease_hand_bonus: Option<f32>,
+    #[serde(default)]
+    pub seam_torso_bonus: Option<f32>,
+    #[serde(default)]
+    pub seam_hand_bonus: Option<f32>,
+    #[serde(default)]
+    pub readable_face_start_y: Option<f32>,
+    #[serde(default)]
+    pub readable_face_height: Option<f32>,
+    #[serde(default)]
+    pub readable_face_half_width: Option<f32>,
+    #[serde(default)]
+    pub readable_torso_center_y: Option<f32>,
+    #[serde(default)]
+    pub readable_torso_half_height: Option<f32>,
+    #[serde(default)]
+    pub readable_torso_half_width: Option<f32>,
+    #[serde(default)]
+    pub readable_hand_start_x: Option<f32>,
+    #[serde(default)]
+    pub readable_hand_width: Option<f32>,
+    #[serde(default)]
+    pub readable_hand_start_y: Option<f32>,
+    #[serde(default)]
+    pub readable_hand_height: Option<f32>,
+    #[serde(default)]
+    pub short_feature_penalty: Option<f32>,
+    #[serde(default)]
+    pub short_crease_penalty: Option<f32>,
+    #[serde(default)]
+    pub short_seam_penalty: Option<f32>,
+    #[serde(default)]
+    pub readable_region_penalty_relief: Option<f32>,
+    #[serde(default)]
+    pub material_detail_penalty_scale: Option<f32>,
+    #[serde(default)]
+    pub material_detail_min_screen_length_multiplier: Option<f32>,
+    #[serde(default)]
+    pub candidate_length_span_min_screen_multiplier: Option<f32>,
+    #[serde(default)]
+    pub candidate_depth_weight: Option<f32>,
+    #[serde(default)]
+    pub candidate_depth_min_score: Option<f32>,
+    #[serde(default)]
+    pub cloth_fold_length_weight: Option<f32>,
+    #[serde(default)]
+    pub detail_ink_material_base: Option<f32>,
+    #[serde(default)]
+    pub detail_ink_length_weight: Option<f32>,
+    #[serde(default)]
+    pub material_cut_seam_base: Option<f32>,
+    #[serde(default)]
+    pub material_cut_length_weight: Option<f32>,
+    #[serde(default)]
+    pub short_crease_base_penalty: Option<f32>,
+    #[serde(default)]
+    pub short_seam_base_penalty: Option<f32>,
+    #[serde(default)]
+    pub short_feature_base_penalty: Option<f32>,
+    #[serde(default)]
+    pub readable_region_relief_scale: Option<f32>,
+    #[serde(default)]
+    pub detail_keep_importance_weight: Option<f32>,
+    #[serde(default)]
+    pub cloth_fold_keep_floor: Option<f32>,
+    #[serde(default)]
+    pub detail_ink_keep_floor: Option<f32>,
+    #[serde(default)]
+    pub material_cut_keep_floor: Option<f32>,
+    #[serde(default)]
+    pub shadow_hatch_keep_floor: Option<f32>,
+    #[serde(default)]
+    pub contact_shadow_keep_floor: Option<f32>,
+    #[serde(default)]
+    pub generic_feature_keep_floor: Option<f32>,
+    #[serde(default)]
+    pub generic_crease_keep_floor: Option<f32>,
+    #[serde(default)]
+    pub material_detail_keep_floor_relief: Option<f32>,
+    #[serde(default)]
+    pub keep_floor_max: Option<f32>,
+    #[serde(default)]
+    pub dense_edge_start_per_10k_px: Option<f32>,
+    #[serde(default)]
+    pub dense_edge_full_per_10k_px: Option<f32>,
+    #[serde(default)]
+    pub dense_material_seam_start_ratio: Option<f32>,
+    #[serde(default)]
+    pub dense_material_seam_full_ratio: Option<f32>,
+    #[serde(default)]
+    pub dense_boundary_start_ratio: Option<f32>,
+    #[serde(default)]
+    pub dense_boundary_full_ratio: Option<f32>,
+    #[serde(default)]
+    pub dense_technical_min_length_boost: Option<f32>,
+    #[serde(default)]
+    pub dense_boundary_min_length_boost: Option<f32>,
+    #[serde(default)]
+    pub dense_technical_keep_scale_drop: Option<f32>,
+    #[serde(default)]
+    pub dense_keep_floor_boost: Option<f32>,
+    #[serde(default)]
+    pub dense_material_detail_keep_floor_boost_scale: Option<f32>,
+    #[serde(default)]
+    pub dense_material_detail_keep_scale_retention: Option<f32>,
+    #[serde(default)]
+    pub dense_boundary_outer_contour_threshold: Option<f32>,
+    #[serde(default)]
+    pub dense_pressure_outer_contour_threshold: Option<f32>,
+    #[serde(default)]
+    pub dense_seam_pressure_weight: Option<f32>,
+    #[serde(default)]
+    pub dense_boundary_pressure_weight: Option<f32>,
+    #[serde(default)]
+    pub dense_material_detail_protection: Option<f32>,
+    #[serde(default)]
+    pub dense_material_detail_min_length_multiplier: Option<f32>,
+    #[serde(default)]
+    pub dense_quality_relief_start: Option<f32>,
+    #[serde(default)]
+    pub dense_quality_relief_span: Option<f32>,
+    #[serde(default)]
+    pub dense_quality_relief_scale: Option<f32>,
+    #[serde(default)]
+    pub dense_quality_relief_penalty_scale: Option<f32>,
+    #[serde(default)]
+    pub dense_seam_quality_relief_scale: Option<f32>,
+    #[serde(default)]
+    pub dense_seam_penalty_min: Option<f32>,
+    #[serde(default)]
+    pub dense_seam_penalty: Option<f32>,
+    #[serde(default)]
+    pub dense_feature_penalty: Option<f32>,
+    #[serde(default)]
+    pub dense_crease_penalty: Option<f32>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+pub struct NprPathJoiningProfileDocument {
+    #[serde(default)]
+    pub readable_detail_relax_multiplier: Option<f32>,
+    #[serde(default)]
+    pub readable_detail_importance_relax: Option<f32>,
+    #[serde(default)]
+    pub readable_detail_relax_max: Option<f32>,
+    #[serde(default)]
+    pub continuation_bias_scale: Option<f32>,
+    #[serde(default)]
+    pub readable_continuation_bonus: Option<f32>,
+    #[serde(default)]
+    pub readable_region_join_bonus: Option<f32>,
+    #[serde(default)]
+    pub preferred_length_bias_base: Option<f32>,
+    #[serde(default)]
+    pub gap_weight_base: Option<f32>,
+    #[serde(default)]
+    pub gap_weight_breakup_scale: Option<f32>,
+    #[serde(default)]
+    pub gap_weight_continuation_scale: Option<f32>,
+    #[serde(default)]
+    pub gap_weight_readable_relax_scale: Option<f32>,
+    #[serde(default)]
+    pub gap_weight_min: Option<f32>,
+    #[serde(default)]
+    pub tangent_weight_base: Option<f32>,
+    #[serde(default)]
+    pub tangent_weight_breakup_scale: Option<f32>,
+    #[serde(default)]
+    pub tangent_weight_continuation_scale: Option<f32>,
+    #[serde(default)]
+    pub tangent_weight_readable_relax_scale: Option<f32>,
+    #[serde(default)]
+    pub tangent_weight_min: Option<f32>,
+    #[serde(default)]
+    pub readability_join_region_scale: Option<f32>,
+    #[serde(default)]
+    pub readability_join_importance_scale: Option<f32>,
+    #[serde(default)]
+    pub readability_join_continuation_base: Option<f32>,
+    #[serde(default)]
+    pub readability_join_continuation_scale: Option<f32>,
+    #[serde(default)]
+    pub feature_arc_target_degrees: Option<f32>,
+    #[serde(default)]
+    pub feature_arc_window_degrees: Option<f32>,
+    #[serde(default)]
+    pub feature_arc_bonus: Option<f32>,
+    #[serde(default)]
+    pub crease_arc_target_degrees: Option<f32>,
+    #[serde(default)]
+    pub crease_arc_window_degrees: Option<f32>,
+    #[serde(default)]
+    pub crease_arc_bonus: Option<f32>,
+    #[serde(default)]
+    pub seam_arc_target_degrees: Option<f32>,
+    #[serde(default)]
+    pub seam_arc_window_degrees: Option<f32>,
+    #[serde(default)]
+    pub seam_arc_bonus: Option<f32>,
+    #[serde(default)]
+    pub feature_dead_straight_penalty: Option<f32>,
+    #[serde(default)]
+    pub crease_dead_straight_penalty: Option<f32>,
+    #[serde(default)]
+    pub path_importance_chain_bonus_per_edge: Option<f32>,
+    #[serde(default)]
+    pub path_importance_chain_bonus_max: Option<f32>,
+    #[serde(default)]
+    pub path_importance_candidate_base: Option<f32>,
+    #[serde(default)]
+    pub path_importance_candidate_scale: Option<f32>,
+    #[serde(default)]
+    pub path_importance_min: Option<f32>,
+    #[serde(default)]
+    pub path_importance_max: Option<f32>,
+    #[serde(default)]
+    pub path_importance_depth_base: Option<f32>,
+    #[serde(default)]
+    pub path_importance_depth_weight: Option<f32>,
+    #[serde(default)]
+    pub path_importance_depth_min: Option<f32>,
+    #[serde(default)]
+    pub path_importance_depth_max: Option<f32>,
+    #[serde(default)]
+    pub path_importance_silhouette_multiplier: Option<f32>,
+    #[serde(default)]
+    pub path_importance_boundary_multiplier: Option<f32>,
+    #[serde(default)]
+    pub path_importance_crease_multiplier: Option<f32>,
+    #[serde(default)]
+    pub path_importance_seam_multiplier: Option<f32>,
+    #[serde(default)]
+    pub path_importance_feature_multiplier: Option<f32>,
+    #[serde(default)]
+    pub path_importance_contact_multiplier: Option<f32>,
+    #[serde(default)]
+    pub region_feature_face_bonus: Option<f32>,
+    #[serde(default)]
+    pub region_feature_torso_bonus: Option<f32>,
+    #[serde(default)]
+    pub region_feature_hand_bonus: Option<f32>,
+    #[serde(default)]
+    pub region_crease_face_bonus: Option<f32>,
+    #[serde(default)]
+    pub region_crease_torso_bonus: Option<f32>,
+    #[serde(default)]
+    pub region_crease_hand_bonus: Option<f32>,
+    #[serde(default)]
+    pub region_seam_torso_bonus: Option<f32>,
+    #[serde(default)]
+    pub region_seam_hand_bonus: Option<f32>,
+    #[serde(default)]
+    pub survival_trait_keep_weight: Option<f32>,
+    #[serde(default)]
+    pub survival_base_keep: Option<f32>,
+    #[serde(default)]
+    pub survival_length_weight: Option<f32>,
+    #[serde(default)]
+    pub survival_confidence_weight: Option<f32>,
+    #[serde(default)]
+    pub survival_chain_bonus_per_edge: Option<f32>,
+    #[serde(default)]
+    pub survival_chain_bonus_max: Option<f32>,
+    #[serde(default)]
+    pub survival_cloth_fold_base_bonus: Option<f32>,
+    #[serde(default)]
+    pub survival_cloth_fold_chain_bonus_per_edge: Option<f32>,
+    #[serde(default)]
+    pub survival_cloth_fold_chain_bonus_max: Option<f32>,
+    #[serde(default)]
+    pub survival_detail_material_bonus: Option<f32>,
+    #[serde(default)]
+    pub survival_detail_plain_bonus: Option<f32>,
+    #[serde(default)]
+    pub survival_material_cut_seam_bonus: Option<f32>,
+    #[serde(default)]
+    pub survival_material_cut_plain_bonus: Option<f32>,
+    #[serde(default)]
+    pub survival_long_form_length_weight: Option<f32>,
+    #[serde(default)]
+    pub survival_long_form_chain_bonus_per_edge: Option<f32>,
+    #[serde(default)]
+    pub survival_long_form_chain_bonus_max: Option<f32>,
+    #[serde(default)]
+    pub survival_continuation_weight: Option<f32>,
+    #[serde(default)]
+    pub survival_breakup_penalty: Option<f32>,
+    #[serde(default)]
+    pub isolated_detail_short_ratio: Option<f32>,
+    #[serde(default)]
+    pub isolated_cloth_fold_short_ratio: Option<f32>,
+    #[serde(default)]
+    pub isolated_material_cut_short_ratio: Option<f32>,
+    #[serde(default)]
+    pub min_length_character_readability_multiplier: Option<f32>,
+    #[serde(default)]
+    pub min_length_silhouette_multiplier: Option<f32>,
+    #[serde(default)]
+    pub min_length_boundary_multiplier: Option<f32>,
+    #[serde(default)]
+    pub min_length_contact_multiplier: Option<f32>,
+    #[serde(default)]
+    pub min_length_crease_multiplier: Option<f32>,
+    #[serde(default)]
+    pub min_length_seam_multiplier: Option<f32>,
+    #[serde(default)]
+    pub min_length_feature_multiplier: Option<f32>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+pub struct NprBreakPolicyProfileDocument {
+    #[serde(default)]
+    pub allow_seeded_long_feature_breaks: Option<bool>,
+    #[serde(default)]
+    pub important_feature_break_threshold: Option<f32>,
+    #[serde(default)]
+    pub long_feature_break_min_length_px: Option<f32>,
+    #[serde(default)]
+    pub long_feature_break_min_complexity: Option<f32>,
+    #[serde(default)]
+    pub long_feature_break_chance: Option<f32>,
+    #[serde(default)]
+    pub long_feature_break_center_t: Option<f32>,
+    #[serde(default)]
+    pub long_feature_break_center_jitter: Option<f32>,
+    #[serde(default)]
+    pub long_feature_break_center_min_t: Option<f32>,
+    #[serde(default)]
+    pub long_feature_break_center_max_t: Option<f32>,
+    #[serde(default)]
+    pub long_feature_break_min_gap_px: Option<f32>,
+    #[serde(default)]
+    pub long_feature_break_gap_jitter_px: Option<f32>,
+    #[serde(default)]
+    pub long_feature_break_half_t_min: Option<f32>,
+    #[serde(default)]
+    pub long_feature_break_half_t_max: Option<f32>,
+    #[serde(default)]
+    pub long_feature_break_t0_min: Option<f32>,
+    #[serde(default)]
+    pub long_feature_break_t0_max: Option<f32>,
+    #[serde(default)]
+    pub long_feature_break_t1_min: Option<f32>,
+    #[serde(default)]
+    pub long_feature_break_t1_max: Option<f32>,
+    #[serde(default)]
+    pub dropout_complexity_edge_limit: Option<f32>,
+    #[serde(default)]
+    pub dropout_complexity_drop_per_edge: Option<f32>,
+    #[serde(default)]
+    pub dropout_effective_max: Option<f32>,
+    #[serde(default)]
+    pub dropout_interval_length_px: Option<f32>,
+    #[serde(default)]
+    pub dropout_max_intervals: Option<u32>,
+    #[serde(default)]
+    pub dropout_min_gap_t: Option<f32>,
+    #[serde(default)]
+    pub dropout_max_gap_t: Option<f32>,
+    #[serde(default)]
+    pub dropout_edge_margin_t: Option<f32>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+pub struct NprStrokeSynthesisProfileDocument {
+    #[serde(default)]
+    pub silhouette_pressure: Option<f32>,
+    #[serde(default)]
+    pub boundary_pressure: Option<f32>,
+    #[serde(default)]
+    pub feature_pressure: Option<f32>,
+    #[serde(default)]
+    pub crease_pressure: Option<f32>,
+    #[serde(default)]
+    pub seam_pressure: Option<f32>,
+    #[serde(default)]
+    pub contact_pressure: Option<f32>,
+    #[serde(default)]
+    pub technical_importance_base: Option<f32>,
+    #[serde(default)]
+    pub technical_candidate_weight: Option<f32>,
+    #[serde(default)]
+    pub technical_importance_min: Option<f32>,
+    #[serde(default)]
+    pub technical_importance_max: Option<f32>,
+    #[serde(default)]
+    pub expressive_importance_min: Option<f32>,
+    #[serde(default)]
+    pub expressive_importance_max: Option<f32>,
+    #[serde(default)]
+    pub protected_silhouette_importance_threshold: Option<f32>,
+    #[serde(default)]
+    pub single_pass_jitter_multiplier: Option<f32>,
+    #[serde(default)]
+    pub single_pass_width_multiplier: Option<f32>,
+    #[serde(default)]
+    pub single_pass_alpha: Option<f32>,
+    #[serde(default)]
+    pub dual_primary_jitter_multiplier: Option<f32>,
+    #[serde(default)]
+    pub dual_secondary_jitter_multiplier: Option<f32>,
+    #[serde(default)]
+    pub dual_primary_width_multiplier: Option<f32>,
+    #[serde(default)]
+    pub dual_secondary_width_multiplier: Option<f32>,
+    #[serde(default)]
+    pub dual_primary_alpha: Option<f32>,
+    #[serde(default)]
+    pub dual_secondary_alpha: Option<f32>,
+    #[serde(default)]
+    pub multi_pass_jitter_base: Option<f32>,
+    #[serde(default)]
+    pub multi_pass_jitter_step: Option<f32>,
+    #[serde(default)]
+    pub multi_pass_width_multiplier: Option<f32>,
+    #[serde(default)]
+    pub multi_pass_alpha: Option<f32>,
+    #[serde(default)]
+    pub search_wobble_multiplier: Option<f32>,
+    #[serde(default)]
+    pub search_width_multiplier: Option<f32>,
+    #[serde(default)]
+    pub hatch_chance_akira: Option<f32>,
+    #[serde(default)]
+    pub hatch_chance_confident_manga: Option<f32>,
+    #[serde(default)]
+    pub hatch_chance_generic: Option<f32>,
+    #[serde(default)]
+    pub hatch_path_length_min_px: Option<f32>,
+    #[serde(default)]
+    pub hatch_path_length_max_px: Option<f32>,
+    #[serde(default)]
+    pub hatch_center_t: Option<f32>,
+    #[serde(default)]
+    pub hatch_center_jitter: Option<f32>,
+    #[serde(default)]
+    pub hatch_length_min_px: Option<f32>,
+    #[serde(default)]
+    pub hatch_length_jitter_px: Option<f32>,
+    #[serde(default)]
+    pub hatch_half_t_min: Option<f32>,
+    #[serde(default)]
+    pub hatch_half_t_max: Option<f32>,
+    #[serde(default)]
+    pub hatch_wobble_multiplier: Option<f32>,
+    #[serde(default)]
+    pub hatch_width_multiplier: Option<f32>,
+    #[serde(default)]
+    pub hatch_alpha_multiplier: Option<f32>,
+    #[serde(default)]
+    pub hatch_alpha_max: Option<f32>,
+    #[serde(default)]
+    pub short_detail_boost: Option<f32>,
+    #[serde(default)]
+    pub short_detail_threshold_px: Option<f32>,
+    #[serde(default)]
+    pub medium_detail_boost: Option<f32>,
+    #[serde(default)]
+    pub medium_detail_threshold_px: Option<f32>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+pub struct NprTessellationProfileDocument {
+    #[serde(default)]
+    pub rail_tangent_smoothing: Option<bool>,
+    #[serde(default)]
+    pub kink_fallback_dot: Option<f32>,
+    #[serde(default)]
+    pub resample_spacing_px: Option<f32>,
+    #[serde(default)]
+    pub endpoint_lock_max_t: Option<f32>,
+    #[serde(default)]
+    pub taper_endpoint_floor: Option<f32>,
+    #[serde(default)]
+    pub pass_wobble_max_px: Option<f32>,
+    #[serde(default)]
+    pub angle_alpha_influence: Option<f32>,
+    #[serde(default)]
+    pub min_sample_width_px: Option<f32>,
+    #[serde(default)]
+    pub long_stroke_detail_crispness: Option<f32>,
+    #[serde(default)]
+    pub hand_arc_length_min: Option<f32>,
+    #[serde(default)]
+    pub hand_arc_length_max: Option<f32>,
+    #[serde(default)]
+    pub hand_arc_scale: Option<f32>,
+    #[serde(default)]
+    pub preferred_length_floor_px: Option<f32>,
+    #[serde(default)]
+    pub primary_noise_frequency_scale: Option<f32>,
+    #[serde(default)]
+    pub hand_arc_noise_frequency_scale: Option<f32>,
+    #[serde(default)]
+    pub hand_arc_noise_phase: Option<f32>,
+    #[serde(default)]
+    pub tangent_drift_noise_frequency_scale: Option<f32>,
+    #[serde(default)]
+    pub tangent_drift_noise_phase: Option<f32>,
+    #[serde(default)]
+    pub micro_noise_frequency_scale: Option<f32>,
+    #[serde(default)]
+    pub micro_noise_phase: Option<f32>,
+    #[serde(default)]
+    pub width_noise_frequency_scale: Option<f32>,
+    #[serde(default)]
+    pub width_noise_phase: Option<f32>,
+    #[serde(default)]
+    pub bow_min_length_px: Option<f32>,
+    #[serde(default)]
+    pub bow_preferred_min_px: Option<f32>,
+    #[serde(default)]
+    pub bow_length_min: Option<f32>,
+    #[serde(default)]
+    pub bow_length_max: Option<f32>,
+    #[serde(default)]
+    pub bow_wobble_floor_px: Option<f32>,
+    #[serde(default)]
+    pub bow_scale: Option<f32>,
+    #[serde(default)]
+    pub bow_non_feature_factor: Option<f32>,
+    #[serde(default)]
+    pub bow_max_px: Option<f32>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
@@ -334,6 +943,10 @@ pub struct NprBrushProfileDocument {
     pub angle_bias_degrees: Option<f32>,
     #[serde(default)]
     pub angle_influence: Option<f32>,
+    #[serde(default)]
+    pub nib_width_base_scale: Option<f32>,
+    #[serde(default)]
+    pub nib_width_angle_scale: Option<f32>,
     #[serde(default)]
     pub path_adherence_multiplier: Option<f32>,
 }

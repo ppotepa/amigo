@@ -37,6 +37,8 @@ pub(crate) struct NprResolvedBrushProfile3d {
     pub(crate) overshoot_px: Option<f32>,
     pub(crate) angle_bias_radians: f32,
     pub(crate) angle_influence: f32,
+    pub(crate) nib_width_base_scale: f32,
+    pub(crate) nib_width_angle_scale: f32,
     pub(crate) path_adherence_multiplier: f32,
 }
 
@@ -81,12 +83,22 @@ pub(crate) fn resolve_npr_brush_profile_with_traits(
         tangent_drift,
         detail_crispness,
     ): (f32, f32, f32, f32, f32, f32, f32, f32, f32, f32) = match tool {
-        amigo_render_api::NprStrokeTool3d::InkPen => (1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0),
-        amigo_render_api::NprStrokeTool3d::Pencil => (0.84, 0.72, 1.65, 2.35, 1.65, 1.22, 1.55, 1.18, 1.08, 0.92),
-        amigo_render_api::NprStrokeTool3d::Brush => (1.18, 0.96, 1.42, 1.65, 0.72, 1.08, 1.20, 1.26, 0.88, 0.86),
-        amigo_render_api::NprStrokeTool3d::Marker => (1.08, 0.84, 0.58, 0.42, 0.35, 0.82, 0.65, 0.78, 0.72, 1.04),
-        amigo_render_api::NprStrokeTool3d::TechnicalPen => (0.92, 1.0, 0.08, 0.0, 0.0, 0.22, 0.20, 0.45, 0.42, 1.14),
-        };
+        amigo_render_api::NprStrokeTool3d::InkPen => {
+            (1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
+        }
+        amigo_render_api::NprStrokeTool3d::Pencil => {
+            (0.84, 0.72, 1.65, 2.35, 1.65, 1.22, 1.55, 1.18, 1.08, 0.92)
+        }
+        amigo_render_api::NprStrokeTool3d::Brush => {
+            (1.18, 0.96, 1.42, 1.65, 0.72, 1.08, 1.20, 1.26, 0.88, 0.86)
+        }
+        amigo_render_api::NprStrokeTool3d::Marker => {
+            (1.08, 0.84, 0.58, 0.42, 0.35, 0.82, 0.65, 0.78, 0.72, 1.04)
+        }
+        amigo_render_api::NprStrokeTool3d::TechnicalPen => {
+            (0.92, 1.0, 0.08, 0.0, 0.0, 0.22, 0.20, 0.45, 0.42, 1.14)
+        }
+    };
     let straightness = settings.straightness.clamp(0.0, 1.0);
     let path_adherence_multiplier = family_brush
         .map(|brush| brush.path_adherence_multiplier)
@@ -97,22 +109,25 @@ pub(crate) fn resolve_npr_brush_profile_with_traits(
         .map(|brush| brush.path_wobble_multiplier)
         .unwrap_or(1.0)
         .max(0.0);
-    let path_wobble_multiplier =
-        ((1.0 - effective_straightness)
-            * 1.55
-            * path_wobble
-            * family_path_wobble
-            * settings.tool_wobble_multiplier.max(0.0))
-            .clamp(0.0, 2.5);
+    let path_wobble_multiplier = ((1.0 - effective_straightness)
+        * 1.55
+        * path_wobble
+        * family_path_wobble
+        * settings.tool_wobble_multiplier.max(0.0))
+    .clamp(0.0, 2.5);
 
     NprResolvedBrushProfile3d {
         tip,
         width_multiplier: (width
-            * family_brush.map(|brush| brush.width_multiplier).unwrap_or(1.0)
+            * family_brush
+                .map(|brush| brush.width_multiplier)
+                .unwrap_or(1.0)
             * settings.tool_width_multiplier.max(0.0))
         .clamp(0.05, 4.0),
         alpha_multiplier: (alpha
-            * family_brush.map(|brush| brush.alpha_multiplier).unwrap_or(1.0)
+            * family_brush
+                .map(|brush| brush.alpha_multiplier)
+                .unwrap_or(1.0)
             * settings.tool_alpha_multiplier.max(0.0))
         .clamp(0.0, 2.0),
         pressure_jitter_multiplier: (pressure_jitter
@@ -122,11 +137,15 @@ pub(crate) fn resolve_npr_brush_profile_with_traits(
             * settings.tool_pressure_jitter_multiplier.max(0.0))
         .clamp(0.0, 4.0),
         dropout_multiplier: (dropout
-            * family_brush.map(|brush| brush.dropout_multiplier).unwrap_or(1.0)
+            * family_brush
+                .map(|brush| brush.dropout_multiplier)
+                .unwrap_or(1.0)
             * settings.tool_dropout_multiplier.max(0.0))
         .clamp(0.0, 5.0),
         search_multiplier: (search
-            * family_brush.map(|brush| brush.search_multiplier).unwrap_or(1.0)
+            * family_brush
+                .map(|brush| brush.search_multiplier)
+                .unwrap_or(1.0)
             * settings.tool_search_multiplier.max(0.0))
         .clamp(0.0, 5.0),
         path_wobble_multiplier,
@@ -137,7 +156,9 @@ pub(crate) fn resolve_npr_brush_profile_with_traits(
             * settings.tool_wobble_multiplier.max(0.0))
         .clamp(0.0, 3.0),
         hand_arc_multiplier: (hand_arc
-            * family_brush.map(|brush| brush.hand_arc_multiplier).unwrap_or(1.0))
+            * family_brush
+                .map(|brush| brush.hand_arc_multiplier)
+                .unwrap_or(1.0))
         .clamp(0.25f32, 2.0f32),
         tangent_drift_multiplier: (tangent_drift
             * family_brush
@@ -167,6 +188,14 @@ pub(crate) fn resolve_npr_brush_profile_with_traits(
             .map(|brush| brush.angle_influence)
             .unwrap_or(0.0)
             .clamp(0.0, 1.0),
+        nib_width_base_scale: family_brush
+            .map(|brush| brush.nib_width_base_scale)
+            .unwrap_or(1.0)
+            .clamp(0.0, 4.0),
+        nib_width_angle_scale: family_brush
+            .map(|brush| brush.nib_width_angle_scale)
+            .unwrap_or(1.0)
+            .clamp(0.0, 4.0),
         path_adherence_multiplier,
     }
 }
@@ -199,10 +228,7 @@ pub(crate) fn npr_pressure_multiplier(
     shaped * (0.92 + settings.line_confidence.clamp(0.0, 1.0) * 0.12)
 }
 
-pub(crate) fn npr_alpha_pressure_multiplier(
-    t: f32,
-    brush: NprResolvedBrushProfile3d,
-) -> f32 {
+pub(crate) fn npr_alpha_pressure_multiplier(t: f32, brush: NprResolvedBrushProfile3d) -> f32 {
     sample_4_point_curve(brush.alpha_curve, t.clamp(0.0, 1.0)).clamp(0.0, 1.5)
 }
 
@@ -408,11 +434,7 @@ pub(crate) fn npr_stroke_join_max_angle_degrees_for_kind(
     kind: crate::renderer::NprLineKind,
     settings: &amigo_render_api::NprLineSettings3d,
 ) -> f32 {
-    npr_stroke_join_max_angle_degrees_with_traits(
-        kind,
-        NprLineCandidateTraits::default(),
-        settings,
-    )
+    npr_stroke_join_max_angle_degrees_with_traits(kind, NprLineCandidateTraits::default(), settings)
 }
 
 pub(crate) fn npr_stroke_join_max_angle_degrees_with_traits(
@@ -523,7 +545,9 @@ pub(crate) fn npr_ink_detail_material_preference_for_kind(
     kind: crate::renderer::NprLineKind,
     settings: &amigo_render_api::NprLineSettings3d,
 ) -> f32 {
-    npr_family_preference_for_kind(kind, settings, |family| family.ink_detail_material_preference)
+    npr_family_preference_for_kind(kind, settings, |family| {
+        family.ink_detail_material_preference
+    })
 }
 
 pub(crate) fn npr_material_seam_preference_for_kind(
@@ -558,7 +582,9 @@ fn npr_family_preference_for_kind(
         .clamp(0.0, 1.0)
 }
 
-fn npr_line_source_for_kind(kind: crate::renderer::NprLineKind) -> amigo_render_api::NprLineSource3d {
+fn npr_line_source_for_kind(
+    kind: crate::renderer::NprLineKind,
+) -> amigo_render_api::NprLineSource3d {
     match kind {
         crate::renderer::NprLineKind::Silhouette => amigo_render_api::NprLineSource3d::Silhouette,
         crate::renderer::NprLineKind::Boundary => amigo_render_api::NprLineSource3d::Boundary,
@@ -587,12 +613,16 @@ fn npr_line_family_score(
     };
     family.priority as f32 * 100.0
         + trait_score(family.technical_detail_preference, traits.technical_detail)
-        + trait_score(family.ink_detail_material_preference, traits.material_detail)
+        + trait_score(
+            family.ink_detail_material_preference,
+            traits.material_detail,
+        )
         + trait_score(family.material_seam_preference, traits.material_seam)
 }
 
 fn npr_uses_character_roles(settings: &amigo_render_api::NprLineSettings3d) -> bool {
-    settings.pipeline.candidate_strategy == amigo_render_api::NprCandidateStrategy3d::CharacterSemantic
+    settings.pipeline.candidate_strategy
+        == amigo_render_api::NprCandidateStrategy3d::CharacterSemantic
         || matches!(
             settings.pipeline.budget_strategy,
             amigo_render_api::NprBudgetStrategy3d::FaceAndSilhouettePriority
@@ -617,7 +647,8 @@ pub(crate) fn resolve_npr_gesture_role_profile_with_traits(
         };
     }
 
-    let role = resolve_npr_line_family_with_traits(kind, traits, settings).and_then(|family| family.role);
+    let role =
+        resolve_npr_line_family_with_traits(kind, traits, settings).and_then(|family| family.role);
     match role.unwrap_or_else(|| default_npr_line_family_role(kind)) {
         amigo_render_api::NprLineFamilyRole3d::OuterContour => NprGestureRoleProfile {
             hand_arc_multiplier: 1.18,
@@ -636,8 +667,8 @@ pub(crate) fn resolve_npr_gesture_role_profile_with_traits(
             alpha_multiplier: 0.84,
         },
         amigo_render_api::NprLineFamilyRole3d::ClothFold => {
-            let short_detail =
-                path_length_px <= npr_preferred_stroke_length_px_for_kind(kind, settings).max(24.0) * 0.45;
+            let short_detail = path_length_px
+                <= npr_preferred_stroke_length_px_for_kind(kind, settings).max(24.0) * 0.45;
             if short_detail {
                 NprGestureRoleProfile {
                     hand_arc_multiplier: 0.58,
@@ -683,66 +714,68 @@ pub(crate) fn resolve_npr_gesture_role_profile_with_traits(
             alpha_multiplier: 0.90,
         },
         amigo_render_api::NprLineFamilyRole3d::Generic => match kind {
-        crate::renderer::NprLineKind::Silhouette => NprGestureRoleProfile {
-            hand_arc_multiplier: 1.14,
-            tangent_drift_multiplier: 0.88,
-            detail_crispness: 0.86,
-            taper_multiplier: 0.82,
-            overshoot_multiplier: 1.12,
-            alpha_multiplier: 1.0,
-        },
-        crate::renderer::NprLineKind::Boundary => NprGestureRoleProfile {
-            hand_arc_multiplier: 0.96,
-            tangent_drift_multiplier: 0.82,
-            detail_crispness: 0.92,
-            taper_multiplier: 0.88,
-            overshoot_multiplier: 1.04,
-            alpha_multiplier: 0.96,
-        },
-        crate::renderer::NprLineKind::Crease | crate::renderer::NprLineKind::Seam => {
-            let short_detail =
-                path_length_px <= npr_preferred_stroke_length_px_for_kind(kind, settings).max(24.0) * 0.45;
-            if short_detail {
-                NprGestureRoleProfile {
-                    hand_arc_multiplier: 0.52,
-                    tangent_drift_multiplier: 0.58,
-                    detail_crispness: 1.08,
-                    taper_multiplier: 0.70,
-                    overshoot_multiplier: 0.36,
-                    alpha_multiplier: 0.88,
-                }
-            } else {
-                NprGestureRoleProfile {
-                    hand_arc_multiplier: 0.72,
-                    tangent_drift_multiplier: 0.68,
-                    detail_crispness: 0.96,
-                    taper_multiplier: 0.76,
-                    overshoot_multiplier: 0.48,
-                    alpha_multiplier: 0.90,
+            crate::renderer::NprLineKind::Silhouette => NprGestureRoleProfile {
+                hand_arc_multiplier: 1.14,
+                tangent_drift_multiplier: 0.88,
+                detail_crispness: 0.86,
+                taper_multiplier: 0.82,
+                overshoot_multiplier: 1.12,
+                alpha_multiplier: 1.0,
+            },
+            crate::renderer::NprLineKind::Boundary => NprGestureRoleProfile {
+                hand_arc_multiplier: 0.96,
+                tangent_drift_multiplier: 0.82,
+                detail_crispness: 0.92,
+                taper_multiplier: 0.88,
+                overshoot_multiplier: 1.04,
+                alpha_multiplier: 0.96,
+            },
+            crate::renderer::NprLineKind::Crease | crate::renderer::NprLineKind::Seam => {
+                let short_detail = path_length_px
+                    <= npr_preferred_stroke_length_px_for_kind(kind, settings).max(24.0) * 0.45;
+                if short_detail {
+                    NprGestureRoleProfile {
+                        hand_arc_multiplier: 0.52,
+                        tangent_drift_multiplier: 0.58,
+                        detail_crispness: 1.08,
+                        taper_multiplier: 0.70,
+                        overshoot_multiplier: 0.36,
+                        alpha_multiplier: 0.88,
+                    }
+                } else {
+                    NprGestureRoleProfile {
+                        hand_arc_multiplier: 0.72,
+                        tangent_drift_multiplier: 0.68,
+                        detail_crispness: 0.96,
+                        taper_multiplier: 0.76,
+                        overshoot_multiplier: 0.48,
+                        alpha_multiplier: 0.90,
+                    }
                 }
             }
-        }
-        crate::renderer::NprLineKind::Feature => NprGestureRoleProfile {
-            hand_arc_multiplier: 0.46,
-            tangent_drift_multiplier: 0.54,
-            detail_crispness: 1.12,
-            taper_multiplier: 0.66,
-            overshoot_multiplier: 0.28,
-            alpha_multiplier: 0.84,
-        },
-        crate::renderer::NprLineKind::Contact => NprGestureRoleProfile {
-            hand_arc_multiplier: 0.85,
-            tangent_drift_multiplier: 0.72,
-            detail_crispness: 0.98,
-            taper_multiplier: 0.92,
-            overshoot_multiplier: 0.72,
-            alpha_multiplier: 0.92,
-        },
+            crate::renderer::NprLineKind::Feature => NprGestureRoleProfile {
+                hand_arc_multiplier: 0.46,
+                tangent_drift_multiplier: 0.54,
+                detail_crispness: 1.12,
+                taper_multiplier: 0.66,
+                overshoot_multiplier: 0.28,
+                alpha_multiplier: 0.84,
+            },
+            crate::renderer::NprLineKind::Contact => NprGestureRoleProfile {
+                hand_arc_multiplier: 0.85,
+                tangent_drift_multiplier: 0.72,
+                detail_crispness: 0.98,
+                taper_multiplier: 0.92,
+                overshoot_multiplier: 0.72,
+                alpha_multiplier: 0.92,
+            },
         },
     }
 }
 
-fn default_npr_brush_tip(tool: amigo_render_api::NprStrokeTool3d) -> amigo_render_api::NprBrushTip3d {
+fn default_npr_brush_tip(
+    tool: amigo_render_api::NprStrokeTool3d,
+) -> amigo_render_api::NprBrushTip3d {
     match tool {
         amigo_render_api::NprStrokeTool3d::InkPen => amigo_render_api::NprBrushTip3d::GPen,
         amigo_render_api::NprStrokeTool3d::Pencil => amigo_render_api::NprBrushTip3d::Round,
@@ -799,7 +832,8 @@ mod tests {
             ..amigo_render_api::NprLineSettings3d::default()
         };
 
-        let profile = resolve_npr_brush_profile(crate::renderer::NprLineKind::Silhouette, &technical);
+        let profile =
+            resolve_npr_brush_profile(crate::renderer::NprLineKind::Silhouette, &technical);
 
         assert_eq!(profile.search_multiplier, 0.0);
         assert_eq!(profile.dropout_multiplier, 0.0);
@@ -817,7 +851,8 @@ mod tests {
             ..amigo_render_api::NprLineSettings3d::default()
         };
 
-        let profile = resolve_npr_brush_profile(crate::renderer::NprLineKind::Silhouette, &settings);
+        let profile =
+            resolve_npr_brush_profile(crate::renderer::NprLineKind::Silhouette, &settings);
 
         assert_eq!(profile.width_multiplier, 1.5);
         assert_eq!(profile.alpha_multiplier, 0.5);

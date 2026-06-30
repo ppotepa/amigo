@@ -8,8 +8,8 @@ use super::{
     camera_response_distances, gpu_budget_strategy, gpu_candidate_strategy, gpu_fill_strategy,
     gpu_hatching_strategy, gpu_material_id_mask, gpu_path_strategy, gpu_stroke_strategy,
     gpu_temporal_strategy, npr_ink_detail_material_preference_for_kind,
-    npr_line_family_role_for_kind, npr_min_stroke_length_px_for_kind,
-    npr_material_seam_preference_for_kind, npr_min_screen_length_px_for_kind,
+    npr_line_family_role_for_kind, npr_material_seam_preference_for_kind,
+    npr_min_screen_length_px_for_kind, npr_min_stroke_length_px_for_kind,
     npr_preferred_stroke_length_px_for_kind, npr_stroke_join_gap_px_for_kind,
     npr_stroke_join_max_angle_degrees_for_kind, npr_technical_detail_keep_for_kind,
     npr_technical_detail_preference_for_kind, vec3_to_gpu4,
@@ -205,12 +205,7 @@ pub(crate) fn uniforms_for_job(
             settings.search_line_alpha,
             settings.taper,
         ],
-        params6: [
-            1.0,
-            1.0,
-            1.0,
-            feature_brush.dropout_multiplier,
-        ],
+        params6: [1.0, 1.0, 1.0, feature_brush.dropout_multiplier],
         params7: [
             1.0,
             settings.humanization,
@@ -450,20 +445,27 @@ pub(crate) fn uniforms_for_job(
             gpu_brush_tip(seam_brush.tip) as f32,
         ],
         params51: [
-            gpu_line_family_role(npr_line_family_role_for_kind(NprLineKind::Silhouette, settings))
-                as f32,
-            gpu_line_family_role(npr_line_family_role_for_kind(NprLineKind::Boundary, settings))
-                as f32,
-            gpu_line_family_role(npr_line_family_role_for_kind(NprLineKind::Feature, settings))
-                as f32,
+            gpu_line_family_role(npr_line_family_role_for_kind(
+                NprLineKind::Silhouette,
+                settings,
+            )) as f32,
+            gpu_line_family_role(npr_line_family_role_for_kind(
+                NprLineKind::Boundary,
+                settings,
+            )) as f32,
+            gpu_line_family_role(npr_line_family_role_for_kind(
+                NprLineKind::Feature,
+                settings,
+            )) as f32,
             gpu_line_family_role(npr_line_family_role_for_kind(NprLineKind::Crease, settings))
                 as f32,
         ],
         params52: [
-            gpu_line_family_role(npr_line_family_role_for_kind(NprLineKind::Seam, settings))
-                as f32,
-            gpu_line_family_role(npr_line_family_role_for_kind(NprLineKind::Contact, settings))
-                as f32,
+            gpu_line_family_role(npr_line_family_role_for_kind(NprLineKind::Seam, settings)) as f32,
+            gpu_line_family_role(npr_line_family_role_for_kind(
+                NprLineKind::Contact,
+                settings,
+            )) as f32,
             0.0,
             0.0,
         ],
@@ -715,13 +717,24 @@ mod tests {
         assert_eq!(uniforms.params38, [0.73, 0.47, 44.0, 56.0]);
         assert_eq!(uniforms.params39, [18.0, 22.0, 26.0, 30.0]);
         assert_eq!(uniforms.params40, [7.0, 2.25, 2.5, 3.5]);
-        assert_eq!(uniforms.params41, [4.5, 5.5, 24.0f32.to_radians().cos(), 22.0f32.to_radians().cos()]);
-        assert_eq!(uniforms.params42, [
-            13.0f32.to_radians().cos(),
-            17.0f32.to_radians().cos(),
-            21.0f32.to_radians().cos(),
-            26.0f32.to_radians().cos(),
-        ]);
+        assert_eq!(
+            uniforms.params41,
+            [
+                4.5,
+                5.5,
+                24.0f32.to_radians().cos(),
+                22.0f32.to_radians().cos()
+            ]
+        );
+        assert_eq!(
+            uniforms.params42,
+            [
+                13.0f32.to_radians().cos(),
+                17.0f32.to_radians().cos(),
+                21.0f32.to_radians().cos(),
+                26.0f32.to_radians().cos(),
+            ]
+        );
         assert_eq!(uniforms.params43, [0.86, 1.0, 0.94, 1.0]);
         assert_eq!(uniforms.params44, [0.62, 0.0, 0.28, 0.0]);
         assert_eq!(uniforms.params45, [0.5, 0.5, 0.22, 0.28]);
@@ -732,7 +745,10 @@ mod tests {
         assert_eq!(uniforms.params50, [2.0, 3.0, 3.0, 3.0]);
         assert_eq!(uniforms.params51, [1.0, 1.0, 2.0, 3.0]);
         assert_eq!(uniforms.params52, [4.0, 6.0, 0.0, 0.0]);
-        assert_eq!(uniforms.params53, [11.0, settings.min_stroke_length_px, 13.0, 17.0]);
+        assert_eq!(
+            uniforms.params53,
+            [11.0, settings.min_stroke_length_px, 13.0, 17.0]
+        );
         assert_eq!(uniforms.params54, [19.0, 23.0, 0.0, 0.0]);
         assert_eq!(
             uniforms.material_roles0,
@@ -788,5 +804,4 @@ mod tests {
         assert!((uniforms.params20[2] - 7.9).abs() < 0.001);
         assert!((uniforms.params20[3] - 0.5).abs() < 0.001);
     }
-
 }

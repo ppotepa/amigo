@@ -7,9 +7,9 @@ use crate::renderer::{CachedMeshGeometry3d, NprDebugOverlay3d, Viewport};
 use super::{
     NprGpuFrameStats3d, NprGpuMeshJob3d, NprGpuResources3d, build_npr_gpu_frame_plan,
     npr_gpu_path_segment_capacity_units, npr_gpu_trace_enabled, npr_gpu_trace_frame_plan,
-    npr_gpu_trace_frame_start, npr_gpu_trace_line,
-    render_npr_gpu_face_id_pass, run_npr_gpu_stroke_compute_passes, topology_cache_key,
-    write_npr_gpu_indirect_args, write_npr_gpu_job_uniform_buffers,
+    npr_gpu_trace_frame_start, npr_gpu_trace_line, render_npr_gpu_face_id_pass,
+    run_npr_gpu_stroke_compute_passes, topology_cache_key, write_npr_gpu_indirect_args,
+    write_npr_gpu_job_uniform_buffers,
 };
 
 #[derive(Debug, Default)]
@@ -110,9 +110,11 @@ impl GpuRealtimeNprRenderer3d {
             frame_plan.allocated_stroke_segments_capacity(),
         );
         let (face_id_view, depth_view) = {
-            let target = self
-                .resources
-                .ensure_face_id_target(device, frame_plan.target_width, frame_plan.target_height);
+            let target = self.resources.ensure_face_id_target(
+                device,
+                frame_plan.target_width,
+                frame_plan.target_height,
+            );
             if trace {
                 npr_gpu_trace_line(
                     debug_frame_index,
@@ -161,7 +163,7 @@ impl GpuRealtimeNprRenderer3d {
                         "missing uploaded gpu topology cache for `{}`",
                         job.entity_name
                     )
-            })?;
+                })?;
             let uniforms = &job_uniform_buffers[job_index];
             render_npr_gpu_face_id_pass(
                 device,

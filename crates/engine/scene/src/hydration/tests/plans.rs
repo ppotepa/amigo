@@ -6,12 +6,13 @@ use super::super::{
     build_scene_hydration_plan, entity_selector_from_document, scene_key_from_document,
 };
 use crate::{
-    compile_scene_document_from_path, load_scene_document_from_path, load_scene_document_from_str,
-    load_scene_document_from_str_with_component_schemas, CameraController3dModeSceneCommand,
-    CameraController3dSceneCommand, ComponentHydratorRegistry, ComponentSchemaRegistry,
-    EntitySelector, InputActionMapSceneCommand, PluginComponentHydrationContext,
-    PluginComponentHydrator, SceneCommand, SceneComponentPayload, SceneComponentSchemaProvider,
-    SceneDocumentError, SceneEntitySelectorDocument, SceneEntitySelectorKindDocument,
+    CameraController3dModeSceneCommand, CameraController3dSceneCommand, ComponentHydratorRegistry,
+    ComponentSchemaRegistry, EntitySelector, InputActionMapSceneCommand,
+    PluginComponentHydrationContext, PluginComponentHydrator, SceneCommand, SceneComponentPayload,
+    SceneComponentSchemaProvider, SceneDocumentError, SceneEntitySelectorDocument,
+    SceneEntitySelectorKindDocument, compile_scene_document_from_path,
+    load_scene_document_from_path, load_scene_document_from_str,
+    load_scene_document_from_str_with_component_schemas,
 };
 use serde_yaml::{Mapping, Value};
 
@@ -270,10 +271,11 @@ entities:
             transform: Some(Transform3 { .. })
         } if name == "playground-2d-camera"
     )));
-    assert!(plan
-        .commands
-        .iter()
-        .all(|command| { camera_command(command).is_none() && sprite_command(command).is_none() }));
+    assert!(
+        plan.commands.iter().all(|command| {
+            camera_command(command).is_none() && sprite_command(command).is_none()
+        })
+    );
 }
 
 #[test]
@@ -344,10 +346,11 @@ entities:
 
     let plan = build_scene_hydration_plan("rotten-club", &document).expect("plan should build");
 
-    assert!(plan
-        .commands
-        .iter()
-        .all(|command| text_command(command).is_none()));
+    assert!(
+        plan.commands
+            .iter()
+            .all(|command| text_command(command).is_none())
+    );
 }
 
 #[test]
@@ -379,10 +382,11 @@ entities:
 
     let plan = build_scene_hydration_plan("test-mod", &document).expect("plan should build");
 
-    assert!(plan
-        .commands
-        .iter()
-        .all(|command| sprite_command(command).is_none()));
+    assert!(
+        plan.commands
+            .iter()
+            .all(|command| sprite_command(command).is_none())
+    );
 }
 
 #[test]
@@ -415,10 +419,11 @@ entities:
 
     let plan = build_scene_hydration_plan("test-mod", &document).expect("plan should build");
 
-    assert!(plan
-        .commands
-        .iter()
-        .all(|command| vector_command(command).is_none()));
+    assert!(
+        plan.commands
+            .iter()
+            .all(|command| vector_command(command).is_none())
+    );
 }
 
 #[test]
@@ -442,10 +447,11 @@ entities:
     .expect("scene document should parse");
 
     let plan = build_scene_hydration_plan("test-mod", &document).expect("plan should build");
-    assert!(plan
-        .commands
-        .iter()
-        .all(|command| camera_command(command).is_none()));
+    assert!(
+        plan.commands
+            .iter()
+            .all(|command| camera_command(command).is_none())
+    );
 }
 
 #[test]
@@ -471,10 +477,11 @@ entities:
     .expect("scene document should parse");
 
     let plan = build_scene_hydration_plan("test-mod", &document).expect("plan should build");
-    assert!(plan
-        .commands
-        .iter()
-        .all(|command| beacon_command(command).is_none()));
+    assert!(
+        plan.commands
+            .iter()
+            .all(|command| beacon_command(command).is_none())
+    );
 }
 
 #[test]
@@ -503,10 +510,11 @@ entities:
 
     let plan = build_scene_hydration_plan("test-mod", &document).expect("plan should build");
 
-    assert!(plan
-        .commands
-        .iter()
-        .all(|command| layered_image_command(command).is_none()));
+    assert!(
+        plan.commands
+            .iter()
+            .all(|command| layered_image_command(command).is_none())
+    );
 }
 
 #[test]
@@ -676,10 +684,11 @@ fn builds_hydration_plan_for_playground_2d_main_scene() {
 
     let plan = build_scene_hydration_plan("playground-2d", &document).expect("plan should build");
 
-    assert!(plan
-        .commands
-        .iter()
-        .all(|command| { sprite_command(command).is_none() && text_command(command).is_none() }));
+    assert!(
+        plan.commands.iter().all(|command| {
+            sprite_command(command).is_none() && text_command(command).is_none()
+        })
+    );
 }
 
 #[test]
@@ -858,6 +867,32 @@ fn builds_hydration_plan_for_playground_npr_mesh_switches() {
 }
 
 #[test]
+fn playground_npr_starts_on_single_toriyama_preset_for_cpu_iteration() {
+    let workspace_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .and_then(|path| path.parent())
+        .and_then(|path| path.parent())
+        .expect("workspace root should exist")
+        .to_path_buf();
+
+    let script = std::fs::read_to_string(
+        workspace_root.join("mods/playground-npr/scenes/comic-lines/scene.rhai"),
+    )
+    .expect("playground npr scene script should be readable");
+
+    assert!(
+        script.contains("fn npr_preset_count() {\n    1\n}"),
+        "playground NPR should expose one small Toriyama CPU preset"
+    );
+    assert!(
+        script.contains("world.state.set_int(\"active_npr_preset\", 0);"),
+        "playground NPR should start on the only Toriyama preset"
+    );
+    assert!(script.contains("\"toriyama_ink_cpu_reference\""));
+    assert!(script.contains("\"Toriyama Ink\""));
+}
+
+#[test]
 fn compiled_playground_npr_scene_registers_file_backed_npr_presets() {
     let workspace_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .parent()
@@ -873,7 +908,7 @@ fn compiled_playground_npr_scene_registers_file_backed_npr_presets() {
     )
     .expect("playground npr scene should compile");
 
-    assert_eq!(compiled.document.npr_presets.len(), 3);
+    assert_eq!(compiled.document.npr_presets.len(), 1);
 
     let plan = build_scene_hydration_plan("playground-npr", &compiled.document)
         .expect("compiled playground npr plan should build");
@@ -883,49 +918,39 @@ fn compiled_playground_npr_scene_registers_file_backed_npr_presets() {
         .filter_map(npr_preset_command)
         .collect::<Vec<_>>();
 
-    assert_eq!(presets.len(), 3);
+    assert_eq!(presets.len(), 1);
     assert_playground_npr_presets_are_cpu_reference_only(&presets);
     assert_playground_npr_presets_have_coherent_pipeline_plans(&presets);
-    assert!(
-        presets
-            .iter()
-            .any(|preset| preset.id == "cinematic_12fps_cpu_reference")
-    );
-    assert!(
-        presets
-            .iter()
-            .any(|preset| preset.id == "rough_comic_ink_cpu_reference")
-    );
     let toriyama = presets
         .iter()
-        .find(|preset| preset.id == "toriyama_contour_ink_cpu_reference")
-        .expect("toriyama contour CPU preset should be registered");
+        .find(|preset| preset.id == "toriyama_ink_cpu_reference")
+        .expect("toriyama CPU preset should be registered");
+    assert_eq!(toriyama.label, "Toriyama Ink CPU Reference");
+    assert_eq!(
+        toriyama.settings.render_strategy,
+        amigo_render_api::NprRenderStrategy3d::CpuReference
+    );
+    assert_eq!(
+        toriyama.settings.style_preset,
+        amigo_render_api::NprStylePreset3d::RoughComicInk
+    );
+    assert_eq!(
+        toriyama.settings.stroke_tool,
+        amigo_render_api::NprStrokeTool3d::InkPen
+    );
     assert!(toriyama.settings.silhouette);
-    assert!(!toriyama.settings.boundary);
+    assert!(toriyama.settings.boundary);
     assert!(toriyama.settings.feature);
     assert!(!toriyama.settings.suggestive);
+    assert!(toriyama.settings.camera_response.enabled);
     assert!(!toriyama.settings.contact);
-    assert_eq!(toriyama.settings.passes, 1);
-    assert_eq!(toriyama.settings.search_line_count, 0);
+    assert_eq!(toriyama.settings.passes, 2);
+    assert_eq!(toriyama.settings.search_line_count, 1);
+    assert!(toriyama.settings.line_families.is_empty());
     assert_eq!(
-        toriyama.settings.pipeline.stroke_strategy,
-        amigo_render_api::NprStrokeStrategy3d::ConfidentMangaInk
+        toriyama.settings.cpu_strategy_profile,
+        amigo_render_api::NprCpuStrategyProfile3d::default()
     );
-    assert_eq!(toriyama.settings.boundary_width_multiplier, 0.0);
-    assert!(toriyama.settings.feature_width_multiplier > 1.0);
-    assert!(
-        toriyama.settings.feature_width_multiplier
-            < toriyama.settings.silhouette_width_multiplier
-    );
-    assert!(toriyama.settings.line_families.iter().any(|family| {
-        family.role == Some(amigo_render_api::NprLineFamilyRole3d::DetailInk)
-            && family.brush.as_deref() == Some("detail_ink_brush")
-    }));
-    assert!(toriyama.settings.line_families.iter().any(|family| {
-        family.role == Some(amigo_render_api::NprLineFamilyRole3d::ClothFold)
-            && family.brush.as_deref() == Some("form_line_brush")
-    }));
-    assert!(!presets.iter().any(|preset| preset.id.contains("akira")));
 }
 
 fn assert_playground_npr_presets_have_coherent_pipeline_plans(
@@ -1289,10 +1314,11 @@ fn builds_hydration_plan_for_playground_2d_screen_space_preview() {
     let plan = build_scene_hydration_plan("playground-2d", &document)
         .expect("screen-space preview plan should build");
 
-    assert!(plan
-        .commands
-        .iter()
-        .all(|command| sprite_command(command).is_none()));
+    assert!(
+        plan.commands
+            .iter()
+            .all(|command| sprite_command(command).is_none())
+    );
     assert!(plan.commands.iter().any(|command| {
         ui_command(command).is_some_and(|command| command.entity_name == "playground-2d-ui-preview")
     }));

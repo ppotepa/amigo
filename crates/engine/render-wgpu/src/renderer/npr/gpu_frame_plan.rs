@@ -90,26 +90,26 @@ pub(crate) fn build_npr_gpu_frame_plan(
         .fold(1.0, f32::max);
     let (target_width, target_height) =
         scaled_face_id_dimensions(viewport, max_visibility_dimension_px);
-    let projected_capacity = (total_vertices * std::mem::size_of::<super::GpuNprProjectedVertex3d>())
-        as u64;
+    let projected_capacity =
+        (total_vertices * std::mem::size_of::<super::GpuNprProjectedVertex3d>()) as u64;
     let visible_segments_capacity =
         (total_edges * std::mem::size_of::<super::GpuNprVisibleSegment3d>()) as u64;
     let endpoint_head_count = npr_gpu_endpoint_head_count(total_edges.max(1));
-    let endpoint_heads_capacity =
-        endpoint_head_count as u64 * std::mem::size_of::<u32>() as u64;
+    let endpoint_heads_capacity = endpoint_head_count as u64 * std::mem::size_of::<u32>() as u64;
     let endpoint_entries_capacity = (frame_jobs
         .iter()
         .map(|job| job.geometry.edge_count() * 2)
         .sum::<usize>()
-        * std::mem::size_of::<super::GpuNprEndpointEntry3d>()) as u64;
-    let path_links_capacity =
-        (total_edges * std::mem::size_of::<super::GpuNprPathLink3d>()) as u64;
+        * std::mem::size_of::<super::GpuNprEndpointEntry3d>())
+        as u64;
+    let path_links_capacity = (total_edges * std::mem::size_of::<super::GpuNprPathLink3d>()) as u64;
     let job_count = frame_jobs.len().max(1);
     let path_segments_capacity = (frame_jobs
         .iter()
         .map(|job| npr_gpu_path_segment_capacity_units(job.geometry.edge_count(), job_count))
         .sum::<usize>()
-        * std::mem::size_of::<super::GpuNprPathSegment3d>()) as u64;
+        * std::mem::size_of::<super::GpuNprPathSegment3d>())
+        as u64;
     let path_states_capacity =
         (total_edges * std::mem::size_of::<super::GpuNprPathState3d>()) as u64;
     let aggregated_paths_capacity =

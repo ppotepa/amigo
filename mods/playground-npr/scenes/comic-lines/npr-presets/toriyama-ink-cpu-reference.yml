@@ -1,0 +1,67 @@
+kind: npr-preset-3d
+schema_version: 1
+id: toriyama_ink_cpu_reference
+label: Toriyama Ink CPU Reference
+settings:
+  strategy: cpu_reference
+  fill_mode: none
+  style_preset: rough_comic_ink
+  stroke_tool: ink_pen
+  pipeline:
+    path_strategy: stable_stroked_paths
+    fill_strategy: none
+    hatching_strategy: none
+  boundary: true
+  silhouette: true
+  feature: true
+  suggestive: false
+  contact: false
+  contact_ground_y: 0.0
+  contact_threshold: 0.10
+  feature_angle_degrees: 34.0
+  min_screen_length_px: 1.8
+  ink_color: "#0B0907FF"
+  width_px: 2.45
+  silhouette_width_multiplier: 1.55
+  boundary_width_multiplier: 1.0
+  feature_width_multiplier: 0.72
+  distance_width_falloff: 0.14
+  width_pressure_curve: [0.68, 1.08, 1.00, 0.58]
+  alpha_pressure_curve: [0.84, 1.0, 0.94, 0.72]
+  depth_pressure: 0.16
+  camera_response:
+    enabled: true
+    near_distance: 2.0
+    far_distance: 10.5
+    near_width_boost: 0.22
+    near_detail_boost: 0.36
+    near_hatching_boost: 0.0
+    far_width_falloff: 0.34
+    far_alpha_falloff: 0.62
+    far_detail_suppression: 0.62
+    rim_silhouette_boost: 0.16
+    front_feature_suppression: 0.18
+  humanization: 0.50
+  line_confidence: 0.80
+  temporal_stability: 0.92
+  temporal_path_smoothing: false
+  visibility_hysteresis_frames: 2
+  endpoint_snap_px: 1.7
+  path_simplify_px: 0.78
+  straightness: 0.60
+  taper: 0.74
+  stroke_wobble_px: 0.46
+  stroke_wobble_frequency: 0.21
+  micro_wobble_px: 0.08
+  micro_wobble_frequency: 1.10
+  pressure_jitter: 0.10
+  local_angular_drift_degrees: 0.92
+  overshoot_px: 1.10
+  undershoot_px: 0.10
+  pass_offset_px: 0.18
+  dropout: 0.020
+  dropout_segment_min_px: 10.0
+  passes: 2
+  search_line_count: 1
+  search_line_alpha: 0.12
+  seed: 19890401

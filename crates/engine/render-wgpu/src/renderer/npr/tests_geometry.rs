@@ -86,6 +86,16 @@ fn loads_playground_npr_khronos_male_full_character_geometry() {
         material_ids.contains(&0),
         "body skin material should be imported"
     );
+    let (body_min, body_max) =
+        material_bounds(&geometry, 0).expect("body skin material should have geometry bounds");
+    assert!(
+        body_max.y - body_min.y > 0.75,
+        "skinned body should be baked into a full-height rest pose, not collapsed near a joint"
+    );
+    assert!(
+        (body_max.x - body_min.x).max(body_max.z - body_min.z) > 0.12,
+        "skinned body should have visible width/depth after bind-pose baking"
+    );
     assert!(
         material_ids.contains(&4) && material_ids.contains(&5),
         "hair materials should be imported"
@@ -98,4 +108,26 @@ fn loads_playground_npr_khronos_male_full_character_geometry() {
         geometry.triangles.len() > 10_000,
         "full character should contain body, hair, and face triangles"
     );
+}
+
+fn material_bounds(geometry: &CachedMeshGeometry3d, material_id: u32) -> Option<(Vec3, Vec3)> {
+    let mut min = Vec3::new(f32::MAX, f32::MAX, f32::MAX);
+    let mut max = Vec3::new(f32::MIN, f32::MIN, f32::MIN);
+    let mut found = false;
+    for triangle in &geometry.triangles {
+        if triangle.material_id != Some(material_id) {
+            continue;
+        }
+        found = true;
+        for index in triangle.indices {
+            let vertex = geometry.vertices[index];
+            min.x = min.x.min(vertex.x);
+            min.y = min.y.min(vertex.y);
+            min.z = min.z.min(vertex.z);
+            max.x = max.x.max(vertex.x);
+            max.y = max.y.max(vertex.y);
+            max.z = max.z.max(vertex.z);
+        }
+    }
+    found.then_some((min, max))
 }

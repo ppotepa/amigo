@@ -7,9 +7,7 @@ scene:
     and inspect mesh-cache comic line rendering.
 
 npr_presets:
-  - ./npr-presets/cinematic-12fps-cpu-reference.yml
-  - ./npr-presets/rough-comic-ink-cpu-reference.yml
-  - ./npr-presets/toriyama-contour-ink-cpu-reference.yml
+  - ./npr-presets/toriyama-ink-cpu-reference.yml
 
 entities:
   - id: controls

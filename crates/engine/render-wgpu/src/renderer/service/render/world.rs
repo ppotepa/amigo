@@ -249,8 +249,11 @@ pub(super) fn execute_world_to_offscreen(
             if let Some(npr) = command.mesh.npr.as_ref() {
                 if npr.pipeline.fill_strategy
                     == amigo_render_api::NprInkFillStrategy3d::MaterialBlackMass
-                    && !npr.black_mass_material_ids.is_empty()
                 {
+                    let black_mass_material_ids = npr_black_mass_material_ids(
+                        npr,
+                        geometry.inferred_black_mass_material_ids(),
+                    );
                     append_mesh_black_mass_triangles(
                         &mut projected_triangles,
                         &viewport,
@@ -258,8 +261,25 @@ pub(super) fn execute_world_to_offscreen(
                         camera_settings,
                         &geometry,
                         transform,
-                        &npr.black_mass_material_ids,
+                        &black_mass_material_ids,
                         render_order + 1,
+                        npr.visibility_max_dimension_px,
+                    );
+                    let hatching_material_ids = npr_black_tone_hatching_material_ids(
+                        npr,
+                        geometry.inferred_black_mass_material_ids(),
+                    );
+                    append_mesh_black_tone_hatching_vertices(
+                        &mut npr_line_vertices,
+                        &viewport,
+                        camera,
+                        camera_settings,
+                        &geometry,
+                        transform,
+                        &hatching_material_ids,
+                        npr.black_tone_hatching,
+                        npr.seed,
+                        npr.visibility_max_dimension_px,
                     );
                 }
             }
@@ -791,6 +811,31 @@ fn create_dynamic_vertex_buffer(
     }
 }
 
+fn npr_black_mass_material_ids(
+    settings: &amigo_render_api::NprLineSettings3d,
+    inferred_material_ids: &[u32],
+) -> Vec<u32> {
+    let mut material_ids = settings.black_mass_material_ids.clone();
+    for material_id in inferred_material_ids {
+        if !material_ids.contains(material_id) {
+            material_ids.push(*material_id);
+        }
+    }
+    material_ids
+}
+
+fn npr_black_tone_hatching_material_ids(
+    settings: &amigo_render_api::NprLineSettings3d,
+    inferred_material_ids: &[u32],
+) -> Vec<u32> {
+    match settings.black_tone_hatching.source {
+        amigo_render_api::NprBlackToneHatchingSource3d::Auto => inferred_material_ids.to_vec(),
+        amigo_render_api::NprBlackToneHatchingSource3d::ExplicitMaterials => {
+            settings.black_mass_material_ids.clone()
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -818,6 +863,53 @@ mod tests {
         assert_eq!(
             npr_mesh_render_route(&settings),
             NprMeshRenderRoute::CpuReference
+        );
+    }
+
+    #[test]
+    fn black_mass_material_ids_merge_explicit_and_inferred_ids() {
+        let settings = amigo_render_api::NprLineSettings3d {
+            black_mass_material_ids: vec![2, 7],
+            ..amigo_render_api::NprLineSettings3d::default()
+        };
+
+        assert_eq!(
+            npr_black_mass_material_ids(&settings, &[7, 9]),
+            vec![2, 7, 9]
+        );
+    }
+
+    #[test]
+    fn black_tone_hatching_auto_uses_inferred_material_ids() {
+        let settings = amigo_render_api::NprLineSettings3d {
+            black_mass_material_ids: vec![2, 7],
+            black_tone_hatching: amigo_render_api::NprBlackToneHatching3d {
+                source: amigo_render_api::NprBlackToneHatchingSource3d::Auto,
+                ..amigo_render_api::NprBlackToneHatching3d::default()
+            },
+            ..amigo_render_api::NprLineSettings3d::default()
+        };
+
+        assert_eq!(
+            npr_black_tone_hatching_material_ids(&settings, &[7, 9]),
+            vec![7, 9]
+        );
+    }
+
+    #[test]
+    fn black_tone_hatching_explicit_uses_authored_material_ids() {
+        let settings = amigo_render_api::NprLineSettings3d {
+            black_mass_material_ids: vec![2, 7],
+            black_tone_hatching: amigo_render_api::NprBlackToneHatching3d {
+                source: amigo_render_api::NprBlackToneHatchingSource3d::ExplicitMaterials,
+                ..amigo_render_api::NprBlackToneHatching3d::default()
+            },
+            ..amigo_render_api::NprLineSettings3d::default()
+        };
+
+        assert_eq!(
+            npr_black_tone_hatching_material_ids(&settings, &[7, 9]),
+            vec![2, 7]
         );
     }
 

@@ -160,7 +160,11 @@ fn npr_brush_profile_author_scalars_override_tool_dynamics() {
 #[test]
 fn npr_line_family_brush_tip_and_role_override_feature_stroke_behavior() {
     let viewport = Viewport::from_dimensions(800.0, 600.0);
-    let points = vec![Vec2::new(-0.3, 0.0), Vec2::new(0.0, 0.02), Vec2::new(0.28, 0.01)];
+    let points = vec![
+        Vec2::new(-0.3, 0.0),
+        Vec2::new(0.0, 0.02),
+        Vec2::new(0.28, 0.01),
+    ];
     let settings = amigo_render_api::NprLineSettings3d {
         pipeline: amigo_render_api::NprPipelineStrategies3d {
             candidate_strategy: amigo_render_api::NprCandidateStrategy3d::CharacterSemantic,

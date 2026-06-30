@@ -6,11 +6,8 @@ pub(crate) fn npr_gpu_pass_count(settings: &amigo_render_api::NprLineSettings3d)
     let primary_passes = settings.passes.min(8).max(1) as u32;
     let search_passes = if settings.gpu_realtime_tuning.search_enabled {
         ((settings.search_line_count as f32)
-            * super::resolve_npr_brush_profile(
-                crate::renderer::NprLineKind::Feature,
-                settings,
-            )
-            .search_multiplier)
+            * super::resolve_npr_brush_profile(crate::renderer::NprLineKind::Feature, settings)
+                .search_multiplier)
             .round()
             .clamp(0.0, 8.0) as u32
     } else {

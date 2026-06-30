@@ -1,7 +1,7 @@
 use super::super::*;
 
-use std::fs;
 use amigo_3d_mesh::MeshSceneService;
+use std::fs;
 
 #[test]
 fn playground_3d_main_scene_bootstraps() {

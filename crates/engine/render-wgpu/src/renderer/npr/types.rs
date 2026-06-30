@@ -334,8 +334,7 @@ impl NprStrokeFrameStats3d {
         self.gpu_realtime_path_links_capacity += other.gpu_realtime_path_links_capacity;
         self.gpu_realtime_path_states_capacity += other.gpu_realtime_path_states_capacity;
         self.gpu_realtime_path_segments_capacity += other.gpu_realtime_path_segments_capacity;
-        self.gpu_realtime_aggregated_paths_capacity +=
-            other.gpu_realtime_aggregated_paths_capacity;
+        self.gpu_realtime_aggregated_paths_capacity += other.gpu_realtime_aggregated_paths_capacity;
         self.gpu_realtime_stroke_segments_capacity += other.gpu_realtime_stroke_segments_capacity;
         if self.gpu_realtime_debug_mode.is_empty() {
             self.gpu_realtime_debug_mode = other.gpu_realtime_debug_mode.clone();
@@ -413,6 +412,36 @@ pub(crate) fn npr_stroke_plan_settings_signature(
     hash = mix_u64(hash, settings.pipeline.stroke_strategy as u64);
     hash = mix_u64(hash, settings.pipeline.hatching_strategy as u64);
     hash = mix_u64(hash, settings.pipeline.budget_strategy as u64);
+    hash = mix_u64(
+        hash,
+        settings
+            .cpu_strategy_profile
+            .break_policy
+            .allow_seeded_long_feature_breaks as u64,
+    );
+    hash = mix_u64(
+        hash,
+        settings
+            .cpu_strategy_profile
+            .break_policy
+            .important_feature_break_threshold
+            .to_bits() as u64,
+    );
+    hash = mix_u64(
+        hash,
+        settings
+            .cpu_strategy_profile
+            .stroke_synthesis
+            .feature_pressure
+            .to_bits() as u64,
+    );
+    hash = mix_u64(
+        hash,
+        settings
+            .cpu_strategy_profile
+            .tessellation
+            .rail_tangent_smoothing as u64,
+    );
     hash = mix_u64(hash, settings.dropout.to_bits() as u64);
     hash = mix_u64(hash, settings.dropout_segment_min_px.to_bits() as u64);
     hash = mix_u64(hash, settings.tool_dropout_multiplier.to_bits() as u64);

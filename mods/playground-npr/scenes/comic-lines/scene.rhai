@@ -44,13 +44,11 @@ fn animation_status_label(model_index) {
 }
 
 fn npr_preset_count() {
-    3
+    1
 }
 
 fn npr_style_base_id(index) {
-    if index == 0 { return "cinematic_12fps_cpu_reference"; }
-    if index == 1 { return "rough_comic_ink_cpu_reference"; }
-    "toriyama_contour_ink_cpu_reference"
+    "toriyama_ink_cpu_reference"
 }
 
 fn npr_preset_id(index) {
@@ -58,9 +56,7 @@ fn npr_preset_id(index) {
 }
 
 fn npr_preset_label(index) {
-    if index == 0 { return "Cinematic 12 FPS"; }
-    if index == 1 { return "Rough Comic Ink"; }
-    "Toriyama Contour Ink"
+    "Toriyama Ink"
 }
 
 fn npr_debug_view_label(view_id) {
@@ -395,7 +391,7 @@ fn on_enter() {
     world.state.set_bool("npr_model_autorotate", false);
     world.state.set_bool("npr_temporal_path_smoothing", false);
     world.state.set_string("active_npr_strategy", "cpu_reference");
-    world.state.set_int("active_npr_preset", 2);
+    world.state.set_int("active_npr_preset", 0);
     world.state.set_int("active_npr_animation", 0);
     world.state.set_float("npr_model_scale", default_model_scale());
     world.state.set_string("npr_debug_view", "camera.final");

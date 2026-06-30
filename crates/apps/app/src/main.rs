@@ -74,8 +74,8 @@ fn run_preview_capture(args: &[String]) -> AmigoResult<()> {
         .unwrap_or_else(|| "playground-npr-model-1-soldier".to_owned());
     let hud_entity =
         parse_option_value(args, "--hud-entity").unwrap_or_else(|| "playground-npr-hud".to_owned());
-    let hud_path =
-        parse_option_value(args, "--hud-path").unwrap_or_else(|| "playground-npr-hud.root".to_owned());
+    let hud_path = parse_option_value(args, "--hud-path")
+        .unwrap_or_else(|| "playground-npr-hud.root".to_owned());
     let hide_hud = !has_flag(args, "--show-hud");
     let preset = parse_option_value(args, "--preset");
     let model_query =
@@ -194,10 +194,7 @@ fn parse_vec3_option(args: &[String], flag: &str) -> AmigoResult<Option<Vec3>> {
     let Some(value) = parse_option_value(args, flag) else {
         return Ok(None);
     };
-    let parts = value
-        .split(',')
-        .map(|part| part.trim())
-        .collect::<Vec<_>>();
+    let parts = value.split(',').map(|part| part.trim()).collect::<Vec<_>>();
     if parts.len() != 3 {
         return Err(AmigoError::Message(format!(
             "{flag} expects `x,y,z`, got `{value}`"
@@ -205,13 +202,22 @@ fn parse_vec3_option(args: &[String], flag: &str) -> AmigoResult<Option<Vec3>> {
     }
 
     let x = parts[0].parse::<f32>().map_err(|error| {
-        AmigoError::Message(format!("{flag} has invalid x component `{}`: {error}", parts[0]))
+        AmigoError::Message(format!(
+            "{flag} has invalid x component `{}`: {error}",
+            parts[0]
+        ))
     })?;
     let y = parts[1].parse::<f32>().map_err(|error| {
-        AmigoError::Message(format!("{flag} has invalid y component `{}`: {error}", parts[1]))
+        AmigoError::Message(format!(
+            "{flag} has invalid y component `{}`: {error}",
+            parts[1]
+        ))
     })?;
     let z = parts[2].parse::<f32>().map_err(|error| {
-        AmigoError::Message(format!("{flag} has invalid z component `{}`: {error}", parts[2]))
+        AmigoError::Message(format!(
+            "{flag} has invalid z component `{}`: {error}",
+            parts[2]
+        ))
     })?;
     Ok(Some(Vec3::new(x, y, z)))
 }

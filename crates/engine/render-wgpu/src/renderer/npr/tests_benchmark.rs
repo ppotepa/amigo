@@ -152,9 +152,8 @@ fn benchmark_playground_npr_soldier_rotation_cpu_stroke_workload() {
             }
         }
 
-        timings_us.sort_by(|left, right| {
-            left.partial_cmp(right).unwrap_or(std::cmp::Ordering::Equal)
-        });
+        timings_us
+            .sort_by(|left, right| left.partial_cmp(right).unwrap_or(std::cmp::Ordering::Equal));
         let measured = timings_us.len().max(1);
         let measured_f64 = measured as f64;
         let mean_us = timings_us.iter().sum::<f64>() / measured_f64;

@@ -8,6 +8,7 @@ use crate::renderer::{
 
 use super::{
     NprLineCandidateTraits, deterministic_noise, deterministic_signed_noise,
+    npr_cpu_break_policy_profile, npr_cpu_stroke_synthesis_profile,
     resolve_npr_brush_profile_with_traits,
 };
 
@@ -28,6 +29,7 @@ pub(crate) fn build_npr_stroke_pass_plan(
     );
     let mut passes =
         Vec::with_capacity(primary_passes as usize + settings.search_line_count as usize + 1);
+    let synthesis = npr_cpu_stroke_synthesis_profile(settings);
 
     for pass in 0..primary_passes {
         passes.push(NprStrokePassPlan {
@@ -36,13 +38,14 @@ pub(crate) fn build_npr_stroke_pass_plan(
             active_t0: 0.0,
             active_t1: 1.0,
             wobble_px: gesture.dynamics.base_wobble_px
-                * npr_pass_jitter_multiplier(primary_passes, pass),
-            width_multiplier: npr_pass_width_multiplier(primary_passes, pass),
+                * npr_pass_jitter_multiplier(primary_passes, pass, synthesis),
+            width_multiplier: npr_pass_width_multiplier(primary_passes, pass, synthesis),
             color: npr_pass_color(
                 settings.ink_color,
                 primary_passes,
                 pass,
                 gesture.style.alpha_multiplier * gesture.role.alpha_multiplier,
+                synthesis,
             ),
             overshoot_px: gesture.dynamics.effective_overshoot_px,
         });
@@ -61,8 +64,8 @@ pub(crate) fn build_npr_stroke_pass_plan(
             pass_index: primary_passes.saturating_add(search_pass),
             active_t0: 0.0,
             active_t1: 1.0,
-            wobble_px: gesture.dynamics.base_wobble_px * 1.18,
-            width_multiplier: 0.78,
+            wobble_px: gesture.dynamics.base_wobble_px * synthesis.search_wobble_multiplier,
+            width_multiplier: synthesis.search_width_multiplier,
             color: ColorRgba::new(
                 settings.ink_color.r,
                 settings.ink_color.g,
@@ -119,25 +122,42 @@ fn build_npr_sparse_character_hatch_pass(
     ) {
         return None;
     }
-    if !(8.0..=44.0).contains(&gesture.path_length_px) {
+    let synthesis = npr_cpu_stroke_synthesis_profile(settings);
+    if gesture.path_length_px < synthesis.hatch_path_length_min_px.max(0.0)
+        || gesture.path_length_px
+            > synthesis
+                .hatch_path_length_max_px
+                .max(synthesis.hatch_path_length_min_px)
+    {
         return None;
     }
 
     let roll = deterministic_noise(settings.seed, gesture.path_seed, 37, 0);
     let chance = match settings.pipeline.stroke_strategy {
-        amigo_render_api::NprStrokeStrategy3d::AkiraInk => 0.30,
-        amigo_render_api::NprStrokeStrategy3d::ConfidentMangaInk => 0.20,
-        _ => 0.18,
+        amigo_render_api::NprStrokeStrategy3d::AkiraInk => synthesis.hatch_chance_akira,
+        amigo_render_api::NprStrokeStrategy3d::ConfidentMangaInk => {
+            synthesis.hatch_chance_confident_manga
+        }
+        _ => synthesis.hatch_chance_generic,
     };
-    if roll >= chance {
+    if roll >= chance.clamp(0.0, 1.0) {
         return None;
     }
 
-    let center = (0.42
-        + deterministic_signed_noise(settings.seed, gesture.path_seed, 41, 0) * 0.18)
+    let center = (synthesis.hatch_center_t
+        + deterministic_signed_noise(settings.seed, gesture.path_seed, 41, 0)
+            * synthesis.hatch_center_jitter)
         .clamp(0.25, 0.75);
-    let hatch_length_px = 7.0 + deterministic_noise(settings.seed, gesture.path_seed, 43, 0) * 9.0;
-    let half_t = (hatch_length_px * 0.5 / gesture.path_length_px.max(1.0)).clamp(0.04, 0.28);
+    let hatch_length_px = synthesis.hatch_length_min_px.max(0.0)
+        + deterministic_noise(settings.seed, gesture.path_seed, 43, 0)
+            * synthesis.hatch_length_jitter_px.max(0.0);
+    let half_t = (hatch_length_px * 0.5 / gesture.path_length_px.max(1.0)).clamp(
+        synthesis.hatch_half_t_min.clamp(0.0, 1.0),
+        synthesis
+            .hatch_half_t_max
+            .max(synthesis.hatch_half_t_min)
+            .clamp(0.0, 1.0),
+    );
     let active_t0 = (center - half_t).clamp(0.0, 1.0);
     let active_t1 = (center + half_t).clamp(active_t0, 1.0);
     if active_t1 - active_t0 <= 0.02 {
@@ -150,8 +170,8 @@ fn build_npr_sparse_character_hatch_pass(
         pass_index,
         active_t0,
         active_t1,
-        wobble_px: gesture.dynamics.base_wobble_px * 0.55,
-        width_multiplier: 0.24,
+        wobble_px: gesture.dynamics.base_wobble_px * synthesis.hatch_wobble_multiplier,
+        width_multiplier: synthesis.hatch_width_multiplier,
         color: ColorRgba::new(
             settings.ink_color.r,
             settings.ink_color.g,
@@ -159,8 +179,8 @@ fn build_npr_sparse_character_hatch_pass(
             (settings.ink_color.a
                 * gesture.style.alpha_multiplier
                 * gesture.role.alpha_multiplier
-                * 0.38)
-            .clamp(0.0, 0.58),
+                * synthesis.hatch_alpha_multiplier)
+                .clamp(0.0, synthesis.hatch_alpha_max.clamp(0.0, 1.0)),
         ),
         overshoot_px: 0.0,
     })
@@ -182,15 +202,28 @@ pub(crate) fn build_npr_dropout_mask(
             },
             settings,
         );
-        let complexity_multiplier =
-            (1.0 - (gesture.dynamics.edge_complexity.min(12.0) - 1.0) * 0.01).max(0.0);
+        let break_policy = npr_cpu_break_policy_profile(settings);
+        let complexity_multiplier = (1.0
+            - (gesture
+                .dynamics
+                .edge_complexity
+                .min(break_policy.dropout_complexity_edge_limit.max(1.0))
+                - 1.0)
+                * break_policy.dropout_complexity_drop_per_edge.max(0.0))
+        .max(0.0);
         let effective_dropout =
             (gesture.style.dropout * brush.dropout_multiplier * complexity_multiplier)
-                .clamp(0.0, 0.85);
+                .clamp(0.0, break_policy.dropout_effective_max.clamp(0.0, 1.0));
         let path_length = gesture.path_length_px.max(1.0);
-        let interval_count = (effective_dropout * path_length / 64.0).ceil() as usize;
-        let interval_count = interval_count.min(8);
-        let min_gap_t = (settings.dropout_segment_min_px.max(1.0) / path_length).clamp(0.01, 0.25);
+        let interval_count = (effective_dropout * path_length
+            / break_policy.dropout_interval_length_px.max(1.0))
+        .ceil() as usize;
+        let interval_count = interval_count.min(break_policy.dropout_max_intervals as usize);
+        let min_gap_t = (settings.dropout_segment_min_px.max(1.0) / path_length).clamp(
+            break_policy.dropout_min_gap_t.clamp(0.0, 1.0),
+            break_policy.dropout_max_gap_t.clamp(0.0, 1.0),
+        );
+        let edge_margin_t = break_policy.dropout_edge_margin_t.clamp(0.0, 0.45);
 
         for pass in passes
             .iter()
@@ -211,9 +244,12 @@ pub(crate) fn build_npr_dropout_mask(
                         pass.pass_index as u64,
                         811 + interval_index as u64,
                     ) * min_gap_t)
-                    .clamp(0.01, 0.25);
-                let t0 = (center - width * 0.5).clamp(0.08, 0.92);
-                let t1 = (center + width * 0.5).clamp(0.08, 0.92);
+                    .clamp(
+                        break_policy.dropout_min_gap_t.clamp(0.0, 1.0),
+                        break_policy.dropout_max_gap_t.clamp(0.0, 1.0),
+                    );
+                let t0 = (center - width * 0.5).clamp(edge_margin_t, 1.0 - edge_margin_t);
+                let t1 = (center + width * 0.5).clamp(edge_margin_t, 1.0 - edge_margin_t);
                 if t1 > t0 {
                     intervals.push(NprDropoutInterval {
                         pass_index: pass.pass_index,
@@ -226,30 +262,64 @@ pub(crate) fn build_npr_dropout_mask(
     }
 
     if npr_allows_seeded_long_feature_break(gesture, settings) {
+        let break_policy = npr_cpu_break_policy_profile(settings);
         for pass in passes
             .iter()
             .copied()
             .filter(|pass| pass.kind == NprStrokePassKind::Primary)
         {
-            let roll = deterministic_noise(settings.seed, gesture.path_seed, pass.pass_index as u64, 1217);
-            if roll > 0.38 {
+            let roll = deterministic_noise(
+                settings.seed,
+                gesture.path_seed,
+                pass.pass_index as u64,
+                1217,
+            );
+            if roll > break_policy.long_feature_break_chance.clamp(0.0, 1.0) {
                 continue;
             }
             let path_length = gesture.path_length_px.max(1.0);
-            let center = (0.38
+            let center = (break_policy.long_feature_break_center_t
                 + deterministic_signed_noise(
                     settings.seed,
                     gesture.path_seed,
                     pass.pass_index as u64,
                     1223,
-                ) * 0.20)
-                .clamp(0.22, 0.78);
-            let gap_px = 7.0
-                + deterministic_noise(settings.seed, gesture.path_seed, pass.pass_index as u64, 1229)
-                    * 10.0;
-            let half_t = (gap_px * 0.5 / path_length).clamp(0.018, 0.070);
-            let t0 = (center - half_t).clamp(0.08, 0.90);
-            let t1 = (center + half_t).clamp(0.10, 0.92);
+                ) * break_policy.long_feature_break_center_jitter)
+                .clamp(
+                    break_policy.long_feature_break_center_min_t.clamp(0.0, 1.0),
+                    break_policy
+                        .long_feature_break_center_max_t
+                        .max(break_policy.long_feature_break_center_min_t)
+                        .clamp(0.0, 1.0),
+                );
+            let gap_px = break_policy.long_feature_break_min_gap_px
+                + deterministic_noise(
+                    settings.seed,
+                    gesture.path_seed,
+                    pass.pass_index as u64,
+                    1229,
+                ) * break_policy.long_feature_break_gap_jitter_px;
+            let half_t = (gap_px * 0.5 / path_length).clamp(
+                break_policy.long_feature_break_half_t_min.clamp(0.0, 1.0),
+                break_policy
+                    .long_feature_break_half_t_max
+                    .max(break_policy.long_feature_break_half_t_min)
+                    .clamp(0.0, 1.0),
+            );
+            let t0 = (center - half_t).clamp(
+                break_policy.long_feature_break_t0_min.clamp(0.0, 1.0),
+                break_policy
+                    .long_feature_break_t0_max
+                    .max(break_policy.long_feature_break_t0_min)
+                    .clamp(0.0, 1.0),
+            );
+            let t1 = (center + half_t).clamp(
+                break_policy.long_feature_break_t1_min.clamp(0.0, 1.0),
+                break_policy
+                    .long_feature_break_t1_max
+                    .max(break_policy.long_feature_break_t1_min)
+                    .clamp(0.0, 1.0),
+            );
             if t1 > t0 {
                 intervals.push(NprDropoutInterval {
                     pass_index: pass.pass_index,
@@ -274,10 +344,25 @@ fn npr_allows_seeded_long_feature_break(
     ) {
         return false;
     }
-    if !matches!(gesture.kind, NprLineKind::Feature | NprLineKind::Crease | NprLineKind::Seam) {
+    if !matches!(
+        gesture.kind,
+        NprLineKind::Feature | NprLineKind::Crease | NprLineKind::Seam
+    ) {
         return false;
     }
-    if gesture.path_length_px < 96.0 {
+    let profile = npr_cpu_break_policy_profile(settings);
+    if !profile.allow_seeded_long_feature_breaks {
+        return false;
+    }
+    if matches!(gesture.kind, NprLineKind::Feature | NprLineKind::Crease)
+        && gesture.importance >= profile.important_feature_break_threshold
+    {
+        return false;
+    }
+    if gesture.path_length_px < profile.long_feature_break_min_length_px {
+        return false;
+    }
+    if gesture.dynamics.edge_complexity < profile.long_feature_break_min_complexity {
         return false;
     }
     !gesture.material_detail
@@ -311,33 +396,59 @@ pub(crate) fn build_empty_npr_cached_stroke_plan(
     }
 }
 
-fn npr_pass_jitter_multiplier(passes: u8, pass: u8) -> f32 {
+fn npr_pass_jitter_multiplier(
+    passes: u8,
+    pass: u8,
+    profile: amigo_render_api::NprStrokeSynthesisProfile3d,
+) -> f32 {
     if passes >= 3 {
-        1.0 + pass as f32 * 0.55
+        profile.multi_pass_jitter_base + pass as f32 * profile.multi_pass_jitter_step
     } else if passes == 2 {
-        if pass == 0 { 1.1 } else { 0.35 }
+        if pass == 0 {
+            profile.dual_primary_jitter_multiplier
+        } else {
+            profile.dual_secondary_jitter_multiplier
+        }
     } else {
-        0.35
+        profile.single_pass_jitter_multiplier
     }
 }
 
-fn npr_pass_width_multiplier(passes: u8, pass: u8) -> f32 {
+fn npr_pass_width_multiplier(
+    passes: u8,
+    pass: u8,
+    profile: amigo_render_api::NprStrokeSynthesisProfile3d,
+) -> f32 {
     if passes >= 3 {
-        0.9
+        profile.multi_pass_width_multiplier
     } else if passes == 2 {
-        if pass == 0 { 1.6 } else { 0.85 }
+        if pass == 0 {
+            profile.dual_primary_width_multiplier
+        } else {
+            profile.dual_secondary_width_multiplier
+        }
     } else {
-        0.75
+        profile.single_pass_width_multiplier
     }
 }
 
-fn npr_pass_color(color: ColorRgba, passes: u8, pass: u8, alpha_multiplier: f32) -> ColorRgba {
+fn npr_pass_color(
+    color: ColorRgba,
+    passes: u8,
+    pass: u8,
+    alpha_multiplier: f32,
+    profile: amigo_render_api::NprStrokeSynthesisProfile3d,
+) -> ColorRgba {
     let alpha = if passes >= 3 {
-        0.18
+        profile.multi_pass_alpha
     } else if passes == 2 {
-        if pass == 0 { 0.28 } else { 0.75 }
+        if pass == 0 {
+            profile.dual_primary_alpha
+        } else {
+            profile.dual_secondary_alpha
+        }
     } else {
-        0.92
+        profile.single_pass_alpha
     };
     ColorRgba::new(
         color.r,

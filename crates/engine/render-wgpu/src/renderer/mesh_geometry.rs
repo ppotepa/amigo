@@ -3,17 +3,23 @@ use std::sync::Arc;
 
 use amigo_math::Vec3;
 use gltf::accessor::{DataType, Dimensions};
+use gltf::image::{Data as GltfImageData, Format as GltfImageFormat};
 use gltf::mesh::Semantic;
 
 use crate::renderer::{WgpuSceneRenderer, cross, normalize, sub};
 
 const NPR_EDGE_WELD_EPSILON: f32 = 1.0e-5;
+const NPR_BLACK_MASS_SOLID_LUMA_THRESHOLD: f32 = 0.18;
+const NPR_BLACK_MASS_TEXTURE_AVERAGE_LUMA_THRESHOLD: f32 = 0.14;
+const NPR_BLACK_MASS_TEXTURE_DARK_RATIO_THRESHOLD: f32 = 0.85;
+const NPR_BLACK_MASS_TEXTURE_DARK_LUMA: f32 = 0.22;
 
 #[derive(Debug, Clone)]
 pub(crate) struct CachedMeshGeometry3d {
     pub(crate) vertices: Vec<Vec3>,
     pub(crate) triangles: Vec<MeshTriangle3d>,
     pub(crate) edges: Vec<MeshEdge3d>,
+    pub(crate) inferred_black_mass_material_ids: Vec<u32>,
 }
 
 impl CachedMeshGeometry3d {
@@ -23,6 +29,7 @@ impl CachedMeshGeometry3d {
             vertices,
             triangles: Vec::new(),
             edges: Vec::new(),
+            inferred_black_mass_material_ids: Vec::new(),
         }
     }
 
@@ -48,6 +55,10 @@ impl CachedMeshGeometry3d {
 
     pub(crate) fn edge_count(&self) -> usize {
         self.edges.len()
+    }
+
+    pub(crate) fn inferred_black_mass_material_ids(&self) -> &[u32] {
+        &self.inferred_black_mass_material_ids
     }
 }
 
@@ -109,9 +120,12 @@ impl WgpuSceneRenderer {
 pub(crate) fn load_glb_geometry(
     path: &std::path::Path,
 ) -> Result<CachedMeshGeometry3d, gltf::Error> {
-    let (document, buffers) = import_gltf_for_geometry(path)?;
+    let (document, buffers, images) = import_gltf_for_geometry(path)?;
     let mut vertices = Vec::new();
     let mut triangles = Vec::new();
+    let inferred_black_mass_material_ids =
+        collect_inferred_black_mass_material_ids(&document, &images);
+    let node_transforms = collect_gltf_scene_node_transforms(&document);
 
     if let Some(scene) = document
         .default_scene()
@@ -124,6 +138,7 @@ pub(crate) fn load_glb_geometry(
                 &buffers,
                 node,
                 GltfNodeTransform3d::IDENTITY,
+                &node_transforms,
             );
         }
     }
@@ -137,6 +152,8 @@ pub(crate) fn load_glb_geometry(
                     &buffers,
                     primitive,
                     GltfNodeTransform3d::IDENTITY,
+                    None,
+                    &node_transforms,
                 );
             }
         }
@@ -149,6 +166,7 @@ pub(crate) fn load_glb_geometry(
         vertices,
         triangles,
         edges,
+        inferred_black_mass_material_ids,
     })
 }
 
@@ -158,15 +176,32 @@ fn append_gltf_node_geometry(
     buffers: &[gltf::buffer::Data],
     node: gltf::Node<'_>,
     parent_transform: GltfNodeTransform3d,
+    node_transforms: &[Option<GltfNodeTransform3d>],
 ) {
     let node_transform = parent_transform.then(GltfNodeTransform3d::from_node(&node));
+    let skin = node.skin();
     if let Some(mesh) = node.mesh() {
         for primitive in mesh.primitives() {
-            append_gltf_primitive_geometry(vertices, triangles, buffers, primitive, node_transform);
+            append_gltf_primitive_geometry(
+                vertices,
+                triangles,
+                buffers,
+                primitive,
+                node_transform,
+                skin.clone(),
+                node_transforms,
+            );
         }
     }
     for child in node.children() {
-        append_gltf_node_geometry(vertices, triangles, buffers, child, node_transform);
+        append_gltf_node_geometry(
+            vertices,
+            triangles,
+            buffers,
+            child,
+            node_transform,
+            node_transforms,
+        );
     }
 }
 
@@ -176,15 +211,23 @@ fn append_gltf_primitive_geometry(
     buffers: &[gltf::buffer::Data],
     primitive: gltf::Primitive<'_>,
     transform: GltfNodeTransform3d,
+    skin: Option<gltf::Skin<'_>>,
+    node_transforms: &[Option<GltfNodeTransform3d>],
 ) {
     let material_id = primitive.material().index().map(|index| index as u32);
     let Some(positions) = read_gltf_positions(buffers, &primitive) else {
         return;
     };
     let base_index = vertices.len();
-    vertices.extend(positions.into_iter().map(|position| {
-        transform.transform_point(Vec3::new(position[0], position[1], position[2]))
-    }));
+    if let Some(skinned_positions) = skin.and_then(|skin| {
+        skin_gltf_positions(buffers, &primitive, &positions, skin, node_transforms)
+    }) {
+        vertices.extend(skinned_positions);
+    } else {
+        vertices.extend(positions.into_iter().map(|position| {
+            transform.transform_point(Vec3::new(position[0], position[1], position[2]))
+        }));
+    }
     if let Some(indices) = read_gltf_indices(buffers, &primitive) {
         for chunk in indices.chunks_exact(3) {
             push_imported_triangle(
@@ -229,7 +272,10 @@ fn read_gltf_indices(
     let view = accessor.view()?;
     let buffer = buffers.get(view.buffer().index())?.0.as_slice();
     let data_type = accessor.data_type();
-    let stride = view.stride().unwrap_or(data_type.size()).max(data_type.size());
+    let stride = view
+        .stride()
+        .unwrap_or(data_type.size())
+        .max(data_type.size());
     let start = view.offset().checked_add(accessor.offset())?;
     let mut result = Vec::with_capacity(accessor.count());
 
@@ -240,9 +286,7 @@ fn read_gltf_indices(
             DataType::U16 => {
                 u16::from_le_bytes(buffer.get(offset..offset + 2)?.try_into().ok()?) as u32
             }
-            DataType::U32 => {
-                u32::from_le_bytes(buffer.get(offset..offset + 4)?.try_into().ok()?)
-            }
+            DataType::U32 => u32::from_le_bytes(buffer.get(offset..offset + 4)?.try_into().ok()?),
             _ => return None,
         };
         result.push(value);
@@ -261,7 +305,10 @@ fn read_gltf_positions(
     }
     let view = accessor.view()?;
     let buffer = buffers.get(view.buffer().index())?.0.as_slice();
-    let stride = view.stride().unwrap_or(accessor.size()).max(accessor.size());
+    let stride = view
+        .stride()
+        .unwrap_or(accessor.size())
+        .max(accessor.size());
     let start = view.offset().checked_add(accessor.offset())?;
     let data_type = accessor.data_type();
     let normalized = accessor.normalized();
@@ -287,6 +334,199 @@ fn read_gltf_positions(
     }
 
     Some(result)
+}
+
+fn skin_gltf_positions(
+    buffers: &[gltf::buffer::Data],
+    primitive: &gltf::Primitive<'_>,
+    positions: &[[f32; 3]],
+    skin: gltf::Skin<'_>,
+    node_transforms: &[Option<GltfNodeTransform3d>],
+) -> Option<Vec<Vec3>> {
+    let joints = read_gltf_joints(buffers, primitive)?;
+    let weights = read_gltf_weights(buffers, primitive)?;
+    if joints.len() != positions.len() || weights.len() != positions.len() {
+        return None;
+    }
+
+    let inverse_bind_matrices = read_gltf_inverse_bind_matrices(buffers, &skin);
+    let skin_joints = skin.joints().collect::<Vec<_>>();
+    if skin_joints.is_empty() {
+        return None;
+    }
+    let joint_matrices = skin_joints
+        .iter()
+        .enumerate()
+        .map(|(index, joint)| {
+            let joint_global = node_transforms
+                .get(joint.index())
+                .and_then(|transform| *transform)
+                .unwrap_or_else(|| GltfNodeTransform3d::from_node(joint));
+            let inverse_bind = inverse_bind_matrices
+                .get(index)
+                .copied()
+                .unwrap_or(GltfNodeTransform3d::IDENTITY);
+            joint_global.then(inverse_bind)
+        })
+        .collect::<Vec<_>>();
+
+    let mut skinned = Vec::with_capacity(positions.len());
+    for (index, position) in positions.iter().enumerate() {
+        let point = Vec3::new(position[0], position[1], position[2]);
+        let mut out = Vec3::ZERO;
+        let mut total_weight = 0.0;
+        for influence in 0..4 {
+            let weight = weights[index][influence].max(0.0);
+            if weight <= f32::EPSILON {
+                continue;
+            }
+            let joint_index = joints[index][influence] as usize;
+            let Some(joint_matrix) = joint_matrices.get(joint_index).copied() else {
+                continue;
+            };
+            let transformed = joint_matrix.transform_point(point);
+            out.x += transformed.x * weight;
+            out.y += transformed.y * weight;
+            out.z += transformed.z * weight;
+            total_weight += weight;
+        }
+        if total_weight > f32::EPSILON {
+            skinned.push(Vec3::new(
+                out.x / total_weight,
+                out.y / total_weight,
+                out.z / total_weight,
+            ));
+        } else {
+            skinned.push(point);
+        }
+    }
+
+    Some(skinned)
+}
+
+fn read_gltf_joints(
+    buffers: &[gltf::buffer::Data],
+    primitive: &gltf::Primitive<'_>,
+) -> Option<Vec<[u16; 4]>> {
+    let accessor = primitive.get(&Semantic::Joints(0))?;
+    if accessor.dimensions() != Dimensions::Vec4 {
+        return None;
+    }
+    let view = accessor.view()?;
+    let buffer = buffers.get(view.buffer().index())?.0.as_slice();
+    let stride = view
+        .stride()
+        .unwrap_or(accessor.size())
+        .max(accessor.size());
+    let start = view.offset().checked_add(accessor.offset())?;
+    let data_type = accessor.data_type();
+    let component_size = data_type.size();
+    let mut result = Vec::with_capacity(accessor.count());
+
+    for index in 0..accessor.count() {
+        let element_start = start.checked_add(index.checked_mul(stride)?)?;
+        let mut value = [0u16; 4];
+        for (component, slot) in value.iter_mut().enumerate() {
+            let offset = element_start.checked_add(component.checked_mul(component_size)?)?;
+            *slot = match data_type {
+                DataType::U8 => *buffer.get(offset)? as u16,
+                DataType::U16 => {
+                    u16::from_le_bytes(buffer.get(offset..offset + 2)?.try_into().ok()?)
+                }
+                _ => return None,
+            };
+        }
+        result.push(value);
+    }
+
+    Some(result)
+}
+
+fn read_gltf_weights(
+    buffers: &[gltf::buffer::Data],
+    primitive: &gltf::Primitive<'_>,
+) -> Option<Vec<[f32; 4]>> {
+    let accessor = primitive.get(&Semantic::Weights(0))?;
+    if accessor.dimensions() != Dimensions::Vec4 {
+        return None;
+    }
+    let view = accessor.view()?;
+    let buffer = buffers.get(view.buffer().index())?.0.as_slice();
+    let stride = view
+        .stride()
+        .unwrap_or(accessor.size())
+        .max(accessor.size());
+    let start = view.offset().checked_add(accessor.offset())?;
+    let data_type = accessor.data_type();
+    let component_size = data_type.size();
+    let normalized = accessor.normalized() || matches!(data_type, DataType::U8 | DataType::U16);
+    let mut result = Vec::with_capacity(accessor.count());
+
+    for index in 0..accessor.count() {
+        let element_start = start.checked_add(index.checked_mul(stride)?)?;
+        let mut value = [0.0f32; 4];
+        for (component, slot) in value.iter_mut().enumerate() {
+            let offset = element_start.checked_add(component.checked_mul(component_size)?)?;
+            *slot = read_gltf_component_as_f32(buffer, offset, data_type, normalized)?;
+        }
+        result.push(value);
+    }
+
+    Some(result)
+}
+
+fn read_gltf_inverse_bind_matrices(
+    buffers: &[gltf::buffer::Data],
+    skin: &gltf::Skin<'_>,
+) -> Vec<GltfNodeTransform3d> {
+    let Some(accessor) = skin.inverse_bind_matrices() else {
+        return Vec::new();
+    };
+    if accessor.dimensions() != Dimensions::Mat4 || accessor.data_type() != DataType::F32 {
+        return Vec::new();
+    }
+    let Some(view) = accessor.view() else {
+        return Vec::new();
+    };
+    let Some(buffer) = buffers
+        .get(view.buffer().index())
+        .map(|buffer| buffer.0.as_slice())
+    else {
+        return Vec::new();
+    };
+    let stride = view
+        .stride()
+        .unwrap_or(accessor.size())
+        .max(accessor.size());
+    let Some(start) = view.offset().checked_add(accessor.offset()) else {
+        return Vec::new();
+    };
+    let mut result = Vec::with_capacity(accessor.count());
+
+    for index in 0..accessor.count() {
+        let Some(element_start) = start.checked_add(index.saturating_mul(stride)) else {
+            break;
+        };
+        let mut column_major = [0.0f32; 16];
+        let mut valid = true;
+        for (component, slot) in column_major.iter_mut().enumerate() {
+            let offset = element_start + component * 4;
+            let Some(bytes) = buffer.get(offset..offset + 4) else {
+                valid = false;
+                break;
+            };
+            let Ok(bytes) = bytes.try_into() else {
+                valid = false;
+                break;
+            };
+            *slot = f32::from_le_bytes(bytes);
+        }
+        if valid {
+            result.push(GltfNodeTransform3d::from_column_major_matrix(column_major));
+        }
+    }
+
+    result
 }
 
 fn read_gltf_component_as_f32(
@@ -341,9 +581,9 @@ fn read_gltf_component_as_f32(
 
 fn import_gltf_for_geometry(
     path: &std::path::Path,
-) -> Result<(gltf::Document, Vec<gltf::buffer::Data>), gltf::Error> {
+) -> Result<(gltf::Document, Vec<gltf::buffer::Data>, Vec<GltfImageData>), gltf::Error> {
     match gltf::import(path) {
-        Ok((document, buffers, _)) => Ok((document, buffers)),
+        Ok((document, buffers, images)) => Ok((document, buffers, images)),
         Err(error) if gltf_error_is_quantization_extension_validation(&error) => {
             let file = std::fs::File::open(path)?;
             let reader = std::io::BufReader::new(file);
@@ -352,15 +592,207 @@ fn import_gltf_for_geometry(
                 .blob
                 .map(|blob| vec![gltf::buffer::Data(blob)])
                 .unwrap_or_default();
-            Ok((gltf.document, buffers))
+            Ok((gltf.document, buffers, Vec::new()))
         }
         Err(error) => Err(error),
     }
 }
 
+fn collect_inferred_black_mass_material_ids(
+    document: &gltf::Document,
+    images: &[GltfImageData],
+) -> Vec<u32> {
+    let mut material_ids = Vec::new();
+    for material in document.materials() {
+        let Some(material_id) = material.index().map(|index| index as u32) else {
+            continue;
+        };
+        let pbr = material.pbr_metallic_roughness();
+        let base = pbr.base_color_factor();
+        let texture_average = pbr
+            .base_color_texture()
+            .and_then(|info| images.get(info.texture().source().index()))
+            .and_then(|image| average_gltf_base_color_texture(image, base));
+        let inferred_black_mass = if let Some((average_color, dark_pixel_ratio)) = texture_average {
+            texture_average_is_black_mass(color_luminance(average_color), dark_pixel_ratio)
+        } else {
+            let color = [base[0], base[1], base[2], base[3]];
+            color_luminance(color) <= NPR_BLACK_MASS_SOLID_LUMA_THRESHOLD && color[3] > 0.25
+        };
+        if inferred_black_mass {
+            material_ids.push(material_id);
+        }
+    }
+    material_ids
+}
+
+fn average_gltf_base_color_texture(
+    image: &GltfImageData,
+    base_color_factor: [f32; 4],
+) -> Option<([f32; 4], f32)> {
+    let sample_count = (image.width as usize).checked_mul(image.height as usize)?;
+    if sample_count == 0 {
+        return None;
+    }
+    let mut rgb_sum = [0.0f32; 3];
+    let mut alpha_sum = 0.0f32;
+    let mut dark_pixels = 0usize;
+    for index in 0..sample_count {
+        let [r, g, b, a] = gltf_image_pixel_rgba(image, index)?;
+        let color = [
+            (r * base_color_factor[0]).clamp(0.0, 1.0),
+            (g * base_color_factor[1]).clamp(0.0, 1.0),
+            (b * base_color_factor[2]).clamp(0.0, 1.0),
+            (a * base_color_factor[3]).clamp(0.0, 1.0),
+        ];
+        rgb_sum[0] += color[0];
+        rgb_sum[1] += color[1];
+        rgb_sum[2] += color[2];
+        alpha_sum += color[3];
+        if color_luminance(color) <= NPR_BLACK_MASS_TEXTURE_DARK_LUMA && color[3] > 0.25 {
+            dark_pixels += 1;
+        }
+    }
+    let inv_count = 1.0 / sample_count as f32;
+    Some((
+        [
+            rgb_sum[0] * inv_count,
+            rgb_sum[1] * inv_count,
+            rgb_sum[2] * inv_count,
+            alpha_sum * inv_count,
+        ],
+        dark_pixels as f32 * inv_count,
+    ))
+}
+
+fn gltf_image_pixel_rgba(image: &GltfImageData, index: usize) -> Option<[f32; 4]> {
+    match image.format {
+        GltfImageFormat::R8 => {
+            let r = *image.pixels.get(index)? as f32 / 255.0;
+            Some([r, r, r, 1.0])
+        }
+        GltfImageFormat::R8G8 => {
+            let offset = index.checked_mul(2)?;
+            let r = *image.pixels.get(offset)? as f32 / 255.0;
+            let a = *image.pixels.get(offset + 1)? as f32 / 255.0;
+            Some([r, r, r, a])
+        }
+        GltfImageFormat::R8G8B8 => {
+            let offset = index.checked_mul(3)?;
+            Some([
+                *image.pixels.get(offset)? as f32 / 255.0,
+                *image.pixels.get(offset + 1)? as f32 / 255.0,
+                *image.pixels.get(offset + 2)? as f32 / 255.0,
+                1.0,
+            ])
+        }
+        GltfImageFormat::R8G8B8A8 => {
+            let offset = index.checked_mul(4)?;
+            Some([
+                *image.pixels.get(offset)? as f32 / 255.0,
+                *image.pixels.get(offset + 1)? as f32 / 255.0,
+                *image.pixels.get(offset + 2)? as f32 / 255.0,
+                *image.pixels.get(offset + 3)? as f32 / 255.0,
+            ])
+        }
+        GltfImageFormat::R16 => {
+            let r = read_u16_normalized(&image.pixels, index.checked_mul(2)?)?;
+            Some([r, r, r, 1.0])
+        }
+        GltfImageFormat::R16G16 => {
+            let offset = index.checked_mul(4)?;
+            let r = read_u16_normalized(&image.pixels, offset)?;
+            let a = read_u16_normalized(&image.pixels, offset + 2)?;
+            Some([r, r, r, a])
+        }
+        GltfImageFormat::R16G16B16 => {
+            let offset = index.checked_mul(6)?;
+            Some([
+                read_u16_normalized(&image.pixels, offset)?,
+                read_u16_normalized(&image.pixels, offset + 2)?,
+                read_u16_normalized(&image.pixels, offset + 4)?,
+                1.0,
+            ])
+        }
+        GltfImageFormat::R16G16B16A16 => {
+            let offset = index.checked_mul(8)?;
+            Some([
+                read_u16_normalized(&image.pixels, offset)?,
+                read_u16_normalized(&image.pixels, offset + 2)?,
+                read_u16_normalized(&image.pixels, offset + 4)?,
+                read_u16_normalized(&image.pixels, offset + 6)?,
+            ])
+        }
+        GltfImageFormat::R32G32B32FLOAT => {
+            let offset = index.checked_mul(12)?;
+            Some([
+                read_f32_channel(&image.pixels, offset)?,
+                read_f32_channel(&image.pixels, offset + 4)?,
+                read_f32_channel(&image.pixels, offset + 8)?,
+                1.0,
+            ])
+        }
+        GltfImageFormat::R32G32B32A32FLOAT => {
+            let offset = index.checked_mul(16)?;
+            Some([
+                read_f32_channel(&image.pixels, offset)?,
+                read_f32_channel(&image.pixels, offset + 4)?,
+                read_f32_channel(&image.pixels, offset + 8)?,
+                read_f32_channel(&image.pixels, offset + 12)?,
+            ])
+        }
+    }
+}
+
+fn read_u16_normalized(bytes: &[u8], offset: usize) -> Option<f32> {
+    Some(u16::from_le_bytes(bytes.get(offset..offset + 2)?.try_into().ok()?) as f32 / 65535.0)
+}
+
+fn read_f32_channel(bytes: &[u8], offset: usize) -> Option<f32> {
+    Some(f32::from_le_bytes(bytes.get(offset..offset + 4)?.try_into().ok()?).clamp(0.0, 1.0))
+}
+
+fn color_luminance(color: [f32; 4]) -> f32 {
+    color[0] * 0.2126 + color[1] * 0.7152 + color[2] * 0.0722
+}
+
+fn texture_average_is_black_mass(luminance: f32, dark_pixel_ratio: f32) -> bool {
+    luminance <= NPR_BLACK_MASS_TEXTURE_AVERAGE_LUMA_THRESHOLD
+        && dark_pixel_ratio >= NPR_BLACK_MASS_TEXTURE_DARK_RATIO_THRESHOLD
+}
+
 fn gltf_error_is_quantization_extension_validation(error: &gltf::Error) -> bool {
     matches!(error, gltf::Error::Validation(_))
         && format!("{error:?}").contains("KHR_mesh_quantization")
+}
+
+fn collect_gltf_scene_node_transforms(
+    document: &gltf::Document,
+) -> Vec<Option<GltfNodeTransform3d>> {
+    let mut transforms = vec![None; document.nodes().count()];
+    if let Some(scene) = document
+        .default_scene()
+        .or_else(|| document.scenes().next())
+    {
+        for node in scene.nodes() {
+            collect_gltf_node_transforms(node, GltfNodeTransform3d::IDENTITY, &mut transforms);
+        }
+    }
+    transforms
+}
+
+fn collect_gltf_node_transforms(
+    node: gltf::Node<'_>,
+    parent_transform: GltfNodeTransform3d,
+    transforms: &mut [Option<GltfNodeTransform3d>],
+) {
+    let node_transform = parent_transform.then(GltfNodeTransform3d::from_node(&node));
+    if let Some(slot) = transforms.get_mut(node.index()) {
+        *slot = Some(node_transform);
+    }
+    for child in node.children() {
+        collect_gltf_node_transforms(child, node_transform, transforms);
+    }
 }
 
 #[derive(Clone, Copy)]
@@ -423,6 +855,17 @@ impl GltfNodeTransform3d {
                 0.0,
                 0.0,
                 1.0,
+            ],
+        }
+    }
+
+    fn from_column_major_matrix(matrix: [f32; 16]) -> Self {
+        Self {
+            matrix: [
+                matrix[0], matrix[4], matrix[8], matrix[12], //
+                matrix[1], matrix[5], matrix[9], matrix[13], //
+                matrix[2], matrix[6], matrix[10], matrix[14], //
+                matrix[3], matrix[7], matrix[11], matrix[15],
             ],
         }
     }
@@ -620,6 +1063,7 @@ pub(crate) fn cube_geometry() -> CachedMeshGeometry3d {
         vertices,
         triangles,
         edges,
+        inferred_black_mass_material_ids: Vec::new(),
     }
 }
 
@@ -649,7 +1093,7 @@ mod tests {
             return;
         }
 
-        let (document, buffers) =
+        let (document, buffers, _) =
             import_gltf_for_geometry(&path).expect("Riders GLB should import for geometry");
         let primitive = document
             .meshes()
@@ -669,5 +1113,53 @@ mod tests {
             indices.len() > 1_000_000,
             "Riders should decode indexed triangles without gltf utility panics"
         );
+    }
+
+    #[test]
+    fn averages_dark_gltf_texture_for_black_mass_inference() {
+        let image = GltfImageData {
+            pixels: vec![
+                0, 0, 0, 255, //
+                20, 20, 20, 255, //
+                255, 255, 255, 255, //
+                255, 255, 255, 255,
+            ],
+            format: GltfImageFormat::R8G8B8A8,
+            width: 2,
+            height: 2,
+        };
+
+        let (average, dark_ratio) = average_gltf_base_color_texture(&image, [1.0, 1.0, 1.0, 1.0])
+            .expect("test image should average");
+
+        assert!(average[0] > 0.5);
+        assert_eq!(dark_ratio, 0.5);
+        assert!(
+            !texture_average_is_black_mass(color_luminance(average), dark_ratio),
+            "mixed atlases should not turn a whole material into black mass"
+        );
+    }
+
+    #[test]
+    fn fully_dark_gltf_texture_is_black_mass_candidate() {
+        let image = GltfImageData {
+            pixels: vec![
+                0, 0, 0, 255, //
+                20, 20, 20, 255, //
+                10, 10, 10, 255, //
+                15, 15, 15, 255,
+            ],
+            format: GltfImageFormat::R8G8B8A8,
+            width: 2,
+            height: 2,
+        };
+
+        let (average, dark_ratio) = average_gltf_base_color_texture(&image, [1.0, 1.0, 1.0, 1.0])
+            .expect("test image should average");
+
+        assert!(texture_average_is_black_mass(
+            color_luminance(average),
+            dark_ratio
+        ));
     }
 }

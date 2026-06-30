@@ -6,10 +6,10 @@ use crate::renderer::{
     CachedMeshGeometry3d, ColorVertex, NprDebugOverlay3d, NprEntityPathHistory3d,
     NprPathBuildResult3d, NprPathBuildStats3d, NprStrokeFrameStats3d, NprStrokeSegmentVertex,
     Viewport, append_npr_debug_path_vertices, append_npr_rejected_technical_vertices,
-    append_npr_styled_path_vertices,
-    build_npr_face_visibility_buffer, build_npr_stroke_paths_for_settings,
-    collect_npr_edge_fragments_for_mesh, cross, dot, normalize, project_point_with_camera, rotate_x,
-    rotate_y, rotate_z, sub, transform_point_3d, triangle_center,
+    append_npr_styled_path_vertices, build_npr_face_visibility_buffer,
+    build_npr_stroke_paths_for_settings, collect_npr_edge_fragments_for_mesh, cross, dot,
+    normalize, project_point_with_camera, rotate_x, rotate_y, rotate_z, sub, transform_point_3d,
+    triangle_center,
 };
 
 use super::types::NprRejectedTechnicalCandidate;
@@ -125,8 +125,13 @@ pub(crate) fn append_mesh_npr_line_vertices_with_history_and_stats(
     let paths = path_build_result.paths;
     let path_build_us = path_build_start.elapsed().as_secs_f64() * 1_000_000.0;
     let stabilize_start = std::time::Instant::now();
-    let stabilized =
-        crate::renderer::stabilize_npr_paths_for_entity(history, frame_index, entity_name, settings, paths);
+    let stabilized = crate::renderer::stabilize_npr_paths_for_entity(
+        history,
+        frame_index,
+        entity_name,
+        settings,
+        paths,
+    );
     let stabilize_us = stabilize_start.elapsed().as_secs_f64() * 1_000_000.0;
     let mut stats = NprStrokeFrameStats3d {
         paths: stabilized.len(),

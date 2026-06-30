@@ -3,8 +3,8 @@ use amigo_math::{ColorRgba, Vec2};
 use crate::renderer::{
     ColorVertex, NprDebugOverlay3d, NprLineKind, NprStrokePassKind, NprStrokePath, Viewport,
     build_npr_dropout_mask, build_npr_stable_brush_path, build_npr_stroke_gesture,
-    build_npr_stroke_pass_plan, deterministic_noise, npr_stroke_strip_sample, push_quad,
-    screen_segment_length_px,
+    build_npr_stroke_pass_plan, deterministic_noise, npr_cpu_tessellation_profile,
+    npr_stroke_strip_sample, push_quad, screen_segment_length_px,
 };
 
 use super::types::NprRejectedTechnicalCandidate;
@@ -108,7 +108,8 @@ fn append_npr_dropout_debug_vertices(
     }
 
     let gesture = build_npr_stroke_gesture(path, settings);
-    let brush_path = build_npr_stable_brush_path(path, viewport);
+    let brush_path =
+        build_npr_stable_brush_path(path, viewport, npr_cpu_tessellation_profile(settings));
     let passes = build_npr_stroke_pass_plan(path, settings, gesture);
     let dropout = build_npr_dropout_mask(gesture, settings, &passes);
     let Some(primary) = passes
@@ -152,7 +153,8 @@ fn append_npr_width_alpha_debug_vertices(
     }
 
     let gesture = build_npr_stroke_gesture(path, settings);
-    let brush_path = build_npr_stable_brush_path(path, viewport);
+    let brush_path =
+        build_npr_stable_brush_path(path, viewport, npr_cpu_tessellation_profile(settings));
     let Some(primary) = build_npr_stroke_pass_plan(path, settings, gesture)
         .into_iter()
         .find(|pass| pass.kind == NprStrokePassKind::Primary)
@@ -362,4 +364,55 @@ fn npr_path_length_px(path: &NprStrokePath, viewport: &Viewport) -> f32 {
         .windows(2)
         .map(|segment| screen_segment_length_px(segment[0], segment[1], viewport))
         .sum::<f32>()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn long_feature_path() -> NprStrokePath {
+        NprStrokePath {
+            path_id: 90,
+            kind: NprLineKind::Feature,
+            candidate_importance: 1.0,
+            technical_detail: true,
+            material_detail: false,
+            material_seam: false,
+            points: vec![Vec2::new(-0.50, 0.0), Vec2::new(0.50, 0.0)],
+            source_edges: vec![1, 2, 3],
+            sorted_source_edges: vec![1, 2, 3],
+            arc_lengths_px: vec![0.0, 400.0],
+            importance: 0.8,
+            closed: false,
+        }
+    }
+
+    #[test]
+    fn width_alpha_debug_uses_preset_tessellation_profile() {
+        let viewport = Viewport::from_dimensions(800.0, 600.0);
+        let path = long_feature_path();
+        let mut dense = amigo_render_api::NprLineSettings3d::default();
+        dense.cpu_strategy_profile.tessellation.resample_spacing_px = 4.0;
+        let mut coarse = dense.clone();
+        coarse.cpu_strategy_profile.tessellation.resample_spacing_px = 64.0;
+        let mut dense_vertices = Vec::new();
+        let mut coarse_vertices = Vec::new();
+
+        append_npr_debug_path_vertices(
+            &mut dense_vertices,
+            &viewport,
+            &path,
+            &dense,
+            NprDebugOverlay3d::WidthAlpha,
+        );
+        append_npr_debug_path_vertices(
+            &mut coarse_vertices,
+            &viewport,
+            &path,
+            &coarse,
+            NprDebugOverlay3d::WidthAlpha,
+        );
+
+        assert!(dense_vertices.len() > coarse_vertices.len() * 4);
+    }
 }

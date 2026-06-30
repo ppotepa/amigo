@@ -57,7 +57,8 @@ fn playground_npr_preview_renders_stable_stroked_paths_gpu_comic() {
     let mut stable_settings = host
         .mesh3d_npr_preset_for_test("cinematic_12fps")
         .expect("cinematic 12fps preset should be registered");
-    stable_settings.pipeline.path_strategy = amigo_render_api::NprPathStrategy3d::StableStrokedPaths;
+    stable_settings.pipeline.path_strategy =
+        amigo_render_api::NprPathStrategy3d::StableStrokedPaths;
     stable_settings.gpu_realtime_tuning.max_chained_walk_edges = 1;
     stable_settings.gpu_realtime_tuning.max_terminal_walk_edges = 0;
     host.register_mesh3d_npr_preset_for_test("cinematic_12fps_stable_path_test", stable_settings)
@@ -147,8 +148,16 @@ fn assert_npr_ink_masks_are_similar(
         cpu_frame.width as usize,
         cpu_frame.height as usize,
     );
-    let gpu_stats = mask_stats(&gpu_mask, gpu_frame.width as usize, gpu_frame.height as usize);
-    let cpu_stats = mask_stats(&cpu_mask, cpu_frame.width as usize, cpu_frame.height as usize);
+    let gpu_stats = mask_stats(
+        &gpu_mask,
+        gpu_frame.width as usize,
+        gpu_frame.height as usize,
+    );
+    let cpu_stats = mask_stats(
+        &cpu_mask,
+        cpu_frame.width as usize,
+        cpu_frame.height as usize,
+    );
     let count_ratio = if cpu_stats.count == 0 {
         0.0
     } else {
@@ -308,11 +317,7 @@ fn count_nonwhite_pixels(pixels: &[u8]) -> usize {
 }
 
 fn min_pixel_luma(pixels: &[u8]) -> u8 {
-    pixels
-        .chunks_exact(4)
-        .map(pixel_luma)
-        .min()
-        .unwrap_or(255)
+    pixels.chunks_exact(4).map(pixel_luma).min().unwrap_or(255)
 }
 
 fn pixel_luma(rgba: &[u8]) -> u8 {

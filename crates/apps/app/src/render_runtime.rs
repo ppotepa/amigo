@@ -241,8 +241,7 @@ pub(crate) fn build_render_frame_for_session(
         stats.world_3d_npr_gpu_realtime_meshes = npr.gpu_realtime_meshes;
         stats.world_3d_npr_cpu_reference_meshes = npr.cpu_reference_meshes;
         stats.world_3d_npr_gpu_realtime_enqueued_edges = npr.gpu_realtime_enqueued_edges;
-        stats.world_3d_npr_gpu_realtime_enqueued_triangles =
-            npr.gpu_realtime_enqueued_triangles;
+        stats.world_3d_npr_gpu_realtime_enqueued_triangles = npr.gpu_realtime_enqueued_triangles;
         stats.world_3d_npr_gpu_realtime_topology_uploads = npr.gpu_realtime_topology_uploads;
         stats.world_3d_npr_gpu_realtime_buffer_capacity_bytes =
             npr.gpu_realtime_buffer_capacity_bytes;
@@ -255,8 +254,7 @@ pub(crate) fn build_render_frame_for_session(
             npr.gpu_realtime_endpoint_heads_capacity;
         stats.world_3d_npr_gpu_realtime_endpoint_entries_capacity =
             npr.gpu_realtime_endpoint_entries_capacity;
-        stats.world_3d_npr_gpu_realtime_path_links_capacity =
-            npr.gpu_realtime_path_links_capacity;
+        stats.world_3d_npr_gpu_realtime_path_links_capacity = npr.gpu_realtime_path_links_capacity;
         stats.world_3d_npr_gpu_realtime_path_states_capacity =
             npr.gpu_realtime_path_states_capacity;
         stats.world_3d_npr_gpu_realtime_path_segments_capacity =
@@ -265,8 +263,7 @@ pub(crate) fn build_render_frame_for_session(
             npr.gpu_realtime_aggregated_paths_capacity;
         stats.world_3d_npr_gpu_realtime_stroke_segments_capacity =
             npr.gpu_realtime_stroke_segments_capacity;
-        stats.world_3d_npr_gpu_realtime_debug_mode =
-            npr.gpu_realtime_debug_mode.clone();
+        stats.world_3d_npr_gpu_realtime_debug_mode = npr.gpu_realtime_debug_mode.clone();
         stats.world_3d_npr_pipeline_plan = npr.pipeline_plan.clone();
         stats.world_3d_npr_paths = npr.paths;
         stats.world_3d_npr_boundary_paths = npr.boundary_paths;
