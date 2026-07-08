@@ -35,7 +35,7 @@ fn hydrate_component_core(
                     source_mod: source_mod.to_owned(),
                     entity_name: entity_name.clone(),
                     id: id.clone(),
-                    source: lightmap_source_ref_from_document(source),
+                    source: lightmap_source_ref_from_document(document, source),
                     channels: channels
                         .iter()
                         .map(lightmap_channel_from_document)
@@ -182,14 +182,24 @@ fn hydrate_component_core(
 }
 
 fn lightmap_source_ref_from_document(
+    document: &SceneDocument,
     source: &LightMap2dSourceRefDocument,
 ) -> LightMap2dSourceRefSceneCommand {
     match source {
         LightMap2dSourceRefDocument::LayeredImage2d { entity } => LightMap2dSourceRefSceneCommand {
             kind: LightMap2dSourceKindSceneCommand::LayeredImage2d,
-            entity_name: entity.clone(),
+            entity_name: resolve_entity_display_name(document, entity),
         },
     }
+}
+
+fn resolve_entity_display_name(document: &SceneDocument, entity_ref: &str) -> String {
+    document
+        .entities
+        .iter()
+        .find(|entity| entity.id == entity_ref || entity.display_name() == entity_ref)
+        .map(crate::SceneEntityDocument::display_name)
+        .unwrap_or_else(|| entity_ref.to_owned())
 }
 
 fn lightmap_channel_from_document(

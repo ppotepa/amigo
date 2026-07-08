@@ -388,7 +388,7 @@ impl ComponentRegistry {
     pub fn descriptor_by_type_name(&self, type_name: &str) -> Option<&ComponentTypeDescriptor> {
         self.descriptors
             .values()
-            .find(|descriptor| descriptor.type_name.eq_ignore_ascii_case(type_name))
+            .find(|descriptor| component_type_name_matches(descriptor.type_name, type_name))
     }
 
     pub fn insert(
@@ -421,4 +421,12 @@ impl ComponentRegistry {
     pub fn iter(&self) -> impl Iterator<Item = &ComponentTypeDescriptor> {
         self.descriptors.values()
     }
+}
+
+fn component_type_name_matches(descriptor_type_name: &str, requested_type_name: &str) -> bool {
+    descriptor_type_name.eq_ignore_ascii_case(requested_type_name)
+        || requested_type_name
+            .rsplit('.')
+            .next()
+            .is_some_and(|short_name| descriptor_type_name.eq_ignore_ascii_case(short_name))
 }

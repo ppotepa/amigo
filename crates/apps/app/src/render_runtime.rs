@@ -123,6 +123,56 @@ pub(crate) fn build_render_frame_for_session(
             world_2d_particles: render_packet
                 .renderable_2d_count_by_kind(Renderable2dKind::Particle),
             world_3d_meshes: render_packet.world_3d_meshes().len(),
+            world_3d_npr_meshes: render_packet
+                .world_3d_meshes()
+                .iter()
+                .filter(|command| command.mesh.npr.is_some())
+                .count(),
+            world_3d_npr_gpu_realtime_meshes: 0,
+            world_3d_npr_cpu_reference_meshes: 0,
+            world_3d_npr_gpu_realtime_enqueued_edges: 0,
+            world_3d_npr_gpu_realtime_enqueued_triangles: 0,
+            world_3d_npr_gpu_realtime_topology_uploads: 0,
+            world_3d_npr_gpu_realtime_buffer_capacity_bytes: 0,
+            world_3d_npr_gpu_realtime_frame_jobs: 0,
+            world_3d_npr_gpu_realtime_projected_vertices_capacity: 0,
+            world_3d_npr_gpu_realtime_visible_segments_capacity: 0,
+            world_3d_npr_gpu_realtime_endpoint_heads_capacity: 0,
+            world_3d_npr_gpu_realtime_endpoint_entries_capacity: 0,
+            world_3d_npr_gpu_realtime_path_links_capacity: 0,
+            world_3d_npr_gpu_realtime_path_states_capacity: 0,
+            world_3d_npr_gpu_realtime_path_segments_capacity: 0,
+            world_3d_npr_gpu_realtime_aggregated_paths_capacity: 0,
+            world_3d_npr_gpu_realtime_stroke_segments_capacity: 0,
+            world_3d_npr_gpu_realtime_debug_mode: String::new(),
+            world_3d_npr_pipeline_plan: String::new(),
+            world_3d_npr_paths: 0,
+            world_3d_npr_boundary_paths: 0,
+            world_3d_npr_silhouette_paths: 0,
+            world_3d_npr_crease_paths: 0,
+            world_3d_npr_seam_paths: 0,
+            world_3d_npr_feature_paths: 0,
+            world_3d_npr_contact_paths: 0,
+            world_3d_npr_brush_samples: 0,
+            world_3d_npr_strip_vertices: 0,
+            world_3d_npr_primary_passes: 0,
+            world_3d_npr_search_passes: 0,
+            world_3d_npr_dropout_intervals: 0,
+            world_3d_npr_cached_plan_hits: 0,
+            world_3d_npr_cached_plan_misses: 0,
+            world_3d_npr_path_build_us: 0.0,
+            world_3d_npr_stabilize_us: 0.0,
+            world_3d_npr_stroke_vertices_us: 0.0,
+            world_3d_npr_path_project_us: 0.0,
+            world_3d_npr_path_visibility_us: 0.0,
+            world_3d_npr_path_edge_sample_us: 0.0,
+            world_3d_npr_path_stitch_us: 0.0,
+            world_3d_npr_path_visible_edges: 0,
+            world_3d_npr_path_fragments: 0,
+            offscreen_color_buffer_writes: 0,
+            offscreen_color_buffer_reallocs: 0,
+            offscreen_color_upload_bytes: 0,
+            offscreen_color_buffer_capacity_bytes: 0,
             world_3d_materials: render_packet.world_3d_materials().len(),
             world_3d_text: render_packet.world_3d_text().len(),
             game_ui_overlays: render_packet.game_ui_overlay().len(),
@@ -185,6 +235,69 @@ pub(crate) fn build_render_frame_for_session(
             game_viewport: editor_game_viewport,
         },
     )?;
+    if let Ok(stats_service) = required::<RenderFrameStatsService>(runtime) {
+        let npr = renderer.npr_stroke_stats_3d();
+        let mut stats = stats_service.snapshot();
+        stats.world_3d_npr_gpu_realtime_meshes = npr.gpu_realtime_meshes;
+        stats.world_3d_npr_cpu_reference_meshes = npr.cpu_reference_meshes;
+        stats.world_3d_npr_gpu_realtime_enqueued_edges = npr.gpu_realtime_enqueued_edges;
+        stats.world_3d_npr_gpu_realtime_enqueued_triangles = npr.gpu_realtime_enqueued_triangles;
+        stats.world_3d_npr_gpu_realtime_topology_uploads = npr.gpu_realtime_topology_uploads;
+        stats.world_3d_npr_gpu_realtime_buffer_capacity_bytes =
+            npr.gpu_realtime_buffer_capacity_bytes;
+        stats.world_3d_npr_gpu_realtime_frame_jobs = npr.gpu_realtime_frame_jobs;
+        stats.world_3d_npr_gpu_realtime_projected_vertices_capacity =
+            npr.gpu_realtime_projected_vertices_capacity;
+        stats.world_3d_npr_gpu_realtime_visible_segments_capacity =
+            npr.gpu_realtime_visible_segments_capacity;
+        stats.world_3d_npr_gpu_realtime_endpoint_heads_capacity =
+            npr.gpu_realtime_endpoint_heads_capacity;
+        stats.world_3d_npr_gpu_realtime_endpoint_entries_capacity =
+            npr.gpu_realtime_endpoint_entries_capacity;
+        stats.world_3d_npr_gpu_realtime_path_links_capacity = npr.gpu_realtime_path_links_capacity;
+        stats.world_3d_npr_gpu_realtime_path_states_capacity =
+            npr.gpu_realtime_path_states_capacity;
+        stats.world_3d_npr_gpu_realtime_path_segments_capacity =
+            npr.gpu_realtime_path_segments_capacity;
+        stats.world_3d_npr_gpu_realtime_aggregated_paths_capacity =
+            npr.gpu_realtime_aggregated_paths_capacity;
+        stats.world_3d_npr_gpu_realtime_stroke_segments_capacity =
+            npr.gpu_realtime_stroke_segments_capacity;
+        stats.world_3d_npr_gpu_realtime_debug_mode = npr.gpu_realtime_debug_mode.clone();
+        stats.world_3d_npr_pipeline_plan = npr.pipeline_plan.clone();
+        stats.world_3d_npr_paths = npr.paths;
+        stats.world_3d_npr_boundary_paths = npr.boundary_paths;
+        stats.world_3d_npr_silhouette_paths = npr.silhouette_paths;
+        stats.world_3d_npr_crease_paths = npr.crease_paths;
+        stats.world_3d_npr_seam_paths = npr.seam_paths;
+        stats.world_3d_npr_feature_paths = npr.feature_paths;
+        stats.world_3d_npr_contact_paths = npr.contact_paths;
+        stats.world_3d_npr_brush_samples = npr.brush_samples;
+        stats.world_3d_npr_strip_vertices = npr.strip_vertices;
+        stats.world_3d_npr_primary_passes = npr.primary_passes;
+        stats.world_3d_npr_search_passes = npr.search_passes;
+        stats.world_3d_npr_dropout_intervals = npr.dropout_intervals;
+        stats.world_3d_npr_cached_plan_hits = npr.cached_plan_hits;
+        stats.world_3d_npr_cached_plan_misses = npr.cached_plan_misses;
+        stats.world_3d_npr_path_build_us = npr.path_build_us;
+        stats.world_3d_npr_stabilize_us = npr.stabilize_us;
+        stats.world_3d_npr_stroke_vertices_us = npr.stroke_vertices_us;
+        stats.world_3d_npr_path_project_us = npr.path_project_us;
+        stats.world_3d_npr_path_visibility_us = npr.path_visibility_us;
+        stats.world_3d_npr_path_edge_sample_us = npr.path_edge_sample_us;
+        stats.world_3d_npr_path_stitch_us = npr.path_stitch_us;
+        stats.world_3d_npr_path_visible_edges = npr.path_visible_edges;
+        stats.world_3d_npr_path_fragments = npr.path_fragments;
+        let upload = renderer.offscreen_upload_stats();
+        stats.offscreen_color_buffer_writes = upload.color_buffer_writes;
+        stats.offscreen_color_buffer_reallocs = upload.color_buffer_reallocs;
+        stats.offscreen_color_upload_bytes = upload.color_upload_bytes;
+        stats.offscreen_color_buffer_capacity_bytes = upload.color_buffer_capacity_bytes;
+        stats_service.set(stats.clone());
+        if debug_overlay_enabled || dev_console_open {
+            debug_overlay_service.record_render_frame(stats);
+        }
+    }
     if wants_render_diagnostics {
         let render_diagnostics = required::<RenderCompositionDiagnosticsService>(runtime)?;
         render_diagnostics

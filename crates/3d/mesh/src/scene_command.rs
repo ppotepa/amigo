@@ -13,10 +13,15 @@ pub struct MeshSceneCommandContext<'a> {
 }
 
 #[derive(Debug, Clone)]
-pub struct MeshSceneCommandOutcome {
-    pub entity_name: String,
-    pub source_mod: String,
-    pub mesh_asset: AssetKey,
+pub enum MeshSceneCommandOutcome {
+    MeshQueued {
+        entity_name: String,
+        source_mod: String,
+        mesh_asset: AssetKey,
+    },
+    NprPresetRegistered {
+        id: String,
+    },
 }
 
 pub fn can_handle_mesh_scene_command(command: &SceneCommand) -> bool {
@@ -24,6 +29,7 @@ pub fn can_handle_mesh_scene_command(command: &SceneCommand) -> bool {
         command,
         SceneCommand::Plugin { command }
             if command.command_type == amigo_scene::MESH_3D_PLUGIN_SCENE_COMMAND_TYPE
+                || command.command_type == amigo_scene::NPR_PRESET_3D_PLUGIN_SCENE_COMMAND_TYPE
     )
 }
 
@@ -50,11 +56,26 @@ pub fn handle_mesh_scene_command(
                 entity_name: command.entity_name.clone(),
                 mesh_asset: command.mesh_asset.clone(),
             });
-            Ok(MeshSceneCommandOutcome {
+            Ok(MeshSceneCommandOutcome::MeshQueued {
                 entity_name: command.entity_name,
                 source_mod: command.source_mod,
                 mesh_asset: command.mesh_asset,
             })
+        }
+        SceneCommand::Plugin { command }
+            if command.command_type == amigo_scene::NPR_PRESET_3D_PLUGIN_SCENE_COMMAND_TYPE =>
+        {
+            let Some(command) = command
+                .payload_as::<amigo_scene::NprPreset3dSceneCommand>()
+                .cloned()
+            else {
+                return Err(AmigoError::Message(
+                    "NPR preset plugin command payload mismatch".to_owned(),
+                ));
+            };
+            ctx.mesh_scene_service
+                .register_npr_preset(command.id.clone(), command.settings);
+            Ok(MeshSceneCommandOutcome::NprPresetRegistered { id: command.id })
         }
         _ => Err(AmigoError::Message(format!(
             "mesh-3d cannot handle command {}",

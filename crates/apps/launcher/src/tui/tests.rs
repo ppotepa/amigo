@@ -270,14 +270,14 @@ fn editor_launch_mode_syncs_focused_selection() {
     state.selected_mod_index = state
         .known_mods
         .iter()
-        .position(|known_mod| known_mod.id == "rotten-club")
-        .expect("rotten-club mod should exist");
-    state.expanded_mod_ids.insert("rotten-club".to_owned());
+        .position(|known_mod| known_mod.id == "playground-2d")
+        .expect("playground-2d mod should exist");
+    state.expanded_mod_ids.insert("playground-2d".to_owned());
     state.selected_scene_index = state
         .current_scene_list()
         .iter()
-        .position(|scene| scene.id == "main-menu")
-        .expect("main-menu should exist");
+        .position(|scene| scene.id == "screen-space-preview")
+        .expect("screen-space-preview should exist");
     state.tree_cursor_on_scene = true;
     state.sync_tree_selection_to_visible();
 
@@ -285,11 +285,11 @@ fn editor_launch_mode_syncs_focused_selection() {
 
     assert_eq!(
         state.active_profile().root_mod.as_deref(),
-        Some("rotten-club")
+        Some("playground-2d")
     );
     assert_eq!(
         state.active_profile().startup_scene.as_deref(),
-        Some("main-menu")
+        Some("screen-space-preview")
     );
     assert!(matches!(
         outcome,

@@ -194,6 +194,7 @@ fn merge_scene_fragment(target: &mut Value, fragment: Value) {
         "collision_events",
         "audio_cues",
         "activation_sets",
+        "npr_presets",
     ] {
         if let Some(value) = fragment.get(Value::String(key.to_owned())) {
             merge_runtime_key(target, key, value.clone());
@@ -247,6 +248,8 @@ fn expand_authoring_refs(
     mod_root: &Path,
     dependencies: &mut Vec<SceneDocumentDependency>,
 ) -> SceneDocumentResult<()> {
+    expand_npr_preset_refs(value, scene_path, mod_root, dependencies)?;
+
     let Some(entities) = mapping_get_mut(value, "entities").and_then(Value::as_sequence_mut) else {
         return Ok(());
     };
@@ -260,6 +263,97 @@ fn expand_authoring_refs(
             expand_component_ref(component, scene_path, mod_root, dependencies)?;
         }
     }
+    Ok(())
+}
+
+fn expand_npr_preset_refs(
+    value: &mut Value,
+    scene_path: &Path,
+    mod_root: &Path,
+    dependencies: &mut Vec<SceneDocumentDependency>,
+) -> SceneDocumentResult<()> {
+    let Some(presets) = mapping_get_mut(value, "npr_presets").and_then(Value::as_sequence_mut)
+    else {
+        return Ok(());
+    };
+
+    for preset in presets {
+        let source = match preset {
+            Value::String(source) => Some(source.clone()),
+            Value::Mapping(mapping) => mapping
+                .get(Value::String("source".to_owned()))
+                .and_then(string_value)
+                .map(str::to_owned),
+            _ => None,
+        };
+        let Some(source) = source else {
+            continue;
+        };
+        let path = resolve_reference(scene_path, mod_root, &source)?;
+        let mut document = read_yaml(&path)?;
+        expand_npr_preset_brush_refs(&mut document, &path, mod_root, dependencies)?;
+        dependencies.push(SceneDocumentDependency {
+            path,
+            kind: SceneDocumentDependencyKind::LocalAsset,
+        });
+        *preset = document;
+    }
+    Ok(())
+}
+
+fn expand_npr_preset_brush_refs(
+    preset: &mut Value,
+    preset_path: &Path,
+    mod_root: &Path,
+    dependencies: &mut Vec<SceneDocumentDependency>,
+) -> SceneDocumentResult<()> {
+    let Some(settings) = mapping_get_mut(preset, "settings") else {
+        return Ok(());
+    };
+    let Some(brushes) = mapping_get_mut(settings, "brushes") else {
+        return Ok(());
+    };
+    if brushes.as_mapping().is_some() {
+        return Ok(());
+    }
+    let Some(sources) = brushes.as_sequence() else {
+        return Err(compile_error(
+            "NPR preset settings.brushes must be a mapping or a sequence of brush references",
+        ));
+    };
+
+    let mut profiles = Mapping::new();
+    for source in sources {
+        let source = match source {
+            Value::String(source) => Some(source.clone()),
+            Value::Mapping(mapping) => mapping
+                .get(Value::String("source".to_owned()))
+                .and_then(string_value)
+                .map(str::to_owned),
+            _ => None,
+        }
+        .ok_or_else(|| compile_error("NPR brush reference requires source"))?;
+
+        let path = resolve_reference(preset_path, mod_root, &source)?;
+        let brush = read_yaml(&path)?;
+        dependencies.push(SceneDocumentDependency {
+            path,
+            kind: SceneDocumentDependencyKind::LocalAsset,
+        });
+        let id = mapping_get(&brush, "id")
+            .and_then(string_value)
+            .ok_or_else(|| compile_error("NPR brush document requires id"))?;
+        let profile = mapping_get(&brush, "profile")
+            .cloned()
+            .ok_or_else(|| compile_error(format!("NPR brush `{id}` requires profile")))?;
+        if profiles
+            .insert(Value::String(id.to_owned()), profile)
+            .is_some()
+        {
+            return Err(compile_error(format!("duplicate NPR brush id `{id}`")));
+        }
+    }
+    *brushes = Value::Mapping(profiles);
     Ok(())
 }
 
@@ -365,6 +459,7 @@ fn validate_compiled_value(value: &Value) -> SceneDocumentResult<()> {
         reject_duplicate_ids(visual2d, "light_groups", "light group")?;
         reject_duplicate_ids(visual2d, "post_fx", "post-fx")?;
     }
+    reject_duplicate_ids(value, "npr_presets", "NPR preset")?;
     Ok(())
 }
 

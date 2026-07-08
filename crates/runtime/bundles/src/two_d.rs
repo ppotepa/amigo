@@ -115,6 +115,7 @@ pub fn load_particle_preset_file(source_mod: &str, path: &Path) -> AmigoResult<P
         audio_cues: Vec::new(),
         activation_sets: Vec::new(),
         visual2d: Default::default(),
+        npr_presets: Vec::new(),
         state: Default::default(),
         entities: vec![SceneEntityDocument {
             id: id.clone(),

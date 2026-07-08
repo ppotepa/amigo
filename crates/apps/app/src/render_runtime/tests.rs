@@ -272,6 +272,8 @@ fn app_render_extractor_registry_collects_vector_and_ui_data() {
         mesh: Mesh3d {
             mesh_asset: AssetKey::new("playground-3d/meshes/probe"),
             transform: Transform3::default(),
+            animation: None,
+            npr: None,
         },
     });
     let materials = MaterialSceneService::default();
@@ -283,6 +285,7 @@ fn app_render_extractor_registry_collects_vector_and_ui_data() {
             albedo: ColorRgba::WHITE,
             source: Some(AssetKey::new("playground-3d/materials/debug-surface")),
             render_order: 0,
+            shading: Default::default(),
         },
     });
 
@@ -1037,6 +1040,8 @@ fn rebuilds_mesh_scene_service_from_packet() {
         mesh: Mesh3d {
             mesh_asset: AssetKey::new("playground-3d/meshes/probe"),
             transform: Transform3::default(),
+            animation: None,
+            npr: None,
         },
     });
 
@@ -1057,6 +1062,7 @@ fn rebuilds_material_scene_service_from_packet() {
             albedo: ColorRgba::WHITE,
             source: Some(AssetKey::new("playground-3d/materials/debug-surface")),
             render_order: 0,
+            shading: Default::default(),
         },
     });
 
@@ -1111,7 +1117,7 @@ fn render_runtime_uses_only_frame_graph_render_flow() {
         "amigo_runtime_bundles::default_wgpu_render_extractor_registry_for_runtime(runtime)",
         "WgpuFrameCompositionBuilder::build(&render_packet)",
         "build_frame_graph_from_plan(",
-        "renderer.render_frame_request(render_request)?",
+        "submit_wgpu_frame_render_request(",
     ] {
         assert!(
             source.contains(required),

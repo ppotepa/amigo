@@ -1,5 +1,6 @@
 use super::super::*;
 
+use amigo_3d_mesh::MeshSceneService;
 use std::fs;
 
 #[test]
@@ -59,6 +60,115 @@ fn playground_3d_main_scene_bootstraps() {
             .any(|asset| asset == "playground-3d/fonts/debug-3d (font-3d)")
     );
     assert!(summary.failed_assets.is_empty());
+}
+
+#[test]
+fn playground_npr_comic_lines_scene_bootstraps() {
+    let (_runtime, summary) = bootstrap_with_options(
+        BootstrapOptions::new(mods_root())
+            .with_active_mods(vec!["core".to_owned(), "playground-npr".to_owned()])
+            .with_startup_mod("playground-npr")
+            .with_startup_scene("comic-lines")
+            .with_dev_mode(true),
+    )
+    .expect("npr comic lines playground bootstrap should succeed");
+
+    assert_eq!(summary.active_scene.as_deref(), Some("comic-lines"));
+    assert_eq!(
+        summary
+            .loaded_scene_document
+            .as_ref()
+            .map(|document| document.relative_path.to_string_lossy().replace('\\', "/"))
+            .as_deref(),
+        Some("scenes/comic-lines/scene.yml")
+    );
+    assert!(
+        summary
+            .mesh_entities_3d
+            .iter()
+            .any(|entity| entity == "playground-npr-model-1-soldier")
+    );
+    assert!(
+        summary
+            .scene_entities
+            .iter()
+            .any(|entity| entity == "playground-npr-model-2-khronos-male")
+    );
+    assert!(
+        summary
+            .material_entities_3d
+            .iter()
+            .any(|entity| entity == "playground-npr-model-1-soldier")
+    );
+    assert!(
+        summary
+            .scene_entities
+            .iter()
+            .any(|entity| entity == "playground-npr-hud")
+    );
+    assert!(
+        summary
+            .prepared_assets
+            .iter()
+            .any(|asset| asset == "playground-npr/meshes/soldier (mesh-3d)")
+    );
+    assert!(
+        summary
+            .prepared_assets
+            .iter()
+            .any(|asset| asset == "playground-npr/meshes/khronos-male (mesh-3d)")
+    );
+    assert!(
+        summary
+            .prepared_assets
+            .iter()
+            .any(|asset| asset == "playground-npr/fonts/debug-ui (font-2d)")
+    );
+    assert!(summary.failed_assets.is_empty());
+    assert!(summary.pending_asset_loads.is_empty());
+}
+
+#[test]
+fn playground_npr_comic_lines_bootstrap_applies_cpu_reference_preset_to_soldier() {
+    let (runtime, _summary) = bootstrap_with_options(
+        BootstrapOptions::new(mods_root())
+            .with_active_mods(vec!["core".to_owned(), "playground-npr".to_owned()])
+            .with_startup_mod("playground-npr")
+            .with_startup_scene("comic-lines")
+            .with_dev_mode(true),
+    )
+    .expect("npr comic lines playground bootstrap should succeed");
+
+    let meshes = runtime
+        .resolve::<MeshSceneService>()
+        .expect("mesh scene service should exist");
+    let soldier = meshes
+        .commands()
+        .into_iter()
+        .find(|command| command.entity_name == "playground-npr-model-1-soldier")
+        .expect("soldier mesh command should exist after bootstrap");
+    let npr = soldier
+        .mesh
+        .npr
+        .expect("soldier should have hydrated NPR settings after preset application");
+
+    assert_eq!(
+        npr.render_strategy,
+        amigo_render_api::NprRenderStrategy3d::CpuReference
+    );
+    assert!(
+        npr.ink_color.a > 0.9,
+        "startup NPR preset should keep opaque ink alpha, got {}",
+        npr.ink_color.a
+    );
+    assert!(
+        npr.ink_color.r < 0.1 && npr.ink_color.g < 0.1 && npr.ink_color.b < 0.1,
+        "startup NPR preset should keep dark ink color, got rgba({}, {}, {}, {})",
+        npr.ink_color.r,
+        npr.ink_color.g,
+        npr.ink_color.b,
+        npr.ink_color.a
+    );
 }
 
 #[test]

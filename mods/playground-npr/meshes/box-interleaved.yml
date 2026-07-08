@@ -1,0 +1,14 @@
+kind: mesh-3d
+schema_version: 1
+id: box-interleaved
+label: Khronos Box Interleaved
+format: glb
+source:
+  file: ../source-models/khronos/BoxInterleaved.glb
+  provider: Khronos glTF Sample Models
+  url: https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/BoxInterleaved/glTF-Binary/BoxInterleaved.glb
+npr:
+  cache_profile: comic-lines-static-v1
+  intended_role: interleaved-buffer import coverage
+  line_types: [boundary, silhouette, feature]
+  feature_angle_degrees: 28.0

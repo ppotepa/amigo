@@ -11,6 +11,7 @@ pub fn build_render_scene_view(
         resolve_camera_3d_transform(scene),
     );
     view.set_camera_3d_settings(resolve_camera_3d_settings(scene));
+    view.set_background_color(resolve_background_color(scene));
     view.set_light_3d_settings(resolve_light_3d_settings(scene));
     for entity in scene.entities() {
         view.insert_entity_transform(entity.name, entity.transform);
@@ -33,6 +34,18 @@ fn resolve_camera_3d_settings(scene: &SceneService) -> Camera3dRenderSettings {
         far_clip: property_float(&camera.properties, "camera3d.far_clip")
             .unwrap_or(Camera3dRenderSettings::default().far_clip),
     }
+}
+
+fn resolve_background_color(scene: &SceneService) -> amigo_math::ColorRgba {
+    let Some(camera) = scene.entities().into_iter().find(|entity| {
+        entity.name.contains("3d-camera")
+            || (entity.name.contains("camera") && entity.transform.translation.z.abs() > 0.01)
+    }) else {
+        return amigo_math::ColorRgba::new(0.0, 0.0, 0.0, 1.0);
+    };
+    property_string(&camera.properties, "camera3d.background_color")
+        .and_then(parse_hex_color)
+        .unwrap_or(amigo_math::ColorRgba::new(0.0, 0.0, 0.0, 1.0))
 }
 
 fn resolve_light_3d_settings(scene: &SceneService) -> Light3dRenderSettings {

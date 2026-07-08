@@ -32,6 +32,7 @@ amigo-scene.workspace = true
 amigo-scripting-api.workspace = true
 amigo-state.workspace = true
 amigo-window-api.workspace = true
+image.workspace = true
 serde_yaml.workspace = true
 
 [dev-dependencies]

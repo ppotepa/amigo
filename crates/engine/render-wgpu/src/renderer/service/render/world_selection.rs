@@ -6,16 +6,21 @@ use amigo_render_api::RenderObjectId;
 
 pub(super) trait WorldPassLoadExt {
     fn to_load_op(self) -> wgpu::LoadOp<wgpu::Color>;
+    fn to_load_op_with_clear(self, color: amigo_math::ColorRgba) -> wgpu::LoadOp<wgpu::Color>;
 }
 
 impl WorldPassLoadExt for WorldPassLoad {
     fn to_load_op(self) -> wgpu::LoadOp<wgpu::Color> {
+        self.to_load_op_with_clear(amigo_math::ColorRgba::new(0.0, 0.0, 0.0, 1.0))
+    }
+
+    fn to_load_op_with_clear(self, color: amigo_math::ColorRgba) -> wgpu::LoadOp<wgpu::Color> {
         match self {
             WorldPassLoad::Clear => wgpu::LoadOp::Clear(wgpu::Color {
-                r: 0.0,
-                g: 0.0,
-                b: 0.0,
-                a: 1.0,
+                r: f64::from(color.r.clamp(0.0, 1.0)),
+                g: f64::from(color.g.clamp(0.0, 1.0)),
+                b: f64::from(color.b.clamp(0.0, 1.0)),
+                a: f64::from(color.a.clamp(0.0, 1.0)),
             }),
             WorldPassLoad::ClearTransparent => wgpu::LoadOp::Clear(wgpu::Color {
                 r: 0.0,

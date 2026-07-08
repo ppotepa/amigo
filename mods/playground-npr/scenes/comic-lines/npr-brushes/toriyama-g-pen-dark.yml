@@ -1,0 +1,27 @@
+kind: npr-brush-3d
+schema_version: 1
+id: toriyama_g_pen_dark
+label: Toriyama G Pen Dark
+profile:
+  tool: ink_pen
+  tip: g_pen
+  ink_color: "#070504FF"
+  width_multiplier: 1.12
+  alpha_multiplier: 1.0
+  pressure_jitter_multiplier: 0.72
+  dropout_multiplier: 0.25
+  search_multiplier: 0.0
+  path_wobble_multiplier: 0.78
+  micro_wobble_multiplier: 0.62
+  hand_arc_multiplier: 1.12
+  tangent_drift_multiplier: 0.82
+  detail_crispness_multiplier: 0.95
+  taper_multiplier: 1.08
+  overshoot_px: 0.82
+  width_curve: [0.52, 1.22, 1.08, 0.48]
+  alpha_curve: [0.92, 1.0, 1.0, 0.88]
+  angle_bias_degrees: 2.0
+  angle_influence: 0.22
+  nib_width_base_scale: 1.0
+  nib_width_angle_scale: 1.25
+  path_adherence_multiplier: 0.82

@@ -1,0 +1,14 @@
+kind: mesh-3d
+schema_version: 1
+id: fox-source
+label: Khronos Fox Source
+format: glb
+source:
+  file: ../source-models/khronos/Fox.glb
+  provider: Khronos glTF Sample Models
+  url: https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/Fox/glTF-Binary/Fox.glb
+npr:
+  cache_profile: comic-lines-skinned-v1
+  intended_role: animated-topology-reference
+  line_types: [boundary, silhouette, feature]
+  feature_angle_degrees: 30.0

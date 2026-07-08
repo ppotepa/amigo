@@ -3,13 +3,26 @@
 This repository contains original code and content, plus implementations that
 were developed with direct reference to upstream open-source work.
 
+## Khronos glTF sample models
+
+The NPR playground bundles small source-model inputs from:
+
+- Repository: <https://github.com/KhronosGroup/glTF-Sample-Models>
+- Files:
+  - `mods/playground-npr/source-models/khronos/BoxTextured.glb`
+  - `mods/playground-npr/source-models/khronos/Fox.glb`
+
+License notes from the upstream model READMEs:
+
+- `BoxTextured.glb`: donated by Cesium for glTF testing and licensed under Creative Commons Attribution 4.0.
+- `Fox.glb`: base mesh by PixelMannen under CC0; rigging and animation by @tomkranis under Creative Commons Attribution 4.0.
+
 ## RainGlass effect reference
 
 The `RainGlass` post-fx implementation in:
 
 - `crates/engine/render-wgpu/src/renderer/service/post_fx/rain_glass/`
 - `crates/2d/post-fx/src/`
-- `mods/rotten-club/scripts/packages/fx/rain_glass_presets.rhai`
 
 was tuned and partially ported with reference to the upstream project:
 
@@ -26,33 +39,6 @@ Amigo does not bundle the upstream HTML demo files or npm package as runtime
 dependencies. This notice exists to preserve attribution and license context for
 the reference implementation and any adapted logic or shader behavior derived
 from that work.
-
-## Main Menu font usage
-
-The main menu in `mods/rotten-club/ui/menus/main-menu.yml` uses:
-
-- `mods/rotten-club/fonts/game/polish-dirty-news.ttf`
-
-Source and attribution provided with the downloaded font:
-
-- Website: <http://www.onlinewebfonts.com>
-- Attribution snippet required by source:
-
-```html
-<div>Fonts made from <a href="http://www.onlinewebfonts.com">Web Fonts</a> is licensed by CC BY 4.0</div>
-```
-
-Alternative attribution accepted by source:
-
-```html
-<a href="http://www.onlinewebfonts.com">Web Fonts</a>
-```
-
-License note from source:
-
-- Fonts are distributed under terms provided by the original author/publisher.
-- Some files may be trial versions or may require a separate commercial license for embedding/use.
-- Review bundled font metadata/license files and verify commercial usage rights where required.
 
 ### Bundled upstream license text: `SardineFish/raindrop-fx`
 

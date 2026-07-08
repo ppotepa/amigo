@@ -135,6 +135,7 @@ fn render_per_draw_motion_buffer(
         &[],
         &color_batches,
         &[],
+        &[],
     )?;
     Ok(true)
 }

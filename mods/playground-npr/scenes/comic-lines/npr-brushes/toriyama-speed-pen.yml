@@ -1,0 +1,27 @@
+kind: npr-brush-3d
+schema_version: 1
+id: toriyama_speed_pen
+label: Toriyama Speed Pen
+profile:
+  tool: ink_pen
+  tip: g_pen
+  ink_color: "#080605F0"
+  width_multiplier: 0.82
+  alpha_multiplier: 0.94
+  pressure_jitter_multiplier: 0.28
+  dropout_multiplier: 0.10
+  search_multiplier: 0.0
+  path_wobble_multiplier: 0.28
+  micro_wobble_multiplier: 0.18
+  hand_arc_multiplier: 0.52
+  tangent_drift_multiplier: 0.32
+  detail_crispness_multiplier: 1.12
+  taper_multiplier: 1.36
+  overshoot_px: 1.2
+  width_curve: [0.24, 1.08, 0.72, 0.14]
+  alpha_curve: [0.54, 0.96, 0.82, 0.34]
+  angle_bias_degrees: 0.0
+  angle_influence: 0.0
+  nib_width_base_scale: 0.88
+  nib_width_angle_scale: 0.80
+  path_adherence_multiplier: 0.95

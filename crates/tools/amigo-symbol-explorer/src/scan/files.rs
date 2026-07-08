@@ -211,6 +211,7 @@ fn should_index_file(path: &Path) -> bool {
             | "md"
             | "css"
             | "html"
+            | "wgsl"
     )
 }
 

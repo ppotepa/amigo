@@ -1,0 +1,13 @@
+kind: mesh-3d
+schema_version: 1
+id: riders
+label: Khronos Riders
+format: glb
+source:
+  file: ../source-models/khronos/riders.glb
+  provider: Khronos glTF Sample Models
+npr:
+  cache_profile: comic-lines-character-v1
+  intended_role: secondary character target for projected-stroke NPR
+  line_types: [boundary, silhouette, feature]
+  feature_angle_degrees: 34.0

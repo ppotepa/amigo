@@ -1,0 +1,8 @@
+kind: font-3d
+schema_version: 1
+id: debug-3d
+label: NPR Debug 3D Font
+format: truetype
+
+source:
+  asset: core/fonts/console-mono

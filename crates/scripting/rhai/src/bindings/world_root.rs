@@ -10,6 +10,7 @@ use amigo_input_actions::InputActionService;
 use amigo_input_api::InputState;
 use amigo_modding::ModCatalog;
 use amigo_particles_2d_plugin::{Particle2dSceneService, ParticlePreset2dService};
+use amigo_render_api::RenderFrameStatsService;
 use amigo_scene::{EntityPoolSceneService, LifetimeSceneService, SceneService};
 use amigo_scripting_api::{
     DevConsoleQueue, ScriptCommandQueue, ScriptEventQueue, ScriptTraceService,
@@ -122,6 +123,7 @@ impl WorldApi {
         launch_selection: Option<Arc<LaunchSelection>>,
         mod_catalog: Option<Arc<ModCatalog>>,
         diagnostics: Option<Arc<RuntimeDiagnostics>>,
+        render_stats: Option<Arc<RenderFrameStatsService>>,
         command_queue: Option<Arc<ScriptCommandQueue>>,
         event_queue: Option<Arc<ScriptEventQueue>>,
         console_queue: Option<Arc<DevConsoleQueue>>,
@@ -194,7 +196,7 @@ impl WorldApi {
             },
             time: TimeApi { state: time_state },
             assets: AssetsApi {
-                asset_catalog,
+                asset_catalog: asset_catalog.clone(),
                 command_queue: command_queue.clone(),
             },
             audio: AudioApi {
@@ -202,7 +204,7 @@ impl WorldApi {
             },
             mod_api: ModApi {
                 launch_selection: launch_selection.clone(),
-                mod_catalog,
+                mod_catalog: mod_catalog.clone(),
             },
             motion: MotionApi { motion_scene },
             particles: ParticlesApi {
@@ -227,6 +229,8 @@ impl WorldApi {
             },
             mesh3d: Mesh3dApi {
                 launch_selection: launch_selection.clone(),
+                asset_catalog: asset_catalog.clone(),
+                mod_catalog: mod_catalog.clone(),
                 command_queue: command_queue.clone(),
             },
             material3d: Material3dApi {
@@ -255,6 +259,7 @@ impl WorldApi {
             runtime: RuntimeApi {
                 launch_selection,
                 diagnostics,
+                render_stats,
             },
             inspect_requests,
         }

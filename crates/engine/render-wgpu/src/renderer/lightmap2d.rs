@@ -48,8 +48,21 @@ impl WgpuSceneRenderer {
     ) -> Option<LightMap2dSampler> {
         let item = renderables
             .iter()
-            .find(|item| item.source_id() == &source.source.source_id)?;
+            .find(|item| item.source_id() == &source.source.source_id);
+        let Some(item) = item else {
+            #[cfg(debug_assertions)]
+            eprintln!(
+                "lightmap2d: missing layered image source_id={:?} for lightmap source_id={:?}",
+                source.source.source_id, source.source_id
+            );
+            return None;
+        };
         let RenderPrimitive2d::LayeredTexturedQuads(command) = &item.primitive else {
+            #[cfg(debug_assertions)]
+            eprintln!(
+                "lightmap2d: source_id={:?} is not LayeredTexturedQuads",
+                source.source.source_id
+            );
             return None;
         };
         let prepared = assets.prepared_asset(&command.asset)?;
@@ -95,6 +108,14 @@ impl WgpuSceneRenderer {
                 (!layers.is_empty()).then_some((channel.id.clone(), layers))
             })
             .collect::<BTreeMap<_, _>>();
+
+        if channels.is_empty() {
+            #[cfg(debug_assertions)]
+            eprintln!(
+                "lightmap2d: source_id={:?} produced no channels; check layer opacity/enabled/channel layer ids",
+                source.source.source_id
+            );
+        }
 
         (!channels.is_empty()).then_some(LightMap2dSampler {
             id: source.source_id.clone(),

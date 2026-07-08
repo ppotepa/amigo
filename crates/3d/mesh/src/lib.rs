@@ -1,6 +1,7 @@
 //! 3D mesh scene service for referencing authored geometry.
 //! It stores mesh bindings that the renderer resolves into GPU-ready draw data.
 
+use std::collections::BTreeMap;
 use std::sync::Mutex;
 
 use amigo_capabilities::{DEFAULT_CAPABILITY_VERSION, register_domain_plugin};
@@ -23,6 +24,7 @@ pub use script_command::*;
 #[derive(Debug, Default)]
 pub struct MeshSceneService {
     commands: Mutex<Vec<MeshDrawCommand>>,
+    npr_presets: Mutex<BTreeMap<String, amigo_render_api::NprLineSettings3d>>,
 }
 
 impl MeshSceneService {
@@ -31,6 +33,7 @@ impl MeshSceneService {
             .commands
             .lock()
             .expect("mesh scene service mutex should not be poisoned");
+        commands.retain(|existing| existing.entity_name != command.entity_name);
         commands.push(command);
     }
 
@@ -48,6 +51,160 @@ impl MeshSceneService {
             .lock()
             .expect("mesh scene service mutex should not be poisoned");
         commands.clone()
+    }
+
+    pub fn set_mesh_asset(&self, entity_name: &str, mesh_asset: amigo_assets::AssetKey) -> bool {
+        let mut commands = self
+            .commands
+            .lock()
+            .expect("mesh scene service mutex should not be poisoned");
+        let Some(command) = commands
+            .iter_mut()
+            .find(|command| command.entity_name == entity_name)
+        else {
+            return false;
+        };
+        command.mesh.mesh_asset = mesh_asset;
+        command.mesh.animation = None;
+        true
+    }
+
+    pub fn set_mesh_animation(
+        &self,
+        entity_name: &str,
+        animation: amigo_render_api::MeshAnimation3d,
+    ) -> bool {
+        let mut commands = self
+            .commands
+            .lock()
+            .expect("mesh scene service mutex should not be poisoned");
+        let Some(command) = commands
+            .iter_mut()
+            .find(|command| command.entity_name == entity_name)
+        else {
+            return false;
+        };
+        command.mesh.animation = Some(animation);
+        true
+    }
+
+    pub fn register_npr_preset(
+        &self,
+        id: impl Into<String>,
+        settings: amigo_render_api::NprLineSettings3d,
+    ) {
+        let mut presets = self
+            .npr_presets
+            .lock()
+            .expect("mesh NPR preset mutex should not be poisoned");
+        presets.insert(id.into(), settings);
+    }
+
+    pub fn npr_preset(&self, id: &str) -> Option<amigo_render_api::NprLineSettings3d> {
+        let presets = self
+            .npr_presets
+            .lock()
+            .expect("mesh NPR preset mutex should not be poisoned");
+        presets.get(id).cloned()
+    }
+
+    pub fn npr_preset_ids(&self) -> Vec<String> {
+        let presets = self
+            .npr_presets
+            .lock()
+            .expect("mesh NPR preset mutex should not be poisoned");
+        presets.keys().cloned().collect()
+    }
+
+    pub fn apply_npr_preset(&self, entity_name: &str, preset_id: &str) -> bool {
+        let Some(settings) = self.npr_preset(preset_id) else {
+            return false;
+        };
+        let mut commands = self
+            .commands
+            .lock()
+            .expect("mesh scene service mutex should not be poisoned");
+        let Some(command) = commands
+            .iter_mut()
+            .find(|command| command.entity_name == entity_name)
+        else {
+            return false;
+        };
+        let mut resolved = settings;
+        if resolved.black_mass_material_ids.is_empty() {
+            if let Some(existing) = command.mesh.npr.as_ref() {
+                resolved.black_mass_material_ids = existing.black_mass_material_ids.clone();
+            }
+        }
+        if resolved.ink_detail_material_ids.is_empty() {
+            if let Some(existing) = command.mesh.npr.as_ref() {
+                resolved.ink_detail_material_ids = existing.ink_detail_material_ids.clone();
+            }
+        }
+        command.mesh.npr = Some(resolved);
+        true
+    }
+
+    pub fn set_npr_temporal_path_smoothing(&self, entity_name: &str, enabled: bool) -> bool {
+        let mut commands = self
+            .commands
+            .lock()
+            .expect("mesh scene service mutex should not be poisoned");
+        let Some(command) = commands
+            .iter_mut()
+            .find(|command| command.entity_name == entity_name)
+        else {
+            return false;
+        };
+        let Some(npr) = command.mesh.npr.as_mut() else {
+            return false;
+        };
+        npr.temporal_path_smoothing = enabled;
+        true
+    }
+
+    pub fn set_npr_render_strategy(
+        &self,
+        entity_name: &str,
+        strategy: amigo_render_api::NprRenderStrategy3d,
+    ) -> bool {
+        let mut commands = self
+            .commands
+            .lock()
+            .expect("mesh scene service mutex should not be poisoned");
+        let Some(command) = commands
+            .iter_mut()
+            .find(|command| command.entity_name == entity_name)
+        else {
+            return false;
+        };
+        let Some(npr) = command.mesh.npr.as_mut() else {
+            return false;
+        };
+        npr.render_strategy = strategy;
+        true
+    }
+
+    pub fn set_npr_gpu_debug_mode(
+        &self,
+        entity_name: &str,
+        debug_mode: amigo_render_api::NprGpuDebugMode3d,
+    ) -> bool {
+        let mut commands = self
+            .commands
+            .lock()
+            .expect("mesh scene service mutex should not be poisoned");
+        let Some(command) = commands
+            .iter_mut()
+            .find(|command| command.entity_name == entity_name)
+        else {
+            return false;
+        };
+        let Some(npr) = command.mesh.npr.as_mut() else {
+            return false;
+        };
+        npr.gpu_realtime_tuning.debug_mode = debug_mode;
+        true
     }
 
     pub fn entity_names(&self) -> Vec<String> {
@@ -91,6 +248,10 @@ impl RuntimePlugin for MeshPlugin {
             amigo_scene::MESH_3D_PLUGIN_SCENE_COMMAND_TYPE,
             std::sync::Arc::new(crate::scene_command::Mesh3dSceneCommandHandler),
         );
+        plugin_scene_handlers.register(
+            amigo_scene::NPR_PRESET_3D_PLUGIN_SCENE_COMMAND_TYPE,
+            std::sync::Arc::new(crate::scene_command::Mesh3dSceneCommandHandler),
+        );
         let script_handlers =
             registry.required::<amigo_scripting_api::RuntimeScriptCommandHandlerRegistry>()?;
         amigo_scripting_api::register_runtime_script_command_handler(
@@ -113,6 +274,8 @@ pub fn queue_mesh_scene_command(
         mesh: Mesh3d {
             mesh_asset: command.mesh_asset.clone(),
             transform: command.transform,
+            animation: None,
+            npr: command.npr.clone(),
         },
     });
     entity
@@ -126,7 +289,13 @@ mod tests {
     use amigo_assets::AssetKey;
     use amigo_editor_api::EditorCapability;
     use amigo_math::Transform3;
+    use amigo_render_api::{NprGpuDebugMode3d, NprLineSettings3d, NprRenderStrategy3d};
     use amigo_scene::{Mesh3dSceneCommand, SceneService};
+    use amigo_scripting_api::ScriptCommand;
+
+    use crate::{
+        Mesh3dScriptCommandContext, Mesh3dScriptCommandOutcome, handle_mesh3d_script_command,
+    };
 
     #[test]
     fn stores_mesh_draw_commands() {
@@ -138,6 +307,8 @@ mod tests {
             mesh: Mesh3d {
                 mesh_asset: AssetKey::new("playground-3d/meshes/probe"),
                 transform: Transform3::default(),
+                animation: None,
+                npr: None,
             },
         });
 
@@ -149,6 +320,374 @@ mod tests {
 
         service.clear();
         assert!(service.commands().is_empty());
+    }
+
+    #[test]
+    fn queues_mesh_draw_commands_by_entity_name() {
+        let service = MeshSceneService::default();
+        let entity_name = "playground-npr-model".to_owned();
+
+        service.queue(MeshDrawCommand {
+            entity_id: 11,
+            entity_name: entity_name.clone(),
+            mesh: Mesh3d {
+                mesh_asset: AssetKey::new("playground-npr/meshes/first"),
+                transform: Transform3::default(),
+                animation: None,
+                npr: None,
+            },
+        });
+        service.queue(MeshDrawCommand {
+            entity_id: 11,
+            entity_name,
+            mesh: Mesh3d {
+                mesh_asset: AssetKey::new("playground-npr/meshes/second"),
+                transform: Transform3::default(),
+                animation: None,
+                npr: None,
+            },
+        });
+
+        let commands = service.commands();
+        assert_eq!(commands.len(), 1);
+        assert_eq!(
+            commands[0].mesh.mesh_asset,
+            AssetKey::new("playground-npr/meshes/second")
+        );
+    }
+
+    #[test]
+    fn updates_mesh_asset_for_existing_command() {
+        let service = MeshSceneService::default();
+        service.queue(MeshDrawCommand {
+            entity_id: 11,
+            entity_name: "playground-npr-model".to_owned(),
+            mesh: Mesh3d {
+                mesh_asset: AssetKey::new("playground-npr/meshes/soldier"),
+                transform: Transform3::default(),
+                animation: None,
+                npr: None,
+            },
+        });
+
+        assert!(service.set_mesh_asset(
+            "playground-npr-model",
+            AssetKey::new("playground-npr/discovered-models/source-models/khronos/male")
+        ));
+        assert_eq!(
+            service.commands()[0].mesh.mesh_asset,
+            AssetKey::new("playground-npr/discovered-models/source-models/khronos/male")
+        );
+    }
+
+    #[test]
+    fn applies_registered_npr_preset_to_mesh_command() {
+        let service = MeshSceneService::default();
+        service.queue(MeshDrawCommand {
+            entity_id: 11,
+            entity_name: "playground-npr-model".to_owned(),
+            mesh: Mesh3d {
+                mesh_asset: AssetKey::new("playground-npr/meshes/soldier"),
+                transform: Transform3::default(),
+                animation: None,
+                npr: None,
+            },
+        });
+        service.register_npr_preset(
+            "heavy_noir_ink",
+            NprLineSettings3d {
+                width_px: 4.0,
+                seed: 9090,
+                ..NprLineSettings3d::default()
+            },
+        );
+
+        assert!(service.apply_npr_preset("playground-npr-model", "heavy_noir_ink"));
+
+        let commands = service.commands();
+        let npr = commands[0]
+            .mesh
+            .npr
+            .as_ref()
+            .expect("preset should set NPR settings")
+            .clone();
+        assert_eq!(npr.width_px, 4.0);
+        assert_eq!(npr.seed, 9090);
+    }
+
+    #[test]
+    fn applies_npr_preset_with_cpu_reference_strategy() {
+        let service = MeshSceneService::default();
+        service.queue(MeshDrawCommand {
+            entity_id: 11,
+            entity_name: "playground-npr-model".to_owned(),
+            mesh: Mesh3d {
+                mesh_asset: AssetKey::new("playground-npr/meshes/soldier"),
+                transform: Transform3::default(),
+                animation: None,
+                npr: None,
+            },
+        });
+        service.register_npr_preset(
+            "cpu_ref",
+            NprLineSettings3d {
+                render_strategy: NprRenderStrategy3d::CpuReference,
+                ..NprLineSettings3d::default()
+            },
+        );
+
+        assert!(service.apply_npr_preset("playground-npr-model", "cpu_ref"));
+        assert_eq!(
+            service.commands()[0]
+                .mesh
+                .npr
+                .as_ref()
+                .expect("preset should apply strategy")
+                .render_strategy,
+            NprRenderStrategy3d::CpuReference
+        );
+    }
+
+    #[test]
+    fn apply_npr_preset_preserves_model_ink_material_ids_when_preset_has_none() {
+        let service = MeshSceneService::default();
+        service.queue(MeshDrawCommand {
+            entity_id: 11,
+            entity_name: "playground-npr-model".to_owned(),
+            mesh: Mesh3d {
+                mesh_asset: AssetKey::new("playground-npr/meshes/khronos-male"),
+                transform: Transform3::default(),
+                animation: None,
+                npr: Some(NprLineSettings3d {
+                    black_mass_material_ids: vec![4, 5, 7],
+                    ink_detail_material_ids: vec![6, 11, 12],
+                    ..NprLineSettings3d::default()
+                }),
+            },
+        });
+        service.register_npr_preset("akira", NprLineSettings3d::default());
+
+        assert!(service.apply_npr_preset("playground-npr-model", "akira"));
+        assert_eq!(
+            service.commands()[0]
+                .mesh
+                .npr
+                .as_ref()
+                .expect("preset should preserve npr")
+                .black_mass_material_ids,
+            vec![4, 5, 7]
+        );
+        assert_eq!(
+            service.commands()[0]
+                .mesh
+                .npr
+                .as_ref()
+                .expect("preset should preserve npr")
+                .ink_detail_material_ids,
+            vec![6, 11, 12]
+        );
+    }
+
+    #[test]
+    fn updates_mesh_npr_render_strategy_without_replacing_style() {
+        let service = MeshSceneService::default();
+        service.queue(MeshDrawCommand {
+            entity_id: 11,
+            entity_name: "playground-npr-model".to_owned(),
+            mesh: Mesh3d {
+                mesh_asset: AssetKey::new("playground-npr/meshes/soldier"),
+                transform: Transform3::default(),
+                animation: None,
+                npr: Some(NprLineSettings3d {
+                    width_px: 3.25,
+                    seed: 2602,
+                    ..NprLineSettings3d::default()
+                }),
+            },
+        });
+
+        assert!(
+            service
+                .set_npr_render_strategy("playground-npr-model", NprRenderStrategy3d::CpuReference)
+        );
+        let commands = service.commands();
+        let npr = commands[0]
+            .mesh
+            .npr
+            .as_ref()
+            .expect("mesh should still have npr");
+        assert_eq!(npr.render_strategy, NprRenderStrategy3d::CpuReference);
+        assert_eq!(npr.width_px, 3.25);
+        assert_eq!(npr.seed, 2602);
+    }
+
+    #[test]
+    fn script_command_applies_npr_preset_to_mesh_command() {
+        let service = MeshSceneService::default();
+        service.queue(MeshDrawCommand {
+            entity_id: 11,
+            entity_name: "playground-npr-model".to_owned(),
+            mesh: Mesh3d {
+                mesh_asset: AssetKey::new("playground-npr/meshes/soldier"),
+                transform: Transform3::default(),
+                animation: None,
+                npr: None,
+            },
+        });
+        service.register_npr_preset(
+            "loose_pencil",
+            NprLineSettings3d {
+                humanization: 0.82,
+                ..NprLineSettings3d::default()
+            },
+        );
+
+        let outcome = handle_mesh3d_script_command(
+            Mesh3dScriptCommandContext {
+                selected_mod: "playground-npr",
+                mesh_scene_service: Some(&service),
+            },
+            ScriptCommand::new(
+                "3d.mesh",
+                "apply_npr_preset",
+                vec!["playground-npr-model".to_owned(), "loose_pencil".to_owned()],
+            ),
+        );
+
+        assert!(matches!(
+            outcome,
+            Mesh3dScriptCommandOutcome::AppliedNprPreset { .. }
+        ));
+        assert_eq!(
+            service.commands()[0]
+                .mesh
+                .npr
+                .as_ref()
+                .expect("script command should apply preset")
+                .humanization,
+            0.82
+        );
+    }
+
+    #[test]
+    fn updates_mesh_gpu_debug_mode() {
+        let service = MeshSceneService::default();
+        service.queue(MeshDrawCommand {
+            entity_id: 11,
+            entity_name: "playground-npr-model".to_owned(),
+            mesh: Mesh3d {
+                mesh_asset: AssetKey::new("playground-npr/meshes/soldier"),
+                transform: Transform3::default(),
+                animation: None,
+                npr: Some(NprLineSettings3d::default()),
+            },
+        });
+
+        assert!(
+            service.set_npr_gpu_debug_mode("playground-npr-model", NprGpuDebugMode3d::RawPaths)
+        );
+        assert_eq!(
+            service.commands()[0]
+                .mesh
+                .npr
+                .as_ref()
+                .expect("mesh should still have npr")
+                .gpu_realtime_tuning
+                .debug_mode,
+            NprGpuDebugMode3d::RawPaths
+        );
+    }
+
+    #[test]
+    fn script_command_sets_mesh_npr_render_strategy() {
+        let service = MeshSceneService::default();
+        service.queue(MeshDrawCommand {
+            entity_id: 11,
+            entity_name: "playground-npr-model".to_owned(),
+            mesh: Mesh3d {
+                mesh_asset: AssetKey::new("playground-npr/meshes/soldier"),
+                transform: Transform3::default(),
+                animation: None,
+                npr: Some(NprLineSettings3d::default()),
+            },
+        });
+
+        let outcome = handle_mesh3d_script_command(
+            Mesh3dScriptCommandContext {
+                selected_mod: "playground-npr",
+                mesh_scene_service: Some(&service),
+            },
+            ScriptCommand::new(
+                "3d.mesh",
+                "set_npr_render_strategy",
+                vec![
+                    "playground-npr-model".to_owned(),
+                    "cpu_reference".to_owned(),
+                ],
+            ),
+        );
+
+        assert!(matches!(
+            outcome,
+            Mesh3dScriptCommandOutcome::SetNprRenderStrategy {
+                strategy: NprRenderStrategy3d::CpuReference,
+                ..
+            }
+        ));
+        assert_eq!(
+            service.commands()[0]
+                .mesh
+                .npr
+                .as_ref()
+                .expect("script command should preserve npr")
+                .render_strategy,
+            NprRenderStrategy3d::CpuReference
+        );
+    }
+
+    #[test]
+    fn script_command_sets_mesh_gpu_debug_mode() {
+        let service = MeshSceneService::default();
+        service.queue(MeshDrawCommand {
+            entity_id: 11,
+            entity_name: "playground-npr-model".to_owned(),
+            mesh: Mesh3d {
+                mesh_asset: AssetKey::new("playground-npr/meshes/soldier"),
+                transform: Transform3::default(),
+                animation: None,
+                npr: Some(NprLineSettings3d::default()),
+            },
+        });
+
+        let outcome = handle_mesh3d_script_command(
+            Mesh3dScriptCommandContext {
+                selected_mod: "playground-npr",
+                mesh_scene_service: Some(&service),
+            },
+            ScriptCommand::new(
+                "3d.mesh",
+                "set_npr_gpu_debug_mode",
+                vec!["playground-npr-model".to_owned(), "raw_paths".to_owned()],
+            ),
+        );
+
+        assert!(matches!(
+            outcome,
+            Mesh3dScriptCommandOutcome::SetNprGpuDebugMode {
+                debug_mode: NprGpuDebugMode3d::RawPaths,
+                ..
+            }
+        ));
+        assert_eq!(
+            service.commands()[0]
+                .mesh
+                .npr
+                .as_ref()
+                .expect("script command should preserve npr")
+                .gpu_realtime_tuning
+                .debug_mode,
+            NprGpuDebugMode3d::RawPaths
+        );
     }
 
     #[test]
@@ -169,6 +708,61 @@ mod tests {
         assert_eq!(entity.raw(), 0);
         assert_eq!(service.commands().len(), 1);
         assert_eq!(scene.entity_names(), vec!["playground-3d-probe".to_owned()]);
+    }
+
+    #[test]
+    fn queues_mesh_scene_command_with_npr_line_settings() {
+        let scene = SceneService::default();
+        let service = MeshSceneService::default();
+        let mut command = Mesh3dSceneCommand::new(
+            "playground-npr",
+            "playground-npr-model-1-soldier",
+            AssetKey::new("playground-npr/meshes/soldier"),
+        );
+        command.npr = Some(NprLineSettings3d {
+            feature_angle_degrees: 30.0,
+            seed: 2602,
+            ..NprLineSettings3d::default()
+        });
+
+        queue_mesh_scene_command(&scene, &service, &command);
+
+        let queued = service.commands();
+        assert_eq!(queued.len(), 1);
+        let npr = queued[0]
+            .mesh
+            .npr
+            .as_ref()
+            .expect("npr line settings should be preserved");
+        assert_eq!(npr.feature_angle_degrees, 30.0);
+        assert_eq!(npr.seed, 2602);
+    }
+
+    #[test]
+    fn queues_mesh_scene_command_with_npr_gpu_strategy() {
+        let scene = SceneService::default();
+        let service = MeshSceneService::default();
+        let mut command = Mesh3dSceneCommand::new(
+            "playground-npr",
+            "playground-npr-model-1-soldier",
+            AssetKey::new("playground-npr/meshes/soldier"),
+        );
+        command.npr = Some(NprLineSettings3d {
+            render_strategy: NprRenderStrategy3d::GpuRealtime,
+            ..NprLineSettings3d::default()
+        });
+
+        queue_mesh_scene_command(&scene, &service, &command);
+
+        assert_eq!(
+            service.commands()[0]
+                .mesh
+                .npr
+                .as_ref()
+                .expect("npr line settings should be preserved")
+                .render_strategy,
+            NprRenderStrategy3d::GpuRealtime
+        );
     }
 
     #[test]

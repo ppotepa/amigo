@@ -2,9 +2,12 @@
 **/target/
 
 # Generated local artifacts
+/concat.txt
+/concat.zip
 /concat-output.txt
 /concat-output.zip
 /codebase.zip
+/.codegraph/
 /steps/
 /update.ps1
 /.amigo/*

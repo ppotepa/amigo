@@ -65,8 +65,40 @@ impl EntitiesApi {
         set_entity_rotation_2d(self.scene.as_ref(), entity_name, radians as f32)
     }
 
+    pub fn set_rotation_3d(
+        &mut self,
+        entity_name: &str,
+        x: rhai::FLOAT,
+        y: rhai::FLOAT,
+        z: rhai::FLOAT,
+    ) -> bool {
+        set_entity_rotation_3d(
+            self.scene.as_ref(),
+            entity_name,
+            x as f32,
+            y as f32,
+            z as f32,
+        )
+    }
+
     pub fn set_scale_2d(&mut self, entity_name: &str, x: rhai::FLOAT, y: rhai::FLOAT) -> bool {
         set_entity_scale_2d(self.scene.as_ref(), entity_name, x as f32, y as f32)
+    }
+
+    pub fn set_scale_3d(
+        &mut self,
+        entity_name: &str,
+        x: rhai::FLOAT,
+        y: rhai::FLOAT,
+        z: rhai::FLOAT,
+    ) -> bool {
+        set_entity_scale_3d(
+            self.scene.as_ref(),
+            entity_name,
+            x as f32,
+            y as f32,
+            z as f32,
+        )
     }
 
     pub fn hide(&mut self, entity_name: &str) -> bool {
@@ -308,6 +340,27 @@ pub fn set_entity_rotation_2d(
         .unwrap_or(false)
 }
 
+pub fn set_entity_rotation_3d(
+    scene: Option<&Arc<SceneService>>,
+    entity_name: &str,
+    x: f32,
+    y: f32,
+    z: f32,
+) -> bool {
+    let Some(scene) = scene else {
+        return false;
+    };
+    if !x.is_finite() || !y.is_finite() || !z.is_finite() {
+        return false;
+    }
+    let Some(mut transform) = scene.transform_of(entity_name) else {
+        return false;
+    };
+
+    transform.rotation_euler = Vec3::new(x, y, z);
+    scene.set_transform(entity_name, transform)
+}
+
 pub fn set_entity_scale_2d(
     scene: Option<&Arc<SceneService>>,
     entity_name: &str,
@@ -327,6 +380,30 @@ pub fn set_entity_scale_2d(
 
     transform.scale.x = x;
     transform.scale.y = y;
+    scene.set_transform(entity_name, transform)
+}
+
+pub fn set_entity_scale_3d(
+    scene: Option<&Arc<SceneService>>,
+    entity_name: &str,
+    x: f32,
+    y: f32,
+    z: f32,
+) -> bool {
+    if !x.is_finite() || !y.is_finite() || !z.is_finite() || x <= 0.0 || y <= 0.0 || z <= 0.0 {
+        return false;
+    }
+
+    let Some(scene) = scene else {
+        return false;
+    };
+    let Some(mut transform) = scene.transform_of(entity_name) else {
+        return false;
+    };
+
+    transform.scale.x = x;
+    transform.scale.y = y;
+    transform.scale.z = z;
     scene.set_transform(entity_name, transform)
 }
 
@@ -525,7 +602,9 @@ pub(crate) fn register_api(engine: &mut rhai::Engine) {
         .register_fn("set_position_3d", EntitiesApi::set_position_3d)
         .register_fn("position_2d", EntitiesApi::position_2d)
         .register_fn("set_rotation_2d", EntitiesApi::set_rotation_2d)
+        .register_fn("set_rotation_3d", EntitiesApi::set_rotation_3d)
         .register_fn("set_scale_2d", EntitiesApi::set_scale_2d)
+        .register_fn("set_scale_3d", EntitiesApi::set_scale_3d)
         .register_fn("hide", EntitiesApi::hide)
         .register_fn("show", EntitiesApi::show)
         .register_fn("enable", EntitiesApi::enable)

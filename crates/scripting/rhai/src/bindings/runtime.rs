@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use amigo_core::{LaunchSelection, RuntimeDiagnostics};
+use amigo_render_api::RenderFrameStatsService;
 
 use crate::bindings::common::string_array;
 
@@ -8,6 +9,7 @@ use crate::bindings::common::string_array;
 pub struct RuntimeApi {
     pub(crate) launch_selection: Option<Arc<LaunchSelection>>,
     pub(crate) diagnostics: Option<Arc<RuntimeDiagnostics>>,
+    pub(crate) render_stats: Option<Arc<RenderFrameStatsService>>,
 }
 
 impl RuntimeApi {
@@ -44,6 +46,85 @@ impl RuntimeApi {
             .as_ref()
             .map(|selection| selection.dev_mode)
             .unwrap_or(false)
+    }
+
+    pub fn npr_gpu_meshes(&mut self) -> rhai::INT {
+        self.render_stats
+            .as_ref()
+            .map(|stats| stats.snapshot().world_3d_npr_gpu_realtime_meshes as rhai::INT)
+            .unwrap_or(0)
+    }
+
+    pub fn npr_cpu_meshes(&mut self) -> rhai::INT {
+        self.render_stats
+            .as_ref()
+            .map(|stats| stats.snapshot().world_3d_npr_cpu_reference_meshes as rhai::INT)
+            .unwrap_or(0)
+    }
+
+    pub fn npr_gpu_edges(&mut self) -> rhai::INT {
+        self.render_stats
+            .as_ref()
+            .map(|stats| stats.snapshot().world_3d_npr_gpu_realtime_enqueued_edges as rhai::INT)
+            .unwrap_or(0)
+    }
+
+    pub fn npr_gpu_triangles(&mut self) -> rhai::INT {
+        self.render_stats
+            .as_ref()
+            .map(|stats| {
+                stats
+                    .snapshot()
+                    .world_3d_npr_gpu_realtime_enqueued_triangles as rhai::INT
+            })
+            .unwrap_or(0)
+    }
+
+    pub fn npr_paths(&mut self) -> rhai::INT {
+        self.render_stats
+            .as_ref()
+            .map(|stats| stats.snapshot().world_3d_npr_paths as rhai::INT)
+            .unwrap_or(0)
+    }
+
+    pub fn npr_path_states_capacity(&mut self) -> rhai::INT {
+        self.render_stats
+            .as_ref()
+            .map(|stats| {
+                stats
+                    .snapshot()
+                    .world_3d_npr_gpu_realtime_path_states_capacity as rhai::INT
+            })
+            .unwrap_or(0)
+    }
+
+    pub fn npr_path_segments_capacity(&mut self) -> rhai::INT {
+        self.render_stats
+            .as_ref()
+            .map(|stats| {
+                stats
+                    .snapshot()
+                    .world_3d_npr_gpu_realtime_path_segments_capacity as rhai::INT
+            })
+            .unwrap_or(0)
+    }
+
+    pub fn npr_stroke_segments_capacity(&mut self) -> rhai::INT {
+        self.render_stats
+            .as_ref()
+            .map(|stats| {
+                stats
+                    .snapshot()
+                    .world_3d_npr_gpu_realtime_stroke_segments_capacity as rhai::INT
+            })
+            .unwrap_or(0)
+    }
+
+    pub fn npr_debug_mode(&mut self) -> String {
+        self.render_stats
+            .as_ref()
+            .map(|stats| stats.snapshot().world_3d_npr_gpu_realtime_debug_mode)
+            .unwrap_or_default()
     }
 }
 
@@ -99,5 +180,23 @@ pub(crate) fn register_api(engine: &mut rhai::Engine) {
         .register_fn("capabilities", RuntimeApi::capabilities)
         .register_fn("plugins", RuntimeApi::plugins)
         .register_fn("services", RuntimeApi::services)
-        .register_fn("dev_mode", RuntimeApi::dev_mode);
+        .register_fn("dev_mode", RuntimeApi::dev_mode)
+        .register_fn("npr_gpu_meshes", RuntimeApi::npr_gpu_meshes)
+        .register_fn("npr_cpu_meshes", RuntimeApi::npr_cpu_meshes)
+        .register_fn("npr_gpu_edges", RuntimeApi::npr_gpu_edges)
+        .register_fn("npr_gpu_triangles", RuntimeApi::npr_gpu_triangles)
+        .register_fn("npr_paths", RuntimeApi::npr_paths)
+        .register_fn(
+            "npr_path_states_capacity",
+            RuntimeApi::npr_path_states_capacity,
+        )
+        .register_fn(
+            "npr_path_segments_capacity",
+            RuntimeApi::npr_path_segments_capacity,
+        )
+        .register_fn(
+            "npr_stroke_segments_capacity",
+            RuntimeApi::npr_stroke_segments_capacity,
+        )
+        .register_fn("npr_debug_mode", RuntimeApi::npr_debug_mode);
 }

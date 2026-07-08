@@ -28,7 +28,7 @@ crates/
   audio/                 Audio API and implementations
   tools/                 Developer tools
 
-mods/                    Runtime content (core, rotten-club, playground-2d-particles, ...)
+mods/                    Runtime content (core, playground-2d, playground-2d-particles, ...)
 ```
 
 ## Current architecture snapshot
@@ -67,10 +67,10 @@ cargo check -p amigo-launcher
 cargo run -p amigo-launcher
 
 # direct launch example (hosted mode)
-cargo run -p amigo-launcher -- --hosted --mod=rotten-club --scene=main-menu
+cargo run -p amigo-launcher -- --hosted --mod=playground-2d --scene=screen-space-preview
 
 # direct runtime (without launcher)
-cargo run -p amigo-app -- --hosted --mods-root mods --mod=rotten-club --scene=main-menu
+cargo run -p amigo-app -- --hosted --mods-root mods --mod=playground-2d --scene=screen-space-preview
 ```
 
 ### 3. Run in-game editor mode
@@ -81,8 +81,8 @@ cargo run -p amigo-app -- --editor
 
 `--editor` implies hosted + dev-mode defaults and starts with:
 
-- mod: `rotten-club`
-- scene: `main-menu`
+- mod: `playground-2d`
+- scene: `screen-space-preview`
 - in-game editor overlay enabled
 
 ## Recommended day-to-day commands

@@ -36,6 +36,14 @@ impl WgpuSceneRenderer {
         &self.render_materials_last_summary
     }
 
+    pub fn npr_stroke_stats_3d(&self) -> NprStrokeFrameStats3d {
+        self.npr_stroke_stats_3d.clone()
+    }
+
+    pub fn offscreen_upload_stats(&self) -> crate::renderer::service::WgpuOffscreenUploadStats {
+        self.offscreen_upload_stats
+    }
+
     pub(crate) fn set_render_materials_last_summary(&mut self, summary: impl Into<String>) {
         self.render_materials_last_summary = summary.into();
     }
@@ -66,6 +74,9 @@ mod glyphs;
 mod graph;
 mod lightmap2d;
 mod math;
+mod mesh_draw;
+mod mesh_geometry;
+mod npr;
 mod particles;
 mod pipelines;
 mod render_types;
@@ -73,25 +84,29 @@ mod scene;
 mod service;
 mod shaders;
 mod text;
+mod text_3d;
 mod vertices;
 mod viewport;
 mod world_2d;
-mod world_3d;
 
 use assets::*;
 use buffers::*;
 use core_pipelines::*;
 use glyphs::*;
 use math::*;
+use mesh_draw::*;
+pub(crate) use mesh_geometry::*;
 use scene::*;
 use text::*;
+use text_3d::*;
 use vertices::*;
 use world_2d::*;
-use world_3d::*;
 
 pub(crate) use cached_resources::*;
 pub(crate) use lightmap2d::lit_particle_color;
 pub(crate) use math::sprite_color;
+pub use npr::NprStrokeFrameStats3d;
+pub(crate) use npr::*;
 pub(crate) use particles::append_particle_light_primitive_vertices;
 pub(crate) use particles::append_particle_primitive_vertices;
 pub(crate) use particles::color_batch_vertices;

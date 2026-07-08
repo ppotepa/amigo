@@ -567,7 +567,7 @@ Agenty:
 - C2 Staging/Review Auditor - read-only lista plikow aktualnej fali.
   - Write set: brak.
   - Walidacja: `git status --short`, `git diff --name-status`.
-  - Wynik: pliki staging tej fali vs pliki starszych zmian/mods/Rotten Club.
+  - Wynik: pliki staging tej fali vs pliki starszych zmian contentowych.
 - C3 Particles Validation Auditor - read-only wskazanie najtanszych testow dla velocity provider bridge.
   - Write set: brak.
   - Walidacja: wyszukac testy `source_velocity`, `inherit_parent_velocity`, runtime bridge.
