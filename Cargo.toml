@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-default-members = ["crates/apps/launcher"]
+default-members = ["crates/apps/launcher", "crates/apps/app", "crates/tools/plugin-check"]
 members = [
     "crates/core/codemap-api",
     "crates/core/plugin-api",
