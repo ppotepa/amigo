@@ -10,6 +10,7 @@ authors.workspace = true
 amigo-runtime.workspace = true
 amigo-session.workspace = true
 amigo-capabilities.workspace = true
+amigo-plugin-manifest = { path = "../../core/plugin-manifest" }
 amigo-devtools.workspace = true
 amigo-editor-ingame.workspace = true
 amigo-assets.workspace = true

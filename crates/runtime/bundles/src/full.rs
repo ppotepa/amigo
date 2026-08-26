@@ -4,8 +4,8 @@ use amigo_modding::ModdingPlugin;
 use amigo_runtime::{PluginBundle, RuntimeBuilder, RuntimePlugin, ServiceRegistry};
 
 use crate::{
-    AudioRuntimeBundle, CoreRuntimeBundle, DevtoolsRuntimeBundle, PlatformRuntimeBundle,
-    ScriptingRuntimeBundle, ThreeDRuntimeBundle, TwoDRuntimeBundle,
+    AudioRuntimeBundle, CoreRuntimeBundle, DevtoolsRuntimeBundle, EmbeddedPluginManifestsPlugin,
+    PlatformRuntimeBundle, ScriptingRuntimeBundle, ThreeDRuntimeBundle, TwoDRuntimeBundle,
 };
 
 pub struct FullRuntimeBundle<F>
@@ -43,6 +43,7 @@ where
 
     fn register(self, builder: RuntimeBuilder) -> AmigoResult<RuntimeBuilder> {
         let builder = builder
+            .with_plugin(EmbeddedPluginManifestsPlugin)?
             .with_bundle(CoreRuntimeBundle)?
             .with_bundle(PlatformRuntimeBundle {
                 launch_selection: self.launch_selection,

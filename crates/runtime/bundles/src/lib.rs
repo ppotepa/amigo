@@ -9,6 +9,7 @@ mod host_viewport;
 mod offscreen_runtime_frame;
 mod platform;
 mod plugin_composition;
+mod plugin_manifests;
 mod render_diagnostics;
 pub mod render_extractor_bridges;
 mod render_extractor_registry;
@@ -32,6 +33,7 @@ pub use host_viewport::*;
 pub use offscreen_runtime_frame::*;
 pub use platform::*;
 pub use plugin_composition::*;
+pub use plugin_manifests::*;
 pub use render_diagnostics::*;
 pub use render_extractor_bridges::{
     WgpuFrameCompositionBuilder, WgpuFrameCompositionOptions, WgpuRenderExtractorRegistry,
@@ -92,8 +94,6 @@ fn register_host_runtime_capabilities(session: &mut RuntimeSession) {
             migration_seam: false,
         },
     ] {
-        session
-            .runtime_capabilities_mut()
-            .register(RuntimeCapability { descriptor });
+        session.runtime_capabilities_mut().register(RuntimeCapability { descriptor });
     }
 }
