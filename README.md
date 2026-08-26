@@ -1,6 +1,5 @@
 # Amigo
 ![Amigo header preview](docs/demo.png)
-![Amigo header preview](docs/2d-demo.gif)
 
 Amigo is a mod-first Rust monorepo for a 2D/3D runtime engine, launcher, and in-game tooling.
 
@@ -115,6 +114,10 @@ cargo test -p amigo-editor-ingame
 ```
 
 Codemap helpers are available as `./scripts/codemap.sh` on Linux/macOS and `./scripts/codemap.ps1` in PowerShell.
+
+## Repository media policy
+
+Keep large animations and captures out of the Git working tree. Publish large demos as release or external artifacts and link to them from documentation. CI rejects tracked working-tree files larger than 10 MiB.
 
 ## Good first files to explore
 

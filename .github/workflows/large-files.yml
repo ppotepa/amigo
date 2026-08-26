@@ -1,0 +1,27 @@
+name: large-files
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Reject large tracked files
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t oversized < <(find . -path ./.git -prune -o -type f -size +10M -print)
+          if ((${#oversized[@]})); then
+            printf 'Tracked files larger than 10 MiB are not allowed:\n'
+            printf ' - %s\n' "${oversized[@]}"
+            exit 1
+          fi
