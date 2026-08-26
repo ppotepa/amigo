@@ -9,11 +9,9 @@ use crate::index::PluginIndex;
 
 pub fn build_codemap_graph_from_index(index: &PluginIndex) -> CodeMapGraph {
     let mut graph = CodeMapGraph::new();
-
     for manifest in index.manifests() {
         add_manifest_to_graph(&mut graph, manifest);
     }
-
     graph
 }
 
@@ -27,19 +25,16 @@ pub fn build_codemap_graph_from_manifests(
 fn add_manifest_to_graph(graph: &mut CodeMapGraph, manifest: &PluginManifest) {
     let plugin_node = CodeMapNodeId::Plugin(manifest.id.clone());
     let domain_node = CodeMapNodeId::Domain(DomainId(manifest.family.0.clone()));
-
     graph.add_node(CodeMapNode::new(
         plugin_node.clone(),
         CodeMapNodeKind::Plugin,
         manifest.id.0.clone(),
     ));
-
     graph.add_node(CodeMapNode::new(
         domain_node.clone(),
         CodeMapNodeKind::Domain,
         manifest.family.0.clone(),
     ));
-
     graph.add_edge(CodeMapEdge::new(
         domain_node,
         plugin_node.clone(),
@@ -61,29 +56,24 @@ fn add_capabilities(
 ) {
     for capability in &manifest.capabilities.provides {
         let node = CodeMapNodeId::Capability(CapabilityId(capability.id.0.clone()));
-
         graph.add_node(CodeMapNode::new(
             node.clone(),
             CodeMapNodeKind::Capability,
             format!("{}@{}", capability.id.0, capability.version),
         ));
-
         graph.add_edge(CodeMapEdge::new(
             plugin_node.clone(),
             node,
             CodeMapEdgeKind::Provides,
         ));
     }
-
     for capability in &manifest.capabilities.requires {
         let node = CodeMapNodeId::Capability(CapabilityId(capability.id.0.clone()));
-
         graph.add_node(CodeMapNode::new(
             node.clone(),
             CodeMapNodeKind::Capability,
             format!("{}@{}", capability.id.0, capability.version),
         ));
-
         graph.add_edge(CodeMapEdge::new(
             plugin_node.clone(),
             node,
@@ -95,45 +85,37 @@ fn add_capabilities(
 fn add_slots(graph: &mut CodeMapGraph, manifest: &PluginManifest, plugin_node: &CodeMapNodeId) {
     for slot in &manifest.slots.implements {
         let node = CodeMapNodeId::Slot(SlotId(slot.0.clone()));
-
         graph.add_node(CodeMapNode::new(
             node.clone(),
             CodeMapNodeKind::Slot,
             slot.0.clone(),
         ));
-
         graph.add_edge(CodeMapEdge::new(
             plugin_node.clone(),
             node,
             CodeMapEdgeKind::ImplementsSlot,
         ));
     }
-
     for slot in &manifest.slots.requires {
         let node = CodeMapNodeId::Slot(SlotId(slot.0.clone()));
-
         graph.add_node(CodeMapNode::new(
             node.clone(),
             CodeMapNodeKind::Slot,
             slot.0.clone(),
         ));
-
         graph.add_edge(CodeMapEdge::new(
             plugin_node.clone(),
             node,
             CodeMapEdgeKind::Requires,
         ));
     }
-
     for replaced_plugin in &manifest.slots.replaces {
         let node = CodeMapNodeId::Plugin(replaced_plugin.clone());
-
         graph.add_node(CodeMapNode::new(
             node.clone(),
             CodeMapNodeKind::Plugin,
             replaced_plugin.0.clone(),
         ));
-
         graph.add_edge(CodeMapEdge::new(
             plugin_node.clone(),
             node,
@@ -146,11 +128,9 @@ fn add_targets(graph: &mut CodeMapGraph, manifest: &PluginManifest, plugin_node:
     for target in &manifest.targets.reads {
         add_target_edge(graph, plugin_node, target, CodeMapEdgeKind::ReadsTarget);
     }
-
     for target in &manifest.targets.writes {
         add_target_edge(graph, plugin_node, target, CodeMapEdgeKind::WritesTarget);
     }
-
     for target in &manifest.targets.contributes {
         add_target_edge(
             graph,
@@ -168,13 +148,11 @@ fn add_target_edge(
     kind: CodeMapEdgeKind,
 ) {
     let node = CodeMapNodeId::Target(TargetId(target.0.clone()));
-
     graph.add_node(CodeMapNode::new(
         node.clone(),
         CodeMapNodeKind::Target,
         target.0.clone(),
     ));
-
     graph.add_edge(CodeMapEdge::new(plugin_node.clone(), node, kind));
 }
 
@@ -189,33 +167,28 @@ fn add_contributions(
             contribution.domain.0, contribution.contribution_type
         );
         let node = CodeMapNodeId::Contribution(label.clone());
-
         graph.add_node(CodeMapNode::new(
             node.clone(),
             CodeMapNodeKind::Contribution,
             label,
         ));
-
         graph.add_edge(CodeMapEdge::new(
             plugin_node.clone(),
             node,
             CodeMapEdgeKind::EmitsContribution,
         ));
     }
-
     for contribution in &manifest.contributions.consumes {
         let label = format!(
             "{}::{}",
             contribution.domain.0, contribution.contribution_type
         );
         let node = CodeMapNodeId::Contribution(label.clone());
-
         graph.add_node(CodeMapNode::new(
             node.clone(),
             CodeMapNodeKind::Contribution,
             label,
         ));
-
         graph.add_edge(CodeMapEdge::new(
             plugin_node.clone(),
             node,
@@ -231,13 +204,11 @@ fn add_diagnostics(
 ) {
     for diagnostic in &manifest.diagnostics.channels {
         let node = CodeMapNodeId::DiagnosticChannel(DiagnosticChannelId(diagnostic.id.0.clone()));
-
         graph.add_node(CodeMapNode::new(
             node.clone(),
             CodeMapNodeKind::DiagnosticChannel,
             diagnostic.id.0.clone(),
         ));
-
         graph.add_edge(CodeMapEdge::new(
             plugin_node.clone(),
             node,
@@ -252,43 +223,43 @@ fn add_docs_and_tests(
     plugin_node: &CodeMapNodeId,
 ) {
     if let Some(path) = &manifest.docs.pipeline {
-        add_doc_edge(graph, plugin_node, path);
+        add_doc_edge(graph, manifest, plugin_node, path);
     }
-
     if let Some(path) = &manifest.docs.contributions {
-        add_doc_edge(graph, plugin_node, path);
+        add_doc_edge(graph, manifest, plugin_node, path);
     }
-
     if let Some(path) = &manifest.docs.diagnostics {
-        add_doc_edge(graph, plugin_node, path);
+        add_doc_edge(graph, manifest, plugin_node, path);
     }
-
     if let Some(path) = &manifest.tests.hydration {
-        add_test_edge(graph, plugin_node, path);
+        add_test_edge(graph, manifest, plugin_node, path);
     }
-
     if let Some(path) = &manifest.tests.participation {
-        add_test_edge(graph, plugin_node, path);
+        add_test_edge(graph, manifest, plugin_node, path);
     }
-
     if let Some(path) = &manifest.tests.candidate {
-        add_test_edge(graph, plugin_node, path);
+        add_test_edge(graph, manifest, plugin_node, path);
     }
-
     if let Some(path) = &manifest.tests.waterfall {
-        add_test_edge(graph, plugin_node, path);
+        add_test_edge(graph, manifest, plugin_node, path);
     }
-
     if let Some(path) = &manifest.tests.diagnostics {
-        add_test_edge(graph, plugin_node, path);
+        add_test_edge(graph, manifest, plugin_node, path);
     }
 }
 
-fn add_doc_edge(graph: &mut CodeMapGraph, plugin_node: &CodeMapNodeId, path: &str) {
-    let node = CodeMapNodeId::Doc(path.to_string());
+fn owned_path_key(manifest: &PluginManifest, path: &str) -> String {
+    format!("{}::{path}", manifest.id.0)
+}
 
+fn add_doc_edge(
+    graph: &mut CodeMapGraph,
+    manifest: &PluginManifest,
+    plugin_node: &CodeMapNodeId,
+    path: &str,
+) {
+    let node = CodeMapNodeId::Doc(owned_path_key(manifest, path));
     graph.add_node(CodeMapNode::new(node.clone(), CodeMapNodeKind::Doc, path).with_path(path));
-
     graph.add_edge(CodeMapEdge::new(
         plugin_node.clone(),
         node,
@@ -296,11 +267,14 @@ fn add_doc_edge(graph: &mut CodeMapGraph, plugin_node: &CodeMapNodeId, path: &st
     ));
 }
 
-fn add_test_edge(graph: &mut CodeMapGraph, plugin_node: &CodeMapNodeId, path: &str) {
-    let node = CodeMapNodeId::Test(path.to_string());
-
+fn add_test_edge(
+    graph: &mut CodeMapGraph,
+    manifest: &PluginManifest,
+    plugin_node: &CodeMapNodeId,
+    path: &str,
+) {
+    let node = CodeMapNodeId::Test(owned_path_key(manifest, path));
     graph.add_node(CodeMapNode::new(node.clone(), CodeMapNodeKind::Test, path).with_path(path));
-
     graph.add_edge(CodeMapEdge::new(
         plugin_node.clone(),
         node,
