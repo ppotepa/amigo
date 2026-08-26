@@ -10,6 +10,8 @@ mod component_graph_provider;
 mod component_hydrator_registry;
 /// Component metadata and editor-facing capability descriptors.
 mod component_metadata;
+/// Transitional engine-owned metadata grouped behind domain providers.
+mod component_metadata_domains;
 /// Plugin-owned component metadata provider extension point.
 mod component_metadata_provider;
 /// Plugin-owned component schema descriptor registry.
@@ -72,11 +74,13 @@ pub use commands::{RuntimeSceneCommandHandler, *};
 pub use component_graph_provider::*;
 pub use component_hydrator_registry::*;
 pub use component_metadata::*;
+pub use component_metadata_domains::*;
 pub use component_metadata_provider::*;
 pub use component_schema_registry::*;
 pub use document::*;
 pub use domain_services::*;
 pub use entity::*;
+pub use editor_property_semantics::*;
 pub use error::*;
 pub use graph::*;
 pub use hydration::*;
