@@ -1,12 +1,7 @@
-# Main branch protection
+# Main branch ruleset
 
-The repository CI check is named `ci / validate` and is intended to be required for `main`.
+The canonical intended ruleset is stored at `.github/rulesets/main.json` so repository policy is reviewable beside source.
 
-Recommended repository rule:
+It targets `main`, blocks deletion and non-fast-forward updates, and requires the stable validation checks once GitHub-hosted Actions execution is available.
 
-- require `ci / validate` before updates to `main`;
-- require the branch to be up to date before merge when pull requests are used;
-- block force pushes and deletions;
-- allow administrators to bypass only for incident recovery.
-
-This file documents the expected repository setting so it can be audited alongside source. GitHub branch protection itself is a repository setting, not a source-controlled file.
+The connected GitHub API available to repository automation is read-only for rulesets/branch-protection settings, so committing this file does **not** activate the server-side rule. Import/apply the ruleset in GitHub repository settings (or through an authorized administration API) and verify that `main` reports protected before treating policy as enforced.
