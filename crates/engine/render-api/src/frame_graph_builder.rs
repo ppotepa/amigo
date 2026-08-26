@@ -14,33 +14,40 @@ pub fn build_frame_graph_from_plan(
     info: FrameGraphBuildInfo,
 ) -> FrameGraph {
     let mut graph = FrameGraph::new();
-
     let surface = graph.add_resource("surface", FrameResourceKind::SurfaceColor);
-    let world = graph.add_resource(
-        "world_color",
-        FrameResourceKind::TextureColor {
-            width: info.width,
-            height: info.height,
-            transient: true,
-        },
-    );
-    let post_fx = graph.add_resource(
-        "post_fx_color",
-        FrameResourceKind::TextureColor {
-            width: info.width,
-            height: info.height,
-            transient: true,
-        },
-    );
 
     for view in &plan.views {
-        let target = view_target_resource(&mut graph, view.id.as_str(), view.target, surface);
+        let view_id = view.id.as_str();
+        let target = view_target_resource(&mut graph, view_id, view.target, surface);
+        let (width, height) = view_dimensions(view.target, info);
+        let world = graph.add_resource(
+            format!("view:{view_id}:world_color"),
+            FrameResourceKind::TextureColor {
+                width,
+                height,
+                transient: true,
+            },
+        );
+        let post_fx = graph.add_resource(
+            format!("view:{view_id}:post_fx_color"),
+            FrameResourceKind::TextureColor {
+                width,
+                height,
+                transient: true,
+            },
+        );
+
         for pass in &view.passes {
             match pass {
                 RenderPassPlan::World(pass) => {
                     let output = resource_for_output(pass.output, target, world, post_fx);
                     debug_assert_ne!(output, target, "only Present may write the view target");
-                    graph.add_node("world", FrameGraphNodeKind::World, vec![], vec![output]);
+                    graph.add_node(
+                        format!("view:{view_id}:world"),
+                        FrameGraphNodeKind::World,
+                        vec![],
+                        vec![output],
+                    );
                 }
                 RenderPassPlan::PostFx(pass) => {
                     let input = resource_for_input(pass.input, target, world, post_fx);
@@ -48,7 +55,7 @@ pub fn build_frame_graph_from_plan(
                     debug_assert_ne!(output, target, "only Present may write the view target");
                     graph.add_node(
                         format!(
-                            "post_fx:{}:{}:{}",
+                            "view:{view_id}:post_fx:{}:{}:{}",
                             pass.host_id.as_str(),
                             pass.effect_id.as_str(),
                             pass.feature_id
@@ -69,7 +76,7 @@ pub fn build_frame_graph_from_plan(
                     let output = resource_for_output(pass.output, target, world, post_fx);
                     debug_assert_ne!(output, target, "only Present may write the view target");
                     graph.add_node(
-                        "game_ui",
+                        format!("view:{view_id}:game_ui"),
                         FrameGraphNodeKind::GameUi,
                         input.into_iter().collect(),
                         vec![output],
@@ -80,7 +87,7 @@ pub fn build_frame_graph_from_plan(
                     let output = resource_for_output(pass.output, target, world, post_fx);
                     debug_assert_ne!(output, target, "only Present may write the view target");
                     graph.add_node(
-                        "debug_overlay",
+                        format!("view:{view_id}:debug_overlay"),
                         FrameGraphNodeKind::DebugOverlay,
                         input.into_iter().collect(),
                         vec![output],
@@ -89,7 +96,7 @@ pub fn build_frame_graph_from_plan(
                 RenderPassPlan::Present(pass) => {
                     let input = resource_for_input(pass.input, target, world, post_fx);
                     graph.add_node(
-                        "present",
+                        format!("view:{view_id}:present"),
                         FrameGraphNodeKind::Present,
                         input.into_iter().collect(),
                         vec![target],
@@ -100,6 +107,13 @@ pub fn build_frame_graph_from_plan(
     }
 
     graph
+}
+
+fn view_dimensions(target: RenderTargetPlan, info: FrameGraphBuildInfo) -> (u32, u32) {
+    match target {
+        RenderTargetPlan::Surface => (info.width, info.height),
+        RenderTargetPlan::Offscreen { width, height } => (width, height),
+    }
 }
 
 fn view_target_resource(
