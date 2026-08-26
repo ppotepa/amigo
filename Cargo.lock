@@ -360,6 +360,7 @@ name = "amigo-bloom-plugin"
 version = "0.1.0"
 dependencies = [
  "amigo-plugin-api",
+ "amigo-plugin-manifest",
 ]
 
 [[package]]
@@ -425,6 +426,7 @@ name = "amigo-capabilities"
 version = "0.1.0"
 dependencies = [
  "amigo-core",
+ "amigo-plugin-api",
  "amigo-runtime",
 ]
 
@@ -833,6 +835,8 @@ dependencies = [
  "amigo-codemap-api",
  "amigo-plugin-index",
  "amigo-plugin-loader",
+ "amigo-plugin-manifest",
+ "toml 1.1.2+spec-1.1.0",
 ]
 
 [[package]]
@@ -945,6 +949,7 @@ dependencies = [
  "amigo-behavior",
  "amigo-camera-core-plugin",
  "amigo-camera-optics-plugin",
+ "amigo-capabilities",
  "amigo-composite-plugin",
  "amigo-core",
  "amigo-devtools",
@@ -965,6 +970,8 @@ dependencies = [
  "amigo-overlay-api",
  "amigo-particles-2d-plugin",
  "amigo-plugin-api",
+ "amigo-plugin-index",
+ "amigo-plugin-manifest",
  "amigo-render-api",
  "amigo-render-wgpu",
  "amigo-runtime",
@@ -1108,6 +1115,7 @@ dependencies = [
  "amigo-material-api",
  "amigo-math",
  "amigo-plugin-api",
+ "amigo-plugin-manifest",
  "amigo-render-api",
  "amigo-runtime",
  "amigo-scene",
@@ -1306,9 +1314,9 @@ dependencies = [
 
 [[package]]
 name = "anyhow"
-version = "1.0.102"
+version = "1.0.104"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7f202df86484c868dbad7eaa557ef785d5c66295e41b460ef922eca0723b842c"
+checksum = "330a5ed07fa54e4702c9d6c4174f74427fc0ef6e214bbd677ae50a5099946470"
 
 [[package]]
 name = "approx"
