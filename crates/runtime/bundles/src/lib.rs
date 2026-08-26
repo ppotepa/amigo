@@ -1,5 +1,6 @@
 mod asset_domain_preparers;
 mod audio;
+mod bootstrap;
 mod core;
 mod devtools;
 mod event_pipeline;
@@ -22,6 +23,7 @@ mod two_d;
 
 pub use asset_domain_preparers::*;
 pub use audio::*;
+pub use bootstrap::*;
 pub use core::*;
 pub use devtools::*;
 pub use event_pipeline::*;
