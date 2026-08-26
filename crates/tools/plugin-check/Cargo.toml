@@ -6,4 +6,6 @@ edition = "2021"
 [dependencies]
 amigo-plugin-loader = { path = "../../core/plugin-loader" }
 amigo-plugin-index = { path = "../../core/plugin-index" }
+amigo-plugin-manifest = { path = "../../core/plugin-manifest" }
 amigo-codemap-api = { path = "../../core/codemap-api" }
+toml.workspace = true
