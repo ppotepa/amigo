@@ -8,6 +8,7 @@ pub mod bootstrap;
 pub mod frame;
 pub mod frame_clock;
 pub mod options;
+pub mod performance;
 pub mod render_session;
 pub mod replay;
 pub mod runtime_capabilities;
@@ -20,11 +21,11 @@ pub mod script_command_registry;
 pub mod script_session;
 mod session_runtime_capabilities;
 
-pub use frame_clock::*;
-
 pub use bootstrap::*;
 pub use frame::*;
+pub use frame_clock::*;
 pub use options::*;
+pub use performance::*;
 pub use render_session::*;
 pub use replay::*;
 pub use runtime_capabilities::*;
