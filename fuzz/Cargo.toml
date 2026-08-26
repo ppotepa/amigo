@@ -1,0 +1,38 @@
+[package]
+name = "amigo-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2021"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+amigo-plugin-manifest = { path = "../crates/core/plugin-manifest" }
+amigo-scene = { path = "../crates/engine/scene" }
+rhai = { version = "1.24", features = ["sync"] }
+
+[[bin]]
+name = "plugin_manifest"
+path = "fuzz_targets/plugin_manifest.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "scene_yaml"
+path = "fuzz_targets/scene_yaml.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "rhai_source"
+path = "fuzz_targets/rhai_source.rs"
+test = false
+doc = false
+bench = false
+
+[workspace]
+members = ["."]
