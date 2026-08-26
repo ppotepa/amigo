@@ -5,3 +5,6 @@ edition = "2021"
 
 [dependencies]
 amigo-plugin-api = { path = "../../../crates/core/plugin-api" }
+
+[dev-dependencies]
+amigo-plugin-manifest = { path = "../../../crates/core/plugin-manifest" }
