@@ -5,6 +5,7 @@ edition = "2021"
 
 [dependencies]
 amigo-plugin-api = { path = "../../../crates/core/plugin-api" }
+amigo-plugin-manifest = { path = "../../../crates/core/plugin-manifest" }
 amigo-assets.workspace = true
 amigo-capabilities.workspace = true
 amigo-camera.workspace = true

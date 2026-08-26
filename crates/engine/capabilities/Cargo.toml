@@ -8,4 +8,5 @@ authors.workspace = true
 
 [dependencies]
 amigo-core.workspace = true
+amigo-plugin-api.workspace = true
 amigo-runtime.workspace = true

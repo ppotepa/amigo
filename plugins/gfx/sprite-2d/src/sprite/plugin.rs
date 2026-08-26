@@ -1,4 +1,3 @@
-use amigo_capabilities::{register_domain_plugin, DEFAULT_CAPABILITY_VERSION};
 use amigo_runtime::{RuntimePlugin, ServiceRegistry};
 
 use super::service::SpriteSceneService;
@@ -32,15 +31,17 @@ impl RuntimePlugin for SpritePlugin {
         }
         registry.register(SpriteDomainInfo {
             crate_name: "amigo-sprite-2d-plugin",
-            capability: "rendering_2d",
+            capability: "gfx.sprite.2d",
         })?;
-        register_domain_plugin(
-            registry,
-            "amigo-sprite-2d-plugin",
-            &["rendering_2d"],
-            &[],
-            DEFAULT_CAPABILITY_VERSION,
-        )?;
+
+        let manifest = amigo_plugin_manifest::parse_plugin_manifest_str(include_str!("../../plugin.toml"))
+            .map_err(|error| {
+                amigo_core::AmigoError::Message(format!(
+                    "invalid embedded sprite-2d plugin manifest: {error:?}"
+                ))
+            })?;
+        amigo_capabilities::register_plugin_manifest(registry, &manifest)?;
+
         let scene_handlers =
             registry.required::<amigo_scene::RuntimeSceneCommandHandlerRegistry>()?;
         amigo_scene::register_runtime_scene_command_handler(
