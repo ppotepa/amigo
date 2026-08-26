@@ -9,17 +9,38 @@ pub struct FrameGraphBuildInfo {
     pub height: u32,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum FrameGraphBuildError {
+    ZeroSizedViewTarget { view_id: String },
+    PassWritesViewTarget { view_id: String, pass: String },
+}
+
+pub type FrameGraphBuildResult = Result<FrameGraph, FrameGraphBuildError>;
+
 pub fn build_frame_graph_from_plan(
     plan: &FrameCompositionPlan,
     info: FrameGraphBuildInfo,
 ) -> FrameGraph {
+    try_build_frame_graph_from_plan(plan, info)
+        .expect("frame composition plan must satisfy frame graph invariants")
+}
+
+pub fn try_build_frame_graph_from_plan(
+    plan: &FrameCompositionPlan,
+    info: FrameGraphBuildInfo,
+) -> FrameGraphBuildResult {
     let mut graph = FrameGraph::new();
     let surface = graph.add_resource("surface", FrameResourceKind::SurfaceColor);
 
     for view in &plan.views {
         let view_id = view.id.as_str();
-        let target = view_target_resource(&mut graph, view_id, view.target, surface);
         let (width, height) = view_dimensions(view.target, info);
+        if width == 0 || height == 0 {
+            return Err(FrameGraphBuildError::ZeroSizedViewTarget {
+                view_id: view_id.to_owned(),
+            });
+        }
+        let target = view_target_resource(&mut graph, view_id, view.target, surface);
         let world = graph.add_resource(
             format!("view:{view_id}:world_color"),
             FrameResourceKind::TextureColor {
@@ -38,28 +59,19 @@ pub fn build_frame_graph_from_plan(
         );
 
         for pass in &view.passes {
+            let pass_label = pass.label();
             match pass {
                 RenderPassPlan::World(pass) => {
                     let output = resource_for_output(pass.output, target, world, post_fx);
-                    debug_assert_ne!(output, target, "only Present may write the view target");
-                    graph.add_node(
-                        format!("view:{view_id}:world"),
-                        FrameGraphNodeKind::World,
-                        vec![],
-                        vec![output],
-                    );
+                    ensure_non_present_does_not_write_target(view_id, &pass_label, output, target)?;
+                    graph.add_node(format!("view:{view_id}:world"), FrameGraphNodeKind::World, vec![], vec![output]);
                 }
                 RenderPassPlan::PostFx(pass) => {
                     let input = resource_for_input(pass.input, target, world, post_fx);
                     let output = resource_for_output(pass.output, target, world, post_fx);
-                    debug_assert_ne!(output, target, "only Present may write the view target");
+                    ensure_non_present_does_not_write_target(view_id, &pass_label, output, target)?;
                     graph.add_node(
-                        format!(
-                            "view:{view_id}:post_fx:{}:{}:{}",
-                            pass.host_id.as_str(),
-                            pass.effect_id.as_str(),
-                            pass.feature_id
-                        ),
+                        format!("view:{view_id}:post_fx:{}:{}:{}", pass.host_id.as_str(), pass.effect_id.as_str(), pass.feature_id),
                         FrameGraphNodeKind::PostFx {
                             host_id: pass.host_id.clone(),
                             effect_id: pass.effect_id.clone(),
@@ -74,39 +86,39 @@ pub fn build_frame_graph_from_plan(
                 RenderPassPlan::GameUi(pass) => {
                     let input = resource_for_input(pass.input, target, world, post_fx);
                     let output = resource_for_output(pass.output, target, world, post_fx);
-                    debug_assert_ne!(output, target, "only Present may write the view target");
-                    graph.add_node(
-                        format!("view:{view_id}:game_ui"),
-                        FrameGraphNodeKind::GameUi,
-                        input.into_iter().collect(),
-                        vec![output],
-                    );
+                    ensure_non_present_does_not_write_target(view_id, &pass_label, output, target)?;
+                    graph.add_node(format!("view:{view_id}:game_ui"), FrameGraphNodeKind::GameUi, input.into_iter().collect(), vec![output]);
                 }
                 RenderPassPlan::DebugOverlay(pass) => {
                     let input = resource_for_input(pass.input, target, world, post_fx);
                     let output = resource_for_output(pass.output, target, world, post_fx);
-                    debug_assert_ne!(output, target, "only Present may write the view target");
-                    graph.add_node(
-                        format!("view:{view_id}:debug_overlay"),
-                        FrameGraphNodeKind::DebugOverlay,
-                        input.into_iter().collect(),
-                        vec![output],
-                    );
+                    ensure_non_present_does_not_write_target(view_id, &pass_label, output, target)?;
+                    graph.add_node(format!("view:{view_id}:debug_overlay"), FrameGraphNodeKind::DebugOverlay, input.into_iter().collect(), vec![output]);
                 }
                 RenderPassPlan::Present(pass) => {
                     let input = resource_for_input(pass.input, target, world, post_fx);
-                    graph.add_node(
-                        format!("view:{view_id}:present"),
-                        FrameGraphNodeKind::Present,
-                        input.into_iter().collect(),
-                        vec![target],
-                    );
+                    graph.add_node(format!("view:{view_id}:present"), FrameGraphNodeKind::Present, input.into_iter().collect(), vec![target]);
                 }
             }
         }
     }
 
-    graph
+    Ok(graph)
+}
+
+fn ensure_non_present_does_not_write_target(
+    view_id: &str,
+    pass: &str,
+    output: FrameResourceId,
+    target: FrameResourceId,
+) -> Result<(), FrameGraphBuildError> {
+    if output == target {
+        return Err(FrameGraphBuildError::PassWritesViewTarget {
+            view_id: view_id.to_owned(),
+            pass: pass.to_owned(),
+        });
+    }
+    Ok(())
 }
 
 fn view_dimensions(target: RenderTargetPlan, info: FrameGraphBuildInfo) -> (u32, u32) {
