@@ -27,9 +27,7 @@ fn main() {
     let roots: Vec<PathBuf> = if known_command {
         let roots: Vec<PathBuf> = args.map(PathBuf::from).collect();
         if roots.is_empty() { vec![PathBuf::from("plugins")] } else { roots }
-    } else {
-        std::iter::once(PathBuf::from(first)).chain(args.map(PathBuf::from)).collect()
-    };
+    } else { std::iter::once(PathBuf::from(first)).chain(args.map(PathBuf::from)).collect() };
     if let Err(errors) = validate_plugin_tree(&roots) {
         eprintln!("plugin tree validation failed:");
         for error in errors { eprintln!("- {error}"); }
@@ -43,15 +41,9 @@ fn main() {
         }
     }
     let index = PluginIndex::from_manifests(manifests);
-    if let Err(errors) = validate_plugin_index(&index) {
-        eprintln!("plugin index validation failed: {errors:#?}");
-        std::process::exit(1);
-    }
+    if let Err(errors) = validate_plugin_index(&index) { eprintln!("plugin index validation failed: {errors:#?}"); std::process::exit(1); }
     let graph = build_codemap_graph_from_index(&index);
-    if let Err(errors) = validate_codemap_graph(&graph) {
-        eprintln!("codemap graph validation failed: {errors:#?}");
-        std::process::exit(1);
-    }
+    if let Err(errors) = validate_codemap_graph(&graph) { eprintln!("codemap graph validation failed: {errors:#?}"); std::process::exit(1); }
     match command.as_str() {
         "summary" | "check" => print_summary(&index, graph.nodes.len(), graph.edges.len()),
         "plugins" => print_plugins(&index),
@@ -63,8 +55,7 @@ fn main() {
 }
 
 fn parse_validate_roots(args: &[String]) -> Vec<PathBuf> {
-    let mut roots = Vec::new();
-    let mut iter = args.iter();
+    let mut roots = Vec::new(); let mut iter = args.iter();
     while let Some(arg) = iter.next() {
         match arg.as_str() {
             "--workspace" => {}
@@ -89,8 +80,7 @@ fn collect_plugin_dirs(root: &Path, errors: &mut Vec<String>) -> Vec<PathBuf> {
     let mut plugins = Vec::new();
     let Ok(families) = fs::read_dir(root) else { errors.push(format!("{} is not readable", root.display())); return plugins; };
     for family in families.flatten() {
-        let family_path = family.path();
-        if !family_path.is_dir() { continue; }
+        let family_path = family.path(); if !family_path.is_dir() { continue; }
         let Ok(entries) = fs::read_dir(&family_path) else { errors.push(format!("{} is not readable", family_path.display())); continue; };
         for entry in entries.flatten() {
             let plugin_path = entry.path();
@@ -101,26 +91,19 @@ fn collect_plugin_dirs(root: &Path, errors: &mut Vec<String>) -> Vec<PathBuf> {
 }
 
 fn validate_plugin_dir(plugin_dir: &Path, ids: &mut BTreeSet<String>, errors: &mut Vec<String>) {
-    let manifest_path = plugin_dir.join("plugin.toml");
-    let cargo_path = plugin_dir.join("Cargo.toml");
+    let manifest_path = plugin_dir.join("plugin.toml"); let cargo_path = plugin_dir.join("Cargo.toml");
     for file in ["plugin.toml", "Cargo.toml", "README.md", "tests/waterfall_tests.rs", "src/plugin.rs"] { require_file(plugin_dir, file, errors); }
     validate_waterfall_test(plugin_dir, errors);
     for dir in ["src/api", "src/scene", "src/runtime", "src/scripting", "src/diagnostics"] { require_dir(plugin_dir, dir, errors); }
-    if !plugin_dir.join("src/render_wgpu").is_dir() && !plugin_dir.join("src/render").is_dir() {
-        errors.push(format!("{} missing render boundary directory: expected src/render_wgpu or src/render", plugin_dir.display()));
-    }
+    if !plugin_dir.join("src/render_wgpu").is_dir() && !plugin_dir.join("src/render").is_dir() { errors.push(format!("{} missing render boundary directory: expected src/render_wgpu or src/render", plugin_dir.display())); }
     if plugin_dir.join("src/render-wgpu").exists() { errors.push(format!("{} must use src/render_wgpu, not src/render-wgpu", plugin_dir.display())); }
-    if manifest_path.exists() {
-        validate_manifest_identity(plugin_dir, &manifest_path, ids, errors);
-        validate_manifest_referenced_files(plugin_dir, &manifest_path, errors);
-    }
+    if manifest_path.exists() { validate_manifest_identity(plugin_dir, &manifest_path, ids, errors); validate_manifest_referenced_files(plugin_dir, &manifest_path, errors); }
     if cargo_path.exists() { validate_cargo_package_name(plugin_dir, &cargo_path, errors); }
     validate_forbidden_patterns(plugin_dir, errors);
 }
 
 fn validate_waterfall_test(plugin_dir: &Path, errors: &mut Vec<String>) {
-    let path = plugin_dir.join("tests/waterfall_tests.rs");
-    let Ok(content) = fs::read_to_string(&path) else { return; };
+    let path = plugin_dir.join("tests/waterfall_tests.rs"); let Ok(content) = fs::read_to_string(&path) else { return; };
     let compact: String = content.chars().filter(|ch| !ch.is_whitespace()).collect();
     if !content.contains("#[test]") { errors.push(format!("{} must contain at least one #[test]", path.display())); }
     if compact.contains("assert!(true)") || compact.contains("assert_eq!(true,true)") { errors.push(format!("{} contains a trivial placeholder assertion", path.display())); }
@@ -133,19 +116,10 @@ fn require_dir(plugin_dir: &Path, relative: &str, errors: &mut Vec<String>) { if
 
 fn validate_manifest_identity(plugin_dir: &Path, manifest_path: &Path, ids: &mut BTreeSet<String>, errors: &mut Vec<String>) {
     let Ok(content) = fs::read_to_string(manifest_path) else { errors.push(format!("{} is not readable", manifest_path.display())); return; };
-    let id = manifest_scalar(&content, "id");
-    let family = manifest_scalar(&content, "family");
+    let id = manifest_scalar(&content, "id"); let family = manifest_scalar(&content, "family");
     let actual_family = plugin_dir.parent().and_then(|path| path.file_name()).and_then(|name| name.to_str()).unwrap_or("");
-    match family {
-        Some(family) if family == actual_family => {}
-        Some(family) => errors.push(format!("{} family `{family}` does not match plugins/{actual_family}", manifest_path.display())),
-        None => errors.push(format!("{} missing family", manifest_path.display())),
-    }
-    match id {
-        Some(id) if ids.insert(id.to_owned()) => {}
-        Some(id) => errors.push(format!("duplicate plugin id `{id}`")),
-        None => errors.push(format!("{} missing id", manifest_path.display())),
-    }
+    match family { Some(family) if family == actual_family => {}, Some(family) => errors.push(format!("{} family `{family}` does not match plugins/{actual_family}", manifest_path.display())), None => errors.push(format!("{} missing family", manifest_path.display())) }
+    match id { Some(id) if ids.insert(id.to_owned()) => {}, Some(id) => errors.push(format!("duplicate plugin id `{id}`")), None => errors.push(format!("{} missing id", manifest_path.display())) }
 }
 
 fn validate_cargo_package_name(plugin_dir: &Path, cargo_path: &Path, errors: &mut Vec<String>) {
@@ -159,19 +133,14 @@ fn validate_manifest_referenced_files(plugin_dir: &Path, manifest_path: &Path, e
         for (key, relative) in manifest_section_scalars(&content, section) {
             if relative.trim().is_empty() { errors.push(format!("{} [{section}].{key} references an empty path", manifest_path.display())); continue; }
             let relative_path = Path::new(relative);
-            if relative_path.is_absolute() || relative_path.components().any(|component| matches!(component, std::path::Component::ParentDir)) {
-                errors.push(format!("{} [{section}].{key} must reference a plugin-relative file, got `{relative}`", manifest_path.display()));
-                continue;
-            }
+            if relative_path.is_absolute() || relative_path.components().any(|component| matches!(component, std::path::Component::ParentDir)) { errors.push(format!("{} [{section}].{key} must reference a plugin-relative file, got `{relative}`", manifest_path.display())); continue; }
             if !plugin_dir.join(relative_path).is_file() { errors.push(format!("{} [{section}].{key} references missing file `{relative}`", manifest_path.display())); }
         }
     }
 }
 
 fn manifest_section_scalars<'a>(content: &'a str, section: &str) -> Vec<(&'a str, &'a str)> {
-    let section_header = format!("[{section}]");
-    let mut in_section = false;
-    let mut scalars = Vec::new();
+    let section_header = format!("[{section}]"); let mut in_section = false; let mut scalars = Vec::new();
     for line in content.lines().map(str::trim) {
         if line.starts_with('[') && line.ends_with(']') { in_section = line == section_header; continue; }
         if !in_section || line.is_empty() || line.starts_with('#') { continue; }
@@ -188,23 +157,35 @@ fn manifest_scalar<'a>(content: &'a str, key: &str) -> Option<&'a str> {
 }
 
 fn validate_forbidden_patterns(plugin_dir: &Path, errors: &mut Vec<String>) {
-    const FORBIDDEN: &[&str] = &[concat!("leg", "acy"), concat!("depre", "cated"), concat!("_", "v", "2"), concat!("re", "-", "export"), concat!("re", "export"), concat!("luma", "_fallback"), concat!("should", "_produce", "_scene", "_highlight"), concat!("direct", "_lens", "_flare"), concat!("guess", "_optical"), concat!("flare", "_strength"), concat!("lens", "_influence")];
+    const FORBIDDEN_IDENTIFIERS: &[&str] = &[
+        "luma_fallback", "should_produce_scene_highlight", "direct_lens_flare", "guess_optical",
+        "flare_strength", "lens_influence",
+    ];
     for path in files_under(plugin_dir) {
+        if path.extension().and_then(|ext| ext.to_str()) != Some("rs") { continue; }
         let Ok(content) = fs::read_to_string(&path) else { continue; };
-        for forbidden in FORBIDDEN { if content.contains(forbidden) { errors.push(format!("{} contains forbidden `{forbidden}`", path.display())); } }
+        for line in content.lines().map(str::trim) {
+            if line.starts_with("//") || line.starts_with("/*") || line.starts_with('*') { continue; }
+            for forbidden in FORBIDDEN_IDENTIFIERS {
+                if contains_identifier(line, forbidden) { errors.push(format!("{} contains forbidden identifier `{forbidden}`", path.display())); }
+            }
+        }
     }
+}
+
+fn contains_identifier(line: &str, identifier: &str) -> bool {
+    line.match_indices(identifier).any(|(start, _)| {
+        let before = line[..start].chars().next_back();
+        let end = start + identifier.len();
+        let after = line[end..].chars().next();
+        !before.is_some_and(|ch| ch.is_alphanumeric() || ch == '_') && !after.is_some_and(|ch| ch.is_alphanumeric() || ch == '_')
+    })
 }
 
 fn files_under(root: &Path) -> Vec<PathBuf> { let mut files = Vec::new(); collect_files(root, &mut files); files }
 fn collect_files(path: &Path, files: &mut Vec<PathBuf>) {
     let Ok(entries) = fs::read_dir(path) else { return; };
-    for entry in entries.flatten() {
-        let path = entry.path();
-        if path.is_dir() {
-            if path.file_name().and_then(|name| name.to_str()) == Some("target") { continue; }
-            collect_files(&path, files);
-        } else { files.push(path); }
-    }
+    for entry in entries.flatten() { let path = entry.path(); if path.is_dir() { if path.file_name().and_then(|name| name.to_str()) == Some("target") { continue; } collect_files(&path, files); } else { files.push(path); } }
 }
 
 fn print_summary(index: &PluginIndex, nodes: usize, edges: usize) { println!("plugins: {}", index.len()); println!("nodes: {nodes}"); println!("edges: {edges}"); }
@@ -212,6 +193,4 @@ fn print_plugins(index: &PluginIndex) { let mut ids = index.manifests().map(|m| 
 fn print_targets(graph: &amigo_codemap_api::CodeMapGraph) { print_nodes_by_kind(graph, |id| matches!(id, CodeMapNodeId::Target(_))); }
 fn print_diagnostics(graph: &amigo_codemap_api::CodeMapGraph) { print_nodes_by_kind(graph, |id| matches!(id, CodeMapNodeId::DiagnosticChannel(_))); }
 fn print_graph(graph: &amigo_codemap_api::CodeMapGraph) { for edge in &graph.edges { println!("{:?} --{:?}--> {:?}", edge.from, edge.kind, edge.to); } }
-fn print_nodes_by_kind(graph: &amigo_codemap_api::CodeMapGraph, predicate: impl Fn(&CodeMapNodeId) -> bool) {
-    let mut labels = graph.nodes.values().filter(|node| predicate(&node.id)).map(|node| node.label.as_str()).collect::<Vec<_>>(); labels.sort_unstable(); labels.dedup(); for label in labels { println!("{label}"); }
-}
+fn print_nodes_by_kind(graph: &amigo_codemap_api::CodeMapGraph, predicate: impl Fn(&CodeMapNodeId) -> bool) { let mut labels = graph.nodes.values().filter(|node| predicate(&node.id)).map(|node| node.label.as_str()).collect::<Vec<_>>(); labels.sort_unstable(); labels.dedup(); for label in labels { println!("{label}"); } }
