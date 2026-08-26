@@ -90,6 +90,10 @@ impl RuntimePlugin for RhaiScriptingPlugin {
         let trace_service = registry.resolve::<ScriptTraceService>();
         let inspect_requests = registry.resolve::<InspectRequestService>();
         let runtime_control = registry.resolve::<RuntimeControlService>();
+        let binding_namespaces = registry
+            .resolve::<amigo_scripting_api::ScriptBindingProviderRegistry>()
+            .map(|providers| providers.namespaces())
+            .unwrap_or_default();
         let runtime =
             RhaiScriptRuntime::new_with_services_and_ui_theme_and_particle_presets_with_post_fx(
                 scene,
@@ -120,6 +124,7 @@ impl RuntimePlugin for RhaiScriptingPlugin {
                 trace_service,
                 inspect_requests,
                 runtime_control,
+                binding_namespaces,
             );
 
         registry.register(RhaiFrameClock::new(
@@ -173,10 +178,11 @@ fn build_engine(
     world: WorldApi,
     source_context: Arc<Mutex<Option<ScriptSourceContext>>>,
     runtime_control: Option<Arc<RuntimeControlService>>,
+    binding_namespaces: Vec<String>,
 ) -> rhai::Engine {
     let mut engine = rhai::Engine::new();
     engine.set_max_expr_depths(256, 512);
-    register_world_api(&mut engine);
+    register_world_api(&mut engine, &binding_namespaces);
 
     let get_entity_world = world.clone();
     engine.register_fn("get_entity", move |entity_name: &str| {

@@ -1,4 +1,4 @@
-pub(crate) fn register_all(engine: &mut rhai::Engine) {
+pub(crate) fn register_all(engine: &mut rhai::Engine, provider_namespaces: &[String]) {
     super::common::register_api(engine);
     super::world_root::register_api(engine);
     super::scene::register_api(engine);
@@ -20,7 +20,17 @@ pub(crate) fn register_all(engine: &mut rhai::Engine) {
     super::mod_api::register_api(engine);
     super::motion::register_api(engine);
     super::particles::register_api(engine);
-    super::sprite2d::register_api(engine);
+
+    // Migrated domain bindings are activated by plugin-owned provider metadata.
+    // Unmigrated domains remain registered below until their plugins adopt the
+    // same provider contract.
+    if provider_namespaces
+        .iter()
+        .any(|namespace| namespace == "sprite2d")
+    {
+        super::sprite2d::register_api(engine);
+    }
+
     super::layered_image2d::register_api(engine);
     super::beacon2d::register_api(engine);
     super::light2d::register_api(engine);

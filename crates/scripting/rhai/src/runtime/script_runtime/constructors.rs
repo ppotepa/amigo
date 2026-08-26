@@ -195,6 +195,7 @@ impl RhaiScriptRuntime {
             None,
             None,
             None,
+            Vec::new(),
         )
     }
 
@@ -254,6 +255,7 @@ impl RhaiScriptRuntime {
             trace_service,
             None,
             None,
+            Vec::new(),
         )
     }
 
@@ -287,7 +289,13 @@ impl RhaiScriptRuntime {
         trace_service: Option<Arc<ScriptTraceService>>,
         inspect_requests: Option<Arc<amigo_editor_api::InspectRequestService>>,
         runtime_control: Option<Arc<amigo_runtime_control::RuntimeControlService>>,
+        mut binding_namespaces: Vec<String>,
     ) -> Self {
+        if binding_namespaces.is_empty() && sprite_scene.is_some() {
+            // Compatibility for direct/test construction while production uses
+            // the plugin-owned provider registry.
+            binding_namespaces.push("sprite2d".to_owned());
+        }
         let time_state = Arc::new(ScriptTimeState::default());
         let state_service = state_service.unwrap_or_else(|| Arc::new(SceneStateService::default()));
         let session_service =
@@ -325,7 +333,12 @@ impl RhaiScriptRuntime {
         );
         let source_context = Arc::new(Mutex::new(None));
         Self {
-            engine: build_engine(world.clone(), source_context.clone(), runtime_control),
+            engine: build_engine(
+                world.clone(),
+                source_context.clone(),
+                runtime_control,
+                binding_namespaces,
+            ),
             scripts: Mutex::new(BTreeMap::new()),
             console_scopes: Mutex::new(BTreeMap::new()),
             time_state,

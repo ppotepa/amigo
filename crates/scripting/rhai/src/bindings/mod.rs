@@ -87,6 +87,6 @@ pub(crate) use render2d::RenderLayer2dHandle;
 pub(crate) use time::ScriptTimeState;
 pub(crate) use world_root::WorldApi;
 
-pub fn register_world_api(engine: &mut rhai::Engine) {
-    registration::register_all(engine);
+pub fn register_world_api(engine: &mut rhai::Engine, provider_namespaces: &[String]) {
+    registration::register_all(engine, provider_namespaces);
 }
