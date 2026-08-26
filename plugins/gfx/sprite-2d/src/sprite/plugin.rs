@@ -12,16 +12,7 @@ pub struct SpriteDomainInfo {
 pub struct SpritePlugin;
 
 impl RuntimePlugin for SpritePlugin {
-    fn name(&self) -> &'static str {
-        "amigo-sprite-2d-plugin"
-    }
-
-    fn validate_requirements(&self, registry: &ServiceRegistry) -> amigo_core::AmigoResult<()> {
-        registry.required::<amigo_scene::RuntimeSceneCommandHandlerRegistry>()?;
-        registry.required::<amigo_scene::ScenePluginCommandHandlerRegistry>()?;
-        registry.required::<amigo_scripting_api::RuntimeScriptCommandHandlerRegistry>()?;
-        Ok(())
-    }
+    fn name(&self) -> &'static str { "amigo-sprite-2d-plugin" }
 
     fn register(&self, registry: &mut ServiceRegistry) -> amigo_core::AmigoResult<()> {
         registry.register(SpriteSceneService::default())?;
@@ -50,8 +41,7 @@ impl RuntimePlugin for SpritePlugin {
         }
         registry.required::<ScriptBindingProviderRegistry>()?.register(
             ScriptBindingProviderDescriptor::new("amigo.gfx.sprite-2d", "sprite2d")
-                .with_binding("world.sprite2d")
-                .with_binding("sprite2d.command"),
+                .with_binding("sprite2d"),
         )?;
 
         let scene_handlers = registry.required::<amigo_scene::RuntimeSceneCommandHandlerRegistry>()?;
@@ -59,7 +49,8 @@ impl RuntimePlugin for SpritePlugin {
             scene_handlers.as_ref(),
             super::scene_command::Sprite2dSceneCommandHandler,
         );
-        registry.required::<amigo_scene::ScenePluginCommandHandlerRegistry>()?.register(
+        let plugin_scene_handlers = registry.required::<amigo_scene::ScenePluginCommandHandlerRegistry>()?;
+        plugin_scene_handlers.register(
             "amigo.gfx.sprite-2d.scene-command.Sprite2D",
             std::sync::Arc::new(super::scene_command::Sprite2dSceneCommandHandler),
         );

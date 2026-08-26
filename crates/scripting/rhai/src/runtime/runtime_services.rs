@@ -64,7 +64,7 @@ impl RhaiRuntimeServices {
             binding_namespaces: registry
                 .resolve::<amigo_scripting_api::ScriptBindingProviderRegistry>()
                 .map(|providers| providers.namespaces())
-                .unwrap_or_default(),
+                .unwrap_or_else(crate::bindings::registration::default_domain_namespaces),
         }
     }
 }

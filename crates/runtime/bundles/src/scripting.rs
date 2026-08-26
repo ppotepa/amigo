@@ -40,9 +40,7 @@ const PROVIDERS: &[(&str, &str, &[&str])] = &[
 ];
 
 impl RuntimePlugin for DefaultScriptBindingProvidersPlugin {
-    fn name(&self) -> &'static str {
-        "amigo-script-binding-providers"
-    }
+    fn name(&self) -> &'static str { "amigo-script-binding-providers" }
 
     fn register(&self, registry: &mut ServiceRegistry) -> AmigoResult<()> {
         if !registry.has::<ScriptBindingProviderRegistry>() {
@@ -50,10 +48,9 @@ impl RuntimePlugin for DefaultScriptBindingProvidersPlugin {
         }
         let providers = registry.required::<ScriptBindingProviderRegistry>()?;
         for (owner, namespace, bindings) in PROVIDERS {
+            if providers.provider(namespace).is_some() { continue; }
             let mut descriptor = ScriptBindingProviderDescriptor::new(*owner, *namespace);
-            for binding in *bindings {
-                descriptor = descriptor.with_binding(*binding);
-            }
+            for binding in *bindings { descriptor = descriptor.with_binding(*binding); }
             providers.register(descriptor)?;
         }
         Ok(())
@@ -61,9 +58,7 @@ impl RuntimePlugin for DefaultScriptBindingProvidersPlugin {
 }
 
 impl PluginBundle for ScriptingRuntimeBundle {
-    fn name(&self) -> &'static str {
-        "amigo-modding-and-scripting-bundle"
-    }
+    fn name(&self) -> &'static str { "amigo-modding-and-scripting-bundle" }
 
     fn register(self, builder: RuntimeBuilder) -> AmigoResult<RuntimeBuilder> {
         builder
