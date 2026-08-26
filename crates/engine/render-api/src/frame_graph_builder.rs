@@ -1,6 +1,6 @@
 use crate::{
-    FrameCompositionPlan, FrameGraph, FrameGraphNodeKind, FrameResourceKind, RenderPassPlan,
-    resource_for_input, resource_for_output,
+    FrameCompositionPlan, FrameGraph, FrameGraphNodeKind, FrameResourceId, FrameResourceKind,
+    RenderPassPlan, RenderTargetPlan, resource_for_input, resource_for_output,
 };
 
 #[derive(Debug, Clone, Copy)]
@@ -34,23 +34,18 @@ pub fn build_frame_graph_from_plan(
     );
 
     for view in &plan.views {
+        let target = view_target_resource(&mut graph, view.id.as_str(), view.target, surface);
         for pass in &view.passes {
             match pass {
                 RenderPassPlan::World(pass) => {
-                    let output = resource_for_output(pass.output, surface, world, post_fx);
-                    debug_assert_ne!(
-                        output, surface,
-                        "only Present may write the surface resource"
-                    );
+                    let output = resource_for_output(pass.output, target, world, post_fx);
+                    debug_assert_ne!(output, target, "only Present may write the view target");
                     graph.add_node("world", FrameGraphNodeKind::World, vec![], vec![output]);
                 }
                 RenderPassPlan::PostFx(pass) => {
-                    let input = resource_for_input(pass.input, surface, world, post_fx);
-                    let output = resource_for_output(pass.output, surface, world, post_fx);
-                    debug_assert_ne!(
-                        output, surface,
-                        "only Present may write the surface resource"
-                    );
+                    let input = resource_for_input(pass.input, target, world, post_fx);
+                    let output = resource_for_output(pass.output, target, world, post_fx);
+                    debug_assert_ne!(output, target, "only Present may write the view target");
                     graph.add_node(
                         format!(
                             "post_fx:{}:{}:{}",
@@ -70,12 +65,9 @@ pub fn build_frame_graph_from_plan(
                     );
                 }
                 RenderPassPlan::GameUi(pass) => {
-                    let input = resource_for_input(pass.input, surface, world, post_fx);
-                    let output = resource_for_output(pass.output, surface, world, post_fx);
-                    debug_assert_ne!(
-                        output, surface,
-                        "only Present may write the surface resource"
-                    );
+                    let input = resource_for_input(pass.input, target, world, post_fx);
+                    let output = resource_for_output(pass.output, target, world, post_fx);
+                    debug_assert_ne!(output, target, "only Present may write the view target");
                     graph.add_node(
                         "game_ui",
                         FrameGraphNodeKind::GameUi,
@@ -84,12 +76,9 @@ pub fn build_frame_graph_from_plan(
                     );
                 }
                 RenderPassPlan::DebugOverlay(pass) => {
-                    let input = resource_for_input(pass.input, surface, world, post_fx);
-                    let output = resource_for_output(pass.output, surface, world, post_fx);
-                    debug_assert_ne!(
-                        output, surface,
-                        "only Present may write the surface resource"
-                    );
+                    let input = resource_for_input(pass.input, target, world, post_fx);
+                    let output = resource_for_output(pass.output, target, world, post_fx);
+                    debug_assert_ne!(output, target, "only Present may write the view target");
                     graph.add_node(
                         "debug_overlay",
                         FrameGraphNodeKind::DebugOverlay,
@@ -98,12 +87,12 @@ pub fn build_frame_graph_from_plan(
                     );
                 }
                 RenderPassPlan::Present(pass) => {
-                    let input = resource_for_input(pass.input, surface, world, post_fx);
+                    let input = resource_for_input(pass.input, target, world, post_fx);
                     graph.add_node(
                         "present",
                         FrameGraphNodeKind::Present,
                         input.into_iter().collect(),
-                        vec![surface],
+                        vec![target],
                     );
                 }
             }
@@ -111,4 +100,23 @@ pub fn build_frame_graph_from_plan(
     }
 
     graph
+}
+
+fn view_target_resource(
+    graph: &mut FrameGraph,
+    view_id: &str,
+    target: RenderTargetPlan,
+    surface: FrameResourceId,
+) -> FrameResourceId {
+    match target {
+        RenderTargetPlan::Surface => surface,
+        RenderTargetPlan::Offscreen { width, height } => graph.add_resource(
+            format!("view:{view_id}:target"),
+            FrameResourceKind::TextureColor {
+                width,
+                height,
+                transient: false,
+            },
+        ),
+    }
 }
