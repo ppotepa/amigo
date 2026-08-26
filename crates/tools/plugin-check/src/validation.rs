@@ -34,18 +34,38 @@ pub(crate) fn validate_plugin_tree(roots: &[PathBuf]) -> Result<(), Vec<String>>
 fn collect_plugin_dirs(root: &Path, errors: &mut Vec<String>) -> Vec<PathBuf> {
     if root.join("plugin.toml").exists() { return vec![root.to_path_buf()]; }
     let mut plugins = Vec::new();
-    let Ok(families) = fs::read_dir(root) else {
-        errors.push(format!("{} is not readable", root.display()));
-        return plugins;
+    let families = match fs::read_dir(root) {
+        Ok(entries) => entries,
+        Err(error) => {
+            errors.push(format!("failed to enumerate {}: {error}", root.display()));
+            return plugins;
+        }
     };
-    for family in families.flatten() {
+    for family_result in families {
+        let family = match family_result {
+            Ok(family) => family,
+            Err(error) => {
+                errors.push(format!("failed to enumerate {}: {error}", root.display()));
+                continue;
+            }
+        };
         let family_path = family.path();
         if !family_path.is_dir() { continue; }
-        let Ok(entries) = fs::read_dir(&family_path) else {
-            errors.push(format!("{} is not readable", family_path.display()));
-            continue;
+        let entries = match fs::read_dir(&family_path) {
+            Ok(entries) => entries,
+            Err(error) => {
+                errors.push(format!("failed to enumerate {}: {error}", family_path.display()));
+                continue;
+            }
         };
-        for entry in entries.flatten() {
+        for entry_result in entries {
+            let entry = match entry_result {
+                Ok(entry) => entry,
+                Err(error) => {
+                    errors.push(format!("failed to enumerate {}: {error}", family_path.display()));
+                    continue;
+                }
+            };
             let plugin_path = entry.path();
             if plugin_path.is_dir() && plugin_path.join("plugin.toml").exists() {
                 plugins.push(plugin_path);
@@ -217,9 +237,12 @@ fn validate_forbidden_patterns(plugin_dir: &Path, errors: &mut Vec<String>) {
         "luma_fallback", "should_produce_scene_highlight", "direct_lens_flare", "guess_optical",
         "flare_strength", "lens_influence",
     ];
-    for path in files_under(plugin_dir) {
+    for path in files_under(plugin_dir, errors) {
         if path.extension().and_then(|ext| ext.to_str()) != Some("rs") { continue; }
-        let Ok(content) = fs::read_to_string(&path) else { continue; };
+        let Ok(content) = fs::read_to_string(&path) else {
+            errors.push(format!("{} is not readable", path.display()));
+            continue;
+        };
         for line in content.lines().map(str::trim) {
             if line.starts_with("//") || line.starts_with("/*") || line.starts_with('*') { continue; }
             for forbidden in FORBIDDEN_IDENTIFIERS {
@@ -241,18 +264,31 @@ fn contains_identifier(line: &str, identifier: &str) -> bool {
     })
 }
 
-fn files_under(root: &Path) -> Vec<PathBuf> {
+fn files_under(root: &Path, errors: &mut Vec<String>) -> Vec<PathBuf> {
     let mut files = Vec::new();
-    collect_files(root, &mut files);
+    collect_files(root, &mut files, errors);
     files
 }
-fn collect_files(path: &Path, files: &mut Vec<PathBuf>) {
-    let Ok(entries) = fs::read_dir(path) else { return; };
-    for entry in entries.flatten() {
+fn collect_files(path: &Path, files: &mut Vec<PathBuf>, errors: &mut Vec<String>) {
+    let entries = match fs::read_dir(path) {
+        Ok(entries) => entries,
+        Err(error) => {
+            errors.push(format!("failed to enumerate {}: {error}", path.display()));
+            return;
+        }
+    };
+    for entry_result in entries {
+        let entry = match entry_result {
+            Ok(entry) => entry,
+            Err(error) => {
+                errors.push(format!("failed to enumerate {}: {error}", path.display()));
+                continue;
+            }
+        };
         let path = entry.path();
         if path.is_dir() {
             if path.file_name().and_then(|name| name.to_str()) == Some("target") { continue; }
-            collect_files(&path, files);
+            collect_files(&path, files, errors);
         } else {
             files.push(path);
         }

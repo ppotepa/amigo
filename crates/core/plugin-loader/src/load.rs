@@ -29,7 +29,17 @@ pub fn load_plugin_manifests_from_plugins_dir(
         }
     };
 
-    for family in families.flatten() {
+    for family_result in families {
+        let family = match family_result {
+            Ok(family) => family,
+            Err(source) => {
+                errors.push(PluginLoadError::Io {
+                    path: plugins_dir.to_path_buf(),
+                    source,
+                });
+                continue;
+            }
+        };
         let family_path = family.path();
         if !family_path.is_dir() {
             continue;
@@ -37,16 +47,26 @@ pub fn load_plugin_manifests_from_plugins_dir(
 
         let plugins = match fs::read_dir(&family_path) {
             Ok(entries) => entries,
-            Err(error) => {
+            Err(source) => {
                 errors.push(PluginLoadError::Io {
                     path: family_path,
-                    source: error,
+                    source,
                 });
                 continue;
             }
         };
 
-        for plugin in plugins.flatten() {
+        for plugin_result in plugins {
+            let plugin = match plugin_result {
+                Ok(plugin) => plugin,
+                Err(source) => {
+                    errors.push(PluginLoadError::Io {
+                        path: family_path.clone(),
+                        source,
+                    });
+                    continue;
+                }
+            };
             let plugin_path = plugin.path();
             if !plugin_path.is_dir() {
                 continue;
