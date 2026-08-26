@@ -1,7 +1,7 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use amigo_plugin_api::PluginManifest;
+use amigo_plugin_api::{PluginManifest, validate_plugin_manifest};
 use amigo_plugin_manifest::parse_plugin_manifest_str;
 
 use crate::error::PluginLoadError;
@@ -31,7 +31,6 @@ pub fn load_plugin_manifests_from_plugins_dir(
 
     for family in families.flatten() {
         let family_path = family.path();
-
         if !family_path.is_dir() {
             continue;
         }
@@ -49,17 +48,13 @@ pub fn load_plugin_manifests_from_plugins_dir(
 
         for plugin in plugins.flatten() {
             let plugin_path = plugin.path();
-
             if !plugin_path.is_dir() {
                 continue;
             }
-
             let manifest_path = plugin_path.join("plugin.toml");
-
             if !manifest_path.exists() {
                 continue;
             }
-
             match load_one(&manifest_path) {
                 Ok(manifest) => manifests.push(manifest),
                 Err(error) => errors.push(error),
@@ -67,11 +62,7 @@ pub fn load_plugin_manifests_from_plugins_dir(
         }
     }
 
-    if errors.is_empty() {
-        Ok(manifests)
-    } else {
-        Err(errors)
-    }
+    if errors.is_empty() { Ok(manifests) } else { Err(errors) }
 }
 
 fn load_one(path: &Path) -> Result<PluginManifest, PluginLoadError> {
@@ -80,8 +71,15 @@ fn load_one(path: &Path) -> Result<PluginManifest, PluginLoadError> {
         source,
     })?;
 
-    parse_plugin_manifest_str(&content).map_err(|source| PluginLoadError::Parse {
+    let manifest = parse_plugin_manifest_str(&content).map_err(|source| PluginLoadError::Parse {
         path: PathBuf::from(path),
         message: format!("{source:?}"),
-    })
+    })?;
+
+    validate_plugin_manifest(&manifest).map_err(|errors| PluginLoadError::Validation {
+        path: PathBuf::from(path),
+        message: format!("{errors:?}"),
+    })?;
+
+    Ok(manifest)
 }

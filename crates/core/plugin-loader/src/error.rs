@@ -10,4 +10,8 @@ pub enum PluginLoadError {
         path: PathBuf,
         message: String,
     },
+    Validation {
+        path: PathBuf,
+        message: String,
+    },
 }
