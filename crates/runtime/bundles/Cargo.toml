@@ -9,6 +9,7 @@ authors.workspace = true
 [dependencies]
 amigo-runtime.workspace = true
 amigo-session.workspace = true
+amigo-capabilities.workspace = true
 amigo-devtools.workspace = true
 amigo-editor-ingame.workspace = true
 amigo-assets.workspace = true

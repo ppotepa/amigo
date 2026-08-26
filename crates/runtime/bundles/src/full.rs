@@ -1,6 +1,7 @@
+use amigo_capabilities::CapabilityRegistry;
 use amigo_core::{AmigoResult, LaunchSelection};
 use amigo_modding::ModdingPlugin;
-use amigo_runtime::{PluginBundle, RuntimeBuilder};
+use amigo_runtime::{PluginBundle, RuntimeBuilder, RuntimePlugin, ServiceRegistry};
 
 use crate::{
     AudioRuntimeBundle, CoreRuntimeBundle, DevtoolsRuntimeBundle, PlatformRuntimeBundle,
@@ -15,6 +16,21 @@ where
     pub app_host_plugins: F,
     pub modding_plugin: ModdingPlugin,
     pub enable_devtools: bool,
+}
+
+struct CapabilityDependencyValidationPlugin;
+
+impl RuntimePlugin for CapabilityDependencyValidationPlugin {
+    fn name(&self) -> &'static str {
+        "amigo-capability-dependency-validation"
+    }
+
+    fn register(&self, registry: &mut ServiceRegistry) -> AmigoResult<()> {
+        if let Some(capabilities) = registry.resolve::<CapabilityRegistry>() {
+            capabilities.validate_dependencies()?;
+        }
+        Ok(())
+    }
 }
 
 impl<F> PluginBundle for FullRuntimeBundle<F>
@@ -39,10 +55,12 @@ where
                 modding_plugin: self.modding_plugin,
             })?;
 
-        if self.enable_devtools {
-            builder.with_bundle(DevtoolsRuntimeBundle)
+        let builder = if self.enable_devtools {
+            builder.with_bundle(DevtoolsRuntimeBundle)?
         } else {
-            Ok(builder)
-        }
+            builder
+        };
+
+        builder.with_plugin(CapabilityDependencyValidationPlugin)
     }
 }

@@ -44,6 +44,7 @@ struct CapabilityRegistryState {
     runtime_plugins: BTreeMap<&'static str, PluginDescriptor>,
     manifest_capabilities: BTreeMap<(String, u32), ManifestCapabilityDescriptor>,
     manifest_plugins: BTreeMap<String, Vec<CapabilityRef>>,
+    manifest_requirements: BTreeMap<String, Vec<CapabilityRef>>,
 }
 
 #[derive(Clone, Default)]
@@ -105,6 +106,10 @@ impl CapabilityRegistry {
                 .manifest_plugins
                 .insert(manifest.id.0.clone(), provided);
         }
+        state.manifest_requirements.insert(
+            manifest.id.0.clone(),
+            manifest.capabilities.requires.clone(),
+        );
         Ok(())
     }
 
@@ -144,6 +149,41 @@ impl CapabilityRegistry {
         }
 
         state.runtime_plugins.insert(plugin.name, plugin);
+        Ok(())
+    }
+
+    pub fn validate_dependencies(&self) -> AmigoResult<()> {
+        let state = self.with_read_lock();
+
+        for plugin in state.runtime_plugins.values() {
+            for dependency in plugin.depends_on {
+                let provided_by_runtime = state.runtime_capabilities.contains_key(dependency);
+                let provided_by_manifest = state
+                    .manifest_capabilities
+                    .keys()
+                    .any(|(id, _)| id == dependency);
+                if !provided_by_runtime && !provided_by_manifest {
+                    return Err(AmigoError::Message(format!(
+                        "runtime feature provider `{}` requires missing capability `{dependency}`",
+                        plugin.name
+                    )));
+                }
+            }
+        }
+
+        for (plugin_id, requirements) in &state.manifest_requirements {
+            for requirement in requirements {
+                if !state
+                    .manifest_capabilities
+                    .contains_key(&(requirement.id.0.clone(), requirement.version))
+                {
+                    return Err(AmigoError::Message(format!(
+                        "plugin `{plugin_id}` requires missing capability `{}@{}`",
+                        requirement.id.0, requirement.version
+                    )));
+                }
+            }
+        }
         Ok(())
     }
 
