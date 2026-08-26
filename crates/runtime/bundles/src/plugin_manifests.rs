@@ -1,7 +1,14 @@
 use amigo_core::{AmigoError, AmigoResult};
+use amigo_plugin_api::{PluginId, PluginManifest};
+use amigo_plugin_index::{plan_plugin_composition, validate_plugin_index, PluginIndex};
 use amigo_runtime::{RuntimePlugin, ServiceRegistry};
 
 pub struct EmbeddedPluginManifestsPlugin;
+
+#[derive(Clone, Debug)]
+pub struct RuntimePluginCompositionPlan {
+    pub ordered_plugin_ids: Vec<PluginId>,
+}
 
 const MANIFESTS: &[(&str, &str)] = &[
     ("camera/camera-core", include_str!("../../../../plugins/camera/camera-core/plugin.toml")),
@@ -34,18 +41,35 @@ const MANIFESTS: &[(&str, &str)] = &[
     ("gameplay/behavior", include_str!("../../../../plugins/gameplay/behavior/plugin.toml")),
 ];
 
+fn embedded_manifests() -> AmigoResult<Vec<PluginManifest>> {
+    MANIFESTS
+        .iter()
+        .map(|(path, source)| {
+            amigo_plugin_manifest::parse_plugin_manifest_str(source).map_err(|error| {
+                AmigoError::Message(format!("invalid embedded plugin manifest `{path}`: {error:?}"))
+            })
+        })
+        .collect()
+}
+
 impl RuntimePlugin for EmbeddedPluginManifestsPlugin {
-    fn name(&self) -> &'static str {
-        "amigo-embedded-plugin-manifests"
-    }
+    fn name(&self) -> &'static str { "amigo-embedded-plugin-manifests" }
 
     fn register(&self, registry: &mut ServiceRegistry) -> AmigoResult<()> {
-        for (path, source) in MANIFESTS {
-            let manifest = amigo_plugin_manifest::parse_plugin_manifest_str(source).map_err(|error| {
-                AmigoError::Message(format!("invalid embedded plugin manifest `{path}`: {error:?}"))
-            })?;
-            amigo_capabilities::register_plugin_manifest(registry, &manifest)?;
+        let manifests = embedded_manifests()?;
+        for manifest in &manifests {
+            amigo_capabilities::register_plugin_manifest(registry, manifest)?;
         }
+        let index = PluginIndex::from_manifests(manifests);
+        validate_plugin_index(&index).map_err(|errors| {
+            AmigoError::Message(format!("embedded plugin index is invalid: {errors:?}"))
+        })?;
+        let plan = plan_plugin_composition(&index).map_err(|error| {
+            AmigoError::Message(format!("embedded plugin composition cannot be planned: {error:?}"))
+        })?;
+        registry.register(RuntimePluginCompositionPlan {
+            ordered_plugin_ids: plan.ordered_plugins,
+        })?;
         Ok(())
     }
 }
