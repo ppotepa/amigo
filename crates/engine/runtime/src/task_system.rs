@@ -41,6 +41,10 @@ impl EngineTaskSystem {
         J: EngineJob,
     {
         let _ = self;
+        let ctx = JobContext {
+            lane: job.lane(),
+            ..ctx
+        };
         job.run(ctx)
     }
 
@@ -48,9 +52,13 @@ impl EngineTaskSystem {
     where
         J: EngineJob,
     {
+        let ctx = JobContext {
+            lane: job.lane(),
+            ..ctx
+        };
         let config = self.config();
         if config.max_workers == 0 {
-            return self.run_inline(job, ctx);
+            return job.run(ctx);
         }
 
         self.ensure_workers(config.max_workers);
@@ -220,6 +228,24 @@ mod tests {
         }
     }
 
+    struct LaneJob;
+
+    impl EngineJob for LaneJob {
+        type Output = EngineLane;
+
+        fn name(&self) -> &'static str {
+            "lane"
+        }
+
+        fn lane(&self) -> EngineLane {
+            EngineLane::Background
+        }
+
+        fn run(self, ctx: JobContext) -> Self::Output {
+            ctx.lane
+        }
+    }
+
     #[test]
     fn runs_inline_when_workers_disabled() {
         let system = EngineTaskSystem::new(EngineSchedulingConfig {
@@ -236,6 +262,19 @@ mod tests {
             },
         );
         assert_eq!(result, 5);
+    }
+
+    #[test]
+    fn job_declared_lane_is_authoritative() {
+        let system = EngineTaskSystem::new(EngineSchedulingConfig::default());
+        let lane = system.run_inline(
+            LaneJob,
+            JobContext {
+                frame_index: 1,
+                lane: EngineLane::Main,
+            },
+        );
+        assert_eq!(lane, EngineLane::Background);
     }
 
     #[test]
