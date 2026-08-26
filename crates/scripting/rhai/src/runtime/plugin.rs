@@ -16,19 +16,15 @@ impl RuntimePlugin for RhaiScriptingPlugin {
         if !registry.has::<ScriptCommandQueue>() {
             registry.register(ScriptCommandQueue::default())?;
         }
-
         if !registry.has::<ScriptEventQueue>() {
             registry.register(ScriptEventQueue::default())?;
         }
-
         if !registry.has::<DevConsoleQueue>() {
             registry.register(DevConsoleQueue::default())?;
         }
-
         if !registry.has::<DevConsoleState>() {
             registry.register(DevConsoleState::default())?;
         }
-
         if !registry.has::<RunLogService>() {
             registry.register(RunLogService::default_for_process()?)?;
         }
@@ -48,11 +44,9 @@ impl RuntimePlugin for RhaiScriptingPlugin {
         if !registry.has::<ScriptLifecycleState>() {
             registry.register(ScriptLifecycleState::default())?;
         }
-
         if !registry.has::<ScriptComponentService>() {
             registry.register(ScriptComponentService::default())?;
         }
-
         if !registry.has::<ScriptTraceService>() {
             registry.register(ScriptTraceService::default())?;
         }
@@ -62,70 +56,7 @@ impl RuntimePlugin for RhaiScriptingPlugin {
             registry.register(InspectRequestService::default())?;
         }
 
-        let scene = registry.resolve::<SceneService>();
-        let sprite_scene = registry.resolve::<SpriteSceneService>();
-        let vector_scene = registry.resolve::<VectorSceneService>();
-        let motion_scene = registry.resolve::<Motion2dSceneService>();
-        let particle_scene = registry.resolve::<Particle2dSceneService>();
-        let particle_preset_scene = registry.resolve::<ParticlePreset2dService>();
-        let physics_scene = registry.resolve::<Physics2dSceneService>();
-        let post_fx = registry.resolve::<PostFx2dService>();
-        let camera_service = registry.resolve::<CameraService>();
-        let focus_targets_2d = registry.resolve::<CameraFocusTarget2dService>();
-        let pool_scene = registry.resolve::<EntityPoolSceneService>();
-        let lifetime_scene = registry.resolve::<LifetimeSceneService>();
-        let state_service = registry.resolve::<SceneStateService>();
-        let session_service = registry.resolve::<SessionStateService>();
-        let timer_service = registry.resolve::<SceneTimerService>();
-        let ui_theme_service = registry.resolve::<UiThemeService>();
-        let asset_catalog = registry.resolve::<AssetCatalog>();
-        let input_state = registry.resolve::<InputState>();
-        let input_actions = registry.resolve::<InputActionService>();
-        let launch_selection = registry.resolve::<LaunchSelection>();
-        let mod_catalog = registry.resolve::<ModCatalog>();
-        let diagnostics = registry.resolve::<RuntimeDiagnostics>();
-        let command_queue = registry.resolve::<ScriptCommandQueue>();
-        let event_queue = registry.resolve::<ScriptEventQueue>();
-        let console_queue = registry.resolve::<DevConsoleQueue>();
-        let trace_service = registry.resolve::<ScriptTraceService>();
-        let inspect_requests = registry.resolve::<InspectRequestService>();
-        let runtime_control = registry.resolve::<RuntimeControlService>();
-        let binding_namespaces = registry
-            .resolve::<amigo_scripting_api::ScriptBindingProviderRegistry>()
-            .map(|providers| providers.namespaces())
-            .unwrap_or_default();
-        let runtime =
-            RhaiScriptRuntime::new_with_services_and_ui_theme_and_particle_presets_with_post_fx(
-                scene,
-                sprite_scene,
-                vector_scene,
-                motion_scene,
-                particle_scene,
-                particle_preset_scene,
-                physics_scene,
-                post_fx,
-                camera_service,
-                focus_targets_2d,
-                pool_scene,
-                lifetime_scene,
-                state_service,
-                session_service,
-                timer_service,
-                ui_theme_service,
-                asset_catalog,
-                input_state,
-                launch_selection,
-                mod_catalog,
-                diagnostics,
-                command_queue,
-                event_queue,
-                console_queue,
-                input_actions,
-                trace_service,
-                inspect_requests,
-                runtime_control,
-                binding_namespaces,
-            );
+        let runtime = RhaiScriptRuntime::from_services(RhaiRuntimeServices::resolve(registry));
 
         registry.register(RhaiFrameClock::new(
             runtime.time_state.clone(),
@@ -150,26 +81,22 @@ impl RuntimePlugin for RhaiScriptingPlugin {
             amigo_scene::SCRIPT_COMPONENT_PLUGIN_SCENE_COMMAND_TYPE,
             Arc::new(crate::scene_command::RhaiSceneCommandHandler),
         );
-        registry
-            .required::<amigo_runtime::SystemRegistry>()?
-            .register_fn(
-                amigo_runtime::SystemPhase::Update,
-                "script_components",
-                move |runtime| {
-                    let dt = amigo_session::simulation_delta_seconds(runtime);
-                    crate::tick_script_components(runtime, dt)
-                },
-            );
-        registry
-            .required::<amigo_runtime::SystemRegistry>()?
-            .register_fn(
-                amigo_runtime::SystemPhase::Update,
-                "script_update",
-                move |runtime| {
-                    let dt = amigo_session::simulation_delta_seconds(runtime);
-                    crate::tick_active_scripts(runtime, dt)
-                },
-            );
+        registry.required::<amigo_runtime::SystemRegistry>()?.register_fn(
+            amigo_runtime::SystemPhase::Update,
+            "script_components",
+            move |runtime| {
+                let dt = amigo_session::simulation_delta_seconds(runtime);
+                crate::tick_script_components(runtime, dt)
+            },
+        );
+        registry.required::<amigo_runtime::SystemRegistry>()?.register_fn(
+            amigo_runtime::SystemPhase::Update,
+            "script_update",
+            move |runtime| {
+                let dt = amigo_session::simulation_delta_seconds(runtime);
+                crate::tick_active_scripts(runtime, dt)
+            },
+        );
         Ok(())
     }
 }
@@ -190,21 +117,18 @@ fn build_engine(
         let mut entities = world.entities();
         entities.named(entity_name)
     });
-
     let entity_world = world.clone();
     engine.register_fn("entity", move |entity_name: &str| {
         let mut world = entity_world.clone();
         let mut entities = world.entities();
         entities.named(entity_name)
     });
-
     let list_entities_world = world.clone();
     engine.register_fn("list_entities", move || {
         let mut world = list_entities_world.clone();
         let mut entities = world.entities();
         entities.names()
     });
-
     let list_postfx_world = world.clone();
     engine.register_fn("list_postfx_items", move || {
         let mut world = list_postfx_world.clone();
@@ -222,7 +146,6 @@ fn build_engine(
             expression: None,
         })
     });
-
     let inspect_postfx_world = world.clone();
     engine.register_fn(
         "inspect",
@@ -237,7 +160,6 @@ fn build_engine(
             })
         },
     );
-
     let inspect_layer_world = world.clone();
     engine.register_fn(
         "inspect",
@@ -264,7 +186,6 @@ fn build_engine(
                 .map_err(|error| error.to_string().into())
         },
     );
-
     let control_for_get = runtime_control.clone();
     engine.register_fn(
         "__amigo_control_get",
@@ -278,7 +199,6 @@ fn build_engine(
                 .map_err(|error| error.to_string().into())
         },
     );
-
     let control_for_info = runtime_control.clone();
     engine.register_fn(
         "__amigo_control_info",
@@ -289,7 +209,6 @@ fn build_engine(
             control.info(path).map_err(|error| error.to_string().into())
         },
     );
-
     let control_for_reset = runtime_control.clone();
     engine.register_fn(
         "__amigo_control_reset",
@@ -300,7 +219,6 @@ fn build_engine(
             control.reset(path).map_err(|error| error.to_string().into())
         },
     );
-
     engine.register_fn(
         "__amigo_control_commit",
         move |path: &str| -> Result<(), Box<rhai::EvalAltResult>> {
