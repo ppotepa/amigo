@@ -52,16 +52,24 @@ impl EngineTaskSystem {
         if config.max_workers == 0 {
             return self.run_inline(job, ctx);
         }
+
+        self.ensure_workers(config.max_workers);
+        let sender = self
+            .sender
+            .lock()
+            .expect("engine task sender mutex should not be poisoned")
+            .as_ref()
+            .cloned()
+            .expect("engine task sender should exist after workers are ensured");
         let (tx, rx) = mpsc::sync_channel(1);
-        let _ = thread::Builder::new()
-            .name(format!("amigo-engine-blocking-{}", job.name()))
-            .spawn(move || {
+        sender
+            .send(Box::new(move || {
                 let output = job.run(ctx);
                 let _ = tx.send(output);
-            })
-            .expect("engine task blocking worker thread should spawn");
+            }))
+            .expect("engine task worker queue should accept blocking job");
         rx.recv()
-            .expect("engine task blocking worker should send job output")
+            .expect("engine task worker should send job output")
     }
 
     pub fn ensure_workers(&self, workers: usize) {
