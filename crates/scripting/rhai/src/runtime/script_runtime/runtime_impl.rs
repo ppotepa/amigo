@@ -80,8 +80,6 @@ impl ScriptRuntime for RhaiScriptRuntime {
     }
 
     fn call_update(&self, source_name: &str, delta_seconds: f32) -> AmigoResult<()> {
-        self.time_state.advance_frame(delta_seconds);
-        self.timer_service.tick(delta_seconds);
         self.call_optional_void(source_name, "update", (delta_seconds as rhai::FLOAT,))
     }
 
@@ -168,5 +166,4 @@ impl ScriptRuntime for RhaiScriptRuntime {
         )
     }
 }
-
 

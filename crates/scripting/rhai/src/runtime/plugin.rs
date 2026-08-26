@@ -122,6 +122,10 @@ impl RuntimePlugin for RhaiScriptingPlugin {
                 runtime_control,
             );
 
+        registry.register(RhaiFrameClock::new(
+            runtime.time_state.clone(),
+            runtime.timer_service.clone(),
+        ))?;
         registry.register(ScriptRuntimeInfo {
             backend_name: runtime.backend_name(),
             file_extension: runtime.file_extension(),
