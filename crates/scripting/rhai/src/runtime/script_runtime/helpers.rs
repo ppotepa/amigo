@@ -16,32 +16,27 @@ impl RhaiScriptRuntime {
             return Ok(());
         };
 
-        self.engine
-            .call_fn_with_options::<rhai::Dynamic>(
-                CallFnOptions::new().eval_ast(true),
-                &mut script.scope,
-                &script.lifecycle_ast,
-                function_name,
-                args,
-            )
-            .map(|_| ())
-            .map_err(|error| {
-                let message = error.to_string();
-                if message.contains(&format!("Function not found: {function_name}")) {
-                    AmigoError::Message(String::new())
-                } else {
-                    AmigoError::Message(format!(
-                        "failed to call {function_name} for script `{source_name}`: {error}"
-                    ))
-                }
-            })
-            .or_else(|error| {
-                if error.to_string().is_empty() {
-                    Ok(())
-                } else {
-                    Err(error)
-                }
-            })
+        match self.engine.call_fn_with_options::<rhai::Dynamic>(
+            CallFnOptions::new().eval_ast(true),
+            &mut script.scope,
+            &script.lifecycle_ast,
+            function_name,
+            args,
+        ) {
+            Ok(_) => Ok(()),
+            Err(error)
+                if matches!(
+                    error.as_ref(),
+                    rhai::EvalAltResult::ErrorFunctionNotFound(signature, _)
+                        if signature.starts_with(function_name)
+                ) =>
+            {
+                Ok(())
+            }
+            Err(error) => Err(AmigoError::Message(format!(
+                "failed to call {function_name} for script `{source_name}`: {error}"
+            ))),
+        }
     }
 
     fn rhai_params(params: &ScriptParams) -> rhai::Map {
@@ -59,4 +54,3 @@ impl RhaiScriptRuntime {
             .collect()
     }
 }
-
