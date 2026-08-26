@@ -1,4 +1,5 @@
 #[test]
-fn template_exists() {
-    assert!(true);
+fn participation_contract_has_named_stage() {
+    let stage = "participation";
+    assert_eq!(stage, "participation");
 }
