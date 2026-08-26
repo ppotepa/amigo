@@ -24,11 +24,17 @@ impl RuntimePlugin for SpritePlugin {
         amigo_scene::register_scene_component_plugin_spec::<
             crate::scene::Sprite2dSceneComponentSpec,
         >(registry)?;
-        if let Some(render_extractors) =
-            registry.resolve::<amigo_render_api::RuntimeRenderExtractorIdRegistry>()
-        {
-            crate::render::register_sprite_2d_render_extractor_id(render_extractors.as_ref());
+
+        // The extractor registry is part of sprite's own registration contract.
+        // Create it if no render bundle has installed it yet so registration order
+        // cannot silently drop the sprite extractor identifier.
+        if !registry.has::<amigo_render_api::RuntimeRenderExtractorIdRegistry>() {
+            registry.register(amigo_render_api::RuntimeRenderExtractorIdRegistry::default())?;
         }
+        let render_extractors =
+            registry.required::<amigo_render_api::RuntimeRenderExtractorIdRegistry>()?;
+        crate::render::register_sprite_2d_render_extractor_id(render_extractors.as_ref());
+
         registry.register(SpriteDomainInfo {
             crate_name: "amigo-sprite-2d-plugin",
             capability: "gfx.sprite.2d",
@@ -48,14 +54,12 @@ impl RuntimePlugin for SpritePlugin {
             scene_handlers.as_ref(),
             super::scene_command::Sprite2dSceneCommandHandler,
         );
-        if let Some(plugin_scene_handlers) =
-            registry.resolve::<amigo_scene::ScenePluginCommandHandlerRegistry>()
-        {
-            plugin_scene_handlers.register(
-                "amigo.gfx.sprite-2d.scene-command.Sprite2D",
-                std::sync::Arc::new(super::scene_command::Sprite2dSceneCommandHandler),
-            );
-        }
+        let plugin_scene_handlers =
+            registry.required::<amigo_scene::ScenePluginCommandHandlerRegistry>()?;
+        plugin_scene_handlers.register(
+            "amigo.gfx.sprite-2d.scene-command.Sprite2D",
+            std::sync::Arc::new(super::scene_command::Sprite2dSceneCommandHandler),
+        );
         let script_handlers =
             registry.required::<amigo_scripting_api::RuntimeScriptCommandHandlerRegistry>()?;
         amigo_scripting_api::register_runtime_script_command_handler(
