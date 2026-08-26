@@ -1,17 +1,12 @@
 //! Rhai scripting backend for gameplay and tooling scripts.
 //! It binds engine services into script APIs, owns source loading, and drives lifecycle callbacks.
 
-/// Rhai world bindings that expose engine services to scripts.
 mod bindings;
-/// Script-facing wrappers around entities, assets, and other references.
 mod handles;
-/// Rhai package construction and source registration helpers.
 mod package;
-/// Plugin-owned Rhai binding provider contracts.
 mod plugin_bindings;
-/// Runtime contribution descriptors for scripting-owned scene handlers and systems.
 mod runtime_capabilities;
-/// Scene command execution owned by the Rhai scripting domain.
+mod sandbox;
 mod scene_command;
 mod systems;
 
@@ -46,11 +41,11 @@ use rhai::CallFnOptions;
 
 pub use plugin_bindings::*;
 pub use runtime_capabilities::*;
+pub use sandbox::RhaiSandboxLimits;
 pub use scene_command::*;
 pub use systems::*;
 
 include!("runtime/script_runtime.rs");
-include!("runtime/runtime_services.rs");
 include!("runtime/reset.rs");
 include!("runtime/plugin.rs");
 
