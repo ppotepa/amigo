@@ -20,6 +20,8 @@ mod document;
 mod domain_services;
 /// Runtime entity identifiers and entity-facing metadata.
 mod entity;
+/// Effective editor-property access semantics.
+mod editor_property_semantics;
 /// Scene-specific error types returned during loading and hydration.
 mod error;
 /// Semantic scene graph, typed references, and scene-object projections.
