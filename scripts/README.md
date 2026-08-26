@@ -19,3 +19,11 @@ Windows PowerShell:
 ```
 
 Both wrappers run the same `amigo-codemap` Cargo package and forward all arguments unchanged. Direct `cargo run -p amigo-codemap -- <command>` is also supported on every platform.
+
+Generate the human-readable plugin architecture map with:
+
+```sh
+python3 scripts/codemap-html.py
+```
+
+It writes `target/amigo-codemap.html` by default. Use `--output <path>` to choose another location.
