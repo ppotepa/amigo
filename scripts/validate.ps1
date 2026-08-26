@@ -10,6 +10,11 @@ Write-Host '==> cargo fmt'
 Invoke-Checked { cargo fmt --all -- --check }
 Write-Host '==> plugin contracts'
 Invoke-Checked { cargo run -p amigo-plugin-check -- validate --workspace --plugins plugins }
+Write-Host '==> architecture dependencies'
+$python = Get-Command python3 -ErrorAction SilentlyContinue
+if (-not $python) { $python = Get-Command python -ErrorAction SilentlyContinue }
+if (-not $python) { throw 'Python 3 is required for architecture dependency lint' }
+Invoke-Checked { & $python.Source scripts/architecture-lint.py }
 Write-Host '==> workspace check'
 Invoke-Checked { cargo check --workspace --all-targets }
 Write-Host '==> clippy critical crates'

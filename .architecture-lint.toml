@@ -1,0 +1,34 @@
+[[forbid]]
+from_prefix = "crates/apps/app"
+to_prefix = "plugins/"
+reason = "apps/app is a host; domain plugins must be composed through runtime/bundles"
+
+[[forbid]]
+from_prefix = "crates/engine/"
+to_prefix = "crates/apps/"
+reason = "engine crates must not depend on concrete app hosts"
+
+[[forbid]]
+from_prefix = "crates/engine/render-api"
+to_prefix = "crates/engine/render-wgpu"
+reason = "render-api is backend-neutral"
+
+[[forbid]]
+from_prefix = "crates/engine/render-api"
+to_prefix = "plugins/"
+reason = "render contracts must not depend on domain implementations"
+
+[[forbid]]
+from_prefix = "crates/engine/render-wgpu"
+to_prefix = "plugins/"
+reason = "the backend executes neutral contracts and must not know domain plugins"
+
+[[forbid]]
+from_prefix = "plugins/"
+to_prefix = "crates/apps/"
+reason = "plugins cannot depend on concrete app hosts"
+
+[[forbid]]
+from_prefix = "plugins/"
+to_prefix = "crates/engine/render-wgpu"
+reason = "plugins declare render intent through render-api rather than calling WGPU directly"

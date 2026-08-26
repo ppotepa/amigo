@@ -9,6 +9,9 @@ cargo fmt --all -- --check
 echo '==> plugin contracts'
 cargo run -p amigo-plugin-check -- validate --workspace --plugins plugins
 
+echo '==> architecture dependencies'
+python3 scripts/architecture-lint.py
+
 echo '==> workspace check'
 cargo check --workspace --all-targets
 
