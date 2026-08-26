@@ -2,8 +2,22 @@
 ![Amigo header preview](docs/demo.png)
 ![Amigo header preview](docs/2d-demo.gif)
 
-
 Amigo is a mod-first Rust monorepo for a 2D/3D runtime engine, launcher, and in-game tooling.
+
+## Clone and initialize
+
+`crates/tools/amigo-codemap` is a Git submodule and a workspace member. Clone recursively:
+
+```sh
+git clone --recurse-submodules https://github.com/ppotepa/amigo.git
+cd amigo
+```
+
+For an existing clone, initialize the submodule before running Cargo workspace commands:
+
+```sh
+git submodule update --init --recursive
+```
 
 ## Third-party notices
 
@@ -55,14 +69,14 @@ Both `amigo-ui` and `render-wgpu` adapt their node trees into this kernel.
 
 From repo root:
 
-```powershell
+```sh
 cargo check -p amigo-app
 cargo check -p amigo-launcher
 ```
 
 ### 2. Run launcher + runtime
 
-```powershell
+```sh
 # launcher (TUI)
 cargo run -p amigo-launcher
 
@@ -75,7 +89,7 @@ cargo run -p amigo-app -- --hosted --mods-root mods --mod=rotten-club --scene=ma
 
 ### 3. Run in-game editor mode
 
-```powershell
+```sh
 cargo run -p amigo-app -- --editor
 ```
 
@@ -87,7 +101,7 @@ cargo run -p amigo-app -- --editor
 
 ## Recommended day-to-day commands
 
-```powershell
+```sh
 # targeted checks
 cargo check -p amigo-app
 cargo check -p amigo-launcher
@@ -99,6 +113,8 @@ cargo test -p amigo-ui layout
 cargo test -p amigo-render-wgpu ui_overlay::tests::layout
 cargo test -p amigo-editor-ingame
 ```
+
+Codemap helpers are available as `./scripts/codemap.sh` on Linux/macOS and `./scripts/codemap.ps1` in PowerShell.
 
 ## Good first files to explore
 
