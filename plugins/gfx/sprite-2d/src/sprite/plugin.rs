@@ -1,4 +1,5 @@
 use amigo_runtime::{RuntimePlugin, ServiceRegistry};
+use amigo_scripting_api::{ScriptBindingProviderDescriptor, ScriptBindingProviderRegistry};
 
 use super::service::SpriteSceneService;
 
@@ -25,9 +26,6 @@ impl RuntimePlugin for SpritePlugin {
             crate::scene::Sprite2dSceneComponentSpec,
         >(registry)?;
 
-        // The extractor registry is part of sprite's own registration contract.
-        // Create it if no render bundle has installed it yet so registration order
-        // cannot silently drop the sprite extractor identifier.
         if !registry.has::<amigo_render_api::RuntimeRenderExtractorIdRegistry>() {
             registry.register(amigo_render_api::RuntimeRenderExtractorIdRegistry::default())?;
         }
@@ -47,6 +45,17 @@ impl RuntimePlugin for SpritePlugin {
                 ))
             })?;
         amigo_capabilities::register_plugin_manifest(registry, &manifest)?;
+
+        if !registry.has::<ScriptBindingProviderRegistry>() {
+            registry.register(ScriptBindingProviderRegistry::default())?;
+        }
+        registry
+            .required::<ScriptBindingProviderRegistry>()?
+            .register(
+                ScriptBindingProviderDescriptor::new("amigo.gfx.sprite-2d", "sprite2d")
+                    .with_binding("world.sprite2d")
+                    .with_binding("sprite2d.command"),
+            )?;
 
         let scene_handlers =
             registry.required::<amigo_scene::RuntimeSceneCommandHandlerRegistry>()?;
