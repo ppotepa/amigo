@@ -1,3 +1,5 @@
+use std::collections::{BTreeMap, BTreeSet};
+
 use crate::composition::{RenderFeatureId, RenderPassInput, RenderPassOutput};
 use crate::{PostFx2dId, PostFxHost2dId, PostFxPipelineKind, PostFxScope2d};
 
@@ -44,6 +46,20 @@ pub struct FrameGraphNode {
     pub writes: Vec<FrameResourceId>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum FrameGraphValidationError {
+    MissingResource { node: String, resource: FrameResourceId },
+    ReadBeforeWrite { node: String, resource: FrameResourceId },
+    ExternalTargetWrittenByNonPresent { node: String, resource: FrameResourceId },
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct FrameGraphDependency {
+    pub producer_node: usize,
+    pub consumer_node: usize,
+    pub resource: FrameResourceId,
+}
+
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct FrameGraph {
     pub resources: Vec<FrameGraphResource>,
@@ -87,6 +103,78 @@ impl FrameGraph {
     pub fn node_labels(&self) -> Vec<&str> {
         self.nodes.iter().map(|node| node.label.as_str()).collect()
     }
+
+    pub fn validate(&self) -> Result<(), Vec<FrameGraphValidationError>> {
+        let known = self.resources.iter().map(|resource| resource.id).collect::<BTreeSet<_>>();
+        let external = self
+            .resources
+            .iter()
+            .filter(|resource| is_external_resource(&resource.kind))
+            .map(|resource| resource.id)
+            .collect::<BTreeSet<_>>();
+        let mut available = external.clone();
+        let mut errors = Vec::new();
+
+        for node in &self.nodes {
+            for &read in &node.reads {
+                if !known.contains(&read) {
+                    errors.push(FrameGraphValidationError::MissingResource {
+                        node: node.label.clone(),
+                        resource: read,
+                    });
+                } else if !available.contains(&read) {
+                    errors.push(FrameGraphValidationError::ReadBeforeWrite {
+                        node: node.label.clone(),
+                        resource: read,
+                    });
+                }
+            }
+
+            for &write in &node.writes {
+                if !known.contains(&write) {
+                    errors.push(FrameGraphValidationError::MissingResource {
+                        node: node.label.clone(),
+                        resource: write,
+                    });
+                    continue;
+                }
+                if external.contains(&write) && !matches!(node.kind, FrameGraphNodeKind::Present) {
+                    errors.push(FrameGraphValidationError::ExternalTargetWrittenByNonPresent {
+                        node: node.label.clone(),
+                        resource: write,
+                    });
+                }
+                available.insert(write);
+            }
+        }
+
+        if errors.is_empty() { Ok(()) } else { Err(errors) }
+    }
+
+    pub fn dependencies(&self) -> Vec<FrameGraphDependency> {
+        let mut last_writer = BTreeMap::<FrameResourceId, usize>::new();
+        let mut dependencies = Vec::new();
+        for (consumer_node, node) in self.nodes.iter().enumerate() {
+            for &resource in &node.reads {
+                if let Some(&producer_node) = last_writer.get(&resource) {
+                    dependencies.push(FrameGraphDependency {
+                        producer_node,
+                        consumer_node,
+                        resource,
+                    });
+                }
+            }
+            for &resource in &node.writes {
+                last_writer.insert(resource, consumer_node);
+            }
+        }
+        dependencies
+    }
+}
+
+fn is_external_resource(kind: &FrameResourceKind) -> bool {
+    matches!(kind, FrameResourceKind::SurfaceColor)
+        || matches!(kind, FrameResourceKind::TextureColor { transient: false, .. })
 }
 
 pub fn resource_for_input(
