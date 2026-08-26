@@ -9,11 +9,9 @@ use crate::raw::{RawContribution, RawPluginManifest};
 
 pub fn parse_plugin_manifest_str(input: &str) -> Result<PluginManifest, PluginManifestParseError> {
     let raw: RawPluginManifest = toml::from_str(input)?;
-
     let kind = parse_kind(&raw.kind)?;
     let render_participation =
         parse_render_participation(raw.render_participation.as_deref().unwrap_or("none"))?;
-
     let mut manifest = PluginManifest::new(
         raw.id.clone(),
         raw.family.clone(),
@@ -23,29 +21,17 @@ pub fn parse_plugin_manifest_str(input: &str) -> Result<PluginManifest, PluginMa
     );
 
     for item in raw.capabilities.provides {
-        manifest.capabilities.provides.push(parse_capability(&item));
+        manifest.capabilities.provides.push(parse_capability(&item)?);
     }
     for item in raw.capabilities.requires {
-        manifest.capabilities.requires.push(parse_capability(&item));
+        manifest.capabilities.requires.push(parse_capability(&item)?);
     }
-    for item in raw.slots.implements {
-        manifest.slots.implements.push(SlotId(item));
-    }
-    for item in raw.slots.requires {
-        manifest.slots.requires.push(SlotId(item));
-    }
-    for item in raw.slots.replaces {
-        manifest.slots.replaces.push(PluginId(item));
-    }
-    for item in raw.targets.reads {
-        manifest.targets.reads.push(TargetId(item));
-    }
-    for item in raw.targets.writes {
-        manifest.targets.writes.push(TargetId(item));
-    }
-    for item in raw.targets.contributes {
-        manifest.targets.contributes.push(TargetId(item));
-    }
+    for item in raw.slots.implements { manifest.slots.implements.push(SlotId(item)); }
+    for item in raw.slots.requires { manifest.slots.requires.push(SlotId(item)); }
+    for item in raw.slots.replaces { manifest.slots.replaces.push(PluginId(item)); }
+    for item in raw.targets.reads { manifest.targets.reads.push(TargetId(item)); }
+    for item in raw.targets.writes { manifest.targets.writes.push(TargetId(item)); }
+    for item in raw.targets.contributes { manifest.targets.contributes.push(TargetId(item)); }
     for contribution in raw.contributions.emits {
         manifest.contributions.emits.push(parse_contribution(contribution)?);
     }
@@ -58,7 +44,6 @@ pub fn parse_plugin_manifest_str(input: &str) -> Result<PluginManifest, PluginMa
             owner: manifest.id.clone(),
         });
     }
-
     manifest.docs.pipeline = raw.docs.pipeline;
     manifest.docs.contributions = raw.docs.contributions;
     manifest.docs.diagnostics = raw.docs.diagnostics;
@@ -95,14 +80,19 @@ fn parse_render_participation(value: &str) -> Result<RenderParticipation, Plugin
     }
 }
 
-fn parse_capability(value: &str) -> CapabilityRef {
-    let mut parts = value.split('@');
-    let id = parts.next().unwrap_or_default().to_string();
-    let version = parts
-        .next()
-        .and_then(|raw| raw.parse::<u32>().ok())
-        .unwrap_or(1);
-    CapabilityRef::new(id, version)
+fn parse_capability(value: &str) -> Result<CapabilityRef, PluginManifestParseError> {
+    let Some((id, raw_version)) = value.split_once('@') else {
+        return Err(PluginManifestParseError::InvalidCapability(value.to_owned()));
+    };
+    if id.trim().is_empty() || raw_version.trim().is_empty() || raw_version.contains('@') {
+        return Err(PluginManifestParseError::InvalidCapability(value.to_owned()));
+    }
+    let version = raw_version
+        .parse::<u32>()
+        .ok()
+        .filter(|version| *version > 0)
+        .ok_or_else(|| PluginManifestParseError::InvalidCapability(value.to_owned()))?;
+    Ok(CapabilityRef::new(id, version))
 }
 
 fn parse_contribution(raw: RawContribution) -> Result<ContributionContract, PluginManifestParseError> {

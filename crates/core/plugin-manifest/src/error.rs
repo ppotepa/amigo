@@ -4,6 +4,7 @@ pub enum PluginManifestParseError {
     UnknownPluginKind(String),
     UnknownRenderParticipation(String),
     UnknownContributionPolicy(String),
+    InvalidCapability(String),
 }
 
 impl From<toml::de::Error> for PluginManifestParseError {
