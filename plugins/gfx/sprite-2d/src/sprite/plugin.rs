@@ -16,21 +16,22 @@ impl RuntimePlugin for SpritePlugin {
         "amigo-sprite-2d-plugin"
     }
 
+    fn validate_requirements(&self, registry: &ServiceRegistry) -> amigo_core::AmigoResult<()> {
+        registry.required::<amigo_scene::RuntimeSceneCommandHandlerRegistry>()?;
+        registry.required::<amigo_scene::ScenePluginCommandHandlerRegistry>()?;
+        registry.required::<amigo_scripting_api::RuntimeScriptCommandHandlerRegistry>()?;
+        Ok(())
+    }
+
     fn register(&self, registry: &mut ServiceRegistry) -> amigo_core::AmigoResult<()> {
         registry.register(SpriteSceneService::default())?;
-        amigo_scene::register_scene_reset_handler(
-            registry,
-            super::reset::Sprite2dSceneResetHandler,
-        )?;
-        amigo_scene::register_scene_component_plugin_spec::<
-            crate::scene::Sprite2dSceneComponentSpec,
-        >(registry)?;
+        amigo_scene::register_scene_reset_handler(registry, super::reset::Sprite2dSceneResetHandler)?;
+        amigo_scene::register_scene_component_plugin_spec::<crate::scene::Sprite2dSceneComponentSpec>(registry)?;
 
         if !registry.has::<amigo_render_api::RuntimeRenderExtractorIdRegistry>() {
             registry.register(amigo_render_api::RuntimeRenderExtractorIdRegistry::default())?;
         }
-        let render_extractors =
-            registry.required::<amigo_render_api::RuntimeRenderExtractorIdRegistry>()?;
+        let render_extractors = registry.required::<amigo_render_api::RuntimeRenderExtractorIdRegistry>()?;
         crate::render::register_sprite_2d_render_extractor_id(render_extractors.as_ref());
 
         registry.register(SpriteDomainInfo {
@@ -39,38 +40,30 @@ impl RuntimePlugin for SpritePlugin {
         })?;
 
         let manifest = amigo_plugin_manifest::parse_plugin_manifest_str(include_str!("../../plugin.toml"))
-            .map_err(|error| {
-                amigo_core::AmigoError::Message(format!(
-                    "invalid embedded sprite-2d plugin manifest: {error:?}"
-                ))
-            })?;
+            .map_err(|error| amigo_core::AmigoError::Message(format!(
+                "invalid embedded sprite-2d plugin manifest: {error:?}"
+            )))?;
         amigo_capabilities::register_plugin_manifest(registry, &manifest)?;
 
         if !registry.has::<ScriptBindingProviderRegistry>() {
             registry.register(ScriptBindingProviderRegistry::default())?;
         }
-        registry
-            .required::<ScriptBindingProviderRegistry>()?
-            .register(
-                ScriptBindingProviderDescriptor::new("amigo.gfx.sprite-2d", "sprite2d")
-                    .with_binding("world.sprite2d")
-                    .with_binding("sprite2d.command"),
-            )?;
+        registry.required::<ScriptBindingProviderRegistry>()?.register(
+            ScriptBindingProviderDescriptor::new("amigo.gfx.sprite-2d", "sprite2d")
+                .with_binding("world.sprite2d")
+                .with_binding("sprite2d.command"),
+        )?;
 
-        let scene_handlers =
-            registry.required::<amigo_scene::RuntimeSceneCommandHandlerRegistry>()?;
+        let scene_handlers = registry.required::<amigo_scene::RuntimeSceneCommandHandlerRegistry>()?;
         amigo_scene::register_runtime_scene_command_handler(
             scene_handlers.as_ref(),
             super::scene_command::Sprite2dSceneCommandHandler,
         );
-        let plugin_scene_handlers =
-            registry.required::<amigo_scene::ScenePluginCommandHandlerRegistry>()?;
-        plugin_scene_handlers.register(
+        registry.required::<amigo_scene::ScenePluginCommandHandlerRegistry>()?.register(
             "amigo.gfx.sprite-2d.scene-command.Sprite2D",
             std::sync::Arc::new(super::scene_command::Sprite2dSceneCommandHandler),
         );
-        let script_handlers =
-            registry.required::<amigo_scripting_api::RuntimeScriptCommandHandlerRegistry>()?;
+        let script_handlers = registry.required::<amigo_scripting_api::RuntimeScriptCommandHandlerRegistry>()?;
         amigo_scripting_api::register_runtime_script_command_handler(
             script_handlers.as_ref(),
             super::script_command::Sprite2dScriptCommandHandler,

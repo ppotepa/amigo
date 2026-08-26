@@ -14,27 +14,26 @@ mod scheduling;
 mod task_system;
 
 pub use bundle::PluginBundle;
-pub use handler_registry::HandlerDispatcher;
-pub use handler_registry::HandlerRegistry;
-pub use handler_registry::RoutedHandler;
-pub use handler_registry::RoutedHandlerRegistry;
-pub use handler_registry::register_routed_handler;
-pub use schedule::RuntimeSystem;
-pub use schedule::SystemPhase;
-pub use schedule::SystemRegistry;
-pub use scheduling::EngineLane;
-pub use scheduling::EngineSchedulerMode;
-pub use scheduling::EngineSchedulingConfig;
-pub use scheduling::Parallelism;
-pub use scheduling::SchedulingDescriptor;
-pub use scheduling::SchedulingPriority;
-pub use scheduling::ThreadPolicy;
-pub use task_system::EngineJob;
-pub use task_system::EngineTaskSystem;
-pub use task_system::JobContext;
+pub use handler_registry::{
+    HandlerDispatcher, HandlerRegistry, RoutedHandler, RoutedHandlerRegistry,
+    register_routed_handler,
+};
+pub use schedule::{RuntimeSystem, SystemPhase, SystemRegistry};
+pub use scheduling::{
+    EngineLane, EngineSchedulerMode, EngineSchedulingConfig, Parallelism, SchedulingDescriptor,
+    SchedulingPriority, ThreadPolicy,
+};
+pub use task_system::{EngineJob, EngineTaskSystem, JobContext};
 
 pub trait RuntimePlugin {
     fn name(&self) -> &'static str;
+
+    /// Declare and validate the services this plugin must find before registration.
+    /// Implementations should use `registry.required::<T>()?` for hard dependencies.
+    fn validate_requirements(&self, _registry: &ServiceRegistry) -> AmigoResult<()> {
+        Ok(())
+    }
+
     fn register(&self, registry: &mut ServiceRegistry) -> AmigoResult<()>;
 }
 
@@ -56,11 +55,9 @@ impl ServiceRegistry {
     {
         let type_id = TypeId::of::<T>();
         let type_name = type_name::<T>();
-
         if self.services.contains_key(&type_id) {
             return Err(AmigoError::DuplicateService(type_name));
         }
-
         self.services.insert(
             type_id,
             ServiceEntry {
@@ -68,7 +65,6 @@ impl ServiceRegistry {
                 value: Arc::new(service),
             },
         );
-
         Ok(())
     }
 
@@ -97,11 +93,7 @@ impl ServiceRegistry {
     }
 
     pub fn registered_names(&self) -> Vec<&'static str> {
-        let mut names = self
-            .services
-            .values()
-            .map(|entry| entry.name)
-            .collect::<Vec<_>>();
+        let mut names = self.services.values().map(|entry| entry.name).collect::<Vec<_>>();
         names.sort_unstable();
         names
     }
@@ -125,21 +117,18 @@ impl Runtime {
     {
         self.registry.resolve::<T>()
     }
-
     pub fn has<T>(&self) -> bool
     where
         T: Send + Sync + 'static,
     {
         self.registry.has::<T>()
     }
-
     pub fn required<T>(&self) -> AmigoResult<Arc<T>>
     where
         T: Send + Sync + 'static,
     {
         self.registry.required::<T>()
     }
-
     pub fn report(&self) -> RuntimeReport {
         RuntimeReport {
             plugin_names: self.plugin_names.clone(),
@@ -167,6 +156,7 @@ impl RuntimeBuilder {
     where
         P: RuntimePlugin,
     {
+        plugin.validate_requirements(&self.registry)?;
         plugin.register(&mut self.registry)?;
         self.plugin_names.push(plugin.name());
         Ok(self)
