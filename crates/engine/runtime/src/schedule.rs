@@ -1,10 +1,13 @@
 use std::collections::BTreeMap;
 use std::sync::{Arc, Mutex};
 
-use amigo_core::AmigoResult;
+use amigo_core::{AmigoError, AmigoResult};
 
 use crate::Runtime;
-use crate::SchedulingDescriptor;
+use crate::{
+    EngineLane, EngineTaskSystem, Parallelism, SchedulingDescriptor, SchedulingPriority,
+    ThreadPolicy,
+};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum SystemPhase {
@@ -88,16 +91,32 @@ impl SystemRegistry {
     }
 
     pub fn phase_systems(&self, phase: SystemPhase) -> Vec<Arc<dyn RuntimeSystem>> {
-        self.systems
+        let mut systems = self
+            .systems
             .lock()
             .unwrap()
             .get(&phase)
             .cloned()
-            .unwrap_or_default()
+            .unwrap_or_default();
+        // Stable sorting preserves registration order among systems with the same
+        // scheduling priority while making the descriptor materially affect dispatch.
+        systems.sort_by_key(|system| {
+            std::cmp::Reverse(priority_rank(system.scheduling_descriptor().priority))
+        });
+        systems
+    }
+
+    pub fn execution_plan(&self, phase: SystemPhase) -> Vec<SchedulingDescriptor> {
+        self.phase_systems(phase)
+            .into_iter()
+            .map(|system| system.scheduling_descriptor())
+            .collect()
     }
 
     pub fn run_phase(&self, phase: SystemPhase, runtime: &Runtime) -> AmigoResult<()> {
         for system in self.phase_systems(phase) {
+            let descriptor = system.scheduling_descriptor();
+            validate_scheduling_descriptor(&descriptor, runtime)?;
             system.run(runtime)?;
         }
 
@@ -119,6 +138,52 @@ impl SystemRegistry {
     }
 }
 
+fn priority_rank(priority: SchedulingPriority) -> u8 {
+    match priority {
+        SchedulingPriority::Background => 0,
+        SchedulingPriority::Low => 1,
+        SchedulingPriority::Normal => 2,
+        SchedulingPriority::Foreground => 3,
+        SchedulingPriority::Critical => 4,
+    }
+}
+
+fn validate_scheduling_descriptor(
+    descriptor: &SchedulingDescriptor,
+    runtime: &Runtime,
+) -> AmigoResult<()> {
+    if descriptor.thread_policy == ThreadPolicy::BackgroundOnly {
+        let workers = runtime
+            .resolve::<EngineTaskSystem>()
+            .map(|tasks| tasks.config().max_workers)
+            .unwrap_or_default();
+        if workers == 0 {
+            return Err(AmigoError::Message(format!(
+                "system `{}` requires a background worker, but workers are disabled",
+                descriptor.id
+            )));
+        }
+    }
+
+    if descriptor.thread_policy == ThreadPolicy::MainOnly && descriptor.lane != EngineLane::Main {
+        return Err(AmigoError::Message(format!(
+            "system `{}` declares MainOnly but uses lane {:?}",
+            descriptor.id, descriptor.lane
+        )));
+    }
+
+    if descriptor.parallelism != Parallelism::None
+        && descriptor.thread_policy == ThreadPolicy::MainOnly
+    {
+        return Err(AmigoError::Message(format!(
+            "system `{}` requests parallelism while restricted to the main thread",
+            descriptor.id
+        )));
+    }
+
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use std::sync::{Arc, Mutex};
@@ -126,7 +191,10 @@ mod tests {
     use amigo_core::{AmigoError, AmigoResult};
 
     use super::{RuntimeSystem, SystemPhase, SystemRegistry};
-    use crate::{Runtime, RuntimeBuilder};
+    use crate::{
+        EngineLane, Parallelism, Runtime, RuntimeBuilder, SchedulingDescriptor, SchedulingPriority,
+        ThreadPolicy,
+    };
 
     struct TestSystem {
         name: &'static str,
@@ -155,6 +223,38 @@ mod tests {
             }
 
             Ok(())
+        }
+    }
+
+    struct PrioritySystem {
+        name: &'static str,
+        priority: SchedulingPriority,
+        sink: Arc<Mutex<Vec<&'static str>>>,
+    }
+
+    impl RuntimeSystem for PrioritySystem {
+        fn name(&self) -> &'static str {
+            self.name
+        }
+
+        fn phase(&self) -> SystemPhase {
+            SystemPhase::Update
+        }
+
+        fn run(&self, _runtime: &Runtime) -> AmigoResult<()> {
+            self.sink.lock().unwrap().push(self.name);
+            Ok(())
+        }
+
+        fn scheduling_descriptor(&self) -> SchedulingDescriptor {
+            SchedulingDescriptor {
+                id: self.name,
+                lane: EngineLane::Main,
+                thread_policy: ThreadPolicy::MainOnly,
+                parallelism: Parallelism::None,
+                priority: self.priority,
+                allow_frame_latency: false,
+            }
         }
     }
 
@@ -195,6 +295,27 @@ mod tests {
             sink.lock().unwrap().as_slice(),
             ["pre", "update-a", "update-b", "post"]
         );
+    }
+
+    #[test]
+    fn higher_priority_systems_run_first() {
+        let registry = SystemRegistry::default();
+        let sink = Arc::new(Mutex::new(Vec::new()));
+        registry.register(PrioritySystem {
+            name: "normal",
+            priority: SchedulingPriority::Normal,
+            sink: sink.clone(),
+        });
+        registry.register(PrioritySystem {
+            name: "critical",
+            priority: SchedulingPriority::Critical,
+            sink: sink.clone(),
+        });
+
+        registry
+            .run_phase(SystemPhase::Update, &RuntimeBuilder::default().build())
+            .unwrap();
+        assert_eq!(sink.lock().unwrap().as_slice(), ["critical", "normal"]);
     }
 
     #[test]
