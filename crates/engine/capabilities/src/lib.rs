@@ -8,13 +8,13 @@
 use std::collections::BTreeMap;
 use std::sync::{Arc, RwLock};
 
-use amigo_core::AmigoResult;
+use amigo_core::{AmigoError, AmigoResult};
 use amigo_plugin_api::{CapabilityId, CapabilityRef, PluginId, PluginManifest};
 use amigo_runtime::ServiceRegistry;
 
 pub const DEFAULT_CAPABILITY_VERSION: &str = "0.1.0";
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct CapabilityDescriptor {
     pub id: &'static str,
     pub provider: &'static str,
@@ -22,7 +22,7 @@ pub struct CapabilityDescriptor {
     pub depends_on: &'static [&'static str],
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct PluginDescriptor {
     pub name: &'static str,
     pub provider: &'static str,
@@ -64,12 +64,27 @@ impl CapabilityRegistry {
             .expect("capability registry lock should be readable")
     }
 
-    pub fn register_manifest(&self, manifest: &PluginManifest) {
+    pub fn register_manifest(&self, manifest: &PluginManifest) -> AmigoResult<()> {
         let mut state = self.with_write_lock();
         let provided = manifest.capabilities.provides.clone();
+
         for capability in &provided {
+            let key = (capability.id.0.clone(), capability.version);
+            if let Some(existing) = state.manifest_capabilities.get(&key) {
+                if existing.provider != manifest.id {
+                    return Err(AmigoError::Message(format!(
+                        "capability `{}@{}` is already provided by `{}` and cannot also be provided by `{}`",
+                        capability.id.0,
+                        capability.version,
+                        existing.provider.0,
+                        manifest.id.0
+                    )));
+                }
+                continue;
+            }
+
             state.manifest_capabilities.insert(
-                (capability.id.0.clone(), capability.version),
+                key,
                 ManifestCapabilityDescriptor {
                     id: capability.id.clone(),
                     provider: manifest.id.clone(),
@@ -77,15 +92,46 @@ impl CapabilityRegistry {
                 },
             );
         }
-        state
-            .manifest_plugins
-            .insert(manifest.id.0.clone(), provided);
+
+        if let Some(existing) = state.manifest_plugins.get(&manifest.id.0) {
+            if existing != &provided {
+                return Err(AmigoError::Message(format!(
+                    "plugin `{}` attempted to register conflicting manifest capabilities",
+                    manifest.id.0
+                )));
+            }
+        } else {
+            state
+                .manifest_plugins
+                .insert(manifest.id.0.clone(), provided);
+        }
+        Ok(())
     }
 
-    pub fn register_plugin(&self, plugin: PluginDescriptor) {
+    pub fn register_plugin(&self, plugin: PluginDescriptor) -> AmigoResult<()> {
         let mut state = self.with_write_lock();
 
+        if let Some(existing) = state.runtime_plugins.get(plugin.name) {
+            if existing != &plugin {
+                return Err(AmigoError::Message(format!(
+                    "runtime feature provider `{}` is already registered with different metadata",
+                    plugin.name
+                )));
+            }
+            return Ok(());
+        }
+
         for &capability_id in plugin.capabilities {
+            if let Some(existing) = state.runtime_capabilities.get(capability_id) {
+                if existing.provider != plugin.provider || existing.version != plugin.version {
+                    return Err(AmigoError::Message(format!(
+                        "runtime capability `{capability_id}` is already provided by `{}`@{}",
+                        existing.provider, existing.version
+                    )));
+                }
+                continue;
+            }
+
             state.runtime_capabilities.insert(
                 capability_id,
                 CapabilityDescriptor {
@@ -98,6 +144,7 @@ impl CapabilityRegistry {
         }
 
         state.runtime_plugins.insert(plugin.name, plugin);
+        Ok(())
     }
 
     pub fn capability_names(&self) -> Vec<String> {
@@ -159,8 +206,7 @@ pub fn register_plugin_manifest(
     registry: &mut ServiceRegistry,
     manifest: &PluginManifest,
 ) -> AmigoResult<()> {
-    capability_registry(registry)?.register_manifest(manifest);
-    Ok(())
+    capability_registry(registry)?.register_manifest(manifest)
 }
 
 pub fn register_domain_plugin(
@@ -185,6 +231,5 @@ pub fn register_plugin(
     registry: &mut ServiceRegistry,
     plugin: PluginDescriptor,
 ) -> AmigoResult<()> {
-    capability_registry(registry)?.register_plugin(plugin);
-    Ok(())
+    capability_registry(registry)?.register_plugin(plugin)
 }
