@@ -791,6 +791,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "amigo-npr-playground-plugin"
+version = "0.1.0"
+dependencies = [
+ "amigo-capabilities",
+ "amigo-core",
+ "amigo-plugin-api",
+ "amigo-render-api",
+ "amigo-render-npr",
+ "amigo-runtime",
+ "amigo-session",
+ "glam 0.30.10",
+]
+
+[[package]]
 name = "amigo-overlay-api"
 version = "0.1.0"
 dependencies = [
@@ -891,8 +905,16 @@ dependencies = [
  "amigo-material-api",
  "amigo-math",
  "amigo-plugin-api",
+ "amigo-render-npr",
  "amigo-session",
  "serde",
+]
+
+[[package]]
+name = "amigo-render-npr"
+version = "0.1.0"
+dependencies = [
+ "glam 0.30.10",
 ]
 
 [[package]]
@@ -910,9 +932,11 @@ dependencies = [
  "amigo-overlay-api",
  "amigo-plugin-api",
  "amigo-render-api",
+ "amigo-render-npr",
  "amigo-runtime",
  "amigo-ui-layout",
  "amigo-window-api",
+ "bytemuck",
  "fontdue",
  "image",
  "wgpu",
@@ -962,6 +986,7 @@ dependencies = [
  "amigo-material-api",
  "amigo-math",
  "amigo-modding",
+ "amigo-npr-playground-plugin",
  "amigo-overlay-api",
  "amigo-particles-2d-plugin",
  "amigo-plugin-api",

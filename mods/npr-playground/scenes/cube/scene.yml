@@ -1,0 +1,6 @@
+version: 1
+scene:
+  id: cube
+  label: NPR Cube
+  description: Comic-ink cube
+entities: []

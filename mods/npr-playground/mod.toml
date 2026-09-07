@@ -1,0 +1,17 @@
+id = "npr-playground"
+name = "NPR Playground"
+version = "0.1.0"
+description = "Typed Rust non-photorealistic rendering playground."
+authors = ["Amigo Engine Team"]
+dependencies = ["core"]
+capabilities = ["rendering_3d"]
+
+[scripting]
+mod_script_mode = "disabled"
+
+[[scenes]]
+id = "cube"
+label = "NPR Cube"
+description = "Comic-ink cube with deterministic feature strokes."
+path = "scenes/cube"
+launcher_visible = true

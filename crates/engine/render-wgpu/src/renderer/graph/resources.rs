@@ -55,6 +55,17 @@ impl WgpuFrameResourceAllocator {
             view_formats: &[],
         });
         let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
+        let depth_texture = device.create_texture(&wgpu::TextureDescriptor {
+            label: Some(label),
+            size: wgpu::Extent3d { width, height, depth_or_array_layers: 1 },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: wgpu::TextureFormat::Depth32Float,
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+            view_formats: &[],
+        });
+        let depth_view = depth_texture.create_view(&wgpu::TextureViewDescriptor::default());
 
         let report = RenderInitializationReport {
             backend_name: "offscreen",
@@ -74,6 +85,8 @@ impl WgpuFrameResourceAllocator {
             format,
             texture,
             view,
+            _depth_texture: depth_texture,
+            depth_view,
         };
 
         self.textures.insert(id, WgpuTransientTexture { target });

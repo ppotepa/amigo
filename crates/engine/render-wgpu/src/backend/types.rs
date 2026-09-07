@@ -72,4 +72,6 @@ pub struct WgpuOffscreenTarget {
     pub format: wgpu::TextureFormat,
     pub(crate) texture: wgpu::Texture,
     pub(crate) view: wgpu::TextureView,
+    pub(crate) _depth_texture: wgpu::Texture,
+    pub(crate) depth_view: wgpu::TextureView,
 }

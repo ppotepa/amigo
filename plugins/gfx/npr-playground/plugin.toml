@@ -1,0 +1,36 @@
+id = "amigo.gfx.npr-playground"
+family = "gfx"
+kind = "renderable-source"
+renderable = true
+render_participation = "source-renderer"
+
+[capabilities]
+provides = ["gfx.npr@1"]
+requires = []
+
+[slots]
+implements = []
+requires = []
+replaces = []
+
+[targets]
+reads = []
+writes = ["SceneColor", "SceneDepth"]
+contributes = ["SceneColor", "SceneDepth"]
+
+[contributions]
+emits = []
+consumes = []
+
+[diagnostics]
+channels = ["npr.render", "npr.features"]
+
+[docs]
+pipeline = "docs/pipeline.md"
+contributions = "docs/contributions.md"
+diagnostics = "docs/diagnostics.md"
+
+[tests]
+waterfall = "tests/waterfall_tests.rs"
+diagnostics = "tests/diagnostics_tests.rs"
+

@@ -23,6 +23,17 @@ pub struct RenderFrameStats {
     pub ui_overlays: usize,
     pub render_graph_nodes: usize,
     pub post_fx_effects: usize,
+    pub npr_geometry: usize,
+    pub npr_topology_edges: usize,
+    pub npr_feature_segments: usize,
+    pub npr_silhouettes: usize,
+    pub npr_creases: usize,
+    pub npr_strokes: usize,
+    pub npr_stroke_vertices: usize,
+    pub npr_stroke_indices: usize,
+    pub npr_viewport: [u32; 2],
+    pub npr_preset: Option<&'static str>,
+    pub npr_debug_view: Option<amigo_render_npr::NprDebugView>,
 }
 
 use std::sync::Mutex;

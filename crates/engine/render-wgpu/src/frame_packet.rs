@@ -1,4 +1,5 @@
 use amigo_render_api::MaterialDrawCommand;
+use amigo_render_api::{NprBackgroundCommand, NprDrawCommand, NprRenderOutput};
 use amigo_render_api::MeshDrawCommand;
 use amigo_render_api::Text3dDrawCommand;
 use amigo_render_api::{
@@ -31,6 +32,8 @@ pub struct WgpuRenderFramePacket {
     world_3d_meshes: Vec<MeshDrawCommand>,
     world_3d_materials: Vec<MaterialDrawCommand>,
     world_3d_text: Vec<Text3dDrawCommand>,
+    npr: Vec<NprDrawCommand>,
+    npr_background: Option<NprBackgroundCommand>,
     game_ui_overlay: Vec<UiOverlayDocument>,
     debug_overlay: Vec<UiOverlayDocument>,
     post_fx_stacks: Vec<ScopedPostFx2dStack>,
@@ -68,6 +71,9 @@ impl WgpuRenderFramePacket {
     pub fn push_world_3d_text(&mut self, command: Text3dDrawCommand) {
         self.world_3d_text.push(command);
     }
+
+    pub fn push_npr_draw_command(&mut self, command: NprDrawCommand) { self.npr.push(command); }
+    pub fn set_npr_background(&mut self, background: NprBackgroundCommand) { self.npr_background = Some(background); }
 
     pub fn push_game_ui_overlay(&mut self, overlay: UiOverlayDocument) {
         self.game_ui_overlay.push(overlay);
@@ -132,6 +138,8 @@ impl WgpuRenderFramePacket {
         self.world_3d_meshes.clear();
         self.world_3d_materials.clear();
         self.world_3d_text.clear();
+        self.npr.clear();
+        self.npr_background = None;
         self.post_fx_stacks.clear();
         self.active_camera_2d_entity = None;
         self.camera_capture_input_2d = None;
@@ -253,6 +261,9 @@ impl WgpuRenderFramePacket {
         &self.world_3d_text
     }
 
+    pub fn npr(&self) -> &[NprDrawCommand] { &self.npr }
+    pub fn npr_background(&self) -> Option<NprBackgroundCommand> { self.npr_background }
+
     pub fn game_ui_overlay(&self) -> &[UiOverlayDocument] {
         &self.game_ui_overlay
     }
@@ -342,4 +353,9 @@ impl amigo_render_api::Text3dRenderOutput for WgpuRenderFramePacket {
     fn push_text3d_render_command(&mut self, command: Text3dDrawCommand) {
         self.push_world_3d_text(command);
     }
+}
+
+impl NprRenderOutput for WgpuRenderFramePacket {
+    fn push_npr_draw_command(&mut self, command: NprDrawCommand) { self.push_npr_draw_command(command); }
+    fn set_npr_background(&mut self, background: NprBackgroundCommand) { self.set_npr_background(background); }
 }

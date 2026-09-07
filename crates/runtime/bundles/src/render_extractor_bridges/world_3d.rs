@@ -11,6 +11,7 @@ pub fn register_world_3d_render_extractors(registry: &mut WgpuRenderExtractorReg
     registry.register(WgpuMesh3dRenderExtractorBridge);
     registry.register(WgpuMaterial3dRenderExtractorBridge);
     registry.register(WgpuText3dRenderExtractorBridge);
+    registry.register(WgpuNprRenderExtractorBridge);
 }
 
 fn required<T: Send + Sync + 'static>(runtime: &Runtime) -> Arc<T> {
@@ -76,5 +77,21 @@ impl RenderFrameExtractor<Runtime, WgpuRenderFramePacket> for WgpuText3dRenderEx
             },
             packet,
         );
+    }
+}
+
+pub struct WgpuNprRenderExtractorBridge;
+
+impl RenderFrameExtractor<Runtime, WgpuRenderFramePacket> for WgpuNprRenderExtractorBridge {
+    fn name(&self) -> &'static str { amigo_npr_playground_plugin::render::NPR_PLAYGROUND_EXTRACTOR_ID }
+
+    fn extract(&self, runtime: &Runtime, packet: &mut WgpuRenderFramePacket) {
+        let Some(service) = runtime.resolve::<amigo_npr_playground_plugin::NprPlaygroundRenderService>() else { return; };
+        if let Some(command) = service.snapshot() {
+            packet.push_npr_draw_command(command);
+        }
+        if let Some(background) = service.background() {
+            packet.set_npr_background(background);
+        }
     }
 }

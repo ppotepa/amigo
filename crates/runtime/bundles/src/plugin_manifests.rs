@@ -23,6 +23,7 @@ const MANIFESTS: &[(&str, &str)] = &[
     ("gfx/vector-2d", include_str!("../../../../plugins/gfx/vector-2d/plugin.toml")),
     ("gfx/layered-image-2d", include_str!("../../../../plugins/gfx/layered-image-2d/plugin.toml")),
     ("gfx/tilemap-2d", include_str!("../../../../plugins/gfx/tilemap-2d/plugin.toml")),
+    ("gfx/npr-playground", include_str!("../../../../plugins/gfx/npr-playground/plugin.toml")),
     ("lighting/light-2d", include_str!("../../../../plugins/lighting/light-2d/plugin.toml")),
     ("lighting/light-groups-2d", include_str!("../../../../plugins/lighting/light-groups-2d/plugin.toml")),
     ("lighting/lightmaps-2d", include_str!("../../../../plugins/lighting/lightmaps-2d/plugin.toml")),

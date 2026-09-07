@@ -2,6 +2,7 @@ use amigo_camera::CameraOpticalCandidate2d;
 use amigo_render_api::MaterialDrawCommand;
 use amigo_render_api::MeshDrawCommand;
 use amigo_render_api::Text3dDrawCommand;
+use amigo_render_api::{NprBackgroundCommand, NprDrawCommand};
 use amigo_render_api::{
     CameraCaptureInput2d, CameraDebugView2d, FrameCompositionPlan, FrameGraph, LightSource2dCommon,
     RenderAssetSource, RenderDepthAuxMap2d, RenderDepthMap2d, RenderLightMap2dSource,
@@ -130,4 +131,6 @@ pub struct WgpuWorld3dRenderInput<'a> {
     pub meshes: &'a [MeshDrawCommand],
     pub materials: &'a [MaterialDrawCommand],
     pub text3d: Option<&'a [Text3dDrawCommand]>,
+    pub npr: &'a [NprDrawCommand],
+    pub npr_background: Option<NprBackgroundCommand>,
 }
