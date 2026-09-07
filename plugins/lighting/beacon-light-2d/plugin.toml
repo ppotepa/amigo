@@ -5,8 +5,8 @@ renderable = true
 render_participation = "source-renderer"
 
 [capabilities]
-provides = ["lighting.light.2d@1"]
-requires = []
+provides = []
+requires = ["lighting.light.2d@1"]
 
 [slots]
 implements = []
