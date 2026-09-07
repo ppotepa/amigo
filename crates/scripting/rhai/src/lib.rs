@@ -46,6 +46,7 @@ pub use scene_command::*;
 pub use systems::*;
 
 include!("runtime/script_runtime.rs");
+include!("runtime/runtime_services.rs");
 include!("runtime/reset.rs");
 include!("runtime/plugin.rs");
 

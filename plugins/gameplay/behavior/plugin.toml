@@ -1,0 +1,26 @@
+id = "amigo.gameplay.behavior"
+family = "gameplay"
+kind = "semantic-source"
+renderable = false
+render_participation = "none"
+
+[capabilities]
+provides = ["gameplay.behavior@1"]
+requires = []
+
+[slots]
+implements = []
+requires = []
+replaces = []
+
+[targets]
+reads = []
+writes = []
+contributes = []
+
+[contributions]
+emits = []
+consumes = []
+
+[diagnostics]
+channels = ["gameplay.behavior"]
