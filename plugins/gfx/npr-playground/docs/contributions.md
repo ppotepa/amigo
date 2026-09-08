@@ -12,6 +12,12 @@ actions use the existing Rhai event queue, not backend-specific entrypoints.
 
 The plugin contributes an `NprDrawCommand` and does not call a backend directly.
 
+Scenes can own a typed `amigo.gfx.npr-playground.NprSettings` component. It
+selects gallery/single-object composition and may override camera, motion, ink,
+per-object surface policy and construction marks. The component is schema- and
+hydrator-backed, so an editor can use the same authored payload; it is not an
+ID-based renderer preset.
+
 The workshop adds `appearance.*`, object rotation switches, read-only badge/history
 state and `stats.*` metadata. `npr-look` contributes appearance-only preset storage;
 `npr-playground` retains complete scene storage. Panel tabs, pinned groups, reset

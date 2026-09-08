@@ -6,4 +6,13 @@ panels:
   - id: npr
     layout: ../../ui/npr.panel.yml
     auto_open: true
-entities: []
+entities:
+  - id: npr-settings
+    name: npr-settings
+    components:
+      - type: amigo.gfx.npr-playground.NprSettings
+        gallery: true
+        selected: cube
+        seed: 5134274
+        camera:
+          distance: 14.0

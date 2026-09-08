@@ -1,7 +1,7 @@
 use crate::{render::NprPlaygroundRenderService, state::NprPlaygroundState};
 use amigo_capabilities::{DEFAULT_CAPABILITY_VERSION, register_domain_plugin};
 use amigo_runtime::{RuntimePlugin, ServiceRegistry, SystemPhase, SystemRegistry};
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 #[derive(Default)]
 struct Lifecycle {
     scene: Mutex<Option<String>>,
@@ -18,6 +18,9 @@ impl RuntimePlugin for NprPlaygroundPlugin {
         registry.register(NprPlaygroundState::default())?;
         registry.register(NprPlaygroundRenderService::default())?;
         registry.register(Lifecycle::default())?;
+        amigo_scene::register_scene_component_plugin_spec::<
+            crate::scene::NprPlaygroundSceneComponentSpec,
+        >(registry)?;
         let state = registry.required::<NprPlaygroundState>()?;
         registry
             .required::<amigo_runtime_control::RuntimeControlService>()?
@@ -30,6 +33,17 @@ impl RuntimePlugin for NprPlaygroundPlugin {
             .register(std::sync::Arc::new(
                 crate::state::look_presets::LookPresetProvider(state),
             ));
+        let scene_handlers = registry.required::<amigo_scene::RuntimeSceneCommandHandlerRegistry>()?;
+        amigo_scene::register_runtime_scene_command_handler(
+            scene_handlers.as_ref(),
+            crate::scene::NprPlaygroundSceneCommandHandler,
+        );
+        if let Some(plugin_scene_handlers) = registry.resolve::<amigo_scene::ScenePluginCommandHandlerRegistry>() {
+            plugin_scene_handlers.register(
+                crate::scene::NPR_PLAYGROUND_SCENE_COMMAND_TYPE,
+                Arc::new(crate::scene::NprPlaygroundSceneCommandHandler),
+            );
+        }
         registry.required::<SystemRegistry>()?.register_fn(
             SystemPhase::Update,
             "npr_playground_update",

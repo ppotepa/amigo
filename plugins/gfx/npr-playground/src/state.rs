@@ -540,6 +540,20 @@ impl Default for NprPlaygroundState {
     }
 }
 impl NprPlaygroundState {
+    pub fn apply_authored_scene(
+        &self,
+        authored: crate::scene::NprPlaygroundSceneDocument,
+    ) -> Result<(), String> {
+        let mut settings = Settings::for_scene(authored.gallery);
+        authored.apply_to(&mut settings)?;
+        *self.defaults.lock().unwrap() = settings.clone();
+        *self.settings.lock().unwrap() = settings;
+        *self.history.lock().unwrap() = history::History::default();
+        *self.comparison.lock().unwrap() = None;
+        *self.preview_before.lock().unwrap() = false;
+        Ok(())
+    }
+
     fn control_values(&self, settings: &Settings) -> BTreeMap<String, ControlValue> {
         let mut props = values(settings);
         for (key, value) in props.clone() {

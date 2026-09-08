@@ -11,6 +11,12 @@ Viewport orbit/zoom runs once in PostUpdate using host delta, not once per simul
 tick. Zoom eases logarithmic distance to a bounded target; external distance/target
 changes and scene initialization discard stale motion.
 
+At hydration, an optional typed `NprSettings` scene component produces a
+plugin scene command. Its declared fields are applied over the canonical
+single-object or gallery defaults, and then go through the same validation as
+live metadata edits. This keeps authored scene intent separate from Rhai and
+from backend packet generation.
+
 Static glTF positions/indices are imported by amigo-3d-mesh, welded per primitive,
 normalized and cached with topology. Source geometry, hatch anchors and their IDs
 remain in model space; the domain transforms camera and directional light into

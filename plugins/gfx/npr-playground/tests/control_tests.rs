@@ -1,9 +1,12 @@
 use amigo_npr_playground_plugin::{NprPlaygroundRenderService, NprPlaygroundState, state::PREFIX};
 use amigo_panels::PresetProvider;
-use amigo_npr_playground_plugin::state::{ConstructionAnchorSettings, ConstructionMarkSettings};
+use amigo_npr_playground_plugin::{
+    scene::{NprCameraSceneSettings, NprObjectSceneSettings, NprPlaygroundSceneDocument},
+    state::{ConstructionAnchorSettings, ConstructionMarkSettings},
+};
 use amigo_render_npr::{StrokeRole};
 use amigo_runtime_control::{ControlValue, RuntimeControlService};
-use std::sync::Arc;
+use std::{collections::BTreeMap, sync::Arc};
 
 #[test]
 fn metadata_controls_validate_atomically_and_presets_restore_all_objects() {
@@ -229,6 +232,43 @@ fn authored_construction_marks_reject_invalid_geometry_before_extraction() {
     }];
 
     assert!(settings.validate().is_err());
+}
+
+#[test]
+fn authored_scene_settings_override_only_declared_npr_intent() {
+    let state = NprPlaygroundState::default();
+    state
+        .apply_authored_scene(NprPlaygroundSceneDocument {
+            gallery: true,
+            selected: Some("sphere".to_owned()),
+            seed: Some(99),
+            motion: None,
+            global_style: None,
+            camera: NprCameraSceneSettings {
+                distance: Some(18.0),
+                yaw: Some(31.0),
+                ..Default::default()
+            },
+            objects: BTreeMap::from([(
+                "sphere".to_owned(),
+                NprObjectSceneSettings {
+                    rotating: Some(false),
+                    surface_subdivision_level: Some(2),
+                    ..Default::default()
+                },
+            )]),
+        })
+        .unwrap();
+
+    let settings = state.snapshot();
+    assert!(settings.gallery);
+    assert_eq!(settings.selected, "sphere");
+    assert_eq!(settings.seed, 99);
+    assert_eq!(settings.camera_distance, 18.0);
+    assert_eq!(settings.camera_yaw, 31.0);
+    assert!(!settings.objects["sphere"].rotating);
+    assert_eq!(settings.objects["sphere"].surface_subdivision_level, 2);
+    assert!(settings.objects["cube"].rotating, "undeclared defaults survive");
 }
 
 #[test]
