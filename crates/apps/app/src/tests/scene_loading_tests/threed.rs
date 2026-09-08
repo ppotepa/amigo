@@ -194,7 +194,7 @@ fn npr_pencil_profile_uses_depth_occluders_without_color_bands() {
     assert!(!command.packet.occluders.is_empty());
     assert!(command.packet.fills.is_empty());
     assert!(command.packet.stats.hatching_strokes > 0);
-    assert_eq!(command.packet.fingerprint().hash, 9_275_174_599_067_266_037);
+    assert_eq!(command.packet.fingerprint().hash, 9_489_862_414_030_230_799);
     let darkest = image
         .pixels_rgba8
         .chunks_exact(4)
@@ -252,7 +252,7 @@ fn npr_pencil_cylinder_streamlines_match_reviewed_golden() {
     assert!(!command.packet.occluders.is_empty());
     assert!(command.packet.fills.is_empty());
     assert!(command.packet.stats.hatching_strokes > 0);
-    assert_eq!(command.packet.fingerprint().hash, 6_469_114_800_234_421_497);
+    assert_eq!(command.packet.fingerprint().hash, 14_134_893_290_782_395_102);
     assert!(
         command
             .packet

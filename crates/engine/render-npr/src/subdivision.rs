@@ -4,13 +4,30 @@
 //! from camera distance.  The implementation follows Loop's edge/vertex masks
 //! on smooth regions while preserving vertices touching a hard or boundary edge.
 
-use crate::{NprGeometry, NprVertex, build_topology, face_normal};
+use crate::{build_topology, face_normal, NprGeometry, NprVertex};
 use glam::Vec3;
 use std::collections::{BTreeMap, BTreeSet};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum NprSubdivisionError {
     TriangleBudget { requested: usize, maximum: usize },
+}
+
+/// Parametric provenance of one proxy triangle in its immutable source mesh.
+///
+/// Loop smoothing moves positions away from the original triangle plane, so
+/// this is deliberately a drawing chart rather than an inverse geometric
+/// projection.  It preserves where a mark belongs across fixed proxy levels.
+#[derive(Debug, Clone, PartialEq)]
+pub struct NprSourceTriangleMapping {
+    pub source_triangle: u32,
+    pub corners: [[f32; 3]; 3],
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct NprSmoothProxyGeometry {
+    pub geometry: NprGeometry,
+    pub source_triangles: Vec<NprSourceTriangleMapping>,
 }
 
 impl std::fmt::Display for NprSubdivisionError {
@@ -33,6 +50,19 @@ pub fn subdivide_smooth_proxy(
     crease_angle: f32,
     max_triangles: usize,
 ) -> Result<NprGeometry, NprSubdivisionError> {
+    Ok(
+        subdivide_smooth_proxy_with_provenance(source, levels, crease_angle, max_triangles)?
+            .geometry,
+    )
+}
+
+/// Generates a fixed-level proxy together with its source-surface charts.
+pub fn subdivide_smooth_proxy_with_provenance(
+    source: &NprGeometry,
+    levels: u8,
+    crease_angle: f32,
+    max_triangles: usize,
+) -> Result<NprSmoothProxyGeometry, NprSubdivisionError> {
     let mut requested = source.triangles.len();
     for _ in 0..levels {
         requested = requested.saturating_mul(4);
@@ -44,11 +74,62 @@ pub fn subdivide_smooth_proxy(
         });
     }
     let mut current = source.clone();
+    let mut source_triangles = source
+        .triangles
+        .iter()
+        .enumerate()
+        .map(|(source_triangle, _)| NprSourceTriangleMapping {
+            source_triangle: source_triangle as u32,
+            corners: [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]],
+        })
+        .collect::<Vec<_>>();
     let crease_cos = crease_angle.clamp(0.0, std::f32::consts::PI).cos();
     for _ in 0..levels {
         current = subdivide_once(&current, crease_cos);
+        source_triangles = subdivide_source_triangle_mappings(&source_triangles);
     }
-    Ok(current)
+    Ok(NprSmoothProxyGeometry {
+        geometry: current,
+        source_triangles,
+    })
+}
+
+fn subdivide_source_triangle_mappings(
+    source: &[NprSourceTriangleMapping],
+) -> Vec<NprSourceTriangleMapping> {
+    let mut output = Vec::with_capacity(source.len().saturating_mul(4));
+    for mapping in source {
+        let [a, b, c] = mapping.corners;
+        let midpoint = |left: [f32; 3], right: [f32; 3]| {
+            [
+                (left[0] + right[0]) * 0.5,
+                (left[1] + right[1]) * 0.5,
+                (left[2] + right[2]) * 0.5,
+            ]
+        };
+        let ab = midpoint(a, b);
+        let bc = midpoint(b, c);
+        let ca = midpoint(c, a);
+        output.extend([
+            NprSourceTriangleMapping {
+                source_triangle: mapping.source_triangle,
+                corners: [a, ab, ca],
+            },
+            NprSourceTriangleMapping {
+                source_triangle: mapping.source_triangle,
+                corners: [ab, b, bc],
+            },
+            NprSourceTriangleMapping {
+                source_triangle: mapping.source_triangle,
+                corners: [ca, bc, c],
+            },
+            NprSourceTriangleMapping {
+                source_triangle: mapping.source_triangle,
+                corners: [ab, bc, ca],
+            },
+        ]);
+    }
+    output
 }
 
 fn subdivide_once(source: &NprGeometry, crease_cos: f32) -> NprGeometry {
@@ -130,7 +211,11 @@ fn subdivide_once(source: &NprGeometry, crease_cos: f32) -> NprGeometry {
 }
 
 fn ordered_edge(a: u32, b: u32) -> (u32, u32) {
-    if a < b { (a, b) } else { (b, a) }
+    if a < b {
+        (a, b)
+    } else {
+        (b, a)
+    }
 }
 
 fn opposite_vertex(triangle: [u32; 3], a: u32, b: u32) -> u32 {

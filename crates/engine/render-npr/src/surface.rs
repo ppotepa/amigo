@@ -6,7 +6,8 @@
 //! geometry/topology cache.
 
 use crate::{
-    build_topology, subdivide_smooth_proxy, NprGeometry, NprSubdivisionError, TopologyEdge,
+    build_topology, subdivide_smooth_proxy_with_provenance, NprGeometry, NprSmoothProxyGeometry,
+    NprSourceTriangleMapping, NprSubdivisionError, TopologyEdge,
 };
 use glam::Vec3;
 use std::collections::BTreeMap;
@@ -64,6 +65,8 @@ pub struct NprPreparedSurface {
     geometry: NprGeometry,
     topology: Vec<TopologyEdge>,
     content_id: NprSurfaceContentId,
+    source_content_id: NprSurfaceContentId,
+    source_triangles: Option<Vec<NprSourceTriangleMapping>>,
 }
 
 /// Fixed, revision-scoped policy for a smooth drawing proxy. It is deliberately
@@ -128,14 +131,16 @@ impl NprPreparedSurfaceVariants {
             if self.smooth_proxies.len() >= 8 {
                 self.smooth_proxies.clear();
             }
-            let proxy = subdivide_smooth_proxy(
+            let proxy = subdivide_smooth_proxy_with_provenance(
                 self.source.geometry(),
                 policy.levels,
                 f32::from_bits(key.crease_angle_bits),
                 policy.max_triangles,
             )?;
-            self.smooth_proxies
-                .insert(key, NprPreparedSurface::new(proxy));
+            self.smooth_proxies.insert(
+                key,
+                NprPreparedSurface::from_proxy(proxy, self.source.content_id),
+            );
         }
         Ok(self
             .smooth_proxies
@@ -165,6 +170,20 @@ impl NprPreparedSurface {
             geometry,
             topology,
             content_id,
+            source_content_id: content_id,
+            source_triangles: None,
+        }
+    }
+
+    fn from_proxy(proxy: NprSmoothProxyGeometry, source_content_id: NprSurfaceContentId) -> Self {
+        let content_id = NprSurfaceContentId(hash_geometry(&proxy.geometry));
+        let topology = build_topology(&proxy.geometry);
+        Self {
+            geometry: proxy.geometry,
+            topology,
+            content_id,
+            source_content_id,
+            source_triangles: Some(proxy.source_triangles),
         }
     }
 
@@ -182,6 +201,11 @@ impl NprPreparedSurface {
 
     pub fn content_id(&self) -> NprSurfaceContentId {
         self.content_id
+    }
+
+    /// Content revision of the mesh on which persistent marks are authored.
+    pub fn source_content_id(&self) -> NprSurfaceContentId {
+        self.source_content_id
     }
 
     /// Creates a validated anchor in this immutable surface revision.
@@ -231,6 +255,63 @@ impl NprPreparedSurface {
             normal,
         })
     }
+
+    /// Converts a proxy-chart coordinate into an anchor on the source mesh.
+    ///
+    /// On an unmodified surface this is a direct face-local anchor. On a
+    /// smooth proxy, the fixed subdivision chart determines the equivalent
+    /// source triangle and barycentric coordinates.
+    pub fn source_anchor(
+        &self,
+        triangle: u32,
+        barycentric: [f32; 3],
+    ) -> Result<NprSurfaceAnchor, NprSurfaceAnchorError> {
+        if triangle as usize >= self.geometry.triangles.len() {
+            return Err(NprSurfaceAnchorError::TriangleOutOfRange);
+        }
+        if !valid_barycentric(barycentric) {
+            return Err(NprSurfaceAnchorError::InvalidBarycentric);
+        }
+        let (source_triangle, barycentric) = self
+            .source_triangles
+            .as_ref()
+            .and_then(|mappings| mappings.get(triangle as usize))
+            .map(|mapping| {
+                let [a, b, c] = mapping.corners;
+                let [wa, wb, wc] = barycentric;
+                (
+                    mapping.source_triangle,
+                    [
+                        a[0] * wa + b[0] * wb + c[0] * wc,
+                        a[1] * wa + b[1] * wb + c[1] * wc,
+                        a[2] * wa + b[2] * wb + c[2] * wc,
+                    ],
+                )
+            })
+            .unwrap_or((triangle, barycentric));
+        Ok(NprSurfaceAnchor {
+            content_id: self.source_content_id,
+            triangle: source_triangle,
+            barycentric,
+        })
+    }
+
+    /// Converts a point on a prepared triangle into its source-surface anchor.
+    pub fn source_anchor_at_point(
+        &self,
+        triangle: u32,
+        point: Vec3,
+    ) -> Result<NprSurfaceAnchor, NprSurfaceAnchorError> {
+        let triangle_vertices = self
+            .geometry
+            .triangles
+            .get(triangle as usize)
+            .ok_or(NprSurfaceAnchorError::TriangleOutOfRange)?
+            .map(|index| self.geometry.vertices[index as usize].position);
+        let barycentric = barycentric_at_point(triangle_vertices, point)
+            .ok_or(NprSurfaceAnchorError::InvalidBarycentric)?;
+        self.source_anchor(triangle, barycentric)
+    }
 }
 
 fn valid_barycentric(value: [f32; 3]) -> bool {
@@ -239,6 +320,22 @@ fn valid_barycentric(value: [f32; 3]) -> bool {
         .iter()
         .all(|weight| weight.is_finite() && *weight >= -EPSILON)
         && (value.iter().sum::<f32>() - 1.0).abs() <= EPSILON
+}
+
+fn barycentric_at_point(triangle: [Vec3; 3], point: Vec3) -> Option<[f32; 3]> {
+    let [a, b, c] = triangle;
+    let ab = b - a;
+    let ac = c - a;
+    let ap = point - a;
+    let dot_ab_ab = ab.dot(ab);
+    let dot_ab_ac = ab.dot(ac);
+    let dot_ac_ac = ac.dot(ac);
+    let denominator = dot_ab_ab * dot_ac_ac - dot_ab_ac * dot_ab_ac;
+    (denominator.abs() > 1e-10).then(|| {
+        let b = (dot_ac_ac * ap.dot(ab) - dot_ab_ac * ap.dot(ac)) / denominator;
+        let c = (dot_ab_ab * ap.dot(ac) - dot_ab_ac * ap.dot(ab)) / denominator;
+        [1.0 - b - c, b, c]
+    })
 }
 
 fn hash_geometry(geometry: &NprGeometry) -> u64 {
@@ -379,5 +476,27 @@ mod tests {
             wedge.sample(cube.anchor(0, [1.0, 0.0, 0.0]).unwrap()),
             Err(NprSurfaceAnchorError::ContentMismatch)
         );
+    }
+
+    #[test]
+    fn smooth_proxy_charts_resolve_marks_to_the_source_revision() {
+        let mut variants = NprPreparedSurfaceVariants::new(NprGeometry::icosphere());
+        let source = variants.source().clone();
+        let proxy = variants
+            .smooth_proxy(NprSmoothProxyPolicy {
+                levels: 1,
+                ..NprSmoothProxyPolicy::default()
+            })
+            .unwrap();
+        assert_ne!(proxy.content_id(), source.content_id());
+        assert_eq!(proxy.source_content_id(), source.content_id());
+
+        let anchor = proxy.source_anchor(3, [1.0 / 3.0; 3]).unwrap();
+        assert_eq!(anchor.content_id, source.content_id());
+        assert_eq!(anchor.triangle, 0);
+        for weight in anchor.barycentric {
+            assert!((weight - 1.0 / 3.0).abs() < 1e-6);
+        }
+        assert!(source.sample(anchor).unwrap().position.is_finite());
     }
 }

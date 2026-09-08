@@ -1,14 +1,13 @@
 use crate::{
-    GraphiteTonePlan, NprDebugView, NprSurfaceMode, RankedCandidate, StrokeRole,
-    SurfaceDirectionField,
     camera::PerspectiveCamera,
     feature::FeatureClass,
     geometry::NprGeometry,
     plan_graphite_tone, select_ranked, smooth_perspective_contours,
     style::{ComicInk, NprToneMode},
-    tessellation::{TessellatedStroke, tessellate_polyline, tessellate_polyline_variants},
+    tessellation::{tessellate_polyline, tessellate_polyline_variants, TessellatedStroke},
     topology::{build_topology, face_normal},
-    trace_parallel_surface_lines, trace_surface_streamline,
+    trace_parallel_surface_lines, trace_surface_streamline, GraphiteTonePlan, NprDebugView,
+    NprSurfaceMode, RankedCandidate, StrokeRole, SurfaceDirectionField,
 };
 use glam::{Vec2, Vec4};
 use std::collections::BTreeMap;
@@ -209,6 +208,21 @@ pub fn build_packet_with_topology(
     seed: u64,
     debug_view: NprDebugView,
 ) -> NprRenderPacket {
+    build_packet_with_identity(
+        geometry, topology, camera, viewport, style, seed, debug_view, None,
+    )
+}
+
+fn build_packet_with_identity(
+    geometry: &NprGeometry,
+    topology: &[crate::TopologyEdge],
+    camera: PerspectiveCamera,
+    viewport: [u32; 2],
+    style: ComicInk,
+    seed: u64,
+    debug_view: NprDebugView,
+    surface: Option<&crate::NprPreparedSurface>,
+) -> NprRenderPacket {
     let vp = Vec2::new(viewport[0] as f32, viewport[1] as f32);
     let edge_features = crate::feature::classify_perspective_features(
         geometry,
@@ -385,6 +399,7 @@ pub fn build_packet_with_topology(
         emit_surface_hatching(
             geometry,
             topology,
+            surface,
             camera,
             viewport,
             style,
@@ -540,7 +555,7 @@ pub fn build_packet_for_surface(
     seed: u64,
     debug_view: NprDebugView,
 ) -> NprRenderPacket {
-    build_packet_with_topology(
+    build_packet_with_identity(
         surface.geometry(),
         surface.topology(),
         camera,
@@ -548,6 +563,7 @@ pub fn build_packet_for_surface(
         style,
         seed,
         debug_view,
+        Some(surface),
     )
 }
 
@@ -674,6 +690,7 @@ fn hatching_density(shade: f32, style: ComicInk) -> f32 {
 fn emit_surface_hatching(
     geometry: &NprGeometry,
     topology: &[crate::TopologyEdge],
+    surface: Option<&crate::NprPreparedSurface>,
     camera: PerspectiveCamera,
     viewport: [u32; 2],
     style: ComicInk,
@@ -718,6 +735,7 @@ fn emit_surface_hatching(
     let mut output = emit_surface_hatching_lane(
         geometry,
         topology,
+        surface,
         &direction_field,
         camera,
         viewport,
@@ -751,6 +769,7 @@ fn emit_surface_hatching(
             output.extend(emit_surface_hatching_lane(
                 geometry,
                 topology,
+                surface,
                 &direction_field,
                 camera,
                 viewport,
@@ -820,6 +839,7 @@ fn emit_surface_hatching(
 fn emit_surface_hatching_lane(
     geometry: &NprGeometry,
     topology: &[crate::TopologyEdge],
+    surface: Option<&crate::NprPreparedSurface>,
     direction_field: &SurfaceDirectionField,
     camera: PerspectiveCamera,
     viewport: [u32; 2],
@@ -871,7 +891,7 @@ fn emit_surface_hatching_lane(
         let Some(start_face) = seed_path.faces.first().copied() else {
             continue;
         };
-        let seed_id = stable_surface_path_id(geometry, lane, &seed_path);
+        let seed_id = stable_surface_path_id_for_surface(geometry, surface, lane, &seed_path);
         let curvature = seed_path
             .faces
             .iter()
@@ -910,7 +930,7 @@ fn emit_surface_hatching_lane(
         if points.len() < 2 {
             continue;
         }
-        let id = stable_surface_path_id(geometry, lane, &path);
+        let id = stable_surface_path_id_for_surface(geometry, surface, lane, &path);
         let path_density = path
             .faces
             .iter()
@@ -940,8 +960,18 @@ fn emit_surface_hatching_lane(
 /// are encoded as face-local barycentric anchors rather than world positions,
 /// so rigid object transforms cannot reroll a path's gesture. The canonical
 /// endpoint order makes tracing direction irrelevant.
+#[cfg(test)]
 fn stable_surface_path_id(
     geometry: &NprGeometry,
+    lane: u32,
+    path: &crate::SurfaceHatchPath,
+) -> u32 {
+    stable_surface_path_id_for_surface(geometry, None, lane, path)
+}
+
+fn stable_surface_path_id_for_surface(
+    geometry: &NprGeometry,
+    surface: Option<&crate::NprPreparedSurface>,
     lane: u32,
     path: &crate::SurfaceHatchPath,
 ) -> u32 {
@@ -950,8 +980,8 @@ fn stable_surface_path_id(
     };
     let last = path.points.last().unwrap_or(first);
     let last_face = path.faces.last().unwrap_or(first_face);
-    let first = surface_path_anchor_key(geometry, *first_face, *first);
-    let last = surface_path_anchor_key(geometry, *last_face, *last);
+    let first = surface_path_anchor_key(geometry, surface, *first_face, *first);
+    let last = surface_path_anchor_key(geometry, surface, *last_face, *last);
     let (first, last) = if first > last {
         (last, first)
     } else {
@@ -965,7 +995,24 @@ fn stable_surface_path_id(
     0x6000_0000 | ((hash ^ (hash >> 32)) as u32 & 0x1fff_ffff)
 }
 
-fn surface_path_anchor_key(geometry: &NprGeometry, face: u32, point: glam::Vec3) -> [u32; 4] {
+fn surface_path_anchor_key(
+    geometry: &NprGeometry,
+    surface: Option<&crate::NprPreparedSurface>,
+    face: u32,
+    point: glam::Vec3,
+) -> Vec<u32> {
+    if let Some(anchor) =
+        surface.and_then(|surface| surface.source_anchor_at_point(face, point).ok())
+    {
+        return vec![
+            anchor.content_id.0 as u32,
+            (anchor.content_id.0 >> 32) as u32,
+            anchor.triangle,
+            quantize_surface_anchor(anchor.barycentric[0]),
+            quantize_surface_anchor(anchor.barycentric[1]),
+            quantize_surface_anchor(anchor.barycentric[2]),
+        ];
+    }
     let triangle = geometry.triangles[face as usize];
     let a = geometry.vertices[triangle[0] as usize].position;
     let b = geometry.vertices[triangle[1] as usize].position;
@@ -984,13 +1031,16 @@ fn surface_path_anchor_key(geometry: &NprGeometry, face: u32, point: glam::Vec3)
         let w = (dot_ab_ab * ap.dot(ac) - dot_ab_ac * ap.dot(ab)) / denominator;
         [1.0 - v - w, v, w]
     };
-    let quantize = |value: f32| (value.clamp(-1.0, 1.0) * 65_535.0).round() as i32 as u32;
-    [
+    vec![
         face,
-        quantize(barycentric[0]),
-        quantize(barycentric[1]),
-        quantize(barycentric[2]),
+        quantize_surface_anchor(barycentric[0]),
+        quantize_surface_anchor(barycentric[1]),
+        quantize_surface_anchor(barycentric[2]),
     ]
+}
+
+fn quantize_surface_anchor(value: f32) -> u32 {
+    (value.clamp(-1.0, 1.0) * 65_535.0).round() as i32 as u32
 }
 
 fn stable_hatch_noise(id: u32) -> f32 {
@@ -1258,14 +1308,13 @@ mod tests {
     #[test]
     fn near_clipping_keeps_crossing_segment() {
         let c = PerspectiveCamera::cube_default(1.0);
-        assert!(
-            c.project_segment(
+        assert!(c
+            .project_segment(
                 c.position + c.forward * 0.01,
                 c.position + c.forward * 2.0,
                 Vec2::splat(512.0)
             )
-            .is_some()
-        );
+            .is_some());
     }
 
     #[test]
@@ -1489,12 +1538,10 @@ mod tests {
             None,
         );
         assert!(strokes.len() <= MAX_HATCHING_LINES_PER_PACKET);
-        assert!(
-            strokes
-                .iter()
-                .flat_map(|stroke| stroke.vertices.iter())
-                .all(|vertex| vertex.position.is_finite())
-        );
+        assert!(strokes
+            .iter()
+            .flat_map(|stroke| stroke.vertices.iter())
+            .all(|vertex| vertex.position.is_finite()));
     }
 
     #[test]
