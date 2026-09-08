@@ -79,6 +79,15 @@ fn construction_authoring_commits_open_and_closed_source_lines() {
 
     state.delete_last_construction_mark().unwrap();
     assert_eq!(state.snapshot().objects["cube"].construction_marks.len(), 1);
+
+    let document = state.authored_scene_document().unwrap();
+    assert_eq!(document.objects["cube"].construction_marks.as_ref().unwrap().len(), 1);
+    let mut restored = amigo_npr_playground_plugin::state::Settings::for_scene(document.gallery);
+    document.apply_to(&mut restored).unwrap();
+    assert_eq!(
+        restored.objects["cube"].construction_marks,
+        state.snapshot().objects["cube"].construction_marks
+    );
 }
 
 #[test]

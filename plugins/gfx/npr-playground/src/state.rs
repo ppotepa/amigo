@@ -558,6 +558,14 @@ impl Default for NprPlaygroundState {
     }
 }
 impl NprPlaygroundState {
+    /// Returns a typed scene payload for the current declarative NPR intent.
+    /// A scene/editor owner decides when and where that payload is persisted.
+    pub fn authored_scene_document(
+        &self,
+    ) -> Result<crate::scene::NprPlaygroundSceneDocument, String> {
+        crate::scene::NprPlaygroundSceneDocument::from_settings(&self.snapshot())
+    }
+
     pub fn stage_authored_scene(&self, authored: crate::scene::NprPlaygroundSceneDocument) {
         *self.authored_scene.lock().unwrap() = Some(authored);
     }
