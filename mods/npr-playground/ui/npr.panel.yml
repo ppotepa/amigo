@@ -930,6 +930,14 @@ root:
               text: Renderowane obiekty
               text_bind: world.npr.settings.NprSettings.stats.geometry
             - type: text
+              id: stats-source-triangles
+              text: Trojkaty zrodlowe
+              text_bind: world.npr.settings.NprSettings.stats.surface_source_triangles
+            - type: text
+              id: stats-proxy-triangles
+              text: Trojkaty smooth proxy
+              text_bind: world.npr.settings.NprSettings.stats.surface_proxy_triangles
+            - type: text
               id: stats-topology
               text: Krawędzie topologii
               text_bind: world.npr.settings.NprSettings.stats.topology_edges
@@ -938,6 +946,10 @@ root:
               text: Segmenty cech
               text_bind: world.npr.settings.NprSettings.stats.feature_segments
             - type: text
+              id: stats-feature-rejected
+              text: Odrzucone cechy siatki
+              text_bind: world.npr.settings.NprSettings.stats.feature_rejected
+            - type: text
               id: stats-silhouettes
               text: Sylwetki
               text_bind: world.npr.settings.NprSettings.stats.silhouettes
@@ -945,6 +957,14 @@ root:
               id: stats-creases
               text: Załamania
               text_bind: world.npr.settings.NprSettings.stats.creases
+            - type: text
+              id: stats-smooth-contours
+              text: Kontury gladkie
+              text_bind: world.npr.settings.NprSettings.stats.smooth_contour_spans
+            - type: text
+              id: stats-suggestive-contours
+              text: Kontury sugerowane
+              text_bind: world.npr.settings.NprSettings.stats.suggestive_contour_spans
             - type: text
               id: stats-strokes
               text: Kreski
@@ -957,6 +977,30 @@ root:
               id: stats-indices
               text: Indeksy kresek
               text_bind: world.npr.settings.NprSettings.stats.stroke_indices
+            - type: text
+              id: stats-hatching
+              text: Kreski tonalne
+              text_bind: world.npr.settings.NprSettings.stats.hatching_strokes
+            - type: text
+              id: stats-hatching-confidence-rejected
+              text: Odrzucone niepewne kreski tonalne
+              text_bind: world.npr.settings.NprSettings.stats.hatching_confidence_rejected
+            - type: text
+              id: stats-construction
+              text: Linie konstrukcyjne
+              text_bind: world.npr.settings.NprSettings.stats.construction_marks
+            - type: text
+              id: stats-temporal-retained
+              text: Zachowane kreski w ruchu
+              text_bind: world.npr.settings.NprSettings.stats.temporal_retained_strokes
+            - type: text
+              id: stats-temporal-entering
+              text: Nowe kreski w ruchu
+              text_bind: world.npr.settings.NprSettings.stats.temporal_entering_strokes
+            - type: text
+              id: stats-stroke-budget-rejected
+              text: Odrzucone przez budzet kresek
+              text_bind: world.npr.settings.NprSettings.stats.stroke_budget_rejected
             - type: row
               id: stats-viewport
               children:
