@@ -835,21 +835,23 @@ impl NprPlaygroundState {
         }
         let mut settings = self.settings.lock().unwrap();
         let before = settings.clone();
+        let mut next_settings = before.clone();
         let current = MODELS
             .iter()
-            .position(|id| *id == settings.selected)
-            .ok_or_else(|| format!("unknown selected NPR object `{}`", settings.selected))?;
+            .position(|id| *id == next_settings.selected)
+            .ok_or_else(|| format!("unknown selected NPR object `{}`", next_settings.selected))?;
         let count = MODELS.len() as isize;
         let next = (current as isize + direction).rem_euclid(count) as usize;
-        settings.selected = MODELS[next].to_owned();
-        if !settings.gallery {
-            Self::fit_candidate(&mut settings, *self.viewport.lock().unwrap())?;
+        next_settings.selected = MODELS[next].to_owned();
+        if !next_settings.gallery {
+            Self::fit_candidate(&mut next_settings, *self.viewport.lock().unwrap())?;
         }
-        settings.validate()?;
+        next_settings.validate()?;
         self.history
             .lock()
             .unwrap()
-            .record("select_scene_object", &before, &settings);
+            .record("select_scene_object", &before, &next_settings);
+        *settings = next_settings;
         Ok(())
     }
 
