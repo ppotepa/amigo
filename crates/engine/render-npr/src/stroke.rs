@@ -1,6 +1,16 @@
 //! Deterministic feature-chain assembly, independent of projection and styling.
 use crate::{FeatureClass, FeatureSegment};
 use std::collections::{BTreeMap, BTreeSet};
+
+/// Semantic purpose of an emitted mark. Feature class describes a geometric
+/// edge only; tonal paths deliberately carry no invented crease classification.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]
+pub enum StrokeRole {
+    #[default]
+    Feature,
+    Tone,
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct FeatureStroke {
     pub id: u32,

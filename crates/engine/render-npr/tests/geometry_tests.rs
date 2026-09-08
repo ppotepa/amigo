@@ -18,6 +18,25 @@ fn builtins_have_valid_closed_topology_and_no_degenerate_faces() {
         }
     }
 }
+
+#[test]
+fn coplanar_groups_merge_cube_face_triangulation_but_not_cube_edges() {
+    let cube = NprGeometry::canonical_cube();
+    let topology = build_topology(&cube);
+    let groups = coplanar_face_groups(&cube, &topology, 0.9999);
+    assert_eq!(groups.len(), cube.triangles.len());
+    assert_eq!(
+        groups
+            .iter()
+            .copied()
+            .collect::<std::collections::BTreeSet<_>>()
+            .len(),
+        6
+    );
+    for face in groups.chunks_exact(2) {
+        assert_eq!(face[0], face[1]);
+    }
+}
 #[test]
 fn crossing_triangle_clips_to_two_finite_perspective_triangles() {
     let camera = PerspectiveCamera::cube_default(1.0);

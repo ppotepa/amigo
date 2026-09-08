@@ -73,6 +73,8 @@ presentation:
     suffix: " °"
   ink-crease_angle:
     suffix: " °"
+  ink-smooth_crease_angle:
+    suffix: " °"
   ink-outline_width:
     suffix: " px"
   ink-crease_width:
@@ -183,6 +185,50 @@ root:
                   id: speed-double
                   text: "2×"
                   on_click: {event: npr.speed_double}
+        -
+          type: "slider"
+          id: "appearance-fade-seconds"
+          text: "Pojawianie nowych kresek"
+          tooltip: "0 s wyłącza łagodne pojawianie się nowych linii. Obrót modelu i kamera działają niezależnie, a istniejący charakter kreski pozostaje stabilny."
+          value_bind: "world.npr.settings.NprSettings.motion.appearance_fade_seconds"
+          min: 0
+          max: 2
+          step: 0.01
+        -
+          type: "option-set"
+          id: "stroke-motion-mode"
+          text: "Kreski podczas ruchu"
+          tooltip: "Stabilne zachowują ten sam wariant gestu podczas obrotu i pracy kamery. Przerysowuj zmienia wariant tylko po rzeczywistym ruchu kotwic powierzchni, z ograniczoną częstotliwością."
+          value_bind: "world.npr.settings.NprSettings.motion.mode"
+          options:
+            - "stable"
+            - "redraw-on-motion"
+        -
+          type: "slider"
+          id: "stroke-redraw-hz"
+          text: "Częstotliwość przerysowania"
+          tooltip: "Maksymalna liczba zmian wariantu gestu na sekundę podczas aktywnego ruchu; niezależna od FPS."
+          value_bind: "world.npr.settings.NprSettings.motion.redraw_hz"
+          enabled_bind: "world.npr.settings.NprSettings.motion_redraw_editable"
+          min: 0.25
+          max: 20
+          step: 0.25
+        -
+          type: "slider"
+          id: "stroke-redraw-strength"
+          text: "Siła przerysowania"
+          tooltip: "0 zachowuje stabilny seed; 1 wybiera pełny nowy wariant gestu."
+          value_bind: "world.npr.settings.NprSettings.motion.redraw_strength"
+          enabled_bind: "world.npr.settings.NprSettings.motion_redraw_editable"
+          min: 0
+          max: 1
+          step: 0.01
+        -
+          type: "button"
+          id: "new-gesture-variant"
+          text: "Nowy wariant gestu"
+          tooltip: "Jednorazowo zmienia wariant rysunkowy wybranego obiektu. Nie zmienia geometrii, kotwic ani ruchu kamery."
+          on_click: {event: npr.new_gesture_variant}
     -
       type: "tab-view"
       id: "workspace"
@@ -423,6 +469,15 @@ root:
                       step: 1
                     -
                       type: "slider"
+                      id: "ink-smooth_crease_angle"
+                      text: "Próg gładkiej powierzchni"
+                      tooltip: "W trybie Smooth normalne nie są mieszane przez ostrzejsze krawędzie. To nie zmienia progu rysowanych załamań."
+                      value_bind: "world.npr.settings.NprSettings.appearance.smooth_crease_angle"
+                      min: 0
+                      max: 180
+                      step: 1
+                    -
+                      type: "slider"
                       id: "ink-taper"
                       text: "Zwężenie końców"
                       value_bind: "world.npr.settings.NprSettings.appearance.taper"
@@ -525,6 +580,15 @@ root:
                 - "sphere"
                 - "suzanne"
                 - "avocado"
+            -
+              type: "option-set"
+              id: "object-surface-mode"
+              text: "Interpretacja powierzchni"
+              tooltip: "Gładka buduje sylwetkę z pola normalnych, zamiast rysować krawędzie triangulacji. Polygonal zachowuje ostre formy, np. cube."
+              value_bind: "world.npr.settings.NprSettings.object.surface_mode"
+              options:
+                - "polygonal"
+                - "smooth"
             -
               type: "row"
               id: "object-flags"

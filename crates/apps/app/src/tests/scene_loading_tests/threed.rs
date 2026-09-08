@@ -2,6 +2,38 @@ use super::super::*;
 
 use std::fs;
 
+fn capture_npr_candidate(name: &str, pixels_rgba8: &[u8]) {
+    let Some(root) = std::env::var_os("AMIGO_CAPTURE_NPR_GOLDEN_DIR") else {
+        return;
+    };
+    let path = std::path::PathBuf::from(root).join(format!("{name}.png"));
+    fs::create_dir_all(path.parent().expect("candidate path has a parent")).unwrap();
+    image::save_buffer(&path, pixels_rgba8, 512, 512, image::ColorType::Rgba8)
+        .expect("candidate capture should be writable");
+}
+
+/// Pixel images are an art-review artifact, not the primary renderer contract.
+/// They are checked only in an explicit review run because GPU rasterisation is
+/// device-dependent. Regular tests lock the deterministic backend packet.
+fn verify_reviewed_npr_image(name: &str, pixels_rgba8: &[u8]) {
+    if std::env::var_os("AMIGO_VERIFY_NPR_GOLDEN").is_none() {
+        return;
+    }
+    let golden_path = mods_root().join(format!("npr-playground/tests/golden/{name}.png"));
+    let expected = image::open(&golden_path)
+        .expect("reviewed NPR golden must exist")
+        .to_rgba8();
+    let diff = amigo_render_api::compare_golden_rgba8(512, 512, expected.as_raw(), pixels_rgba8)
+        .expect("NPR preview buffers should have golden dimensions");
+    assert!(
+        diff.passes(amigo_render_api::GoldenImageTolerance {
+            max_channel_delta: 255,
+            max_mismatched_pixels: 512,
+        }),
+        "{name}: {diff:?}"
+    );
+}
+
 #[test]
 fn playground_3d_main_scene_bootstraps() {
     let (_runtime, summary) = bootstrap_with_options(
@@ -62,7 +94,7 @@ fn playground_3d_main_scene_bootstraps() {
 }
 
 #[test]
-fn npr_playground_offscreen_matches_reviewed_golden() {
+fn npr_playground_offscreen_matches_packet_contract() {
     let options = crate::ScenePreviewOptions::new(mods_root(), "npr-playground", "cube", 512, 512)
         .with_active_mods(vec!["core".to_owned(), "npr-playground".to_owned()])
         .with_warmup_frames(0)
@@ -100,31 +132,8 @@ fn npr_playground_offscreen_matches_reviewed_golden() {
     let first = preview
         .capture_rgba8()
         .expect("NPR preview should render offscreen");
-    let path = mods_root().join("npr-playground/tests/golden/cube-512.png");
-    if std::env::var_os("AMIGO_UPDATE_NPR_GOLDEN").is_some() {
-        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
-        image::save_buffer(
-            &path,
-            &first.pixels_rgba8,
-            512,
-            512,
-            image::ColorType::Rgba8,
-        )
-        .unwrap();
-    }
-    let expected = image::open(&path)
-        .expect("reviewed golden must exist; regenerate explicitly")
-        .to_rgba8();
-    let diff =
-        amigo_render_api::compare_golden_rgba8(512, 512, expected.as_raw(), &first.pixels_rgba8)
-            .expect("NPR preview buffers should have golden dimensions");
-    assert!(
-        diff.passes(amigo_render_api::GoldenImageTolerance {
-            max_channel_delta: 255,
-            max_mismatched_pixels: 512
-        }),
-        "{diff:?}"
-    );
+    capture_npr_candidate("cube-512-candidate", &first.pixels_rgba8);
+    verify_reviewed_npr_image("cube-512", &first.pixels_rgba8);
     let packet = amigo_runtime_bundles::default_wgpu_render_extractor_registry_for_runtime(
         preview.runtime().unwrap(),
     )
@@ -134,11 +143,126 @@ fn npr_playground_offscreen_matches_reviewed_golden() {
     assert_eq!(stats.topology_edges, 18);
     assert_eq!(stats.feature_segments, 12);
     assert_eq!(stats.viewport, [512, 512]);
+    assert_eq!(
+        packet.npr()[0].packet.fingerprint().hash,
+        3_292_953_235_135_587_452
+    );
     assert!(
         first
             .pixels_rgba8
             .chunks_exact(4)
             .any(|pixel| pixel[0] != 0)
+    );
+}
+
+#[test]
+fn npr_pencil_profile_uses_depth_occluders_without_color_bands() {
+    let options = crate::ScenePreviewOptions::new(mods_root(), "npr-playground", "cube", 512, 512)
+        .with_active_mods(vec!["core".to_owned(), "npr-playground".to_owned()])
+        .with_warmup_frames(0)
+        .with_playback_delta_seconds(1.0 / 60.0);
+    let mut preview = crate::ScenePreviewHost::new(options);
+    preview.warmup(1).unwrap();
+    let controls = preview
+        .runtime()
+        .unwrap()
+        .required::<amigo_runtime_control::RuntimeControlService>()
+        .unwrap();
+    let prefix = "world.npr.settings.NprSettings.";
+    controls
+        .set(
+            &format!("{prefix}style_preset"),
+            amigo_runtime_control::ControlValue::String("Pencil Study".into()),
+        )
+        .unwrap();
+    controls
+        .set(
+            &format!("{prefix}paused"),
+            amigo_runtime_control::ControlValue::Bool(true),
+        )
+        .unwrap();
+    let image = preview
+        .capture_rgba8()
+        .expect("pencil profile should render offscreen");
+    capture_npr_candidate("pencil-cube-512-candidate", &image.pixels_rgba8);
+    verify_reviewed_npr_image("pencil-cube-512", &image.pixels_rgba8);
+    let packet = amigo_runtime_bundles::default_wgpu_render_extractor_registry_for_runtime(
+        preview.runtime().unwrap(),
+    )
+    .extract_all(preview.runtime().unwrap());
+    let command = &packet.npr()[0];
+    assert!(!command.packet.occluders.is_empty());
+    assert!(command.packet.fills.is_empty());
+    assert!(command.packet.stats.hatching_strokes > 0);
+    assert_eq!(
+        command.packet.fingerprint().hash,
+        12_396_828_777_222_385_281
+    );
+    let darkest = image
+        .pixels_rgba8
+        .chunks_exact(4)
+        .map(|pixel| pixel[0].min(pixel[1]).min(pixel[2]))
+        .min()
+        .unwrap();
+    assert!(
+        darkest < 200,
+        "pencil output lacks contrast against paper: {darkest}"
+    );
+}
+
+#[test]
+fn npr_pencil_cylinder_streamlines_match_reviewed_golden() {
+    let options = crate::ScenePreviewOptions::new(mods_root(), "npr-playground", "cube", 512, 512)
+        .with_active_mods(vec!["core".to_owned(), "npr-playground".to_owned()])
+        .with_warmup_frames(0)
+        .with_playback_delta_seconds(1.0 / 60.0);
+    let mut preview = crate::ScenePreviewHost::new(options);
+    preview.warmup(1).unwrap();
+    let controls = preview
+        .runtime()
+        .unwrap()
+        .required::<amigo_runtime_control::RuntimeControlService>()
+        .unwrap();
+    let prefix = "world.npr.settings.NprSettings.";
+    controls
+        .set(
+            &format!("{prefix}selected"),
+            amigo_runtime_control::ControlValue::String("cylinder".into()),
+        )
+        .unwrap();
+    controls
+        .set(
+            &format!("{prefix}style_preset"),
+            amigo_runtime_control::ControlValue::String("Pencil Study".into()),
+        )
+        .unwrap();
+    controls
+        .set(
+            &format!("{prefix}paused"),
+            amigo_runtime_control::ControlValue::Bool(true),
+        )
+        .unwrap();
+    let image = preview
+        .capture_rgba8()
+        .expect("pencil cylinder should render offscreen");
+    capture_npr_candidate("pencil-cylinder-512-candidate", &image.pixels_rgba8);
+    verify_reviewed_npr_image("pencil-cylinder-512", &image.pixels_rgba8);
+    let packet = amigo_runtime_bundles::default_wgpu_render_extractor_registry_for_runtime(
+        preview.runtime().unwrap(),
+    )
+    .extract_all(preview.runtime().unwrap());
+    let command = &packet.npr()[0];
+    assert!(!command.packet.occluders.is_empty());
+    assert!(command.packet.fills.is_empty());
+    assert!(command.packet.stats.hatching_strokes > 0);
+    assert_eq!(command.packet.fingerprint().hash, 9_546_757_160_493_806_849);
+    assert!(
+        command
+            .packet
+            .strokes
+            .iter()
+            .any(|stroke| stroke.vertices.len() > 8),
+        "cylinder needs multi-sample tonal streamlines rather than isolated segments"
     );
 }
 

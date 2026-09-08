@@ -1,4 +1,6 @@
-use amigo_render_npr::{ComicInk, StrokeTool};
+use amigo_render_npr::{
+    ComicInk, NprMotionPolicy, NprSurfaceMode, NprToneMode, StrokeMotionMode, StrokeTool,
+};
 use amigo_runtime_control::*;
 use glam::Vec3;
 use serde::{Deserialize, Serialize};
@@ -21,6 +23,7 @@ const ACTIONS: &[&str] = &[
     "camera_side",
     "camera_top",
     "reset_style",
+    "new_gesture_variant",
 ];
 fn resolved_key(key: &str, settings: &Settings) -> String {
     if let Some(field) = key.strip_prefix("object.") {
@@ -41,21 +44,24 @@ pub fn style_preset(name: &str) -> Option<ComicInk> {
         "Comic Ink" => {}
         "Pencil Study" => {
             style.tool = StrokeTool::Pencil;
-            style.ink = glam::Vec4::new(0.12, 0.105, 0.09, 0.92);
+            style.tone_mode = NprToneMode::Hatching;
+            // Graphite remains warm, but the primary contour must establish
+            // the drawing before the paper tooth takes away local coverage.
+            style.ink = glam::Vec4::new(0.035, 0.028, 0.022, 1.0);
             style.paper = glam::Vec4::new(0.94, 0.91, 0.84, 1.0);
             style.shadow = glam::Vec4::new(0.25, 0.27, 0.30, 1.0);
             style.mid = glam::Vec4::new(0.58, 0.59, 0.60, 1.0);
             style.light = glam::Vec4::new(0.88, 0.86, 0.80, 1.0);
-            style.outline_width = 2.8;
-            style.crease_width = 1.4;
-            style.boundary_width = 2.0;
+            style.outline_width = 3.6;
+            style.crease_width = 1.6;
+            style.boundary_width = 2.4;
             style.taper = 0.26;
             style.wobble = 1.25;
             style.gesture_confidence = 0.72;
             style.gesture_simplification = 0.08;
             style.gesture_correction = 0.18;
             style.gesture_overstroke = 0.12;
-            style.tool_pressure = 0.72;
+            style.tool_pressure = 0.88;
             style.tool_hardness = 0.38;
             style.paper_tooth = 0.58;
             style.paper_grain = 0.72;
@@ -66,6 +72,7 @@ pub fn style_preset(name: &str) -> Option<ComicInk> {
         }
         "Loose Study" => {
             style.tool = StrokeTool::Pencil;
+            style.tone_mode = NprToneMode::Hatching;
             style.ink = glam::Vec4::new(0.10, 0.085, 0.07, 0.78);
             style.outline_width = 3.0;
             style.crease_width = 1.15;
@@ -142,6 +149,7 @@ pub fn style_preset_id(style: ComicInk) -> &'static str {
     let normalize = |mut value: ComicInk| {
         value.paper = defaults.paper;
         value.light_direction = defaults.light_direction;
+        value.surface_mode = defaults.surface_mode;
         value
     };
     let normalized = normalize(style);
@@ -165,15 +173,22 @@ pub fn style_preset_id(style: ComicInk) -> &'static str {
 #[serde(deny_unknown_fields)]
 pub struct ObjectSettings {
     pub model: String,
+    #[serde(default)]
+    pub surface_mode: NprSurfaceMode,
     pub visible: bool,
     pub rotating: bool,
     pub position: Vec3,
     pub rotation: Vec3,
     pub scale: f32,
     pub angular_speed: Vec3,
+    /// A user-authored gesture epoch. It is separate from motion-driven redraw
+    /// and changes only after the explicit workshop action.
+    #[serde(default)]
+    pub gesture_variant: u32,
     pub override_style: bool,
     pub style: ComicInk,
 }
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Settings {
@@ -185,6 +200,8 @@ pub struct Settings {
     pub paused: bool,
     pub speed: f32,
     pub step: bool,
+    #[serde(default)]
+    pub motion: NprMotionPolicy,
     pub seed: u64,
     pub debug: String,
     pub camera_target: Vec3,
@@ -206,6 +223,10 @@ impl Settings {
                     (*id).into(),
                     ObjectSettings {
                         model: (*id).into(),
+                        surface_mode: match *id {
+                            "cube" | "wedge" => NprSurfaceMode::Polygonal,
+                            _ => NprSurfaceMode::Smooth,
+                        },
                         visible: true,
                         rotating: true,
                         position: if gallery {
@@ -216,6 +237,7 @@ impl Settings {
                         rotation: Vec3::new(0.36_f32.to_degrees(), 0.71_f32.to_degrees(), 0.0),
                         scale: 1.0,
                         angular_speed: Vec3::new(21.2, 40.7, 0.0),
+                        gesture_variant: 0,
                         override_style: false,
                         style: ComicInk::default(),
                     },
@@ -231,6 +253,7 @@ impl Settings {
             paused: false,
             speed: 1.0,
             step: false,
+            motion: NprMotionPolicy::default(),
             seed: 0x4e5052,
             debug: "Final".into(),
             camera_target: Vec3::ZERO,
@@ -261,6 +284,12 @@ impl Settings {
         }
         if !self.speed.is_finite()
             || !(0.0..=4.0).contains(&self.speed)
+            || !self.motion.appearance_fade_seconds.is_finite()
+            || !(0.0..=2.0).contains(&self.motion.appearance_fade_seconds)
+            || !self.motion.redraw_hz.is_finite()
+            || !(0.25..=20.0).contains(&self.motion.redraw_hz)
+            || !self.motion.redraw_strength.is_finite()
+            || !(0.0..=1.0).contains(&self.motion.redraw_strength)
             || !(15.0..=90.0).contains(&self.camera_fov)
             || !self.camera_fov.is_finite()
             || !(0.1..=100.0).contains(&self.camera_distance)
@@ -271,6 +300,12 @@ impl Settings {
             || self.camera_pitch.abs() > 89.0
         {
             return Err("invalid camera/animation parameters".into());
+        }
+        if !matches!(
+            self.motion.mode,
+            StrokeMotionMode::Stable | StrokeMotionMode::RedrawOnMotion
+        ) {
+            return Err("invalid stroke motion mode".into());
         }
         validate_style(self.global)?;
         for object in self.objects.values() {
@@ -306,6 +341,8 @@ fn validate_style(s: ComicInk) -> Result<(), String> {
         || !(0.0..=10.0).contains(&s.wobble)
         || !s.crease_angle.is_finite()
         || !(0.0..=std::f32::consts::PI).contains(&s.crease_angle)
+        || !s.smooth_crease_angle.is_finite()
+        || !(0.0..=std::f32::consts::PI).contains(&s.smooth_crease_angle)
         || [
             s.gesture_confidence,
             s.gesture_simplification,
@@ -424,6 +461,12 @@ impl NprPlaygroundState {
         );
         props.insert("preview_before".into(), ControlValue::Bool(preview));
         props.insert("editable".into(), ControlValue::Bool(!preview));
+        props.insert(
+            "motion_redraw_editable".into(),
+            ControlValue::Bool(
+                !preview && settings.motion.mode == StrokeMotionMode::RedrawOnMotion,
+            ),
+        );
         props.insert(
             "appearance_editable".into(),
             ControlValue::Bool(
@@ -553,6 +596,10 @@ impl NprPlaygroundState {
                         s.global.paper = paper;
                         s.global.light_direction = light;
                     }
+                }
+                "new_gesture_variant" => {
+                    let object = s.objects.get_mut(&selected).unwrap();
+                    object.gesture_variant = object.gesture_variant.wrapping_add(1);
                 }
                 _ => return Err(format!("unknown action {action}")),
             }
@@ -730,7 +777,7 @@ fn control_yaml(value: ControlValue) -> serde_yaml::Value {
 fn property_range(key: &str) -> Option<ControlRange> {
     let (min, max) = match key.rsplit('.').next().unwrap_or(key) {
         "outline_width" | "crease_width" | "boundary_width" => (0.0, 20.0),
-        "crease_angle" => (0.0, 180.0),
+        "crease_angle" | "smooth_crease_angle" => (0.0, 180.0),
         "taper" => (0.0, 1.0),
         "wobble" => (0.0, 10.0),
         "gesture_confidence"
@@ -749,6 +796,9 @@ fn property_range(key: &str) -> Option<ControlRange> {
         "hatching_cross" => (0.0, 1.0),
         "scale" => (0.01, 10.0),
         "speed" => (0.0, 4.0),
+        "appearance_fade_seconds" => (0.0, 2.0),
+        "redraw_hz" => (0.25, 20.0),
+        "redraw_strength" => (0.0, 1.0),
         "camera_distance" => (0.1, 100.0),
         "camera_pitch" => (-89.0, 89.0),
         "camera_fov" => (15.0, 90.0),

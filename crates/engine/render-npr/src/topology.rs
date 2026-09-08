@@ -36,3 +36,44 @@ pub fn face_normal(geometry: &NprGeometry, face: u32) -> Vec3 {
         )
         .normalize_or_zero()
 }
+
+/// Connected components of faces that form one planar drawing region. The
+/// region key is deliberately derived from topology and normals, never from a
+/// mesh name, so hatching can continue through triangulation diagonals without
+/// crossing authored creases.
+pub fn coplanar_face_groups(
+    geometry: &NprGeometry,
+    topology: &[TopologyEdge],
+    normal_dot_threshold: f32,
+) -> Vec<u32> {
+    let mut adjacency = vec![Vec::new(); geometry.triangles.len()];
+    for edge in topology {
+        let [a, b] = edge.faces;
+        if a == u32::MAX || b == u32::MAX {
+            continue;
+        }
+        if face_normal(geometry, a).dot(face_normal(geometry, b)) >= normal_dot_threshold {
+            adjacency[a as usize].push(b as usize);
+            adjacency[b as usize].push(a as usize);
+        }
+    }
+    let mut groups = vec![u32::MAX; geometry.triangles.len()];
+    let mut next_group = 0u32;
+    for start in 0..groups.len() {
+        if groups[start] != u32::MAX {
+            continue;
+        }
+        let mut stack = vec![start];
+        groups[start] = next_group;
+        while let Some(face) = stack.pop() {
+            for &neighbor in &adjacency[face] {
+                if groups[neighbor] == u32::MAX {
+                    groups[neighbor] = next_group;
+                    stack.push(neighbor);
+                }
+            }
+        }
+        next_group = next_group.wrapping_add(1);
+    }
+    groups
+}

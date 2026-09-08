@@ -25,8 +25,12 @@ fn main() -> AmigoResult<()> {
     }
 
     let editor_requested = args.editor;
-    let hosted = args.hosted || editor_requested;
     let dev_mode = args.dev || editor_requested;
+    let selected_startup_mod = args
+        .startup_mod
+        .as_deref()
+        .or_else(|| editor_requested.then_some("rotten-club"));
+    let hosted = should_run_hosted(&args, selected_startup_mod);
     let mods_root = args.mods_root.unwrap_or_else(|| "mods".to_owned());
     let startup_mod = args
         .startup_mod
@@ -66,6 +70,10 @@ fn main() -> AmigoResult<()> {
     }
 
     Ok(())
+}
+
+fn should_run_hosted(args: &AppArgs, startup_mod: Option<&str>) -> bool {
+    args.hosted || args.editor || (!args.dev && startup_mod.is_some_and(|mod_id| mod_id != "core"))
 }
 
 fn parse_args(raw: Vec<String>) -> AmigoResult<AppArgs> {
@@ -164,5 +172,25 @@ mod tests {
         assert!(args.hosted);
         assert_eq!(args.startup_mod.as_deref(), Some("rotten-club"));
         assert_eq!(args.startup_scene.as_deref(), Some("main-menu"));
+    }
+
+    #[test]
+    fn non_core_startup_mods_are_hosted_by_default() {
+        let args = parse_args(vec!["--mod".to_owned(), "npr-playground".to_owned()]).unwrap();
+        assert!(super::should_run_hosted(&args, args.startup_mod.as_deref()));
+    }
+
+    #[test]
+    fn dev_mode_keeps_cli_bootstrap_headless_without_hosted() {
+        let args = parse_args(vec![
+            "--dev".to_owned(),
+            "--mod".to_owned(),
+            "playground-3d".to_owned(),
+        ])
+        .unwrap();
+        assert!(!super::should_run_hosted(
+            &args,
+            args.startup_mod.as_deref()
+        ));
     }
 }

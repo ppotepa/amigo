@@ -17,6 +17,7 @@ struct Vertex {
     @location(2) depth: f32,
     @location(3) coverage: f32,
     @location(4) phase: vec2<f32>,
+    @location(5) material: vec4<f32>,
 };
 struct Out {
     @builtin(position) position: vec4<f32>,
@@ -35,7 +36,50 @@ struct Out {
 }
 "#;
 
-pub const NPR_STROKE_SHADER: &str = NPR_FILL_SHADER;
+/// A stroke is a geometric envelope plus an analytic material edge. `phase.x`
+/// is the signed lateral coordinate of the envelope and `phase.y` supplies a
+/// stable per-stroke grain phase. Material.x is edge softness and material.y is
+/// the local pressure response. This keeps paper detail out of the tessellator.
+pub const NPR_STROKE_SHADER: &str = r#"
+struct Vertex {
+    @location(0) position: vec2<f32>,
+    @location(1) color: vec4<f32>,
+    @location(2) depth: f32,
+    @location(3) coverage: f32,
+    @location(4) phase: vec2<f32>,
+    @location(5) material: vec4<f32>,
+};
+struct Out {
+    @builtin(position) position: vec4<f32>,
+    @location(0) color: vec4<f32>,
+    @location(1) coverage: f32,
+    @location(2) lateral: f32,
+    @location(3) grain: f32,
+    @location(4) material: vec4<f32>,
+};
+@vertex fn vs_main(v: Vertex) -> Out {
+    var o: Out;
+    o.position = vec4<f32>(v.position, v.depth, 1.0);
+    o.color = v.color;
+    o.coverage = v.coverage;
+    o.lateral = v.phase.x;
+    o.grain = v.phase.y;
+    o.material = v.material;
+    return o;
+}
+fn hash(p: vec2<f32>) -> f32 {
+    return fract(sin(dot(p, vec2<f32>(127.1, 311.7))) * 43758.5453);
+}
+@fragment fn fs_main(v: Out) -> @location(0) vec4<f32> {
+    let edge_width = max(fwidth(v.lateral), 0.008) * (1.0 + v.material.x * 6.0);
+    let edge = 1.0 - smoothstep(1.0 - edge_width, 1.0 + edge_width, abs(v.lateral));
+    let tooth = hash(floor(v.position.xy * 1.7 + vec2<f32>(v.grain, v.grain * 1.73)));
+    let graphite = 1.0 - (tooth - 0.5) * v.material.z * (0.32 + (1.0 - v.material.y) * 0.24)
+        - v.material.w * (tooth - 0.5) * 0.08;
+    let alpha = clamp(v.color.a * v.coverage * edge * graphite, 0.0, 1.0);
+    return vec4<f32>(v.color.rgb * alpha, alpha);
+}
+"#;
 
 pub const NPR_PAPER_SHADER: &str = r#"
 struct Vertex {
@@ -44,6 +88,7 @@ struct Vertex {
     @location(2) depth: f32,
     @location(3) coverage: f32,
     @location(4) phase: vec2<f32>,
+    @location(5) material: vec4<f32>,
 };
 struct Out {
     @builtin(position) position: vec4<f32>,
@@ -82,6 +127,7 @@ pub struct NprGpuVertex {
     pub depth: f32,
     pub coverage: f32,
     pub phase: [f32; 2],
+    pub material: [f32; 4],
 }
 
 impl NprGpuVertex {
@@ -111,9 +157,14 @@ impl NprGpuVertex {
                     shader_location: 3,
                 },
                 wgpu::VertexAttribute {
-                    format: wgpu::VertexFormat::Float32x2,
+                    format: wgpu::VertexFormat::Float32x4,
                     offset: 32,
                     shader_location: 4,
+                },
+                wgpu::VertexAttribute {
+                    format: wgpu::VertexFormat::Float32x2,
+                    offset: 40,
+                    shader_location: 5,
                 },
             ],
         }
@@ -127,11 +178,26 @@ pub struct NprPipelines {
     pub stroke: wgpu::RenderPipeline,
 }
 
+pub(crate) struct NprVertexBuffer {
+    pub buffer: wgpu::Buffer,
+    pub vertex_count: u32,
+}
+
+pub(crate) struct NprIndexedBuffer {
+    pub vertices: wgpu::Buffer,
+    pub indices: wgpu::Buffer,
+    pub index_count: u32,
+}
+
 impl NprPipelines {
     pub fn new(device: &wgpu::Device, format: wgpu::TextureFormat) -> Self {
-        let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+        let fill_shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("amigo-npr-shader"),
             source: wgpu::ShaderSource::Wgsl(NPR_FILL_SHADER.into()),
+        });
+        let stroke_shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+            label: Some("amigo-npr-stroke-shader"),
+            source: wgpu::ShaderSource::Wgsl(NPR_STROKE_SHADER.into()),
         });
         let paper_shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("amigo-npr-paper-shader"),
@@ -144,6 +210,7 @@ impl NprPipelines {
         });
         let buffers = [NprGpuVertex::layout()];
         let make = |label: &'static str,
+                    shader: &wgpu::ShaderModule,
                     fragment: bool,
                     cull_mode: Option<wgpu::Face>,
                     depth_write: bool,
@@ -152,13 +219,13 @@ impl NprPipelines {
                 label: Some(label),
                 layout: Some(&layout),
                 vertex: wgpu::VertexState {
-                    module: &shader,
+                    module: shader,
                     entry_point: Some("vs_main"),
                     buffers: &buffers,
                     compilation_options: wgpu::PipelineCompilationOptions::default(),
                 },
                 fragment: fragment.then_some(wgpu::FragmentState {
-                    module: &shader,
+                    module: shader,
                     entry_point: Some("fs_main"),
                     targets: &[Some(wgpu::ColorTargetState {
                         format,
@@ -228,15 +295,30 @@ impl NprPipelines {
             cache: None,
         });
         Self {
-            depth: make("amigo-npr-depth", false, Some(wgpu::Face::Back), true, None),
+            depth: make(
+                "amigo-npr-depth",
+                &fill_shader,
+                false,
+                Some(wgpu::Face::Back),
+                true,
+                None,
+            ),
             paper,
-            fill: make("amigo-npr-fill", true, Some(wgpu::Face::Back), false, None),
+            fill: make(
+                "amigo-npr-fill",
+                &fill_shader,
+                true,
+                Some(wgpu::Face::Back),
+                false,
+                None,
+            ),
             stroke: make(
                 "amigo-npr-stroke",
+                &stroke_shader,
                 true,
                 None,
                 false,
-                Some(wgpu::BlendState::ALPHA_BLENDING),
+                Some(wgpu::BlendState::PREMULTIPLIED_ALPHA_BLENDING),
             ),
         }
     }
@@ -250,6 +332,73 @@ impl NprPipelines {
             label: Some(label),
             contents: bytemuck::cast_slice(vertices),
             usage: wgpu::BufferUsages::VERTEX,
+        })
+    }
+
+    pub fn vertex_buffers(
+        device: &wgpu::Device,
+        vertices: &[NprGpuVertex],
+        label: &'static str,
+    ) -> Vec<NprVertexBuffer> {
+        const MAX_BUFFER_BYTES: usize = 64 * 1024 * 1024;
+
+        if vertices.is_empty() {
+            return Vec::new();
+        }
+        let device_limit = device.limits().max_buffer_size as usize;
+        let max_bytes = MAX_BUFFER_BYTES.min(device_limit);
+        let stride = std::mem::size_of::<NprGpuVertex>();
+        let mut max_vertices = max_bytes / stride;
+        max_vertices -= max_vertices % 3;
+        if max_vertices < 3 {
+            // A renderer limit is external input. Returning no batch leaves the
+            // target valid and lets the domain/backend diagnostics report the
+            // quality limit instead of panicking inside `create_buffer`.
+            return Vec::new();
+        }
+
+        vertices
+            .chunks(max_vertices)
+            .map(|chunk| NprVertexBuffer {
+                buffer: device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: Some(label),
+                    contents: bytemuck::cast_slice(chunk),
+                    usage: wgpu::BufferUsages::VERTEX,
+                }),
+                vertex_count: chunk.len() as u32,
+            })
+            .collect()
+    }
+
+    /// Creates one bounded indexed draw. Callers partition batches before this
+    /// boundary so no packet can request a device allocation above the limit.
+    pub fn indexed_buffer(
+        device: &wgpu::Device,
+        vertices: &[NprGpuVertex],
+        indices: &[u32],
+        label: &'static str,
+    ) -> Option<NprIndexedBuffer> {
+        if vertices.is_empty() || indices.is_empty() || indices.len() > u32::MAX as usize {
+            return None;
+        }
+        let vertex_bytes = std::mem::size_of_val(vertices);
+        let index_bytes = std::mem::size_of_val(indices);
+        let device_limit = device.limits().max_buffer_size as usize;
+        if vertex_bytes > device_limit || index_bytes > device_limit {
+            return None;
+        }
+        Some(NprIndexedBuffer {
+            vertices: device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some(label),
+                contents: bytemuck::cast_slice(vertices),
+                usage: wgpu::BufferUsages::VERTEX,
+            }),
+            indices: device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("amigo-npr-stroke-indices"),
+                contents: bytemuck::cast_slice(indices),
+                usage: wgpu::BufferUsages::INDEX,
+            }),
+            index_count: indices.len() as u32,
         })
     }
 }

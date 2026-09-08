@@ -386,8 +386,16 @@ fn render_npr_commands(
             1.0 - position.y / height * 2.0,
         ]
     };
+    let mut occluder_vertices = Vec::new();
     let mut fill_vertices = Vec::new();
-    let mut stroke_vertices = Vec::new();
+    // Stroke batches are indexed and capped before GPU allocation. The cap is
+    // global to this NPR view, rather than an accidental per-object allocation.
+    const MAX_STROKE_BATCH_BYTES: usize = 64 * 1024 * 1024;
+    const MAX_STROKE_UPLOAD_BYTES: usize = 128 * 1024 * 1024;
+    let mut stroke_batches: Vec<(Vec<NprGpuVertex>, Vec<u32>)> = Vec::new();
+    let mut current_stroke_vertices = Vec::new();
+    let mut current_stroke_indices = Vec::new();
+    let mut stroke_upload_bytes = 0usize;
     let mut paper_vertices = Vec::new();
     if let Some(background) = background
         .filter(|background| background.grain > f32::EPSILON || background.tooth > f32::EPSILON)
@@ -411,10 +419,23 @@ fn render_npr_commands(
                 depth: 1.0,
                 coverage: (background.grain * 0.65 + background.tooth * 0.35).clamp(0.0, 1.0),
                 phase,
+                material: [0.0; 4],
             });
         }
     }
     for command in commands {
+        for triangle in &command.packet.occluders {
+            for (index, position) in triangle.positions.into_iter().enumerate() {
+                occluder_vertices.push(NprGpuVertex {
+                    position: to_clip(position),
+                    color: triangle.color.to_array(),
+                    depth: triangle.depths[index],
+                    coverage: 1.0,
+                    phase: [0.0; 2],
+                    material: [0.0; 4],
+                });
+            }
+        }
         for triangle in &command.packet.fills {
             let color = triangle.color.to_array();
             for (index, position) in triangle.positions.into_iter().enumerate() {
@@ -424,34 +445,90 @@ fn render_npr_commands(
                     depth: triangle.depths[index],
                     coverage: 1.0,
                     phase: [0.0; 2],
+                    material: [0.0; 4],
                 });
             }
         }
         for stroke in &command.packet.strokes {
             let color = command.packet.stroke_color(stroke);
-            for index in &stroke.indices {
-                let vertex = &stroke.vertices[*index as usize];
-                stroke_vertices.push(NprGpuVertex {
+            let vertex_bytes = stroke
+                .vertices
+                .len()
+                .checked_mul(std::mem::size_of::<NprGpuVertex>());
+            let index_bytes = stroke.indices.len().checked_mul(std::mem::size_of::<u32>());
+            let Some(stroke_bytes) = vertex_bytes
+                .and_then(|bytes| index_bytes.and_then(|indices| bytes.checked_add(indices)))
+            else {
+                continue;
+            };
+            if stroke_bytes > MAX_STROKE_BATCH_BYTES
+                || stroke_upload_bytes.saturating_add(stroke_bytes) > MAX_STROKE_UPLOAD_BYTES
+                || stroke
+                    .indices
+                    .iter()
+                    .any(|index| *index as usize >= stroke.vertices.len())
+            {
+                continue;
+            }
+            let current_bytes = current_stroke_vertices.len() * std::mem::size_of::<NprGpuVertex>()
+                + current_stroke_indices.len() * std::mem::size_of::<u32>();
+            if !current_stroke_indices.is_empty()
+                && current_bytes.saturating_add(stroke_bytes) > MAX_STROKE_BATCH_BYTES
+            {
+                stroke_batches.push((
+                    std::mem::take(&mut current_stroke_vertices),
+                    std::mem::take(&mut current_stroke_indices),
+                ));
+            }
+            let base = current_stroke_vertices.len() as u32;
+            for vertex in &stroke.vertices {
+                current_stroke_vertices.push(NprGpuVertex {
                     position: to_clip(vertex.position),
                     color,
                     depth: (vertex.depth - 0.00001).max(0.0),
                     coverage: vertex.coverage,
-                    phase: [0.0; 2],
+                    phase: [vertex.edge, vertex.grain],
+                    material: [
+                        vertex.edge_softness,
+                        vertex.pressure,
+                        vertex.paper_tooth,
+                        vertex.dryness,
+                    ],
                 });
             }
+            current_stroke_indices.extend(stroke.indices.iter().map(|index| base + index));
+            stroke_upload_bytes += stroke_bytes;
         }
     }
-    if fill_vertices.is_empty() && stroke_vertices.is_empty() && paper_vertices.is_empty() {
+    if !current_stroke_indices.is_empty() {
+        stroke_batches.push((current_stroke_vertices, current_stroke_indices));
+    }
+    if occluder_vertices.is_empty()
+        && fill_vertices.is_empty()
+        && stroke_batches.is_empty()
+        && paper_vertices.is_empty()
+    {
         return Ok(());
     }
 
-    let fill_buffer =
-        NprPipelines::vertex_buffer(&target.device, &fill_vertices, "amigo-npr-fill-vertices");
-    let stroke_buffer = NprPipelines::vertex_buffer(
+    let occluder_buffers = NprPipelines::vertex_buffers(
         &target.device,
-        &stroke_vertices,
-        "amigo-npr-stroke-vertices",
+        &occluder_vertices,
+        "amigo-npr-occluder-vertices",
     );
+    let fill_buffers =
+        NprPipelines::vertex_buffers(&target.device, &fill_vertices, "amigo-npr-fill-vertices");
+    let stroke_buffers = stroke_batches
+        .iter()
+        .filter_map(|(vertices, indices)| {
+            NprPipelines::indexed_buffer(
+                &target.device,
+                vertices,
+                indices,
+                "amigo-npr-stroke-vertices",
+            )
+        })
+        .collect::<Vec<_>>();
     let background_load = background
         .map(|background| {
             let color = background.color;
@@ -485,9 +562,9 @@ fn render_npr_commands(
             multiview_mask: None,
         });
         pass.set_pipeline(&renderer.npr_pipelines.depth);
-        if !fill_vertices.is_empty() {
-            pass.set_vertex_buffer(0, fill_buffer.slice(..));
-            pass.draw(0..fill_vertices.len() as u32, 0..1);
+        for buffer in &occluder_buffers {
+            pass.set_vertex_buffer(0, buffer.buffer.slice(..));
+            pass.draw(0..buffer.vertex_count, 0..1);
         }
     }
     {
@@ -524,8 +601,10 @@ fn render_npr_commands(
         }
         pass.set_pipeline(&renderer.npr_pipelines.fill);
         if !fill_vertices.is_empty() {
-            pass.set_vertex_buffer(0, fill_buffer.slice(..));
-            pass.draw(0..fill_vertices.len() as u32, 0..1);
+            for buffer in &fill_buffers {
+                pass.set_vertex_buffer(0, buffer.buffer.slice(..));
+                pass.draw(0..buffer.vertex_count, 0..1);
+            }
         }
     }
     {
@@ -553,9 +632,10 @@ fn render_npr_commands(
             multiview_mask: None,
         });
         pass.set_pipeline(&renderer.npr_pipelines.stroke);
-        if !stroke_vertices.is_empty() {
-            pass.set_vertex_buffer(0, stroke_buffer.slice(..));
-            pass.draw(0..stroke_vertices.len() as u32, 0..1);
+        for buffer in &stroke_buffers {
+            pass.set_vertex_buffer(0, buffer.vertices.slice(..));
+            pass.set_index_buffer(buffer.indices.slice(..), wgpu::IndexFormat::Uint32);
+            pass.draw_indexed(0..buffer.index_count, 0, 0..1);
         }
     }
     target.queue.submit(Some(encoder.finish()));

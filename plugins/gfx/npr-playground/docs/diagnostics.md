@@ -16,7 +16,10 @@ The Diagnostics tab exposes aggregate geometry, topology, feature-segment and
 stroke/vertex/index counts plus viewport dimensions from the last RenderExtract.
 The aggregate also keeps silhouette and crease counts, while tone lines are
 included in the stroke count because they use the same deterministic stroke
-contract. Debug views are resolved before extraction: `Final` shows the selected
+contract. `smooth_contour_spans` separates normal-field contours from
+`feature_segments`, which count only topology-edge features. `gesture_variant_epoch` is the maximum domain-selected redraw epoch in
+the extracted view; zero means Stable or no qualifying surface motion. It is a
+diagnostic, not a wall-clock counter. Debug views are resolved before extraction: `Final` shows the selected
 tool response, `FeatureClasses` shows domain classification, and `StrokeIds`
 shows stable assembled-chain identities.
 The footer keeps FPS/frame time visible. Thumbnails are fixed neutral references;

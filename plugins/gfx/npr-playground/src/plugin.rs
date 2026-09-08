@@ -137,7 +137,11 @@ impl RuntimePlugin for NprPlaygroundPlugin {
                     let settings = runtime.required::<NprPlaygroundState>()?.render_snapshot();
                     runtime
                         .required::<NprPlaygroundRenderService>()?
-                        .rebuild(&settings, [viewport.width as u32, viewport.height as u32])
+                        .rebuild_with_delta(
+                            &settings,
+                            [viewport.width as u32, viewport.height as u32],
+                            amigo_session::host_delta_seconds(runtime),
+                        )
                         .map_err(amigo_core::AmigoError::Message)?;
                     let rendered = runtime.required::<NprPlaygroundRenderService>()?.stats();
                     for (key, value) in runtime

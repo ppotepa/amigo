@@ -7,6 +7,9 @@ pub struct GestureSample {
     pub pressure: f32,
     pub correction: f32,
     pub grain: f32,
+    /// Low-frequency material continuity along a gesture. This is distinct
+    /// from geometric offset and screen-space paper tooth.
+    pub deposit: f32,
 }
 
 fn hash(seed: u64, id: u32, lane: u64) -> f32 {
@@ -50,11 +53,29 @@ pub fn sample(
         id,
         (t * 4096.0) as u64 + u64::from(variant),
     );
+    let deposit_phase =
+        hash(seed ^ 0x38d4_92ab_76c1_0fe5, id, u64::from(variant) + 17) * std::f32::consts::TAU;
+    let continuity = 0.5
+        + 0.5
+            * (t * std::f32::consts::TAU * 2.73
+                + deposit_phase
+                + (t * std::f32::consts::TAU * 5.17 + deposit_phase * 0.63).sin() * 0.41)
+                .sin();
+    let fleck = hash(
+        seed ^ 0xd16b_54a3_b8e2_0c79,
+        id,
+        (t * 23.0).floor() as u64 + u64::from(variant) * 29,
+    );
+    // Sparse cells are allowed to lose almost all deposit. The caller decides
+    // whether the chosen physical tool exposes this variation.
+    let gap = ((fleck - 0.79) / 0.21).clamp(0.0, 1.0);
+    let deposit = (0.68 + continuity * 0.32 - gap * 0.78).clamp(0.0, 1.0);
     GestureSample {
         offset: jitter,
         pressure,
         correction: correction_wave * endpoint,
         grain,
+        deposit,
     }
 }
 
@@ -109,5 +130,33 @@ fn simplify_range(
         keep[index] = true;
         simplify_range(points, start, index, tolerance_squared, keep);
         simplify_range(points, index, end, tolerance_squared, keep);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn deposit_is_seeded_bounded_and_varies_along_a_gesture() {
+        let samples = (0..32)
+            .map(|index| sample(17, 91, index as f32 / 31.0, 0.4, 0.6, 1.0, 0))
+            .collect::<Vec<_>>();
+        assert_eq!(
+            samples,
+            (0..32)
+                .map(|index| sample(17, 91, index as f32 / 31.0, 0.4, 0.6, 1.0, 0))
+                .collect::<Vec<_>>()
+        );
+        assert!(
+            samples
+                .iter()
+                .all(|sample| (0.0..=1.0).contains(&sample.deposit))
+        );
+        assert!(
+            samples
+                .windows(2)
+                .any(|pair| (pair[0].deposit - pair[1].deposit).abs() > 0.01)
+        );
     }
 }

@@ -1,4 +1,4 @@
-use crate::{feature::FeatureClass, gesture, style::ComicInk, tool::StrokeTool};
+use crate::{StrokeRole, feature::FeatureClass, gesture, style::ComicInk, tool::StrokeTool};
 use glam::Vec2;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -10,6 +10,15 @@ pub struct StrokeVertex {
     pub pressure: f32,
     pub coverage: f32,
     pub grain: f32,
+    /// Normalized distance from the gesture centreline. The material shader uses
+    /// it for analytic edge coverage; 1.0 is the geometric envelope.
+    pub edge: f32,
+    /// Width of the analytically softened edge, normalized to the stroke radius.
+    /// This is material data; it is not geometric jitter.
+    pub edge_softness: f32,
+    /// Shared-paper parameters carried to the backend material pass.
+    pub paper_tooth: f32,
+    pub dryness: f32,
 }
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct TessellatedStroke {
@@ -17,6 +26,7 @@ pub struct TessellatedStroke {
     pub indices: Vec<u32>,
     pub id: u32,
     pub class: FeatureClass,
+    pub role: StrokeRole,
     pub correction: bool,
 }
 
@@ -47,8 +57,9 @@ pub fn tessellate_segment_with_depth(
     )
 }
 
-/// Width and wobble live solely in pixel space. Shared control points make
-/// adjoining strips meet; round disks provide bounded joins without miter spikes.
+/// Width and wobble live solely in pixel space. The strip shares vertices across
+/// adjoining segments, so a single gesture does not deposit a dark disk at every
+/// sample point. Round caps are emitted only at real open ends.
 pub fn tessellate_polyline(
     id: u32,
     class: FeatureClass,
@@ -151,8 +162,11 @@ fn tessellate_polyline_variant(
         let tool = style
             .tool
             .response(pressure, tangent_angle, style.tool_hardness);
+        // The tool response owns directional width. `nib_aspect` expands the
+        // contact ellipse once here rather than applying another angle heuristic
+        // later in the tessellator.
         let aspect = if matches!(style.tool, StrokeTool::Nib) {
-            1.0 + style.nib_aspect.clamp(0.0, 1.0) * (1.0 - tangent_angle.cos().abs())
+            1.0 + style.nib_aspect.clamp(0.0, 1.0)
         } else {
             1.0
         };
@@ -188,6 +202,21 @@ fn tessellate_polyline_variant(
         let mut coverage = tool.pressure_alpha
             * (1.0 - grain.abs() * (0.35 + dryness * 0.25))
             * (1.0 - dryness * 0.08);
+        // The hand supplies a stable deposit field; the tool decides how much
+        // it shows. A fineliner deliberately remains the uniform compatibility
+        // baseline, while soft pencil can leave genuine small gaps.
+        let breakup = match style.tool {
+            StrokeTool::Pencil => {
+                0.16 + (1.0 - style.tool_hardness.clamp(0.0, 1.0)) * 0.46
+                    + dryness * 0.20
+                    + style.paper_tooth.clamp(0.0, 1.0) * 0.18
+            }
+            StrokeTool::Brush => 0.10 + (1.0 - style.tool_hardness.clamp(0.0, 1.0)) * 0.26,
+            StrokeTool::Nib => 0.04 + dryness * 0.08,
+            StrokeTool::Fineliner => 0.0,
+        }
+        .clamp(0.0, 0.92);
+        coverage *= 1.0 - breakup * (1.0 - sample.deposit);
         if matches!(style.tool, StrokeTool::Pencil) {
             coverage *= 0.88 + pressure * 0.12;
         }
@@ -199,59 +228,93 @@ fn tessellate_polyline_variant(
             depth,
             width,
             pressure,
-            coverage.clamp(0.02, 1.0),
+            coverage.clamp(if breakup > 0.0 { 0.003 } else { 0.02 }, 1.0),
             sample.grain,
+            tool.edge_softness,
+            style.paper_tooth.clamp(0.0, 1.0),
+            dryness,
         ));
     }
-    for pair in shaped.windows(2) {
-        let normal = {
-            let d = (pair[1].0 - pair[0].0).normalize_or_zero();
-            Vec2::new(-d.y, d.x)
-        };
-        let base = out.vertices.len() as u32;
-        for &(point, depth, width, pressure, coverage, grain) in pair {
-            for side in [-1.0, 1.0] {
-                out.vertices.push(StrokeVertex {
-                    position: point + normal * width * 0.5 * side,
-                    width,
-                    id,
-                    depth,
-                    pressure,
-                    coverage,
-                    grain,
-                });
-            }
+    let sample_count = shaped.len();
+    for index in 0..sample_count {
+        let previous = shaped[index.saturating_sub(1)].0;
+        let next = shaped[(index + 1).min(sample_count - 1)].0;
+        let direction = (next - previous).normalize_or_zero();
+        if direction.length_squared() <= 1e-8 {
+            continue;
         }
-        out.indices
-            .extend([base, base + 1, base + 2, base + 2, base + 1, base + 3]);
-    }
-    for &(center, depth, width, pressure, coverage, grain) in
-        shaped.iter().take(shaped.len() - usize::from(closed))
-    {
-        let base = out.vertices.len() as u32;
-        out.vertices.push(StrokeVertex {
-            position: center,
-            width,
-            id,
-            depth,
-            pressure,
-            coverage,
-            grain,
-        });
-        for i in 0..=12 {
-            let a = i as f32 * std::f32::consts::TAU / 12.0;
+        let normal = Vec2::new(-direction.y, direction.x);
+        let (point, depth, width, pressure, coverage, grain, edge_softness, paper_tooth, dryness) =
+            shaped[index];
+        for side in [-1.0, 1.0] {
             out.vertices.push(StrokeVertex {
-                position: center + Vec2::new(a.cos(), a.sin()) * width * 0.5,
+                position: point + normal * width * 0.5 * side,
                 width,
                 id,
                 depth,
                 pressure,
                 coverage,
                 grain,
+                edge: side,
+                edge_softness,
+                paper_tooth,
+                dryness,
             });
         }
-        for i in 0..12 {
-            out.indices.extend([base, base + i + 1, base + i + 2]);
+    }
+    // Every shaped sample produced exactly two vertices above. Invalid zero
+    // direction input was rejected before this point by the non-zero total test.
+    for index in 0..sample_count - 1 {
+        let base = (index * 2) as u32;
+        out.indices
+            .extend([base, base + 1, base + 2, base + 2, base + 1, base + 3]);
+    }
+    if !closed {
+        for &sample_index in &[0, sample_count - 1] {
+            let (
+                center,
+                depth,
+                width,
+                pressure,
+                coverage,
+                grain,
+                edge_softness,
+                paper_tooth,
+                dryness,
+            ) = shaped[sample_index];
+            let base = out.vertices.len() as u32;
+            out.vertices.push(StrokeVertex {
+                position: center,
+                width,
+                id,
+                depth,
+                pressure,
+                coverage,
+                grain,
+                edge: 0.0,
+                edge_softness,
+                paper_tooth,
+                dryness,
+            });
+            for i in 0..=12 {
+                let a = i as f32 * std::f32::consts::TAU / 12.0;
+                out.vertices.push(StrokeVertex {
+                    position: center + Vec2::new(a.cos(), a.sin()) * width * 0.5,
+                    width,
+                    id,
+                    depth,
+                    pressure,
+                    coverage,
+                    grain,
+                    edge: 1.0,
+                    edge_softness,
+                    paper_tooth,
+                    dryness,
+                });
+            }
+            for i in 0..12 {
+                out.indices.extend([base, base + i + 1, base + i + 2]);
+            }
         }
     }
     out
@@ -334,5 +397,86 @@ mod tests {
         );
         assert!(strokes[1].correction);
         assert!(strokes[1].vertices.iter().all(|v| v.coverage < 0.3));
+    }
+
+    #[test]
+    fn open_strip_uses_shared_vertices_and_caps_only_the_real_ends() {
+        let stroke = tessellate_polyline(
+            11,
+            FeatureClass::Silhouette,
+            &[
+                (Vec2::new(0.0, 0.0), 0.2),
+                (Vec2::new(30.0, 8.0), 0.3),
+                (Vec2::new(60.0, 0.0), 0.4),
+            ],
+            false,
+            ComicInk {
+                paper_tooth: 0.7,
+                ..Default::default()
+            },
+            99,
+        );
+        // Three authored points expand to five shaped samples. The strip is two
+        // shared vertices per sample plus two 12-sided end caps, not one disk
+        // for every sample.
+        assert_eq!(stroke.vertices.len(), 5 * 2 + 2 * 14);
+        assert_eq!(stroke.indices.len(), 4 * 6 + 2 * 12 * 3);
+        assert!(
+            stroke
+                .vertices
+                .iter()
+                .all(|vertex| vertex.paper_tooth == 0.7)
+        );
+        assert!(
+            stroke
+                .indices
+                .iter()
+                .all(|index| (*index as usize) < stroke.vertices.len())
+        );
+    }
+
+    #[test]
+    fn soft_pencil_exposes_deposit_breaks_but_fineliner_remains_uniform() {
+        let points = &[
+            (Vec2::new(0.0, 0.0), 0.2),
+            (Vec2::new(60.0, 4.0), 0.2),
+            (Vec2::new(120.0, -2.0), 0.2),
+        ];
+        let pencil = tessellate_polyline(
+            8,
+            FeatureClass::Crease,
+            points,
+            false,
+            ComicInk {
+                tool: StrokeTool::Pencil,
+                tool_hardness: 0.05,
+                paper_tooth: 1.0,
+                ink_dryness: 0.7,
+                ..Default::default()
+            },
+            123,
+        );
+        let fineliner = tessellate_polyline(
+            8,
+            FeatureClass::Crease,
+            points,
+            false,
+            ComicInk::default(),
+            123,
+        );
+        let pencil_range = pencil
+            .vertices
+            .iter()
+            .map(|vertex| vertex.coverage)
+            .fold((1.0f32, 0.0f32), |(min, max), value| {
+                (min.min(value), max.max(value))
+            });
+        assert!(pencil_range.1 - pencil_range.0 > 0.08);
+        assert!(
+            fineliner
+                .vertices
+                .windows(2)
+                .all(|pair| (pair[0].coverage - pair[1].coverage).abs() < 1e-6)
+        );
     }
 }

@@ -56,7 +56,26 @@ gesture. The correction pass is deliberately faint; it gives hesitant lines a
 second attempt without turning every edge into a sketchy halo.
 
 Paper tooth/grain affect the paper and stroke coverage independently. Ink
-dryness reduces coverage and increases local grain. Tone density adds clipped,
-screen-space hatching inside shaded faces; spacing, angle and cross-hatching
-are explicit controls. All of these are recomputed when the viewport or camera
-changes, so line widths remain in pixels and identical inputs remain stable.
+dryness reduces coverage and increases local grain. Tone density creates clipped
+surface-following hatching: its layout and source IDs live in local model space,
+while width, clipping and visibility are resolved for the current viewport.
+
+## Surface and motion policy
+
+Each object declares `Polygonal` or `Smooth`; this is authored state, never a
+renderer guess based on a mesh name. Polygonal keeps the literal edge language
+for cube and wedge. Smooth replaces only polygon-edge silhouettes with zeroes of
+a smoothed corner-normal field. `Próg gładkiej powierzchni` stops that field from
+blending through a large dihedral independently of the separately drawn crease
+threshold. Boundaries and authored creases remain explicit in either mode.
+
+`Stable` is the default stroke-motion mode. It keeps an existing seeded gesture
+through object orbit, camera orbit and zoom; `0 s` appearance fade makes new
+visible marks immediate without stopping camera or object motion. `RedrawOnMotion`
+is opt-in: projected surface anchors cross a hysteretic motion gate, then a
+bounded clock changes the gesture variant at the selected frequency. It is not
+driven by render FPS. `Nowy wariant gestu` is a separate undoable action for the
+selected object; it changes the drawing seed without moving geometry or camera.
+The current implementation intentionally does not expose
+suggestive contours or apparent ridges: those need validated curvature
+derivatives rather than a threshold over triangulation noise.

@@ -12,19 +12,31 @@ tick. Zoom eases logarithmic distance to a bounded target; external distance/tar
 changes and scene initialization discard stale motion.
 
 Static glTF positions/indices are imported by amigo-3d-mesh, welded per primitive,
-normalized and cached with topology. The domain clips fill triangles and strokes
-against the near plane, computes perspective depth per vertex, assembles feature
-chains and tessellates pixel-space rounded strokes. WGPU executes global depth,
-fill and stroke passes; the regular MeshDrawCommand path remains separate.
+normalized and cached with topology. Source geometry, hatch anchors and their IDs
+remain in model space; the domain transforms camera and directional light into
+that space for each rigid/uniform object transform. It then clips fill triangles
+and strokes against the near plane, computes perspective depth per vertex,
+assembles feature chains and tessellates pixel-space rounded strokes. WGPU
+executes global depth, fill and stroke passes; the regular MeshDrawCommand path
+remains separate.
 
 The tessellator owns the drawing vocabulary: tool response curves (pencil,
 fineliner, nib and brush), pressure, nib angle/aspect, RDP gesture cleanup,
 endpoint taper, rounded joins/caps and deterministic correction strokes. Grain
 is attached to stroke coverage rather than added as a renderer-side heuristic.
-Optional tone lines are clipped against the projected face triangle before they
-enter the same stroke path, so triangulation diagonals are never promoted to
-feature lines. A stable feature-chain id plus seed makes the gesture repeatable
-across frames and resize rebuilds.
+Optional tone paths are traced over selected surface faces from local plane seeds,
+then projected and clipped before entering the same stroke path. This keeps a
+camera move from constructing a new hatch grid and ensures triangulation diagonals
+are never promoted to feature lines. Smooth silhouettes use a smoothed
+corner-normal zero field and preserve sharp dihedrals; their region identity is
+separate from transient triangle crossings. A stable source id plus seed makes a
+gesture repeatable across frames and resize rebuilds.
+
+The session owns two independent temporal mechanisms. `DrawingHistory` eases the
+coverage of genuinely entering IDs once per logical view frame. `StrokeVariantClock`
+measures projected surface-anchor motion and changes a gesture epoch only for an
+explicit `RedrawOnMotion` policy; Stable returns epoch zero. Neither mechanism is
+part of WGPU or the app host.
 
 The workshop presentation remains engine-generic: authored choices resolve model
 and status bindings, while the egui backend draws neutral thumbnail triangles.

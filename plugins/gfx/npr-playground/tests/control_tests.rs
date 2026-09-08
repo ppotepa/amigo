@@ -28,6 +28,53 @@ fn metadata_controls_validate_atomically_and_presets_restore_all_objects() {
     );
     assert_eq!(state.snapshot().objects["cube"].scale, 2.0);
     controls
+        .set(
+            &path("motion.appearance_fade_seconds"),
+            ControlValue::F64(0.0),
+        )
+        .unwrap();
+    assert_eq!(state.snapshot().motion.appearance_fade_seconds, 0.0);
+    assert!(
+        controls
+            .set(
+                &path("motion.appearance_fade_seconds"),
+                ControlValue::F64(2.1)
+            )
+            .is_err()
+    );
+    controls
+        .set(
+            &path("motion.mode"),
+            ControlValue::String("redraw-on-motion".into()),
+        )
+        .unwrap();
+    assert_eq!(
+        controls.get(&path("motion_redraw_editable")).unwrap(),
+        ControlValue::Bool(true)
+    );
+    controls
+        .set(&path("motion.redraw_hz"), ControlValue::F64(6.0))
+        .unwrap();
+    assert_eq!(
+        controls.get(&path("motion.mode")).unwrap(),
+        ControlValue::String("redraw-on-motion".into())
+    );
+    assert!(
+        controls
+            .set(&path("motion.redraw_strength"), ControlValue::F64(1.1))
+            .is_err()
+    );
+    controls
+        .set(
+            &path("object.surface_mode"),
+            ControlValue::String("smooth".into()),
+        )
+        .unwrap();
+    assert_eq!(
+        controls.get(&path("object.surface_mode")).unwrap(),
+        ControlValue::String("smooth".into())
+    );
+    controls
         .set(&path("seed"), ControlValue::U64(u64::MAX))
         .unwrap();
     assert_eq!(
@@ -66,6 +113,172 @@ fn pause_step_and_extract_do_not_advance_state() {
     assert_eq!(render.snapshot().unwrap().packet.stats.viewport, [320, 640]);
     render.clear();
     assert!(render.commands().is_empty());
+}
+
+#[test]
+fn interactive_extract_eases_only_new_stroke_identities() {
+    let state = NprPlaygroundState::default();
+    let render = NprPlaygroundRenderService::default();
+    let single = state.snapshot();
+    render
+        .rebuild_with_delta(&single, [512, 512], 1.0 / 60.0)
+        .unwrap();
+    let mut gallery = single.clone();
+    gallery.gallery = true;
+    for (id, object) in &mut gallery.objects {
+        object.visible = id == "cube" || id == "wedge";
+    }
+    render
+        .rebuild_with_delta(&gallery, [512, 512], 0.06)
+        .unwrap();
+    let commands = render.commands();
+    assert!(commands.len() > 1);
+    assert!(commands[0].packet.stats.temporal_retained_strokes > 0);
+    assert!(
+        commands[1].packet.stats.temporal_entering_strokes > 0,
+        "new={:?}, strokes={}",
+        commands[1].packet.stats.temporal_entering_strokes,
+        commands[1].packet.strokes.len(),
+    );
+}
+
+#[test]
+fn stroke_motion_mode_changes_variants_only_when_explicitly_enabled() {
+    use amigo_render_npr::StrokeMotionMode;
+
+    let render = NprPlaygroundRenderService::default();
+    let mut settings = NprPlaygroundState::default().snapshot();
+    settings.motion.mode = StrokeMotionMode::RedrawOnMotion;
+    settings.motion.redraw_hz = 4.0;
+    render
+        .rebuild_with_delta(&settings, [512, 512], 1.0 / 60.0)
+        .unwrap();
+    settings.objects.get_mut("cube").unwrap().rotation.y += 25.0;
+    render
+        .rebuild_with_delta(&settings, [512, 512], 1.0 / 60.0)
+        .unwrap();
+    assert!(render.commands()[0].packet.stats.gesture_variant_epoch > 0);
+
+    settings.motion.mode = StrokeMotionMode::Stable;
+    settings.objects.get_mut("cube").unwrap().rotation.y += 25.0;
+    render
+        .rebuild_with_delta(&settings, [512, 512], 1.0 / 60.0)
+        .unwrap();
+    assert_eq!(render.commands()[0].packet.stats.gesture_variant_epoch, 0);
+}
+
+#[test]
+fn material_edits_do_not_reset_stroke_identity_scope() {
+    let render = NprPlaygroundRenderService::default();
+    let mut settings = NprPlaygroundState::default().snapshot();
+    render
+        .rebuild_with_delta(&settings, [512, 512], 1.0 / 60.0)
+        .unwrap();
+    settings.global.ink.x = 0.25;
+    settings.global.paper.y = 0.75;
+    render
+        .rebuild_with_delta(&settings, [512, 512], 1.0 / 60.0)
+        .unwrap();
+    assert!(render.commands()[0].packet.stats.temporal_retained_strokes > 0);
+    assert_eq!(
+        render.commands()[0].packet.stats.temporal_entering_strokes,
+        0
+    );
+}
+
+#[test]
+fn manual_gesture_variant_is_explicit_and_undoable() {
+    let state = Arc::new(NprPlaygroundState::default());
+    let controls = RuntimeControlService::default();
+    controls.register_provider(state.clone());
+    let path = |field: &str| format!("{PREFIX}{field}");
+    controls
+        .set(&path("new_gesture_variant"), ControlValue::Bool(true))
+        .unwrap();
+    assert_eq!(state.snapshot().objects["cube"].gesture_variant, 1);
+    controls
+        .set(&path("undo"), ControlValue::Bool(true))
+        .unwrap();
+    assert_eq!(state.snapshot().objects["cube"].gesture_variant, 0);
+}
+
+#[test]
+fn manual_gesture_variant_changes_gesture_not_surface_identity() {
+    use amigo_render_npr::StrokeRole;
+    use std::collections::BTreeSet;
+
+    let state = Arc::new(NprPlaygroundState::default());
+    state.settings.lock().unwrap().global =
+        amigo_npr_playground_plugin::state::style_preset("Pencil Study").unwrap();
+    let render = NprPlaygroundRenderService::default();
+    render.rebuild(&state.snapshot(), [512, 512]).unwrap();
+    let before = render.commands()[0].packet.clone();
+    let before_ids = before
+        .strokes
+        .iter()
+        .filter(|stroke| stroke.role == StrokeRole::Tone)
+        .map(|stroke| stroke.id)
+        .collect::<BTreeSet<_>>();
+
+    let controls = RuntimeControlService::default();
+    controls.register_provider(state.clone());
+    controls
+        .set(
+            &format!("{PREFIX}new_gesture_variant"),
+            ControlValue::Bool(true),
+        )
+        .unwrap();
+    render.rebuild(&state.snapshot(), [512, 512]).unwrap();
+    let after = render.commands()[0].packet.clone();
+    let after_ids = after
+        .strokes
+        .iter()
+        .filter(|stroke| stroke.role == StrokeRole::Tone)
+        .map(|stroke| stroke.id)
+        .collect::<BTreeSet<_>>();
+    assert_eq!(before_ids, after_ids);
+    assert_ne!(before, after);
+}
+
+#[test]
+fn surface_hatch_identities_survive_a_rigid_object_rotation() {
+    use amigo_render_npr::StrokeRole;
+    use glam::{EulerRot, Quat, Vec3};
+    use std::collections::BTreeSet;
+
+    let render = NprPlaygroundRenderService::default();
+    let mut settings = NprPlaygroundState::default().snapshot();
+    settings.global = amigo_npr_playground_plugin::state::style_preset("Pencil Study")
+        .expect("typed pencil profile");
+    let local_light = Vec3::new(-0.4, 0.7, 1.0).normalize();
+    let object = settings.objects.get_mut("cube").unwrap();
+    let rotation = object.rotation.map(f32::to_radians);
+    settings.global.light_direction =
+        Quat::from_euler(EulerRot::YXZ, rotation.y, rotation.x, rotation.z) * local_light;
+    render.rebuild(&settings, [512, 512]).unwrap();
+    let before = render.commands()[0]
+        .packet
+        .strokes
+        .iter()
+        .filter(|stroke| stroke.role == StrokeRole::Tone)
+        .map(|stroke| stroke.id)
+        .collect::<BTreeSet<_>>();
+    assert!(!before.is_empty());
+
+    let object = settings.objects.get_mut("cube").unwrap();
+    object.rotation.y += 23.0;
+    let rotation = object.rotation.map(f32::to_radians);
+    settings.global.light_direction =
+        Quat::from_euler(EulerRot::YXZ, rotation.y, rotation.x, rotation.z) * local_light;
+    render.rebuild(&settings, [512, 512]).unwrap();
+    let after = render.commands()[0]
+        .packet
+        .strokes
+        .iter()
+        .filter(|stroke| stroke.role == StrokeRole::Tone)
+        .map(|stroke| stroke.id)
+        .collect::<BTreeSet<_>>();
+    assert_eq!(after, before);
 }
 
 #[test]

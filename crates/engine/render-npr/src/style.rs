@@ -2,13 +2,41 @@ use crate::feature::FeatureClass;
 use crate::tool::StrokeTool;
 use glam::Vec4;
 
+/// Controls whether tonal form is painted as authored colour bands or produced
+/// by strokes over the paper. It is a typed rendering decision, not a backend
+/// inference based on a preset name.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum NprToneMode {
+    #[default]
+    ThreeBand,
+    Hatching,
+}
+
+/// Declares whether triangle edges describe the intended form or merely sample
+/// a smooth one. It is an authored/domain decision, never inferred by WGPU
+/// from a mesh name.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum NprSurfaceMode {
+    #[default]
+    Polygonal,
+    Smooth,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, serde::Serialize, serde::Deserialize)]
 #[serde(default)]
 pub struct ComicInk {
     pub tool: StrokeTool,
+    pub tone_mode: NprToneMode,
+    pub surface_mode: NprSurfaceMode,
     pub light_direction: glam::Vec3,
     pub ink: Vec4,
     pub crease_angle: f32,
+    /// Dihedral threshold above which the smooth contour field must not blend
+    /// normals across a mesh edge. This is independent from whether that edge
+    /// is drawn as an explicit crease.
+    pub smooth_crease_angle: f32,
     pub paper: Vec4,
     pub shadow: Vec4,
     pub mid: Vec4,
@@ -39,9 +67,12 @@ impl Default for ComicInk {
     fn default() -> Self {
         Self {
             tool: StrokeTool::Fineliner,
+            tone_mode: NprToneMode::ThreeBand,
+            surface_mode: NprSurfaceMode::Polygonal,
             light_direction: glam::Vec3::new(-0.4, 0.7, 1.0),
             ink: Vec4::new(0.035, 0.025, 0.02, 1.0),
             crease_angle: 0.35,
+            smooth_crease_angle: 1.2,
             paper: Vec4::new(0.92, 0.88, 0.78, 1.0),
             shadow: Vec4::new(0.18, 0.20, 0.28, 1.0),
             mid: Vec4::new(0.46, 0.54, 0.68, 1.0),
