@@ -76,6 +76,9 @@ fn construction_authoring_commits_open_and_closed_source_lines() {
     assert_eq!(marks.len(), 2);
     assert!(marks[1].closed);
     assert_eq!(marks[1].anchors.len(), 3);
+
+    state.delete_last_construction_mark().unwrap();
+    assert_eq!(state.snapshot().objects["cube"].construction_marks.len(), 1);
 }
 
 #[test]

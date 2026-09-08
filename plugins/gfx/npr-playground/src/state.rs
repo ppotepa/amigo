@@ -29,6 +29,7 @@ const ACTIONS: &[&str] = &[
     "commit_construction_mark",
     "close_construction_mark",
     "cancel_construction_mark",
+    "delete_last_construction_mark",
 ];
 fn resolved_key(key: &str, settings: &Settings) -> String {
     if let Some(field) = key.strip_prefix("object.") {
@@ -694,6 +695,28 @@ impl NprPlaygroundState {
         Ok(())
     }
 
+    /// Removes the newest authored mark on the selected object as one undoable
+    /// settings change. Arbitrary mark selection will use the same command
+    /// boundary once the editor supplies a structured-list widget.
+    pub fn delete_last_construction_mark(&self) -> Result<(), String> {
+        let mut settings = self.settings.lock().unwrap();
+        let before = settings.clone();
+        let selected = settings.selected.clone();
+        let object = settings
+            .objects
+            .get_mut(&selected)
+            .ok_or_else(|| format!("unknown construction-mark object {selected}"))?;
+        object
+            .construction_marks
+            .pop()
+            .ok_or("the selected object has no construction marks")?;
+        self.history
+            .lock()
+            .unwrap()
+            .record("delete_construction_mark", &before, &settings);
+        Ok(())
+    }
+
     fn control_values(&self, settings: &Settings) -> BTreeMap<String, ControlValue> {
         let mut props = values(settings);
         for (key, value) in props.clone() {
@@ -756,6 +779,35 @@ impl NprPlaygroundState {
         props.insert(
             "construction_authoring_can_close".into(),
             ControlValue::Bool(authoring.anchors.len() >= 3),
+        );
+        let marks = &settings.objects[&settings.selected].construction_marks;
+        props.insert(
+            "construction_mark_count".into(),
+            ControlValue::U64(marks.len() as u64),
+        );
+        props.insert(
+            "construction_mark_last_id".into(),
+            ControlValue::String(
+                marks
+                    .last()
+                    .map(|mark| format!("0x{:08X}", mark.id))
+                    .unwrap_or_else(|| "—".into()),
+            ),
+        );
+        props.insert(
+            "construction_mark_can_delete".into(),
+            ControlValue::Bool(!marks.is_empty()),
+        );
+        props.insert(
+            "construction_mark_summary".into(),
+            ControlValue::String(format!(
+                "Linie: {} · ostatnia: {}",
+                marks.len(),
+                marks
+                    .last()
+                    .map(|mark| format!("0x{:08X}", mark.id))
+                    .unwrap_or_else(|| "—".into())
+            )),
         );
         props.insert(
             "construction_authoring_status".into(),
@@ -865,6 +917,9 @@ impl NprPlaygroundState {
         if action == "cancel_construction_mark" {
             self.cancel_construction_mark();
             return Ok(());
+        }
+        if action == "delete_last_construction_mark" {
+            return self.delete_last_construction_mark();
         }
         if action == "fit" {
             self.fit()?;
@@ -1174,6 +1229,10 @@ impl RuntimeControlProvider for NprPlaygroundState {
                     "construction_authoring_can_commit",
                     "construction_authoring_can_close",
                     "construction_authoring_status",
+                    "construction_mark_count",
+                    "construction_mark_last_id",
+                    "construction_mark_can_delete",
+                    "construction_mark_summary",
                 ]
                 .contains(&key.as_str())
                     && !key.ends_with(".status")

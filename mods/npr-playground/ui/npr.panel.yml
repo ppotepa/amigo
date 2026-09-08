@@ -761,6 +761,17 @@ root:
                   enabled_bind: "world.npr.settings.NprSettings.construction_authoring_active"
                   on_click:
                     event: "npr.cancel_construction_mark"
+                -
+                  type: "text"
+                  id: "construction-summary"
+                  text_bind: "world.npr.settings.NprSettings.construction_mark_summary"
+                -
+                  type: "button"
+                  id: "delete-last-construction-mark"
+                  text: "Usuń ostatnią linię"
+                  enabled_bind: "world.npr.settings.NprSettings.construction_mark_can_delete"
+                  on_click:
+                    event: "npr.delete_last_construction_mark"
             -
               type: "group-box"
               id: "inheritance"
