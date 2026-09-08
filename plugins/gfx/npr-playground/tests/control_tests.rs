@@ -103,6 +103,32 @@ fn construction_authoring_waits_for_the_panel_click_to_be_released() {
 }
 
 #[test]
+fn construction_authoring_renders_a_transient_preview_without_serializing_it() {
+    let state = NprPlaygroundState::default();
+    state.begin_construction_mark().unwrap();
+    for barycentric in [[0.7, 0.2, 0.1], [0.1, 0.7, 0.2]] {
+        state
+            .place_construction_anchor(
+                "cube",
+                ConstructionAnchorSettings {
+                    triangle: 0,
+                    barycentric,
+                },
+            )
+            .unwrap();
+    }
+
+    assert!(state.snapshot().objects["cube"].construction_marks.is_empty());
+    let preview = state.render_snapshot();
+    let marks = &preview.objects["cube"].construction_marks;
+    assert_eq!(marks.len(), 1);
+    assert_eq!(marks[0].id, u32::MAX);
+    assert_eq!(marks[0].anchors.len(), 2);
+    assert!(!marks[0].closed);
+    assert!(state.authored_scene_document().unwrap().objects.is_empty());
+}
+
+#[test]
 fn latest_construction_mark_style_is_live_editable_and_validated() {
     let state = Arc::new(NprPlaygroundState::default());
     state.begin_construction_mark().unwrap();

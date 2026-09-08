@@ -1220,6 +1220,29 @@ impl NprPlaygroundState {
                 }
             }
         }
+        // A draft has no authored identity yet. Render it only after it has a
+        // drawable open path, with an id outside the regular authoring range.
+        // `snapshot()` and scene-document projection deliberately never see it.
+        let authoring = self.construction_authoring.lock().unwrap();
+        if let Some(object_id) = authoring.object_id.as_deref()
+            && authoring.anchors.len() >= 2
+            && let Some(object) = settings.objects.get_mut(object_id)
+        {
+            let mut id = u32::MAX;
+            while object.construction_marks.iter().any(|mark| mark.id == id) {
+                let Some(next) = id.checked_sub(1) else {
+                    return settings;
+                };
+                id = next;
+            }
+            object.construction_marks.push(ConstructionMarkSettings {
+                id,
+                anchors: authoring.anchors.clone(),
+                closed: false,
+                width_scale: default_construction_width_scale(),
+                opacity: 0.5,
+            });
+        }
         settings
     }
     fn fit(&self) -> Result<(), String> {
