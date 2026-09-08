@@ -762,6 +762,13 @@ root:
                   on_click:
                     event: "npr.cancel_construction_mark"
                 -
+                  type: "button"
+                  id: "undo-construction-anchor"
+                  text: "Cofnij punkt"
+                  enabled_bind: "world.npr.settings.NprSettings.construction_authoring_can_undo_point"
+                  on_click:
+                    event: "npr.undo_construction_anchor"
+                -
                   type: "text"
                   id: "construction-summary"
                   text_bind: "world.npr.settings.NprSettings.construction_mark_summary"

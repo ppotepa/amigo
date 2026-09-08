@@ -29,6 +29,7 @@ const ACTIONS: &[&str] = &[
     "commit_construction_mark",
     "close_construction_mark",
     "cancel_construction_mark",
+    "undo_construction_anchor",
     "delete_selected_construction_mark",
     "select_previous_construction_mark",
     "select_next_construction_mark",
@@ -622,6 +623,20 @@ impl NprPlaygroundState {
         *self.construction_authoring.lock().unwrap() = ConstructionAuthoringState::default();
     }
 
+    /// Removes the most recently placed draft point without changing authored
+    /// scene data or the document undo history.
+    pub fn undo_construction_anchor(&self) -> Result<(), String> {
+        let mut authoring = self.construction_authoring.lock().unwrap();
+        if authoring.object_id.is_none() {
+            return Err("construction mark authoring is not active".into());
+        }
+        authoring
+            .anchors
+            .pop()
+            .ok_or("the construction mark has no points to remove")?;
+        Ok(())
+    }
+
     pub fn construction_authoring_active(&self) -> bool {
         self.construction_authoring.lock().unwrap().object_id.is_some()
     }
@@ -905,6 +920,10 @@ impl NprPlaygroundState {
             "construction_authoring_can_close".into(),
             ControlValue::Bool(authoring.anchors.len() >= 3),
         );
+        props.insert(
+            "construction_authoring_can_undo_point".into(),
+            ControlValue::Bool(!authoring.anchors.is_empty()),
+        );
         let marks = &settings.objects[&settings.selected].construction_marks;
         let selected_mark = self
             .selected_construction_mark_index(marks.len())
@@ -1082,6 +1101,9 @@ impl NprPlaygroundState {
         if action == "cancel_construction_mark" {
             self.cancel_construction_mark();
             return Ok(());
+        }
+        if action == "undo_construction_anchor" {
+            return self.undo_construction_anchor();
         }
         if action == "delete_selected_construction_mark" {
             return self.delete_selected_construction_mark();
@@ -1425,6 +1447,7 @@ impl RuntimeControlProvider for NprPlaygroundState {
                     "construction_authoring_points",
                     "construction_authoring_can_commit",
                     "construction_authoring_can_close",
+                    "construction_authoring_can_undo_point",
                     "construction_authoring_status",
                     "construction_mark_count",
                     "construction_mark_last_id",
