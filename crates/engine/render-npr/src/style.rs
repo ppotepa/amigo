@@ -70,6 +70,12 @@ pub struct ComicInk {
     /// replacement for the outer silhouette.
     pub suggestive_contours: bool,
     pub suggestive_contour_confidence: f32,
+    /// Secondary interior contour appearance, relative to authored crease ink.
+    pub suggestive_contour_width_scale: f32,
+    pub suggestive_contour_opacity: f32,
+    /// Tonal form-line appearance, independent from silhouette/crease ink.
+    pub form_line_width_scale: f32,
+    pub form_line_opacity: f32,
     pub hatching_angle: f32,
     pub hatching_spacing: f32,
     pub hatching_cross: f32,
@@ -113,6 +119,10 @@ impl Default for ComicInk {
             min_form_line_confidence: 0.22,
             suggestive_contours: false,
             suggestive_contour_confidence: 0.40,
+            suggestive_contour_width_scale: 0.55,
+            suggestive_contour_opacity: 0.55,
+            form_line_width_scale: 1.0,
+            form_line_opacity: 1.0,
             hatching_angle: -25.0,
             hatching_spacing: 9.0,
             hatching_cross: 0.0,

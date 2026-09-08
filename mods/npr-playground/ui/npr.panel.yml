@@ -336,6 +336,22 @@ root:
                       step: 0.01
                     -
                       type: "slider"
+                      id: "ink-suggestive-contour-width"
+                      text: "Grubość konturów sugerowanych"
+                      value_bind: "world.npr.settings.NprSettings.appearance.suggestive_contour_width_scale"
+                      min: 0
+                      max: 2
+                      step: 0.01
+                    -
+                      type: "slider"
+                      id: "ink-suggestive-contour-opacity"
+                      text: "Krycie konturów sugerowanych"
+                      value_bind: "world.npr.settings.NprSettings.appearance.suggestive_contour_opacity"
+                      min: 0
+                      max: 1
+                      step: 0.01
+                    -
+                      type: "slider"
                       id: "ink-boundary_width"
                       text: "Otwarte brzegi"
                       value_bind: "world.npr.settings.NprSettings.appearance.boundary_width"
@@ -537,6 +553,22 @@ root:
                           text: "Form-line confidence"
                           tooltip: "Suppresses tonal strokes where the local tangent is ambiguous or normal curvature changes too abruptly."
                           value_bind: "world.npr.settings.NprSettings.appearance.min_form_line_confidence"
+                          min: 0
+                          max: 1
+                          step: 0.01
+                        -
+                          type: "slider"
+                          id: "ink-form-line-width"
+                          text: "Grubość linii formy"
+                          value_bind: "world.npr.settings.NprSettings.appearance.form_line_width_scale"
+                          min: 0
+                          max: 2
+                          step: 0.01
+                        -
+                          type: "slider"
+                          id: "ink-form-line-opacity"
+                          text: "Krycie linii formy"
+                          value_bind: "world.npr.settings.NprSettings.appearance.form_line_opacity"
                           min: 0
                           max: 1
                           step: 0.01

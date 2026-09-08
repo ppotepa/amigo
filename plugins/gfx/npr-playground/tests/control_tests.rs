@@ -112,6 +112,21 @@ fn metadata_controls_validate_atomically_and_presets_restore_all_objects() {
         .is_err());
     controls
         .set(
+            &path("global.suggestive_contour_width_scale"),
+            ControlValue::F64(1.25),
+        )
+        .unwrap();
+    assert!(controls
+        .set(
+            &path("global.form_line_width_scale"),
+            ControlValue::F64(2.01)
+        )
+        .is_err());
+    controls
+        .set(&path("global.form_line_opacity"), ControlValue::F64(0.35))
+        .unwrap();
+    controls
+        .set(
             &path("object.surface_mode"),
             ControlValue::String("smooth".into()),
         )

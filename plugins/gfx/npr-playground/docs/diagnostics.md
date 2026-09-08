@@ -41,6 +41,11 @@ detail for a cleaner, less triangulation-driven drawing.
 use a separate stable identity range from silhouettes and are emitted only on
 Smooth surfaces when `suggestive_contours` is enabled.
 
+Suggestive contours and tonal form-lines have independent width/opacity
+controls. Width is applied before tessellation; opacity scales the deterministic
+coverage field afterwards, so neither control reclassifies geometry or changes
+the renderer's pass ordering.
+
 `stroke_budget_rejected` and `stroke_budget_exhausted` report a deterministic
 CPU packet limit before WGPU upload. Feature strokes are retained before tonal
 strokes, so a dense scene degrades predictably instead of allocating an invalid

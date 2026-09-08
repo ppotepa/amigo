@@ -371,10 +371,15 @@ fn validate_style(s: ComicInk) -> Result<(), String> {
             s.tone_density,
             s.min_form_line_confidence,
             s.suggestive_contour_confidence,
+            s.suggestive_contour_opacity,
+            s.form_line_opacity,
             s.hatching_cross,
         ]
         .iter()
         .any(|v| !v.is_finite() || !(0.0..=1.0).contains(v))
+        || [s.suggestive_contour_width_scale, s.form_line_width_scale]
+            .iter()
+            .any(|v| !v.is_finite() || !(0.0..=2.0).contains(v))
         || !s.nib_angle.is_finite()
         || !(-180.0..=180.0).contains(&s.nib_angle)
         || !s.nib_aspect.is_finite()
@@ -815,6 +820,8 @@ fn property_range(key: &str) -> Option<ControlRange> {
         "hatching_cross" => (0.0, 1.0),
         "min_form_line_confidence" => (0.0, 1.0),
         "suggestive_contour_confidence" => (0.0, 1.0),
+        "suggestive_contour_width_scale" | "form_line_width_scale" => (0.0, 2.0),
+        "suggestive_contour_opacity" | "form_line_opacity" => (0.0, 1.0),
         "scale" => (0.01, 10.0),
         "speed" => (0.0, 4.0),
         "appearance_fade_seconds" => (0.0, 2.0),

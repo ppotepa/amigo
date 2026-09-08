@@ -426,14 +426,17 @@ fn build_packet_with_identity(
             })
             .collect::<Option<Vec<_>>>();
         if let Some(points) = points.filter(|points| points.len() >= 2) {
-            strokes.extend(tessellate_polyline_variants(
+            let suggestive_style = stroke_layer_style(style, style.suggestive_contour_width_scale);
+            let mut contour_strokes = tessellate_polyline_variants(
                 contour.id,
                 FeatureClass::Crease,
                 &points,
                 false,
-                style,
+                suggestive_style,
                 seed,
-            ));
+            );
+            apply_stroke_opacity(&mut contour_strokes, style.suggestive_contour_opacity);
+            strokes.extend(contour_strokes);
         }
     }
     let graphite_mass = if style.tone_mode == NprToneMode::Hatching {
@@ -454,7 +457,12 @@ fn build_packet_with_identity(
             &mut hatching_budget,
         )
     } else {
-        let strokes = emit_hatching_segments(hatch_segments, style, seed);
+        let mut strokes = emit_hatching_segments(
+            hatch_segments,
+            stroke_layer_style(style, style.form_line_width_scale),
+            seed,
+        );
+        apply_stroke_opacity(&mut strokes, style.form_line_opacity);
         HatchingOutput {
             candidates: strokes.len(),
             strokes,
@@ -532,6 +540,20 @@ fn stroke_data_bytes(stroke: &TessellatedStroke) -> usize {
             .indices
             .len()
             .saturating_mul(std::mem::size_of::<u32>())
+}
+
+fn stroke_layer_style(mut style: ComicInk, width_scale: f32) -> ComicInk {
+    style.crease_width *= width_scale.clamp(0.0, 2.0);
+    style
+}
+
+fn apply_stroke_opacity(strokes: &mut [TessellatedStroke], opacity: f32) {
+    let opacity = opacity.clamp(0.0, 1.0);
+    for stroke in strokes {
+        for vertex in &mut stroke.vertices {
+            vertex.coverage *= opacity;
+        }
+    }
 }
 
 fn rank_feature_chains(
@@ -853,6 +875,7 @@ fn emit_surface_hatching(
     let (candidates, report) = select_ranked(available, candidates);
     let mut strokes = Vec::new();
     let mut corrections = 0;
+    let form_style = stroke_layer_style(style, style.form_line_width_scale);
     for candidate in candidates {
         // A correction is a distinct, low-coverage gesture with a stable ID.
         // It refines an accepted hatch, so it never consumes another planned
@@ -862,13 +885,17 @@ fn emit_surface_hatching(
             FeatureClass::Crease,
             &candidate.points,
             false,
-            style,
+            form_style,
             seed ^ u64::from(candidate.id),
         ) {
             stroke.role = StrokeRole::Tone;
             if candidate.coverage < 1.0 {
                 for vertex in &mut stroke.vertices {
-                    vertex.coverage *= candidate.coverage;
+                    vertex.coverage *= candidate.coverage * style.form_line_opacity.clamp(0.0, 1.0);
+                }
+            } else if style.form_line_opacity < 1.0 {
+                for vertex in &mut stroke.vertices {
+                    vertex.coverage *= style.form_line_opacity.clamp(0.0, 1.0);
                 }
             }
             if stroke.correction {
@@ -1567,6 +1594,43 @@ mod tests {
         assert_eq!(without.stats.suggestive_contour_spans, 0);
         assert!(with.stats.suggestive_contour_spans > 0);
         assert!(with.strokes.len() > without.strokes.len());
+
+        let full = build_packet(
+            &geometry,
+            camera,
+            [512, 512],
+            ComicInk {
+                suggestive_contours: true,
+                suggestive_contour_confidence: 0.0,
+                suggestive_contour_width_scale: 1.0,
+                suggestive_contour_opacity: 1.0,
+                ..base
+            },
+            7,
+            NprDebugView::Final,
+        );
+        let maximum = |packet: &NprRenderPacket, field: fn(&crate::StrokeVertex) -> f32| {
+            packet
+                .strokes
+                .iter()
+                .filter(|stroke| stroke.id & 0xf000_0000 == 0x3000_0000)
+                .flat_map(|stroke| stroke.vertices.iter())
+                .map(field)
+                .fold(0.0f32, f32::max)
+        };
+        assert!(maximum(&full, |vertex| vertex.width) > maximum(&with, |vertex| vertex.width));
+        assert!(
+            maximum(&full, |vertex| vertex.coverage) > maximum(&with, |vertex| vertex.coverage)
+        );
+    }
+
+    #[test]
+    fn form_line_layer_scales_only_crease_width() {
+        let style = ComicInk::default();
+        let layered = stroke_layer_style(style, 0.4);
+        assert_eq!(layered.crease_width, style.crease_width * 0.4);
+        assert_eq!(layered.outline_width, style.outline_width);
+        assert_eq!(layered.boundary_width, style.boundary_width);
     }
 
     #[test]
