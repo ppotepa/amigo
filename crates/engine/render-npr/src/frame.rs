@@ -39,7 +39,14 @@ struct HatchingOutput {
     strokes: Vec<TessellatedStroke>,
     candidates: usize,
     rejected: usize,
+    confidence_rejected: usize,
     corrections: usize,
+}
+
+#[derive(Debug, Default)]
+struct SurfaceHatchLaneOutput {
+    candidates: Vec<SurfaceHatchCandidate>,
+    confidence_rejected: usize,
 }
 
 /// A projected path that has passed surface analysis but has not yet allocated
@@ -90,6 +97,9 @@ pub struct NprRenderStats {
     pub hatching_candidates: usize,
     /// Candidates intentionally removed by the declared quality budget.
     pub hatching_rejected: usize,
+    /// Tonal candidates rejected before tessellation because their local form
+    /// direction was ambiguous or changed too abruptly across the path.
+    pub hatching_confidence_rejected: usize,
     /// Stateful tonal detail tier chosen by the scene/domain owner.
     pub hatching_lod_tier: u8,
     /// The packet reached its declared hatch-line budget. This is a quality
@@ -413,6 +423,7 @@ fn build_packet_with_identity(
             candidates: strokes.len(),
             strokes,
             rejected: 0,
+            confidence_rejected: 0,
             corrections: 0,
         }
     };
@@ -453,6 +464,7 @@ fn build_packet_with_identity(
         graphite_mass,
         hatching_candidates: hatching.candidates,
         hatching_rejected: hatching.rejected + stroke_budget_rejected_tone,
+        hatching_confidence_rejected: hatching.confidence_rejected,
         hatching_lod_tier: 0,
         hatching_budget_exhausted,
         stroke_budget_rejected,
@@ -732,7 +744,7 @@ fn emit_surface_hatching(
         return HatchingOutput::default();
     }
     let available = *budget;
-    let mut output = emit_surface_hatching_lane(
+    let primary = emit_surface_hatching_lane(
         geometry,
         topology,
         surface,
@@ -748,6 +760,8 @@ fn emit_surface_hatching(
         1.0,
         available,
     );
+    let mut output = primary.candidates;
+    let mut confidence_rejected = primary.confidence_rejected;
     let cross_faces = face_tones
         .iter()
         .map(|tone| tone.cross_density > 0.001)
@@ -766,7 +780,7 @@ fn emit_surface_hatching(
         // parallel longitudinal set.
         let cross_normal = (side + form_axis * 0.72).normalize_or_zero();
         if cross_normal.length_squared() > 1e-8 {
-            output.extend(emit_surface_hatching_lane(
+            let cross = emit_surface_hatching_lane(
                 geometry,
                 topology,
                 surface,
@@ -781,7 +795,9 @@ fn emit_surface_hatching(
                 1,
                 style.hatching_cross.clamp(0.0, 1.0),
                 available,
-            ));
+            );
+            confidence_rejected += cross.confidence_rejected;
+            output.extend(cross.candidates);
         }
     }
     let candidates = output
@@ -796,7 +812,7 @@ fn emit_surface_hatching(
             )
         })
         .collect::<Vec<_>>();
-    let candidate_count = candidates.len();
+    let candidate_count = candidates.len() + confidence_rejected;
     let (candidates, report) = select_ranked(available, candidates);
     let mut strokes = Vec::new();
     let mut corrections = 0;
@@ -830,7 +846,8 @@ fn emit_surface_hatching(
     HatchingOutput {
         strokes,
         candidates: candidate_count,
-        rejected: report.rejected,
+        rejected: report.rejected + confidence_rejected,
+        confidence_rejected,
         corrections,
     }
 }
@@ -851,7 +868,7 @@ fn emit_surface_hatching_lane(
     lane: u32,
     coverage_scale: f32,
     max_paths: usize,
-) -> Vec<SurfaceHatchCandidate> {
+) -> SurfaceHatchLaneOutput {
     let vp = Vec2::new(viewport[0] as f32, viewport[1] as f32);
     let (min, max) = geometry
         .vertices
@@ -861,7 +878,7 @@ fn emit_surface_hatching_lane(
             (min.min(value), max.max(value))
         });
     if !min.is_finite() || !max.is_finite() || max - min <= 1e-6 {
-        return vec![];
+        return SurfaceHatchLaneOutput::default();
     }
     let density = face_density.iter().copied().fold(0.0f32, f32::max);
     let pixel_spacing = (style.hatching_spacing / (0.35 + density * 0.95)).clamp(1.0, 40.0);
@@ -886,7 +903,7 @@ fn emit_surface_hatching_lane(
         0.85,
         max_paths,
     );
-    let mut output = Vec::new();
+    let mut output = SurfaceHatchLaneOutput::default();
     for seed_path in paths {
         let Some(start_face) = seed_path.faces.first().copied() else {
             continue;
@@ -917,6 +934,11 @@ fn emit_surface_hatching_lane(
         } else {
             seed_path
         };
+        let form_confidence = surface_path_form_confidence(direction_field, &path);
+        if form_confidence < style.min_form_line_confidence.clamp(0.0, 1.0) {
+            output.confidence_rejected += 1;
+            continue;
+        }
         let points = path
             .points
             .iter()
@@ -946,14 +968,42 @@ fn emit_surface_hatching_lane(
         // nearly invisible geometry. Cross-hatching still uses its authored
         // low lane coverage on top of this form response.
         let form_coverage = 0.42 + 0.58 * (path_density / density.max(1e-4)).clamp(0.0, 1.0);
-        let coverage_scale = coverage_scale * form_coverage * path_coverage;
-        output.push(SurfaceHatchCandidate {
+        let coverage_scale =
+            coverage_scale * form_coverage * path_coverage * form_confidence.sqrt();
+        output.candidates.push(SurfaceHatchCandidate {
             id,
             points,
             coverage: coverage_scale,
         });
     }
     output
+}
+
+/// A reliable form line needs both an unambiguous tangent and a locally smooth
+/// normal field. Curvature does not make a form invalid by itself; it simply
+/// lowers trust when a short, irregular triangle fan would otherwise imprint
+/// its sampling pattern into a graphite stroke.
+fn surface_path_form_confidence(
+    direction_field: &SurfaceDirectionField,
+    path: &crate::SurfaceHatchPath,
+) -> f32 {
+    let mut count = 0usize;
+    let mut tangent_confidence = 0.0f32;
+    let mut curvature_penalty = 0.0f32;
+    for face in &path.faces {
+        let face = *face as usize;
+        tangent_confidence += direction_field.face_confidence(face);
+        curvature_penalty += direction_field.face_curvature(face).sqrt();
+        count += 1;
+    }
+    if count == 0 {
+        return 0.0;
+    }
+    let tangent_confidence = tangent_confidence / count as f32;
+    let curvature_penalty = curvature_penalty / count as f32;
+    // Square-rooted normal turn preserves broad, smooth bends but strongly
+    // discounts abrupt one-ring changes caused by coarse or noisy sampling.
+    tangent_confidence * (1.0 - curvature_penalty).clamp(0.0, 1.0)
 }
 
 /// Surface endpoints are a more durable identity than an emission index. They
@@ -1638,6 +1688,29 @@ mod tests {
         assert_eq!(
             packet.stats.hatching_candidates + packet.stats.hatching_correction_strokes,
             packet.stats.hatching_strokes + packet.stats.hatching_rejected
+        );
+    }
+
+    #[test]
+    fn form_line_confidence_rejects_ambiguous_tonal_paths_before_tessellation() {
+        let mut style = ComicInk::default();
+        style.tone_mode = NprToneMode::Hatching;
+        style.tone_density = 1.0;
+        style.min_form_line_confidence = 1.0;
+        let packet = build_packet(
+            &NprGeometry::cylinder(16),
+            PerspectiveCamera::cube_default(1.0),
+            [512, 512],
+            style,
+            7,
+            NprDebugView::Final,
+        );
+        assert!(packet.stats.hatching_candidates > 0);
+        assert!(packet.stats.hatching_confidence_rejected > 0);
+        assert_eq!(packet.stats.hatching_strokes, 0);
+        assert_eq!(
+            packet.stats.hatching_candidates,
+            packet.stats.hatching_rejected
         );
     }
 }

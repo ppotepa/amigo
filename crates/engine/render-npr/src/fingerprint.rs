@@ -187,6 +187,7 @@ fn hash_stats(hasher: &mut PacketHasher, stats: &NprRenderStats) {
     hasher.f32(stats.graphite_mass);
     hasher.usize(stats.hatching_candidates);
     hasher.usize(stats.hatching_rejected);
+    hasher.usize(stats.hatching_confidence_rejected);
     hasher.u8(stats.hatching_lod_tier);
     hasher.bool(stats.hatching_budget_exhausted);
     hasher.usize(stats.stroke_budget_rejected);

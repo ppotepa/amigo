@@ -84,6 +84,18 @@ fn metadata_controls_validate_atomically_and_presets_restore_all_objects() {
         .is_err());
     controls
         .set(
+            &path("global.min_form_line_confidence"),
+            ControlValue::F64(0.55),
+        )
+        .unwrap();
+    assert!(controls
+        .set(
+            &path("global.min_form_line_confidence"),
+            ControlValue::F64(1.01)
+        )
+        .is_err());
+    controls
+        .set(
             &path("object.surface_mode"),
             ControlValue::String("smooth".into()),
         )

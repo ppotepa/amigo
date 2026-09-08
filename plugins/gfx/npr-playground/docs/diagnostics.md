@@ -32,6 +32,11 @@ decision, not an implicit renderer LOD.
 shorter than the configured pixel threshold. Boundary and silhouette chains are
 not affected by this ranking pass.
 
+`hatching_confidence_rejected` counts tonal paths removed before tessellation
+because their local tangent is ambiguous or their normal field turns too
+abruptly. Adjust `min_form_line_confidence` in the Tone panel to trade local
+detail for a cleaner, less triangulation-driven drawing.
+
 `stroke_budget_rejected` and `stroke_budget_exhausted` report a deterministic
 CPU packet limit before WGPU upload. Feature strokes are retained before tonal
 strokes, so a dense scene degrades predictably instead of allocating an invalid

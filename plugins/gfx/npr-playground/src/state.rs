@@ -369,6 +369,7 @@ fn validate_style(s: ComicInk) -> Result<(), String> {
             s.paper_grain,
             s.ink_dryness,
             s.tone_density,
+            s.min_form_line_confidence,
             s.hatching_cross,
         ]
         .iter()
@@ -811,6 +812,7 @@ fn property_range(key: &str) -> Option<ControlRange> {
         "hatching_angle" => (-180.0, 180.0),
         "hatching_spacing" => (1.0, 40.0),
         "hatching_cross" => (0.0, 1.0),
+        "min_form_line_confidence" => (0.0, 1.0),
         "scale" => (0.01, 10.0),
         "speed" => (0.0, 4.0),
         "appearance_fade_seconds" => (0.0, 2.0),

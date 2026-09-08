@@ -518,6 +518,15 @@ root:
                           step: 0.01
                         -
                           type: "slider"
+                          id: "ink-min-form-line-confidence"
+                          text: "Form-line confidence"
+                          tooltip: "Suppresses tonal strokes where the local tangent is ambiguous or normal curvature changes too abruptly."
+                          value_bind: "world.npr.settings.NprSettings.appearance.min_form_line_confidence"
+                          min: 0
+                          max: 1
+                          step: 0.01
+                        -
+                          type: "slider"
                           id: "ink-hatching-angle"
                           text: "Kąt kreskowania"
                           value_bind: "world.npr.settings.NprSettings.appearance.hatching_angle"

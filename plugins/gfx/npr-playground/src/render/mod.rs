@@ -104,6 +104,10 @@ impl NprPlaygroundRenderService {
                 ),
                 ("hatching_candidates", s.hatching_candidates),
                 ("hatching_rejected", s.hatching_rejected),
+                (
+                    "hatching_confidence_rejected",
+                    s.hatching_confidence_rejected,
+                ),
                 ("stroke_budget_rejected", s.stroke_budget_rejected),
                 ("temporal_retained_strokes", s.temporal_retained_strokes),
                 ("temporal_entering_strokes", s.temporal_entering_strokes),

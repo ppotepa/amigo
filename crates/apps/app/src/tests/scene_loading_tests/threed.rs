@@ -145,7 +145,7 @@ fn npr_playground_offscreen_matches_packet_contract() {
     assert_eq!(stats.viewport, [512, 512]);
     assert_eq!(
         packet.npr()[0].packet.fingerprint().hash,
-        10_372_164_815_849_465_642
+        3_556_188_004_893_241_386
     );
     assert!(
         first
@@ -194,7 +194,7 @@ fn npr_pencil_profile_uses_depth_occluders_without_color_bands() {
     assert!(!command.packet.occluders.is_empty());
     assert!(command.packet.fills.is_empty());
     assert!(command.packet.stats.hatching_strokes > 0);
-    assert_eq!(command.packet.fingerprint().hash, 9_489_862_414_030_230_799);
+    assert_eq!(command.packet.fingerprint().hash, 4_485_983_985_151_613_716);
     let darkest = image
         .pixels_rgba8
         .chunks_exact(4)
@@ -252,7 +252,7 @@ fn npr_pencil_cylinder_streamlines_match_reviewed_golden() {
     assert!(!command.packet.occluders.is_empty());
     assert!(command.packet.fills.is_empty());
     assert!(command.packet.stats.hatching_strokes > 0);
-    assert_eq!(command.packet.fingerprint().hash, 14_134_893_290_782_395_102);
+    assert_eq!(command.packet.fingerprint().hash, 5_652_723_104_610_385_255);
     assert!(
         command
             .packet

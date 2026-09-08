@@ -61,6 +61,10 @@ pub struct ComicInk {
     pub nib_aspect: f32,
     pub ink_dryness: f32,
     pub tone_density: f32,
+    /// Lowest reliable local form direction accepted for a tonal stroke.
+    /// This suppresses arbitrary marks where the inferred tangent is unstable
+    /// or the normal field turns too abruptly across sampling triangles.
+    pub min_form_line_confidence: f32,
     pub hatching_angle: f32,
     pub hatching_spacing: f32,
     pub hatching_cross: f32,
@@ -101,6 +105,7 @@ impl Default for ComicInk {
             nib_aspect: 0.0,
             ink_dryness: 0.0,
             tone_density: 0.0,
+            min_form_line_confidence: 0.22,
             hatching_angle: -25.0,
             hatching_spacing: 9.0,
             hatching_cross: 0.0,
