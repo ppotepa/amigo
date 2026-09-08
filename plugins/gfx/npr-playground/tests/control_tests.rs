@@ -66,6 +66,24 @@ fn metadata_controls_validate_atomically_and_presets_restore_all_objects() {
     );
     controls
         .set(
+            &path("global.min_crease_length_pixels"),
+            ControlValue::F64(64.0),
+        )
+        .unwrap();
+    assert_eq!(
+        controls
+            .get(&path("global.min_crease_length_pixels"))
+            .unwrap(),
+        ControlValue::F64(64.0)
+    );
+    assert!(controls
+        .set(
+            &path("global.min_crease_length_pixels"),
+            ControlValue::F64(64.5)
+        )
+        .is_err());
+    controls
+        .set(
             &path("object.surface_mode"),
             ControlValue::String("smooth".into()),
         )

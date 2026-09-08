@@ -345,14 +345,11 @@ fn validate_style(s: ComicInk) -> Result<(), String> {
             return Err("color must be finite RGBA in 0..1".into());
         }
     }
-    if [
-        s.outline_width,
-        s.crease_width,
-        s.boundary_width,
-        s.min_crease_length_pixels,
-    ]
-    .iter()
-    .any(|v| !v.is_finite() || !(0.0..=20.0).contains(v))
+    if [s.outline_width, s.crease_width, s.boundary_width]
+        .iter()
+        .any(|v| !v.is_finite() || !(0.0..=20.0).contains(v))
+        || !s.min_crease_length_pixels.is_finite()
+        || !(0.0..=64.0).contains(&s.min_crease_length_pixels)
         || !s.taper.is_finite()
         || !(0.0..=1.0).contains(&s.taper)
         || !s.wobble.is_finite()

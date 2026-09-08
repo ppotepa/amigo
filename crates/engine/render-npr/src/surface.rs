@@ -6,9 +6,11 @@
 //! geometry/topology cache.
 
 use crate::{
-    NprGeometry, NprSubdivisionError, TopologyEdge, build_topology, subdivide_smooth_proxy,
+    build_topology, subdivide_smooth_proxy, NprGeometry, NprSubdivisionError, TopologyEdge,
 };
+use glam::Vec3;
 use std::collections::BTreeMap;
+use std::fmt;
 
 /// Stable content identifier for a prepared drawing surface.
 ///
@@ -17,6 +19,45 @@ use std::collections::BTreeMap;
 /// accidental geometry change within that revision.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct NprSurfaceContentId(pub u64);
+
+/// A local-space point on one immutable source-surface triangle.
+///
+/// The content identifier makes an anchor revision-scoped: clients must not
+/// accidentally reuse a stroke point after an asset changed.  The anchor is
+/// intentionally expressed against the source surface, never a view-dependent
+/// smooth proxy, so it remains meaningful while camera and proxy policy vary.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct NprSurfaceAnchor {
+    pub content_id: NprSurfaceContentId,
+    pub triangle: u32,
+    pub barycentric: [f32; 3],
+}
+
+/// Local-space result of resolving a [`NprSurfaceAnchor`].
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct NprSurfaceSample {
+    pub position: Vec3,
+    pub normal: Vec3,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum NprSurfaceAnchorError {
+    ContentMismatch,
+    TriangleOutOfRange,
+    InvalidBarycentric,
+}
+
+impl fmt::Display for NprSurfaceAnchorError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(match self {
+            Self::ContentMismatch => "surface anchor belongs to a different content revision",
+            Self::TriangleOutOfRange => "surface anchor triangle is out of range",
+            Self::InvalidBarycentric => "surface anchor barycentric coordinates are invalid",
+        })
+    }
+}
+
+impl std::error::Error for NprSurfaceAnchorError {}
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct NprPreparedSurface {
@@ -109,7 +150,11 @@ fn canonical_angle_bits(value: f32) -> u32 {
     } else {
         NprSmoothProxyPolicy::default().crease_angle
     };
-    if value == 0.0 { 0 } else { value.to_bits() }
+    if value == 0.0 {
+        0
+    } else {
+        value.to_bits()
+    }
 }
 
 impl NprPreparedSurface {
@@ -138,6 +183,62 @@ impl NprPreparedSurface {
     pub fn content_id(&self) -> NprSurfaceContentId {
         self.content_id
     }
+
+    /// Creates a validated anchor in this immutable surface revision.
+    pub fn anchor(
+        &self,
+        triangle: u32,
+        barycentric: [f32; 3],
+    ) -> Result<NprSurfaceAnchor, NprSurfaceAnchorError> {
+        if triangle as usize >= self.geometry.triangles.len() {
+            return Err(NprSurfaceAnchorError::TriangleOutOfRange);
+        }
+        if !valid_barycentric(barycentric) {
+            return Err(NprSurfaceAnchorError::InvalidBarycentric);
+        }
+        Ok(NprSurfaceAnchor {
+            content_id: self.content_id,
+            triangle,
+            barycentric,
+        })
+    }
+
+    /// Resolves a source-local anchor without applying an object transform.
+    ///
+    /// Callers apply their current object transform after sampling.  That keeps
+    /// authored stroke placement stable under object animation and avoids
+    /// baking camera/proxy state into a drawing mark.
+    pub fn sample(
+        &self,
+        anchor: NprSurfaceAnchor,
+    ) -> Result<NprSurfaceSample, NprSurfaceAnchorError> {
+        if anchor.content_id != self.content_id {
+            return Err(NprSurfaceAnchorError::ContentMismatch);
+        }
+        if !valid_barycentric(anchor.barycentric) {
+            return Err(NprSurfaceAnchorError::InvalidBarycentric);
+        }
+        let triangle = self
+            .geometry
+            .triangles
+            .get(anchor.triangle as usize)
+            .ok_or(NprSurfaceAnchorError::TriangleOutOfRange)?;
+        let [a, b, c] = triangle.map(|index| self.geometry.vertices[index as usize].position);
+        let [wa, wb, wc] = anchor.barycentric;
+        let normal = (b - a).cross(c - a).normalize_or_zero();
+        Ok(NprSurfaceSample {
+            position: a * wa + b * wb + c * wc,
+            normal,
+        })
+    }
+}
+
+fn valid_barycentric(value: [f32; 3]) -> bool {
+    const EPSILON: f32 = 1e-4;
+    value
+        .iter()
+        .all(|weight| weight.is_finite() && *weight >= -EPSILON)
+        && (value.iter().sum::<f32>() - 1.0).abs() <= EPSILON
 }
 
 fn hash_geometry(geometry: &NprGeometry) -> u64 {
@@ -171,10 +272,10 @@ fn hash_geometry(geometry: &NprGeometry) -> u64 {
 mod tests {
     use super::*;
     use crate::{
-        ComicInk, NprDebugView, PerspectiveCamera, build_packet_for_surface,
-        build_packet_with_topology,
+        build_packet_for_surface, build_packet_with_topology, ComicInk, NprDebugView,
+        PerspectiveCamera,
     };
-    use glam::Vec3;
+    use glam::{Mat4, Vec3};
 
     #[test]
     fn prepared_surface_reuses_topology_and_has_stable_content_id() {
@@ -239,5 +340,44 @@ mod tests {
             .content_id();
         assert_ne!(source_id, first_id);
         assert_eq!(first_id, second_id);
+    }
+
+    #[test]
+    fn source_anchor_resolves_in_local_space_and_survives_object_motion() {
+        let surface = NprPreparedSurface::new(NprGeometry::canonical_cube());
+        let anchor = surface.anchor(0, [0.2, 0.3, 0.5]).unwrap();
+        let sample = surface.sample(anchor).unwrap();
+        let [a, b, c] = surface.geometry().triangles[0]
+            .map(|index| surface.geometry().vertices[index as usize].position);
+        assert_eq!(sample.position, a * 0.2 + b * 0.3 + c * 0.5);
+        assert!(sample.normal.is_finite());
+
+        let object_transform = Mat4::from_scale_rotation_translation(
+            Vec3::splat(1.5),
+            glam::Quat::from_rotation_y(0.7),
+            Vec3::new(2.0, -1.0, 3.0),
+        );
+        assert_eq!(
+            object_transform.transform_point3(sample.position),
+            object_transform.transform_point3(a * 0.2 + b * 0.3 + c * 0.5)
+        );
+    }
+
+    #[test]
+    fn source_anchor_rejects_invalid_coordinates_and_other_revisions() {
+        let cube = NprPreparedSurface::new(NprGeometry::canonical_cube());
+        let wedge = NprPreparedSurface::new(NprGeometry::wedge());
+        assert_eq!(
+            cube.anchor(0, [0.5, 0.5, 0.5]),
+            Err(NprSurfaceAnchorError::InvalidBarycentric)
+        );
+        assert_eq!(
+            cube.anchor(99, [1.0, 0.0, 0.0]),
+            Err(NprSurfaceAnchorError::TriangleOutOfRange)
+        );
+        assert_eq!(
+            wedge.sample(cube.anchor(0, [1.0, 0.0, 0.0]).unwrap()),
+            Err(NprSurfaceAnchorError::ContentMismatch)
+        );
     }
 }
