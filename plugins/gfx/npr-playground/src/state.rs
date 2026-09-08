@@ -586,6 +586,11 @@ impl NprPlaygroundState {
             "gallery" | "selected" | "seed" => field,
             "camera.distance" => "camera_distance",
             "camera.yaw" => "camera_yaw",
+            "camera.pitch" => "camera_pitch",
+            "camera.fov" => "camera_fov",
+            "motion.mode" => "motion.mode",
+            "motion.redraw_hz" => "motion.redraw_hz",
+            "motion.redraw_strength" => "motion.redraw_strength",
             _ => return Ok(false),
         };
         let value = match value {

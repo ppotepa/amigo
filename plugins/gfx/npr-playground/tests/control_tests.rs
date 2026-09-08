@@ -893,6 +893,18 @@ fn editor_scalar_properties_use_the_validated_runtime_control_path() {
         .apply_editor_property("camera.yaw", serde_yaml::to_value(35.0).unwrap())
         .unwrap());
     assert!(state
+        .apply_editor_property("camera.pitch", serde_yaml::to_value(-12.0).unwrap())
+        .unwrap());
+    assert!(state
+        .apply_editor_property("camera.fov", serde_yaml::to_value(55.0).unwrap())
+        .unwrap());
+    assert!(state
+        .apply_editor_property("motion.mode", serde_yaml::to_value("redraw-on-motion").unwrap())
+        .unwrap());
+    assert!(state
+        .apply_editor_property("motion.redraw_hz", serde_yaml::to_value(5.0).unwrap())
+        .unwrap());
+    assert!(state
         .apply_editor_property("seed", serde_yaml::to_value(1234_u64).unwrap())
         .unwrap());
     assert!(state
@@ -902,6 +914,10 @@ fn editor_scalar_properties_use_the_validated_runtime_control_path() {
     assert!(after.gallery);
     assert_eq!(after.camera_distance, 7.5);
     assert_eq!(after.camera_yaw, 35.0);
+    assert_eq!(after.camera_pitch, -12.0);
+    assert_eq!(after.camera_fov, 55.0);
+    assert_eq!(after.motion.mode, amigo_render_npr::StrokeMotionMode::RedrawOnMotion);
+    assert_eq!(after.motion.redraw_hz, 5.0);
     assert_eq!(after.seed, 1234);
     assert_eq!(after.selected, "sphere");
 
