@@ -6,7 +6,25 @@ use amigo_npr_playground_plugin::{
 };
 use amigo_render_npr::{StrokeRole};
 use amigo_runtime_control::{ControlValue, RuntimeControlService};
+use glam::Vec2;
 use std::{collections::BTreeMap, sync::Arc};
+
+#[test]
+fn surface_pick_returns_a_source_anchor_for_the_selected_model() {
+    let state = NprPlaygroundState::default();
+    let settings = state.snapshot();
+    let render = NprPlaygroundRenderService::default();
+
+    let pick = render
+        .pick_surface(&settings, [512, 512], Vec2::new(256.0, 256.0))
+        .expect("the centered camera ray should hit the selected cube");
+
+    assert_eq!(pick.object_id, "cube");
+    assert!(pick.position.is_finite());
+    assert!(pick.normal.is_finite());
+    assert!(pick.anchor.triangle < 12);
+    assert!((pick.anchor.barycentric.iter().sum::<f32>() - 1.0).abs() < 1e-5);
+}
 
 #[test]
 fn metadata_controls_validate_atomically_and_presets_restore_all_objects() {

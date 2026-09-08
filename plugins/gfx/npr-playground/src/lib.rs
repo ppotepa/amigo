@@ -9,5 +9,5 @@ pub mod state;
 mod zoom;
 
 pub use plugin::NprPlaygroundPlugin;
-pub use render::NprPlaygroundRenderService;
+pub use render::{NprPlaygroundRenderService, NprSurfacePick};
 pub use state::NprPlaygroundState;
