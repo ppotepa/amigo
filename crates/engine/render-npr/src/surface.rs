@@ -18,7 +18,9 @@ use std::fmt;
 /// This is not a replacement for an asset-system revision.  Asset owners can
 /// key their cache by their own revision and use this identifier to detect an
 /// accidental geometry change within that revision.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Serialize, serde::Deserialize,
+)]
 pub struct NprSurfaceContentId(pub u64);
 
 /// A local-space point on one immutable source-surface triangle.
@@ -27,7 +29,7 @@ pub struct NprSurfaceContentId(pub u64);
 /// accidentally reuse a stroke point after an asset changed.  The anchor is
 /// intentionally expressed against the source surface, never a view-dependent
 /// smooth proxy, so it remains meaningful while camera and proxy policy vary.
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct NprSurfaceAnchor {
     pub content_id: NprSurfaceContentId,
     pub triangle: u32,

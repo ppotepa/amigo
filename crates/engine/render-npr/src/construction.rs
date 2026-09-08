@@ -8,7 +8,7 @@
 use crate::{NprSurfaceAnchor, NprSurfaceAnchorError};
 use std::fmt;
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct NprConstructionMark {
     /// Domain-owned stable identity. Reserve a domain-specific range when a
     /// mark is generated rather than manually authored.
