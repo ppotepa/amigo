@@ -74,7 +74,7 @@ fn activating_mod_sets_root_mod_and_scene() {
 }
 
 #[test]
-fn launcher_hides_old_fixture_scenes_for_playgrounds() {
+fn launcher_hides_non_launcher_scenes_for_playgrounds() {
     let mut state = state();
     state.focus = FocusPane::Tree;
     state.selected_mod_index = state
@@ -85,8 +85,9 @@ fn launcher_hides_old_fixture_scenes_for_playgrounds() {
 
     let scenes = state.current_scene_list();
 
-    assert_eq!(scenes.len(), 1);
+    assert_eq!(scenes.len(), 2);
     assert_eq!(scenes[0].id, "hello-world-cube");
+    assert_eq!(scenes[1].id, "physics-cubes");
 }
 
 #[test]

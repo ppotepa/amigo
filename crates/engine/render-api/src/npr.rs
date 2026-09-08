@@ -10,10 +10,11 @@ pub struct NprDrawCommand {
 
 impl NprDrawCommand {
     pub fn new(packet: NprRenderPacket) -> Self {
-        Self {
-            packet,
-            preset: "comic-ink",
-        }
+        Self::with_preset(packet, "comic-ink")
+    }
+
+    pub fn with_preset(packet: NprRenderPacket, preset: &'static str) -> Self {
+        Self { packet, preset }
     }
     pub fn debug_view(&self) -> NprDebugView {
         self.packet.debug_view
@@ -23,6 +24,9 @@ impl NprDrawCommand {
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct NprBackgroundCommand {
     pub color: [f32; 4],
+    pub grain: f32,
+    pub tooth: f32,
+    pub seed: u64,
 }
 
 pub trait NprRenderOutput {

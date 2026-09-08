@@ -83,11 +83,17 @@ impl RenderFrameExtractor<Runtime, WgpuRenderFramePacket> for WgpuText3dRenderEx
 pub struct WgpuNprRenderExtractorBridge;
 
 impl RenderFrameExtractor<Runtime, WgpuRenderFramePacket> for WgpuNprRenderExtractorBridge {
-    fn name(&self) -> &'static str { amigo_npr_playground_plugin::render::NPR_PLAYGROUND_EXTRACTOR_ID }
+    fn name(&self) -> &'static str {
+        amigo_npr_playground_plugin::render::NPR_PLAYGROUND_EXTRACTOR_ID
+    }
 
     fn extract(&self, runtime: &Runtime, packet: &mut WgpuRenderFramePacket) {
-        let Some(service) = runtime.resolve::<amigo_npr_playground_plugin::NprPlaygroundRenderService>() else { return; };
-        if let Some(command) = service.snapshot() {
+        let Some(service) =
+            runtime.resolve::<amigo_npr_playground_plugin::NprPlaygroundRenderService>()
+        else {
+            return;
+        };
+        for command in service.commands() {
             packet.push_npr_draw_command(command);
         }
         if let Some(background) = service.background() {

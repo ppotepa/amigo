@@ -35,6 +35,8 @@ amigo-window-api.workspace = true
 serde_yaml.workspace = true
 
 [dev-dependencies]
+amigo-panels.workspace = true
+image.workspace = true
 amigo-2d-composition.workspace = true
 amigo-3d-material.workspace = true
 amigo-3d-mesh.workspace = true

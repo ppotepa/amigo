@@ -1,0 +1,24 @@
+id: layer
+title: Engine layer controls
+root:
+  type: column
+  id: root
+  children:
+    - type: text
+      text: This panel uses RenderLayer2D metadata, not NPR.
+    - type: slider
+      id: opacity
+      text: Opacity
+      min: 0.0
+      max: 1.0
+      step: 0.01
+      value_bind: world.demo.RenderLayer2D.opacity
+      on_change: {event: layer.changed}
+    - type: toggle
+      id: visible
+      text: Visible
+      value_bind: world.demo.RenderLayer2D.visible
+    - type: button
+      id: reset
+      text: Reset layer
+      on_click: {event: layer.reset}

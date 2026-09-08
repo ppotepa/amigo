@@ -59,11 +59,45 @@ fn camera_optics_manifest() -> PluginManifest {
     manifest
 }
 
+fn camera_core_manifest() -> PluginManifest {
+    let mut manifest = PluginManifest::new(
+        "amigo.camera.camera-core",
+        "camera",
+        PluginKind::Bundle,
+        false,
+        RenderParticipation::None,
+    );
+
+    manifest
+        .capabilities
+        .provides
+        .push(CapabilityRef::new("camera.frame_context.2d", 1));
+
+    manifest
+        .slots
+        .implements
+        .push(SlotId("camera.frame_provider.2d".to_string()));
+
+    manifest.diagnostics.channels.push(DiagnosticChannelRef {
+        id: DiagnosticChannelId("camera-core.binding".to_string()),
+        owner: manifest.id.clone(),
+    });
+
+    manifest.docs.pipeline = Some("docs/pipeline.md".to_string());
+    manifest.docs.contributions = Some("docs/contributions.md".to_string());
+    manifest.docs.diagnostics = Some("docs/diagnostics.md".to_string());
+
+    manifest.tests.waterfall = Some("tests/waterfall_tests.rs".to_string());
+    manifest.tests.diagnostics = Some("tests/diagnostics_tests.rs".to_string());
+
+    manifest
+}
+
 #[test]
 fn plugin_index_accepts_valid_manifest() {
-    let index = PluginIndex::from_manifests([camera_optics_manifest()]);
+    let index = PluginIndex::from_manifests([camera_core_manifest(), camera_optics_manifest()]);
 
-    assert_eq!(index.len(), 1);
+    assert_eq!(index.len(), 2);
     assert_eq!(validate_plugin_index(&index), Ok(()));
 }
 
@@ -102,7 +136,7 @@ fn invalid_manifest_is_reported_by_index_validation() {
     let mut manifest = camera_optics_manifest();
     manifest.docs.pipeline = None;
 
-    let index = PluginIndex::from_manifests([manifest]);
+    let index = PluginIndex::from_manifests([camera_core_manifest(), manifest]);
     let errors = validate_plugin_index(&index).unwrap_err();
 
     assert!(format!("{errors:?}").contains("MissingPipelineDocs"));

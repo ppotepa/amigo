@@ -79,3 +79,9 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
+# NPR sample geometry
+
+Suzanne (Norbert Nopper / UX3D, 2017) and Avocado (Microsoft, 2017) are
+CC0-1.0 assets from KhronosGroup/glTF-Sample-Assets. Pinned revision, SHA-256,
+upstream notices and complete license text are retained under
+`mods/npr-playground/assets/models/PROVENANCE.md` and `CC0-1.0.txt`.

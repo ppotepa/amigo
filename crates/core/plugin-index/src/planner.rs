@@ -11,14 +11,34 @@ pub struct PluginCompositionPlan {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum PluginCompositionPlanError {
-    MissingCapabilityProvider { plugin: String, capability: String, version: u32 },
-    AmbiguousCapabilityProvider { plugin: String, capability: String, version: u32, providers: Vec<String> },
-    MissingSlotProvider { plugin: String, slot: String },
-    AmbiguousSlotProvider { plugin: String, slot: String, providers: Vec<String> },
-    DependencyCycle { plugins: Vec<String> },
+    MissingCapabilityProvider {
+        plugin: String,
+        capability: String,
+        version: u32,
+    },
+    AmbiguousCapabilityProvider {
+        plugin: String,
+        capability: String,
+        version: u32,
+        providers: Vec<String>,
+    },
+    MissingSlotProvider {
+        plugin: String,
+        slot: String,
+    },
+    AmbiguousSlotProvider {
+        plugin: String,
+        slot: String,
+        providers: Vec<String>,
+    },
+    DependencyCycle {
+        plugins: Vec<String>,
+    },
 }
 
-pub fn plan_plugin_composition(index: &PluginIndex) -> Result<PluginCompositionPlan, PluginCompositionPlanError> {
+pub fn plan_plugin_composition(
+    index: &PluginIndex,
+) -> Result<PluginCompositionPlan, PluginCompositionPlanError> {
     let manifests = index.manifests().collect::<Vec<_>>();
     let mut capability_providers: BTreeMap<(String, u32), Vec<String>> = BTreeMap::new();
     let mut slot_providers: BTreeMap<String, Vec<String>> = BTreeMap::new();
@@ -32,11 +52,17 @@ pub fn plan_plugin_composition(index: &PluginIndex) -> Result<PluginCompositionP
                 .push(manifest.id.0.clone());
         }
         for slot in &manifest.slots.implements {
-            slot_providers.entry(slot.0.clone()).or_default().push(manifest.id.0.clone());
+            slot_providers
+                .entry(slot.0.clone())
+                .or_default()
+                .push(manifest.id.0.clone());
         }
         for contribution in &manifest.contributions.emits {
             contribution_emitters
-                .entry((contribution.domain.0.clone(), contribution.contribution_type.clone()))
+                .entry((
+                    contribution.domain.0.clone(),
+                    contribution.contribution_type.clone(),
+                ))
                 .or_default()
                 .push(manifest.id.0.clone());
         }
@@ -48,38 +74,67 @@ pub fn plan_plugin_composition(index: &PluginIndex) -> Result<PluginCompositionP
         .collect();
 
     for manifest in &manifests {
-        let deps = dependencies.get_mut(&manifest.id.0).expect("plugin dependency bucket exists");
+        let deps = dependencies
+            .get_mut(&manifest.id.0)
+            .expect("plugin dependency bucket exists");
         for requirement in &manifest.capabilities.requires {
             let key = (requirement.id.0.clone(), requirement.version);
             let providers = capability_providers.get(&key).cloned().unwrap_or_default();
             match providers.as_slice() {
-                [] => return Err(PluginCompositionPlanError::MissingCapabilityProvider {
-                    plugin: manifest.id.0.clone(), capability: requirement.id.0.clone(), version: requirement.version,
-                }),
-                [provider] => { if provider != &manifest.id.0 { deps.insert(provider.clone()); } }
-                _ => return Err(PluginCompositionPlanError::AmbiguousCapabilityProvider {
-                    plugin: manifest.id.0.clone(), capability: requirement.id.0.clone(), version: requirement.version, providers,
-                }),
+                [] => {
+                    return Err(PluginCompositionPlanError::MissingCapabilityProvider {
+                        plugin: manifest.id.0.clone(),
+                        capability: requirement.id.0.clone(),
+                        version: requirement.version,
+                    })
+                }
+                [provider] => {
+                    if provider != &manifest.id.0 {
+                        deps.insert(provider.clone());
+                    }
+                }
+                _ => {
+                    return Err(PluginCompositionPlanError::AmbiguousCapabilityProvider {
+                        plugin: manifest.id.0.clone(),
+                        capability: requirement.id.0.clone(),
+                        version: requirement.version,
+                        providers,
+                    })
+                }
             }
         }
         for slot in &manifest.slots.requires {
             let providers = slot_providers.get(&slot.0).cloned().unwrap_or_default();
             match providers.as_slice() {
-                [] => return Err(PluginCompositionPlanError::MissingSlotProvider {
-                    plugin: manifest.id.0.clone(), slot: slot.0.clone(),
-                }),
-                [provider] => { if provider != &manifest.id.0 { deps.insert(provider.clone()); } }
-                _ => return Err(PluginCompositionPlanError::AmbiguousSlotProvider {
-                    plugin: manifest.id.0.clone(), slot: slot.0.clone(), providers,
-                }),
+                [] => {
+                    return Err(PluginCompositionPlanError::MissingSlotProvider {
+                        plugin: manifest.id.0.clone(),
+                        slot: slot.0.clone(),
+                    })
+                }
+                [provider] => {
+                    if provider != &manifest.id.0 {
+                        deps.insert(provider.clone());
+                    }
+                }
+                _ => {
+                    return Err(PluginCompositionPlanError::AmbiguousSlotProvider {
+                        plugin: manifest.id.0.clone(),
+                        slot: slot.0.clone(),
+                        providers,
+                    })
+                }
             }
         }
         for contribution in &manifest.contributions.consumes {
             if let Some(emitters) = contribution_emitters.get(&(
-                contribution.domain.0.clone(), contribution.contribution_type.clone(),
+                contribution.domain.0.clone(),
+                contribution.contribution_type.clone(),
             )) {
                 for emitter in emitters {
-                    if emitter != &manifest.id.0 { deps.insert(emitter.clone()); }
+                    if emitter != &manifest.id.0 {
+                        deps.insert(emitter.clone());
+                    }
                 }
             }
         }
@@ -92,21 +147,31 @@ pub fn plan_plugin_composition(index: &PluginIndex) -> Result<PluginCompositionP
     let mut reverse: BTreeMap<String, BTreeSet<String>> = BTreeMap::new();
     for (plugin, deps) in &dependencies {
         for dependency in deps {
-            reverse.entry(dependency.clone()).or_default().insert(plugin.clone());
+            reverse
+                .entry(dependency.clone())
+                .or_default()
+                .insert(plugin.clone());
         }
     }
 
     let mut ready = VecDeque::from(
-        indegree.iter().filter_map(|(plugin, degree)| (*degree == 0).then_some(plugin.clone())).collect::<Vec<_>>()
+        indegree
+            .iter()
+            .filter_map(|(plugin, degree)| (*degree == 0).then_some(plugin.clone()))
+            .collect::<Vec<_>>(),
     );
     let mut ordered = Vec::with_capacity(indegree.len());
     while let Some(plugin) = ready.pop_front() {
         ordered.push(plugin.clone());
         if let Some(consumers) = reverse.get(&plugin) {
             for consumer in consumers {
-                let degree = indegree.get_mut(consumer).expect("consumer indegree exists");
+                let degree = indegree
+                    .get_mut(consumer)
+                    .expect("consumer indegree exists");
                 *degree -= 1;
-                if *degree == 0 { ready.push_back(consumer.clone()); }
+                if *degree == 0 {
+                    ready.push_back(consumer.clone());
+                }
             }
         }
     }
@@ -126,22 +191,40 @@ pub fn plan_plugin_composition(index: &PluginIndex) -> Result<PluginCompositionP
 
 #[cfg(test)]
 mod tests {
-    use amigo_plugin_api::{CapabilityRef, PluginKind, PluginManifest, RenderParticipation};
     use super::*;
+    use amigo_plugin_api::{CapabilityRef, PluginKind, PluginManifest, RenderParticipation};
 
     fn manifest(id: &str) -> PluginManifest {
-        PluginManifest::new(id, "test", PluginKind::SemanticSource, false, RenderParticipation::None)
+        PluginManifest::new(
+            id,
+            "test",
+            PluginKind::SemanticSource,
+            false,
+            RenderParticipation::None,
+        )
     }
 
     #[test]
     fn plans_provider_before_consumer() {
         let mut provider = manifest("provider");
-        provider.capabilities.provides.push(CapabilityRef::new("feature", 1));
+        provider
+            .capabilities
+            .provides
+            .push(CapabilityRef::new("feature", 1));
         let mut consumer = manifest("consumer");
-        consumer.capabilities.requires.push(CapabilityRef::new("feature", 1));
+        consumer
+            .capabilities
+            .requires
+            .push(CapabilityRef::new("feature", 1));
         let index = PluginIndex::from_manifests([consumer, provider]);
         let plan = plan_plugin_composition(&index).expect("composition should plan");
-        assert_eq!(plan.ordered_plugins.iter().map(|id| id.0.as_str()).collect::<Vec<_>>(), vec!["provider", "consumer"]);
+        assert_eq!(
+            plan.ordered_plugins
+                .iter()
+                .map(|id| id.0.as_str())
+                .collect::<Vec<_>>(),
+            vec!["provider", "consumer"]
+        );
     }
 
     #[test]
@@ -153,6 +236,9 @@ mod tests {
         b.capabilities.provides.push(CapabilityRef::new("b", 1));
         b.capabilities.requires.push(CapabilityRef::new("a", 1));
         let index = PluginIndex::from_manifests([a, b]);
-        assert!(matches!(plan_plugin_composition(&index), Err(PluginCompositionPlanError::DependencyCycle { .. })));
+        assert!(matches!(
+            plan_plugin_composition(&index),
+            Err(PluginCompositionPlanError::DependencyCycle { .. })
+        ));
     }
 }

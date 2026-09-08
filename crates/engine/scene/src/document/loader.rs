@@ -27,6 +27,8 @@ struct RawSceneDocument {
     version: u32,
     scene: SceneMetadataDocument,
     #[serde(default)]
+    panels: Vec<super::ScenePanelReferenceDocument>,
+    #[serde(default)]
     transitions: Vec<SceneTransitionDocument>,
     #[serde(default)]
     collision_events: Vec<SceneCollisionEventRule2dDocument>,
@@ -115,6 +117,7 @@ pub(crate) fn parse_scene_document_value(
     Ok(SceneDocument {
         version: raw.version,
         scene: raw.scene,
+        panels: raw.panels,
         transitions: raw.transitions,
         collision_events: raw.collision_events,
         audio_cues: raw.audio_cues,

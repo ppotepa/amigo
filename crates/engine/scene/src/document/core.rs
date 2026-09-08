@@ -13,6 +13,8 @@ pub struct SceneDocument {
     pub version: u32,
     pub scene: SceneMetadataDocument,
     #[serde(default)]
+    pub panels: Vec<ScenePanelReferenceDocument>,
+    #[serde(default)]
     pub transitions: Vec<SceneTransitionDocument>,
     #[serde(default)]
     pub collision_events: Vec<SceneCollisionEventRule2dDocument>,
@@ -26,6 +28,39 @@ pub struct SceneDocument {
     pub state: BTreeMap<String, SceneStateValueDocument>,
     #[serde(default)]
     pub entities: Vec<SceneEntityDocument>,
+}
+
+/// Optional external engine panels. Layout paths are relative to the scene file
+/// and must resolve inside the owning mod.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct ScenePanelReferenceDocument {
+    pub id: String,
+    pub layout: String,
+    #[serde(default = "panel_auto_open")]
+    pub auto_open: bool,
+}
+fn panel_auto_open() -> bool {
+    true
+}
+
+#[cfg(test)]
+mod panel_tests {
+    #[test]
+    fn panel_references_survive_scene_loading_and_serialization() {
+        let source =
+            "scene: {id: example}\npanels: [{id: tools, layout: ../../ui/tools.yml}]\nentities: []";
+        let document = crate::load_scene_document_from_str(source).unwrap();
+        assert_eq!(document.panels.len(), 1);
+        assert!(document.panels[0].auto_open);
+        let encoded = serde_yaml::to_string(&document).unwrap();
+        assert_eq!(
+            crate::load_scene_document_from_str(&encoded)
+                .unwrap()
+                .panels,
+            document.panels
+        );
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]

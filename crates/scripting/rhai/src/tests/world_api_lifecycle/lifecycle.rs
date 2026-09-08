@@ -211,9 +211,13 @@ fn lifecycle_hooks_can_use_world_time_and_dev_domains() {
     runtime
         .call_on_enter("lifecycle-test")
         .expect("on_enter should succeed");
+    let frame_clock =
+        RhaiFrameClock::new(runtime.time_state.clone(), runtime.timer_service.clone());
+    frame_clock.tick(0.25);
     runtime
         .call_update("lifecycle-test", 0.25)
         .expect("first update should succeed");
+    frame_clock.tick(0.50);
     runtime
         .call_update("lifecycle-test", 0.50)
         .expect("second update should succeed");

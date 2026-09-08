@@ -62,27 +62,84 @@ fn playground_3d_main_scene_bootstraps() {
 }
 
 #[test]
-fn npr_playground_offscreen_golden_is_deterministic() {
+fn npr_playground_offscreen_matches_reviewed_golden() {
     let options = crate::ScenePreviewOptions::new(mods_root(), "npr-playground", "cube", 512, 512)
         .with_active_mods(vec!["core".to_owned(), "npr-playground".to_owned()])
-        .with_warmup_frames(1)
+        .with_warmup_frames(0)
         .with_playback_delta_seconds(1.0 / 60.0);
     let mut preview = crate::ScenePreviewHost::new(options);
+    preview.warmup(1).unwrap();
+    let controls = preview
+        .runtime()
+        .unwrap()
+        .required::<amigo_runtime_control::RuntimeControlService>()
+        .unwrap();
+    let prefix = "world.npr.settings.NprSettings.";
+    controls
+        .set(
+            &format!("{prefix}paused"),
+            amigo_runtime_control::ControlValue::Bool(true),
+        )
+        .unwrap();
+    controls
+        .set(
+            &format!("{prefix}object.rotation"),
+            amigo_runtime_control::ControlValue::Vec3([
+                0.36_f32.to_degrees(),
+                0.71_f32.to_degrees(),
+                0.0,
+            ]),
+        )
+        .unwrap();
+    controls
+        .set(
+            &format!("{prefix}seed"),
+            amigo_runtime_control::ControlValue::U64(42),
+        )
+        .unwrap();
     let first = preview
         .capture_rgba8()
         .expect("NPR preview should render offscreen");
-    let second = preview
-        .capture_rgba8()
-        .expect("NPR preview should render the same frame again");
-    let diff = amigo_render_api::compare_golden_rgba8(
-        512,
-        512,
-        &first.pixels_rgba8,
-        &second.pixels_rgba8,
+    let path = mods_root().join("npr-playground/tests/golden/cube-512.png");
+    if std::env::var_os("AMIGO_UPDATE_NPR_GOLDEN").is_some() {
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        image::save_buffer(
+            &path,
+            &first.pixels_rgba8,
+            512,
+            512,
+            image::ColorType::Rgba8,
+        )
+        .unwrap();
+    }
+    let expected = image::open(&path)
+        .expect("reviewed golden must exist; regenerate explicitly")
+        .to_rgba8();
+    let diff =
+        amigo_render_api::compare_golden_rgba8(512, 512, expected.as_raw(), &first.pixels_rgba8)
+            .expect("NPR preview buffers should have golden dimensions");
+    assert!(
+        diff.passes(amigo_render_api::GoldenImageTolerance {
+            max_channel_delta: 255,
+            max_mismatched_pixels: 512
+        }),
+        "{diff:?}"
+    );
+    let packet = amigo_runtime_bundles::default_wgpu_render_extractor_registry_for_runtime(
+        preview.runtime().unwrap(),
     )
-    .expect("NPR preview buffers should have golden dimensions");
-    assert!(diff.passes(amigo_render_api::GoldenImageTolerance::EXACT));
-    assert!(first.pixels_rgba8.chunks_exact(4).any(|pixel| pixel[0] != 0));
+    .extract_all(preview.runtime().unwrap());
+    let stats = &packet.npr()[0].packet.stats;
+    assert_eq!(stats.geometry, 1);
+    assert_eq!(stats.topology_edges, 18);
+    assert_eq!(stats.feature_segments, 12);
+    assert_eq!(stats.viewport, [512, 512]);
+    assert!(
+        first
+            .pixels_rgba8
+            .chunks_exact(4)
+            .any(|pixel| pixel[0] != 0)
+    );
 }
 
 #[test]
@@ -105,12 +162,9 @@ fn playground_3d_material_scene_populates_3d_material_domain_and_assets() {
             .as_deref(),
         Some("scenes/material-lab/scene.yml")
     );
-    assert!(
-        summary
-            .processed_scene_commands
-            .iter()
-            .any(|command| command.starts_with("scene.3d.material("))
-    );
+    assert!(summary.processed_scene_commands.iter().any(|command| {
+        command.starts_with("scene.plugin(amigo.rendering.3d.scene-command.Material3d)")
+    }));
     assert!(
         summary
             .registered_assets
@@ -161,6 +215,43 @@ fn playground_3d_material_scene_populates_3d_material_domain_and_assets() {
             .iter()
             .any(|entity| entity == "playground-3d-material-probe")
     );
+}
+
+#[test]
+fn panel_playground_uses_layer_metadata_and_rhai_without_npr() {
+    let mut preview = crate::ScenePreviewHost::new(
+        crate::ScenePreviewOptions::new(mods_root(), "panel-playground", "layer", 320, 240)
+            .with_active_mods(vec![
+                "core".into(),
+                "playground-2d".into(),
+                "panel-playground".into(),
+            ])
+            .with_warmup_frames(0),
+    );
+    preview.warmup(1).unwrap();
+    let runtime = preview.runtime().unwrap();
+    let controls = runtime
+        .required::<amigo_runtime_control::RuntimeControlService>()
+        .unwrap();
+    controls
+        .set(
+            "world.demo.RenderLayer2D.opacity",
+            amigo_runtime_control::ControlValue::F64(0.25),
+        )
+        .unwrap();
+    runtime
+        .required::<amigo_scripting_api::ScriptEventQueue>()
+        .unwrap()
+        .publish(amigo_scripting_api::ScriptEvent::new("layer.reset", vec![]));
+    preview.warmup(1).unwrap();
+    assert_eq!(
+        controls.get("world.demo.RenderLayer2D.opacity").unwrap(),
+        amigo_runtime_control::ControlValue::F64(1.0)
+    );
+    let runtime = preview.runtime().unwrap();
+    let packet = amigo_runtime_bundles::default_wgpu_render_extractor_registry_for_runtime(runtime)
+        .extract_all(runtime);
+    assert!(packet.npr().is_empty());
 }
 
 #[test]
@@ -218,12 +309,9 @@ fn playground_3d_mesh_scene_populates_3d_domain_and_assets() {
             .as_deref(),
         Some("scenes/mesh-lab/scene.yml")
     );
-    assert!(
-        summary
-            .processed_scene_commands
-            .iter()
-            .any(|command| command.starts_with("scene.3d.mesh("))
-    );
+    assert!(summary.processed_scene_commands.iter().any(|command| {
+        command.starts_with("scene.plugin(amigo.rendering.3d.scene-command.Mesh3d)")
+    }));
     assert!(
         summary
             .registered_assets
@@ -331,7 +419,11 @@ fn playground_sidescroller_vertical_slice_bootstraps() {
         .as_ref()
         .expect("loaded scene document should exist")
         .component_kinds;
-    assert!(component_kinds.iter().any(|kind| kind == "TileMap2D x1"));
+    assert!(
+        component_kinds
+            .iter()
+            .any(|kind| kind == "amigo.gfx.tilemap-2d.TileMap2D x1")
+    );
     assert!(
         component_kinds
             .iter()

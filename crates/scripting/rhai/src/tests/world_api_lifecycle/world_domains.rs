@@ -125,6 +125,8 @@ fn exposes_scene_state_and_timers_to_scripts() {
         )
         .expect("script execution should succeed");
 
+    let frame_clock = RhaiFrameClock::new(runtime.time_state.clone(), timers.clone());
+    frame_clock.tick(0.5);
     runtime
         .call_update("state-and-timers-test", 0.5)
         .expect("update should tick timers before script update");

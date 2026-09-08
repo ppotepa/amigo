@@ -6,9 +6,21 @@ fn bloom_waterfall_declares_input_output_and_diagnostics_contracts() {
 
     let manifest = amigo_plugin_manifest::parse_plugin_manifest_str(include_str!("../plugin.toml"))
         .expect("bloom plugin manifest should parse");
-    assert!(manifest.targets.reads.iter().any(|target| target.0 == "SceneEmissive"));
-    assert!(manifest.targets.reads.iter().any(|target| target.0 == "SceneColor"));
-    assert!(manifest.targets.writes.iter().any(|target| target.0 == "SceneColor"));
+    assert!(manifest
+        .targets
+        .reads
+        .iter()
+        .any(|target| target.0 == "SceneEmissive"));
+    assert!(manifest
+        .targets
+        .reads
+        .iter()
+        .any(|target| target.0 == "SceneColor"));
+    assert!(manifest
+        .targets
+        .writes
+        .iter()
+        .any(|target| target.0 == "SceneColor"));
     assert!(manifest
         .diagnostics
         .channels

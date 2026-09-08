@@ -15,3 +15,10 @@ label = "NPR Cube"
 description = "Comic-ink cube with deterministic feature strokes."
 path = "scenes/cube"
 launcher_visible = true
+
+[[scenes]]
+id = "gallery"
+label = "NPR Gallery"
+description = "Six models and an external live parameter panel."
+path = "scenes/gallery"
+launcher_visible = true

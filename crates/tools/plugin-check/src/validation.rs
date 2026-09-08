@@ -10,11 +10,17 @@ pub(crate) fn parse_validate_roots(args: &[String]) -> Vec<PathBuf> {
     while let Some(arg) = iter.next() {
         match arg.as_str() {
             "--workspace" => {}
-            "--plugins" => if let Some(path) = iter.next() { roots.push(PathBuf::from(path)); },
+            "--plugins" => {
+                if let Some(path) = iter.next() {
+                    roots.push(PathBuf::from(path));
+                }
+            }
             other => roots.push(PathBuf::from(other)),
         }
     }
-    if roots.is_empty() { roots.push(PathBuf::from("plugins")); }
+    if roots.is_empty() {
+        roots.push(PathBuf::from("plugins"));
+    }
     roots
 }
 
@@ -28,11 +34,17 @@ pub(crate) fn validate_plugin_tree(roots: &[PathBuf]) -> Result<(), Vec<String>>
     for plugin_dir in plugin_dirs {
         validate_plugin_dir(&plugin_dir, &mut ids, &mut errors);
     }
-    if errors.is_empty() { Ok(()) } else { Err(errors) }
+    if errors.is_empty() {
+        Ok(())
+    } else {
+        Err(errors)
+    }
 }
 
 fn collect_plugin_dirs(root: &Path, errors: &mut Vec<String>) -> Vec<PathBuf> {
-    if root.join("plugin.toml").exists() { return vec![root.to_path_buf()]; }
+    if root.join("plugin.toml").exists() {
+        return vec![root.to_path_buf()];
+    }
     let mut plugins = Vec::new();
     let families = match fs::read_dir(root) {
         Ok(entries) => entries,
@@ -50,11 +62,16 @@ fn collect_plugin_dirs(root: &Path, errors: &mut Vec<String>) -> Vec<PathBuf> {
             }
         };
         let family_path = family.path();
-        if !family_path.is_dir() { continue; }
+        if !family_path.is_dir() {
+            continue;
+        }
         let entries = match fs::read_dir(&family_path) {
             Ok(entries) => entries,
             Err(error) => {
-                errors.push(format!("failed to enumerate {}: {error}", family_path.display()));
+                errors.push(format!(
+                    "failed to enumerate {}: {error}",
+                    family_path.display()
+                ));
                 continue;
             }
         };
@@ -62,7 +79,10 @@ fn collect_plugin_dirs(root: &Path, errors: &mut Vec<String>) -> Vec<PathBuf> {
             let entry = match entry_result {
                 Ok(entry) => entry,
                 Err(error) => {
-                    errors.push(format!("failed to enumerate {}: {error}", family_path.display()));
+                    errors.push(format!(
+                        "failed to enumerate {}: {error}",
+                        family_path.display()
+                    ));
                     continue;
                 }
             };
@@ -78,11 +98,23 @@ fn collect_plugin_dirs(root: &Path, errors: &mut Vec<String>) -> Vec<PathBuf> {
 fn validate_plugin_dir(plugin_dir: &Path, ids: &mut BTreeSet<String>, errors: &mut Vec<String>) {
     let manifest_path = plugin_dir.join("plugin.toml");
     let cargo_path = plugin_dir.join("Cargo.toml");
-    for file in ["plugin.toml", "Cargo.toml", "README.md", "tests/waterfall_tests.rs", "src/plugin.rs"] {
+    for file in [
+        "plugin.toml",
+        "Cargo.toml",
+        "README.md",
+        "tests/waterfall_tests.rs",
+        "src/plugin.rs",
+    ] {
         require_file(plugin_dir, file, errors);
     }
     validate_waterfall_test(plugin_dir, errors);
-    for dir in ["src/api", "src/scene", "src/runtime", "src/scripting", "src/diagnostics"] {
+    for dir in [
+        "src/api",
+        "src/scene",
+        "src/runtime",
+        "src/scripting",
+        "src/diagnostics",
+    ] {
         require_dir(plugin_dir, dir, errors);
     }
     if !plugin_dir.join("src/render_wgpu").is_dir() && !plugin_dir.join("src/render").is_dir() {
@@ -92,7 +124,10 @@ fn validate_plugin_dir(plugin_dir: &Path, ids: &mut BTreeSet<String>, errors: &m
         ));
     }
     if plugin_dir.join("src/render-wgpu").exists() {
-        errors.push(format!("{} must use src/render_wgpu, not src/render-wgpu", plugin_dir.display()));
+        errors.push(format!(
+            "{} must use src/render_wgpu, not src/render-wgpu",
+            plugin_dir.display()
+        ));
     }
 
     if manifest_path.exists() {
@@ -117,7 +152,10 @@ fn validate_manifest(
     let manifest = match parse_plugin_manifest_str(&content) {
         Ok(manifest) => manifest,
         Err(error) => {
-            errors.push(format!("{} does not parse: {error:?}", manifest_path.display()));
+            errors.push(format!(
+                "{} does not parse: {error:?}",
+                manifest_path.display()
+            ));
             return;
         }
     };
@@ -130,7 +168,8 @@ fn validate_manifest(
     if manifest.family.0 != actual_family {
         errors.push(format!(
             "{} family `{}` does not match plugins/{actual_family}",
-            manifest_path.display(), manifest.family.0
+            manifest_path.display(),
+            manifest.family.0
         ));
     }
     if !ids.insert(manifest.id.0.clone()) {
@@ -142,7 +181,10 @@ fn validate_manifest(
         ("docs.contributions", manifest.docs.contributions.as_deref()),
         ("docs.diagnostics", manifest.docs.diagnostics.as_deref()),
         ("tests.hydration", manifest.tests.hydration.as_deref()),
-        ("tests.participation", manifest.tests.participation.as_deref()),
+        (
+            "tests.participation",
+            manifest.tests.participation.as_deref(),
+        ),
         ("tests.candidate", manifest.tests.candidate.as_deref()),
         ("tests.waterfall", manifest.tests.waterfall.as_deref()),
         ("tests.diagnostics", manifest.tests.diagnostics.as_deref()),
@@ -162,12 +204,17 @@ fn validate_relative_reference(
     errors: &mut Vec<String>,
 ) {
     if relative.trim().is_empty() {
-        errors.push(format!("{} {field} references an empty path", manifest_path.display()));
+        errors.push(format!(
+            "{} {field} references an empty path",
+            manifest_path.display()
+        ));
         return;
     }
     let relative_path = Path::new(relative);
     if relative_path.is_absolute()
-        || relative_path.components().any(|component| matches!(component, std::path::Component::ParentDir))
+        || relative_path
+            .components()
+            .any(|component| matches!(component, std::path::Component::ParentDir))
     {
         errors.push(format!(
             "{} {field} must reference a plugin-relative file, got `{relative}`",
@@ -206,18 +253,40 @@ fn validate_cargo_package_name(plugin_dir: &Path, cargo_path: &Path, errors: &mu
 
 fn validate_waterfall_test(plugin_dir: &Path, errors: &mut Vec<String>) {
     let path = plugin_dir.join("tests/waterfall_tests.rs");
-    let Ok(content) = fs::read_to_string(&path) else { return; };
+    let Ok(content) = fs::read_to_string(&path) else {
+        return;
+    };
     let compact: String = content.chars().filter(|ch| !ch.is_whitespace()).collect();
     if !content.contains("#[test]") {
-        errors.push(format!("{} must contain at least one #[test]", path.display()));
+        errors.push(format!(
+            "{} must contain at least one #[test]",
+            path.display()
+        ));
     }
     if compact.contains("assert!(true)") || compact.contains("assert_eq!(true,true)") {
-        errors.push(format!("{} contains a trivial placeholder assertion", path.display()));
+        errors.push(format!(
+            "{} contains a trivial placeholder assertion",
+            path.display()
+        ));
     }
     let lowercase = content.to_ascii_lowercase();
-    let semantic_markers = ["candidate", "target", "contribution", "diagnostic", "descriptor", "register", "render"];
-    if !semantic_markers.iter().any(|marker| lowercase.contains(marker)) {
-        errors.push(format!("{} does not exercise any plugin waterfall stage", path.display()));
+    let semantic_markers = [
+        "candidate",
+        "target",
+        "contribution",
+        "diagnostic",
+        "descriptor",
+        "register",
+        "render",
+    ];
+    if !semantic_markers
+        .iter()
+        .any(|marker| lowercase.contains(marker))
+    {
+        errors.push(format!(
+            "{} does not exercise any plugin waterfall stage",
+            path.display()
+        ));
     }
 }
 
@@ -234,20 +303,31 @@ fn require_dir(plugin_dir: &Path, relative: &str, errors: &mut Vec<String>) {
 
 fn validate_forbidden_patterns(plugin_dir: &Path, errors: &mut Vec<String>) {
     const FORBIDDEN_IDENTIFIERS: &[&str] = &[
-        "luma_fallback", "should_produce_scene_highlight", "direct_lens_flare", "guess_optical",
-        "flare_strength", "lens_influence",
+        "luma_fallback",
+        "should_produce_scene_highlight",
+        "direct_lens_flare",
+        "guess_optical",
+        "flare_strength",
+        "lens_influence",
     ];
     for path in files_under(plugin_dir, errors) {
-        if path.extension().and_then(|ext| ext.to_str()) != Some("rs") { continue; }
+        if path.extension().and_then(|ext| ext.to_str()) != Some("rs") {
+            continue;
+        }
         let Ok(content) = fs::read_to_string(&path) else {
             errors.push(format!("{} is not readable", path.display()));
             continue;
         };
         for line in content.lines().map(str::trim) {
-            if line.starts_with("//") || line.starts_with("/*") || line.starts_with('*') { continue; }
+            if line.starts_with("//") || line.starts_with("/*") || line.starts_with('*') {
+                continue;
+            }
             for forbidden in FORBIDDEN_IDENTIFIERS {
                 if contains_identifier(line, forbidden) {
-                    errors.push(format!("{} contains forbidden identifier `{forbidden}`", path.display()));
+                    errors.push(format!(
+                        "{} contains forbidden identifier `{forbidden}`",
+                        path.display()
+                    ));
                 }
             }
         }
@@ -287,7 +367,9 @@ fn collect_files(path: &Path, files: &mut Vec<PathBuf>, errors: &mut Vec<String>
         };
         let path = entry.path();
         if path.is_dir() {
-            if path.file_name().and_then(|name| name.to_str()) == Some("target") { continue; }
+            if path.file_name().and_then(|name| name.to_str()) == Some("target") {
+                continue;
+            }
             collect_files(&path, files, errors);
         } else {
             files.push(path);

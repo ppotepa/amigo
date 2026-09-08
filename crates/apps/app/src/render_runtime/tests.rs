@@ -691,7 +691,12 @@ fn build_frame_graph_from_plan_tracks_composition_nodes() {
 
     assert_eq!(
         graph.node_labels(),
-        vec!["world", "game_ui", "debug_overlay", "present"]
+        vec![
+            "view:main:world",
+            "view:main:game_ui",
+            "view:main:debug_overlay",
+            "view:main:present",
+        ]
     );
 }
 
@@ -744,7 +749,10 @@ fn composition_default_packet_uses_world_base_before_present() {
         },
     );
 
-    assert_eq!(graph.node_labels(), vec!["world", "present"]);
+    assert_eq!(
+        graph.node_labels(),
+        vec!["view:main:world", "view:main:present"]
+    );
 
     let surface = graph
         .resources
@@ -753,7 +761,11 @@ fn composition_default_packet_uses_world_base_before_present() {
         .expect("surface resource")
         .id;
 
-    for node in graph.nodes.iter().filter(|node| node.label != "present") {
+    for node in graph
+        .nodes
+        .iter()
+        .filter(|node| node.label != "view:main:present")
+    {
         assert!(
             !node.writes.contains(&surface),
             "non-present node '{}' writes surface",
@@ -813,7 +825,11 @@ fn graph_non_present_nodes_do_not_write_surface() {
         .expect("surface resource")
         .id;
 
-    for node in graph.nodes.iter().filter(|node| node.label != "present") {
+    for node in graph
+        .nodes
+        .iter()
+        .filter(|node| node.label != "view:main:present")
+    {
         assert!(
             !node.writes.contains(&surface),
             "non-present node '{}' writes surface",
@@ -843,10 +859,10 @@ fn editor_frame_graph_renders_game_to_logical_target_and_presents_last() {
     );
     let labels = graph.node_labels();
 
-    assert!(labels.contains(&"world"));
-    assert!(labels.contains(&"present"));
-    assert!(!labels.contains(&"debug_overlay"));
-    assert_eq!(labels.last().copied(), Some("present"));
+    assert!(labels.contains(&"view:main:world"));
+    assert!(labels.contains(&"view:main:present"));
+    assert!(!labels.contains(&"view:main:debug_overlay"));
+    assert_eq!(labels.last().copied(), Some("view:main:present"));
 
     let texture_sizes = graph
         .resources
@@ -1111,7 +1127,7 @@ fn render_runtime_uses_only_frame_graph_render_flow() {
         "amigo_runtime_bundles::default_wgpu_render_extractor_registry_for_runtime(runtime)",
         "WgpuFrameCompositionBuilder::build(&render_packet)",
         "build_frame_graph_from_plan(",
-        "renderer.render_frame_request(render_request)?",
+        "submit_wgpu_frame_render_request(",
     ] {
         assert!(
             source.contains(required),

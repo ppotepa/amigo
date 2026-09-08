@@ -1,9 +1,28 @@
 pub(crate) fn default_domain_namespaces() -> Vec<String> {
     [
-        "assets", "audio", "camera", "physics", "physics3d", "postfx", "pools",
-        "projectiles", "mod", "motion", "particles", "sprite2d", "layered_image2d",
-        "beacon2d", "light2d", "render2d", "state", "vector2d", "text2d", "mesh3d",
-        "material3d", "text3d", "ui",
+        "assets",
+        "audio",
+        "camera",
+        "physics",
+        "physics3d",
+        "postfx",
+        "pools",
+        "projectiles",
+        "mod",
+        "motion",
+        "particles",
+        "sprite2d",
+        "layered_image2d",
+        "beacon2d",
+        "light2d",
+        "render2d",
+        "state",
+        "vector2d",
+        "text2d",
+        "mesh3d",
+        "material3d",
+        "text3d",
+        "ui",
     ]
     .into_iter()
     .map(str::to_owned)

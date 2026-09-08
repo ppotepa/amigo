@@ -46,7 +46,10 @@ pub struct PerformanceSnapshot {
 
 impl PerformanceSnapshot {
     pub fn record(&mut self, metric: PerformanceMetric, value: f64) {
-        assert!(value.is_finite() && value >= 0.0, "performance samples must be finite and non-negative");
+        assert!(
+            value.is_finite() && value >= 0.0,
+            "performance samples must be finite and non-negative"
+        );
         self.values.insert(metric, value);
     }
 
@@ -87,16 +90,24 @@ impl PerformanceBaselineSet {
         self
     }
 
-    pub fn baseline(&self) -> &PerformanceSnapshot { &self.baseline }
+    pub fn baseline(&self) -> &PerformanceSnapshot {
+        &self.baseline
+    }
 
     pub fn evaluate(&self, observed: &PerformanceSnapshot) -> Vec<PerformanceRegression> {
         let mut regressions = Vec::new();
         for (metric, baseline) in self.baseline.values() {
-            let Some(observed) = observed.value(metric) else { continue; };
-            let budget = self.budgets.get(&metric).copied().unwrap_or(PerformanceBudget {
-                direction: PerformanceDirection::LowerIsBetter,
-                max_regression_percent: 10.0,
-            });
+            let Some(observed) = observed.value(metric) else {
+                continue;
+            };
+            let budget = self
+                .budgets
+                .get(&metric)
+                .copied()
+                .unwrap_or(PerformanceBudget {
+                    direction: PerformanceDirection::LowerIsBetter,
+                    max_regression_percent: 10.0,
+                });
             let regression_percent = regression_percent(baseline, observed, budget.direction);
             if regression_percent > budget.max_regression_percent {
                 regressions.push(PerformanceRegression {
@@ -116,14 +127,62 @@ pub fn default_performance_budgets() -> BTreeMap<PerformanceMetric, PerformanceB
     use PerformanceDirection::{HigherIsBetter, LowerIsBetter};
     use PerformanceMetric::*;
     [
-        (StartupMillis, PerformanceBudget { direction: LowerIsBetter, max_regression_percent: 15.0 }),
-        (SceneHydrationMillis, PerformanceBudget { direction: LowerIsBetter, max_regression_percent: 10.0 }),
-        (FrameCpuMillis, PerformanceBudget { direction: LowerIsBetter, max_regression_percent: 5.0 }),
-        (RenderExtractionMillis, PerformanceBudget { direction: LowerIsBetter, max_regression_percent: 5.0 }),
-        (GpuPasses, PerformanceBudget { direction: LowerIsBetter, max_regression_percent: 10.0 }),
-        (DrawCalls, PerformanceBudget { direction: LowerIsBetter, max_regression_percent: 10.0 }),
-        (AllocationsPerFrame, PerformanceBudget { direction: LowerIsBetter, max_regression_percent: 5.0 }),
-        (SchedulerUtilizationPercent, PerformanceBudget { direction: HigherIsBetter, max_regression_percent: 10.0 }),
+        (
+            StartupMillis,
+            PerformanceBudget {
+                direction: LowerIsBetter,
+                max_regression_percent: 15.0,
+            },
+        ),
+        (
+            SceneHydrationMillis,
+            PerformanceBudget {
+                direction: LowerIsBetter,
+                max_regression_percent: 10.0,
+            },
+        ),
+        (
+            FrameCpuMillis,
+            PerformanceBudget {
+                direction: LowerIsBetter,
+                max_regression_percent: 5.0,
+            },
+        ),
+        (
+            RenderExtractionMillis,
+            PerformanceBudget {
+                direction: LowerIsBetter,
+                max_regression_percent: 5.0,
+            },
+        ),
+        (
+            GpuPasses,
+            PerformanceBudget {
+                direction: LowerIsBetter,
+                max_regression_percent: 10.0,
+            },
+        ),
+        (
+            DrawCalls,
+            PerformanceBudget {
+                direction: LowerIsBetter,
+                max_regression_percent: 10.0,
+            },
+        ),
+        (
+            AllocationsPerFrame,
+            PerformanceBudget {
+                direction: LowerIsBetter,
+                max_regression_percent: 5.0,
+            },
+        ),
+        (
+            SchedulerUtilizationPercent,
+            PerformanceBudget {
+                direction: HigherIsBetter,
+                max_regression_percent: 10.0,
+            },
+        ),
     ]
     .into_iter()
     .collect()

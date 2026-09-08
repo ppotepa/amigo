@@ -43,8 +43,8 @@ impl RuntimePlugin for Lighting2dPlugin {
         register_domain_plugin(
             registry,
             LIGHTING_2D_PLUGIN_LABEL,
-            &["rendering_2d"],
             &[LIGHTING_2D_CAPABILITY],
+            &["rendering_2d"],
             DEFAULT_CAPABILITY_VERSION,
         )?;
         let scene_handlers =

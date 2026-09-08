@@ -34,7 +34,9 @@ fn installer(namespace: &str) -> Option<Installer> {
 pub(crate) fn install_declared(engine: &mut rhai::Engine, namespaces: &[String]) {
     let mut installed = BTreeSet::new();
     for namespace in namespaces {
-        if !installed.insert(namespace.clone()) { continue; }
+        if !installed.insert(namespace.clone()) {
+            continue;
+        }
         let install = installer(namespace).unwrap_or_else(|| {
             panic!("Rhai namespace `{namespace}` has no backend binding installer")
         });

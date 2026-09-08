@@ -1,0 +1,9 @@
+version: 1
+scene:
+  id: gallery
+  label: NPR Gallery
+panels:
+  - id: npr
+    layout: ../../ui/npr.panel.yml
+    auto_open: true
+entities: []

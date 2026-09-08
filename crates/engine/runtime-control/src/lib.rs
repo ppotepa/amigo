@@ -15,3 +15,16 @@ pub use provider::*;
 pub use registry::*;
 pub use service::*;
 pub use value::*;
+
+pub struct RuntimeControlPlugin;
+impl amigo_runtime::RuntimePlugin for RuntimeControlPlugin {
+    fn name(&self) -> &'static str {
+        "amigo-runtime-control"
+    }
+    fn register(
+        &self,
+        registry: &mut amigo_runtime::ServiceRegistry,
+    ) -> amigo_core::AmigoResult<()> {
+        registry.register(RuntimeControlService::default())
+    }
+}

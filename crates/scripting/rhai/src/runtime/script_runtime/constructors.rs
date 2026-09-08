@@ -291,10 +291,11 @@ impl RhaiScriptRuntime {
         runtime_control: Option<Arc<amigo_runtime_control::RuntimeControlService>>,
         mut binding_namespaces: Vec<String>,
     ) -> Self {
-        if binding_namespaces.is_empty() && sprite_scene.is_some() {
-            // Compatibility for direct/test construction while production uses
-            // the plugin-owned provider registry.
-            binding_namespaces.push("sprite2d".to_owned());
+        if binding_namespaces.is_empty() {
+            // Direct/test construction has no provider registry. Keep the
+            // historical complete Rhai surface there; production construction
+            // supplies the explicitly composed provider namespaces.
+            binding_namespaces = crate::bindings::registration::default_domain_namespaces();
         }
         let time_state = Arc::new(ScriptTimeState::default());
         let state_service = state_service.unwrap_or_else(|| Arc::new(SceneStateService::default()));

@@ -20,10 +20,10 @@ mod component_schema_registry;
 mod document;
 /// Service contracts that other engine domains expose to the scene layer.
 mod domain_services;
-/// Runtime entity identifiers and entity-facing metadata.
-mod entity;
 /// Effective editor-property access semantics.
 mod editor_property_semantics;
+/// Runtime entity identifiers and entity-facing metadata.
+mod entity;
 /// Scene-specific error types returned during loading and hydration.
 mod error;
 /// Semantic scene graph, typed references, and scene-object projections.
@@ -80,7 +80,6 @@ pub use component_schema_registry::*;
 pub use document::*;
 pub use domain_services::*;
 pub use entity::*;
-pub use editor_property_semantics::*;
 pub use error::*;
 pub use graph::*;
 pub use hydration::*;

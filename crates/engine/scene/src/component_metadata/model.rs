@@ -386,9 +386,13 @@ impl ComponentRegistry {
     }
 
     pub fn descriptor_by_type_name(&self, type_name: &str) -> Option<&ComponentTypeDescriptor> {
-        self.descriptors
-            .values()
-            .find(|descriptor| descriptor.type_name.eq_ignore_ascii_case(type_name))
+        let short_type_name = type_name.rsplit('.').next().unwrap_or(type_name);
+        self.descriptors.values().find(|descriptor| {
+            descriptor.type_name.eq_ignore_ascii_case(type_name)
+                || descriptor.kind_id.eq_ignore_ascii_case(type_name)
+                || descriptor.type_name.eq_ignore_ascii_case(short_type_name)
+                || descriptor.kind_id.eq_ignore_ascii_case(short_type_name)
+        })
     }
 
     pub fn insert(

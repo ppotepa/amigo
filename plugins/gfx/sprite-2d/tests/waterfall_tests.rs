@@ -1,6 +1,8 @@
 use amigo_plugin_api::CandidateStatus;
 use amigo_scene::{RenderContributionsDocument, SceneVec2Document};
-use amigo_sprite_2d_plugin::runtime::{collect_sprite_2d_candidates, extract_sprite_2d_renderables};
+use amigo_sprite_2d_plugin::runtime::{
+    collect_sprite_2d_candidates, extract_sprite_2d_renderables,
+};
 use amigo_sprite_2d_plugin::scene::Sprite2dDocument;
 
 #[test]
@@ -13,7 +15,11 @@ fn sprite_waterfall_runs_from_manifest_and_document_to_render_candidate() {
         .provides
         .iter()
         .any(|capability| capability.id.0 == "gfx.sprite.2d" && capability.version == 1));
-    assert!(manifest.targets.writes.iter().any(|target| target.0 == "SceneColor"));
+    assert!(manifest
+        .targets
+        .writes
+        .iter()
+        .any(|target| target.0 == "SceneColor"));
     assert!(manifest
         .targets
         .contributes

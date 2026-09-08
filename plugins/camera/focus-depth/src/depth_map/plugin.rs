@@ -28,8 +28,8 @@ impl RuntimePlugin for DepthMap2dPlugin {
         register_domain_plugin(
             registry,
             "amigo-focus-depth-plugin",
-            &["rendering_2d", "camera_2d"],
-            &[],
+            &["camera_2d"],
+            &["rendering_2d"],
             DEFAULT_CAPABILITY_VERSION,
         )?;
         let scene_handlers =

@@ -13,6 +13,9 @@ use diagnostics::ensure_profile_launchable;
 use tui::{LaunchMode, TuiOutcome};
 
 fn main() -> AmigoResult<()> {
+    if let Some(result) = amigo_runtime_bundles::dispatch_external_panel_client() {
+        return result;
+    }
     let args = std::env::args().collect::<Vec<_>>();
     let run_hosted_direct = args.iter().any(|arg| arg == "--hosted");
     let run_headless_direct = args.iter().any(|arg| arg == "--headless");

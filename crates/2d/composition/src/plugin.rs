@@ -36,8 +36,8 @@ impl RuntimePlugin for Composition2dPlugin {
         register_domain_plugin(
             registry,
             COMPOSITION_2D_PLUGIN_LABEL,
-            &["rendering_2d"],
             &[COMPOSITION_2D_CAPABILITY],
+            &["rendering_2d"],
             DEFAULT_CAPABILITY_VERSION,
         )?;
         let plugin_scene_handlers =

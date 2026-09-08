@@ -17,6 +17,27 @@ pub struct ProjectedPoint {
 }
 
 impl PerspectiveCamera {
+    pub fn normalized_depth(&self, distance: f32) -> f32 {
+        (1.0 - self.near / distance.max(self.near)).clamp(0.0, 1.0)
+    }
+    pub fn clip_triangle(&self, points: [Vec3; 3]) -> Vec<[Vec3; 3]> {
+        let mut polygon = Vec::new();
+        for i in 0..3 {
+            let a = points[i];
+            let b = points[(i + 1) % 3];
+            let da = (a - self.position).dot(self.forward.normalize_or_zero()) - self.near;
+            let db = (b - self.position).dot(self.forward.normalize_or_zero()) - self.near;
+            if da >= 0.0 {
+                polygon.push(a);
+            }
+            if (da >= 0.0) != (db >= 0.0) {
+                polygon.push(a + (b - a) * (da / (da - db)));
+            }
+        }
+        (1..polygon.len().saturating_sub(1))
+            .map(|i| [polygon[0], polygon[i], polygon[i + 1]])
+            .collect()
+    }
     pub fn cube_default(aspect: f32) -> Self {
         Self {
             position: Vec3::new(0.0, 0.0, 5.0),
@@ -33,7 +54,7 @@ impl PerspectiveCamera {
         let up = right.cross(f).normalize_or_zero();
         let relative = point - self.position;
         let depth = relative.dot(f);
-        if depth < self.near {
+        if depth < self.near * (1.0 - 1e-5) {
             return None;
         }
         let tan_half = (self.vertical_fov * 0.5).tan();

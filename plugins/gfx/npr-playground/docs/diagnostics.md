@@ -2,3 +2,25 @@
 
 The packet exposes deterministic NPR geometry, feature, stroke and viewport counters.
 
+`npr.render` and `npr.features` are declared manifest channels. RenderFrameStats
+aggregates geometry, topology edges, feature classes, stroke/vertex/index counts,
+viewport and debug view through the existing renderer diagnostics path.
+FeatureClasses colors classes in the NPR domain; StrokeIds colors assembled chains.
+
+The external panel reads FPS and frame time as read-only metadata. These are
+wall-clock measurements, excluded from presets and deterministic golden checks.
+Invalid bindings/layouts and preset errors appear in the panel; malformed hot
+reloads retain the last valid layout. No full per-frame report is logged in release.
+
+The Diagnostics tab exposes aggregate geometry, topology, feature-segment and
+stroke/vertex/index counts plus viewport dimensions from the last RenderExtract.
+The aggregate also keeps silhouette and crease counts, while tone lines are
+included in the stroke count because they use the same deterministic stroke
+contract. Debug views are resolved before extraction: `Final` shows the selected
+tool response, `FeatureClasses` shows domain classification, and `StrokeIds`
+shows stable assembled-chain identities.
+The footer keeps FPS/frame time visible. Thumbnails are fixed neutral references;
+W/R/S badges reflect current visibility, effective rotation and style override.
+Zoom regression tests cover monotonic/reversible motion, 20–240 FPS equivalence,
+fractional wheel input, bounds, pause, fit and simulation catch-up without replaying
+one wheel event. Smoothing cannot create additional rendered frames at low GPU FPS.

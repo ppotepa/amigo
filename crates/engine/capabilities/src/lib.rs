@@ -75,10 +75,7 @@ impl CapabilityRegistry {
                 if existing.provider != manifest.id {
                     return Err(AmigoError::Message(format!(
                         "capability `{}@{}` is already provided by `{}` and cannot also be provided by `{}`",
-                        capability.id.0,
-                        capability.version,
-                        existing.provider.0,
-                        manifest.id.0
+                        capability.id.0, capability.version, existing.provider.0, manifest.id.0
                     )));
                 }
                 continue;
@@ -219,7 +216,12 @@ impl CapabilityRegistry {
             .manifest_plugins
             .keys()
             .cloned()
-            .chain(state.runtime_plugins.keys().map(|plugin| (*plugin).to_owned()))
+            .chain(
+                state
+                    .runtime_plugins
+                    .keys()
+                    .map(|plugin| (*plugin).to_owned()),
+            )
             .collect::<Vec<_>>();
         names.sort();
         names.dedup();

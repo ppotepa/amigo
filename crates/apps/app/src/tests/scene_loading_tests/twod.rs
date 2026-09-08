@@ -179,7 +179,7 @@ fn rotten_club_main_menu_queues_layered_image_background() {
     let commands = layered_images.commands();
     let background = commands
         .iter()
-        .find(|command| command.entity_name == "background")
+        .find(|command| command.entity_name == "rotten-club-background")
         .expect("main menu background layered image should be queued");
 
     assert_eq!(
@@ -195,8 +195,8 @@ fn rotten_club_main_menu_queues_layered_image_background() {
             .map(|key| key.as_str()),
         Some("rotten-club/visual-maps/neon-alley-highlight")
     );
-    assert_eq!(background.image.size, amigo_math::Vec2::new(1280.0, 720.0));
-    assert_eq!(background.image.base_opacity, 0.0);
+    assert_eq!(background.image.size, amigo_math::Vec2::new(1672.0, 941.0));
+    assert_eq!(background.image.base_opacity, 1.0);
     assert!(
         background
             .image
@@ -214,7 +214,7 @@ fn rotten_club_main_menu_queues_layered_image_background() {
 }
 
 #[test]
-fn rotten_club_main_menu_script_animates_layered_image_intro() {
+fn rotten_club_main_menu_script_keeps_authored_intro_state() {
     let (runtime, _summary) = bootstrap_with_options(
         BootstrapOptions::new(mods_root())
             .with_active_mods(vec!["core".to_owned(), "rotten-club".to_owned()])
@@ -229,7 +229,6 @@ fn rotten_club_main_menu_script_animates_layered_image_intro() {
     let scene_state = runtime
         .resolve::<SceneStateService>()
         .expect("scene state service should be registered");
-    scene_state.set_float("lightning.next", 99.0);
     let particles = runtime
         .resolve::<Particle2dSceneService>()
         .expect("particle scene service should be registered");
@@ -247,24 +246,10 @@ fn rotten_club_main_menu_script_animates_layered_image_intro() {
         scene_state
             .get_float("intro.rain_intensity")
             .is_some_and(|rain| rain <= f64::EPSILON),
-        "main menu rain should stay hidden during the first second"
+        "authored intro state should start with hidden rain"
     );
-    assert_eq!(particles.intensity("rain-super-near"), 0.0);
-    assert_eq!(
-        scene_state.get_bool("intro.focus_hunt.near_started"),
-        Some(true)
-    );
-    assert_eq!(
-        scene_state.get_bool("intro.focus.skyline_started"),
-        Some(false)
-    );
-    assert!(
-        scene_state
-            .get_float("camera_dof_controls.aperture_f_stop")
-            .is_some_and(|f_stop| f_stop <= 1.8),
-        "intro should keep the main camera in a visibly shallow depth-of-field range"
-    );
-    assert_eq!(particles.intensity("rain-10m"), 0.0);
+    assert!(particles.is_active("rotten-club-rain-near"));
+    assert!(particles.is_active("rotten-club-rain-far"));
 
     let layered_images = runtime
         .resolve::<LayeredImageSceneService>()
@@ -272,9 +257,9 @@ fn rotten_club_main_menu_script_animates_layered_image_intro() {
     let commands = layered_images.commands();
     let command = commands
         .iter()
-        .find(|command| command.entity_name == "background")
+        .find(|command| command.entity_name == "rotten-club-background")
         .expect("background layered image command should exist");
-    assert_eq!(command.image.base_opacity, 0.0);
+    assert_eq!(command.image.base_opacity, 1.0);
     assert!(
         command
             .image
@@ -287,7 +272,7 @@ fn rotten_club_main_menu_script_animates_layered_image_intro() {
             .image
             .layer_overrides
             .iter()
-            .any(|override_| { override_.id == "club_sign" && override_.opacity == Some(0.0) })
+            .any(|override_| { override_.id == "club_sign" && override_.opacity == Some(0.95) })
     );
 
     script_runtime
@@ -298,7 +283,7 @@ fn rotten_club_main_menu_script_animates_layered_image_intro() {
     let command = layered_images
         .commands()
         .into_iter()
-        .find(|command| command.entity_name == "background")
+        .find(|command| command.entity_name == "rotten-club-background")
         .expect("background layered image command should exist");
     assert!(
         command
@@ -322,14 +307,10 @@ fn rotten_club_main_menu_script_animates_layered_image_intro() {
     assert!(
         scene_state
             .get_float("intro.rain_intensity")
-            .is_some_and(|rain| rain > 0.0),
-        "main menu rain timing state should advance for the later weather pass"
+            .is_some_and(|rain| rain <= f64::EPSILON),
+        "the scene script update should not advance the timeline clock by itself"
     );
-    assert!(
-        particles.intensity("rain-super-near") > 0.0,
-        "world-space rain should become visible once the intro reaches the weather pass"
-    );
-    assert!(particles.is_active("rain-super-near"));
+    assert!(particles.is_active("rotten-club-rain-near"));
 }
 
 #[test]
@@ -652,39 +633,41 @@ fn rotten_club_main_menu_camera_capture_sees_world_sources() {
         .map(|emitter| emitter.entity_name)
         .collect::<Vec<_>>();
     assert!(
-        emitter_names.iter().any(|name| name == "rain-super-near"),
+        emitter_names
+            .iter()
+            .any(|name| name == "rotten-club-rain-near"),
         "rain emitters should be hydrated, got {emitter_names:?}"
     );
     let scene = runtime
         .resolve::<SceneService>()
         .expect("scene service should be registered");
-    assert!(scene.is_visible("rain-super-near"));
-    assert!(scene.is_simulation_enabled("rain-super-near"));
+    assert!(scene.is_visible("rotten-club-rain-near"));
+    assert!(scene.is_simulation_enabled("rotten-club-rain-near"));
     assert!(
-        particles.intensity("rain-super-near") > 0.0,
+        particles.intensity("rotten-club-rain-near") > 0.0,
         "intro rain should drive the nearest world-space emitter"
     );
-    assert!(particles.is_active("rain-super-near"));
+    assert!(particles.is_active("rotten-club-rain-near"));
     assert!(
         particles
-            .effective_max_particles("rain-super-near")
+            .effective_max_particles("rotten-club-rain-near")
             .unwrap_or(0)
             > 0,
         "rain emitter should have a positive particle budget"
     );
     assert!(
         particles
-            .effective_spawn_rate("rain-super-near")
+            .effective_spawn_rate("rotten-club-rain-near")
             .unwrap_or(0.0)
             > 0.0,
         "rain emitter should have a positive spawn rate"
     );
     assert!(
-        particles.particle_count("rain-super-near") > 0,
+        particles.particle_count("rotten-club-rain-near") > 0,
         "active rain should spawn near-camera particles before extraction"
     );
     assert!(
-        particles.particle_count("rain-10m") > 0,
+        particles.particle_count("rotten-club-rain-far") > 0,
         "active rain should spawn far lightmap-reactive particles before extraction"
     );
 
@@ -701,14 +684,14 @@ fn rotten_club_main_menu_camera_capture_sees_world_sources() {
         .flat_map(|stack| stack.effects.iter())
         .find_map(|instance| instance.effect.as_focus_blur())
         .expect("rotten club main camera should contribute FocusBlur");
-    assert_eq!(focus_blur.depth_map.as_deref(), Some("main-menu-depth"));
-    assert!(focus_blur.max_blur_px >= 30.0);
-    assert!(focus_blur.background_blur_boost >= 1.5);
-    assert!(focus_blur.highlight_threshold <= 0.45);
-    assert!(focus_blur.highlight_gain >= 2.5);
+    assert_eq!(focus_blur.depth_map.as_deref(), Some("main-depth"));
+    assert!(focus_blur.max_blur_px >= 14.0);
+    assert!(focus_blur.background_blur_boost >= 1.0);
+    assert!(focus_blur.highlight_threshold <= 0.58);
+    assert!(focus_blur.highlight_gain >= 1.2);
     assert!(
         packet.render_depth_maps_2d().any(|depth_map| {
-            depth_map.id == "main-menu-depth"
+            depth_map.id == "main-depth"
                 && depth_map.asset.as_str() == "rotten-club/depth-maps/neon-alley-depth"
         }),
         "camera depth-map bokeh should bind the authored neon alley depth map"
@@ -732,7 +715,7 @@ fn rotten_club_main_menu_camera_capture_sees_world_sources() {
         capture
             .layers
             .iter()
-            .any(|layer| layer.layer_id == "weather.rain.10m")
+            .any(|layer| layer.layer_id == "weather.rain.far")
     );
     assert!(
         capture.source(VisualSourceKind2d::LayerMask).is_some(),
@@ -744,7 +727,8 @@ fn rotten_club_main_menu_camera_capture_sees_world_sources() {
     );
     assert!(
         packet.renderables_2d().iter().any(|item| {
-            item.owner_entity() == "rain-10m" && item.component_kind() == "ParticleEmitter2D"
+            item.owner_entity() == "rotten-club-rain-far"
+                && item.component_kind() == "ParticleEmitter2D"
         }),
         "enabled rain should submit lightmap-reactive particle renderables"
     );
@@ -832,12 +816,9 @@ fn playground_2d_scene_selection_rehydrates_document_content() {
             .iter()
             .any(|command| command == "scene.select(text-lab)")
     );
-    assert!(
-        bridge
-            .processed_scene_commands
-            .iter()
-            .any(|command| command.starts_with("scene.plugin.text("))
-    );
+    assert!(bridge.processed_scene_commands.iter().any(|command| {
+        command.starts_with("scene.plugin(amigo.gfx.text-2d.scene-command.Text2D)")
+    }));
 }
 
 #[test]
@@ -950,12 +931,9 @@ fn playground_2d_sprite_scene_populates_2d_domain_and_assets() {
             .as_deref(),
         Some("scenes/sprite-lab/scene.yml")
     );
-    assert!(
-        summary
-            .processed_scene_commands
-            .iter()
-            .any(|command| command.starts_with("scene.plugin.sprite("))
-    );
+    assert!(summary.processed_scene_commands.iter().any(|command| {
+        command.starts_with("scene.plugin(amigo.gfx.sprite-2d.scene-command.Sprite2D)")
+    }));
     assert!(
         summary
             .registered_assets
@@ -1005,12 +983,9 @@ fn playground_2d_text_scene_populates_2d_text_domain_and_assets() {
             .as_deref(),
         Some("scenes/text-lab/scene.yml")
     );
-    assert!(
-        summary
-            .processed_scene_commands
-            .iter()
-            .any(|command| command.starts_with("scene.plugin.text("))
-    );
+    assert!(summary.processed_scene_commands.iter().any(|command| {
+        command.starts_with("scene.plugin(amigo.gfx.text-2d.scene-command.Text2D)")
+    }));
     assert!(
         summary
             .registered_assets

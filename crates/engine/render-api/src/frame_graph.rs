@@ -48,9 +48,18 @@ pub struct FrameGraphNode {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum FrameGraphValidationError {
-    MissingResource { node: String, resource: FrameResourceId },
-    ReadBeforeWrite { node: String, resource: FrameResourceId },
-    ExternalTargetWrittenByNonPresent { node: String, resource: FrameResourceId },
+    MissingResource {
+        node: String,
+        resource: FrameResourceId,
+    },
+    ReadBeforeWrite {
+        node: String,
+        resource: FrameResourceId,
+    },
+    ExternalTargetWrittenByNonPresent {
+        node: String,
+        resource: FrameResourceId,
+    },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -105,7 +114,11 @@ impl FrameGraph {
     }
 
     pub fn validate(&self) -> Result<(), Vec<FrameGraphValidationError>> {
-        let known = self.resources.iter().map(|resource| resource.id).collect::<BTreeSet<_>>();
+        let known = self
+            .resources
+            .iter()
+            .map(|resource| resource.id)
+            .collect::<BTreeSet<_>>();
         let external = self
             .resources
             .iter()
@@ -139,16 +152,22 @@ impl FrameGraph {
                     continue;
                 }
                 if external.contains(&write) && !matches!(node.kind, FrameGraphNodeKind::Present) {
-                    errors.push(FrameGraphValidationError::ExternalTargetWrittenByNonPresent {
-                        node: node.label.clone(),
-                        resource: write,
-                    });
+                    errors.push(
+                        FrameGraphValidationError::ExternalTargetWrittenByNonPresent {
+                            node: node.label.clone(),
+                            resource: write,
+                        },
+                    );
                 }
                 available.insert(write);
             }
         }
 
-        if errors.is_empty() { Ok(()) } else { Err(errors) }
+        if errors.is_empty() {
+            Ok(())
+        } else {
+            Err(errors)
+        }
     }
 
     pub fn dependencies(&self) -> Vec<FrameGraphDependency> {
@@ -174,7 +193,13 @@ impl FrameGraph {
 
 fn is_external_resource(kind: &FrameResourceKind) -> bool {
     matches!(kind, FrameResourceKind::SurfaceColor)
-        || matches!(kind, FrameResourceKind::TextureColor { transient: false, .. })
+        || matches!(
+            kind,
+            FrameResourceKind::TextureColor {
+                transient: false,
+                ..
+            }
+        )
 }
 
 pub fn resource_for_input(

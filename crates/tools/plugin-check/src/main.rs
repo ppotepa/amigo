@@ -23,10 +23,18 @@ fn main() {
         first.as_str(),
         "summary" | "check" | "plugins" | "targets" | "diagnostics" | "graph"
     ) && !(first == "plugins" && first_tail.is_some());
-    let command = if known_command { first.clone() } else { "check".to_owned() };
+    let command = if known_command {
+        first.clone()
+    } else {
+        "check".to_owned()
+    };
     let roots: Vec<PathBuf> = if known_command {
         let roots = args.map(PathBuf::from).collect::<Vec<_>>();
-        if roots.is_empty() { vec![PathBuf::from("plugins")] } else { roots }
+        if roots.is_empty() {
+            vec![PathBuf::from("plugins")]
+        } else {
+            roots
+        }
     } else {
         std::iter::once(PathBuf::from(first))
             .chain(args.map(PathBuf::from))
@@ -73,7 +81,9 @@ fn main() {
 fn validate_or_exit(roots: &[PathBuf]) {
     if let Err(errors) = validate_plugin_tree(roots) {
         eprintln!("plugin tree validation failed:");
-        for error in errors { eprintln!("- {error}"); }
+        for error in errors {
+            eprintln!("- {error}");
+        }
         std::process::exit(1);
     }
 }
@@ -84,28 +94,41 @@ fn print_summary(index: &PluginIndex, nodes: usize, edges: usize) {
     println!("edges: {edges}");
 }
 fn print_plugins(index: &PluginIndex) {
-    let mut ids = index.manifests().map(|m| m.id.0.as_str()).collect::<Vec<_>>();
+    let mut ids = index
+        .manifests()
+        .map(|m| m.id.0.as_str())
+        .collect::<Vec<_>>();
     ids.sort_unstable();
-    for id in ids { println!("{id}"); }
+    for id in ids {
+        println!("{id}");
+    }
 }
 fn print_targets(graph: &amigo_codemap_api::CodeMapGraph) {
     print_nodes_by_kind(graph, |id| matches!(id, CodeMapNodeId::Target(_)));
 }
 fn print_diagnostics(graph: &amigo_codemap_api::CodeMapGraph) {
-    print_nodes_by_kind(graph, |id| matches!(id, CodeMapNodeId::DiagnosticChannel(_)));
+    print_nodes_by_kind(graph, |id| {
+        matches!(id, CodeMapNodeId::DiagnosticChannel(_))
+    });
 }
 fn print_graph(graph: &amigo_codemap_api::CodeMapGraph) {
-    for edge in &graph.edges { println!("{:?} --{:?}--> {:?}", edge.from, edge.kind, edge.to); }
+    for edge in &graph.edges {
+        println!("{:?} --{:?}--> {:?}", edge.from, edge.kind, edge.to);
+    }
 }
 fn print_nodes_by_kind(
     graph: &amigo_codemap_api::CodeMapGraph,
     predicate: impl Fn(&CodeMapNodeId) -> bool,
 ) {
-    let mut labels = graph.nodes.values()
+    let mut labels = graph
+        .nodes
+        .values()
         .filter(|node| predicate(&node.id))
         .map(|node| node.label.as_str())
         .collect::<Vec<_>>();
     labels.sort_unstable();
     labels.dedup();
-    for label in labels { println!("{label}"); }
+    for label in labels {
+        println!("{label}");
+    }
 }

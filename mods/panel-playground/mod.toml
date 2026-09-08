@@ -1,0 +1,16 @@
+id = "panel-playground"
+name = "Engine Panel Playground"
+version = "0.1.0"
+description = "A metadata-bound panel without the NPR plugin."
+authors = ["Amigo Engine Team"]
+dependencies = ["core", "playground-2d"]
+capabilities = ["rendering_2d"]
+
+[scripting]
+mod_script_mode = "disabled"
+
+[[scenes]]
+id = "layer"
+label = "Live layer controls"
+path = "scenes/layer"
+launcher_visible = true

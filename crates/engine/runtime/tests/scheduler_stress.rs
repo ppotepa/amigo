@@ -2,7 +2,8 @@ use std::sync::mpsc;
 use std::time::Duration;
 
 use amigo_runtime::{
-    EngineJob, EngineLane, EngineSchedulerMode, EngineSchedulingConfig, EngineTaskSystem, JobContext,
+    EngineJob, EngineLane, EngineSchedulerMode, EngineSchedulingConfig, EngineTaskSystem,
+    JobContext,
 };
 
 fn worker_config(workers: usize) -> EngineSchedulingConfig {
@@ -42,9 +43,15 @@ struct ContextJob;
 impl EngineJob for ContextJob {
     type Output = JobContext;
 
-    fn name(&self) -> &'static str { "context-stress" }
-    fn lane(&self) -> EngineLane { EngineLane::Simulation }
-    fn run(self, ctx: JobContext) -> Self::Output { ctx }
+    fn name(&self) -> &'static str {
+        "context-stress"
+    }
+    fn lane(&self) -> EngineLane {
+        EngineLane::Simulation
+    }
+    fn run(self, ctx: JobContext) -> Self::Output {
+        ctx
+    }
 }
 
 #[test]
@@ -53,7 +60,10 @@ fn blocking_jobs_preserve_frame_and_declared_lane_under_load() {
     for frame_index in 0..512u64 {
         let context = system.run(
             ContextJob,
-            JobContext { frame_index, lane: EngineLane::Main },
+            JobContext {
+                frame_index,
+                lane: EngineLane::Main,
+            },
         );
         assert_eq!(context.frame_index, frame_index);
         assert_eq!(context.lane, EngineLane::Simulation);
@@ -70,10 +80,13 @@ fn worker_count_can_scale_without_losing_jobs() {
     let (tx, rx) = mpsc::channel();
     for _ in 0..256 {
         let tx = tx.clone();
-        assert!(system.spawn_detached(move || { tx.send(()).unwrap(); }));
+        assert!(system.spawn_detached(move || {
+            tx.send(()).unwrap();
+        }));
     }
     drop(tx);
     for _ in 0..256 {
-        rx.recv_timeout(Duration::from_secs(5)).expect("scaled pool should complete all jobs");
+        rx.recv_timeout(Duration::from_secs(5))
+            .expect("scaled pool should complete all jobs");
     }
 }

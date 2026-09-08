@@ -7,6 +7,13 @@ pub trait RuntimeControlProvider: Send + Sync {
         registry: &mut RuntimeControlRegistry,
     ) -> Result<(), RuntimeControlError>;
     fn get(&self, path: &RuntimeControlProperty) -> Result<ControlValue, RuntimeControlError>;
+    /// Providers may capture one coherent domain snapshot for a whole panel.
+    fn get_many(
+        &self,
+        paths: &[RuntimeControlProperty],
+    ) -> Result<Vec<ControlValue>, RuntimeControlError> {
+        paths.iter().map(|p| self.get(p)).collect()
+    }
     fn set(
         &self,
         path: &RuntimeControlProperty,

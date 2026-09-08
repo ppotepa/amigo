@@ -104,6 +104,7 @@ pub fn load_particle_preset_file(source_mod: &str, path: &Path) -> AmigoResult<P
     let emitter_component = plugin_component_document(component_type, payload);
 
     let scene_document = SceneDocument {
+        panels: Vec::new(),
         version: 1,
         scene: SceneMetadataDocument {
             id: format!("particle-preset-{id}"),

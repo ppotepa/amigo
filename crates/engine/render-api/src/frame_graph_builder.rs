@@ -64,14 +64,24 @@ pub fn try_build_frame_graph_from_plan(
                 RenderPassPlan::World(pass) => {
                     let output = resource_for_output(pass.output, target, world, post_fx);
                     ensure_non_present_does_not_write_target(view_id, &pass_label, output, target)?;
-                    graph.add_node(format!("view:{view_id}:world"), FrameGraphNodeKind::World, vec![], vec![output]);
+                    graph.add_node(
+                        format!("view:{view_id}:world"),
+                        FrameGraphNodeKind::World,
+                        vec![],
+                        vec![output],
+                    );
                 }
                 RenderPassPlan::PostFx(pass) => {
                     let input = resource_for_input(pass.input, target, world, post_fx);
                     let output = resource_for_output(pass.output, target, world, post_fx);
                     ensure_non_present_does_not_write_target(view_id, &pass_label, output, target)?;
                     graph.add_node(
-                        format!("view:{view_id}:post_fx:{}:{}:{}", pass.host_id.as_str(), pass.effect_id.as_str(), pass.feature_id),
+                        format!(
+                            "view:{view_id}:post_fx:{}:{}:{}",
+                            pass.host_id.as_str(),
+                            pass.effect_id.as_str(),
+                            pass.feature_id
+                        ),
                         FrameGraphNodeKind::PostFx {
                             host_id: pass.host_id.clone(),
                             effect_id: pass.effect_id.clone(),
@@ -87,17 +97,32 @@ pub fn try_build_frame_graph_from_plan(
                     let input = resource_for_input(pass.input, target, world, post_fx);
                     let output = resource_for_output(pass.output, target, world, post_fx);
                     ensure_non_present_does_not_write_target(view_id, &pass_label, output, target)?;
-                    graph.add_node(format!("view:{view_id}:game_ui"), FrameGraphNodeKind::GameUi, input.into_iter().collect(), vec![output]);
+                    graph.add_node(
+                        format!("view:{view_id}:game_ui"),
+                        FrameGraphNodeKind::GameUi,
+                        input.into_iter().collect(),
+                        vec![output],
+                    );
                 }
                 RenderPassPlan::DebugOverlay(pass) => {
                     let input = resource_for_input(pass.input, target, world, post_fx);
                     let output = resource_for_output(pass.output, target, world, post_fx);
                     ensure_non_present_does_not_write_target(view_id, &pass_label, output, target)?;
-                    graph.add_node(format!("view:{view_id}:debug_overlay"), FrameGraphNodeKind::DebugOverlay, input.into_iter().collect(), vec![output]);
+                    graph.add_node(
+                        format!("view:{view_id}:debug_overlay"),
+                        FrameGraphNodeKind::DebugOverlay,
+                        input.into_iter().collect(),
+                        vec![output],
+                    );
                 }
                 RenderPassPlan::Present(pass) => {
                     let input = resource_for_input(pass.input, target, world, post_fx);
-                    graph.add_node(format!("view:{view_id}:present"), FrameGraphNodeKind::Present, input.into_iter().collect(), vec![target]);
+                    graph.add_node(
+                        format!("view:{view_id}:present"),
+                        FrameGraphNodeKind::Present,
+                        input.into_iter().collect(),
+                        vec![target],
+                    );
                 }
             }
         }

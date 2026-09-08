@@ -30,6 +30,16 @@ impl PluginSceneCommandPayload for Text2dPluginCommandPayload {
             .downcast_ref::<Text2dSceneCommand>()
             .is_some_and(|command| command == &self.0)
     }
+
+    fn asset_dependencies(&self) -> Vec<amigo_scene::SceneAssetDependency> {
+        let command = &self.0;
+        vec![amigo_scene::SceneAssetDependency::new(
+            command.source_mod.clone(),
+            command.font.clone(),
+            "fonts",
+            "font-2d",
+        )]
+    }
 }
 
 pub fn text_plugin_scene_command(command: Text2dSceneCommand) -> PluginSceneCommand {

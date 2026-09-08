@@ -54,6 +54,9 @@ members = [
     "crates/audio/output",
     "crates/ui/core",
     "crates/ui/layout",
+    "crates/ui/panel-api",
+    "crates/ui/panels",
+    "crates/ui/panel-egui",
     "crates/runtime/bundles",
     "crates/apps/app",
     "crates/tools/scene-preview",
@@ -186,6 +189,10 @@ amigo-audio-mixer = { path = "crates/audio/mixer" }
 amigo-audio-output = { path = "crates/audio/output" }
 amigo-ui = { path = "crates/ui/core" }
 amigo-ui-layout = { path = "crates/ui/layout" }
+amigo-panel-api = { path = "crates/ui/panel-api" }
+amigo-panels = { path = "crates/ui/panels" }
+amigo-panel-egui = { path = "crates/ui/panel-egui" }
+serde_json = "1.0"
 amigo-runtime-bundles = { path = "crates/runtime/bundles" }
 amigo-app = { path = "crates/apps/app" }
 amigo-symbol-explorer = { path = "crates/tools/amigo-symbol-explorer" }

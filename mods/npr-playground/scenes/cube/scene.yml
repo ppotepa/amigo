@@ -1,4 +1,8 @@
 version: 1
+panels:
+  - id: npr
+    layout: ../../ui/npr.panel.yml
+    auto_open: true
 scene:
   id: cube
   label: NPR Cube

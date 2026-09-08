@@ -38,7 +38,7 @@ use amigo_vector_2d_plugin::{
     VectorViewportFit2d,
 };
 
-use crate::RhaiScriptRuntime;
+use crate::{RhaiFrameClock, RhaiScriptRuntime};
 use amigo_scripting_api::ScriptRuntime;
 
 fn test_freeflight_profile() -> FreeflightMotionProfile2d {

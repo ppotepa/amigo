@@ -296,17 +296,56 @@ pub fn render_game_frame_to_cache(
                 .iter()
                 .map(|stack| stack.effects.len())
                 .sum(),
-            npr_geometry: render_packet.npr().iter().map(|command| command.packet.stats.geometry).sum(),
-            npr_topology_edges: render_packet.npr().iter().map(|command| command.packet.stats.topology_edges).sum(),
-            npr_feature_segments: render_packet.npr().iter().map(|command| command.packet.stats.feature_segments).sum(),
-            npr_silhouettes: render_packet.npr().iter().map(|command| command.packet.stats.silhouettes).sum(),
-            npr_creases: render_packet.npr().iter().map(|command| command.packet.stats.creases).sum(),
-            npr_strokes: render_packet.npr().iter().map(|command| command.packet.stats.strokes).sum(),
-            npr_stroke_vertices: render_packet.npr().iter().map(|command| command.packet.stats.stroke_vertices).sum(),
-            npr_stroke_indices: render_packet.npr().iter().map(|command| command.packet.stats.stroke_indices).sum(),
-            npr_viewport: render_packet.npr().first().map(|command| command.packet.stats.viewport).unwrap_or([0, 0]),
+            npr_geometry: render_packet
+                .npr()
+                .iter()
+                .map(|command| command.packet.stats.geometry)
+                .sum(),
+            npr_topology_edges: render_packet
+                .npr()
+                .iter()
+                .map(|command| command.packet.stats.topology_edges)
+                .sum(),
+            npr_feature_segments: render_packet
+                .npr()
+                .iter()
+                .map(|command| command.packet.stats.feature_segments)
+                .sum(),
+            npr_silhouettes: render_packet
+                .npr()
+                .iter()
+                .map(|command| command.packet.stats.silhouettes)
+                .sum(),
+            npr_creases: render_packet
+                .npr()
+                .iter()
+                .map(|command| command.packet.stats.creases)
+                .sum(),
+            npr_strokes: render_packet
+                .npr()
+                .iter()
+                .map(|command| command.packet.stats.strokes)
+                .sum(),
+            npr_stroke_vertices: render_packet
+                .npr()
+                .iter()
+                .map(|command| command.packet.stats.stroke_vertices)
+                .sum(),
+            npr_stroke_indices: render_packet
+                .npr()
+                .iter()
+                .map(|command| command.packet.stats.stroke_indices)
+                .sum(),
+            npr_viewport: render_packet
+                .npr()
+                .first()
+                .map(|command| command.packet.stats.viewport)
+                .unwrap_or([0, 0]),
             npr_preset: render_packet.npr().first().map(|command| command.preset),
-            npr_debug_view: render_packet.npr().first().map(|command| command.packet.debug_view),
+            npr_debug_view: render_packet
+                .npr()
+                .first()
+                .map(|command| command.packet.debug_view),
         };
         stats_service.set(stats.clone());
         if debug_overlay_enabled || dev_console_open {

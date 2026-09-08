@@ -21,22 +21,46 @@ pub fn parse_plugin_manifest_str(input: &str) -> Result<PluginManifest, PluginMa
     );
 
     for item in raw.capabilities.provides {
-        manifest.capabilities.provides.push(parse_capability(&item)?);
+        manifest
+            .capabilities
+            .provides
+            .push(parse_capability(&item)?);
     }
     for item in raw.capabilities.requires {
-        manifest.capabilities.requires.push(parse_capability(&item)?);
+        manifest
+            .capabilities
+            .requires
+            .push(parse_capability(&item)?);
     }
-    for item in raw.slots.implements { manifest.slots.implements.push(SlotId(item)); }
-    for item in raw.slots.requires { manifest.slots.requires.push(SlotId(item)); }
-    for item in raw.slots.replaces { manifest.slots.replaces.push(PluginId(item)); }
-    for item in raw.targets.reads { manifest.targets.reads.push(TargetId(item)); }
-    for item in raw.targets.writes { manifest.targets.writes.push(TargetId(item)); }
-    for item in raw.targets.contributes { manifest.targets.contributes.push(TargetId(item)); }
+    for item in raw.slots.implements {
+        manifest.slots.implements.push(SlotId(item));
+    }
+    for item in raw.slots.requires {
+        manifest.slots.requires.push(SlotId(item));
+    }
+    for item in raw.slots.replaces {
+        manifest.slots.replaces.push(PluginId(item));
+    }
+    for item in raw.targets.reads {
+        manifest.targets.reads.push(TargetId(item));
+    }
+    for item in raw.targets.writes {
+        manifest.targets.writes.push(TargetId(item));
+    }
+    for item in raw.targets.contributes {
+        manifest.targets.contributes.push(TargetId(item));
+    }
     for contribution in raw.contributions.emits {
-        manifest.contributions.emits.push(parse_contribution(contribution)?);
+        manifest
+            .contributions
+            .emits
+            .push(parse_contribution(contribution)?);
     }
     for contribution in raw.contributions.consumes {
-        manifest.contributions.consumes.push(parse_contribution(contribution)?);
+        manifest
+            .contributions
+            .consumes
+            .push(parse_contribution(contribution)?);
     }
     for channel in raw.diagnostics.channels {
         manifest.diagnostics.channels.push(DiagnosticChannelRef {
@@ -65,27 +89,37 @@ fn parse_kind(value: &str) -> Result<PluginKind, PluginManifestParseError> {
         "adapter" => Ok(PluginKind::Adapter),
         "tooling" => Ok(PluginKind::Tooling),
         "noop" => Ok(PluginKind::Noop),
-        other => Err(PluginManifestParseError::UnknownPluginKind(other.to_string())),
+        other => Err(PluginManifestParseError::UnknownPluginKind(
+            other.to_string(),
+        )),
     }
 }
 
-fn parse_render_participation(value: &str) -> Result<RenderParticipation, PluginManifestParseError> {
+fn parse_render_participation(
+    value: &str,
+) -> Result<RenderParticipation, PluginManifestParseError> {
     match value {
         "none" => Ok(RenderParticipation::None),
         "source-renderer" => Ok(RenderParticipation::SourceRenderer),
         "target-writer" => Ok(RenderParticipation::TargetWriter),
         "target-consumer" => Ok(RenderParticipation::TargetConsumer),
         "render-backend" => Ok(RenderParticipation::RenderBackend),
-        other => Err(PluginManifestParseError::UnknownRenderParticipation(other.to_string())),
+        other => Err(PluginManifestParseError::UnknownRenderParticipation(
+            other.to_string(),
+        )),
     }
 }
 
 fn parse_capability(value: &str) -> Result<CapabilityRef, PluginManifestParseError> {
     let Some((id, raw_version)) = value.split_once('@') else {
-        return Err(PluginManifestParseError::InvalidCapability(value.to_owned()));
+        return Err(PluginManifestParseError::InvalidCapability(
+            value.to_owned(),
+        ));
     };
     if id.trim().is_empty() || raw_version.trim().is_empty() || raw_version.contains('@') {
-        return Err(PluginManifestParseError::InvalidCapability(value.to_owned()));
+        return Err(PluginManifestParseError::InvalidCapability(
+            value.to_owned(),
+        ));
     }
     let version = raw_version
         .parse::<u32>()
@@ -95,7 +129,9 @@ fn parse_capability(value: &str) -> Result<CapabilityRef, PluginManifestParseErr
     Ok(CapabilityRef::new(id, version))
 }
 
-fn parse_contribution(raw: RawContribution) -> Result<ContributionContract, PluginManifestParseError> {
+fn parse_contribution(
+    raw: RawContribution,
+) -> Result<ContributionContract, PluginManifestParseError> {
     Ok(ContributionContract {
         domain: DomainId(raw.domain),
         contribution_type: raw.contribution_type,
@@ -110,6 +146,8 @@ fn parse_policy(value: &str) -> Result<ContributionPolicy, PluginManifestParseEr
         "DerivedAtHydration" => Ok(ContributionPolicy::DerivedAtHydration),
         "Forbidden" => Ok(ContributionPolicy::Forbidden),
         "ExplicitOnly" => Ok(ContributionPolicy::ExplicitOnly),
-        other => Err(PluginManifestParseError::UnknownContributionPolicy(other.to_owned())),
+        other => Err(PluginManifestParseError::UnknownContributionPolicy(
+            other.to_owned(),
+        )),
     }
 }

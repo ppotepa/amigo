@@ -30,7 +30,9 @@ impl DeterministicReplay {
         });
     }
 
-    pub fn frames(&self) -> &[ReplayFrameDigest] { &self.frames }
+    pub fn frames(&self) -> &[ReplayFrameDigest] {
+        &self.frames
+    }
 
     pub fn digest(&self) -> ReplayDigest {
         let mut hash = FNV_OFFSET;
@@ -47,13 +49,20 @@ impl DeterministicReplay {
         let common = self.frames.len().min(other.frames.len());
         for index in 0..common {
             if self.frames[index] != other.frames[index] {
-                return Some(self.frames[index].frame_index.min(other.frames[index].frame_index));
+                return Some(
+                    self.frames[index]
+                        .frame_index
+                        .min(other.frames[index].frame_index),
+                );
             }
         }
         if self.frames.len() == other.frames.len() {
             None
         } else {
-            self.frames.get(common).or_else(|| other.frames.get(common)).map(|frame| frame.frame_index)
+            self.frames
+                .get(common)
+                .or_else(|| other.frames.get(common))
+                .map(|frame| frame.frame_index)
         }
     }
 }

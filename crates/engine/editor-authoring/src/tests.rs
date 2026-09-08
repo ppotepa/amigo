@@ -1,4 +1,15 @@
 use super::*;
+use amigo_layered_image_2d_plugin::scene::LayeredImage2dComponentMetadataProvider;
+use amigo_particles_2d_plugin::scene::ParticleEmitter2dComponentMetadataProvider;
+use amigo_scene::{ComponentMetadataProviderRegistry, component_registry_with_providers};
+
+fn build_plugin_property_panel_for_node(node: &AuthoringNode) -> AuthoringPropertyPanel {
+    let providers = ComponentMetadataProviderRegistry::default();
+    providers.register(LayeredImage2dComponentMetadataProvider);
+    providers.register(ParticleEmitter2dComponentMetadataProvider);
+    let registry = component_registry_with_providers(Some(&providers));
+    build_property_panel_for_node_with_registry(node, &registry)
+}
 
 fn repo_root() -> std::path::PathBuf {
     std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -79,12 +90,6 @@ fn rotten_club_main_menu_loads_use_source_files() {
         graph
             .source_files
             .iter()
-            .any(|path| path.ends_with("camera/motion.yml"))
-    );
-    assert!(
-        graph
-            .source_files
-            .iter()
             .any(|path| path.ends_with("render/layers.yml"))
     );
 }
@@ -116,7 +121,15 @@ fn rotten_club_main_menu_has_render_layer_nodes() {
 fn rotten_club_main_menu_has_ui_nodes() {
     let graph = load_rotten_club_main_menu_graph();
 
-    assert!(!nodes_by_kind(&graph, AuthoringNodeKind::UiNode).is_empty());
+    assert!(
+        nodes_by_kind(&graph, AuthoringNodeKind::Component)
+            .into_iter()
+            .any(|node| node
+                .semantic
+                .component_type
+                .as_deref()
+                .is_some_and(|component| component.ends_with("Text2D")))
+    );
 }
 
 fn test_component_node(component_type: &str, entity_name: &str, yaml: &str) -> AuthoringNode {
@@ -167,7 +180,7 @@ render_layer: rain.near
 "#,
     );
 
-    let panel = build_property_panel_for_node(&node);
+    let panel = build_plugin_property_panel_for_node(&node);
 
     let spawn_rate = property_by_suffix(&panel, "::spawn_rate");
     assert_eq!(spawn_rate.label, "Spawn Rate");
@@ -207,7 +220,7 @@ layer_overrides:
 "#,
     );
 
-    let panel = build_property_panel_for_node(&node);
+    let panel = build_plugin_property_panel_for_node(&node);
 
     let asset = property_by_suffix(&panel, "::asset");
     assert_eq!(asset.label, "Layered Image Asset");
@@ -257,7 +270,7 @@ render_layer: rain.near
 "#,
     );
 
-    let panel = build_property_panel_for_node(&node);
+    let panel = build_plugin_property_panel_for_node(&node);
 
     assert_eq!(panel.title, "Component: Particle Emitter 2D");
     assert!(panel.groups.iter().any(|group| group.id == "metadata"));
@@ -323,7 +336,7 @@ layer_overrides: []
 "#,
     );
 
-    let panel = build_property_panel_for_node(&node);
+    let panel = build_plugin_property_panel_for_node(&node);
 
     let asset = property_by_suffix(&panel, "::asset");
     assert_eq!(
@@ -350,7 +363,7 @@ layer_overrides: []
 "#,
     );
 
-    let panel = build_property_panel_for_node(&node);
+    let panel = build_plugin_property_panel_for_node(&node);
     let base_opacity = property_by_suffix(&panel, "::base_opacity");
 
     let constraints = base_opacity
@@ -376,7 +389,7 @@ initial_speed: 640
 "#,
     );
 
-    let panel = build_property_panel_for_node(&node);
+    let panel = build_plugin_property_panel_for_node(&node);
     let spawn_rate = property_by_suffix(&panel, "::spawn_rate");
 
     let constraints = spawn_rate
@@ -406,7 +419,7 @@ layer_overrides:
 "#,
     );
 
-    let panel = build_property_panel_for_node(&node);
+    let panel = build_plugin_property_panel_for_node(&node);
 
     let opacity = property_by_suffix(&panel, "::layer_overrides.background.city.neon.opacity");
     assert_eq!(
@@ -744,24 +757,24 @@ fn first_render_layer_by_id<'a>(
 #[test]
 fn rotten_club_main_menu_layered_image_has_owner_entity_and_bindings() {
     let graph = load_rotten_club_main_menu_graph();
-    let node = first_component_by_type(&graph, "LayeredImage2D");
+    let node = first_component_by_type(&graph, "amigo.gfx.layered-image-2d.LayeredImage2D");
     assert_eq!(
         node.semantic.owner_entity_name.as_deref(),
-        Some("background")
+        Some("rotten-club-background")
     );
-    let panel = build_property_panel_for_node(node);
+    let panel = build_plugin_property_panel_for_node(node);
     let base_opacity = property_by_suffix(&panel, "::base_opacity");
     assert_eq!(
         base_opacity.binding,
         Some(AuthoringRuntimeBinding::LayeredImageBaseOpacity {
-            entity_name: "background".to_owned(),
+            entity_name: "rotten-club-background".to_owned(),
         })
     );
     let club_sign = property_by_suffix(&panel, "::layer_overrides.club_sign.opacity");
     assert_eq!(
         club_sign.binding,
         Some(AuthoringRuntimeBinding::LayeredImageLayerOpacity {
-            entity_name: "background".to_owned(),
+            entity_name: "rotten-club-background".to_owned(),
             layer_id: "club_sign".to_owned(),
         })
     );
@@ -809,27 +822,27 @@ fn rotten_club_main_menu_render_layers_generate_runtime_bindings() {
     assert!(option_ids.contains(&"distance"));
     assert!(option_ids.contains(&"infinity"));
 
-    let rain_node = first_render_layer_by_id(&graph, "weather.rain.5m");
+    let rain_node = first_render_layer_by_id(&graph, "weather.rain.near");
     let rain_panel = build_property_panel_for_node(rain_node);
     let distance_m = property_by_suffix(&rain_panel, "::depth.distance_m");
     assert_eq!(
         distance_m.binding,
         Some(AuthoringRuntimeBinding::RenderLayerDistanceM {
-            layer_id: "weather.rain.5m".to_owned(),
+            layer_id: "weather.rain.near".to_owned(),
         })
     );
     let z_depth = property_by_suffix(&rain_panel, "::depth.z_depth");
     assert_eq!(
         z_depth.binding,
         Some(AuthoringRuntimeBinding::RenderLayerZDepth {
-            layer_id: "weather.rain.5m".to_owned(),
+            layer_id: "weather.rain.near".to_owned(),
         })
     );
     let blur_scale = property_by_suffix(&rain_panel, "::depth.blur_scale");
     assert_eq!(
         blur_scale.binding,
         Some(AuthoringRuntimeBinding::RenderLayerDepthBlurScale {
-            layer_id: "weather.rain.5m".to_owned(),
+            layer_id: "weather.rain.near".to_owned(),
         })
     );
 }
@@ -851,13 +864,7 @@ fn rotten_club_main_menu_camera_reports_profile_refs_without_scene_postfx_mock_d
             .ends_with("camera/main.yml"),
         true
     );
-    assert!(
-        node.value
-            .get("lens_surface")
-            .and_then(|value| value.get("rain_profile"))
-            .and_then(|value| value.as_str())
-            == Some("realistic_lens_rain")
-    );
+    assert!(node.value.get("lens_surface").is_none());
     let panel = build_property_panel_for_node(node);
     assert!(
         !panel
@@ -874,11 +881,14 @@ fn rotten_club_main_menu_particle_emitters_use_component_metadata() {
     let particle = nodes_by_kind(&graph, AuthoringNodeKind::Component)
         .into_iter()
         .find(|node| {
-            node.semantic.component_type.as_deref() == Some("ParticleEmitter2D")
-                && node.semantic.owner_entity_name.as_deref() == Some("rain-10m")
+            node.semantic
+                .component_type
+                .as_deref()
+                .is_some_and(|component| component.ends_with("ParticleEmitter2D"))
+                && node.semantic.owner_entity_name.as_deref() == Some("rotten-club-rain-near")
         })
-        .expect("rain-10m ParticleEmitter2D");
-    let panel = build_property_panel_for_node(particle);
+        .expect("rotten-club-rain-near ParticleEmitter2D");
+    let panel = build_plugin_property_panel_for_node(particle);
     let spawn_rate = property_by_suffix(&panel, "::spawn_rate");
     assert_eq!(spawn_rate.label, "Spawn Rate");
     assert!(matches!(
@@ -888,7 +898,7 @@ fn rotten_club_main_menu_particle_emitters_use_component_metadata() {
     assert_eq!(
         spawn_rate.binding,
         Some(AuthoringRuntimeBinding::ParticleEmitterProperty {
-            entity_name: "rain-10m".to_owned(),
+            entity_name: "rotten-club-rain-near".to_owned(),
             field: "spawn_rate".to_owned(),
         })
     );

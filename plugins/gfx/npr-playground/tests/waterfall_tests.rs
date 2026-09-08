@@ -4,4 +4,3 @@ fn manifest_and_service_use_typed_npr_contract() {
     service.rebuild_cube([512, 512], 7);
     assert_eq!(service.snapshot().unwrap().packet.stats.geometry, 1);
 }
-

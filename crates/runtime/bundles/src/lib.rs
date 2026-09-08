@@ -7,6 +7,7 @@ mod event_pipeline;
 mod full;
 mod host_viewport;
 mod offscreen_runtime_frame;
+mod panels;
 mod platform;
 mod plugin_composition;
 mod plugin_manifests;
@@ -31,6 +32,7 @@ pub use event_pipeline::*;
 pub use full::*;
 pub use host_viewport::*;
 pub use offscreen_runtime_frame::*;
+pub use panels::*;
 pub use platform::*;
 pub use plugin_composition::*;
 pub use plugin_manifests::*;
@@ -94,6 +96,8 @@ fn register_host_runtime_capabilities(session: &mut RuntimeSession) {
             migration_seam: false,
         },
     ] {
-        session.runtime_capabilities_mut().register(RuntimeCapability { descriptor });
+        session
+            .runtime_capabilities_mut()
+            .register(RuntimeCapability { descriptor });
     }
 }

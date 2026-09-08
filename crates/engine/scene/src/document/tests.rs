@@ -1593,29 +1593,14 @@ fn scene_compiler_compiles_rotten_club_main_menu_from_disk() {
             .document
             .entities
             .iter()
-            .any(|entity| entity.id == "main-menu-camera" && entity.name == "main-menu-camera")
+            .any(|entity| entity.id == "main-camera" && entity.name == "rotten-club-main-camera")
     );
     assert!(
         compiled
             .document
             .entities
             .iter()
-            .any(|entity| entity.id == "main-menu-background" && entity.name == "background")
-    );
-    assert!(
-        compiled
-            .document
-            .entities
-            .iter()
-            .any(|entity| entity.id == "main-menu-ui")
-    );
-    assert!(
-        compiled
-            .document
-            .entities
-            .iter()
-            .flat_map(|entity| entity.components.iter())
-            .any(|component| component.kind() == "UiDocument")
+            .any(|entity| entity.id == "background" && entity.name == "rotten-club-background")
     );
     assert!(
         compiled
@@ -1631,9 +1616,9 @@ fn scene_compiler_compiles_rotten_club_main_menu_from_disk() {
             .visual2d
             .render_layers
             .iter()
-            .any(|layer| layer.id == "weather.rain.1m"
+            .any(|layer| layer.id == "weather.rain.far"
                 && matches!(layer.depth.mode, RenderDepthMode2dDocument::Distance)
-                && (layer.depth.distance_m.unwrap_or_default() - 1.0).abs() < f32::EPSILON)
+                && (layer.depth.distance_m.unwrap_or_default() - 18.0).abs() < f32::EPSILON)
     );
     assert!(
         compiled
@@ -1643,11 +1628,11 @@ fn scene_compiler_compiles_rotten_club_main_menu_from_disk() {
             .iter()
             .any(|layer| layer.id == "title.depth2d"
                 && matches!(layer.depth.mode, RenderDepthMode2dDocument::Distance)
-                && (layer.depth.distance_m.unwrap_or_default() - 1.0).abs() < f32::EPSILON
-                && (layer.depth.blur_scale - 1.0).abs() < f32::EPSILON)
+                && (layer.depth.distance_m.unwrap_or_default() - 4.5).abs() < f32::EPSILON
+                && (layer.depth.blur_scale - 0.45).abs() < f32::EPSILON)
     );
     assert!(compiled.document.entities.iter().any(|entity| {
-        entity.id == "main-menu-title"
+        entity.id == "title"
             && entity
                 .components
                 .iter()
@@ -1667,7 +1652,7 @@ fn scene_compiler_compiles_rotten_club_main_menu_from_disk() {
             .visual2d
             .light_routes
             .iter()
-            .any(|route| route.receiver_layer == "weather.rain.1m")
+            .any(|route| route.receiver_layer == "weather.rain.far")
     );
 }
 

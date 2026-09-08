@@ -30,6 +30,35 @@ impl PluginSceneCommandPayload for Sprite2dPluginCommandPayload {
             .downcast_ref::<Sprite2dSceneCommand>()
             .is_some_and(|command| command == &self.0)
     }
+
+    fn asset_dependencies(&self) -> Vec<amigo_scene::SceneAssetDependency> {
+        let command = &self.0;
+        let mut dependencies = vec![amigo_scene::SceneAssetDependency::new(
+            command.source_mod.clone(),
+            command.texture.clone(),
+            "spritesheets",
+            "sprite-sheet-2d",
+        )];
+        if let Some(maps) = command.visual_maps.as_ref() {
+            for asset in [
+                maps.normal.as_ref(),
+                maps.wetness.as_ref(),
+                maps.emissive.as_ref(),
+                maps.highlight.as_ref(),
+            ]
+            .into_iter()
+            .flatten()
+            {
+                dependencies.push(amigo_scene::SceneAssetDependency::new(
+                    command.source_mod.clone(),
+                    asset.clone(),
+                    "visual-maps",
+                    "image-2d",
+                ));
+            }
+        }
+        dependencies
+    }
 }
 
 pub fn sprite_plugin_scene_command(command: Sprite2dSceneCommand) -> PluginSceneCommand {

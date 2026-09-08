@@ -1,5 +1,4 @@
 use amigo_render_api::MaterialDrawCommand;
-use amigo_render_api::{NprBackgroundCommand, NprDrawCommand, NprRenderOutput};
 use amigo_render_api::MeshDrawCommand;
 use amigo_render_api::Text3dDrawCommand;
 use amigo_render_api::{
@@ -8,6 +7,7 @@ use amigo_render_api::{
     RenderLightMap2dSource, Renderable2dItem, Renderable2dKind, ScopedPostFx2dStack,
 };
 use amigo_render_api::{LightRoute2dCommand, RenderLayer2dCommand};
+use amigo_render_api::{NprBackgroundCommand, NprDrawCommand, NprRenderOutput};
 
 use crate::UiOverlayDocument;
 
@@ -72,8 +72,12 @@ impl WgpuRenderFramePacket {
         self.world_3d_text.push(command);
     }
 
-    pub fn push_npr_draw_command(&mut self, command: NprDrawCommand) { self.npr.push(command); }
-    pub fn set_npr_background(&mut self, background: NprBackgroundCommand) { self.npr_background = Some(background); }
+    pub fn push_npr_draw_command(&mut self, command: NprDrawCommand) {
+        self.npr.push(command);
+    }
+    pub fn set_npr_background(&mut self, background: NprBackgroundCommand) {
+        self.npr_background = Some(background);
+    }
 
     pub fn push_game_ui_overlay(&mut self, overlay: UiOverlayDocument) {
         self.game_ui_overlay.push(overlay);
@@ -261,8 +265,12 @@ impl WgpuRenderFramePacket {
         &self.world_3d_text
     }
 
-    pub fn npr(&self) -> &[NprDrawCommand] { &self.npr }
-    pub fn npr_background(&self) -> Option<NprBackgroundCommand> { self.npr_background }
+    pub fn npr(&self) -> &[NprDrawCommand] {
+        &self.npr
+    }
+    pub fn npr_background(&self) -> Option<NprBackgroundCommand> {
+        self.npr_background
+    }
 
     pub fn game_ui_overlay(&self) -> &[UiOverlayDocument] {
         &self.game_ui_overlay
@@ -356,6 +364,10 @@ impl amigo_render_api::Text3dRenderOutput for WgpuRenderFramePacket {
 }
 
 impl NprRenderOutput for WgpuRenderFramePacket {
-    fn push_npr_draw_command(&mut self, command: NprDrawCommand) { self.push_npr_draw_command(command); }
-    fn set_npr_background(&mut self, background: NprBackgroundCommand) { self.set_npr_background(background); }
+    fn push_npr_draw_command(&mut self, command: NprDrawCommand) {
+        self.push_npr_draw_command(command);
+    }
+    fn set_npr_background(&mut self, background: NprBackgroundCommand) {
+        self.set_npr_background(background);
+    }
 }

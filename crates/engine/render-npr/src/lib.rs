@@ -8,9 +8,12 @@ pub mod debug;
 pub mod feature;
 pub mod frame;
 pub mod geometry;
+pub mod gesture;
 pub mod math;
+pub mod stroke;
 pub mod style;
 pub mod tessellation;
+pub mod tool;
 pub mod topology;
 
 pub use camera::*;
@@ -21,4 +24,5 @@ pub use geometry::*;
 pub use math::*;
 pub use style::*;
 pub use tessellation::*;
+pub use tool::*;
 pub use topology::*;

@@ -60,3 +60,42 @@ pub fn classify_features(
         })
         .collect()
 }
+
+pub fn classify_perspective_features(
+    geometry: &NprGeometry,
+    topology: &[TopologyEdge],
+    camera: Vec3,
+    crease_angle: f32,
+) -> Vec<FeatureSegment> {
+    let normals = (0..geometry.triangles.len())
+        .map(|i| face_normal(geometry, i as u32))
+        .collect::<Vec<_>>();
+    let cosine = crease_angle.cos();
+    topology
+        .iter()
+        .filter_map(|edge| {
+            let midpoint = (geometry.vertices[edge.a as usize].position
+                + geometry.vertices[edge.b as usize].position)
+                * 0.5;
+            let first = normals[edge.faces[0] as usize];
+            let class = if edge.faces[1] == u32::MAX {
+                FeatureClass::Boundary
+            } else {
+                let second = normals[edge.faces[1] as usize];
+                let view = camera - midpoint;
+                if (first.dot(view) >= 0.0) != (second.dot(view) >= 0.0) {
+                    FeatureClass::Silhouette
+                } else if first.dot(second) < cosine {
+                    FeatureClass::Crease
+                } else {
+                    return None;
+                }
+            };
+            Some(FeatureSegment {
+                edge: *edge,
+                class,
+                midpoint,
+            })
+        })
+        .collect()
+}

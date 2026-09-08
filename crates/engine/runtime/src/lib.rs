@@ -93,7 +93,11 @@ impl ServiceRegistry {
     }
 
     pub fn registered_names(&self) -> Vec<&'static str> {
-        let mut names = self.services.values().map(|entry| entry.name).collect::<Vec<_>>();
+        let mut names = self
+            .services
+            .values()
+            .map(|entry| entry.name)
+            .collect::<Vec<_>>();
         names.sort_unstable();
         names
     }

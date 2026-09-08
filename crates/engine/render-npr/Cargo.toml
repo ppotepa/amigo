@@ -7,5 +7,5 @@ license.workspace = true
 authors.workspace = true
 
 [dependencies]
-glam.workspace = true
-
+serde.workspace = true
+glam = { workspace = true, features = ["serde"] }

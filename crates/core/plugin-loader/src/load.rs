@@ -1,7 +1,7 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use amigo_plugin_api::{PluginManifest, validate_plugin_manifest};
+use amigo_plugin_api::{validate_plugin_manifest, PluginManifest};
 use amigo_plugin_manifest::parse_plugin_manifest_str;
 
 use crate::error::PluginLoadError;
@@ -82,7 +82,11 @@ pub fn load_plugin_manifests_from_plugins_dir(
         }
     }
 
-    if errors.is_empty() { Ok(manifests) } else { Err(errors) }
+    if errors.is_empty() {
+        Ok(manifests)
+    } else {
+        Err(errors)
+    }
 }
 
 fn load_one(path: &Path) -> Result<PluginManifest, PluginLoadError> {
@@ -91,10 +95,11 @@ fn load_one(path: &Path) -> Result<PluginManifest, PluginLoadError> {
         source,
     })?;
 
-    let manifest = parse_plugin_manifest_str(&content).map_err(|source| PluginLoadError::Parse {
-        path: PathBuf::from(path),
-        message: format!("{source:?}"),
-    })?;
+    let manifest =
+        parse_plugin_manifest_str(&content).map_err(|source| PluginLoadError::Parse {
+            path: PathBuf::from(path),
+            message: format!("{source:?}"),
+        })?;
 
     validate_plugin_manifest(&manifest).map_err(|errors| PluginLoadError::Validation {
         path: PathBuf::from(path),

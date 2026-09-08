@@ -173,6 +173,44 @@ impl RuntimeControlService {
         Ok(())
     }
 
+    pub fn get_many(
+        &self,
+        paths: &[String],
+    ) -> Result<std::collections::BTreeMap<String, ControlValue>, RuntimeControlError> {
+        self.ensure_built()?;
+        let registry = self.registry_snapshot();
+        let mut groups =
+            std::collections::BTreeMap::<String, Vec<(String, RuntimeControlProperty)>>::new();
+        for path in paths {
+            let property = registry
+                .property(path)
+                .ok_or_else(|| RuntimeControlError::UnknownProperty { path: path.clone() })?;
+            if !property.readable {
+                return Err(RuntimeControlError::Unsupported {
+                    path: path.clone(),
+                    reason: "property is not readable".into(),
+                });
+            }
+            groups
+                .entry(property.provider_id.clone())
+                .or_default()
+                .push((path.clone(), property.clone()));
+        }
+        let mut result = std::collections::BTreeMap::new();
+        for (provider, entries) in groups {
+            let properties = entries.iter().map(|(_, p)| p.clone()).collect::<Vec<_>>();
+            let values = self.with_provider(&provider, |p| p.get_many(&properties))?;
+            if values.len() != entries.len() {
+                return Err(RuntimeControlError::Unsupported {
+                    path: provider,
+                    reason: "provider returned incomplete snapshot".into(),
+                });
+            }
+            result.extend(entries.into_iter().map(|(path, _)| path).zip(values));
+        }
+        Ok(result)
+    }
+
     pub fn info(&self, path: &str) -> Result<String, RuntimeControlError> {
         self.ensure_built()?;
         let registry = self
@@ -242,6 +280,11 @@ impl RuntimeControlService {
             .ok_or_else(|| RuntimeControlError::UnknownProperty {
                 path: path.to_owned(),
             })?;
+        if !property.writable {
+            return Err(RuntimeControlError::NotWritable {
+                path: property.console_path.clone(),
+            });
+        }
         self.with_provider(property.provider_id.as_str(), |provider| {
             provider.reset(&property)
         })
@@ -545,6 +588,9 @@ fn control_value_to_yaml(value: ControlValue) -> serde_yaml::Value {
             serde_yaml::Value::String(value)
         }
         ControlValue::Null => serde_yaml::Value::Null,
+        ControlValue::Vec2(value) => serde_yaml::to_value(value).expect("finite vector"),
+        ControlValue::Vec3(value) => serde_yaml::to_value(value).expect("finite vector"),
+        ControlValue::Color(value) => serde_yaml::to_value(value).expect("finite color"),
     }
 }
 
@@ -638,6 +684,15 @@ fn validate_range(
     property: &RuntimeControlProperty,
     value: &ControlValue,
 ) -> Result<(), RuntimeControlError> {
+    if value.as_f64().is_some_and(|v| {
+        !v.is_finite()
+            || (property.value_type == crate::ControlValueType::F32 && !(v as f32).is_finite())
+    }) {
+        return Err(RuntimeControlError::OutOfRange {
+            path: property.console_path.clone(),
+            value: "non-finite number".into(),
+        });
+    }
     let Some(range) = &property.range else {
         return Ok(());
     };

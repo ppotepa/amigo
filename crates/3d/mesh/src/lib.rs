@@ -8,6 +8,8 @@ pub use amigo_render_api::{Mesh3d, MeshDrawCommand};
 use amigo_runtime::{RuntimePlugin, ServiceRegistry};
 use amigo_scene::{Mesh3dSceneCommand, SceneEntityId, SceneService};
 mod editor_capability;
+mod geometry_asset;
+pub use geometry_asset::*;
 mod render_extraction;
 mod reset;
 mod runtime_capabilities;

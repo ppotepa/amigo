@@ -385,6 +385,7 @@ mod tests {
 
     fn test_document(entity: SceneEntityDocument) -> SceneDocument {
         SceneDocument {
+            panels: Vec::new(),
             version: 1,
             scene: SceneMetadataDocument {
                 id: "test-scene".to_owned(),

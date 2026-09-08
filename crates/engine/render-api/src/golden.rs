@@ -62,7 +62,8 @@ pub fn compare_golden_rgba8(
     for (expected_pixel, observed_pixel) in expected.chunks_exact(4).zip(observed.chunks_exact(4)) {
         let mut pixel_delta = 0u8;
         for channel in 0..4 {
-            pixel_delta = pixel_delta.max(expected_pixel[channel].abs_diff(observed_pixel[channel]));
+            pixel_delta =
+                pixel_delta.max(expected_pixel[channel].abs_diff(observed_pixel[channel]));
         }
         if pixel_delta != 0 {
             mismatched_pixels += 1;

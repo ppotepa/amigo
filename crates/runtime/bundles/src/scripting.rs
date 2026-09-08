@@ -21,12 +21,20 @@ const PROVIDERS: &[(&str, &str, &[&str])] = &[
     ("amigo.physics.3d", "physics3d", &["physics3d"]),
     ("amigo.postfx.composite", "postfx", &["postfx"]),
     ("amigo.gameplay.pools", "pools", &["pools"]),
-    ("amigo.gameplay.projectiles", "projectiles", &["projectiles"]),
+    (
+        "amigo.gameplay.projectiles",
+        "projectiles",
+        &["projectiles"],
+    ),
     ("amigo.modding", "mod", &["mod"]),
     ("amigo.motion.2d", "motion", &["motion"]),
     ("amigo.vfx.particles-2d", "particles", &["particles"]),
     ("amigo.gfx.sprite-2d", "sprite2d", &["sprite2d"]),
-    ("amigo.gfx.layered-image-2d", "layered_image2d", &["layered_image2d"]),
+    (
+        "amigo.gfx.layered-image-2d",
+        "layered_image2d",
+        &["layered_image2d"],
+    ),
     ("amigo.lighting.beacon-light-2d", "beacon2d", &["beacon2d"]),
     ("amigo.lighting.light-2d", "light2d", &["light2d"]),
     ("amigo.render.2d", "render2d", &["render2d"]),
@@ -40,7 +48,9 @@ const PROVIDERS: &[(&str, &str, &[&str])] = &[
 ];
 
 impl RuntimePlugin for DefaultScriptBindingProvidersPlugin {
-    fn name(&self) -> &'static str { "amigo-script-binding-providers" }
+    fn name(&self) -> &'static str {
+        "amigo-script-binding-providers"
+    }
 
     fn register(&self, registry: &mut ServiceRegistry) -> AmigoResult<()> {
         if !registry.has::<ScriptBindingProviderRegistry>() {
@@ -48,9 +58,13 @@ impl RuntimePlugin for DefaultScriptBindingProvidersPlugin {
         }
         let providers = registry.required::<ScriptBindingProviderRegistry>()?;
         for (owner, namespace, bindings) in PROVIDERS {
-            if providers.provider(namespace).is_some() { continue; }
+            if providers.provider(namespace).is_some() {
+                continue;
+            }
             let mut descriptor = ScriptBindingProviderDescriptor::new(*owner, *namespace);
-            for binding in *bindings { descriptor = descriptor.with_binding(*binding); }
+            for binding in *bindings {
+                descriptor = descriptor.with_binding(*binding);
+            }
             providers.register(descriptor)?;
         }
         Ok(())
@@ -58,7 +72,9 @@ impl RuntimePlugin for DefaultScriptBindingProvidersPlugin {
 }
 
 impl PluginBundle for ScriptingRuntimeBundle {
-    fn name(&self) -> &'static str { "amigo-modding-and-scripting-bundle" }
+    fn name(&self) -> &'static str {
+        "amigo-modding-and-scripting-bundle"
+    }
 
     fn register(self, builder: RuntimeBuilder) -> AmigoResult<RuntimeBuilder> {
         builder

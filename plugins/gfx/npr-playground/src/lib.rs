@@ -5,6 +5,9 @@ pub mod render;
 pub mod runtime;
 pub mod scene;
 pub mod scripting;
+pub mod state;
+mod zoom;
 
-pub use plugin::{NprPlaygroundPlugin, NprPlaygroundState};
+pub use plugin::NprPlaygroundPlugin;
 pub use render::NprPlaygroundRenderService;
+pub use state::NprPlaygroundState;

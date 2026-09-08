@@ -26,12 +26,7 @@ fn app_dependency_names(cargo: &str) -> Vec<&str> {
         let line = line.trim();
         if line.starts_with('[') {
             let section = line.trim_matches(&['[', ']'][..]);
-            in_dependency_section = section == "dependencies"
-                || section == "dev-dependencies"
-                || section == "build-dependencies"
-                || section.ends_with(".dependencies")
-                || section.ends_with(".dev-dependencies")
-                || section.ends_with(".build-dependencies");
+            in_dependency_section = section == "dependencies" || section.ends_with(".dependencies");
             continue;
         }
         if !in_dependency_section || line.is_empty() || line.starts_with('#') {
@@ -119,6 +114,7 @@ fn app_render_runtime_does_not_reintroduce_resolved_domain_extractors() {
 #[test]
 fn app_cargo_does_not_depend_directly_on_domain_crates() {
     let cargo = read_app_file("Cargo.toml");
+    let dependencies = app_dependency_names(&cargo);
 
     for forbidden in [
         "amigo-2d-",
@@ -132,7 +128,9 @@ fn app_cargo_does_not_depend_directly_on_domain_crates() {
         "amigo-input-actions",
     ] {
         assert!(
-            !cargo.contains(forbidden),
+            !dependencies
+                .iter()
+                .any(|dependency| dependency.starts_with(forbidden)),
             "apps/app Cargo.toml must not depend directly on domain crate `{forbidden}`"
         );
     }

@@ -35,7 +35,12 @@ impl ScriptBindingProviderDescriptor {
                 "script binding provider namespace must not be empty".to_owned(),
             ));
         }
-        if self.bindings.is_empty() || self.bindings.iter().any(|binding| binding.trim().is_empty()) {
+        if self.bindings.is_empty()
+            || self
+                .bindings
+                .iter()
+                .any(|binding| binding.trim().is_empty())
+        {
             return Err(AmigoError::Message(format!(
                 "script binding provider `{}` must declare non-empty bindings",
                 self.owner

@@ -15,3 +15,7 @@ amigo-scene.workspace = true
 amigo-editor-api.workspace = true
 serde.workspace = true
 serde_yaml.workspace = true
+
+[dev-dependencies]
+amigo-layered-image-2d-plugin.workspace = true
+amigo-particles-2d-plugin.workspace = true

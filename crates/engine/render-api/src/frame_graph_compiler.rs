@@ -1,6 +1,8 @@
 use std::collections::{BTreeMap, BTreeSet};
 
-use crate::{FrameGraph, FrameGraphDependency, FrameGraphValidationError, FrameResourceId, FrameResourceKind};
+use crate::{
+    FrameGraph, FrameGraphDependency, FrameGraphValidationError, FrameResourceId, FrameResourceKind,
+};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct FrameResourceLifetime {
@@ -31,7 +33,9 @@ pub enum FrameGraphCompileError {
     DependencyCycle { nodes: Vec<usize> },
 }
 
-pub fn compile_frame_graph(graph: &FrameGraph) -> Result<CompiledFrameGraph, FrameGraphCompileError> {
+pub fn compile_frame_graph(
+    graph: &FrameGraph,
+) -> Result<CompiledFrameGraph, FrameGraphCompileError> {
     graph.validate().map_err(FrameGraphCompileError::Invalid)?;
 
     let dependencies = compile_dependencies(graph);
@@ -67,11 +71,13 @@ fn compile_dependencies(graph: &FrameGraph) -> Vec<FrameGraphDependency> {
 
     unique
         .into_iter()
-        .map(|(producer_node, consumer_node, resource)| FrameGraphDependency {
-            producer_node,
-            consumer_node,
-            resource,
-        })
+        .map(
+            |(producer_node, consumer_node, resource)| FrameGraphDependency {
+                producer_node,
+                consumer_node,
+                resource,
+            },
+        )
         .collect()
 }
 
@@ -98,7 +104,9 @@ fn topological_order(
         ordered.push(node);
         for &consumer in &outgoing[node] {
             indegree[consumer] -= 1;
-            if indegree[consumer] == 0 { ready.insert(consumer); }
+            if indegree[consumer] == 0 {
+                ready.insert(consumer);
+            }
         }
     }
 
@@ -126,11 +134,13 @@ fn resource_lifetimes(graph: &FrameGraph) -> Vec<FrameResourceLifetime> {
     }
     lifetimes
         .into_iter()
-        .map(|(resource, (first_node, last_node))| FrameResourceLifetime {
-            resource,
-            first_node,
-            last_node,
-        })
+        .map(
+            |(resource, (first_node, last_node))| FrameResourceLifetime {
+                resource,
+                first_node,
+                last_node,
+            },
+        )
         .collect()
 }
 
@@ -139,7 +149,12 @@ fn allocate_transients(
     lifetimes: &[FrameResourceLifetime],
 ) -> Vec<TransientResourceAllocation> {
     #[derive(Clone, Copy)]
-    struct Slot { id: u32, width: u32, height: u32, last_node: usize }
+    struct Slot {
+        id: u32,
+        width: u32,
+        height: u32,
+        last_node: usize,
+    }
 
     let lifetime_by_id = lifetimes
         .iter()
@@ -149,9 +164,14 @@ fn allocate_transients(
         .resources
         .iter()
         .filter_map(|resource| match resource.kind {
-            FrameResourceKind::TextureColor { width, height, transient: true } => {
-                lifetime_by_id.get(&resource.id).copied().map(|lifetime| (resource.id, width, height, lifetime))
-            }
+            FrameResourceKind::TextureColor {
+                width,
+                height,
+                transient: true,
+            } => lifetime_by_id
+                .get(&resource.id)
+                .copied()
+                .map(|lifetime| (resource.id, width, height, lifetime)),
             _ => None,
         })
         .collect::<Vec<_>>();
@@ -160,15 +180,20 @@ fn allocate_transients(
     let mut slots = Vec::<Slot>::new();
     let mut allocations = Vec::new();
     for (resource, width, height, lifetime) in resources {
-        let reusable = slots
-            .iter_mut()
-            .find(|slot| slot.width == width && slot.height == height && slot.last_node < lifetime.first_node);
+        let reusable = slots.iter_mut().find(|slot| {
+            slot.width == width && slot.height == height && slot.last_node < lifetime.first_node
+        });
         let slot_id = if let Some(slot) = reusable {
             slot.last_node = lifetime.last_node;
             slot.id
         } else {
             let id = slots.len() as u32;
-            slots.push(Slot { id, width, height, last_node: lifetime.last_node });
+            slots.push(Slot {
+                id,
+                width,
+                height,
+                last_node: lifetime.last_node,
+            });
             id
         };
         allocations.push(TransientResourceAllocation {
@@ -189,14 +214,31 @@ mod tests {
     #[test]
     fn aliases_non_overlapping_transient_textures() {
         let mut graph = FrameGraph::new();
-        let a = graph.add_resource("a", FrameResourceKind::TextureColor { width: 64, height: 64, transient: true });
-        let b = graph.add_resource("b", FrameResourceKind::TextureColor { width: 64, height: 64, transient: true });
+        let a = graph.add_resource(
+            "a",
+            FrameResourceKind::TextureColor {
+                width: 64,
+                height: 64,
+                transient: true,
+            },
+        );
+        let b = graph.add_resource(
+            "b",
+            FrameResourceKind::TextureColor {
+                width: 64,
+                height: 64,
+                transient: true,
+            },
+        );
         graph.add_node("write-a", FrameGraphNodeKind::World, vec![], vec![a]);
         graph.add_node("read-a", FrameGraphNodeKind::GameUi, vec![a], vec![]);
         graph.add_node("write-b", FrameGraphNodeKind::World, vec![], vec![b]);
         graph.add_node("read-b", FrameGraphNodeKind::GameUi, vec![b], vec![]);
         let compiled = compile_frame_graph(&graph).expect("graph compiles");
         assert_eq!(compiled.transient_allocations.len(), 2);
-        assert_eq!(compiled.transient_allocations[0].alias_slot, compiled.transient_allocations[1].alias_slot);
+        assert_eq!(
+            compiled.transient_allocations[0].alias_slot,
+            compiled.transient_allocations[1].alias_slot
+        );
     }
 }

@@ -15,6 +15,9 @@ struct AppArgs {
 }
 
 fn main() -> AmigoResult<()> {
+    if let Some(result) = amigo_runtime_bundles::dispatch_external_panel_client() {
+        return result;
+    }
     let args = parse_args(std::env::args().skip(1).collect())?;
     if args.help {
         print_usage();
@@ -130,7 +133,9 @@ fn set_option(parsed: &mut AppArgs, flag: &str, value: String) -> AmigoResult<()
 
 fn print_usage() {
     println!("Amigo runtime host");
-    println!("usage: amigo-app [--hosted] [--dev] [--editor] [--mods-root PATH] [--mod ID] [--scene ID] [--mods ID,ID]");
+    println!(
+        "usage: amigo-app [--hosted] [--dev] [--editor] [--mods-root PATH] [--mod ID] [--scene ID] [--mods ID,ID]"
+    );
 }
 
 #[cfg(test)]

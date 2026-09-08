@@ -122,6 +122,10 @@ fn test_graph(
     }
 }
 
+fn test_runtime() -> amigo_runtime::Runtime {
+    amigo_runtime::RuntimeBuilder::default().build()
+}
+
 fn find_overlay_text<'a>(node: &'a amigo_overlay_api::UiOverlayNode, id: &str) -> Option<&'a str> {
     if node.id.as_deref() == Some(id) {
         if let amigo_overlay_api::UiOverlayNodeKind::Text { content, .. } = &node.kind {
@@ -155,7 +159,7 @@ fn collect_overlay_ids(node: &amigo_overlay_api::UiOverlayNode, ids: &mut Vec<St
 }
 
 #[test]
-fn layered_image_bounds_use_component_size_and_entity_translation() {
+fn component_bounds_use_size_and_entity_translation() {
     let entity = test_node(
         "entity-bg",
         "background",
@@ -174,21 +178,22 @@ transform2:
         amigo_editor_authoring::AuthoringNodeKind::Component,
         "/entities/0/components/0",
         r#"
-type: LayeredImage2D
+type: Bounds2D
 size: { x: 320.0, y: 180.0 }
 z_index: 2.0
 "#,
         amigo_editor_authoring::AuthoringNodeSemantic {
             owner_entity_name: Some("background".to_owned()),
-            component_type: Some("LayeredImage2D".to_owned()),
+            component_type: Some("Bounds2D".to_owned()),
             ..Default::default()
         },
     );
     let graph = test_graph(vec![entity, component]);
     let state = state::IngameEditorState::new(true);
+    let runtime = test_runtime();
 
     assert!(crate::selection::select_viewport_target(
-        &state, &graph, 50.0, 70.0
+        &runtime, &state, &graph, 50.0, 70.0
     ));
     assert_eq!(
         state.snapshot().selection.unwrap().logical_bounds,
@@ -202,7 +207,7 @@ z_index: 2.0
 }
 
 #[test]
-fn particle_bounds_use_spawn_area_and_entity_translation() {
+fn component_bounds_use_size_for_viewport_selection() {
     let entity = test_node(
         "entity-rain",
         "rain-near",
@@ -221,28 +226,27 @@ transform2:
         amigo_editor_authoring::AuthoringNodeKind::Component,
         "/entities/0/components/0",
         r#"
-type: ParticleEmitter2D
-spawn_area:
-  size: { x: 200.0, y: 100.0 }
-z_index: 5.0
+type: Bounds2D
+size: { x: 200.0, y: 100.0 }
 "#,
         amigo_editor_authoring::AuthoringNodeSemantic {
             owner_entity_name: Some("rain-near".to_owned()),
-            component_type: Some("ParticleEmitter2D".to_owned()),
+            component_type: Some("Bounds2D".to_owned()),
             ..Default::default()
         },
     );
     let graph = test_graph(vec![entity, component]);
     let state = state::IngameEditorState::new(true);
+    let runtime = test_runtime();
 
     assert!(crate::selection::select_viewport_target(
-        &state, &graph, 500.0, 300.0
+        &runtime, &state, &graph, 500.0, 300.0
     ));
     assert_eq!(
         state.snapshot().selection.unwrap().logical_bounds,
         Some(state::EditorRect {
-            x: 400.0,
-            y: 250.0,
+            x: 500.0,
+            y: 300.0,
             width: 200.0,
             height: 100.0,
         })
@@ -291,12 +295,11 @@ opacity: 0.8
 }
 
 #[test]
-fn layered_image_uses_owner_entity_from_semantic_context() {
+fn component_uses_owner_entity_from_semantic_context() {
     let value: serde_yaml::Value = serde_yaml::from_str(
         r#"
-type: LayeredImage2D
-asset: backgrounds/main_menu.yml
-base_opacity: 1.0
+type: Bounds2D
+size: { x: 320.0, y: 180.0 }
 "#,
     )
     .unwrap();
@@ -308,7 +311,7 @@ base_opacity: 1.0
 
     let node = amigo_editor_authoring::AuthoringNode {
         id: "component-node".to_owned(),
-        label: "component: LayeredImage2D".to_owned(),
+        label: "component: Bounds2D".to_owned(),
         kind: amigo_editor_authoring::AuthoringNodeKind::Component,
         origin: amigo_editor_authoring::AuthoringNodeOrigin::UseRef,
         source_file: "entities/background.yml".into(),
@@ -676,10 +679,12 @@ fn render_stack_collects_entities_by_render_layer() {
 fn editor_overlay_clean_mode_shows_scene_objects_title() {
     let graph = test_graph(Vec::new());
     let state = IngameEditorState::new(true);
+    let runtime = test_runtime();
     state.set_tree_mode(crate::state::EditorTreeMode::Scene);
     let mut hit_targets = Vec::new();
     let mut stats = crate::overlay::OverlayStats::default();
     let document = crate::overlay::build_editor_document(
+        &runtime,
         amigo_overlay_api::UiViewportSize::new(1280.0, 720.0),
         &graph,
         None,
@@ -706,9 +711,11 @@ fn editor_overlay_tree_rows_use_ascii_icon_labels() {
     );
     let graph = test_graph(vec![entity]);
     let state = IngameEditorState::new(true);
+    let runtime = test_runtime();
     let mut hit_targets = Vec::new();
     let mut stats = crate::overlay::OverlayStats::default();
     let document = crate::overlay::build_editor_document(
+        &runtime,
         amigo_overlay_api::UiViewportSize::new(1280.0, 720.0),
         &graph,
         None,
@@ -726,10 +733,12 @@ fn editor_overlay_tree_rows_use_ascii_icon_labels() {
 fn editor_overlay_render_stack_tab_shows_expected_titles() {
     let graph = test_graph(Vec::new());
     let state = IngameEditorState::new(true);
+    let runtime = test_runtime();
     state.set_tree_mode(crate::state::EditorTreeMode::Stack);
     let mut hit_targets = Vec::new();
     let mut stats = crate::overlay::OverlayStats::default();
     let document = crate::overlay::build_editor_document(
+        &runtime,
         amigo_overlay_api::UiViewportSize::new(1280.0, 720.0),
         &graph,
         None,
@@ -756,9 +765,11 @@ fn editor_overlay_scalar_selection_explains_raw_debug_only() {
     );
     let graph = test_graph(vec![scalar.clone()]);
     let state = IngameEditorState::new(true);
+    let runtime = test_runtime();
     let mut hit_targets = Vec::new();
     let mut stats = crate::overlay::OverlayStats::default();
     let document = crate::overlay::build_editor_document(
+        &runtime,
         amigo_overlay_api::UiViewportSize::new(1280.0, 720.0),
         &graph,
         Some(&scalar),
@@ -1045,13 +1056,13 @@ fn only_supported_generic_editors_have_hit_targets() {
 }
 
 #[test]
-fn particle_bounds_use_descriptor_policy_without_component_exception() {
+fn bounds_2d_uses_descriptor_policy_without_component_exception() {
     let registry = amigo_scene::default_component_registry();
     let descriptor = registry
-        .descriptor_by_type_name("ParticleEmitter2D")
-        .expect("ParticleEmitter2D descriptor");
+        .descriptor_by_type_name("Bounds2D")
+        .expect("Bounds2D descriptor");
     assert!(matches!(
         descriptor.bounds_policy,
-        amigo_scene::BoundsPolicy::SpawnArea2D { .. }
+        amigo_scene::BoundsPolicy::ComponentBounds2D { field: "size" }
     ));
 }

@@ -10,7 +10,9 @@ fn main() {
     };
 
     let source = PathBuf::from("templates/plugin");
-    let target = PathBuf::from("plugins").join(&options.family).join(&options.name);
+    let target = PathBuf::from("plugins")
+        .join(&options.family)
+        .join(&options.name);
     if target.exists() {
         eprintln!("target already exists: {}", target.display());
         std::process::exit(1);
@@ -45,15 +47,29 @@ fn rewrite_text_tree(path: &Path, options: &PluginNewOptions) -> Result<(), Stri
             rewrite_text_tree(&path, options)?;
             continue;
         }
-        let Ok(source) = fs::read_to_string(&path) else { continue; };
+        let Ok(source) = fs::read_to_string(&path) else {
+            continue;
+        };
         let plugin_id = format!("amigo.{}.{}", options.family, options.name);
         let rewritten = source
             .replace("amigo.family.plugin-name", &plugin_id)
-            .replace("family = \"family\"", &format!("family = \"{}\"", options.family))
+            .replace(
+                "family = \"family\"",
+                &format!("family = \"{}\"", options.family),
+            )
             .replace("kind = \"noop\"", &format!("kind = \"{}\"", options.kind))
-            .replace("renderable = false", &format!("renderable = {}", options.renderable))
-            .replace("amigo-plugin-template", &format!("amigo-{}-plugin", options.name))
-            .replace("plugins/family/plugin-name", &format!("plugins/{}/{}", options.family, options.name));
+            .replace(
+                "renderable = false",
+                &format!("renderable = {}", options.renderable),
+            )
+            .replace(
+                "amigo-plugin-template",
+                &format!("amigo-{}-plugin", options.name),
+            )
+            .replace(
+                "plugins/family/plugin-name",
+                &format!("plugins/{}/{}", options.family, options.name),
+            );
         fs::write(&path, rewritten).map_err(|error| error.to_string())?;
     }
     Ok(())
@@ -61,11 +77,22 @@ fn rewrite_text_tree(path: &Path, options: &PluginNewOptions) -> Result<(), Stri
 
 fn validate_generated_plugin(target: &Path) -> Result<(), String> {
     let status = Command::new("cargo")
-        .args(["run", "-p", "amigo-plugin-check", "--", "validate", "--plugins"])
+        .args([
+            "run",
+            "-p",
+            "amigo-plugin-check",
+            "--",
+            "validate",
+            "--plugins",
+        ])
         .arg(target)
         .status()
         .map_err(|error| format!("failed to start plugin-check: {error}"))?;
-    if status.success() { Ok(()) } else { Err(format!("plugin-check exited with {status}")) }
+    if status.success() {
+        Ok(())
+    } else {
+        Err(format!("plugin-check exited with {status}"))
+    }
 }
 
 struct PluginNewOptions {
@@ -84,10 +111,22 @@ impl PluginNewOptions {
         let mut index = 0;
         while index < args.len() {
             match args[index].as_str() {
-                "--family" => { index += 1; family = args.get(index).cloned(); }
-                "--name" => { index += 1; name = args.get(index).cloned(); }
-                "--kind" => { index += 1; kind = args.get(index).cloned(); }
-                "--renderable" => { index += 1; renderable = args.get(index).and_then(|value| value.parse().ok()); }
+                "--family" => {
+                    index += 1;
+                    family = args.get(index).cloned();
+                }
+                "--name" => {
+                    index += 1;
+                    name = args.get(index).cloned();
+                }
+                "--kind" => {
+                    index += 1;
+                    kind = args.get(index).cloned();
+                }
+                "--renderable" => {
+                    index += 1;
+                    renderable = args.get(index).and_then(|value| value.parse().ok());
+                }
                 _ => return None,
             }
             index += 1;
@@ -95,14 +134,24 @@ impl PluginNewOptions {
         let family = family?;
         let name = name?;
         let kind = kind?;
-        if !valid_slug(&family) || !valid_slug(&name) { return None; }
+        if !valid_slug(&family) || !valid_slug(&name) {
+            return None;
+        }
         let renderable = renderable.unwrap_or(kind == "renderable-source");
-        Some(Self { family, name, kind, renderable })
+        Some(Self {
+            family,
+            name,
+            kind,
+            renderable,
+        })
     }
 }
 
 fn valid_slug(value: &str) -> bool {
-    !value.is_empty() && value.bytes().all(|byte| byte.is_ascii_lowercase() || byte.is_ascii_digit() || byte == b'-')
+    !value.is_empty()
+        && value
+            .bytes()
+            .all(|byte| byte.is_ascii_lowercase() || byte.is_ascii_digit() || byte == b'-')
 }
 
 fn copy_dir(source: &Path, target: &Path) -> std::io::Result<()> {
@@ -111,7 +160,11 @@ fn copy_dir(source: &Path, target: &Path) -> std::io::Result<()> {
         let entry = entry?;
         let source_path = entry.path();
         let target_path = target.join(entry.file_name());
-        if source_path.is_dir() { copy_dir(&source_path, &target_path)?; } else { fs::copy(&source_path, &target_path)?; }
+        if source_path.is_dir() {
+            copy_dir(&source_path, &target_path)?;
+        } else {
+            fs::copy(&source_path, &target_path)?;
+        }
     }
     Ok(())
 }

@@ -138,7 +138,7 @@ pub(super) fn queue_hot_reload_changes(runtime: &Runtime) -> AmigoResult<usize> 
     let script_event_queue = ctx.required::<ScriptEventQueue>()?;
     let dev_console_state = ctx.required::<DevConsoleState>()?;
     let asset_catalog = ctx.required::<AssetCatalog>()?;
-    let native_changes = ctx
+    let native_paths = ctx
         .optional::<FileWatchService>()
         .map(|file_watch_service| {
             let changed_paths = file_watch_service
@@ -146,13 +146,21 @@ pub(super) fn queue_hot_reload_changes(runtime: &Runtime) -> AmigoResult<usize> 
                 .into_iter()
                 .map(|event| event.path)
                 .collect::<Vec<_>>();
-            hot_reload.changes_for_paths(&changed_paths)
+            changed_paths
         })
         .unwrap_or_default();
-    let changes = if native_changes.is_empty() {
+    let changes = if native_paths.is_empty() {
         hot_reload.poll_changes()
     } else {
-        native_changes
+        // File watcher backends can report directory noise or paths with a
+        // different normalization than the registered file watch. Do not let
+        // unrelated native events suppress the deterministic polling path.
+        let mapped = hot_reload.changes_for_paths(&native_paths);
+        if mapped.is_empty() {
+            hot_reload.poll_changes()
+        } else {
+            mapped
+        }
     };
     for change in &changes {
         match &change.watch.kind {

@@ -8,6 +8,7 @@ authors.workspace = true
 
 [dependencies]
 amigo-app.workspace = true
+amigo-runtime-bundles.workspace = true
 amigo-core.workspace = true
 amigo-modding.workspace = true
 crossterm.workspace = true

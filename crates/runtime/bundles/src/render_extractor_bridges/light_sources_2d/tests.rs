@@ -130,8 +130,14 @@ mod tests {
             .iter()
             .find(|source| source.emitter_kind == amigo_render_api::LightEmitterKind2d::LightGroup)
             .expect("light group source should be collected");
-        assert_eq!(group_source.effective_intensity, Some(0.25));
-        assert!(group_source.reason.contains("street-neon"));
+        assert_eq!(group_source.effective_intensity, Some(0.5));
+        assert_eq!(group_source.reason, "light_group_contribution");
+        assert!(
+            group_source
+                .emitter_id
+                .as_deref()
+                .is_some_and(|id| id.contains("street-neon"))
+        );
     }
 
     #[test]

@@ -1,0 +1,17 @@
+[package]
+name = "amigo-panels"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+[dependencies]
+amigo-panel-api.workspace = true
+amigo-runtime-control.workspace = true
+amigo-runtime.workspace = true
+amigo-core.workspace = true
+amigo-hot-reload.workspace = true
+amigo-scene.workspace = true
+amigo-session.workspace = true
+amigo-modding.workspace = true
+amigo-scripting-api.workspace = true
+serde_yaml.workspace = true
+serde.workspace = true

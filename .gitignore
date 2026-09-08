@@ -37,5 +37,6 @@ obj/
 /codebase/
 
 # Local/experimental mod exports
+/.amigo/presets/
 /mods/office_desk_mod/
 

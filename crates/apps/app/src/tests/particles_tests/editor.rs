@@ -212,7 +212,7 @@ fn particles_editor_export_logs_preset_yaml() {
     assert!(output.contains("category: energy"));
     assert!(output.contains("tags: [continuous, directional, energy, editor, edited]"));
     assert!(output.contains("emitter:"));
-    assert!(output.contains("  type: ParticleEmitter2D"));
+    assert!(output.contains("  type: amigo.vfx.particles-2d.ParticleEmitter2D"));
     assert!(output.contains("  max_particles: 160"));
     assert!(output.contains("  color_ramp:"));
     assert!(output.contains("  spawn_area:"));

@@ -109,7 +109,11 @@ impl WgpuRenderBackend {
         let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
         let depth_texture = context.device.create_texture(&wgpu::TextureDescriptor {
             label: Some("amigo-offscreen-depth"),
-            size: wgpu::Extent3d { width, height, depth_or_array_layers: 1 },
+            size: wgpu::Extent3d {
+                width,
+                height,
+                depth_or_array_layers: 1,
+            },
             mip_level_count: 1,
             sample_count: 1,
             dimension: wgpu::TextureDimension::D2,
@@ -249,7 +253,11 @@ impl WgpuSurfaceState {
         let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
         let depth_texture = self.device.create_texture(&wgpu::TextureDescriptor {
             label: Some(label),
-            size: wgpu::Extent3d { width, height, depth_or_array_layers: 1 },
+            size: wgpu::Extent3d {
+                width,
+                height,
+                depth_or_array_layers: 1,
+            },
             mip_level_count: 1,
             sample_count: 1,
             dimension: wgpu::TextureDimension::D2,

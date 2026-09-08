@@ -1,0 +1,11 @@
+[package]
+name = "amigo-panel-egui"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version = "1.92"
+[dependencies]
+amigo-panel-api.workspace = true
+amigo-runtime-control.workspace = true
+amigo-scene.workspace = true
+eframe = { version = "=0.35.0", default-features = false, features = ["default_fonts", "wgpu", "x11", "wayland"] }

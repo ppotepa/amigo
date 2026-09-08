@@ -271,7 +271,7 @@ impl ScenePreviewHost {
         Ok(())
     }
 
-    fn runtime(&self) -> AmigoResult<&Runtime> {
+    pub(crate) fn runtime(&self) -> AmigoResult<&Runtime> {
         self.runtime.as_ref().ok_or_else(|| {
             AmigoError::Message("scene preview runtime is not bootstrapped".to_owned())
         })

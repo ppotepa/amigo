@@ -171,7 +171,10 @@ fn control_value_type(value_kind: EditorPropertyValueKind) -> Option<ControlValu
         EditorPropertyValueKind::Number => Some(ControlValueType::F32),
         EditorPropertyValueKind::String => Some(ControlValueType::String),
         EditorPropertyValueKind::AssetRef => Some(ControlValueType::AssetRef),
-        _ => None,
+        EditorPropertyValueKind::Vec2 => Some(ControlValueType::Vec2),
+        EditorPropertyValueKind::Vec3 => Some(ControlValueType::Vec3),
+        EditorPropertyValueKind::Color => Some(ControlValueType::Color),
+        EditorPropertyValueKind::Enum => Some(ControlValueType::String),
     }
 }
 

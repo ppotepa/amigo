@@ -11,7 +11,6 @@ use crate::launch_selection::{build_launch_selection, validate_launch_selection}
 use crate::orchestration::stabilize_runtime_for_session;
 use crate::particle_presets::load_particle_preset_catalog;
 use crate::runtime_context::required;
-use crate::runtime_control::RuntimeControlPlugin;
 use crate::scene_runtime::{
     SceneCommandRuntimePlugin,
     current_loaded_scene_document_summary as current_loaded_scene_document_summary_runtime,
@@ -115,11 +114,12 @@ pub fn run_hosted_with_options(options: BootstrapOptions) -> AmigoResult<()> {
     let (session, summary) = bootstrap_session_with_options(options)?.into_parts();
 
     if interactive {
-        let handler = InteractiveRuntimeHostHandler::new_with_editor_mode(
-            session,
-            summary,
-            editor_mode,
+        amigo_runtime_bundles::enable_external_panels(
+            session.runtime(),
+            std::env::current_exe().map_err(|e| amigo_core::AmigoError::Message(e.to_string()))?,
         )?;
+        let handler =
+            InteractiveRuntimeHostHandler::new_with_editor_mode(session, summary, editor_mode)?;
         WinitAppHost::run(handler)
     } else {
         let handler = SummaryHostHandler::new(summary);
@@ -166,7 +166,6 @@ fn register_app_host_platform_plugins(
     builder
         .with_plugin(LaunchSelectionPlugin::new(launch_selection))?
         .with_plugin(RuntimeSystemServicesPlugin)?
-        .with_plugin(RuntimeControlPlugin)?
         .with_plugin(SceneCommandRuntimePlugin)?
         .with_plugin(ScriptCommandRuntimePlugin)
 }

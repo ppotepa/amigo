@@ -7,6 +7,14 @@ license.workspace = true
 authors.workspace = true
 
 [dependencies]
+amigo-runtime-control.workspace = true
+amigo-panels.workspace = true
+amigo-scene.workspace = true
+amigo-modding.workspace = true
+amigo-ui.workspace = true
+amigo-3d-mesh.workspace = true
+serde.workspace = true
+serde_yaml.workspace = true
 amigo-capabilities.workspace = true
 amigo-core.workspace = true
 amigo-plugin-api.workspace = true
@@ -14,4 +22,7 @@ amigo-render-api.workspace = true
 amigo-render-npr.workspace = true
 amigo-runtime.workspace = true
 amigo-session.workspace = true
-glam.workspace = true
+glam = {workspace = true, features = ["serde"]}
+
+[dev-dependencies]
+amigo-panel-api.workspace = true

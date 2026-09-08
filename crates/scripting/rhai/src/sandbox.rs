@@ -49,21 +49,34 @@ mod tests {
     #[test]
     fn operation_budget_stops_infinite_loop() {
         let mut engine = rhai::Engine::new();
-        configure_rhai_sandbox_with(&mut engine, RhaiSandboxLimits {
-            max_operations: 2_000,
-            ..RhaiSandboxLimits::default()
-        });
-        let error = engine.eval::<()>("loop { let x = 1 + 1; }").expect_err("loop must hit operation budget");
-        assert!(error.to_string().to_ascii_lowercase().contains("operations"));
+        configure_rhai_sandbox_with(
+            &mut engine,
+            RhaiSandboxLimits {
+                max_operations: 2_000,
+                ..RhaiSandboxLimits::default()
+            },
+        );
+        let error = engine
+            .eval::<()>("loop { let x = 1 + 1; }")
+            .expect_err("loop must hit operation budget");
+        assert!(
+            error
+                .to_string()
+                .to_ascii_lowercase()
+                .contains("operations")
+        );
     }
 
     #[test]
     fn collection_budget_rejects_oversized_array() {
         let mut engine = rhai::Engine::new();
-        configure_rhai_sandbox_with(&mut engine, RhaiSandboxLimits {
-            max_array_size: 8,
-            ..RhaiSandboxLimits::default()
-        });
+        configure_rhai_sandbox_with(
+            &mut engine,
+            RhaiSandboxLimits {
+                max_array_size: 8,
+                ..RhaiSandboxLimits::default()
+            },
+        );
         assert!(engine.eval::<rhai::Dynamic>("[1,2,3,4,5,6,7,8,9]").is_err());
     }
 }

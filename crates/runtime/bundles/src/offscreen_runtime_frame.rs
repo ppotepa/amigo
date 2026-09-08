@@ -50,6 +50,11 @@ pub fn render_wgpu_runtime_frame_to_offscreen(
         .runtime
         .required::<amigo_2d_composition::LightRoute2dSceneService>()?;
     require_wgpu_runtime_frame_services(input.runtime)?;
+    set_runtime_ui_viewport_state(
+        input.runtime,
+        input.target.width as f32,
+        input.target.height as f32,
+    )?;
 
     input
         .runtime

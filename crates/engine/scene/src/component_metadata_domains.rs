@@ -1,15 +1,14 @@
 use crate::{
     ComponentMetadataProvider, ComponentRegistry, ComponentTypeDescriptor,
-    aabb_collider_2d_descriptor, behavior_descriptor, bounds_2d_descriptor,
-    camera_3d_descriptor, camera_follow_2d_descriptor, circle_collider_2d_descriptor,
-    entity_pool_descriptor, event_pipeline_descriptor, freeflight_motion_2d_descriptor,
-    input_action_map_descriptor, kinematic_body_2d_descriptor, lifetime_descriptor,
-    light_3d_descriptor, lightmap_2d_source_descriptor, material_3d_descriptor,
-    mesh_3d_descriptor, motion_controller_2d_descriptor, parallax_2d_descriptor,
-    projectile_emitter_2d_descriptor, script_component_descriptor, static_collider_2d_descriptor,
-    text_3d_descriptor, tile_map_marker_2d_descriptor, trigger_2d_descriptor,
-    ui_document_descriptor, ui_model_bindings_descriptor, ui_theme_set_descriptor,
-    velocity_2d_descriptor,
+    aabb_collider_2d_descriptor, behavior_descriptor, bounds_2d_descriptor, camera_3d_descriptor,
+    camera_follow_2d_descriptor, circle_collider_2d_descriptor, entity_pool_descriptor,
+    event_pipeline_descriptor, freeflight_motion_2d_descriptor, input_action_map_descriptor,
+    kinematic_body_2d_descriptor, lifetime_descriptor, light_3d_descriptor,
+    lightmap_2d_source_descriptor, material_3d_descriptor, mesh_3d_descriptor,
+    motion_controller_2d_descriptor, parallax_2d_descriptor, projectile_emitter_2d_descriptor,
+    script_component_descriptor, static_collider_2d_descriptor, text_3d_descriptor,
+    tile_map_marker_2d_descriptor, trigger_2d_descriptor, ui_document_descriptor,
+    ui_model_bindings_descriptor, ui_theme_set_descriptor, velocity_2d_descriptor,
 };
 
 pub struct EngineRender3dMetadataProvider;
@@ -20,7 +19,9 @@ pub struct EngineUiInputMetadataProvider;
 pub struct EngineMotionCameraMetadataProvider;
 
 impl ComponentMetadataProvider for EngineRender3dMetadataProvider {
-    fn provider_id(&self) -> &'static str { "amigo.engine.metadata.render3d" }
+    fn provider_id(&self) -> &'static str {
+        "amigo.engine.metadata.render3d"
+    }
 
     fn register_component_metadata(&self, registry: &mut ComponentRegistry) {
         registry.extend([
@@ -34,7 +35,9 @@ impl ComponentMetadataProvider for EngineRender3dMetadataProvider {
 }
 
 impl ComponentMetadataProvider for EngineRender2dMetadataProvider {
-    fn provider_id(&self) -> &'static str { "amigo.engine.metadata.render2d" }
+    fn provider_id(&self) -> &'static str {
+        "amigo.engine.metadata.render2d"
+    }
 
     fn register_component_metadata(&self, registry: &mut ComponentRegistry) {
         registry.extend([
@@ -47,7 +50,9 @@ impl ComponentMetadataProvider for EngineRender2dMetadataProvider {
 }
 
 impl ComponentMetadataProvider for EnginePhysics2dMetadataProvider {
-    fn provider_id(&self) -> &'static str { "amigo.engine.metadata.physics2d" }
+    fn provider_id(&self) -> &'static str {
+        "amigo.engine.metadata.physics2d"
+    }
 
     fn register_component_metadata(&self, registry: &mut ComponentRegistry) {
         registry.extend([
@@ -60,7 +65,9 @@ impl ComponentMetadataProvider for EnginePhysics2dMetadataProvider {
 }
 
 impl ComponentMetadataProvider for EngineGameplayMetadataProvider {
-    fn provider_id(&self) -> &'static str { "amigo.engine.metadata.gameplay" }
+    fn provider_id(&self) -> &'static str {
+        "amigo.engine.metadata.gameplay"
+    }
 
     fn register_component_metadata(&self, registry: &mut ComponentRegistry) {
         registry.extend([
@@ -75,7 +82,9 @@ impl ComponentMetadataProvider for EngineGameplayMetadataProvider {
 }
 
 impl ComponentMetadataProvider for EngineUiInputMetadataProvider {
-    fn provider_id(&self) -> &'static str { "amigo.engine.metadata.ui-input" }
+    fn provider_id(&self) -> &'static str {
+        "amigo.engine.metadata.ui-input"
+    }
 
     fn register_component_metadata(&self, registry: &mut ComponentRegistry) {
         registry.extend([
@@ -88,7 +97,9 @@ impl ComponentMetadataProvider for EngineUiInputMetadataProvider {
 }
 
 impl ComponentMetadataProvider for EngineMotionCameraMetadataProvider {
-    fn provider_id(&self) -> &'static str { "amigo.engine.metadata.motion-camera" }
+    fn provider_id(&self) -> &'static str {
+        "amigo.engine.metadata.motion-camera"
+    }
 
     fn register_component_metadata(&self, registry: &mut ComponentRegistry) {
         registry.extend([

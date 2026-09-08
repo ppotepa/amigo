@@ -7,6 +7,8 @@ license.workspace = true
 authors.workspace = true
 
 [dependencies]
+gltf = { version = "1.4.1", default-features = false, features = ["utils", "names"] }
+glam.workspace = true
 amigo-editor-api.workspace = true
 amigo-assets.workspace = true
 amigo-core.workspace = true

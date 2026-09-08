@@ -1,0 +1,24 @@
+version: 1
+scene:
+  id: layer
+  label: Engine panel - 2D layer
+panels:
+  - id: layer
+    layout: ../../ui/layer.panel.yml
+    auto_open: true
+visual2d:
+  render_layers:
+    - id: demo
+      order: 0
+      opacity: 1.0
+      visible: true
+entities:
+  - id: camera
+    components:
+      - type: Camera2D
+  - id: square
+    components:
+      - type: amigo.gfx.sprite-2d.Sprite2D
+        texture: playground-2d/spritesheets/square
+        render_layer: demo
+        size: {x: 180.0, y: 180.0}

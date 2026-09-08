@@ -24,7 +24,11 @@ pub(super) fn compatible_offscreen_target(
     let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
     let depth_texture = template.device.create_texture(&wgpu::TextureDescriptor {
         label: Some(label),
-        size: wgpu::Extent3d { width: template.width.max(1), height: template.height.max(1), depth_or_array_layers: 1 },
+        size: wgpu::Extent3d {
+            width: template.width.max(1),
+            height: template.height.max(1),
+            depth_or_array_layers: 1,
+        },
         mip_level_count: 1,
         sample_count: 1,
         dimension: wgpu::TextureDimension::D2,
