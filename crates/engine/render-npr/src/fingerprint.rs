@@ -185,6 +185,8 @@ fn hash_stats(hasher: &mut PacketHasher, stats: &NprRenderStats) {
     hasher.usize(stats.hatching_rejected);
     hasher.u8(stats.hatching_lod_tier);
     hasher.bool(stats.hatching_budget_exhausted);
+    hasher.usize(stats.stroke_budget_rejected);
+    hasher.bool(stats.stroke_budget_exhausted);
     hasher.usize(stats.temporal_retained_strokes);
     hasher.usize(stats.temporal_entering_strokes);
     hasher.u32(stats.gesture_variant_epoch);

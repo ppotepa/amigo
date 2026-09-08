@@ -14,6 +14,10 @@ use glam::{Vec2, Vec4};
 use std::collections::BTreeMap;
 
 const MAX_HATCHING_LINES_PER_PACKET: usize = 32_000;
+/// CPU-side ceiling kept below the backend's global per-view upload ceiling.
+/// Feature strokes are considered first, then tonal strokes in deterministic
+/// planner order. This makes quality degradation explicit and repeatable.
+const MAX_STROKE_DATA_BYTES_PER_PACKET: usize = 16 * 1024 * 1024;
 
 #[derive(Debug, Clone)]
 struct HatchSegment {
@@ -84,6 +88,10 @@ pub struct NprRenderStats {
     /// The packet reached its declared hatch-line budget. This is a quality
     /// signal, not an error and must remain visible to diagnostics.
     pub hatching_budget_exhausted: bool,
+    /// Strokes omitted by the packet payload budget before any WGPU upload.
+    pub stroke_budget_rejected: usize,
+    /// The packet reached its declared CPU stroke payload budget.
+    pub stroke_budget_exhausted: bool,
     /// Strokes that retained an identity from the previous extracted frame.
     pub temporal_retained_strokes: usize,
     /// Newly appearing identities currently being eased into the drawing.
@@ -379,7 +387,10 @@ pub fn build_packet_with_topology(
     };
     let hatching_strokes = hatching.strokes.len();
     let hatching_budget_exhausted = hatching_budget == 0;
-    strokes.extend(hatching.strokes);
+    let mut candidates = strokes;
+    candidates.extend(hatching.strokes);
+    let (strokes, retained_stroke_data_bytes, stroke_budget_rejected, stroke_budget_rejected_tone) =
+        retain_strokes_under_budget(candidates, MAX_STROKE_DATA_BYTES_PER_PACKET);
     let silhouettes = if style.surface_mode == NprSurfaceMode::Smooth {
         smooth_contours.len()
     } else {
@@ -402,29 +413,19 @@ pub fn build_packet_with_topology(
         strokes: strokes.len(),
         stroke_vertices: strokes.iter().map(|s| s.vertices.len()).sum(),
         stroke_indices: strokes.iter().map(|s| s.indices.len()).sum(),
-        hatching_strokes,
+        hatching_strokes: hatching_strokes.saturating_sub(stroke_budget_rejected_tone),
         hatching_correction_strokes: hatching.corrections,
         graphite_mass,
         hatching_candidates: hatching.candidates,
-        hatching_rejected: hatching.rejected,
+        hatching_rejected: hatching.rejected + stroke_budget_rejected_tone,
         hatching_lod_tier: 0,
         hatching_budget_exhausted,
+        stroke_budget_rejected,
+        stroke_budget_exhausted: stroke_budget_rejected > 0,
         temporal_retained_strokes: 0,
         temporal_entering_strokes: 0,
         gesture_variant_epoch: 0,
-        stroke_data_bytes: strokes
-            .iter()
-            .map(|stroke| {
-                stroke
-                    .vertices
-                    .len()
-                    .saturating_mul(std::mem::size_of::<crate::StrokeVertex>())
-                    + stroke
-                        .indices
-                        .len()
-                        .saturating_mul(std::mem::size_of::<u32>())
-            })
-            .sum(),
+        stroke_data_bytes: retained_stroke_data_bytes,
         viewport,
     };
     NprRenderPacket {
@@ -436,6 +437,40 @@ pub fn build_packet_with_topology(
         ink: style.ink,
         stats,
     }
+}
+
+fn stroke_data_bytes(stroke: &TessellatedStroke) -> usize {
+    stroke
+        .vertices
+        .len()
+        .saturating_mul(std::mem::size_of::<crate::StrokeVertex>())
+        + stroke
+            .indices
+            .len()
+            .saturating_mul(std::mem::size_of::<u32>())
+}
+
+fn retain_strokes_under_budget(
+    candidates: Vec<TessellatedStroke>,
+    byte_budget: usize,
+) -> (Vec<TessellatedStroke>, usize, usize, usize) {
+    let mut retained_bytes = 0usize;
+    let mut rejected = 0usize;
+    let mut rejected_tone = 0usize;
+    let mut retained = Vec::new();
+    for stroke in candidates {
+        let bytes = stroke_data_bytes(&stroke);
+        if retained_bytes.saturating_add(bytes) <= byte_budget {
+            retained_bytes += bytes;
+            retained.push(stroke);
+        } else {
+            rejected += 1;
+            if stroke.role == StrokeRole::Tone {
+                rejected_tone += 1;
+            }
+        }
+    }
+    (retained, retained_bytes, rejected, rejected_tone)
 }
 
 /// Builds a packet from a surface whose revision-dependent topology was already
@@ -1182,6 +1217,40 @@ mod tests {
         let topology = build_topology(&geometry);
         let features = classify_features(&geometry, &topology, glam::Vec3::Z, 0.35);
         assert!(features.len() <= 12);
+    }
+
+    #[test]
+    fn stroke_payload_budget_preserves_feature_strokes_before_tone() {
+        let vertex = crate::StrokeVertex {
+            position: Vec2::ZERO,
+            width: 1.0,
+            id: 7,
+            depth: 0.5,
+            pressure: 1.0,
+            coverage: 1.0,
+            grain: 0.0,
+            edge: 0.0,
+            edge_softness: 0.0,
+            paper_tooth: 0.0,
+            dryness: 0.0,
+        };
+        let feature = TessellatedStroke {
+            vertices: vec![vertex; 3],
+            indices: vec![0, 1, 2],
+            id: 1,
+            class: FeatureClass::Silhouette,
+            role: StrokeRole::Feature,
+            correction: false,
+        };
+        let mut tone = feature.clone();
+        tone.id = 2;
+        tone.role = StrokeRole::Tone;
+        let (retained, bytes, rejected, rejected_tone) =
+            retain_strokes_under_budget(vec![feature.clone(), tone], stroke_data_bytes(&feature));
+        assert_eq!(retained.len(), 1);
+        assert_eq!(retained[0].role, StrokeRole::Feature);
+        assert_eq!(bytes, stroke_data_bytes(&feature));
+        assert_eq!((rejected, rejected_tone), (1, 1));
     }
 
     #[test]

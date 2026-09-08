@@ -22,6 +22,11 @@ the extracted view; zero means Stable or no qualifying surface motion. It is a
 diagnostic, not a wall-clock counter. Debug views are resolved before extraction: `Final` shows the selected
 tool response, `FeatureClasses` shows domain classification, and `StrokeIds`
 shows stable assembled-chain identities.
+
+`stroke_budget_rejected` and `stroke_budget_exhausted` report a deterministic
+CPU packet limit before WGPU upload. Feature strokes are retained before tonal
+strokes, so a dense scene degrades predictably instead of allocating an invalid
+GPU buffer or silently dropping an arbitrary batch.
 The footer keeps FPS/frame time visible. Thumbnails are fixed neutral references;
 W/R/S badges reflect current visibility, effective rotation and style override.
 Zoom regression tests cover monotonic/reversible motion, 20–240 FPS equivalence,

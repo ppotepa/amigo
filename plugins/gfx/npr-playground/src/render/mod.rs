@@ -97,6 +97,7 @@ impl NprPlaygroundRenderService {
                 ),
                 ("hatching_candidates", s.hatching_candidates),
                 ("hatching_rejected", s.hatching_rejected),
+                ("stroke_budget_rejected", s.stroke_budget_rejected),
                 ("temporal_retained_strokes", s.temporal_retained_strokes),
                 ("temporal_entering_strokes", s.temporal_entering_strokes),
                 ("stroke_data_bytes", s.stroke_data_bytes),
@@ -107,6 +108,9 @@ impl NprPlaygroundRenderService {
             stats.insert("viewport_height".into(), s.viewport[1] as u64);
             if s.hatching_budget_exhausted {
                 *stats.entry("hatching_budget_exhausted".into()).or_insert(0) += 1;
+            }
+            if s.stroke_budget_exhausted {
+                *stats.entry("stroke_budget_exhausted".into()).or_insert(0) += 1;
             }
         }
         stats.insert(
