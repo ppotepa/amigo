@@ -1,4 +1,4 @@
-use crate::state::{style_preset_id, ObjectSettings, Settings};
+use crate::state::{Settings, style_preset_id};
 use amigo_render_api::{NprBackgroundCommand, NprDrawCommand};
 use amigo_render_npr::*;
 use glam::{Mat4, Quat, Vec3};
@@ -9,19 +9,6 @@ pub const NPR_PLAYGROUND_EXTRACTOR_ID: &str = "amigo.gfx.npr-playground.extracto
 struct SourceCommand {
     temporal_scope: u64,
     command: NprDrawCommand,
-}
-
-/// A stable source-surface result selected from the current NPR scene.
-///
-/// This is intentionally a plugin-domain type: it names the authored object,
-/// while `NprSurfaceRayHit` remains reusable by every consumer of
-/// `amigo-render-npr`.
-#[derive(Debug, Clone, PartialEq)]
-pub struct NprSurfacePick {
-    pub object_id: String,
-    pub anchor: crate::state::ConstructionAnchorSettings,
-    pub position: Vec3,
-    pub normal: Vec3,
 }
 
 pub struct NprPlaygroundRenderService {
@@ -162,51 +149,6 @@ impl NprPlaygroundRenderService {
     }
     pub fn background(&self) -> Option<NprBackgroundCommand> {
         self.output.lock().unwrap().1
-    }
-
-    /// Picks the nearest currently visible authored object at a viewport pixel.
-    ///
-    /// The source mesh, rather than the selected smooth proxy, is queried so
-    /// the returned anchor can be placed directly into scene authoring data.
-    pub fn pick_surface(
-        &self,
-        settings: &Settings,
-        viewport: [u32; 2],
-        screen: glam::Vec2,
-    ) -> Option<NprSurfacePick> {
-        let camera = world_camera(settings, viewport)?;
-        let (origin, direction) = camera.ray_from_screen(screen, viewport_vec(viewport))?;
-        let cache = self.geometry.lock().unwrap();
-        settings
-            .objects
-            .iter()
-            .filter(|(id, object)| {
-                object.visible && (settings.gallery || **id == settings.selected)
-            })
-            .filter_map(|(id, object)| {
-                let transform = object_transform(object);
-                let inverse = transform.inverse();
-                let hit = cache.get(&object.model)?.source().raycast(
-                    inverse.transform_point3(origin),
-                    inverse.transform_vector3(direction).normalize_or_zero(),
-                )?;
-                let position = transform.transform_point3(hit.position);
-                let distance = (position - origin).length();
-                distance.is_finite().then_some((
-                    distance,
-                    NprSurfacePick {
-                        object_id: id.clone(),
-                        anchor: crate::state::ConstructionAnchorSettings {
-                            triangle: hit.anchor.triangle,
-                            barycentric: hit.anchor.barycentric,
-                        },
-                        position,
-                        normal: transform.transform_vector3(hit.normal).normalize_or_zero(),
-                    },
-                ))
-            })
-            .min_by(|left, right| left.0.total_cmp(&right.0))
-            .map(|(_, pick)| pick)
     }
     /// Rebuilds a frozen reference frame. Tests and deterministic screenshots
     /// use this entry point; interactive extraction uses `rebuild_with_delta`.
@@ -435,42 +377,6 @@ impl NprPlaygroundRenderService {
         self.rebuild(&settings, viewport)
             .expect("built-in cube is valid");
     }
-}
-
-fn viewport_vec(viewport: [u32; 2]) -> glam::Vec2 {
-    glam::Vec2::new(viewport[0] as f32, viewport[1] as f32)
-}
-
-fn world_camera(settings: &Settings, viewport: [u32; 2]) -> Option<PerspectiveCamera> {
-    if viewport.contains(&0) {
-        return None;
-    }
-    let yaw = settings.camera_yaw.to_radians();
-    let pitch = settings.camera_pitch.to_radians();
-    let position = settings.camera_target
-        + Vec3::new(
-            yaw.sin() * pitch.cos(),
-            pitch.sin(),
-            yaw.cos() * pitch.cos(),
-        ) * settings.camera_distance;
-    let forward = (settings.camera_target - position).normalize_or_zero();
-    (forward.length_squared() > 1e-12).then_some(PerspectiveCamera {
-        position,
-        forward,
-        up: Vec3::Y,
-        vertical_fov: settings.camera_fov.to_radians(),
-        near: 0.05,
-        aspect: viewport[0] as f32 / viewport[1] as f32,
-    })
-}
-
-fn object_transform(object: &ObjectSettings) -> Mat4 {
-    let rotation = object.rotation.map(f32::to_radians);
-    Mat4::from_scale_rotation_translation(
-        Vec3::splat(object.scale),
-        Quat::from_euler(glam::EulerRot::YXZ, rotation.y, rotation.x, rotation.z),
-        object.position,
-    )
 }
 
 fn object_seed(id: &str, model: &str, seed: u64) -> u64 {
