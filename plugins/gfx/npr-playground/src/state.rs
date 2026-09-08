@@ -14,6 +14,8 @@ pub const MODELS: &[&str] = &["cube", "wedge", "cylinder", "sphere", "suzanne", 
 const ACTIONS: &[&str] = &[
     "fit",
     "focus_selected",
+    "select_previous_object",
+    "select_next_object",
     "undo",
     "redo",
     "capture_before",
@@ -819,6 +821,33 @@ impl NprPlaygroundState {
         Ok(())
     }
 
+    /// Selects an authored scene object in stable gallery order. This is kept
+    /// separate from the dropdown property so buttons, keyboard shortcuts and
+    /// a future editor can share exactly the same camera/undo semantics.
+    pub fn select_scene_object(&self, direction: isize) -> Result<(), String> {
+        if direction == 0 {
+            return Ok(());
+        }
+        let mut settings = self.settings.lock().unwrap();
+        let before = settings.clone();
+        let current = MODELS
+            .iter()
+            .position(|id| *id == settings.selected)
+            .ok_or_else(|| format!("unknown selected NPR object `{}`", settings.selected))?;
+        let count = MODELS.len() as isize;
+        let next = (current as isize + direction).rem_euclid(count) as usize;
+        settings.selected = MODELS[next].to_owned();
+        if !settings.gallery {
+            Self::fit_candidate(&mut settings, *self.viewport.lock().unwrap())?;
+        }
+        settings.validate()?;
+        self.history
+            .lock()
+            .unwrap()
+            .record("select_scene_object", &before, &settings);
+        Ok(())
+    }
+
     /// Removes the selected authored mark as one undoable settings change.
     pub fn delete_selected_construction_mark(&self) -> Result<(), String> {
         let selected_index = {
@@ -966,6 +995,14 @@ impl NprPlaygroundState {
         );
         props.insert("preview_before".into(), ControlValue::Bool(preview));
         props.insert("editable".into(), ControlValue::Bool(!preview));
+        props.insert(
+            "can_select_previous_object".into(),
+            ControlValue::Bool(MODELS.len() > 1),
+        );
+        props.insert(
+            "can_select_next_object".into(),
+            ControlValue::Bool(MODELS.len() > 1),
+        );
         let authoring = self.construction_authoring.lock().unwrap();
         props.insert(
             "construction_authoring_active".into(),
@@ -1176,6 +1213,12 @@ impl NprPlaygroundState {
         }
         if action == "select_next_construction_mark" {
             return self.select_construction_mark(1);
+        }
+        if action == "select_previous_object" {
+            return self.select_scene_object(-1);
+        }
+        if action == "select_next_object" {
+            return self.select_scene_object(1);
         }
         if action == "fit" {
             self.fit()?;
@@ -1503,6 +1546,8 @@ impl RuntimeControlProvider for NprPlaygroundState {
                     "can_redo",
                     "can_compare",
                     "editable",
+                    "can_select_previous_object",
+                    "can_select_next_object",
                     "appearance_editable",
                     "style_info",
                     "preset_domain",

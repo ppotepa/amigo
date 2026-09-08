@@ -913,3 +913,19 @@ fn editor_scalar_properties_use_the_validated_runtime_control_path() {
         .is_err());
     assert_eq!(state.snapshot(), after);
 }
+
+#[test]
+fn gallery_navigation_wraps_and_preserves_single_object_camera_fit() {
+    let state = NprPlaygroundState::default();
+    state.select_scene_object(-1).unwrap();
+    assert_eq!(state.snapshot().selected, "avocado");
+    assert!(state.snapshot().camera_distance > 0.1);
+    state.select_scene_object(1).unwrap();
+    assert_eq!(state.snapshot().selected, "cube");
+
+    state.configure_scene(true);
+    let camera = state.snapshot().camera_distance;
+    state.select_scene_object(1).unwrap();
+    assert_eq!(state.snapshot().selected, "wedge");
+    assert_eq!(state.snapshot().camera_distance, camera);
+}

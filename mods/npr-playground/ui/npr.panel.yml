@@ -111,6 +111,20 @@ root:
           id: "browser-actions"
           children:
             -
+              type: "button"
+              id: "previous-object"
+              text: "← Poprzedni"
+              enabled_bind: "world.npr.settings.NprSettings.can_select_previous_object"
+              on_click:
+                event: "npr.select_previous_object"
+            -
+              type: "button"
+              id: "next-object"
+              text: "Następny →"
+              enabled_bind: "world.npr.settings.NprSettings.can_select_next_object"
+              on_click:
+                event: "npr.select_next_object"
+            -
               type: "toggle"
               id: "gallery"
               text: "Wszystkie obiekty"
