@@ -4,16 +4,6 @@ use amigo_render_npr::*;
 use glam::{Mat4, Quat, Vec3};
 use std::{collections::BTreeMap, path::Path, sync::Mutex};
 pub const NPR_PLAYGROUND_EXTRACTOR_ID: &str = "amigo.gfx.npr-playground.extractor";
-struct Prepared {
-    geometry: NprGeometry,
-    topology: Vec<TopologyEdge>,
-}
-impl Prepared {
-    fn new(geometry: NprGeometry) -> Self {
-        let topology = build_topology(&geometry);
-        Self { geometry, topology }
-    }
-}
 
 #[derive(Clone)]
 struct SourceCommand {
@@ -22,7 +12,7 @@ struct SourceCommand {
 }
 
 pub struct NprPlaygroundRenderService {
-    geometry: Mutex<BTreeMap<String, Prepared>>,
+    geometry: Mutex<BTreeMap<String, NprPreparedSurface>>,
     source: Mutex<Vec<SourceCommand>>,
     output: Mutex<(Vec<NprDrawCommand>, Option<NprBackgroundCommand>)>,
     last_input: Mutex<Option<(Settings, [u32; 2])>>,
@@ -41,7 +31,7 @@ impl Default for NprPlaygroundRenderService {
                     ("sphere", NprGeometry::icosphere()),
                 ]
                 .into_iter()
-                .map(|(name, g)| (name.into(), Prepared::new(g)))
+                .map(|(name, g)| (name.into(), NprPreparedSurface::new(g)))
                 .collect(),
             ),
             source: Mutex::new(vec![]),
@@ -70,8 +60,10 @@ impl NprPlaygroundRenderService {
         ] {
             if !cache.contains_key(name) {
                 let mesh = amigo_3d_mesh::load_gltf_geometry(&root.join(path))?;
-                let geometry = NprGeometry::from_indexed(&mesh.positions, &mesh.indices)?;
-                cache.insert(name.into(), Prepared::new(geometry));
+                cache.insert(
+                    name.into(),
+                    NprPreparedSurface::from_indexed(&mesh.positions, &mesh.indices)?,
+                );
             }
         }
         Ok(())
@@ -215,7 +207,7 @@ impl NprPlaygroundRenderService {
                     Quat::from_euler(glam::EulerRot::YXZ, rotation.y, rotation.x, rotation.z),
                     object.position,
                 );
-                let world_geometry = prepared.geometry.transformed(transform);
+                let world_geometry = prepared.geometry().transformed(transform);
                 // NPR source identities live in model space. Transforming the
                 // camera and directional light into that space produces the
                 // same projected image as transforming every source path into
@@ -265,9 +257,8 @@ impl NprPlaygroundRenderService {
                     HatchLodPolicy::default(),
                 );
                 style.hatching_spacing *= decision.spacing_multiplier;
-                let mut packet = build_packet_with_topology(
-                    &prepared.geometry,
-                    &prepared.topology,
+                let mut packet = build_packet_for_surface(
+                    prepared,
                     camera,
                     viewport,
                     style,
@@ -282,7 +273,7 @@ impl NprPlaygroundRenderService {
                 packet.stats.gesture_variant_epoch = variant_epoch;
                 if settings.gallery && settings.highlight_selected && *id == settings.selected {
                     packet.mark_selection(
-                        &prepared.geometry,
+                        prepared.geometry(),
                         camera,
                         glam::Vec4::new(0.15, 0.65, 0.85, 1.0),
                     );

@@ -438,6 +438,27 @@ pub fn build_packet_with_topology(
     }
 }
 
+/// Builds a packet from a surface whose revision-dependent topology was already
+/// prepared. This is the preferred entry point for runtime asset caches.
+pub fn build_packet_for_surface(
+    surface: &crate::NprPreparedSurface,
+    camera: PerspectiveCamera,
+    viewport: [u32; 2],
+    style: ComicInk,
+    seed: u64,
+    debug_view: NprDebugView,
+) -> NprRenderPacket {
+    build_packet_with_topology(
+        surface.geometry(),
+        surface.topology(),
+        camera,
+        viewport,
+        style,
+        seed,
+        debug_view,
+    )
+}
+
 #[cfg(test)]
 fn append_hatching(
     output: &mut Vec<TessellatedStroke>,
