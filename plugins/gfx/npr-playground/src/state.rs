@@ -25,6 +25,8 @@ const ACTIONS: &[&str] = &[
     "camera_top",
     "reset_style",
     "new_gesture_variant",
+    "begin_construction_mark",
+    "cancel_construction_mark",
 ];
 fn resolved_key(key: &str, settings: &Settings) -> String {
     if let Some(field) = key.strip_prefix("object.") {
@@ -248,6 +250,15 @@ impl ConstructionMarkSettings {
             opacity: self.opacity,
         })
     }
+}
+
+/// Transient two-point authoring state. It is intentionally not serialized:
+/// only a complete, source-anchored construction mark becomes scene data.
+#[derive(Debug, Default)]
+struct ConstructionAuthoringState {
+    object_id: Option<String>,
+    anchors: Vec<ConstructionAnchorSettings>,
+    waiting_for_release: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -492,6 +503,7 @@ pub struct NprPlaygroundState {
     comparison: Mutex<Option<Settings>>,
     preview_before: Mutex<bool>,
     authored_scene: Mutex<Option<crate::scene::NprPlaygroundSceneDocument>>,
+    construction_authoring: Mutex<ConstructionAuthoringState>,
     pub render_stats: Mutex<BTreeMap<String, u64>>,
 }
 impl Default for NprPlaygroundState {
@@ -507,6 +519,7 @@ impl Default for NprPlaygroundState {
             comparison: Mutex::new(None),
             preview_before: Mutex::new(false),
             authored_scene: Mutex::new(None),
+            construction_authoring: Mutex::new(ConstructionAuthoringState::default()),
             render_stats: Mutex::new(
                 [
                     "geometry",
@@ -568,7 +581,100 @@ impl NprPlaygroundState {
         *self.history.lock().unwrap() = history::History::default();
         *self.comparison.lock().unwrap() = None;
         *self.preview_before.lock().unwrap() = false;
+        *self.construction_authoring.lock().unwrap() = ConstructionAuthoringState::default();
         Ok(())
+    }
+
+    /// Starts a two-point construction line on the currently selected object.
+    pub fn begin_construction_mark(&self) -> Result<(), String> {
+        if *self.preview_before.lock().unwrap() {
+            return Err("disable Before comparison to author a mark".into());
+        }
+        let selected = self.settings.lock().unwrap().selected.clone();
+        *self.construction_authoring.lock().unwrap() = ConstructionAuthoringState {
+            object_id: Some(selected),
+            anchors: Vec::new(),
+            // The same left press activated the panel button. Wait for it to
+            // end so it cannot also become a point on the viewport.
+            waiting_for_release: true,
+        };
+        Ok(())
+    }
+
+    /// Discards an incomplete construction line without changing authored data.
+    pub fn cancel_construction_mark(&self) {
+        *self.construction_authoring.lock().unwrap() = ConstructionAuthoringState::default();
+    }
+
+    pub fn construction_authoring_active(&self) -> bool {
+        self.construction_authoring.lock().unwrap().object_id.is_some()
+    }
+
+    /// Arms authoring after the panel-button press has been released.
+    pub fn construction_authoring_accepts_click(&self, mouse_left_down: bool) -> bool {
+        let mut authoring = self.construction_authoring.lock().unwrap();
+        if authoring.object_id.is_none() {
+            return false;
+        }
+        if authoring.waiting_for_release {
+            if !mouse_left_down {
+                authoring.waiting_for_release = false;
+            }
+            return false;
+        }
+        true
+    }
+
+    /// Adds a source-surface point and commits a line after its second point.
+    ///
+    /// The selected object is fixed when authoring starts. This prevents a
+    /// gallery click from silently joining anchors from separate meshes.
+    pub fn place_construction_anchor(
+        &self,
+        object_id: &str,
+        anchor: ConstructionAnchorSettings,
+    ) -> Result<bool, String> {
+        let (object_id, anchors) = {
+            let mut authoring = self.construction_authoring.lock().unwrap();
+            let expected = authoring
+                .object_id
+                .as_deref()
+                .ok_or("construction mark authoring is not active")?;
+            if expected != object_id {
+                return Err(format!("select {expected} before placing its construction mark"));
+            }
+            authoring.anchors.push(anchor);
+            if authoring.anchors.len() < 2 {
+                return Ok(false);
+            }
+            (
+                authoring.object_id.take().expect("active authoring has an object"),
+                std::mem::take(&mut authoring.anchors),
+            )
+        };
+        let mut settings = self.settings.lock().unwrap();
+        let before = settings.clone();
+        let object = settings
+            .objects
+            .get_mut(&object_id)
+            .ok_or_else(|| format!("unknown construction-mark object {object_id}"))?;
+        let mut id = 0x4000_0000u32;
+        while object.construction_marks.iter().any(|mark| mark.id == id) {
+            id = id.checked_add(1).ok_or("construction mark id space is exhausted")?;
+        }
+        object.construction_marks.push(ConstructionMarkSettings {
+            id,
+            anchors,
+            closed: false,
+            width_scale: default_construction_width_scale(),
+            opacity: default_construction_opacity(),
+        });
+        settings.validate()?;
+        self.history
+            .lock()
+            .unwrap()
+            .record("add_construction_mark", &before, &settings);
+        Ok(true)
     }
 
     fn control_values(&self, settings: &Settings) -> BTreeMap<String, ControlValue> {
@@ -617,6 +723,23 @@ impl NprPlaygroundState {
         );
         props.insert("preview_before".into(), ControlValue::Bool(preview));
         props.insert("editable".into(), ControlValue::Bool(!preview));
+        let authoring = self.construction_authoring.lock().unwrap();
+        props.insert(
+            "construction_authoring_active".into(),
+            ControlValue::Bool(authoring.object_id.is_some()),
+        );
+        props.insert(
+            "construction_authoring_points".into(),
+            ControlValue::U64(authoring.anchors.len() as u64),
+        );
+        props.insert(
+            "construction_authoring_status".into(),
+            ControlValue::String(match authoring.object_id.as_deref() {
+                Some(_) if authoring.waiting_for_release => "Zwolnij przycisk myszy, aby rozpocząć wybór punktów.".into(),
+                Some(object) => format!("{object}: wybierz punkt {} z 2", authoring.anchors.len() + 1),
+                None => "Wybierz „Dodaj linię”, potem dwa punkty na modelu.".into(),
+            }),
+        );
         props.insert(
             "motion_redraw_editable".into(),
             ControlValue::Bool(
@@ -705,6 +828,13 @@ impl NprPlaygroundState {
                 .restore(&mut settings, action == "redo");
         }
         let before = self.snapshot();
+        if action == "begin_construction_mark" {
+            return self.begin_construction_mark();
+        }
+        if action == "cancel_construction_mark" {
+            self.cancel_construction_mark();
+            return Ok(());
+        }
         if action == "fit" {
             self.fit()?;
         } else {
@@ -786,6 +916,7 @@ impl NprPlaygroundState {
         *self.history.lock().unwrap() = history::History::default();
         *self.comparison.lock().unwrap() = None;
         *self.preview_before.lock().unwrap() = false;
+        *self.construction_authoring.lock().unwrap() = ConstructionAuthoringState::default();
     }
     pub fn tick(&self, dt: f32) {
         let mut s = self.settings.lock().unwrap();
@@ -1007,6 +1138,9 @@ impl RuntimeControlProvider for NprPlaygroundState {
                     "appearance_editable",
                     "style_info",
                     "preset_domain",
+                    "construction_authoring_active",
+                    "construction_authoring_points",
+                    "construction_authoring_status",
                 ]
                 .contains(&key.as_str())
                     && !key.ends_with(".status")

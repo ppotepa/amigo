@@ -726,6 +726,29 @@ root:
                     event: "npr.reset_rotation"
             -
               type: "group-box"
+              id: "construction-marks"
+              text: "Linia konstrukcyjna"
+              children:
+                -
+                  type: "text"
+                  id: "construction-status"
+                  text_bind: "world.npr.settings.NprSettings.construction_authoring_status"
+                -
+                  type: "button"
+                  id: "begin-construction-mark"
+                  text: "Dodaj linię"
+                  tooltip: "Wybierz dwa punkty na aktualnie wybranym modelu. Punkty są zapisywane na powierzchni, nie na ekranie."
+                  on_click:
+                    event: "npr.begin_construction_mark"
+                -
+                  type: "button"
+                  id: "cancel-construction-mark"
+                  text: "Anuluj wybór"
+                  enabled_bind: "world.npr.settings.NprSettings.construction_authoring_active"
+                  on_click:
+                    event: "npr.cancel_construction_mark"
+            -
+              type: "group-box"
               id: "inheritance"
               text: "Dziedziczenie stylu"
               children:

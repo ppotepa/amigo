@@ -115,7 +115,35 @@ impl RuntimePlugin for NprPlaygroundPlugin {
                     let input = input.snapshot();
                     let mut last = lifecycle.mouse.lock().unwrap();
                     let mut settings = state.settings.lock().unwrap();
-                    if input.mouse_left_down {
+                    let authoring = state.construction_authoring_active();
+                    if authoring
+                        && state.construction_authoring_accepts_click(input.mouse_left_down)
+                        && input.mouse_left_pressed
+                    {
+                        if let Some(point) = input.mouse_position {
+                            let viewport = *state.viewport.lock().unwrap();
+                            let selected = settings.selected.clone();
+                            if let Some(pick) = runtime
+                                .required::<NprPlaygroundRenderService>()?
+                                .pick_surface(
+                                    &settings,
+                                    viewport,
+                                    glam::Vec2::new(point.x, point.y),
+                                )
+                            {
+                                // The tool intentionally stays bound to the
+                                // selected object. A gallery hit on another
+                                // model is ignored instead of mixing meshes.
+                                if pick.object_id == selected {
+                                    drop(settings);
+                                    state
+                                        .place_construction_anchor(&pick.object_id, pick.anchor)
+                                        .map_err(amigo_core::AmigoError::Message)?;
+                                    settings = state.settings.lock().unwrap();
+                                }
+                            }
+                        }
+                    } else if !authoring && input.mouse_left_down {
                         if let (Some(previous), Some(point)) = (*last, input.mouse_position) {
                             settings.camera_yaw += (point.x - previous.0) * 0.3;
                             settings.camera_pitch = (settings.camera_pitch

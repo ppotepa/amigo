@@ -27,6 +27,47 @@ fn surface_pick_returns_a_source_anchor_for_the_selected_model() {
 }
 
 #[test]
+fn construction_authoring_commits_only_after_two_source_points() {
+    let state = NprPlaygroundState::default();
+    state.begin_construction_mark().unwrap();
+    assert!(state.construction_authoring_active());
+
+    assert!(!state
+        .place_construction_anchor(
+            "cube",
+            ConstructionAnchorSettings {
+                triangle: 0,
+                barycentric: [0.7, 0.2, 0.1],
+            },
+        )
+        .unwrap());
+    assert!(state.snapshot().objects["cube"].construction_marks.is_empty());
+
+    assert!(state
+        .place_construction_anchor(
+            "cube",
+            ConstructionAnchorSettings {
+                triangle: 0,
+                barycentric: [0.1, 0.7, 0.2],
+            },
+        )
+        .unwrap());
+    let marks = &state.snapshot().objects["cube"].construction_marks;
+    assert_eq!(marks.len(), 1);
+    assert_eq!(marks[0].anchors.len(), 2);
+    assert!(!state.construction_authoring_active());
+}
+
+#[test]
+fn construction_authoring_waits_for_the_panel_click_to_be_released() {
+    let state = NprPlaygroundState::default();
+    state.begin_construction_mark().unwrap();
+    assert!(!state.construction_authoring_accepts_click(true));
+    assert!(!state.construction_authoring_accepts_click(false));
+    assert!(state.construction_authoring_accepts_click(false));
+}
+
+#[test]
 fn metadata_controls_validate_atomically_and_presets_restore_all_objects() {
     let state = Arc::new(NprPlaygroundState::default());
     let controls = RuntimeControlService::default();
