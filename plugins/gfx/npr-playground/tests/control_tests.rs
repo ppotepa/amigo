@@ -1,5 +1,6 @@
 use amigo_npr_playground_plugin::{NprPlaygroundRenderService, NprPlaygroundState, state::PREFIX};
 use amigo_panels::PresetProvider;
+use amigo_render_npr::{NprConstructionMark, NprGeometry, NprPreparedSurface, StrokeRole};
 use amigo_runtime_control::{ControlValue, RuntimeControlService};
 use std::sync::Arc;
 
@@ -174,6 +175,37 @@ fn pause_step_and_extract_do_not_advance_state() {
     assert_eq!(render.snapshot().unwrap().packet.stats.viewport, [320, 640]);
     render.clear();
     assert!(render.commands().is_empty());
+}
+
+#[test]
+fn authored_construction_marks_flow_from_object_state_to_render_packet() {
+    let state = NprPlaygroundState::default();
+    let source = NprPreparedSurface::new(NprGeometry::canonical_cube());
+    state
+        .settings
+        .lock()
+        .unwrap()
+        .objects
+        .get_mut("cube")
+        .unwrap()
+        .construction_marks = vec![NprConstructionMark {
+            id: 0x4000_0100,
+            anchors: vec![
+                source.anchor(0, [0.70, 0.20, 0.10]).unwrap(),
+                source.anchor(0, [0.10, 0.70, 0.20]).unwrap(),
+            ],
+            closed: false,
+            width_scale: 0.5,
+            opacity: 0.35,
+        }];
+    let render = NprPlaygroundRenderService::default();
+    render.rebuild(&state.snapshot(), [512, 512]).unwrap();
+    let packet = &render.commands()[0].packet;
+    assert_eq!(packet.stats.construction_marks, 1);
+    assert!(packet
+        .strokes
+        .iter()
+        .any(|stroke| stroke.role == StrokeRole::Construction));
 }
 
 #[test]

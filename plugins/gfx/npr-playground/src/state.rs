@@ -1,6 +1,7 @@
 use amigo_render_npr::{
     ComicInk, NprMotionPolicy, NprSurfaceMode, NprToneMode, StrokeMotionMode, StrokeTool,
 };
+use amigo_render_npr::NprConstructionMark;
 use amigo_runtime_control::*;
 use glam::Vec3;
 use serde::{Deserialize, Serialize};
@@ -195,6 +196,9 @@ pub struct ObjectSettings {
     pub gesture_variant: u32,
     pub override_style: bool,
     pub style: ComicInk,
+    /// Authored, source-surface marks resolved only during RenderExtract.
+    #[serde(default)]
+    pub construction_marks: Vec<NprConstructionMark>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -252,6 +256,7 @@ impl Settings {
                         gesture_variant: 0,
                         override_style: false,
                         style: ComicInk::default(),
+                        construction_marks: vec![],
                     },
                 )
             })

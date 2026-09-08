@@ -310,6 +310,16 @@ impl NprPlaygroundRenderService {
                         glam::Vec4::new(0.15, 0.65, 0.85, 1.0),
                     );
                 }
+                append_construction_marks(
+                    &mut packet,
+                    prepared_variants.source(),
+                    camera,
+                    viewport,
+                    style,
+                    settings.seed,
+                    &object.construction_marks,
+                )
+                .map_err(|error| format!("object {id} construction marks: {error}"))?;
                 source.push(SourceCommand {
                     temporal_scope,
                     command: NprDrawCommand::with_preset(packet, preset),
