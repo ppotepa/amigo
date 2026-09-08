@@ -1211,7 +1211,8 @@ impl NprPlaygroundState {
     }
     pub fn render_snapshot(&self) -> Settings {
         let mut settings = self.snapshot();
-        if *self.preview_before.lock().unwrap() {
+        let preview_before = *self.preview_before.lock().unwrap();
+        if preview_before {
             if let Some(before) = self.comparison.lock().unwrap().as_ref() {
                 settings.global = before.global;
                 for (id, object) in &mut settings.objects {
@@ -1224,7 +1225,8 @@ impl NprPlaygroundState {
         // drawable open path, with an id outside the regular authoring range.
         // `snapshot()` and scene-document projection deliberately never see it.
         let authoring = self.construction_authoring.lock().unwrap();
-        if let Some(object_id) = authoring.object_id.as_deref()
+        if !preview_before
+            && let Some(object_id) = authoring.object_id.as_deref()
             && authoring.anchors.len() >= 2
             && let Some(object) = settings.objects.get_mut(object_id)
         {
@@ -1485,6 +1487,9 @@ impl RuntimeControlProvider for NprPlaygroundState {
                 return Err(failure("capture a comparison first".into()));
             }
             *self.preview_before.lock().unwrap() = enabled;
+            if enabled {
+                self.cancel_construction_mark();
+            }
             return Ok(());
         }
         if *self.preview_before.lock().unwrap() {

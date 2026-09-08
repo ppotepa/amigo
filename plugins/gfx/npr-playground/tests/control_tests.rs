@@ -129,6 +129,35 @@ fn construction_authoring_renders_a_transient_preview_without_serializing_it() {
 }
 
 #[test]
+fn before_comparison_discards_an_in_progress_construction_preview() {
+    let state = Arc::new(NprPlaygroundState::default());
+    state.begin_construction_mark().unwrap();
+    for barycentric in [[0.7, 0.2, 0.1], [0.1, 0.7, 0.2]] {
+        state
+            .place_construction_anchor(
+                "cube",
+                ConstructionAnchorSettings {
+                    triangle: 0,
+                    barycentric,
+                },
+            )
+            .unwrap();
+    }
+    assert_eq!(state.render_snapshot().objects["cube"].construction_marks.len(), 1);
+
+    let controls = RuntimeControlService::default();
+    controls.register_provider(state.clone());
+    controls
+        .set(&format!("{PREFIX}capture_before"), ControlValue::Bool(true))
+        .unwrap();
+    controls
+        .set(&format!("{PREFIX}preview_before"), ControlValue::Bool(true))
+        .unwrap();
+    assert!(!state.construction_authoring_active());
+    assert!(state.render_snapshot().objects["cube"].construction_marks.is_empty());
+}
+
+#[test]
 fn latest_construction_mark_style_is_live_editable_and_validated() {
     let state = Arc::new(NprPlaygroundState::default());
     state.begin_construction_mark().unwrap();
