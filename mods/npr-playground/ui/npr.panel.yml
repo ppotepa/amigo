@@ -766,6 +766,28 @@ root:
                   id: "construction-summary"
                   text_bind: "world.npr.settings.NprSettings.construction_mark_summary"
                 -
+                  type: "group-box"
+                  id: "construction-last-style"
+                  text: "Ostatnia linia"
+                  enabled_bind: "world.npr.settings.NprSettings.construction_mark_can_edit"
+                  children:
+                    -
+                      type: "slider"
+                      id: "construction-last-width"
+                      text: "Skala grubości"
+                      value_bind: "world.npr.settings.NprSettings.construction_mark_last_width_scale"
+                      min: 0
+                      max: 2
+                      step: 0.01
+                    -
+                      type: "slider"
+                      id: "construction-last-opacity"
+                      text: "Krycie"
+                      value_bind: "world.npr.settings.NprSettings.construction_mark_last_opacity"
+                      min: 0
+                      max: 1
+                      step: 0.01
+                -
                   type: "button"
                   id: "delete-last-construction-mark"
                   text: "Usuń ostatnią linię"

@@ -100,6 +100,53 @@ fn construction_authoring_waits_for_the_panel_click_to_be_released() {
 }
 
 #[test]
+fn latest_construction_mark_style_is_live_editable_and_validated() {
+    let state = Arc::new(NprPlaygroundState::default());
+    state.begin_construction_mark().unwrap();
+    for barycentric in [[0.7, 0.2, 0.1], [0.1, 0.7, 0.2]] {
+        state
+            .place_construction_anchor(
+                "cube",
+                ConstructionAnchorSettings {
+                    triangle: 0,
+                    barycentric,
+                },
+            )
+            .unwrap();
+    }
+    state.commit_construction_mark(false).unwrap();
+    let controls = RuntimeControlService::default();
+    controls.register_provider(state.clone());
+    let path = |field: &str| format!("{PREFIX}{field}");
+    controls
+        .set(
+            &path("construction_mark_last_width_scale"),
+            ControlValue::F64(0.85),
+        )
+        .unwrap();
+    controls
+        .set(
+            &path("construction_mark_last_opacity"),
+            ControlValue::F64(0.6),
+        )
+        .unwrap();
+    assert_eq!(
+        state.snapshot().objects["cube"].construction_marks[0].width_scale,
+        0.85
+    );
+    assert_eq!(
+        state.snapshot().objects["cube"].construction_marks[0].opacity,
+        0.6
+    );
+    assert!(controls
+        .set(
+            &path("construction_mark_last_opacity"),
+            ControlValue::F64(1.1),
+        )
+        .is_err());
+}
+
+#[test]
 fn metadata_controls_validate_atomically_and_presets_restore_all_objects() {
     let state = Arc::new(NprPlaygroundState::default());
     let controls = RuntimeControlService::default();

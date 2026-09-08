@@ -725,6 +725,39 @@ impl NprPlaygroundState {
         Ok(())
     }
 
+    fn set_last_construction_mark_style(
+        &self,
+        field: &str,
+        value: f32,
+    ) -> Result<(), String> {
+        if !value.is_finite() {
+            return Err("construction mark value must be finite".into());
+        }
+        let mut settings = self.settings.lock().unwrap();
+        let before = settings.clone();
+        let selected = settings.selected.clone();
+        let mark = settings
+            .objects
+            .get_mut(&selected)
+            .ok_or_else(|| format!("unknown construction-mark object {selected}"))?
+            .construction_marks
+            .last_mut()
+            .ok_or("the selected object has no construction marks")?;
+        match field {
+            "width_scale" if (0.0..=2.0).contains(&value) => mark.width_scale = value,
+            "opacity" if (0.0..=1.0).contains(&value) => mark.opacity = value,
+            "width_scale" => return Err("construction mark width scale must be within 0..=2".into()),
+            "opacity" => return Err("construction mark opacity must be within 0..=1".into()),
+            _ => return Err(format!("unknown construction mark style field {field}")),
+        }
+        settings.validate()?;
+        self.history
+            .lock()
+            .unwrap()
+            .record(&format!("construction_mark_{field}"), &before, &settings);
+        Ok(())
+    }
+
     fn control_values(&self, settings: &Settings) -> BTreeMap<String, ControlValue> {
         let mut props = values(settings);
         for (key, value) in props.clone() {
@@ -805,6 +838,28 @@ impl NprPlaygroundState {
         props.insert(
             "construction_mark_can_delete".into(),
             ControlValue::Bool(!marks.is_empty()),
+        );
+        props.insert(
+            "construction_mark_can_edit".into(),
+            ControlValue::Bool(!marks.is_empty()),
+        );
+        props.insert(
+            "construction_mark_last_width_scale".into(),
+            ControlValue::F64(
+                marks
+                    .last()
+                    .map(|mark| f64::from(mark.width_scale))
+                    .unwrap_or(f64::from(default_construction_width_scale())),
+            ),
+        );
+        props.insert(
+            "construction_mark_last_opacity".into(),
+            ControlValue::F64(
+                marks
+                    .last()
+                    .map(|mark| f64::from(mark.opacity))
+                    .unwrap_or(f64::from(default_construction_opacity())),
+            ),
         );
         props.insert(
             "construction_mark_summary".into(),
@@ -1240,6 +1295,7 @@ impl RuntimeControlProvider for NprPlaygroundState {
                     "construction_mark_count",
                     "construction_mark_last_id",
                     "construction_mark_can_delete",
+                    "construction_mark_can_edit",
                     "construction_mark_summary",
                 ]
                 .contains(&key.as_str())
@@ -1306,6 +1362,17 @@ impl RuntimeControlProvider for NprPlaygroundState {
             } else {
                 Ok(())
             };
+        }
+        if let Some(field) = path
+            .property_path
+            .strip_prefix("construction_mark_last_")
+        {
+            let value = value
+                .as_f64()
+                .ok_or_else(|| failure("number required".into()))? as f32;
+            return self
+                .set_last_construction_mark_style(field, value)
+                .map_err(failure);
         }
         let mut current = self.settings.lock().unwrap();
         if (path.property_path.starts_with("appearance.") || path.property_path == "style_preset")
