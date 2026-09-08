@@ -157,12 +157,12 @@ impl NprGpuVertex {
                     shader_location: 3,
                 },
                 wgpu::VertexAttribute {
-                    format: wgpu::VertexFormat::Float32x4,
+                    format: wgpu::VertexFormat::Float32x2,
                     offset: 32,
                     shader_location: 4,
                 },
                 wgpu::VertexAttribute {
-                    format: wgpu::VertexFormat::Float32x2,
+                    format: wgpu::VertexFormat::Float32x4,
                     offset: 40,
                     shader_location: 5,
                 },
@@ -400,5 +400,22 @@ impl NprPipelines {
             }),
             index_count: indices.len() as u32,
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn gpu_vertex_layout_matches_the_stroke_shader_contract() {
+        let layout = NprGpuVertex::layout();
+        assert_eq!(layout.array_stride, std::mem::size_of::<NprGpuVertex>() as u64);
+        assert_eq!(layout.attributes[4].shader_location, 4);
+        assert_eq!(layout.attributes[4].offset, 32);
+        assert_eq!(layout.attributes[4].format, wgpu::VertexFormat::Float32x2);
+        assert_eq!(layout.attributes[5].shader_location, 5);
+        assert_eq!(layout.attributes[5].offset, 40);
+        assert_eq!(layout.attributes[5].format, wgpu::VertexFormat::Float32x4);
     }
 }
