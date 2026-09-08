@@ -147,6 +147,13 @@ fn latest_construction_mark_style_is_live_editable_and_validated() {
             ControlValue::F64(1.1),
         )
         .is_err());
+    assert!(controls
+        .set(
+            &path("construction_mark_selected_closed"),
+            ControlValue::Bool(true),
+        )
+        .is_err());
+    assert!(!state.snapshot().objects["cube"].construction_marks[0].closed);
 }
 
 #[test]

@@ -788,8 +788,9 @@ impl NprPlaygroundState {
         };
         let mut settings = self.settings.lock().unwrap();
         let before = settings.clone();
-        let selected = settings.selected.clone();
-        let mark = settings
+        let mut next = before.clone();
+        let selected = next.selected.clone();
+        let mark = next
             .objects
             .get_mut(&selected)
             .ok_or_else(|| format!("unknown construction-mark object {selected}"))?
@@ -803,11 +804,41 @@ impl NprPlaygroundState {
             "opacity" => return Err("construction mark opacity must be within 0..=1".into()),
             _ => return Err(format!("unknown construction mark style field {field}")),
         }
-        settings.validate()?;
+        next.validate()?;
         self.history
             .lock()
             .unwrap()
-            .record(&format!("construction_mark_{field}"), &before, &settings);
+            .record(&format!("construction_mark_{field}"), &before, &next);
+        *settings = next;
+        Ok(())
+    }
+
+    fn set_selected_construction_mark_closed(&self, closed: bool) -> Result<(), String> {
+        let selected_index = {
+            let settings = self.settings.lock().unwrap();
+            self.selected_construction_mark_index(
+                settings.objects[&settings.selected].construction_marks.len(),
+            )
+            .ok_or("the selected object has no construction marks")?
+        };
+        let mut settings = self.settings.lock().unwrap();
+        let before = settings.clone();
+        let mut next = before.clone();
+        let selected = next.selected.clone();
+        let mark = next
+            .objects
+            .get_mut(&selected)
+            .ok_or_else(|| format!("unknown construction-mark object {selected}"))?
+            .construction_marks
+            .get_mut(selected_index)
+            .ok_or("the selected construction mark is out of range")?;
+        mark.closed = closed;
+        next.validate()?;
+        self.history
+            .lock()
+            .unwrap()
+            .record("construction_mark_closed", &before, &next);
+        *settings = next;
         Ok(())
     }
 
@@ -928,6 +959,10 @@ impl NprPlaygroundState {
                     .map(|mark| f64::from(mark.opacity))
                     .unwrap_or(f64::from(default_construction_opacity())),
             ),
+        );
+        props.insert(
+            "construction_mark_selected_closed".into(),
+            ControlValue::Bool(selected_mark.is_some_and(|mark| mark.closed)),
         );
         props.insert(
             "construction_mark_summary".into(),
@@ -1438,6 +1473,15 @@ impl RuntimeControlProvider for NprPlaygroundState {
             } else {
                 Ok(())
             };
+        }
+        if path.property_path == "construction_mark_selected_closed" {
+            return self
+                .set_selected_construction_mark_closed(
+                    value
+                        .as_bool()
+                        .ok_or_else(|| failure("boolean required".into()))?,
+                )
+                .map_err(failure);
         }
         if let Some(field) = path
             .property_path

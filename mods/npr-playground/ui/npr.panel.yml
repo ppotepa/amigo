@@ -790,6 +790,12 @@ root:
                   enabled_bind: "world.npr.settings.NprSettings.construction_mark_can_edit"
                   children:
                     -
+                      type: "toggle"
+                      id: "construction-selected-closed"
+                      text: "Zamknięta pętla"
+                      tooltip: "Wymaga co najmniej trzech punktów na powierzchni."
+                      value_bind: "world.npr.settings.NprSettings.construction_mark_selected_closed"
+                    -
                       type: "slider"
                       id: "construction-selected-width"
                       text: "Skala grubości"
