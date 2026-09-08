@@ -174,6 +174,8 @@ fn hash_stats(hasher: &mut PacketHasher, stats: &NprRenderStats) {
     hasher.usize(stats.surface_proxy_triangles);
     hasher.usize(stats.topology_edges);
     hasher.usize(stats.feature_segments);
+    hasher.usize(stats.feature_candidates);
+    hasher.usize(stats.feature_rejected);
     hasher.usize(stats.smooth_contour_spans);
     hasher.usize(stats.silhouettes);
     hasher.usize(stats.creases);

@@ -345,9 +345,14 @@ fn validate_style(s: ComicInk) -> Result<(), String> {
             return Err("color must be finite RGBA in 0..1".into());
         }
     }
-    if [s.outline_width, s.crease_width, s.boundary_width]
-        .iter()
-        .any(|v| !v.is_finite() || !(0.0..=20.0).contains(v))
+    if [
+        s.outline_width,
+        s.crease_width,
+        s.boundary_width,
+        s.min_crease_length_pixels,
+    ]
+    .iter()
+    .any(|v| !v.is_finite() || !(0.0..=20.0).contains(v))
         || !s.taper.is_finite()
         || !(0.0..=1.0).contains(&s.taper)
         || !s.wobble.is_finite()
@@ -790,6 +795,7 @@ fn control_yaml(value: ControlValue) -> serde_yaml::Value {
 fn property_range(key: &str) -> Option<ControlRange> {
     let (min, max) = match key.rsplit('.').next().unwrap_or(key) {
         "outline_width" | "crease_width" | "boundary_width" => (0.0, 20.0),
+        "min_crease_length_pixels" => (0.0, 64.0),
         "surface_subdivision_level" => (0.0, 2.0),
         "crease_angle" | "smooth_crease_angle" => (0.0, 180.0),
         "taper" => (0.0, 1.0),

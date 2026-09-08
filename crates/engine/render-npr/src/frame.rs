@@ -67,6 +67,10 @@ pub struct NprRenderStats {
     pub surface_proxy_triangles: usize,
     pub topology_edges: usize,
     pub feature_segments: usize,
+    /// Feature segments considered after surface policy but before chain ranking.
+    pub feature_candidates: usize,
+    /// Candidate segments omitted because their whole crease chain was too short.
+    pub feature_rejected: usize,
     /// View-dependent contour spans generated from a smooth normal field,
     /// rather than from topology edges.
     pub smooth_contour_spans: usize,
@@ -305,8 +309,16 @@ pub fn build_packet_with_topology(
             }
         }
     }
+    let feature_candidates = features.len();
+    let (feature_chains, feature_rejected) = rank_feature_chains(
+        crate::stroke::chain_features(&features),
+        geometry,
+        camera,
+        vp,
+        style.min_crease_length_pixels,
+    );
     let mut strokes = Vec::new();
-    for chain in crate::stroke::chain_features(&features) {
+    for chain in feature_chains {
         let mut points = Vec::new();
         let flush = |points: &mut Vec<(Vec2, f32)>, strokes: &mut Vec<TessellatedStroke>| {
             if points.len() > 1 {
@@ -413,6 +425,8 @@ pub fn build_packet_with_topology(
         surface_proxy_triangles: geometry.triangles.len(),
         topology_edges: topology.len(),
         feature_segments: features.len(),
+        feature_candidates,
+        feature_rejected,
         smooth_contour_spans: smooth_contours.len(),
         silhouettes,
         creases,
@@ -454,6 +468,43 @@ fn stroke_data_bytes(stroke: &TessellatedStroke) -> usize {
             .indices
             .len()
             .saturating_mul(std::mem::size_of::<u32>())
+}
+
+fn rank_feature_chains(
+    chains: Vec<crate::FeatureStroke>,
+    geometry: &NprGeometry,
+    camera: PerspectiveCamera,
+    viewport: Vec2,
+    min_crease_length_pixels: f32,
+) -> (Vec<crate::FeatureStroke>, usize) {
+    let mut rejected = 0usize;
+    let selected = chains
+        .into_iter()
+        .filter(|chain| {
+            if chain.class != FeatureClass::Crease {
+                return true;
+            }
+            let length = chain
+                .vertices
+                .windows(2)
+                .filter_map(|edge| {
+                    camera
+                        .project_segment(
+                            geometry.vertices[edge[0] as usize].position,
+                            geometry.vertices[edge[1] as usize].position,
+                            viewport,
+                        )
+                        .map(|(a, b)| a.screen.distance(b.screen))
+                })
+                .sum::<f32>();
+            let keep = length >= min_crease_length_pixels.max(0.0);
+            if !keep {
+                rejected += chain.vertices.len().saturating_sub(1);
+            }
+            keep
+        })
+        .collect();
+    (selected, rejected)
 }
 
 fn retain_strokes_under_budget(
@@ -1257,6 +1308,36 @@ mod tests {
         assert_eq!(retained[0].role, StrokeRole::Feature);
         assert_eq!(bytes, stroke_data_bytes(&feature));
         assert_eq!((rejected, rejected_tone), (1, 1));
+    }
+
+    #[test]
+    fn ranking_rejects_only_short_crease_chains() {
+        let geometry = NprGeometry::canonical_cube();
+        let camera = PerspectiveCamera {
+            position: glam::Vec3::new(3.0, 2.0, 4.0),
+            forward: glam::Vec3::new(-3.0, -2.0, -4.0).normalize(),
+            up: glam::Vec3::Y,
+            vertical_fov: 0.9,
+            near: 0.05,
+            aspect: 1.0,
+        };
+        let chains = vec![
+            crate::FeatureStroke {
+                id: 1,
+                class: FeatureClass::Crease,
+                vertices: vec![0, 1],
+            },
+            crate::FeatureStroke {
+                id: 2,
+                class: FeatureClass::Boundary,
+                vertices: vec![0, 1],
+            },
+        ];
+        let (selected, rejected) =
+            rank_feature_chains(chains, &geometry, camera, Vec2::splat(512.0), 10_000.0);
+        assert_eq!(selected.len(), 1);
+        assert_eq!(selected[0].class, FeatureClass::Boundary);
+        assert_eq!(rejected, 1);
     }
 
     #[test]

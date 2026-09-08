@@ -27,6 +27,11 @@ shows stable assembled-chain identities.
 of the selected Smooth proxy. A differing pair is an authored surface-policy
 decision, not an implicit renderer LOD.
 
+`feature_candidates` counts post-surface-policy topology candidates and
+`feature_rejected` counts segments belonging to crease chains omitted for being
+shorter than the configured pixel threshold. Boundary and silhouette chains are
+not affected by this ranking pass.
+
 `stroke_budget_rejected` and `stroke_budget_exhausted` report a deterministic
 CPU packet limit before WGPU upload. Feature strokes are retained before tonal
 strokes, so a dense scene degrades predictably instead of allocating an invalid

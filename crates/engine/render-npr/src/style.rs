@@ -44,6 +44,9 @@ pub struct ComicInk {
     pub outline_width: f32,
     pub crease_width: f32,
     pub boundary_width: f32,
+    /// Shorter interior crease chains are omitted before tessellation. This is
+    /// a screen-space drawing policy; silhouettes and boundaries are retained.
+    pub min_crease_length_pixels: f32,
     pub taper: f32,
     pub wobble: f32,
     pub gesture_confidence: f32,
@@ -80,6 +83,7 @@ impl Default for ComicInk {
             outline_width: 4.0,
             crease_width: 2.0,
             boundary_width: 3.0,
+            min_crease_length_pixels: 4.0,
             taper: 0.18,
             wobble: 0.0,
             gesture_confidence: 1.0,

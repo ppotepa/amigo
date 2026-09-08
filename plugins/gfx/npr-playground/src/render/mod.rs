@@ -88,6 +88,8 @@ impl NprPlaygroundRenderService {
                 ("surface_proxy_triangles", s.surface_proxy_triangles),
                 ("topology_edges", s.topology_edges),
                 ("feature_segments", s.feature_segments),
+                ("feature_candidates", s.feature_candidates),
+                ("feature_rejected", s.feature_rejected),
                 ("smooth_contour_spans", s.smooth_contour_spans),
                 ("silhouettes", s.silhouettes),
                 ("creases", s.creases),
