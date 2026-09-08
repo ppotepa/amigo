@@ -3,12 +3,15 @@ use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 use std::time::UNIX_EPOCH;
 
-use amigo_core::AmigoResult;
+use amigo_core::{AmigoError, AmigoResult};
 use amigo_modding::ModCatalog;
 use amigo_runtime::Runtime;
 use amigo_session::SceneSessionService;
 
-use crate::{AuthoringSceneGraph, load_authoring_scene_graph};
+use crate::{
+    AuthoringSceneGraph, AuthoringSourceScalarPatch, load_authoring_scene_graph,
+    patch_yaml_source_scalar, write_yaml_source_atomically,
+};
 
 #[derive(Debug, Default)]
 pub struct AuthoringSceneGraphService {
@@ -73,6 +76,47 @@ impl AuthoringSceneGraphService {
                 source_mod: source_mod.to_owned(),
                 scene_id: scene_id.to_owned(),
             });
+    }
+
+    /// Persists one conservative scalar edit in a source file owned by the
+    /// current scene. The patcher preserves surrounding YAML text and rejects
+    /// stale or ambiguous changes before any file is replaced.
+    pub fn apply_source_scalar_patch(
+        &self,
+        runtime: &Runtime,
+        patch: AuthoringSourceScalarPatch,
+    ) -> AmigoResult<()> {
+        let (source_mod, scene_id) = current_scene_context(runtime)?;
+        let graph = self.graph_for_current_scene(runtime)?;
+        let requested = patch.source_file.canonicalize().map_err(|error| {
+            AmigoError::Message(format!(
+                "editor authoring: source patch file is unavailable: {error}"
+            ))
+        })?;
+        let owned = graph.source_files.iter().any(|file| {
+            file.canonicalize()
+                .is_ok_and(|candidate| candidate == requested)
+        });
+        if !owned {
+            return Err(AmigoError::Message(format!(
+                "editor authoring: source patch target is not owned by current scene: {}",
+                requested.display()
+            )));
+        }
+        let source = std::fs::read_to_string(&requested).map_err(|error| {
+            AmigoError::Message(format!("editor authoring: cannot read source patch: {error}"))
+        })?;
+        let output = patch_yaml_source_scalar(
+            &source,
+            &patch.yaml_pointer,
+            &patch.expected,
+            &patch.replacement,
+        )
+        .map_err(|error| AmigoError::Message(format!("editor authoring: {error}")))?;
+        write_yaml_source_atomically(&requested, &output)
+            .map_err(|error| AmigoError::Message(format!("editor authoring: {error}")))?;
+        self.invalidate_scene(&source_mod, &scene_id);
+        Ok(())
     }
 
     pub fn invalidate_all(&self) {

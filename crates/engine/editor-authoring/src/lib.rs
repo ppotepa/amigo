@@ -10,6 +10,7 @@ mod prefabs;
 mod projections;
 mod refs;
 mod service;
+pub mod source_patch;
 
 pub use amigo_editor_api::{
     AuthoringProperty, AuthoringPropertyApplyMode, AuthoringPropertyDisplay,
@@ -24,6 +25,7 @@ pub use loader::{load_authoring_scene_graph, load_authoring_scene_graph_from_fil
 pub use plugin::EditorAuthoringPlugin;
 pub use projections::*;
 pub use service::AuthoringSceneGraphService;
+pub use source_patch::*;
 
 #[cfg(test)]
 mod tests;
