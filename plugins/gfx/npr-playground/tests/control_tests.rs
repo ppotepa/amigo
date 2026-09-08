@@ -147,6 +147,9 @@ fn construction_authoring_renders_a_transient_preview_without_serializing_it() {
     assert_eq!(marks[0].id, u32::MAX);
     assert_eq!(marks[0].anchors.len(), 2);
     assert!(!marks[0].closed);
+    let render = NprPlaygroundRenderService::default();
+    render.rebuild(&preview, [512, 512]).unwrap();
+    assert_eq!(render.commands()[0].packet.stats.construction_marks, 1);
     assert!(state.authored_scene_document().unwrap().objects.is_empty());
 }
 
