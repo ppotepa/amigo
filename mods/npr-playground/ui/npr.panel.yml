@@ -320,6 +320,21 @@ root:
                       max: 64
                       step: 0.5
                     -
+                      type: "toggle"
+                      id: "ink-suggestive-contours"
+                      text: "Kontury sugerowane"
+                      tooltip: "Cienkie, widokozależne linie formy na powierzchniach Smooth."
+                      value_bind: "world.npr.settings.NprSettings.appearance.suggestive_contours"
+                    -
+                      type: "slider"
+                      id: "ink-suggestive-contour-confidence"
+                      text: "Pewność konturów sugerowanych"
+                      tooltip: "Wyższa wartość odrzuca niepewne linie z nieregularnej triangulacji."
+                      value_bind: "world.npr.settings.NprSettings.appearance.suggestive_contour_confidence"
+                      min: 0
+                      max: 1
+                      step: 0.01
+                    -
                       type: "slider"
                       id: "ink-boundary_width"
                       text: "Otwarte brzegi"

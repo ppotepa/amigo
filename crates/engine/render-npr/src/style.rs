@@ -65,6 +65,11 @@ pub struct ComicInk {
     /// This suppresses arbitrary marks where the inferred tangent is unstable
     /// or the normal field turns too abruptly across sampling triangles.
     pub min_form_line_confidence: f32,
+    /// Opt-in interior contours where view-dependent radial curvature crosses
+    /// zero on a smooth surface. They are secondary form marks, never a
+    /// replacement for the outer silhouette.
+    pub suggestive_contours: bool,
+    pub suggestive_contour_confidence: f32,
     pub hatching_angle: f32,
     pub hatching_spacing: f32,
     pub hatching_cross: f32,
@@ -106,6 +111,8 @@ impl Default for ComicInk {
             ink_dryness: 0.0,
             tone_density: 0.0,
             min_form_line_confidence: 0.22,
+            suggestive_contours: false,
+            suggestive_contour_confidence: 0.40,
             hatching_angle: -25.0,
             hatching_spacing: 9.0,
             hatching_cross: 0.0,

@@ -96,6 +96,22 @@ fn metadata_controls_validate_atomically_and_presets_restore_all_objects() {
         .is_err());
     controls
         .set(
+            &path("global.suggestive_contours"),
+            ControlValue::Bool(true),
+        )
+        .unwrap();
+    assert_eq!(
+        controls.get(&path("global.suggestive_contours")).unwrap(),
+        ControlValue::Bool(true)
+    );
+    assert!(controls
+        .set(
+            &path("global.suggestive_contour_confidence"),
+            ControlValue::F64(-0.01)
+        )
+        .is_err());
+    controls
+        .set(
             &path("object.surface_mode"),
             ControlValue::String("smooth".into()),
         )

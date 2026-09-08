@@ -177,6 +177,7 @@ fn hash_stats(hasher: &mut PacketHasher, stats: &NprRenderStats) {
     hasher.usize(stats.feature_candidates);
     hasher.usize(stats.feature_rejected);
     hasher.usize(stats.smooth_contour_spans);
+    hasher.usize(stats.suggestive_contour_spans);
     hasher.usize(stats.silhouettes);
     hasher.usize(stats.creases);
     hasher.usize(stats.strokes);

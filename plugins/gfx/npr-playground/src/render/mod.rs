@@ -91,6 +91,7 @@ impl NprPlaygroundRenderService {
                 ("feature_candidates", s.feature_candidates),
                 ("feature_rejected", s.feature_rejected),
                 ("smooth_contour_spans", s.smooth_contour_spans),
+                ("suggestive_contour_spans", s.suggestive_contour_spans),
                 ("silhouettes", s.silhouettes),
                 ("creases", s.creases),
                 ("strokes", s.strokes),

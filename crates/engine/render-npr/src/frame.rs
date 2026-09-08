@@ -4,6 +4,7 @@ use crate::{
     geometry::NprGeometry,
     plan_graphite_tone, select_ranked, smooth_perspective_contours,
     style::{ComicInk, NprToneMode},
+    suggestive_perspective_contours,
     tessellation::{tessellate_polyline, tessellate_polyline_variants, TessellatedStroke},
     topology::{build_topology, face_normal},
     trace_parallel_surface_lines, trace_surface_streamline, GraphiteTonePlan, NprDebugView,
@@ -80,6 +81,9 @@ pub struct NprRenderStats {
     /// View-dependent contour spans generated from a smooth normal field,
     /// rather than from topology edges.
     pub smooth_contour_spans: usize,
+    /// Optional interior form spans extracted from radial-curvature zero
+    /// crossings, after confidence gating.
+    pub suggestive_contour_spans: usize,
     pub silhouettes: usize,
     pub creases: usize,
     pub strokes: usize,
@@ -243,6 +247,17 @@ fn build_packet_with_identity(
     let smooth_contours = (style.surface_mode == NprSurfaceMode::Smooth)
         .then(|| smooth_perspective_contours(geometry, camera.position, style.smooth_crease_angle))
         .unwrap_or_default();
+    let suggestive_contours = (style.surface_mode == NprSurfaceMode::Smooth
+        && style.suggestive_contours)
+        .then(|| {
+            suggestive_perspective_contours(
+                geometry,
+                camera.position,
+                style.smooth_crease_angle,
+                style.suggestive_contour_confidence,
+            )
+        })
+        .unwrap_or_default();
     // A smooth contour replaces the polygon-edge approximation only. Open
     // boundaries and authored sharp creases retain their explicit meaning.
     let features = if style.surface_mode == NprSurfaceMode::Smooth {
@@ -400,6 +415,27 @@ fn build_packet_with_identity(
             ));
         }
     }
+    for contour in &suggestive_contours {
+        let points = contour
+            .points
+            .iter()
+            .map(|point| {
+                camera
+                    .project(*point, vp)
+                    .map(|projected| (projected.screen, camera.normalized_depth(projected.depth)))
+            })
+            .collect::<Option<Vec<_>>>();
+        if let Some(points) = points.filter(|points| points.len() >= 2) {
+            strokes.extend(tessellate_polyline_variants(
+                contour.id,
+                FeatureClass::Crease,
+                &points,
+                false,
+                style,
+                seed,
+            ));
+        }
+    }
     let graphite_mass = if style.tone_mode == NprToneMode::Hatching {
         surface_hatch_tones.iter().map(|tone| tone.mass).sum()
     } else {
@@ -454,6 +490,7 @@ fn build_packet_with_identity(
         feature_candidates,
         feature_rejected,
         smooth_contour_spans: smooth_contours.len(),
+        suggestive_contour_spans: suggestive_contours.len(),
         silhouettes,
         creases,
         strokes: strokes.len(),
@@ -1481,6 +1518,55 @@ mod tests {
                 NprDebugView::Final,
             )
         );
+    }
+
+    #[test]
+    fn suggestive_contours_are_opt_in_packet_features() {
+        let geometry = NprGeometry::from_indexed(
+            &[
+                [-1.0, -1.0, 1.0],
+                [0.0, -1.0, 0.0],
+                [1.0, -1.0, -1.0],
+                [-1.0, 0.0, 0.0],
+                [0.0, 0.0, 0.0],
+                [1.0, 0.0, 0.0],
+                [-1.0, 1.0, -1.0],
+                [0.0, 1.0, 0.0],
+                [1.0, 1.0, 1.0],
+            ],
+            &[
+                0, 1, 4, 0, 4, 3, 1, 2, 5, 1, 5, 4, 3, 4, 7, 3, 7, 6, 4, 5, 8, 4, 8, 7,
+            ],
+        )
+        .unwrap();
+        let camera = PerspectiveCamera {
+            position: glam::Vec3::new(0.2, 0.1, 4.0),
+            forward: glam::Vec3::new(-0.2, -0.1, -4.0).normalize(),
+            up: glam::Vec3::Y,
+            vertical_fov: 0.9,
+            near: 0.05,
+            aspect: 1.0,
+        };
+        let base = ComicInk {
+            surface_mode: NprSurfaceMode::Smooth,
+            ..Default::default()
+        };
+        let without = build_packet(&geometry, camera, [512, 512], base, 7, NprDebugView::Final);
+        let with = build_packet(
+            &geometry,
+            camera,
+            [512, 512],
+            ComicInk {
+                suggestive_contours: true,
+                suggestive_contour_confidence: 0.0,
+                ..base
+            },
+            7,
+            NprDebugView::Final,
+        );
+        assert_eq!(without.stats.suggestive_contour_spans, 0);
+        assert!(with.stats.suggestive_contour_spans > 0);
+        assert!(with.strokes.len() > without.strokes.len());
     }
 
     #[test]

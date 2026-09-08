@@ -4,7 +4,7 @@
 //! the authored mesh, whereas a smooth contour is the zero set of a field and
 //! normally runs through triangle interiors.
 
-use crate::{NprGeometry, face_normal};
+use crate::{face_normal, NprGeometry};
 use glam::Vec3;
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -62,7 +62,102 @@ pub fn smooth_perspective_contours(
             });
         }
     }
-    chain_segments(segments)
+    chain_segments(segments, 0x2000_0000)
+}
+
+/// Extracts interior, view-dependent form lines from zero crossings of an
+/// estimated radial curvature field. Unlike an occluding contour, this is an
+/// opt-in secondary mark: only front-facing corners with a reliable projected
+/// view direction participate. The estimate is face-local, but joining still
+/// uses canonical mesh-edge keys and smooth-region components.
+pub fn suggestive_perspective_contours(
+    geometry: &NprGeometry,
+    camera: Vec3,
+    smooth_crease_angle: f32,
+    min_confidence: f32,
+) -> Vec<SmoothContourStroke> {
+    let normals = smoothed_corner_normals(geometry, smooth_crease_angle);
+    let components = smooth_face_components(geometry, smooth_crease_angle);
+    let minimum = min_confidence.clamp(0.0, 1.0);
+    let mut segments = Vec::new();
+    for (face, triangle) in geometry.triangles.iter().enumerate() {
+        let positions = triangle.map(|vertex| geometry.vertices[vertex as usize].position);
+        let samples: [Option<(f32, f32)>; 3] = std::array::from_fn(|corner| {
+            radial_curvature_sample(positions, normals[face], corner, camera)
+        });
+        if samples
+            .iter()
+            .any(|sample| sample.is_none_or(|sample| sample.1 < minimum))
+        {
+            continue;
+        }
+        let values = samples.map(|sample| sample.expect("checked suggestive sample").0);
+        let mut crossings = Vec::with_capacity(2);
+        for index in 0..3 {
+            let a = triangle[index];
+            let b = triangle[(index + 1) % 3];
+            let va = values[index];
+            let vb = values[(index + 1) % 3];
+            if va.abs() <= 1e-6 || vb.abs() <= 1e-6 || va.signum() == vb.signum() {
+                continue;
+            }
+            let t = va / (va - vb);
+            crossings.push((
+                ordered_edge(a, b),
+                positions[index].lerp(positions[(index + 1) % 3], t),
+            ));
+        }
+        if crossings.len() == 2 {
+            segments.push(ContourSegment {
+                endpoints: [crossings[0], crossings[1]],
+                component: components[face],
+            });
+        }
+    }
+    chain_segments(segments, 0x3000_0000)
+}
+
+/// Estimates normal curvature in the projected camera direction with a least
+/// squares derivative over the two local triangle edges. The result is not a
+/// CAD-grade curvature tensor; its confidence explicitly declines when the
+/// view tangent is ill-defined or the local sample has poor directional span.
+fn radial_curvature_sample(
+    positions: [Vec3; 3],
+    normals: [Vec3; 3],
+    corner: usize,
+    camera: Vec3,
+) -> Option<(f32, f32)> {
+    let position = positions[corner];
+    let normal = normals[corner].normalize_or_zero();
+    let view = (camera - position).normalize_or_zero();
+    if normal.length_squared() <= 1e-8 || view.length_squared() <= 1e-8 || normal.dot(view) <= 0.02
+    {
+        return None;
+    }
+    let projected_view = view - normal * normal.dot(view);
+    let tangent_strength = projected_view.length();
+    if tangent_strength <= 1e-5 {
+        return None;
+    }
+    let tangent = projected_view / tangent_strength;
+    let mut numerator = 0.0;
+    let mut denominator = 0.0;
+    let mut edge_extent = 0.0;
+    for other in 0..3 {
+        if other == corner {
+            continue;
+        }
+        let edge = positions[other] - position;
+        let along = edge.dot(tangent);
+        numerator += (normals[other] - normal).dot(tangent) * along;
+        denominator += along * along;
+        edge_extent += edge.length_squared();
+    }
+    if denominator <= 1e-10 || edge_extent <= 1e-10 {
+        return None;
+    }
+    let span_confidence = (denominator / edge_extent).sqrt().clamp(0.0, 1.0);
+    Some((numerator / denominator, tangent_strength * span_confidence))
 }
 
 /// Labels face components which may share a smooth contour. A sharp edge is a
@@ -151,7 +246,7 @@ fn smoothed_corner_normals(geometry: &NprGeometry, smooth_crease_angle: f32) -> 
         .collect()
 }
 
-fn chain_segments(segments: Vec<ContourSegment>) -> Vec<SmoothContourStroke> {
+fn chain_segments(segments: Vec<ContourSegment>, id_namespace: u32) -> Vec<SmoothContourStroke> {
     let mut adjacency: BTreeMap<(u32, u32, u32), Vec<usize>> = BTreeMap::new();
     for (index, segment) in segments.iter().enumerate() {
         for (edge, _) in segment.endpoints {
@@ -213,17 +308,17 @@ fn chain_segments(segments: Vec<ContourSegment>) -> Vec<SmoothContourStroke> {
         .into_iter()
         .map(|(component, discriminator, points)| SmoothContourStroke {
             id: if counts[&component] == 1 {
-                contour_component_id(component)
+                contour_component_id(component, id_namespace)
             } else {
-                contour_component_id(component ^ discriminator)
+                contour_component_id(component ^ discriminator, id_namespace)
             },
             points,
         })
         .collect()
 }
 
-fn contour_component_id(component: u32) -> u32 {
-    0x2000_0000 | component.wrapping_mul(0x45d9_f3b) & 0x1fff_ffff
+fn contour_component_id(component: u32, id_namespace: u32) -> u32 {
+    id_namespace | component.wrapping_mul(0x45d9_f3b) & 0x0fff_ffff
 }
 
 fn endpoint_point(segment: &ContourSegment, edge: (u32, u32)) -> Vec3 {
@@ -235,7 +330,11 @@ fn endpoint_point(segment: &ContourSegment, edge: (u32, u32)) -> Vec3 {
 }
 
 fn ordered_edge(a: u32, b: u32) -> (u32, u32) {
-    if a < b { (a, b) } else { (b, a) }
+    if a < b {
+        (a, b)
+    } else {
+        (b, a)
+    }
 }
 
 #[cfg(test)]
@@ -323,6 +422,36 @@ mod tests {
                 assert!(!matches_mesh_edge, "smooth contour followed a mesh edge");
             }
         }
+    }
+
+    #[test]
+    fn suggestive_contours_are_deterministic_on_a_smooth_saddle() {
+        let geometry = NprGeometry::from_indexed(
+            &[
+                [-1.0, -1.0, 1.0],
+                [0.0, -1.0, 0.0],
+                [1.0, -1.0, -1.0],
+                [-1.0, 0.0, 0.0],
+                [0.0, 0.0, 0.0],
+                [1.0, 0.0, 0.0],
+                [-1.0, 1.0, -1.0],
+                [0.0, 1.0, 0.0],
+                [1.0, 1.0, 1.0],
+            ],
+            &[
+                0, 1, 4, 0, 4, 3, 1, 2, 5, 1, 5, 4, 3, 4, 7, 3, 7, 6, 4, 5, 8, 4, 8, 7,
+            ],
+        )
+        .unwrap();
+        let first = suggestive_perspective_contours(&geometry, Vec3::new(0.2, 0.1, 4.0), 1.2, 0.0);
+        assert!(!first.is_empty());
+        assert!(first
+            .iter()
+            .all(|stroke| stroke.id & 0xf000_0000 == 0x3000_0000));
+        assert_eq!(
+            first,
+            suggestive_perspective_contours(&geometry, Vec3::new(0.2, 0.1, 4.0), 1.2, 0.0)
+        );
     }
 
     #[test]
