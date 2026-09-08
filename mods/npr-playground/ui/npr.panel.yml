@@ -766,34 +766,52 @@ root:
                   id: "construction-summary"
                   text_bind: "world.npr.settings.NprSettings.construction_mark_summary"
                 -
+                  type: "row"
+                  id: "construction-selection"
+                  children:
+                    -
+                      type: "button"
+                      id: "construction-previous"
+                      text: "← Poprzednia"
+                      enabled_bind: "world.npr.settings.NprSettings.construction_mark_can_select_previous"
+                      on_click:
+                        event: "npr.select_previous_construction_mark"
+                    -
+                      type: "button"
+                      id: "construction-next"
+                      text: "Następna →"
+                      enabled_bind: "world.npr.settings.NprSettings.construction_mark_can_select_next"
+                      on_click:
+                        event: "npr.select_next_construction_mark"
+                -
                   type: "group-box"
-                  id: "construction-last-style"
-                  text: "Ostatnia linia"
+                  id: "construction-selected-style"
+                  text: "Wybrana linia"
                   enabled_bind: "world.npr.settings.NprSettings.construction_mark_can_edit"
                   children:
                     -
                       type: "slider"
-                      id: "construction-last-width"
+                      id: "construction-selected-width"
                       text: "Skala grubości"
-                      value_bind: "world.npr.settings.NprSettings.construction_mark_last_width_scale"
+                      value_bind: "world.npr.settings.NprSettings.construction_mark_selected_width_scale"
                       min: 0
                       max: 2
                       step: 0.01
                     -
                       type: "slider"
-                      id: "construction-last-opacity"
+                      id: "construction-selected-opacity"
                       text: "Krycie"
-                      value_bind: "world.npr.settings.NprSettings.construction_mark_last_opacity"
+                      value_bind: "world.npr.settings.NprSettings.construction_mark_selected_opacity"
                       min: 0
                       max: 1
                       step: 0.01
                 -
                   type: "button"
-                  id: "delete-last-construction-mark"
-                  text: "Usuń ostatnią linię"
+                  id: "delete-selected-construction-mark"
+                  text: "Usuń wybraną linię"
                   enabled_bind: "world.npr.settings.NprSettings.construction_mark_can_delete"
                   on_click:
-                    event: "npr.delete_last_construction_mark"
+                    event: "npr.delete_selected_construction_mark"
             -
               type: "group-box"
               id: "inheritance"

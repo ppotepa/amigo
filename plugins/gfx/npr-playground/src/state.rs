@@ -29,7 +29,9 @@ const ACTIONS: &[&str] = &[
     "commit_construction_mark",
     "close_construction_mark",
     "cancel_construction_mark",
-    "delete_last_construction_mark",
+    "delete_selected_construction_mark",
+    "select_previous_construction_mark",
+    "select_next_construction_mark",
 ];
 fn resolved_key(key: &str, settings: &Settings) -> String {
     if let Some(field) = key.strip_prefix("object.") {
@@ -507,6 +509,7 @@ pub struct NprPlaygroundState {
     preview_before: Mutex<bool>,
     authored_scene: Mutex<Option<crate::scene::NprPlaygroundSceneDocument>>,
     construction_authoring: Mutex<ConstructionAuthoringState>,
+    selected_construction_mark: Mutex<Option<usize>>,
     pub render_stats: Mutex<BTreeMap<String, u64>>,
 }
 impl Default for NprPlaygroundState {
@@ -523,6 +526,7 @@ impl Default for NprPlaygroundState {
             preview_before: Mutex::new(false),
             authored_scene: Mutex::new(None),
             construction_authoring: Mutex::new(ConstructionAuthoringState::default()),
+            selected_construction_mark: Mutex::new(None),
             render_stats: Mutex::new(
                 [
                     "geometry",
@@ -593,6 +597,7 @@ impl NprPlaygroundState {
         *self.comparison.lock().unwrap() = None;
         *self.preview_before.lock().unwrap() = false;
         *self.construction_authoring.lock().unwrap() = ConstructionAuthoringState::default();
+        *self.selected_construction_mark.lock().unwrap() = None;
         Ok(())
     }
 
@@ -700,32 +705,73 @@ impl NprPlaygroundState {
             .lock()
             .unwrap()
             .record("add_construction_mark", &before, &settings);
+        let selected_index = settings.objects[&object_id].construction_marks.len() - 1;
+        drop(settings);
+        *self.selected_construction_mark.lock().unwrap() = Some(selected_index);
         Ok(())
     }
 
-    /// Removes the newest authored mark on the selected object as one undoable
-    /// settings change. Arbitrary mark selection will use the same command
-    /// boundary once the editor supplies a structured-list widget.
-    pub fn delete_last_construction_mark(&self) -> Result<(), String> {
+    fn selected_construction_mark_index(&self, count: usize) -> Option<usize> {
+        (count > 0).then(|| {
+            self.selected_construction_mark
+                .lock()
+                .unwrap()
+                .unwrap_or(count - 1)
+                .min(count - 1)
+        })
+    }
+
+    /// Selects a mark within the current object's authored list without
+    /// changing scene data. The editor can later replace this navigation with
+    /// a structured list while retaining the same selected-index contract.
+    pub fn select_construction_mark(&self, direction: isize) -> Result<(), String> {
+        let count = {
+            let settings = self.settings.lock().unwrap();
+            settings.objects[&settings.selected].construction_marks.len()
+        };
+        let current = self
+            .selected_construction_mark_index(count)
+            .ok_or("the selected object has no construction marks")?;
+        let next = if direction < 0 {
+            current.saturating_sub(direction.unsigned_abs())
+        } else {
+            current.saturating_add(direction as usize).min(count - 1)
+        };
+        *self.selected_construction_mark.lock().unwrap() = Some(next);
+        Ok(())
+    }
+
+    /// Removes the selected authored mark as one undoable settings change.
+    pub fn delete_selected_construction_mark(&self) -> Result<(), String> {
+        let selected_index = {
+            let settings = self.settings.lock().unwrap();
+            self.selected_construction_mark_index(
+                settings.objects[&settings.selected].construction_marks.len(),
+            )
+            .ok_or("the selected object has no construction marks")?
+        };
         let mut settings = self.settings.lock().unwrap();
         let before = settings.clone();
         let selected = settings.selected.clone();
-        let object = settings
-            .objects
-            .get_mut(&selected)
-            .ok_or_else(|| format!("unknown construction-mark object {selected}"))?;
-        object
-            .construction_marks
-            .pop()
-            .ok_or("the selected object has no construction marks")?;
+        let remaining = {
+            let object = settings
+                .objects
+                .get_mut(&selected)
+                .ok_or_else(|| format!("unknown construction-mark object {selected}"))?;
+            object.construction_marks.remove(selected_index);
+            object.construction_marks.len()
+        };
         self.history
             .lock()
             .unwrap()
             .record("delete_construction_mark", &before, &settings);
+        drop(settings);
+        *self.selected_construction_mark.lock().unwrap() = (remaining > 0)
+            .then(|| selected_index.min(remaining - 1));
         Ok(())
     }
 
-    fn set_last_construction_mark_style(
+    fn set_selected_construction_mark_style(
         &self,
         field: &str,
         value: f32,
@@ -733,6 +779,13 @@ impl NprPlaygroundState {
         if !value.is_finite() {
             return Err("construction mark value must be finite".into());
         }
+        let selected_index = {
+            let settings = self.settings.lock().unwrap();
+            self.selected_construction_mark_index(
+                settings.objects[&settings.selected].construction_marks.len(),
+            )
+            .ok_or("the selected object has no construction marks")?
+        };
         let mut settings = self.settings.lock().unwrap();
         let before = settings.clone();
         let selected = settings.selected.clone();
@@ -741,8 +794,8 @@ impl NprPlaygroundState {
             .get_mut(&selected)
             .ok_or_else(|| format!("unknown construction-mark object {selected}"))?
             .construction_marks
-            .last_mut()
-            .ok_or("the selected object has no construction marks")?;
+            .get_mut(selected_index)
+            .ok_or("the selected construction mark is out of range")?;
         match field {
             "width_scale" if (0.0..=2.0).contains(&value) => mark.width_scale = value,
             "opacity" if (0.0..=1.0).contains(&value) => mark.opacity = value,
@@ -822,6 +875,9 @@ impl NprPlaygroundState {
             ControlValue::Bool(authoring.anchors.len() >= 3),
         );
         let marks = &settings.objects[&settings.selected].construction_marks;
+        let selected_mark = self
+            .selected_construction_mark_index(marks.len())
+            .and_then(|index| marks.get(index));
         props.insert(
             "construction_mark_count".into(),
             ControlValue::U64(marks.len() as u64),
@@ -844,19 +900,31 @@ impl NprPlaygroundState {
             ControlValue::Bool(!marks.is_empty()),
         );
         props.insert(
-            "construction_mark_last_width_scale".into(),
+            "construction_mark_can_select_previous".into(),
+            ControlValue::Bool(
+                self.selected_construction_mark_index(marks.len())
+                    .is_some_and(|index| index > 0),
+            ),
+        );
+        props.insert(
+            "construction_mark_can_select_next".into(),
+            ControlValue::Bool(
+                self.selected_construction_mark_index(marks.len())
+                    .is_some_and(|index| index + 1 < marks.len()),
+            ),
+        );
+        props.insert(
+            "construction_mark_selected_width_scale".into(),
             ControlValue::F64(
-                marks
-                    .last()
+                selected_mark
                     .map(|mark| f64::from(mark.width_scale))
                     .unwrap_or(f64::from(default_construction_width_scale())),
             ),
         );
         props.insert(
-            "construction_mark_last_opacity".into(),
+            "construction_mark_selected_opacity".into(),
             ControlValue::F64(
-                marks
-                    .last()
+                selected_mark
                     .map(|mark| f64::from(mark.opacity))
                     .unwrap_or(f64::from(default_construction_opacity())),
             ),
@@ -864,10 +932,9 @@ impl NprPlaygroundState {
         props.insert(
             "construction_mark_summary".into(),
             ControlValue::String(format!(
-                "Linie: {} · ostatnia: {}",
+                "Linie: {} · wybrana: {}",
                 marks.len(),
-                marks
-                    .last()
+                selected_mark
                     .map(|mark| format!("0x{:08X}", mark.id))
                     .unwrap_or_else(|| "—".into())
             )),
@@ -981,8 +1048,14 @@ impl NprPlaygroundState {
             self.cancel_construction_mark();
             return Ok(());
         }
-        if action == "delete_last_construction_mark" {
-            return self.delete_last_construction_mark();
+        if action == "delete_selected_construction_mark" {
+            return self.delete_selected_construction_mark();
+        }
+        if action == "select_previous_construction_mark" {
+            return self.select_construction_mark(-1);
+        }
+        if action == "select_next_construction_mark" {
+            return self.select_construction_mark(1);
         }
         if action == "fit" {
             self.fit()?;
@@ -1066,6 +1139,7 @@ impl NprPlaygroundState {
         *self.comparison.lock().unwrap() = None;
         *self.preview_before.lock().unwrap() = false;
         *self.construction_authoring.lock().unwrap() = ConstructionAuthoringState::default();
+        *self.selected_construction_mark.lock().unwrap() = None;
     }
     pub fn tick(&self, dt: f32) {
         let mut s = self.settings.lock().unwrap();
@@ -1296,6 +1370,8 @@ impl RuntimeControlProvider for NprPlaygroundState {
                     "construction_mark_last_id",
                     "construction_mark_can_delete",
                     "construction_mark_can_edit",
+                    "construction_mark_can_select_previous",
+                    "construction_mark_can_select_next",
                     "construction_mark_summary",
                 ]
                 .contains(&key.as_str())
@@ -1365,13 +1441,13 @@ impl RuntimeControlProvider for NprPlaygroundState {
         }
         if let Some(field) = path
             .property_path
-            .strip_prefix("construction_mark_last_")
+            .strip_prefix("construction_mark_selected_")
         {
             let value = value
                 .as_f64()
                 .ok_or_else(|| failure("number required".into()))? as f32;
             return self
-                .set_last_construction_mark_style(field, value)
+                .set_selected_construction_mark_style(field, value)
                 .map_err(failure);
         }
         let mut current = self.settings.lock().unwrap();

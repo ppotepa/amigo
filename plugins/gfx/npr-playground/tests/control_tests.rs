@@ -77,8 +77,11 @@ fn construction_authoring_commits_open_and_closed_source_lines() {
     assert!(marks[1].closed);
     assert_eq!(marks[1].anchors.len(), 3);
 
-    state.delete_last_construction_mark().unwrap();
-    assert_eq!(state.snapshot().objects["cube"].construction_marks.len(), 1);
+    state.select_construction_mark(-1).unwrap();
+    state.delete_selected_construction_mark().unwrap();
+    let remaining = &state.snapshot().objects["cube"].construction_marks;
+    assert_eq!(remaining.len(), 1);
+    assert!(remaining[0].closed);
 
     let document = state.authored_scene_document().unwrap();
     assert_eq!(document.objects["cube"].construction_marks.as_ref().unwrap().len(), 1);
@@ -120,13 +123,13 @@ fn latest_construction_mark_style_is_live_editable_and_validated() {
     let path = |field: &str| format!("{PREFIX}{field}");
     controls
         .set(
-            &path("construction_mark_last_width_scale"),
+            &path("construction_mark_selected_width_scale"),
             ControlValue::F64(0.85),
         )
         .unwrap();
     controls
         .set(
-            &path("construction_mark_last_opacity"),
+            &path("construction_mark_selected_opacity"),
             ControlValue::F64(0.6),
         )
         .unwrap();
@@ -140,7 +143,7 @@ fn latest_construction_mark_style_is_live_editable_and_validated() {
     );
     assert!(controls
         .set(
-            &path("construction_mark_last_opacity"),
+            &path("construction_mark_selected_opacity"),
             ControlValue::F64(1.1),
         )
         .is_err());
