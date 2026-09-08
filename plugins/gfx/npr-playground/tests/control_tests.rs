@@ -1,12 +1,30 @@
-use amigo_npr_playground_plugin::{NprPlaygroundRenderService, NprPlaygroundState, state::PREFIX};
-use amigo_panels::PresetProvider;
 use amigo_npr_playground_plugin::{
     scene::{NprCameraSceneSettings, NprObjectSceneSettings, NprPlaygroundSceneDocument},
     state::{ConstructionAnchorSettings, ConstructionMarkSettings},
 };
-use amigo_render_npr::{StrokeRole};
+use amigo_npr_playground_plugin::{state::PREFIX, NprPlaygroundRenderService, NprPlaygroundState};
+use amigo_panels::PresetProvider;
+use amigo_render_npr::StrokeRole;
 use amigo_runtime_control::{ControlValue, RuntimeControlService};
+use glam::Vec2;
 use std::{collections::BTreeMap, sync::Arc};
+
+#[test]
+fn surface_pick_returns_a_source_anchor_for_the_selected_model() {
+    let state = NprPlaygroundState::default();
+    let settings = state.snapshot();
+    let render = NprPlaygroundRenderService::default();
+
+    let pick = render
+        .pick_surface(&settings, [512, 512], Vec2::new(256.0, 256.0))
+        .expect("the centered camera ray should hit the selected cube");
+
+    assert_eq!(pick.object_id, "cube");
+    assert!(pick.position.is_finite());
+    assert!(pick.normal.is_finite());
+    assert!(pick.anchor.triangle < 12);
+    assert!((pick.anchor.barycentric.iter().sum::<f32>() - 1.0).abs() < 1e-5);
+}
 
 #[test]
 fn metadata_controls_validate_atomically_and_presets_restore_all_objects() {
@@ -17,20 +35,16 @@ fn metadata_controls_validate_atomically_and_presets_restore_all_objects() {
     controls
         .set(&path("object.scale"), ControlValue::F64(2.0))
         .unwrap();
-    assert!(
-        controls
-            .set(&path("object.scale"), ControlValue::F64(-1.0))
-            .is_err()
-    );
+    assert!(controls
+        .set(&path("object.scale"), ControlValue::F64(-1.0))
+        .is_err());
     assert!(controls.set(&path("fps"), ControlValue::F64(90.0)).is_err());
-    assert!(
-        controls
-            .set(
-                &path("global.ink"),
-                ControlValue::Color([f32::NAN, 0.0, 0.0, 1.0])
-            )
-            .is_err()
-    );
+    assert!(controls
+        .set(
+            &path("global.ink"),
+            ControlValue::Color([f32::NAN, 0.0, 0.0, 1.0])
+        )
+        .is_err());
     assert_eq!(state.snapshot().objects["cube"].scale, 2.0);
     controls
         .set(
@@ -39,14 +53,12 @@ fn metadata_controls_validate_atomically_and_presets_restore_all_objects() {
         )
         .unwrap();
     assert_eq!(state.snapshot().motion.appearance_fade_seconds, 0.0);
-    assert!(
-        controls
-            .set(
-                &path("motion.appearance_fade_seconds"),
-                ControlValue::F64(2.1)
-            )
-            .is_err()
-    );
+    assert!(controls
+        .set(
+            &path("motion.appearance_fade_seconds"),
+            ControlValue::F64(2.1)
+        )
+        .is_err());
     controls
         .set(
             &path("motion.mode"),
@@ -64,11 +76,9 @@ fn metadata_controls_validate_atomically_and_presets_restore_all_objects() {
         controls.get(&path("motion.mode")).unwrap(),
         ControlValue::String("redraw-on-motion".into())
     );
-    assert!(
-        controls
-            .set(&path("motion.redraw_strength"), ControlValue::F64(1.1))
-            .is_err()
-    );
+    assert!(controls
+        .set(&path("motion.redraw_strength"), ControlValue::F64(1.1))
+        .is_err());
     controls
         .set(
             &path("global.min_crease_length_pixels"),
@@ -192,21 +202,21 @@ fn authored_construction_marks_flow_from_object_state_to_render_packet() {
         .get_mut("cube")
         .unwrap()
         .construction_marks = vec![ConstructionMarkSettings {
-            id: 0x4000_0100,
-            anchors: vec![
-                ConstructionAnchorSettings {
-                    triangle: 0,
-                    barycentric: [0.70, 0.20, 0.10],
-                },
-                ConstructionAnchorSettings {
-                    triangle: 0,
-                    barycentric: [0.10, 0.70, 0.20],
-                },
-            ],
-            closed: false,
-            width_scale: 0.5,
-            opacity: 0.35,
-        }];
+        id: 0x4000_0100,
+        anchors: vec![
+            ConstructionAnchorSettings {
+                triangle: 0,
+                barycentric: [0.70, 0.20, 0.10],
+            },
+            ConstructionAnchorSettings {
+                triangle: 0,
+                barycentric: [0.10, 0.70, 0.20],
+            },
+        ],
+        closed: false,
+        width_scale: 0.5,
+        opacity: 0.35,
+    }];
     let render = NprPlaygroundRenderService::default();
     render.rebuild(&state.snapshot(), [512, 512]).unwrap();
     let packet = &render.commands()[0].packet;
@@ -268,7 +278,10 @@ fn authored_scene_settings_override_only_declared_npr_intent() {
     assert_eq!(settings.camera_yaw, 31.0);
     assert!(!settings.objects["sphere"].rotating);
     assert_eq!(settings.objects["sphere"].surface_subdivision_level, 2);
-    assert!(settings.objects["cube"].rotating, "undeclared defaults survive");
+    assert!(
+        settings.objects["cube"].rotating,
+        "undeclared defaults survive"
+    );
 }
 
 #[test]
@@ -452,12 +465,10 @@ fn gallery_imports_all_six_models_and_binds_the_authored_layout() {
         .validate_bindings(&controls.registry_snapshot())
         .unwrap();
     assert_eq!(layout.artwork.len(), 9);
-    assert!(
-        layout
-            .artwork
-            .values()
-            .all(|triangles| !triangles.is_empty())
-    );
+    assert!(layout
+        .artwork
+        .values()
+        .all(|triangles| !triangles.is_empty()));
     let mut transport = Vec::new();
     amigo_panel_api::write_message(&mut transport, &layout).unwrap();
     assert!(transport.len() < amigo_panel_api::MAX_FRAME_BYTES);
@@ -465,12 +476,10 @@ fn gallery_imports_all_six_models_and_binds_the_authored_layout() {
     render.load_models(&root).unwrap();
     render.rebuild(&state.snapshot(), [1024, 768]).unwrap();
     assert_eq!(render.commands().len(), 6);
-    assert!(
-        render
-            .commands()
-            .iter()
-            .all(|c| !c.packet.fills.is_empty() && !c.packet.strokes.is_empty())
-    );
+    assert!(render
+        .commands()
+        .iter()
+        .all(|c| !c.packet.fills.is_empty() && !c.packet.strokes.is_empty()));
     let annotated = render
         .commands()
         .iter()
@@ -518,14 +527,12 @@ fn workshop_history_rotation_scope_and_comparison_are_independent() {
     action("redo");
     assert_eq!(state.snapshot().objects["cube"].scale, 3.0);
     set("style_scope", ControlValue::String("Obiekt".into()));
-    assert!(
-        controls
-            .set(
-                &format!("{PREFIX}appearance.outline_width"),
-                ControlValue::F64(9.0)
-            )
-            .is_err()
-    );
+    assert!(controls
+        .set(
+            &format!("{PREFIX}appearance.outline_width"),
+            ControlValue::F64(9.0)
+        )
+        .is_err());
     set("object.override_style", ControlValue::Bool(true));
     action("capture_before");
     set("appearance.outline_width", ControlValue::F64(9.0));
@@ -536,11 +543,9 @@ fn workshop_history_rotation_scope_and_comparison_are_independent() {
         state.render_snapshot().objects["cube"].style.outline_width,
         4.0
     );
-    assert!(
-        controls
-            .set(&format!("{PREFIX}object.scale"), ControlValue::F64(4.0))
-            .is_err()
-    );
+    assert!(controls
+        .set(&format!("{PREFIX}object.scale"), ControlValue::F64(4.0))
+        .is_err());
     set("preview_before", ControlValue::Bool(false));
     assert_eq!(
         state.render_snapshot().objects["cube"].style.outline_width,
@@ -566,19 +571,15 @@ fn typed_tool_profiles_are_exposed_and_validated() {
         controls.get(&path("global.tool")).unwrap(),
         ControlValue::String("pencil".into())
     );
-    assert!(
-        controls
-            .set(&path("global.gesture_confidence"), ControlValue::F64(1.5))
-            .is_err()
-    );
-    assert!(
-        controls
-            .set(
-                &path("global.tool"),
-                ControlValue::String("not-a-tool".into())
-            )
-            .is_err()
-    );
+    assert!(controls
+        .set(&path("global.gesture_confidence"), ControlValue::F64(1.5))
+        .is_err());
+    assert!(controls
+        .set(
+            &path("global.tool"),
+            ControlValue::String("not-a-tool".into())
+        )
+        .is_err());
     assert!(state.snapshot().global.paper_tooth > 0.5);
 }
 
@@ -638,7 +639,7 @@ fn look_presets_preserve_scene_and_are_atomic_and_undoable() {
 
 #[test]
 fn render_diagnostics_report_the_effective_typed_style_preset() {
-    use amigo_npr_playground_plugin::state::{Settings, style_preset_id};
+    use amigo_npr_playground_plugin::state::{style_preset_id, Settings};
 
     let settings = Settings::for_scene(false);
     assert_eq!(style_preset_id(settings.global), "comic-ink");
