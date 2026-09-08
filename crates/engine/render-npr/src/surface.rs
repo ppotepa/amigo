@@ -43,6 +43,19 @@ pub struct NprSurfaceSample {
     pub normal: Vec3,
 }
 
+/// Nearest local-space intersection between a ray and a prepared surface.
+///
+/// The anchor always refers to the source revision. This lets an authoring
+/// tool use a smooth proxy for visual picking without persisting a point in a
+/// transient proxy mesh.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct NprSurfaceRayHit {
+    pub anchor: NprSurfaceAnchor,
+    pub position: Vec3,
+    pub normal: Vec3,
+    pub distance: f32,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum NprSurfaceAnchorError {
     ContentMismatch,
@@ -314,6 +327,55 @@ impl NprPreparedSurface {
             .ok_or(NprSurfaceAnchorError::InvalidBarycentric)?;
         self.source_anchor(triangle, barycentric)
     }
+
+    /// Finds the nearest front or back-facing triangle hit in local space.
+    ///
+    /// `origin` and `direction` must already be transformed from viewport
+    /// space into this surface's local space. The method intentionally does
+    /// not apply an object transform or camera policy, so it can be shared by
+    /// an in-game authoring panel and a future editor.
+    pub fn raycast(&self, origin: Vec3, direction: Vec3) -> Option<NprSurfaceRayHit> {
+        const EPSILON: f32 = 1e-6;
+        if !origin.is_finite() || !direction.is_finite() || direction.length_squared() <= EPSILON {
+            return None;
+        }
+
+        self.geometry
+            .triangles
+            .iter()
+            .enumerate()
+            .filter_map(|(triangle_index, triangle)| {
+                let vertices = triangle.map(|index| {
+                    self.geometry
+                        .vertices
+                        .get(index as usize)
+                        .map(|vertex| vertex.position)
+                });
+                let [Some(a), Some(b), Some(c)] = vertices else {
+                    return None;
+                };
+                let (distance, barycentric) =
+                    ray_triangle_intersection(origin, direction, [a, b, c])?;
+                (distance > EPSILON).then_some((
+                    triangle_index as u32,
+                    [a, b, c],
+                    distance,
+                    barycentric,
+                ))
+            })
+            .min_by(|left, right| left.2.total_cmp(&right.2))
+            .and_then(|(triangle, vertices, distance, barycentric)| {
+                let anchor = self.source_anchor(triangle, barycentric).ok()?;
+                Some(NprSurfaceRayHit {
+                    anchor,
+                    position: origin + direction * distance,
+                    normal: (vertices[1] - vertices[0])
+                        .cross(vertices[2] - vertices[0])
+                        .normalize_or_zero(),
+                    distance,
+                })
+            })
+    }
 }
 
 fn valid_barycentric(value: [f32; 3]) -> bool {
@@ -338,6 +400,34 @@ fn barycentric_at_point(triangle: [Vec3; 3], point: Vec3) -> Option<[f32; 3]> {
         let c = (dot_ab_ab * ap.dot(ac) - dot_ab_ac * ap.dot(ab)) / denominator;
         [1.0 - b - c, b, c]
     })
+}
+
+fn ray_triangle_intersection(
+    origin: Vec3,
+    direction: Vec3,
+    [a, b, c]: [Vec3; 3],
+) -> Option<(f32, [f32; 3])> {
+    const EPSILON: f32 = 1e-6;
+    let ab = b - a;
+    let ac = c - a;
+    let perpendicular = direction.cross(ac);
+    let determinant = ab.dot(perpendicular);
+    if determinant.abs() <= EPSILON {
+        return None;
+    }
+    let inverse_determinant = determinant.recip();
+    let offset = origin - a;
+    let b_weight = offset.dot(perpendicular) * inverse_determinant;
+    if !(0.0..=1.0).contains(&b_weight) {
+        return None;
+    }
+    let q = offset.cross(ab);
+    let c_weight = direction.dot(q) * inverse_determinant;
+    if c_weight < 0.0 || b_weight + c_weight > 1.0 {
+        return None;
+    }
+    let distance = ac.dot(q) * inverse_determinant;
+    (distance.is_finite()).then_some((distance, [1.0 - b_weight - c_weight, b_weight, c_weight]))
 }
 
 fn hash_geometry(geometry: &NprGeometry) -> u64 {
@@ -478,6 +568,30 @@ mod tests {
             wedge.sample(cube.anchor(0, [1.0, 0.0, 0.0]).unwrap()),
             Err(NprSurfaceAnchorError::ContentMismatch)
         );
+    }
+
+    #[test]
+    fn raycast_returns_the_nearest_source_anchor_in_local_space() {
+        let surface = NprPreparedSurface::new(NprGeometry::canonical_cube());
+        let hit = surface
+            .raycast(Vec3::new(0.25, 0.2, 3.0), -Vec3::Z)
+            .expect("ray should hit the front cube face before the back face");
+
+        assert_eq!(hit.anchor.content_id, surface.content_id());
+        assert_eq!(hit.anchor.triangle, 2);
+        assert!((hit.distance - 2.0).abs() < 1e-6);
+        assert!((hit.position - Vec3::new(0.25, 0.2, 1.0)).length() < 1e-6);
+        assert!(hit.normal.dot(Vec3::Z) > 0.9999);
+        assert!((hit.anchor.barycentric.iter().sum::<f32>() - 1.0).abs() < 1e-6);
+        assert!(hit.anchor.barycentric.iter().all(|weight| *weight >= 0.0));
+    }
+
+    #[test]
+    fn raycast_rejects_rays_that_cannot_hit_a_surface() {
+        let surface = NprPreparedSurface::new(NprGeometry::canonical_cube());
+        assert!(surface.raycast(Vec3::new(0.0, 0.0, 3.0), Vec3::Z).is_none());
+        assert!(surface.raycast(Vec3::ZERO, Vec3::ZERO).is_none());
+        assert!(surface.raycast(Vec3::NAN, -Vec3::Z).is_none());
     }
 
     #[test]
