@@ -18,6 +18,16 @@ impl RuntimePlugin for NprPlaygroundPlugin {
         registry.register(NprPlaygroundState::default())?;
         registry.register(NprPlaygroundRenderService::default())?;
         registry.register(Lifecycle::default())?;
+        if !registry.has::<amigo_editor_ingame::IngameEditorRuntimeApplyProviderRegistry>() {
+            registry.register(
+                amigo_editor_ingame::IngameEditorRuntimeApplyProviderRegistry::default(),
+            )?;
+        }
+        if let Some(editor_apply) =
+            registry.resolve::<amigo_editor_ingame::IngameEditorRuntimeApplyProviderRegistry>()
+        {
+            editor_apply.register(crate::NprPlaygroundEditorRuntimeApplyProvider);
+        }
         amigo_scene::register_scene_component_plugin_spec::<
             crate::scene::NprPlaygroundSceneComponentSpec,
         >(registry)?;

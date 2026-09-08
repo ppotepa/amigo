@@ -22,6 +22,8 @@ amigo-render-api.workspace = true
 amigo-render-npr.workspace = true
 amigo-runtime.workspace = true
 amigo-session.workspace = true
+amigo-editor-api.workspace = true
+amigo-editor-ingame.workspace = true
 glam = {workspace = true, features = ["serde"]}
 
 [dev-dependencies]

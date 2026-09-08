@@ -92,6 +92,9 @@ pub fn apply_property_request(
         AuthoringRuntimeBinding::PostFxFrameField { .. } => {
             apply_runtime_property_provider(runtime, request.property_id, target, request.next)
         }
+        AuthoringRuntimeBinding::ComponentProperty { .. } => {
+            apply_runtime_property_provider(runtime, request.property_id, target, request.next)
+        }
         AuthoringRuntimeBinding::PostFxMock { .. } | AuthoringRuntimeBinding::Mock { .. } => {
             apply_mock_binding(state, request.property_id, request.next)
         }

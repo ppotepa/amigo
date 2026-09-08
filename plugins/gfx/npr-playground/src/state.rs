@@ -571,6 +571,69 @@ impl NprPlaygroundState {
         crate::scene::NprPlaygroundSceneDocument::from_settings(&self.snapshot())
     }
 
+    /// Applies the small, scalar NPR scene surface exposed by the generic
+    /// in-game editor. Structured objects and marks deliberately remain on the
+    /// dedicated authoring path until scene-document transactions can persist
+    /// them atomically.
+    pub fn apply_editor_property(
+        &self,
+        field: &str,
+        value: serde_yaml::Value,
+    ) -> Result<bool, String> {
+        let property_path = match field {
+            "gallery" | "selected" | "seed" => field,
+            "camera.distance" => "camera_distance",
+            "camera.yaw" => "camera_yaw",
+            _ => return Ok(false),
+        };
+        let value = match value {
+            serde_yaml::Value::Bool(value) => ControlValue::Bool(value),
+            serde_yaml::Value::Number(value) if property_path == "seed" => {
+                let value = value
+                    .as_u64()
+                    .or_else(|| {
+                        value.as_f64().and_then(|value| {
+                            (value.is_finite()
+                                && value >= 0.0
+                                && value <= u64::MAX as f64
+                                && value.fract() == 0.0)
+                                .then_some(value as u64)
+                        })
+                    })
+                    .ok_or_else(|| "drawing seed must be a whole non-negative number".to_owned())?;
+                ControlValue::U64(value)
+            }
+            serde_yaml::Value::Number(value) => ControlValue::F64(
+                value
+                    .as_f64()
+                    .ok_or_else(|| "editor number is outside f64 range".to_owned())?,
+            ),
+            serde_yaml::Value::String(value) => ControlValue::String(value),
+            _ => return Ok(false),
+        };
+        let value_type = value
+            .value_type()
+            .ok_or_else(|| "editor value has no runtime control type".to_owned())?;
+        let property = RuntimeControlProperty {
+            console_path: format!("{PREFIX}{property_path}"),
+            target_path: "world.npr.settings".into(),
+            component: Some("NprSettings".into()),
+            property_path: property_path.to_owned(),
+            value_type,
+            range: property_range(property_path),
+            writable: true,
+            readable: true,
+            animatable: false,
+            source_file: None,
+            source_pointer: None,
+            provider_id: "npr-playground".into(),
+            description: None,
+        };
+        <Self as RuntimeControlProvider>::set(self, &property, value)
+            .map_err(|error| error.to_string())?;
+        Ok(true)
+    }
+
     pub fn stage_authored_scene(&self, authored: crate::scene::NprPlaygroundSceneDocument) {
         *self.authored_scene.lock().unwrap() = Some(authored);
     }

@@ -126,6 +126,8 @@ pub struct AuthoringOption {
 // Editor terminology:
 // - RenderLayer* bindings target Draw Layer runtime state.
 // - LayeredImageLayer* bindings target Image Part runtime state.
+// - ComponentProperty is a neutral component-owned live-edit seam. The
+//   component plugin validates the field and applies it to its own service.
 // Keep variant names stable until the runtime binding API is migrated in one pass.
 #[derive(Debug, Clone, PartialEq)]
 pub enum AuthoringRuntimeBinding {
@@ -163,6 +165,11 @@ pub enum AuthoringRuntimeBinding {
     },
     ParticleEmitterProperty {
         entity_name: String,
+        field: String,
+    },
+    ComponentProperty {
+        entity_name: String,
+        component_type: String,
         field: String,
     },
     PostFxFrameEnabled {

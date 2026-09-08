@@ -815,6 +815,8 @@ dependencies = [
  "amigo-3d-mesh",
  "amigo-capabilities",
  "amigo-core",
+ "amigo-editor-api",
+ "amigo-editor-ingame",
  "amigo-modding",
  "amigo-panel-api",
  "amigo-panels",

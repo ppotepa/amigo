@@ -879,3 +879,37 @@ fn render_diagnostics_report_the_effective_typed_style_preset() {
     custom.wobble += 0.01;
     assert_eq!(style_preset_id(custom), "custom");
 }
+
+#[test]
+fn editor_scalar_properties_use_the_validated_runtime_control_path() {
+    let state = NprPlaygroundState::default();
+    assert!(state
+        .apply_editor_property("gallery", serde_yaml::to_value(true).unwrap())
+        .unwrap());
+    assert!(state
+        .apply_editor_property("camera.distance", serde_yaml::to_value(7.5).unwrap())
+        .unwrap());
+    assert!(state
+        .apply_editor_property("camera.yaw", serde_yaml::to_value(35.0).unwrap())
+        .unwrap());
+    assert!(state
+        .apply_editor_property("seed", serde_yaml::to_value(1234_u64).unwrap())
+        .unwrap());
+    assert!(state
+        .apply_editor_property("selected", serde_yaml::to_value("sphere").unwrap())
+        .unwrap());
+    let after = state.snapshot();
+    assert!(after.gallery);
+    assert_eq!(after.camera_distance, 7.5);
+    assert_eq!(after.camera_yaw, 35.0);
+    assert_eq!(after.seed, 1234);
+    assert_eq!(after.selected, "sphere");
+
+    assert!(!state
+        .apply_editor_property("objects", serde_yaml::Value::Null)
+        .unwrap());
+    assert!(state
+        .apply_editor_property("selected", serde_yaml::to_value("not-a-model").unwrap())
+        .is_err());
+    assert_eq!(state.snapshot(), after);
+}

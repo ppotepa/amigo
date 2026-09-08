@@ -57,6 +57,13 @@ pub fn resolve_component_runtime_field(
 ) -> Option<AuthoringRuntimeBinding> {
     resolve_layered_image_base(node, property_path)
         .or_else(|| resolve_particle_field(node, property_path, yaml_value))
+        .or_else(|| {
+            Some(AuthoringRuntimeBinding::ComponentProperty {
+                entity_name: node.semantic.owner_entity_name.clone()?,
+                component_type: node.semantic.component_type.clone()?,
+                field: property_path.to_owned(),
+            })
+        })
 }
 
 pub fn resolve_draw_layer_field(
@@ -166,4 +173,42 @@ fn is_live_particle_field(property_path: &str) -> bool {
             | "intensity"
             | "quality_scale"
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{AuthoringNodeOrigin, AuthoringNodeSemantic};
+
+    #[test]
+    fn generic_component_binding_retains_component_identity() {
+        let node = AuthoringNode {
+            id: "npr".into(),
+            label: "NPR".into(),
+            kind: AuthoringNodeKind::Component,
+            origin: AuthoringNodeOrigin::Root,
+            source_file: "scene.yml".into(),
+            yaml_pointer: "/entities/0/components/0".into(),
+            editable: true,
+            value: Value::Null,
+            value_preview: "null".into(),
+            semantic: AuthoringNodeSemantic {
+                owner_entity_name: Some("npr-settings".into()),
+                component_type: Some("amigo.gfx.npr-playground.NprSettings".into()),
+                ..Default::default()
+            },
+            children: Vec::new(),
+        };
+
+        assert!(matches!(
+            resolve_component_runtime_field(&node, "camera.distance", Some(&Value::Number(7.into()))),
+            Some(AuthoringRuntimeBinding::ComponentProperty {
+                entity_name,
+                component_type,
+                field,
+            }) if entity_name == "npr-settings"
+                && component_type == "amigo.gfx.npr-playground.NprSettings"
+                && field == "camera.distance"
+        ));
+    }
 }
