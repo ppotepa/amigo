@@ -1,6 +1,7 @@
 use amigo_npr_playground_plugin::{NprPlaygroundRenderService, NprPlaygroundState, state::PREFIX};
 use amigo_panels::PresetProvider;
-use amigo_render_npr::{NprConstructionMark, NprGeometry, NprPreparedSurface, StrokeRole};
+use amigo_npr_playground_plugin::state::{ConstructionAnchorSettings, ConstructionMarkSettings};
+use amigo_render_npr::{StrokeRole};
 use amigo_runtime_control::{ControlValue, RuntimeControlService};
 use std::sync::Arc;
 
@@ -180,7 +181,6 @@ fn pause_step_and_extract_do_not_advance_state() {
 #[test]
 fn authored_construction_marks_flow_from_object_state_to_render_packet() {
     let state = NprPlaygroundState::default();
-    let source = NprPreparedSurface::new(NprGeometry::canonical_cube());
     state
         .settings
         .lock()
@@ -188,11 +188,17 @@ fn authored_construction_marks_flow_from_object_state_to_render_packet() {
         .objects
         .get_mut("cube")
         .unwrap()
-        .construction_marks = vec![NprConstructionMark {
+        .construction_marks = vec![ConstructionMarkSettings {
             id: 0x4000_0100,
             anchors: vec![
-                source.anchor(0, [0.70, 0.20, 0.10]).unwrap(),
-                source.anchor(0, [0.10, 0.70, 0.20]).unwrap(),
+                ConstructionAnchorSettings {
+                    triangle: 0,
+                    barycentric: [0.70, 0.20, 0.10],
+                },
+                ConstructionAnchorSettings {
+                    triangle: 0,
+                    barycentric: [0.10, 0.70, 0.20],
+                },
             ],
             closed: false,
             width_scale: 0.5,

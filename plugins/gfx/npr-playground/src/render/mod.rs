@@ -310,6 +310,12 @@ impl NprPlaygroundRenderService {
                         glam::Vec4::new(0.15, 0.65, 0.85, 1.0),
                     );
                 }
+                let construction_marks = object
+                    .construction_marks
+                    .iter()
+                    .map(|mark| mark.resolve(prepared_variants.source()))
+                    .collect::<Result<Vec<_>, _>>()
+                    .map_err(|error| format!("object {id} construction marks: {error}"))?;
                 append_construction_marks(
                     &mut packet,
                     prepared_variants.source(),
@@ -317,7 +323,7 @@ impl NprPlaygroundRenderService {
                     viewport,
                     style,
                     settings.seed,
-                    &object.construction_marks,
+                    &construction_marks,
                 )
                 .map_err(|error| format!("object {id} construction marks: {error}"))?;
                 source.push(SourceCommand {

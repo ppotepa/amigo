@@ -1,7 +1,7 @@
 use amigo_render_npr::{
-    ComicInk, NprMotionPolicy, NprSurfaceMode, NprToneMode, StrokeMotionMode, StrokeTool,
+    ComicInk, NprConstructionMark, NprPreparedSurface, NprMotionPolicy, NprSurfaceAnchorError,
+    NprSurfaceMode, NprToneMode, StrokeMotionMode, StrokeTool,
 };
-use amigo_render_npr::NprConstructionMark;
 use amigo_runtime_control::*;
 use glam::Vec3;
 use serde::{Deserialize, Serialize};
@@ -174,6 +174,58 @@ fn default_surface_subdivision_level() -> u8 {
     1
 }
 
+/// A point on an authored model surface.  It deliberately omits the runtime
+/// surface revision: RenderExtract attaches that identity after it selects the
+/// immutable prepared source mesh.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ConstructionAnchorSettings {
+    pub triangle: u32,
+    pub barycentric: [f32; 3],
+}
+
+/// A scene/editor-facing construction mark.  This is the stable authored form;
+/// `NprConstructionMark` is the validated render-domain form.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ConstructionMarkSettings {
+    pub id: u32,
+    pub anchors: Vec<ConstructionAnchorSettings>,
+    #[serde(default)]
+    pub closed: bool,
+    #[serde(default = "default_construction_width_scale")]
+    pub width_scale: f32,
+    #[serde(default = "default_construction_opacity")]
+    pub opacity: f32,
+}
+
+fn default_construction_width_scale() -> f32 {
+    0.5
+}
+
+fn default_construction_opacity() -> f32 {
+    0.35
+}
+
+impl ConstructionMarkSettings {
+    pub fn resolve(
+        &self,
+        source: &NprPreparedSurface,
+    ) -> Result<NprConstructionMark, NprSurfaceAnchorError> {
+        Ok(NprConstructionMark {
+            id: self.id,
+            anchors: self
+                .anchors
+                .iter()
+                .map(|anchor| source.anchor(anchor.triangle, anchor.barycentric))
+                .collect::<Result<_, _>>()?,
+            closed: self.closed,
+            width_scale: self.width_scale,
+            opacity: self.opacity,
+        })
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ObjectSettings {
@@ -196,9 +248,10 @@ pub struct ObjectSettings {
     pub gesture_variant: u32,
     pub override_style: bool,
     pub style: ComicInk,
-    /// Authored, source-surface marks resolved only during RenderExtract.
+    /// Authored marks resolve against the selected source surface only during
+    /// RenderExtract, so authored data never stores an internal mesh revision.
     #[serde(default)]
-    pub construction_marks: Vec<NprConstructionMark>,
+    pub construction_marks: Vec<ConstructionMarkSettings>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

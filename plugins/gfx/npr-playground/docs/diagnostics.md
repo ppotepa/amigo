@@ -47,9 +47,10 @@ coverage field afterwards, so neither control reclassifies geometry or changes
 the renderer's pass ordering.
 
 `construction_marks` and `construction_rejected` are reserved for editor or
-plugin-authored strokes resolved from source-surface anchors. A stale anchor
-revision or colliding stroke identity is rejected atomically before a packet is
-mutated.
+plugin-authored strokes. Authored metadata contains only a source triangle and
+barycentric coordinates; RenderExtract binds those points to the immutable
+surface revision. Invalid coordinates or colliding stroke identities are
+rejected atomically before a packet is mutated.
 
 `stroke_budget_rejected` and `stroke_budget_exhausted` report a deterministic
 CPU packet limit before WGPU upload. Feature strokes are retained before tonal
