@@ -5,6 +5,7 @@
 
 pub mod budget;
 pub mod camera;
+pub mod construction;
 pub mod contour;
 pub mod debug;
 pub mod feature;
@@ -28,6 +29,7 @@ pub mod topology;
 
 pub use budget::*;
 pub use camera::*;
+pub use construction::*;
 pub use contour::*;
 pub use debug::*;
 pub use feature::*;

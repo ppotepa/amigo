@@ -7,8 +7,9 @@ use crate::{
     suggestive_perspective_contours,
     tessellation::{tessellate_polyline, tessellate_polyline_variants, TessellatedStroke},
     topology::{build_topology, face_normal},
-    trace_parallel_surface_lines, trace_surface_streamline, GraphiteTonePlan, NprDebugView,
-    NprSurfaceMode, RankedCandidate, StrokeRole, SurfaceDirectionField,
+    trace_parallel_surface_lines, trace_surface_streamline, GraphiteTonePlan, NprConstructionMark,
+    NprDebugView, NprSurfaceAnchorError, NprSurfaceMode, RankedCandidate, StrokeRole,
+    SurfaceDirectionField,
 };
 use glam::{Vec2, Vec4};
 use std::collections::BTreeMap;
@@ -104,6 +105,11 @@ pub struct NprRenderStats {
     /// Tonal candidates rejected before tessellation because their local form
     /// direction was ambiguous or changed too abruptly across the path.
     pub hatching_confidence_rejected: usize,
+    /// Anchored construction marks accepted after packet construction.
+    pub construction_marks: usize,
+    /// Construction marks omitted because they were clipped, underspecified or
+    /// did not fit the remaining declared CPU packet budget.
+    pub construction_rejected: usize,
     /// Stateful tonal detail tier chosen by the scene/domain owner.
     pub hatching_lod_tier: u8,
     /// The packet reached its declared hatch-line budget. This is a quality
@@ -185,6 +191,7 @@ impl NprRenderPacket {
             NprDebugView::Final => self.ink.to_array(),
             NprDebugView::FeatureClasses => match stroke.role {
                 StrokeRole::Tone => [0.82, 0.48, 0.10, 1.0],
+                StrokeRole::Construction => [0.62, 0.20, 0.78, 1.0],
                 StrokeRole::Feature => match stroke.class {
                     FeatureClass::Boundary => [0.9, 0.15, 0.1, 1.0],
                     FeatureClass::Silhouette => [0.1, 0.75, 0.2, 1.0],
@@ -510,6 +517,8 @@ fn build_packet_with_identity(
         hatching_candidates: hatching.candidates,
         hatching_rejected: hatching.rejected + stroke_budget_rejected_tone,
         hatching_confidence_rejected: hatching.confidence_rejected,
+        construction_marks: 0,
+        construction_rejected: 0,
         hatching_lod_tier: 0,
         hatching_budget_exhausted,
         stroke_budget_rejected,
@@ -636,6 +645,89 @@ pub fn build_packet_for_surface(
         debug_view,
         Some(surface),
     )
+}
+
+/// Appends author-owned construction marks after resolving every anchor against
+/// the immutable source surface. The operation is atomic with respect to anchor
+/// validity: a mismatched asset revision returns an error without mutating the
+/// packet. Marks that cannot be projected or fit the remaining CPU payload
+/// budget are reported in packet diagnostics instead of risking an upload.
+pub fn append_construction_marks(
+    packet: &mut NprRenderPacket,
+    source_surface: &crate::NprPreparedSurface,
+    camera: PerspectiveCamera,
+    viewport: [u32; 2],
+    style: ComicInk,
+    seed: u64,
+    marks: &[NprConstructionMark],
+) -> Result<(), NprSurfaceAnchorError> {
+    let viewport = Vec2::new(viewport[0] as f32, viewport[1] as f32);
+    let mut candidates = Vec::new();
+    let mut rejected = 0usize;
+    for mark in marks {
+        if mark.anchors.len() < 2 {
+            rejected += 1;
+            continue;
+        }
+        let points = mark
+            .anchors
+            .iter()
+            .map(|anchor| {
+                source_surface.sample(*anchor).map(|sample| {
+                    camera.project(sample.position, viewport).map(|projected| {
+                        (projected.screen, camera.normalized_depth(projected.depth))
+                    })
+                })
+            })
+            .collect::<Result<Option<Vec<_>>, _>>()?;
+        let Some(points) = points else {
+            rejected += 1;
+            continue;
+        };
+        let style = stroke_layer_style(style, mark.width_scale);
+        let mut stroke = tessellate_polyline(
+            mark.id,
+            FeatureClass::Crease,
+            &points,
+            mark.closed,
+            style,
+            seed ^ u64::from(mark.id),
+        );
+        if stroke.vertices.is_empty() {
+            rejected += 1;
+            continue;
+        }
+        stroke.role = StrokeRole::Construction;
+        apply_stroke_opacity(std::slice::from_mut(&mut stroke), mark.opacity);
+        candidates.push(stroke);
+    }
+    let mut bytes = packet.strokes.iter().map(stroke_data_bytes).sum::<usize>();
+    for stroke in candidates {
+        let stroke_bytes = stroke_data_bytes(&stroke);
+        if bytes.saturating_add(stroke_bytes) <= MAX_STROKE_DATA_BYTES_PER_PACKET {
+            bytes += stroke_bytes;
+            packet.strokes.push(stroke);
+            packet.stats.construction_marks += 1;
+        } else {
+            rejected += 1;
+        }
+    }
+    packet.stats.construction_rejected += rejected;
+    packet.stats.strokes = packet.strokes.len();
+    packet.stats.stroke_vertices = packet
+        .strokes
+        .iter()
+        .map(|stroke| stroke.vertices.len())
+        .sum();
+    packet.stats.stroke_indices = packet
+        .strokes
+        .iter()
+        .map(|stroke| stroke.indices.len())
+        .sum();
+    packet.stats.stroke_data_bytes = bytes;
+    packet.stats.stroke_budget_exhausted |=
+        rejected > 0 && bytes >= MAX_STROKE_DATA_BYTES_PER_PACKET;
+    Ok(())
 }
 
 #[cfg(test)]
@@ -1631,6 +1723,79 @@ mod tests {
         assert_eq!(layered.crease_width, style.crease_width * 0.4);
         assert_eq!(layered.outline_width, style.outline_width);
         assert_eq!(layered.boundary_width, style.boundary_width);
+    }
+
+    #[test]
+    fn construction_marks_resolve_source_anchors_atomically() {
+        let source = crate::NprPreparedSurface::new(NprGeometry::canonical_cube());
+        let mark = NprConstructionMark {
+            id: 0x4000_0001,
+            anchors: vec![
+                source.anchor(0, [0.70, 0.20, 0.10]).unwrap(),
+                source.anchor(0, [0.10, 0.70, 0.20]).unwrap(),
+            ],
+            closed: false,
+            width_scale: 0.5,
+            opacity: 0.4,
+        };
+        let camera = PerspectiveCamera::cube_default(1.0);
+        let mut first = build_packet_for_surface(
+            &source,
+            camera,
+            [512, 512],
+            ComicInk::default(),
+            11,
+            NprDebugView::Final,
+        );
+        append_construction_marks(
+            &mut first,
+            &source,
+            camera,
+            [512, 512],
+            ComicInk::default(),
+            11,
+            std::slice::from_ref(&mark),
+        )
+        .unwrap();
+        assert_eq!(first.stats.construction_marks, 1);
+        assert!(first
+            .strokes
+            .iter()
+            .any(|stroke| stroke.id == mark.id && stroke.role == StrokeRole::Construction));
+
+        let mut second = build_packet_for_surface(
+            &source,
+            camera,
+            [512, 512],
+            ComicInk::default(),
+            11,
+            NprDebugView::Final,
+        );
+        append_construction_marks(
+            &mut second,
+            &source,
+            camera,
+            [512, 512],
+            ComicInk::default(),
+            11,
+            std::slice::from_ref(&mark),
+        )
+        .unwrap();
+        assert_eq!(first, second);
+
+        let incompatible = crate::NprPreparedSurface::new(NprGeometry::wedge());
+        let before = second.clone();
+        assert!(append_construction_marks(
+            &mut second,
+            &incompatible,
+            camera,
+            [512, 512],
+            ComicInk::default(),
+            11,
+            std::slice::from_ref(&mark),
+        )
+        .is_err());
+        assert_eq!(second, before);
     }
 
     #[test]

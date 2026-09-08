@@ -109,6 +109,8 @@ impl NprPlaygroundRenderService {
                     "hatching_confidence_rejected",
                     s.hatching_confidence_rejected,
                 ),
+                ("construction_marks", s.construction_marks),
+                ("construction_rejected", s.construction_rejected),
                 ("stroke_budget_rejected", s.stroke_budget_rejected),
                 ("temporal_retained_strokes", s.temporal_retained_strokes),
                 ("temporal_entering_strokes", s.temporal_entering_strokes),

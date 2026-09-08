@@ -9,6 +9,7 @@ pub enum StrokeRole {
     #[default]
     Feature,
     Tone,
+    Construction,
 }
 
 #[derive(Debug, Clone, PartialEq)]

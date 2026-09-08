@@ -189,6 +189,8 @@ fn hash_stats(hasher: &mut PacketHasher, stats: &NprRenderStats) {
     hasher.usize(stats.hatching_candidates);
     hasher.usize(stats.hatching_rejected);
     hasher.usize(stats.hatching_confidence_rejected);
+    hasher.usize(stats.construction_marks);
+    hasher.usize(stats.construction_rejected);
     hasher.u8(stats.hatching_lod_tier);
     hasher.bool(stats.hatching_budget_exhausted);
     hasher.usize(stats.stroke_budget_rejected);
@@ -214,6 +216,7 @@ fn stroke_role_tag(value: StrokeRole) -> u8 {
     match value {
         StrokeRole::Feature => 0,
         StrokeRole::Tone => 1,
+        StrokeRole::Construction => 2,
     }
 }
 fn debug_view_tag(value: NprDebugView) -> u8 {
