@@ -5,7 +5,8 @@
 //! smooth proxy, while the renderer validates the source revision before it
 //! resolves and draws the mark.
 
-use crate::NprSurfaceAnchor;
+use crate::{NprSurfaceAnchor, NprSurfaceAnchorError};
+use std::fmt;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct NprConstructionMark {
@@ -31,3 +32,28 @@ impl NprConstructionMark {
         }
     }
 }
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum NprConstructionMarkError {
+    Anchor(NprSurfaceAnchorError),
+    DuplicateId(u32),
+}
+
+impl From<NprSurfaceAnchorError> for NprConstructionMarkError {
+    fn from(value: NprSurfaceAnchorError) -> Self {
+        Self::Anchor(value)
+    }
+}
+
+impl fmt::Display for NprConstructionMarkError {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Anchor(error) => error.fmt(formatter),
+            Self::DuplicateId(id) => {
+                write!(formatter, "construction mark id {id} is already in use")
+            }
+        }
+    }
+}
+
+impl std::error::Error for NprConstructionMarkError {}

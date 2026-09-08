@@ -8,7 +8,7 @@ use crate::{
     tessellation::{tessellate_polyline, tessellate_polyline_variants, TessellatedStroke},
     topology::{build_topology, face_normal},
     trace_parallel_surface_lines, trace_surface_streamline, GraphiteTonePlan, NprConstructionMark,
-    NprDebugView, NprSurfaceAnchorError, NprSurfaceMode, RankedCandidate, StrokeRole,
+    NprConstructionMarkError, NprDebugView, NprSurfaceMode, RankedCandidate, StrokeRole,
     SurfaceDirectionField,
 };
 use glam::{Vec2, Vec4};
@@ -660,8 +660,18 @@ pub fn append_construction_marks(
     style: ComicInk,
     seed: u64,
     marks: &[NprConstructionMark],
-) -> Result<(), NprSurfaceAnchorError> {
+) -> Result<(), NprConstructionMarkError> {
     let viewport = Vec2::new(viewport[0] as f32, viewport[1] as f32);
+    let mut occupied_ids = packet
+        .strokes
+        .iter()
+        .map(|stroke| stroke.id)
+        .collect::<std::collections::BTreeSet<_>>();
+    for mark in marks {
+        if !occupied_ids.insert(mark.id) {
+            return Err(NprConstructionMarkError::DuplicateId(mark.id));
+        }
+    }
     let mut candidates = Vec::new();
     let mut rejected = 0usize;
     for mark in marks {
@@ -1795,6 +1805,20 @@ mod tests {
             std::slice::from_ref(&mark),
         )
         .is_err());
+        assert_eq!(second, before);
+
+        assert!(matches!(
+            append_construction_marks(
+                &mut second,
+                &source,
+                camera,
+                [512, 512],
+                ComicInk::default(),
+                11,
+                std::slice::from_ref(&mark),
+            ),
+            Err(NprConstructionMarkError::DuplicateId(id)) if id == mark.id
+        ));
         assert_eq!(second, before);
     }
 
