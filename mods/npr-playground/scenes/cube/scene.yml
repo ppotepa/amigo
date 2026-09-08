@@ -14,7 +14,6 @@ entities:
       - type: amigo.gfx.npr-playground.NprSettings
         gallery: false
         selected: cube
-        seed: 5134274
         objects:
           cube:
             rotating: true

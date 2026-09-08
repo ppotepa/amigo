@@ -491,6 +491,7 @@ pub struct NprPlaygroundState {
     history: Mutex<history::History>,
     comparison: Mutex<Option<Settings>>,
     preview_before: Mutex<bool>,
+    authored_scene: Mutex<Option<crate::scene::NprPlaygroundSceneDocument>>,
     pub render_stats: Mutex<BTreeMap<String, u64>>,
 }
 impl Default for NprPlaygroundState {
@@ -505,6 +506,7 @@ impl Default for NprPlaygroundState {
             history: Mutex::new(history::History::default()),
             comparison: Mutex::new(None),
             preview_before: Mutex::new(false),
+            authored_scene: Mutex::new(None),
             render_stats: Mutex::new(
                 [
                     "geometry",
@@ -540,6 +542,21 @@ impl Default for NprPlaygroundState {
     }
 }
 impl NprPlaygroundState {
+    pub fn stage_authored_scene(&self, authored: crate::scene::NprPlaygroundSceneDocument) {
+        *self.authored_scene.lock().unwrap() = Some(authored);
+    }
+
+    /// Applies one pending authored document. This is consumed by the scene
+    /// lifecycle rather than by the hydration command itself, so scene startup
+    /// cannot overwrite declarative values with its fallback defaults.
+    pub fn apply_staged_authored_scene(&self) -> Result<bool, String> {
+        let Some(authored) = self.authored_scene.lock().unwrap().take() else {
+            return Ok(false);
+        };
+        self.apply_authored_scene(authored)?;
+        Ok(true)
+    }
+
     pub fn apply_authored_scene(
         &self,
         authored: crate::scene::NprPlaygroundSceneDocument,

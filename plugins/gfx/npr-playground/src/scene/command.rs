@@ -49,7 +49,7 @@ impl RuntimeSceneCommandHandler for NprPlaygroundSceneCommandHandler {
             .ok_or_else(|| AmigoError::Message("NPR scene command payload type mismatch".to_owned()))?
             .settings
             .clone();
-        runtime.required::<NprPlaygroundState>()?.apply_authored_scene(settings)
-            .map_err(AmigoError::Message)
+        runtime.required::<NprPlaygroundState>()?.stage_authored_scene(settings);
+        Ok(())
     }
 }

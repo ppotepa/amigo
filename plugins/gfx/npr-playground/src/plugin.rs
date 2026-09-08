@@ -64,7 +64,12 @@ impl RuntimePlugin for NprPlaygroundPlugin {
                         );
                         let mut active = lifecycle.scene.lock().unwrap();
                         if active.as_ref() != Some(&key) {
-                            state.configure_scene(doc.scene_id == "gallery");
+                            if !state
+                                .apply_staged_authored_scene()
+                                .map_err(amigo_core::AmigoError::Message)?
+                            {
+                                state.configure_scene(doc.scene_id == "gallery");
+                            }
                             *lifecycle.zoom.lock().unwrap() = Default::default();
                             *lifecycle.mouse.lock().unwrap() = None;
                             if let Some(source) = mods.mod_by_id(&doc.source_mod) {
@@ -76,6 +81,13 @@ impl RuntimePlugin for NprPlaygroundPlugin {
                                 }
                             }
                             *active = Some(key);
+                        } else {
+                            // Hydration and Update can occur in different
+                            // frames. A late command is still applied exactly
+                            // once, without resetting live metadata edits.
+                            state
+                                .apply_staged_authored_scene()
+                                .map_err(amigo_core::AmigoError::Message)?;
                         }
                     }
                 }

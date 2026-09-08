@@ -53,6 +53,25 @@ fn headless_and_undeclared_scenes_do_not_spawn_panels() {
 }
 
 #[test]
+fn npr_scene_component_hydrates_authored_settings_over_workshop_defaults() {
+    use amigo_runtime_control::{ControlValue, RuntimeControlService};
+
+    let runtime = runtime("npr-playground", "gallery");
+    tick(&runtime);
+    let controls = runtime.required::<RuntimeControlService>().unwrap();
+    let prefix = "world.npr.settings.NprSettings.";
+    assert_eq!(
+        controls.get(&format!("{prefix}seed")).unwrap(),
+        ControlValue::U64(5_134_274),
+        "the value must come from the NprSettings component, not Settings::for_scene"
+    );
+    assert_eq!(
+        controls.get(&format!("{prefix}gallery")).unwrap(),
+        ControlValue::Bool(true)
+    );
+}
+
+#[test]
 fn npr_zoom_consumes_scroll_once_per_host_frame_and_survives_pause_and_fit() {
     use amigo_runtime_control::{ControlValue, RuntimeControlService};
     let runtime = runtime("npr-playground", "gallery");
