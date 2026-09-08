@@ -80,7 +80,7 @@ fn descriptor() -> ComponentTypeDescriptor {
                 asset_domain: None, trait_kind: Some(MetadataTraitKind::GenericEditable),
                 group: "npr.drawing", patch_op: None, number_constraints: None, options: &[],
                 visibility: EditorPropertyVisibility::Advanced, order: 3, tags: &["Structured"],
-                readonly_reason: Some("Use the typed YAML list until the surface-anchor authoring tool is available"), binding_template: None,
+                readonly_reason: Some("Surface-anchor authoring is available at runtime; persistent scene edits require the editor authoring transaction service."), binding_template: None,
             },
         ],
         transform_policy: TransformPolicy::None,
