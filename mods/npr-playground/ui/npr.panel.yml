@@ -736,10 +736,24 @@ root:
                 -
                   type: "button"
                   id: "begin-construction-mark"
-                  text: "Dodaj linię"
-                  tooltip: "Wybierz dwa punkty na aktualnie wybranym modelu. Punkty są zapisywane na powierzchni, nie na ekranie."
+                  text: "Nowa kreska"
+                  tooltip: "Wybierz punkty na aktualnie wybranym modelu. Punkty są zapisywane na powierzchni, nie na ekranie."
                   on_click:
                     event: "npr.begin_construction_mark"
+                -
+                  type: "button"
+                  id: "commit-construction-mark"
+                  text: "Zatwierdź linię"
+                  enabled_bind: "world.npr.settings.NprSettings.construction_authoring_can_commit"
+                  on_click:
+                    event: "npr.commit_construction_mark"
+                -
+                  type: "button"
+                  id: "close-construction-mark"
+                  text: "Zamknij i zatwierdź"
+                  enabled_bind: "world.npr.settings.NprSettings.construction_authoring_can_close"
+                  on_click:
+                    event: "npr.close_construction_mark"
                 -
                   type: "button"
                   id: "cancel-construction-mark"

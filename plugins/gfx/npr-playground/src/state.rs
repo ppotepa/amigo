@@ -26,6 +26,8 @@ const ACTIONS: &[&str] = &[
     "reset_style",
     "new_gesture_variant",
     "begin_construction_mark",
+    "commit_construction_mark",
+    "close_construction_mark",
     "cancel_construction_mark",
 ];
 fn resolved_key(key: &str, settings: &Settings) -> String {
@@ -585,7 +587,7 @@ impl NprPlaygroundState {
         Ok(())
     }
 
-    /// Starts a two-point construction line on the currently selected object.
+    /// Starts an open construction line on the currently selected object.
     pub fn begin_construction_mark(&self) -> Result<(), String> {
         if *self.preview_before.lock().unwrap() {
             return Err("disable Before comparison to author a mark".into());
@@ -625,7 +627,7 @@ impl NprPlaygroundState {
         true
     }
 
-    /// Adds a source-surface point and commits a line after its second point.
+    /// Adds one source-surface point to the in-progress construction line.
     ///
     /// The selected object is fixed when authoring starts. This prevents a
     /// gallery click from silently joining anchors from separate meshes.
@@ -633,22 +635,37 @@ impl NprPlaygroundState {
         &self,
         object_id: &str,
         anchor: ConstructionAnchorSettings,
-    ) -> Result<bool, String> {
+    ) -> Result<(), String> {
+        let mut authoring = self.construction_authoring.lock().unwrap();
+        let expected = authoring
+            .object_id
+            .as_deref()
+            .ok_or("construction mark authoring is not active")?;
+        if expected != object_id {
+            return Err(format!("select {expected} before placing its construction mark"));
+        }
+        authoring.anchors.push(anchor);
+        Ok(())
+    }
+
+    /// Atomically commits the in-progress line. Closed marks require three
+    /// points; open marks require two.
+    pub fn commit_construction_mark(&self, closed: bool) -> Result<(), String> {
         let (object_id, anchors) = {
             let mut authoring = self.construction_authoring.lock().unwrap();
-            let expected = authoring
-                .object_id
-                .as_deref()
-                .ok_or("construction mark authoring is not active")?;
-            if expected != object_id {
-                return Err(format!("select {expected} before placing its construction mark"));
+            if authoring.object_id.is_none() {
+                return Err("construction mark authoring is not active".into());
             }
-            authoring.anchors.push(anchor);
-            if authoring.anchors.len() < 2 {
-                return Ok(false);
-            }
+            let draft = ConstructionMarkSettings {
+                id: 0,
+                anchors: authoring.anchors.clone(),
+                closed,
+                width_scale: default_construction_width_scale(),
+                opacity: default_construction_opacity(),
+            };
+            draft.validate()?;
             (
-                authoring.object_id.take().expect("active authoring has an object"),
+                std::mem::take(&mut authoring.object_id).expect("active authoring has an object"),
                 std::mem::take(&mut authoring.anchors),
             )
         };
@@ -665,7 +682,7 @@ impl NprPlaygroundState {
         object.construction_marks.push(ConstructionMarkSettings {
             id,
             anchors,
-            closed: false,
+            closed,
             width_scale: default_construction_width_scale(),
             opacity: default_construction_opacity(),
         });
@@ -674,7 +691,7 @@ impl NprPlaygroundState {
             .lock()
             .unwrap()
             .record("add_construction_mark", &before, &settings);
-        Ok(true)
+        Ok(())
     }
 
     fn control_values(&self, settings: &Settings) -> BTreeMap<String, ControlValue> {
@@ -733,11 +750,19 @@ impl NprPlaygroundState {
             ControlValue::U64(authoring.anchors.len() as u64),
         );
         props.insert(
+            "construction_authoring_can_commit".into(),
+            ControlValue::Bool(authoring.anchors.len() >= 2),
+        );
+        props.insert(
+            "construction_authoring_can_close".into(),
+            ControlValue::Bool(authoring.anchors.len() >= 3),
+        );
+        props.insert(
             "construction_authoring_status".into(),
             ControlValue::String(match authoring.object_id.as_deref() {
                 Some(_) if authoring.waiting_for_release => "Zwolnij przycisk myszy, aby rozpocząć wybór punktów.".into(),
-                Some(object) => format!("{object}: wybierz punkt {} z 2", authoring.anchors.len() + 1),
-                None => "Wybierz „Dodaj linię”, potem dwa punkty na modelu.".into(),
+                Some(object) => format!("{object}: {} punktów — dodaj kolejny lub zatwierdź", authoring.anchors.len()),
+                None => "Wybierz „Dodaj linię”, potem punkty na modelu.".into(),
             }),
         );
         props.insert(
@@ -830,6 +855,12 @@ impl NprPlaygroundState {
         let before = self.snapshot();
         if action == "begin_construction_mark" {
             return self.begin_construction_mark();
+        }
+        if action == "commit_construction_mark" {
+            return self.commit_construction_mark(false);
+        }
+        if action == "close_construction_mark" {
+            return self.commit_construction_mark(true);
         }
         if action == "cancel_construction_mark" {
             self.cancel_construction_mark();
@@ -1140,6 +1171,8 @@ impl RuntimeControlProvider for NprPlaygroundState {
                     "preset_domain",
                     "construction_authoring_active",
                     "construction_authoring_points",
+                    "construction_authoring_can_commit",
+                    "construction_authoring_can_close",
                     "construction_authoring_status",
                 ]
                 .contains(&key.as_str())

@@ -27,12 +27,12 @@ fn surface_pick_returns_a_source_anchor_for_the_selected_model() {
 }
 
 #[test]
-fn construction_authoring_commits_only_after_two_source_points() {
+fn construction_authoring_commits_open_and_closed_source_lines() {
     let state = NprPlaygroundState::default();
     state.begin_construction_mark().unwrap();
     assert!(state.construction_authoring_active());
 
-    assert!(!state
+    state
         .place_construction_anchor(
             "cube",
             ConstructionAnchorSettings {
@@ -40,10 +40,11 @@ fn construction_authoring_commits_only_after_two_source_points() {
                 barycentric: [0.7, 0.2, 0.1],
             },
         )
-        .unwrap());
+        .unwrap();
     assert!(state.snapshot().objects["cube"].construction_marks.is_empty());
+    assert!(state.commit_construction_mark(false).is_err());
 
-    assert!(state
+    state
         .place_construction_anchor(
             "cube",
             ConstructionAnchorSettings {
@@ -51,11 +52,30 @@ fn construction_authoring_commits_only_after_two_source_points() {
                 barycentric: [0.1, 0.7, 0.2],
             },
         )
-        .unwrap());
+        .unwrap();
+    state.commit_construction_mark(false).unwrap();
     let marks = &state.snapshot().objects["cube"].construction_marks;
     assert_eq!(marks.len(), 1);
     assert_eq!(marks[0].anchors.len(), 2);
     assert!(!state.construction_authoring_active());
+
+    state.begin_construction_mark().unwrap();
+    for barycentric in [[0.7, 0.2, 0.1], [0.1, 0.7, 0.2], [0.2, 0.1, 0.7]] {
+        state
+            .place_construction_anchor(
+                "cube",
+                ConstructionAnchorSettings {
+                    triangle: 0,
+                    barycentric,
+                },
+            )
+            .unwrap();
+    }
+    state.commit_construction_mark(true).unwrap();
+    let marks = &state.snapshot().objects["cube"].construction_marks;
+    assert_eq!(marks.len(), 2);
+    assert!(marks[1].closed);
+    assert_eq!(marks[1].anchors.len(), 3);
 }
 
 #[test]
