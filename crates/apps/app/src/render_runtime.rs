@@ -111,6 +111,16 @@ pub(crate) fn build_render_frame_for_session(
             .iter()
             .map(|command| command.packet.stats.geometry)
             .sum();
+        let npr_surface_source_triangles = render_packet
+            .npr()
+            .iter()
+            .map(|command| command.packet.stats.surface_source_triangles)
+            .sum();
+        let npr_surface_proxy_triangles = render_packet
+            .npr()
+            .iter()
+            .map(|command| command.packet.stats.surface_proxy_triangles)
+            .sum();
         let npr_topology_edges = render_packet
             .npr()
             .iter()
@@ -146,6 +156,16 @@ pub(crate) fn build_render_frame_for_session(
             .iter()
             .map(|command| command.packet.stats.stroke_indices)
             .sum();
+        let npr_stroke_budget_rejected = render_packet
+            .npr()
+            .iter()
+            .map(|command| command.packet.stats.stroke_budget_rejected)
+            .sum();
+        let npr_stroke_budget_exhausted = render_packet
+            .npr()
+            .iter()
+            .filter(|command| command.packet.stats.stroke_budget_exhausted)
+            .count();
         let npr_viewport = render_packet
             .npr()
             .first()
@@ -187,6 +207,8 @@ pub(crate) fn build_render_frame_for_session(
                 .map(|stack| stack.effects.len())
                 .sum(),
             npr_geometry,
+            npr_surface_source_triangles,
+            npr_surface_proxy_triangles,
             npr_topology_edges,
             npr_feature_segments,
             npr_silhouettes,
@@ -194,6 +216,8 @@ pub(crate) fn build_render_frame_for_session(
             npr_strokes,
             npr_stroke_vertices,
             npr_stroke_indices,
+            npr_stroke_budget_rejected,
+            npr_stroke_budget_exhausted,
             npr_viewport,
             npr_preset,
             npr_debug_view,

@@ -301,6 +301,16 @@ pub fn render_game_frame_to_cache(
                 .iter()
                 .map(|command| command.packet.stats.geometry)
                 .sum(),
+            npr_surface_source_triangles: render_packet
+                .npr()
+                .iter()
+                .map(|command| command.packet.stats.surface_source_triangles)
+                .sum(),
+            npr_surface_proxy_triangles: render_packet
+                .npr()
+                .iter()
+                .map(|command| command.packet.stats.surface_proxy_triangles)
+                .sum(),
             npr_topology_edges: render_packet
                 .npr()
                 .iter()
@@ -336,6 +346,16 @@ pub fn render_game_frame_to_cache(
                 .iter()
                 .map(|command| command.packet.stats.stroke_indices)
                 .sum(),
+            npr_stroke_budget_rejected: render_packet
+                .npr()
+                .iter()
+                .map(|command| command.packet.stats.stroke_budget_rejected)
+                .sum(),
+            npr_stroke_budget_exhausted: render_packet
+                .npr()
+                .iter()
+                .filter(|command| command.packet.stats.stroke_budget_exhausted)
+                .count(),
             npr_viewport: render_packet
                 .npr()
                 .first()

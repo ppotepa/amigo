@@ -12,7 +12,7 @@ struct SourceCommand {
 }
 
 pub struct NprPlaygroundRenderService {
-    geometry: Mutex<BTreeMap<String, NprPreparedSurface>>,
+    geometry: Mutex<BTreeMap<String, NprPreparedSurfaceVariants>>,
     source: Mutex<Vec<SourceCommand>>,
     output: Mutex<(Vec<NprDrawCommand>, Option<NprBackgroundCommand>)>,
     last_input: Mutex<Option<(Settings, [u32; 2])>>,
@@ -31,7 +31,7 @@ impl Default for NprPlaygroundRenderService {
                     ("sphere", NprGeometry::icosphere()),
                 ]
                 .into_iter()
-                .map(|(name, g)| (name.into(), NprPreparedSurface::new(g)))
+                .map(|(name, g)| (name.into(), NprPreparedSurfaceVariants::new(g)))
                 .collect(),
             ),
             source: Mutex::new(vec![]),
@@ -62,7 +62,10 @@ impl NprPlaygroundRenderService {
                 let mesh = amigo_3d_mesh::load_gltf_geometry(&root.join(path))?;
                 cache.insert(
                     name.into(),
-                    NprPreparedSurface::from_indexed(&mesh.positions, &mesh.indices)?,
+                    NprPreparedSurfaceVariants::new(NprGeometry::from_indexed(
+                        &mesh.positions,
+                        &mesh.indices,
+                    )?),
                 );
             }
         }
@@ -81,6 +84,8 @@ impl NprPlaygroundRenderService {
             let s = &command.packet.stats;
             for (key, value) in [
                 ("geometry", s.geometry),
+                ("surface_source_triangles", s.surface_source_triangles),
+                ("surface_proxy_triangles", s.surface_proxy_triangles),
                 ("topology_edges", s.topology_edges),
                 ("feature_segments", s.feature_segments),
                 ("smooth_contour_spans", s.smooth_contour_spans),
@@ -194,7 +199,7 @@ impl NprPlaygroundRenderService {
                 "StrokeIds" => NprDebugView::StrokeIds,
                 _ => NprDebugView::Final,
             };
-            let cache = self.geometry.lock().unwrap();
+            let mut cache = self.geometry.lock().unwrap();
             let mut lod = self.lod.lock().unwrap();
             let mut variants = self.variants.lock().unwrap();
             let mut source = Vec::new();
@@ -202,15 +207,33 @@ impl NprPlaygroundRenderService {
                 if !object.visible || (!settings.gallery && *id != settings.selected) {
                     continue;
                 }
-                let prepared = cache
-                    .get(&object.model)
+                let mut style = if object.override_style {
+                    object.style
+                } else {
+                    settings.global
+                };
+                style.surface_mode = object.surface_mode;
+                let prepared_variants = cache
+                    .get_mut(&object.model)
                     .ok_or_else(|| format!("model {} is not prepared", object.model))?;
+                let source_triangles = prepared_variants.source().geometry().triangles.len();
                 let rotation = object.rotation.map(f32::to_radians);
                 let transform = Mat4::from_scale_rotation_translation(
                     Vec3::splat(object.scale),
                     Quat::from_euler(glam::EulerRot::YXZ, rotation.y, rotation.x, rotation.z),
                     object.position,
                 );
+                let proxy_policy = NprSmoothProxyPolicy {
+                    levels: object.surface_subdivision_level,
+                    crease_angle: style.smooth_crease_angle,
+                    ..NprSmoothProxyPolicy::default()
+                };
+                let prepared = if object.surface_mode == NprSurfaceMode::Smooth {
+                    prepared_variants.smooth_proxy(proxy_policy)
+                } else {
+                    Ok(prepared_variants.source())
+                }
+                .map_err(|error| format!("model {} smooth proxy: {error}", object.model))?;
                 let world_geometry = prepared.geometry().transformed(transform);
                 // NPR source identities live in model space. Transforming the
                 // camera and directional light into that space produces the
@@ -230,12 +253,6 @@ impl NprPlaygroundRenderService {
                     near: world_camera.near,
                     aspect: world_camera.aspect,
                 };
-                let mut style = if object.override_style {
-                    object.style
-                } else {
-                    settings.global
-                };
-                style.surface_mode = object.surface_mode;
                 // Scope hashes authored intent before its view/local-space
                 // adaptation. In particular, object rotation changes the
                 // local light vector but must not erase drawing history.
@@ -273,6 +290,8 @@ impl NprPlaygroundRenderService {
                     ),
                     debug,
                 );
+                packet.stats.surface_source_triangles = source_triangles;
+                packet.stats.surface_proxy_triangles = prepared.geometry().triangles.len();
                 packet.stats.hatching_lod_tier = decision.tier;
                 packet.stats.gesture_variant_epoch = variant_epoch;
                 if settings.gallery && settings.highlight_selected && *id == settings.selected {

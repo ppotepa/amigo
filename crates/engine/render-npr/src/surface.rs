@@ -5,7 +5,10 @@
 //! together prevents each domain plugin from inventing a slightly different
 //! geometry/topology cache.
 
-use crate::{NprGeometry, TopologyEdge, build_topology};
+use crate::{
+    NprGeometry, NprSubdivisionError, TopologyEdge, build_topology, subdivide_smooth_proxy,
+};
+use std::collections::BTreeMap;
 
 /// Stable content identifier for a prepared drawing surface.
 ///
@@ -20,6 +23,93 @@ pub struct NprPreparedSurface {
     geometry: NprGeometry,
     topology: Vec<TopologyEdge>,
     content_id: NprSurfaceContentId,
+}
+
+/// Fixed, revision-scoped policy for a smooth drawing proxy. It is deliberately
+/// independent of viewport and camera state.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct NprSmoothProxyPolicy {
+    pub levels: u8,
+    pub crease_angle: f32,
+    pub max_triangles: usize,
+}
+
+impl Default for NprSmoothProxyPolicy {
+    fn default() -> Self {
+        Self {
+            levels: 1,
+            crease_angle: 1.2,
+            max_triangles: 250_000,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct NprPreparedSurfaceVariants {
+    source: NprPreparedSurface,
+    smooth_proxies: BTreeMap<SmoothProxyKey, NprPreparedSurface>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+struct SmoothProxyKey {
+    levels: u8,
+    crease_angle_bits: u32,
+    max_triangles: usize,
+}
+
+impl NprPreparedSurfaceVariants {
+    pub fn new(geometry: NprGeometry) -> Self {
+        Self {
+            source: NprPreparedSurface::new(geometry),
+            smooth_proxies: BTreeMap::new(),
+        }
+    }
+
+    pub fn source(&self) -> &NprPreparedSurface {
+        &self.source
+    }
+
+    pub fn smooth_proxy(
+        &mut self,
+        policy: NprSmoothProxyPolicy,
+    ) -> Result<&NprPreparedSurface, NprSubdivisionError> {
+        if policy.levels == 0 {
+            return Ok(&self.source);
+        }
+        let key = SmoothProxyKey {
+            levels: policy.levels,
+            crease_angle_bits: canonical_angle_bits(policy.crease_angle),
+            max_triangles: policy.max_triangles,
+        };
+        if !self.smooth_proxies.contains_key(&key) {
+            // A slider may visit many intermediate crease values. Bound only
+            // cache residency; the requested policy is still prepared exactly.
+            if self.smooth_proxies.len() >= 8 {
+                self.smooth_proxies.clear();
+            }
+            let proxy = subdivide_smooth_proxy(
+                self.source.geometry(),
+                policy.levels,
+                f32::from_bits(key.crease_angle_bits),
+                policy.max_triangles,
+            )?;
+            self.smooth_proxies
+                .insert(key, NprPreparedSurface::new(proxy));
+        }
+        Ok(self
+            .smooth_proxies
+            .get(&key)
+            .expect("newly inserted NPR smooth proxy must be present"))
+    }
+}
+
+fn canonical_angle_bits(value: f32) -> u32 {
+    let value = if value.is_finite() {
+        value.clamp(0.0, std::f32::consts::PI)
+    } else {
+        NprSmoothProxyPolicy::default().crease_angle
+    };
+    if value == 0.0 { 0 } else { value.to_bits() }
 }
 
 impl NprPreparedSurface {
@@ -133,5 +223,21 @@ mod tests {
                 NprDebugView::Final,
             )
         );
+    }
+
+    #[test]
+    fn variants_cache_proxy_by_surface_policy() {
+        let mut variants = NprPreparedSurfaceVariants::new(NprGeometry::icosphere());
+        let source_id = variants.source().content_id();
+        let first_id = variants
+            .smooth_proxy(NprSmoothProxyPolicy::default())
+            .unwrap()
+            .content_id();
+        let second_id = variants
+            .smooth_proxy(NprSmoothProxyPolicy::default())
+            .unwrap()
+            .content_id();
+        assert_ne!(source_id, first_id);
+        assert_eq!(first_id, second_id);
     }
 }

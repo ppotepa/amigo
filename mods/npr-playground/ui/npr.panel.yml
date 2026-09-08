@@ -590,6 +590,15 @@ root:
                 - "polygonal"
                 - "smooth"
             -
+              type: "slider"
+              id: "object-surface-subdivision-level"
+              text: "Smooth proxy level"
+              tooltip: "Prepared once per source revision and crease threshold. Zero uses the authored surface; higher levels smooth organic contours within a fixed triangle budget."
+              value_bind: "world.npr.settings.NprSettings.object.surface_subdivision_level"
+              min: 0
+              max: 2
+              step: 1
+            -
               type: "row"
               id: "object-flags"
               children:

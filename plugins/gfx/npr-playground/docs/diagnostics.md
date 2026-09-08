@@ -23,6 +23,10 @@ diagnostic, not a wall-clock counter. Debug views are resolved before extraction
 tool response, `FeatureClasses` shows domain classification, and `StrokeIds`
 shows stable assembled-chain identities.
 
+`surface_source_triangles` and `surface_proxy_triangles` expose the exact cost
+of the selected Smooth proxy. A differing pair is an authored surface-policy
+decision, not an implicit renderer LOD.
+
 `stroke_budget_rejected` and `stroke_budget_exhausted` report a deterministic
 CPU packet limit before WGPU upload. Feature strokes are retained before tonal
 strokes, so a dense scene degrades predictably instead of allocating an invalid

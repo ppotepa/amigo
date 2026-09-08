@@ -61,6 +61,10 @@ pub struct NprFillTriangle {
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct NprRenderStats {
     pub geometry: usize,
+    /// Triangles of the authored/source surface before an optional smooth proxy.
+    pub surface_source_triangles: usize,
+    /// Triangles used by the drawing packet after the selected surface policy.
+    pub surface_proxy_triangles: usize,
     pub topology_edges: usize,
     pub feature_segments: usize,
     /// View-dependent contour spans generated from a smooth normal field,
@@ -405,6 +409,8 @@ pub fn build_packet_with_topology(
         .count();
     let stats = NprRenderStats {
         geometry: 1,
+        surface_source_triangles: geometry.triangles.len(),
+        surface_proxy_triangles: geometry.triangles.len(),
         topology_edges: topology.len(),
         feature_segments: features.len(),
         smooth_contour_spans: smooth_contours.len(),

@@ -169,12 +169,20 @@ pub fn style_preset_id(style: ComicInk) -> &'static str {
     })
     .unwrap_or("custom")
 }
+fn default_surface_subdivision_level() -> u8 {
+    1
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ObjectSettings {
     pub model: String,
     #[serde(default)]
     pub surface_mode: NprSurfaceMode,
+    /// Fixed smooth-proxy level, prepared per source revision rather than per
+    /// camera frame. Zero means use the authored source surface directly.
+    #[serde(default = "default_surface_subdivision_level")]
+    pub surface_subdivision_level: u8,
     pub visible: bool,
     pub rotating: bool,
     pub position: Vec3,
@@ -226,6 +234,10 @@ impl Settings {
                         surface_mode: match *id {
                             "cube" | "wedge" => NprSurfaceMode::Polygonal,
                             _ => NprSurfaceMode::Smooth,
+                        },
+                        surface_subdivision_level: match *id {
+                            "cube" | "wedge" => 0,
+                            _ => default_surface_subdivision_level(),
                         },
                         visible: true,
                         rotating: true,
@@ -315,6 +327,7 @@ impl Settings {
                 || !object.angular_speed.is_finite()
                 || !object.scale.is_finite()
                 || !(0.01..=10.0).contains(&object.scale)
+                || object.surface_subdivision_level > 2
             {
                 return Err("invalid object parameters".into());
             }
@@ -777,6 +790,7 @@ fn control_yaml(value: ControlValue) -> serde_yaml::Value {
 fn property_range(key: &str) -> Option<ControlRange> {
     let (min, max) = match key.rsplit('.').next().unwrap_or(key) {
         "outline_width" | "crease_width" | "boundary_width" => (0.0, 20.0),
+        "surface_subdivision_level" => (0.0, 2.0),
         "crease_angle" | "smooth_crease_angle" => (0.0, 180.0),
         "taper" => (0.0, 1.0),
         "wobble" => (0.0, 10.0),
