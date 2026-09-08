@@ -208,6 +208,30 @@ fn default_construction_opacity() -> f32 {
 }
 
 impl ConstructionMarkSettings {
+    fn validate(&self) -> Result<(), String> {
+        let minimum_anchors = if self.closed { 3 } else { 2 };
+        if self.anchors.len() < minimum_anchors {
+            return Err(format!(
+                "construction mark {} needs at least {minimum_anchors} anchors",
+                self.id
+            ));
+        }
+        if self.anchors.iter().any(|anchor| {
+            !anchor.barycentric.iter().all(|value| value.is_finite())
+                || anchor.barycentric.iter().any(|value| *value < 0.0)
+                || (anchor.barycentric.iter().sum::<f32>() - 1.0).abs() > 1e-4
+        }) {
+            return Err(format!("construction mark {} has invalid barycentric coordinates", self.id));
+        }
+        if !self.width_scale.is_finite() || !(0.0..=2.0).contains(&self.width_scale) {
+            return Err(format!("construction mark {} has invalid width scale", self.id));
+        }
+        if !self.opacity.is_finite() || !(0.0..=1.0).contains(&self.opacity) {
+            return Err(format!("construction mark {} has invalid opacity", self.id));
+        }
+        Ok(())
+    }
+
     pub fn resolve(
         &self,
         source: &NprPreparedSurface,
@@ -390,6 +414,13 @@ impl Settings {
                 return Err("invalid object parameters".into());
             }
             validate_style(object.style)?;
+            let mut construction_ids = std::collections::BTreeSet::new();
+            for mark in &object.construction_marks {
+                mark.validate()?;
+                if !construction_ids.insert(mark.id) {
+                    return Err(format!("duplicate construction mark id {}", mark.id));
+                }
+            }
         }
         Ok(())
     }

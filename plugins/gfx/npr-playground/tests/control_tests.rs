@@ -215,6 +215,23 @@ fn authored_construction_marks_flow_from_object_state_to_render_packet() {
 }
 
 #[test]
+fn authored_construction_marks_reject_invalid_geometry_before_extraction() {
+    let mut settings = NprPlaygroundState::default().snapshot();
+    settings.objects.get_mut("cube").unwrap().construction_marks = vec![ConstructionMarkSettings {
+        id: 0x4000_0101,
+        anchors: vec![ConstructionAnchorSettings {
+            triangle: 0,
+            barycentric: [0.8, 0.8, 0.8],
+        }],
+        closed: false,
+        width_scale: 0.5,
+        opacity: 0.35,
+    }];
+
+    assert!(settings.validate().is_err());
+}
+
+#[test]
 fn interactive_extract_eases_only_new_stroke_identities() {
     let state = NprPlaygroundState::default();
     let render = NprPlaygroundRenderService::default();
