@@ -71,6 +71,45 @@ impl PerspectiveCamera {
         })
     }
 
+    /// Builds a local- or world-space ray from a viewport pixel.
+    ///
+    /// The returned ray follows the same top-left screen convention as
+    /// [`Self::project`]. Its space is the camera's space: callers that pick a
+    /// local mesh pass a local camera, while callers that pick world geometry
+    /// pass a world camera.
+    pub fn ray_from_screen(&self, screen: Vec2, viewport: Vec2) -> Option<(Vec3, Vec3)> {
+        if !screen.is_finite()
+            || !viewport.is_finite()
+            || viewport.x <= 0.0
+            || viewport.y <= 0.0
+            || !self.vertical_fov.is_finite()
+            || !self.aspect.is_finite()
+            || self.aspect <= 0.0
+        {
+            return None;
+        }
+        let forward = self.forward.normalize_or_zero();
+        let right = forward.cross(self.up).normalize_or_zero();
+        let up = right.cross(forward).normalize_or_zero();
+        let tangent = (self.vertical_fov * 0.5).tan();
+        if forward.length_squared() <= 1e-12
+            || right.length_squared() <= 1e-12
+            || up.length_squared() <= 1e-12
+            || !tangent.is_finite()
+            || tangent.abs() <= 1e-12
+        {
+            return None;
+        }
+        let ndc = Vec2::new(
+            screen.x / viewport.x * 2.0 - 1.0,
+            1.0 - screen.y / viewport.y * 2.0,
+        );
+        let direction =
+            (forward + right * (ndc.x * tangent * self.aspect) + up * (ndc.y * tangent))
+                .normalize_or_zero();
+        (direction.length_squared() > 1e-12).then_some((self.position, direction))
+    }
+
     pub fn project_segment(
         &self,
         a: Vec3,
@@ -90,5 +129,35 @@ impl PerspectiveCamera {
             (a, b)
         };
         Some((self.project(a, viewport)?, self.project(b, viewport)?))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn ray_from_screen_inverts_the_camera_projection() {
+        let camera = PerspectiveCamera::cube_default(16.0 / 9.0);
+        let viewport = Vec2::new(1920.0, 1080.0);
+        let point = Vec3::new(0.7, -0.25, -1.0);
+        let projected = camera.project(point, viewport).unwrap();
+        let (origin, direction) = camera.ray_from_screen(projected.screen, viewport).unwrap();
+        let distance = (point - origin).dot(direction);
+        assert!(distance > 0.0);
+        assert!((origin + direction * distance - point).length() < 1e-5);
+    }
+
+    #[test]
+    fn ray_from_screen_rejects_invalid_camera_or_viewport() {
+        let camera = PerspectiveCamera::cube_default(1.0);
+        assert!(camera.ray_from_screen(Vec2::ZERO, Vec2::ZERO).is_none());
+        assert!(camera.ray_from_screen(Vec2::NAN, Vec2::ONE).is_none());
+        assert!(PerspectiveCamera {
+            forward: Vec3::ZERO,
+            ..camera
+        }
+        .ray_from_screen(Vec2::ZERO, Vec2::ONE)
+        .is_none());
     }
 }
