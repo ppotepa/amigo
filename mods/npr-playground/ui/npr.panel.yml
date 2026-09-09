@@ -1188,6 +1188,10 @@ root:
               id: stats-stroke-budget-rejected
               text: Odrzucone przez budzet kresek
               text_bind: world.npr.settings.NprSettings.stats.stroke_budget_rejected
+            - type: text
+              id: stats-budget-status
+              text: Status budzetu
+              text_bind: world.npr.settings.NprSettings.stats.budget_status
             - type: row
               id: stats-viewport
               children:

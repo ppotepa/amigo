@@ -1237,9 +1237,28 @@ impl NprPlaygroundState {
             "frame_ms".into(),
             ControlValue::F64(if fps > 0.0 { 1000.0 / fps } else { 0.0 }),
         );
-        for (key, value) in self.render_stats.lock().unwrap().iter() {
+        let render_stats = self.render_stats.lock().unwrap();
+        for (key, value) in render_stats.iter() {
             props.insert(format!("stats.{key}"), ControlValue::U64(*value));
         }
+        let budget_rejected = render_stats
+            .get("stroke_budget_rejected")
+            .copied()
+            .unwrap_or(0);
+        let budget_exhausted = render_stats
+            .get("stroke_budget_exhausted")
+            .copied()
+            .unwrap_or(0);
+        props.insert(
+            "stats.budget_status".into(),
+            ControlValue::String(if budget_rejected == 0 && budget_exhausted == 0 {
+                "Budżet kresek: OK".into()
+            } else {
+                format!(
+                    "Budżet kresek: ograniczono {budget_rejected}; pakiety z limitem: {budget_exhausted}"
+                )
+            }),
+        );
         props
     }
     fn action(&self, action: &str) -> Result<(), String> {
