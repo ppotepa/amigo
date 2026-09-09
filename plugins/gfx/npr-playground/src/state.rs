@@ -81,6 +81,12 @@ pub fn style_preset(name: &str) -> Option<ComicInk> {
             style.tone_density = 0.44;
             style.hatching_spacing = 7.0;
             style.hatching_cross = 0.10;
+            // Keep the reviewed Pencil Study streamlines stable. Surface
+            // cleanup is an authored object policy (`Natural Smooth`), not an
+            // incidental consequence of picking a pigment tool.
+            style.smooth_draw_creases = true;
+            style.min_smooth_contour_length_pixels = 0.0;
+            style.smooth_contour_simplification_pixels = 0.0;
         }
         "Loose Study" => {
             style.tool = StrokeTool::Pencil;
