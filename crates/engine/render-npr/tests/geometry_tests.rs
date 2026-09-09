@@ -20,6 +20,32 @@ fn builtins_have_valid_closed_topology_and_no_degenerate_faces() {
 }
 
 #[test]
+fn welding_coincident_indices_removes_false_import_seam_boundaries() {
+    let split = NprGeometry::from_indexed(
+        &[
+            [0.0, 0.0, 0.0],
+            [1.0, 0.0, 0.0],
+            [0.0, 1.0, 0.0],
+            [1.0, 0.0, 0.0],
+            [1.0, 1.0, 0.0],
+            [0.0, 1.0, 0.0],
+        ],
+        &[0, 1, 2, 3, 4, 5],
+    )
+    .unwrap();
+    let welded = split.welded_coincident_vertices();
+
+    assert_eq!(welded.vertices.len(), 4);
+    assert_eq!(welded.triangles.len(), split.triangles.len());
+    assert!(
+        build_topology(&welded)
+            .iter()
+            .any(|edge| edge.faces[0] != u32::MAX && edge.faces[1] != u32::MAX),
+        "the shared edge must no longer be interpreted as two boundaries"
+    );
+}
+
+#[test]
 fn coplanar_groups_merge_cube_face_triangulation_but_not_cube_edges() {
     let cube = NprGeometry::canonical_cube();
     let topology = build_topology(&cube);

@@ -106,6 +106,7 @@ impl Default for NprSmoothProxyPolicy {
 #[derive(Debug, Clone, PartialEq)]
 pub struct NprPreparedSurfaceVariants {
     source: NprPreparedSurface,
+    smooth_drawing_source: Option<NprGeometry>,
     smooth_proxies: BTreeMap<SmoothProxyKey, NprPreparedSurface>,
 }
 
@@ -120,6 +121,7 @@ impl NprPreparedSurfaceVariants {
     pub fn new(geometry: NprGeometry) -> Self {
         Self {
             source: NprPreparedSurface::new(geometry),
+            smooth_drawing_source: None,
             smooth_proxies: BTreeMap::new(),
         }
     }
@@ -132,7 +134,13 @@ impl NprPreparedSurfaceVariants {
         &mut self,
         policy: NprSmoothProxyPolicy,
     ) -> Result<&NprPreparedSurface, NprSubdivisionError> {
-        if policy.levels == 0 {
+        // UV/normal seams often duplicate vertex indices without splitting the
+        // physical surface. Weld only in the explicitly authored Smooth path:
+        // Polygonal assets retain their literal topology, while smooth drawing
+        // contours stop promoting importer seams to boundaries.
+        let source_vertex_count = self.source.geometry().vertices.len();
+        if policy.levels == 0 && self.smooth_drawing_source().vertices.len() == source_vertex_count
+        {
             return Ok(&self.source);
         }
         let key = SmoothProxyKey {
@@ -146,12 +154,15 @@ impl NprPreparedSurfaceVariants {
             if self.smooth_proxies.len() >= 8 {
                 self.smooth_proxies.clear();
             }
-            let proxy = subdivide_smooth_proxy_with_provenance(
-                self.source.geometry(),
-                policy.levels,
-                f32::from_bits(key.crease_angle_bits),
-                policy.max_triangles,
-            )?;
+            let proxy = {
+                let drawing_source = self.smooth_drawing_source();
+                subdivide_smooth_proxy_with_provenance(
+                    drawing_source,
+                    policy.levels,
+                    f32::from_bits(key.crease_angle_bits),
+                    policy.max_triangles,
+                )?
+            };
             self.smooth_proxies.insert(
                 key,
                 NprPreparedSurface::from_proxy(proxy, self.source.content_id),
@@ -161,6 +172,11 @@ impl NprPreparedSurfaceVariants {
             .smooth_proxies
             .get(&key)
             .expect("newly inserted NPR smooth proxy must be present"))
+    }
+
+    fn smooth_drawing_source(&mut self) -> &NprGeometry {
+        self.smooth_drawing_source
+            .get_or_insert_with(|| self.source.geometry().welded_coincident_vertices())
     }
 }
 
@@ -529,6 +545,40 @@ mod tests {
             .content_id();
         assert_ne!(source_id, first_id);
         assert_eq!(first_id, second_id);
+    }
+
+    #[test]
+    fn smooth_proxy_welds_split_import_indices_without_subdivision() {
+        let split = NprGeometry::from_indexed(
+            &[
+                [0.0, 0.0, 0.0],
+                [1.0, 0.0, 0.0],
+                [0.0, 1.0, 0.0],
+                [1.0, 0.0, 0.0],
+                [1.0, 1.0, 0.0],
+                [0.0, 1.0, 0.0],
+            ],
+            &[0, 1, 2, 3, 4, 5],
+        )
+        .unwrap();
+        let mut variants = NprPreparedSurfaceVariants::new(split);
+        let source = variants.source().clone();
+        let proxy = variants
+            .smooth_proxy(NprSmoothProxyPolicy {
+                levels: 0,
+                ..NprSmoothProxyPolicy::default()
+            })
+            .unwrap();
+
+        assert_eq!(proxy.geometry().vertices.len(), 4);
+        assert_eq!(proxy.source_content_id(), source.content_id());
+        assert!(proxy
+            .topology()
+            .iter()
+            .any(|edge| edge.faces[0] != u32::MAX && edge.faces[1] != u32::MAX));
+        let anchor = proxy.source_anchor(0, [1.0, 0.0, 0.0]).unwrap();
+        assert_eq!(anchor.content_id, source.content_id());
+        assert_eq!(anchor.triangle, 0);
     }
 
     #[test]

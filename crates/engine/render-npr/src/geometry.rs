@@ -1,4 +1,5 @@
 use glam::Vec3;
+use std::collections::BTreeMap;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct NprVertex {
@@ -119,6 +120,35 @@ impl NprGeometry {
             triangles: self.triangles.clone(),
         }
     }
+
+    /// Merges vertices that occupy exactly the same model-space position while
+    /// retaining triangle order. Importers commonly split an otherwise smooth
+    /// surface at UV or normal seams; treating those split indices as open
+    /// boundaries makes a drawing look like a wireframe. The result is safe as
+    /// a drawing topology because source-triangle indices and barycentrics are
+    /// unchanged.
+    pub fn welded_coincident_vertices(&self) -> Self {
+        let mut vertex_for_position = BTreeMap::<[u32; 3], u32>::new();
+        let mut remap = Vec::with_capacity(self.vertices.len());
+        let mut vertices = Vec::with_capacity(self.vertices.len());
+        for vertex in &self.vertices {
+            let key = vertex.position.to_array().map(canonical_position_bits);
+            let index = *vertex_for_position.entry(key).or_insert_with(|| {
+                let index = vertices.len() as u32;
+                vertices.push(*vertex);
+                index
+            });
+            remap.push(index);
+        }
+        Self {
+            vertices,
+            triangles: self
+                .triangles
+                .iter()
+                .map(|triangle| triangle.map(|index| remap[index as usize]))
+                .collect(),
+        }
+    }
     pub fn from_indexed(positions: &[[f32; 3]], indices: &[u32]) -> Result<Self, String> {
         if indices.len() % 3 != 0 || positions.is_empty() {
             return Err("mesh requires triangle indices and positions".into());
@@ -173,6 +203,14 @@ impl NprGeometry {
                 .collect(),
             triangles,
         }
+    }
+}
+
+fn canonical_position_bits(value: f32) -> u32 {
+    if value == 0.0 {
+        0
+    } else {
+        value.to_bits()
     }
 }
 
