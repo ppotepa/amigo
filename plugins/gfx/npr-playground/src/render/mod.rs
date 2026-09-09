@@ -97,6 +97,8 @@ impl NprPlaygroundRenderService {
             let s = &command.packet.stats;
             for (key, value) in [
                 ("geometry", s.geometry),
+                ("surface_source_vertices", s.surface_source_vertices),
+                ("surface_proxy_vertices", s.surface_proxy_vertices),
                 ("surface_source_triangles", s.surface_source_triangles),
                 ("surface_proxy_triangles", s.surface_proxy_triangles),
                 ("topology_edges", s.topology_edges),
@@ -283,7 +285,9 @@ impl NprPlaygroundRenderService {
                 let prepared_variants = cache
                     .get_mut(&object.model)
                     .ok_or_else(|| format!("model {} is not prepared", object.model))?;
-                let source_triangles = prepared_variants.source().geometry().triangles.len();
+                let source_geometry = prepared_variants.source().geometry();
+                let source_vertices = source_geometry.vertices.len();
+                let source_triangles = source_geometry.triangles.len();
                 let rotation = object.rotation.map(f32::to_radians);
                 let transform = Mat4::from_scale_rotation_translation(
                     Vec3::splat(object.scale),
@@ -358,6 +362,8 @@ impl NprPlaygroundRenderService {
                     ),
                     debug,
                 );
+                packet.stats.surface_source_vertices = source_vertices;
+                packet.stats.surface_proxy_vertices = prepared.geometry().vertices.len();
                 packet.stats.surface_source_triangles = source_triangles;
                 packet.stats.surface_proxy_triangles = prepared.geometry().triangles.len();
                 packet.stats.hatching_lod_tier = decision.tier;

@@ -1054,6 +1054,14 @@ root:
               text: Renderowane obiekty
               text_bind: world.npr.settings.NprSettings.stats.geometry
             - type: text
+              id: stats-source-vertices
+              text: Wierzcholki zrodlowe
+              text_bind: world.npr.settings.NprSettings.stats.surface_source_vertices
+            - type: text
+              id: stats-proxy-vertices
+              text: Wierzcholki smooth proxy
+              text_bind: world.npr.settings.NprSettings.stats.surface_proxy_vertices
+            - type: text
               id: stats-source-triangles
               text: Trojkaty zrodlowe
               text_bind: world.npr.settings.NprSettings.stats.surface_source_triangles

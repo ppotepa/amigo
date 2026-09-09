@@ -542,6 +542,8 @@ impl Default for NprPlaygroundState {
             render_stats: Mutex::new(
                 [
                     "geometry",
+                    "surface_source_vertices",
+                    "surface_proxy_vertices",
                     "surface_source_triangles",
                     "surface_proxy_triangles",
                     "topology_edges",

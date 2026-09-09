@@ -170,6 +170,8 @@ fn hash_vertex(hasher: &mut PacketHasher, vertex: StrokeVertex) {
 
 fn hash_stats(hasher: &mut PacketHasher, stats: &NprRenderStats) {
     hasher.usize(stats.geometry);
+    hasher.usize(stats.surface_source_vertices);
+    hasher.usize(stats.surface_proxy_vertices);
     hasher.usize(stats.surface_source_triangles);
     hasher.usize(stats.surface_proxy_triangles);
     hasher.usize(stats.topology_edges);

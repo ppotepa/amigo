@@ -69,6 +69,12 @@ pub struct NprFillTriangle {
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct NprRenderStats {
     pub geometry: usize,
+    /// Vertices of the authored/source surface before an optional smooth proxy.
+    pub surface_source_vertices: usize,
+    /// Vertices used by the drawing packet after the selected surface policy.
+    /// A lower count than `surface_source_vertices` proves that seam welding
+    /// changed the topology consulted by feature extraction.
+    pub surface_proxy_vertices: usize,
     /// Triangles of the authored/source surface before an optional smooth proxy.
     pub surface_source_triangles: usize,
     /// Triangles used by the drawing packet after the selected surface policy.
@@ -498,6 +504,8 @@ fn build_packet_with_identity(
         .count();
     let stats = NprRenderStats {
         geometry: 1,
+        surface_source_vertices: geometry.vertices.len(),
+        surface_proxy_vertices: geometry.vertices.len(),
         surface_source_triangles: geometry.triangles.len(),
         surface_proxy_triangles: geometry.triangles.len(),
         topology_edges: topology.len(),
