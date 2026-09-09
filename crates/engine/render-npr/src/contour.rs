@@ -41,15 +41,10 @@ pub fn smooth_perspective_contours(
         for index in 0..3 {
             let a = triangle[index];
             let b = triangle[(index + 1) % 3];
-            let va = values[index];
-            let vb = values[(index + 1) % 3];
-            // Exact vertex hits would otherwise belong to three triangles and
-            // create ambiguous branches. A neighbouring non-degenerate edge
-            // supplies the same visual contour deterministically.
-            if va.abs() <= 1e-6 || vb.abs() <= 1e-6 || va.signum() == vb.signum() {
+            let Some(t) = contour_edge_crossing(a, b, values[index], values[(index + 1) % 3])
+            else {
                 continue;
-            }
-            let t = va / (va - vb);
+            };
             let point = geometry.vertices[a as usize]
                 .position
                 .lerp(geometry.vertices[b as usize].position, t);
@@ -96,12 +91,10 @@ pub fn suggestive_perspective_contours(
         for index in 0..3 {
             let a = triangle[index];
             let b = triangle[(index + 1) % 3];
-            let va = values[index];
-            let vb = values[(index + 1) % 3];
-            if va.abs() <= 1e-6 || vb.abs() <= 1e-6 || va.signum() == vb.signum() {
+            let Some(t) = contour_edge_crossing(a, b, values[index], values[(index + 1) % 3])
+            else {
                 continue;
-            }
-            let t = va / (va - vb);
+            };
             crossings.push((
                 ordered_edge(a, b),
                 positions[index].lerp(positions[(index + 1) % 3], t),
@@ -158,6 +151,39 @@ fn radial_curvature_sample(
     }
     let span_confidence = (denominator / edge_extent).sqrt().clamp(0.0, 1.0);
     Some((numerator / denominator, tangent_strength * span_confidence))
+}
+
+/// Resolves a field crossing on one indexed edge. If only one endpoint is
+/// exactly on the zero set, a stable symbolic sign avoids dropping the span
+/// simply because the contour happened to pass through a mesh vertex. An edge
+/// whose two endpoints are exactly zero remains ambiguous and is left to its
+/// neighbouring non-degenerate edges.
+fn contour_edge_crossing(a: u32, b: u32, value_a: f32, value_b: f32) -> Option<f32> {
+    const EPSILON: f32 = 1.0e-6;
+    if value_a.abs() <= EPSILON && value_b.abs() <= EPSILON {
+        return None;
+    }
+    let value_a = symbolic_contour_value(value_a, a, EPSILON);
+    let value_b = symbolic_contour_value(value_b, b, EPSILON);
+    if value_a.signum() == value_b.signum() {
+        None
+    } else {
+        Some((value_a / (value_a - value_b)).clamp(0.0, 1.0))
+    }
+}
+
+fn symbolic_contour_value(value: f32, vertex: u32, epsilon: f32) -> f32 {
+    if value.abs() > epsilon {
+        return value;
+    }
+    // SplitMix-like integer mixing makes the symbolic side independent of
+    // triangle order while retaining the same answer for every use of this
+    // indexed vertex.
+    let mut bits = vertex.wrapping_add(0x9e37_79b9);
+    bits ^= bits >> 16;
+    bits = bits.wrapping_mul(0x85eb_ca6b);
+    bits ^= bits >> 13;
+    if bits & 1 == 0 { -epsilon } else { epsilon }
 }
 
 /// Labels face components which may share a smooth contour. A sharp edge is a
@@ -340,6 +366,20 @@ fn ordered_edge(a: u32, b: u32) -> (u32, u32) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn contour_crossing_at_one_vertex_has_a_stable_symbolic_side() {
+        let symbolic = symbolic_contour_value(0.0, 7, 1.0e-6);
+        let opposite = -symbolic.signum();
+        let forward = contour_edge_crossing(7, 11, 0.0, opposite).unwrap();
+        let reverse = contour_edge_crossing(11, 7, opposite, 0.0).unwrap();
+        assert!((forward + reverse - 1.0).abs() < 1.0e-6);
+        assert_eq!(
+            symbolic,
+            symbolic_contour_value(0.0, 7, 1.0e-6)
+        );
+        assert!(contour_edge_crossing(7, 11, 0.0, 0.0).is_none());
+    }
 
     #[test]
     fn contour_crosses_the_interior_of_a_smooth_quad_without_a_diagonal_break() {
