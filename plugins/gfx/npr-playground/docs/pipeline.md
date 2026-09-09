@@ -51,6 +51,12 @@ converted to ink. The assembled spans are then length-gated and simplified in
 pixel space, including a deterministic closed-loop anchor. A stable source id
 plus seed makes a gesture repeatable across frames and resize rebuilds.
 
+Gallery extraction adds a second, scene-level payload budget after every object
+has built its own packet. It prioritizes the selected object, then construction
+marks and feature strokes, before accepting tonal strokes. Its 48 MiB ceiling
+leaves headroom below WGPU's global upload cap, so loss is deterministic and
+reported in packet statistics rather than being a backend-side silent skip.
+
 The session owns two independent temporal mechanisms. `DrawingHistory` eases the
 coverage of genuinely entering IDs once per logical view frame. `StrokeVariantClock`
 measures projected surface-anchor motion and changes a gesture epoch only for an

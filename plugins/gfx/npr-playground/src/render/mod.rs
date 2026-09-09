@@ -7,9 +7,16 @@ pub const NPR_PLAYGROUND_EXTRACTOR_ID: &str = "amigo.gfx.npr-playground.extracto
 
 #[derive(Clone)]
 struct SourceCommand {
+    object_id: String,
     temporal_scope: u64,
     command: NprDrawCommand,
 }
+
+/// A gallery contains several independent NPR packets.  Individual packets
+/// already have a CPU payload ceiling, but without a scene-level cap their
+/// combined upload could still make the backend silently skip late strokes.
+/// This budget deliberately leaves headroom below the WGPU upload ceiling.
+const MAX_GALLERY_STROKE_DATA_BYTES: usize = 48 * 1024 * 1024;
 
 /// A stable source-surface result selected from the current NPR scene.
 ///
@@ -402,6 +409,7 @@ impl NprPlaygroundRenderService {
                 )
                 .map_err(|error| format!("object {id} construction marks: {error}"))?;
                 source.push(SourceCommand {
+                    object_id: id.clone(),
                     temporal_scope,
                     command: NprDrawCommand::with_preset(packet, preset),
                 });
@@ -419,22 +427,25 @@ impl NprPlaygroundRenderService {
             history.begin_frame();
             let commands = source
                 .into_iter()
-                .map(|entry| {
-                    let mut command = entry.command;
+                .map(|mut entry| {
                     history.advance_packet_in_frame(
                         entry.temporal_scope,
-                        &mut command.packet,
+                        &mut entry.command.packet,
                         delta_seconds,
                         policy,
                     );
-                    command
+                    entry
                 })
                 .collect();
             history.finish_frame(delta_seconds, policy);
             commands
         } else {
-            source.into_iter().map(|entry| entry.command).collect()
+            source
         };
+        let commands = retain_gallery_strokes_under_budget(commands, settings.gallery, &settings.selected)
+            .into_iter()
+            .map(|entry| entry.command)
+            .collect();
         *self.output.lock().unwrap() = (
             commands,
             Some(NprBackgroundCommand {
@@ -451,6 +462,165 @@ impl NprPlaygroundRenderService {
         settings.seed = seed;
         self.rebuild(&settings, viewport)
             .expect("built-in cube is valid");
+    }
+}
+
+fn retain_gallery_strokes_under_budget(
+    commands: Vec<SourceCommand>,
+    gallery: bool,
+    selected: &str,
+) -> Vec<SourceCommand> {
+    retain_gallery_strokes_with_budget(commands, gallery, selected, MAX_GALLERY_STROKE_DATA_BYTES)
+}
+
+fn retain_gallery_strokes_with_budget(
+    mut commands: Vec<SourceCommand>,
+    gallery: bool,
+    selected: &str,
+    byte_budget: usize,
+) -> Vec<SourceCommand> {
+    if !gallery {
+        return commands;
+    }
+
+    // The selected model is the active inspection target. Remaining ties are
+    // object-id ordered, which keeps the resulting packet deterministic.
+    commands.sort_by(|left, right| {
+        (right.object_id == selected)
+            .cmp(&(left.object_id == selected))
+            .then_with(|| left.object_id.cmp(&right.object_id))
+    });
+    let mut remaining = byte_budget;
+    for entry in &mut commands {
+        let packet = &mut entry.command.packet;
+        let mut retained = Vec::with_capacity(packet.strokes.len());
+        let mut rejected = 0usize;
+        let mut rejected_tone = 0usize;
+        // `build_packet_for_surface` emits feature strokes before tonal ones.
+        // Preserve that authored order, while construction marks and features
+        // are always considered ahead of tone within each object.
+        let mut lower_priority_allowed = true;
+        for role in [StrokeRole::Construction, StrokeRole::Feature, StrokeRole::Tone] {
+            for stroke in packet.strokes.iter().filter(|stroke| stroke.role == role) {
+                let bytes = gallery_stroke_data_bytes(stroke);
+                if lower_priority_allowed && bytes <= remaining {
+                    remaining -= bytes;
+                    retained.push(stroke.clone());
+                } else {
+                    rejected += 1;
+                    rejected_tone += usize::from(role == StrokeRole::Tone);
+                    // A lower-priority mark must not consume the remaining
+                    // bytes after a construction/feature mark did not fit.
+                    // This preserves the declared line hierarchy rather than
+                    // merely sorting candidates once.
+                    if role != StrokeRole::Tone {
+                        lower_priority_allowed = false;
+                    }
+                }
+            }
+        }
+        if rejected == 0 {
+            continue;
+        }
+        packet.strokes = retained;
+        packet.stats.strokes = packet.strokes.len();
+        packet.stats.stroke_vertices = packet.strokes.iter().map(|stroke| stroke.vertices.len()).sum();
+        packet.stats.stroke_indices = packet.strokes.iter().map(|stroke| stroke.indices.len()).sum();
+        packet.stats.stroke_data_bytes = packet.strokes.iter().map(gallery_stroke_data_bytes).sum();
+        packet.stats.stroke_budget_rejected += rejected;
+        packet.stats.stroke_budget_exhausted = true;
+        packet.stats.hatching_rejected += rejected_tone;
+        packet.stats.hatching_strokes = packet.stats.hatching_strokes.saturating_sub(rejected_tone);
+    }
+    commands
+}
+
+fn gallery_stroke_data_bytes(stroke: &TessellatedStroke) -> usize {
+    stroke.vertices.len() * std::mem::size_of::<StrokeVertex>()
+        + stroke.indices.len() * std::mem::size_of::<u32>()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use amigo_render_npr::{NprDebugView, NprRenderPacket, NprRenderStats, StrokeVertex};
+    use glam::{Vec2, Vec4};
+
+    fn stroke(role: StrokeRole, vertices: usize) -> TessellatedStroke {
+        TessellatedStroke {
+            vertices: vec![
+                StrokeVertex {
+                    position: Vec2::ZERO,
+                    width: 1.0,
+                    id: 1,
+                    depth: 0.5,
+                    pressure: 1.0,
+                    coverage: 1.0,
+                    grain: 0.0,
+                    edge: 1.0,
+                    edge_softness: 0.0,
+                    paper_tooth: 0.0,
+                    dryness: 0.0,
+                };
+                vertices
+            ],
+            indices: vec![],
+            id: vertices as u32,
+            role,
+            ..Default::default()
+        }
+    }
+
+    fn command(object_id: &str, strokes: Vec<TessellatedStroke>) -> SourceCommand {
+        SourceCommand {
+            object_id: object_id.into(),
+            temporal_scope: 0,
+            command: NprDrawCommand::new(NprRenderPacket {
+                occluders: vec![],
+                fills: vec![],
+                strokes,
+                background: Vec4::ONE,
+                debug_view: NprDebugView::Final,
+                ink: Vec4::ONE,
+                stats: NprRenderStats::default(),
+            }),
+        }
+    }
+
+    #[test]
+    fn gallery_budget_keeps_selected_object_before_other_tone() {
+        let selected_feature = stroke(StrokeRole::Feature, 2);
+        let selected_tone = stroke(StrokeRole::Tone, 1);
+        let other_tone = stroke(StrokeRole::Tone, 1);
+        let budget = gallery_stroke_data_bytes(&selected_feature)
+            + gallery_stroke_data_bytes(&selected_tone);
+        let retained = retain_gallery_strokes_with_budget(
+            vec![
+                command("other", vec![other_tone]),
+                command("selected", vec![selected_feature, selected_tone]),
+            ],
+            true,
+            "selected",
+            budget,
+        );
+        assert_eq!(retained[0].object_id, "selected");
+        assert_eq!(retained[0].command.packet.strokes.len(), 2);
+        assert!(retained[1].command.packet.strokes.is_empty());
+        assert_eq!(retained[1].command.packet.stats.stroke_budget_rejected, 1);
+    }
+
+    #[test]
+    fn gallery_budget_never_replaces_a_rejected_feature_with_tone() {
+        let feature = stroke(StrokeRole::Feature, 2);
+        let tone = stroke(StrokeRole::Tone, 1);
+        let retained = retain_gallery_strokes_with_budget(
+            vec![command("selected", vec![feature, tone])],
+            true,
+            "selected",
+            gallery_stroke_data_bytes(&stroke(StrokeRole::Tone, 1)),
+        );
+        assert!(retained[0].command.packet.strokes.is_empty());
+        assert_eq!(retained[0].command.packet.stats.stroke_budget_rejected, 2);
     }
 }
 

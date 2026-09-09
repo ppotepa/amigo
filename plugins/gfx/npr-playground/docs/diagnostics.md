@@ -44,6 +44,11 @@ because their local tangent is ambiguous or their normal field turns too
 abruptly. Adjust `min_form_line_confidence` in the Tone panel to trade local
 detail for a cleaner, less triangulation-driven drawing.
 
+In gallery mode, `stroke_budget_rejected` also includes deterministic
+scene-level admission after each object produced its own packet. The selected
+object, construction marks and feature lines are considered before tone, so a
+backend upload limit does not silently decide which model loses ink.
+
 `suggestive_contour_spans` reports opt-in radial-curvature form lines. They
 use a separate stable identity range from silhouettes and are emitted only on
 Smooth surfaces when `suggestive_contours` is enabled.
