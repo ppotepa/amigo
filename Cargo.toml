@@ -205,7 +205,7 @@ rapier3d = "0.32.0"
 raw-window-handle = "0.6"
 winit = "0.30"
 wgpu = "29.0"
-crossterm = "0.28"
+crossterm = "0.29"
 ratatui = "0.29"
 notify = "8"
 image = { version = "0.25", default-features = false, features = ["png", "jpeg", "webp"] }
