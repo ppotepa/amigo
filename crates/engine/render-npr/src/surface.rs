@@ -504,7 +504,7 @@ mod tests {
     use super::*;
     use crate::{
         build_packet_for_surface, build_packet_with_topology, ComicInk, NprDebugView,
-        PerspectiveCamera,
+        NprSurfaceMode, PerspectiveCamera,
     };
     use glam::{Mat4, Vec3};
 
@@ -594,7 +594,8 @@ mod tests {
                 levels: 0,
                 ..NprSmoothProxyPolicy::default()
             })
-            .unwrap();
+            .unwrap()
+            .clone();
 
         assert_eq!(proxy.geometry().vertices.len(), 4);
         assert_eq!(proxy.source_content_id(), source.content_id());
@@ -605,6 +606,32 @@ mod tests {
         let anchor = proxy.source_anchor(0, [1.0, 0.0, 0.0]).unwrap();
         assert_eq!(anchor.content_id, source.content_id());
         assert_eq!(anchor.triangle, 0);
+
+        let style = ComicInk {
+            surface_mode: NprSurfaceMode::Smooth,
+            ..ComicInk::default()
+        };
+        let raw = build_packet_for_surface(
+            &source,
+            PerspectiveCamera::cube_default(1.0),
+            [512, 512],
+            style,
+            7,
+            NprDebugView::Final,
+        );
+        let smoothed = build_packet_for_surface(
+            &proxy,
+            PerspectiveCamera::cube_default(1.0),
+            [512, 512],
+            style,
+            7,
+            NprDebugView::Final,
+        );
+        // The split source sees six open triangle sides; welding leaves only
+        // the four authored perimeter sides. This is the exact reduction that
+        // prevents an importer seam from being drawn as an interior boundary.
+        assert_eq!(raw.stats.feature_segments, 6);
+        assert_eq!(smoothed.stats.feature_segments, 4);
     }
 
     #[test]
