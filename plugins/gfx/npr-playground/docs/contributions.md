@@ -18,6 +18,12 @@ per-object surface policy and construction marks. The component is schema- and
 hydrator-backed, so an editor can use the same authored payload; it is not an
 ID-based renderer preset.
 
+The in-game editor's `Save NPR scene` command is handled by the domain runtime
+apply provider. It snapshots the typed `NprSettings`, locates its exact owned
+source component through the authoring graph, and asks the neutral authoring
+service for one validated atomic value replacement. The renderer and app host
+do not participate in source persistence.
+
 The workshop adds `appearance.*`, object rotation switches, read-only badge/history
 state and `stats.*` metadata. `npr-look` contributes appearance-only preset storage;
 `npr-playground` retains complete scene storage. Panel tabs, pinned groups, reset

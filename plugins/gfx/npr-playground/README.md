@@ -69,6 +69,11 @@ a smoothed corner-normal field. `Próg gładkiej powierzchni` stops that field f
 blending through a large dihedral independently of the separately drawn crease
 threshold. Boundaries and authored creases remain explicit in either mode.
 
+Smooth also exposes `Seam weld tolerance`, measured relative to the source
+model's bounding-box diagonal. `0` joins only exactly equal positions; the
+default small tolerance joins float jitter from UV/normal seam exports. It is
+applied only while preparing a Smooth proxy, never to a Polygonal object.
+
 `Stable` is the default stroke-motion mode. It keeps an existing seeded gesture
 through object orbit, camera orbit and zoom; `0 s` appearance fade makes new
 visible marks immediate without stopping camera or object motion. `RedrawOnMotion`
@@ -76,6 +81,11 @@ is opt-in: projected surface anchors cross a hysteretic motion gate, then a
 bounded clock changes the gesture variant at the selected frequency. It is not
 driven by render FPS. `Nowy wariant gestu` is a separate undoable action for the
 selected object; it changes the drawing seed without moving geometry or camera.
+
+The in-game editor offers `Save NPR scene` when the selected scene contains an
+`NprSettings` component. It writes the complete typed component atomically,
+including construction marks and per-object surface policy. The replacement
+rejects stale or ambiguous source data and preserves YAML outside that component.
 The current implementation intentionally does not expose
 suggestive contours or apparent ridges: those need validated curvature
 derivatives rather than a threshold over triangulation noise.

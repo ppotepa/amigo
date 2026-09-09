@@ -26,6 +26,11 @@ assembles feature chains and tessellates pixel-space rounded strokes. WGPU
 executes global depth, fill and stroke passes; the regular MeshDrawCommand path
 remains separate.
 
+Smooth proxy preparation uses an explicit per-object relative seam-weld
+tolerance. It is part of the immutable proxy cache key, so changing it cannot
+reuse topology prepared with another import policy. A zero value retains only
+exactly coincident positions; Polygonal never invokes this path.
+
 The tessellator owns the drawing vocabulary: tool response curves (pencil,
 fineliner, nib and brush), pressure, nib angle/aspect, RDP gesture cleanup,
 endpoint taper, rounded joins/caps and deterministic correction strokes. Grain
