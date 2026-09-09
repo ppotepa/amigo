@@ -1316,6 +1316,7 @@ impl NprPlaygroundState {
                         default_smooth_weld_relative_tolerance();
                     object.override_style = true;
                     object.style = style;
+                    s.style_scope = "Obiekt".into();
                 }
                 "new_gesture_variant" => {
                     let object = s.objects.get_mut(&selected).unwrap();

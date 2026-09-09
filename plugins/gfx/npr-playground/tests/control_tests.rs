@@ -897,6 +897,7 @@ fn natural_smooth_action_creates_a_local_organic_drawing_policy() {
     assert!(object.surface_subdivision_level >= 1);
     assert!(object.smooth_weld_relative_tolerance > 0.0);
     assert!(object.override_style);
+    assert_eq!(settings.style_scope, "Obiekt");
     assert!(!object.style.smooth_draw_creases);
     assert_eq!(object.style.min_smooth_contour_length_pixels, 8.0);
     assert_eq!(object.style.smooth_contour_simplification_pixels, 0.75);

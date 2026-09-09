@@ -84,7 +84,8 @@ triangulation-sized bends without changing authored source geometry.
 `Natural Smooth dla modelu organicznego` applies the same policy as a local
 selected-object override: Smooth proxy, seam weld, no topology creases and the
 reviewed contour cleanup defaults. It never changes another gallery object or
-adds an implicit renderer preset.
+adds an implicit renderer preset, and switches Appearance to the selected
+object scope so the resulting local policy can be tuned immediately.
 
 `Stable` is the default stroke-motion mode. It keeps an existing seeded gesture
 through object orbit, camera orbit and zoom; `0 s` appearance fade makes new
