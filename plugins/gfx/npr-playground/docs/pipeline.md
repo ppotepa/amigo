@@ -39,9 +39,11 @@ Optional tone paths are traced over selected surface faces from local plane seed
 then projected and clipped before entering the same stroke path. This keeps a
 camera move from constructing a new hatch grid and ensures triangulation diagonals
 are never promoted to feature lines. Smooth silhouettes use a smoothed
-corner-normal zero field and preserve sharp dihedrals; their region identity is
-separate from transient triangle crossings. A stable source id plus seed makes a
-gesture repeatable across frames and resize rebuilds.
+corner-normal zero field. Topology-derived creases require explicit authoring in
+Smooth; a large dihedral still partitions normal smoothing but is not silently
+converted to ink. The assembled spans are then length-gated and simplified in
+pixel space, including a deterministic closed-loop anchor. A stable source id
+plus seed makes a gesture repeatable across frames and resize rebuilds.
 
 The session owns two independent temporal mechanisms. `DrawingHistory` eases the
 coverage of genuinely entering IDs once per logical view frame. `StrokeVariantClock`

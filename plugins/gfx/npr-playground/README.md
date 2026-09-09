@@ -64,15 +64,23 @@ while width, clipping and visibility are resolved for the current viewport.
 
 Each object declares `Polygonal` or `Smooth`; this is authored state, never a
 renderer guess based on a mesh name. Polygonal keeps the literal edge language
-for cube and wedge. Smooth replaces only polygon-edge silhouettes with zeroes of
-a smoothed corner-normal field. `Próg gładkiej powierzchni` stops that field from
+for cube and wedge. Smooth replaces polygon-edge silhouettes with zeroes of a
+smoothed corner-normal field. `Próg gładkiej powierzchni` stops that field from
 blending through a large dihedral independently of the separately drawn crease
-threshold. Boundaries and authored creases remain explicit in either mode.
+threshold. Open boundaries remain explicit; topology-derived creases are off by
+default in Smooth because an imported dihedral is not proof of authored drawing
+intent. `Rysuj załamania topologii w Smooth` enables them deliberately for
+technical models.
 
 Smooth also exposes `Seam weld tolerance`, measured relative to the source
 model's bounding-box diagonal. `0` joins only exactly equal positions; the
 default small tolerance joins float jitter from UV/normal seam exports. It is
 applied only while preparing a Smooth proxy, never to a Polygonal object.
+
+`Minimalna długość konturu Smooth` rejects short spans after perspective
+projection, while `Wygładzanie konturu Smooth` applies a deterministic
+pixel-space simplification to longer spans. Together these controls remove
+triangulation-sized bends without changing authored source geometry.
 
 `Stable` is the default stroke-motion mode. It keeps an existing seeded gesture
 through object orbit, camera orbit and zoom; `0 s` appearance fade makes new

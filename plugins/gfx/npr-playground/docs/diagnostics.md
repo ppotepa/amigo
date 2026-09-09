@@ -23,14 +23,21 @@ diagnostic, not a wall-clock counter. Debug views are resolved before extraction
 tool response, `FeatureClasses` shows domain classification, and `StrokeIds`
 shows stable assembled-chain identities.
 
-`surface_source_triangles` and `surface_proxy_triangles` expose the exact cost
-of the selected Smooth proxy. A differing pair is an authored surface-policy
-decision, not an implicit renderer LOD.
+`surface_source_vertices`/`surface_proxy_vertices` and
+`surface_source_triangles`/`surface_proxy_triangles` expose the exact topology
+change and cost of the selected Smooth proxy. A lower proxy vertex count proves
+that seam welding changed the feature-extraction surface; it is an authored
+surface-policy decision, not an implicit renderer LOD.
 
 `feature_candidates` counts post-surface-policy topology candidates and
 `feature_rejected` counts segments belonging to crease chains omitted for being
 shorter than the configured pixel threshold. Boundary and silhouette chains are
 not affected by this ranking pass.
+
+`smooth_contour_rejected` and `suggestive_contour_rejected` count complete
+normal-field spans removed by the configured projected-length gate before
+tessellation. They distinguish intentional cleanup of sub-pixel contour noise
+from a missing topology feature.
 
 `hatching_confidence_rejected` counts tonal paths removed before tessellation
 because their local tangent is ambiguous or their normal field turns too
