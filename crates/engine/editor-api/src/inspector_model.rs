@@ -21,6 +21,10 @@ pub struct AuthoringProperty {
     pub read_only: bool,
     pub source_file: String,
     pub yaml_pointer: String,
+    /// Exact scalar as read from the scene source, when this property maps to
+    /// one. The in-game editor uses it as the compare-and-swap value for an
+    /// explicit source save; the displayed value can be lossy or unit-scaled.
+    pub source_value: Option<serde_yaml::Value>,
     pub group: String,
     pub trait_kind: Option<String>,
     pub binding: Option<AuthoringRuntimeBinding>,

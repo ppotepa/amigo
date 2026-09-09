@@ -28,7 +28,7 @@ use crate::properties::{
 };
 use crate::state::{
     EditorHitAction, EditorHitTarget, EditorOpenMode, EditorRect, EditorTreeMode,
-    IngameEditorSnapshot, IngameEditorState,
+    EditorSourceScalar, IngameEditorSnapshot, IngameEditorState,
 };
 use crate::theme::{
     editor_icon_font, format_primary_tags, format_property_tags, icon_ascii, icon_glyph,
@@ -145,7 +145,12 @@ pub(crate) fn build_editor_document(
     let layout = EditorLayout::new(viewport);
     let snapshot = state.snapshot();
     let root_children = vec![
-        top_bar(layout, graph),
+        top_bar(
+            layout,
+            graph,
+            snapshot.has_pending_source_patch,
+            hit_targets,
+        ),
         left_tree_panel(
             layout,
             graph,
@@ -708,6 +713,41 @@ fn property_value_suffix(row: &AuthoringProperty) -> String {
     String::new()
 }
 
+fn button_node(id: impl Into<String>, text_value: impl Into<String>) -> UiOverlayNode {
+    UiOverlayNode {
+        id: Some(id.into()),
+        kind: UiOverlayNodeKind::Button {
+            text: text_value.into(),
+            font: None,
+        },
+        style: UiOverlayStyle {
+            width: Some(126.0),
+            height: Some(ROW_H),
+            ..UiOverlayStyle::default()
+        },
+        children: Vec::new(),
+    }
+}
+
+fn source_scalar(row: &AuthoringProperty) -> Option<EditorSourceScalar> {
+    let expected = row.source_value.clone()?;
+    let supported = match &expected {
+        serde_yaml::Value::Bool(_) | serde_yaml::Value::String(_) => true,
+        serde_yaml::Value::Number(number) => {
+            number.as_i64().is_none() && number.as_u64().is_none() && number.as_f64().is_some()
+        }
+        _ => false,
+    };
+    if !supported || row.source_file.is_empty() || row.yaml_pointer.is_empty() {
+        return None;
+    }
+    Some(EditorSourceScalar {
+        source_file: row.source_file.clone(),
+        yaml_pointer: row.yaml_pointer.clone(),
+        expected,
+    })
+}
+
 fn push_property_row(
     children: &mut Vec<UiOverlayNode>,
     panel_layout: &EditorPanelLayout,
@@ -717,6 +757,7 @@ fn push_property_row(
 ) {
     let row_id = format!("property:{}", row.id);
     let interactive = property_has_editable_hit_target(&row);
+    let source_scalar = source_scalar(&row);
     if let (Some((min, max, step)), Some(value)) = (is_slider(&row.editor), as_number(&row.value)) {
         if scroll.is_visible() {
             children.push(text(
@@ -738,6 +779,7 @@ fn push_property_row(
                     action: EditorHitAction::Slider {
                         property_id: row.id,
                         target: row.binding,
+                        source: source_scalar.clone(),
                         min,
                         max,
                         current: value,
@@ -763,6 +805,7 @@ fn push_property_row(
                             action: EditorHitAction::Toggle {
                                 property_id: row.id,
                                 target: row.binding,
+                                source: source_scalar.clone(),
                                 current: value,
                             },
                         });
@@ -786,6 +829,7 @@ fn push_property_row(
                         action: EditorHitAction::NumberCommit {
                             property_id: row.id,
                             target: row.binding,
+                            source: source_scalar.clone(),
                             value: next,
                         },
                     });
@@ -801,6 +845,7 @@ fn push_property_row(
                         action: EditorHitAction::EnumSelect {
                             property_id: row.id,
                             target: row.binding,
+                            source: source_scalar.clone(),
                             value: next,
                         },
                     });
@@ -1029,8 +1074,14 @@ fn node_matches_filter(node: &AuthoringNode, filter: &str) -> bool {
             .contains(&filter)
 }
 
-fn top_bar(layout: EditorLayout, graph: &AuthoringSceneGraph) -> UiOverlayNode {
+fn top_bar(
+    layout: EditorLayout,
+    graph: &AuthoringSceneGraph,
+    has_pending_source_patch: bool,
+    hit_targets: &mut Vec<EditorHitTarget>,
+) -> UiOverlayNode {
     let mut node = panel("editor-top-bar", layout.top_bar.rect);
+    node.kind = UiOverlayNodeKind::Stack;
     node.children.push(text(
         "editor-title",
         format!(
@@ -1039,6 +1090,42 @@ fn top_bar(layout: EditorLayout, graph: &AuthoringSceneGraph) -> UiOverlayNode {
         ),
         13.0,
     ));
+    if has_pending_source_patch {
+        let save_id = "editor-save-source";
+        let mut save_button = button_node(save_id, "Save source edit");
+        save_button.style.left = Some((layout.top_bar.content_rect.width - 260.0).max(0.0));
+        save_button.style.top = Some(0.0);
+        node.children.push(save_button);
+        hit_targets.push(EditorHitTarget {
+            id: save_id.to_owned(),
+            rect: EditorRect {
+                x: layout.top_bar.content_rect.x + layout.top_bar.content_rect.width - 260.0,
+                y: layout.top_bar.content_rect.y,
+                width: 126.0,
+                height: ROW_H,
+            },
+            action: EditorHitAction::Command {
+                command: "editor.save_source_edit".to_owned(),
+            },
+        });
+        let discard_id = "editor-discard-source";
+        let mut discard_button = button_node(discard_id, "Discard draft");
+        discard_button.style.left = Some((layout.top_bar.content_rect.width - 130.0).max(0.0));
+        discard_button.style.top = Some(0.0);
+        node.children.push(discard_button);
+        hit_targets.push(EditorHitTarget {
+            id: discard_id.to_owned(),
+            rect: EditorRect {
+                x: layout.top_bar.content_rect.x + layout.top_bar.content_rect.width - 130.0,
+                y: layout.top_bar.content_rect.y,
+                width: 126.0,
+                height: ROW_H,
+            },
+            action: EditorHitAction::Command {
+                command: "editor.discard_source_edit".to_owned(),
+            },
+        });
+    }
     node
 }
 

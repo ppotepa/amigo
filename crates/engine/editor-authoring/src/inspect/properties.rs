@@ -125,6 +125,7 @@ fn readonly_text(node: &AuthoringNode, label: &str, value: impl Into<String>) ->
         read_only: true,
         source_file: node.source_file.display().to_string(),
         yaml_pointer: node.yaml_pointer.clone(),
+        source_value: None,
         group: "metadata".to_owned(),
         trait_kind: None,
         binding: None,

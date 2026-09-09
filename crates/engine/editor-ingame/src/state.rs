@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 use std::collections::BTreeSet;
 use std::sync::{Arc, Mutex};
 
-use amigo_editor_authoring::AuthoringRuntimeBinding;
+use amigo_editor_authoring::{AuthoringRuntimeBinding, AuthoringSourceScalarPatch};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum EditorPropertyValue {
@@ -80,6 +80,46 @@ impl EditorRect {
     }
 }
 
+/// Source identity attached to an editable scalar property. It is deliberately
+/// separate from a runtime binding: a live edit need not be safe to persist.
+#[derive(Debug, Clone, PartialEq)]
+pub struct EditorSourceScalar {
+    pub source_file: String,
+    pub yaml_pointer: String,
+    pub expected: serde_yaml::Value,
+}
+
+impl EditorSourceScalar {
+    pub fn patch_for(&self, next: &EditorPropertyValue) -> Option<AuthoringSourceScalarPatch> {
+        let replacement = match (&self.expected, next) {
+            (serde_yaml::Value::Bool(_), EditorPropertyValue::Bool(value)) => {
+                serde_yaml::Value::Bool(*value)
+            }
+            (serde_yaml::Value::String(_), EditorPropertyValue::Text(value))
+            | (serde_yaml::Value::String(_), EditorPropertyValue::Enum(value)) => {
+                serde_yaml::Value::String(value.clone())
+            }
+            // Numeric editor controls are f32. Persist only YAML floating
+            // scalars, never integer identifiers such as a high-precision seed.
+            (serde_yaml::Value::Number(number), EditorPropertyValue::Number(value))
+                if number.as_i64().is_none()
+                    && number.as_u64().is_none()
+                    && number.as_f64().is_some()
+                    && value.is_finite() =>
+            {
+                serde_yaml::to_value(*value).ok()?
+            }
+            _ => return None,
+        };
+        Some(AuthoringSourceScalarPatch {
+            source_file: self.source_file.clone().into(),
+            yaml_pointer: self.yaml_pointer.clone(),
+            expected: self.expected.clone(),
+            replacement,
+        })
+    }
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum EditorHitAction {
     SelectNode {
@@ -90,6 +130,7 @@ pub enum EditorHitAction {
     Slider {
         property_id: String,
         target: Option<AuthoringRuntimeBinding>,
+        source: Option<EditorSourceScalar>,
         min: f32,
         max: f32,
         current: f32,
@@ -97,6 +138,7 @@ pub enum EditorHitAction {
     Toggle {
         property_id: String,
         target: Option<AuthoringRuntimeBinding>,
+        source: Option<EditorSourceScalar>,
         current: bool,
     },
     TextCommit {
@@ -107,11 +149,13 @@ pub enum EditorHitAction {
     EnumSelect {
         property_id: String,
         target: Option<AuthoringRuntimeBinding>,
+        source: Option<EditorSourceScalar>,
         value: String,
     },
     NumberCommit {
         property_id: String,
         target: Option<AuthoringRuntimeBinding>,
+        source: Option<EditorSourceScalar>,
         value: f32,
     },
     Vec2Commit {
@@ -155,6 +199,7 @@ pub struct IngameEditorSnapshot {
     pub inspect_target: Option<InspectTarget>,
     pub cursor: Option<(f32, f32)>,
     pub property_overrides: BTreeMap<String, EditorPropertyValue>,
+    pub has_pending_source_patch: bool,
     pub hit_targets: Vec<EditorHitTarget>,
     pub tree_scroll: f32,
     pub properties_scroll: f32,
@@ -180,6 +225,7 @@ struct IngameEditorInner {
     inspect_target: Option<InspectTarget>,
     cursor: Option<(f32, f32)>,
     property_overrides: BTreeMap<String, EditorPropertyValue>,
+    pending_source_patch: Option<AuthoringSourceScalarPatch>,
     hit_targets: Vec<EditorHitTarget>,
     tree_scroll: f32,
     properties_scroll: f32,
@@ -212,6 +258,7 @@ impl IngameEditorState {
                 inspect_target: None,
                 cursor: None,
                 property_overrides: BTreeMap::new(),
+                pending_source_patch: None,
                 hit_targets: Vec::new(),
                 tree_scroll: 0.0,
                 properties_scroll: 0.0,
@@ -247,6 +294,7 @@ impl IngameEditorState {
             inspect_target: inner.inspect_target.clone(),
             cursor: inner.cursor,
             property_overrides: inner.property_overrides.clone(),
+            has_pending_source_patch: inner.pending_source_patch.is_some(),
             hit_targets: inner.hit_targets.clone(),
             tree_scroll: inner.tree_scroll,
             properties_scroll: inner.properties_scroll,
@@ -427,6 +475,28 @@ impl IngameEditorState {
             .property_overrides
             .get(property_id)
             .cloned()
+    }
+
+    pub fn stage_source_scalar_patch(&self, patch: AuthoringSourceScalarPatch) {
+        self.inner
+            .lock()
+            .unwrap_or_else(|poison| poison.into_inner())
+            .pending_source_patch = Some(patch);
+    }
+
+    pub fn pending_source_scalar_patch(&self) -> Option<AuthoringSourceScalarPatch> {
+        self.inner
+            .lock()
+            .unwrap_or_else(|poison| poison.into_inner())
+            .pending_source_patch
+            .clone()
+    }
+
+    pub fn clear_pending_source_scalar_patch(&self) {
+        self.inner
+            .lock()
+            .unwrap_or_else(|poison| poison.into_inner())
+            .pending_source_patch = None;
     }
 
     pub fn set_status(&self, status: impl Into<String>) {

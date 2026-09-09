@@ -122,6 +122,34 @@ fn test_graph(
     }
 }
 
+#[test]
+fn source_scalar_draft_preserves_yaml_semantics_and_can_be_discarded() {
+    let floating = state::EditorSourceScalar {
+        source_file: "scene.yml".to_owned(),
+        yaml_pointer: "/camera/distance".to_owned(),
+        expected: serde_yaml::from_str("14.0").unwrap(),
+    };
+    let patch = floating
+        .patch_for(&state::EditorPropertyValue::Number(8.5))
+        .expect("floating source scalar should be persistable");
+    assert_eq!(patch.replacement, serde_yaml::to_value(8.5f32).unwrap());
+
+    let integer = state::EditorSourceScalar {
+        source_file: "scene.yml".to_owned(),
+        yaml_pointer: "/seed".to_owned(),
+        expected: serde_yaml::from_str("5134274").unwrap(),
+    };
+    assert!(integer
+        .patch_for(&state::EditorPropertyValue::Number(2.0))
+        .is_none());
+
+    let state = IngameEditorState::new(true);
+    state.stage_source_scalar_patch(patch);
+    assert!(state.snapshot().has_pending_source_patch);
+    state.clear_pending_source_scalar_patch();
+    assert!(!state.snapshot().has_pending_source_patch);
+}
+
 fn test_runtime() -> amigo_runtime::Runtime {
     amigo_runtime::RuntimeBuilder::default().build()
 }
@@ -610,6 +638,7 @@ fn primary_inspector_hides_hidden_properties() {
         read_only: true,
         source_file: "scene.yml".to_owned(),
         yaml_pointer: "/hidden".to_owned(),
+        source_value: None,
         group: "debug".to_owned(),
         trait_kind: None,
         binding: None,
@@ -952,6 +981,7 @@ fn test_property_for_hit_target(
         read_only,
         source_file: "scene.yml".to_owned(),
         yaml_pointer: "/prop".to_owned(),
+        source_value: None,
         group: "test".to_owned(),
         trait_kind: None,
         binding,

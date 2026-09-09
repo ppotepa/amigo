@@ -238,6 +238,7 @@ pub fn property_from_node_descriptor(
             .fold(node.yaml_pointer.clone(), |pointer, segment| {
                 child_pointer(&pointer, segment)
             }),
+        source_value: yaml_value.cloned(),
         group: descriptor.group.to_owned(),
         trait_kind: None,
         binding: binding.clone(),

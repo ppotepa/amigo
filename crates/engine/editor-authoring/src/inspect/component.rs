@@ -105,6 +105,7 @@ fn descriptor_property(
         read_only,
         source_file: node.source_file.display().to_string(),
         yaml_pointer: property_yaml_pointer(node, descriptor.path),
+        source_value: yaml_value.cloned(),
         group: descriptor.group.to_owned(),
         trait_kind,
         binding: binding.clone(),

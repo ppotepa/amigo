@@ -150,6 +150,10 @@ fn number_property(
         read_only: false,
         source_file: node.source_file.display().to_string(),
         yaml_pointer: node.yaml_pointer.clone(),
+        // Image-part fields currently identify the component rather than the
+        // nested list element. Do not offer a stale source save until that
+        // structural path has a precise pointer.
+        source_value: None,
         group: descriptor.group.to_owned(),
         trait_kind: None,
         binding: Some(binding),
@@ -177,6 +181,7 @@ fn bool_property(
         read_only: false,
         source_file: node.source_file.display().to_string(),
         yaml_pointer: node.yaml_pointer.clone(),
+        source_value: None,
         group: descriptor.group.to_owned(),
         trait_kind: None,
         binding: Some(binding),

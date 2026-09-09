@@ -5,12 +5,12 @@ use amigo_overlay_api::UiViewportSize;
 use amigo_runtime::Runtime;
 use amigo_ui::UiInputViewportState;
 
-use crate::layout::{EditorLayout, EditorPanelKind, inspector_dock_panel};
-use crate::runtime_apply::{ApplyRequest, apply_property_request};
+use crate::layout::{inspector_dock_panel, EditorLayout, EditorPanelKind};
+use crate::runtime_apply::{apply_property_request, ApplyRequest, ApplyResult};
 use crate::selection::{select_node_by_id, select_viewport_target};
 use crate::state::{
-    EditorHitAction, EditorHitTarget, EditorOpenMode, EditorPropertyValue, EditorTreeMode,
-    IngameEditorState, SelectionSource,
+    EditorHitAction, EditorHitTarget, EditorOpenMode, EditorPropertyValue, EditorSourceScalar,
+    EditorTreeMode, IngameEditorState, SelectionSource,
 };
 
 pub fn handle_editor_input(
@@ -221,6 +221,7 @@ fn handle_hit_target(
         EditorHitAction::Slider {
             property_id,
             target: runtime_target,
+            source,
             min,
             max,
             current,
@@ -236,6 +237,12 @@ fn handle_hit_target(
                     next: EditorPropertyValue::Number(value),
                 },
             )?;
+            stage_source_scalar_patch(
+                state,
+                &result,
+                source.as_ref(),
+                &EditorPropertyValue::Number(value),
+            );
             state.set_status(format!(
                 "{property_id}: {current:.3} -> {value:.3} {result:?}"
             ));
@@ -243,6 +250,7 @@ fn handle_hit_target(
         EditorHitAction::Toggle {
             property_id,
             target: runtime_target,
+            source,
             current,
         } => {
             let previous = match state.override_value(&property_id) {
@@ -260,6 +268,12 @@ fn handle_hit_target(
                     next: EditorPropertyValue::Bool(next),
                 },
             )?;
+            stage_source_scalar_patch(
+                state,
+                &result,
+                source.as_ref(),
+                &EditorPropertyValue::Bool(next),
+            );
             state.set_status(format!("{property_id}: {previous} -> {next} {result:?}"));
         }
         EditorHitAction::TextCommit {
@@ -282,6 +296,7 @@ fn handle_hit_target(
         EditorHitAction::EnumSelect {
             property_id,
             target: runtime_target,
+            source,
             value,
         } => {
             let result = apply_property_request(
@@ -294,6 +309,12 @@ fn handle_hit_target(
                     next: EditorPropertyValue::Enum(value.clone()),
                 },
             )?;
+            stage_source_scalar_patch(
+                state,
+                &result,
+                source.as_ref(),
+                &EditorPropertyValue::Enum(value.clone()),
+            );
             state.set_status(format!("{property_id}: {value} {result:?}"));
         }
         EditorHitAction::ColorCommit {
@@ -316,6 +337,7 @@ fn handle_hit_target(
         EditorHitAction::NumberCommit {
             property_id,
             target: runtime_target,
+            source,
             value,
         } => {
             let result = apply_property_request(
@@ -328,6 +350,12 @@ fn handle_hit_target(
                     next: EditorPropertyValue::Number(value),
                 },
             )?;
+            stage_source_scalar_patch(
+                state,
+                &result,
+                source.as_ref(),
+                &EditorPropertyValue::Number(value),
+            );
             state.set_status(format!("{property_id}: -> {value:.3} {result:?}"));
         }
         EditorHitAction::Vec2Commit {
@@ -371,6 +399,30 @@ fn handle_hit_target(
             "editor.tree.clean" => state.set_tree_mode(EditorTreeMode::Scene),
             "editor.tree.stack" => state.set_tree_mode(EditorTreeMode::Stack),
             "editor.tree.raw" => state.set_tree_mode(EditorTreeMode::RawYaml),
+            "editor.save_source_edit" => {
+                let Some(patch) = state.pending_source_scalar_patch() else {
+                    state.set_status("source save: no pending scalar edit".to_owned());
+                    return Ok(());
+                };
+                let Some(service) = runtime.resolve::<AuthoringSceneGraphService>() else {
+                    state
+                        .set_status("source save failed: authoring service unavailable".to_owned());
+                    return Ok(());
+                };
+                match service.apply_source_scalar_patch(runtime, patch) {
+                    Ok(()) => {
+                        state.clear_pending_source_scalar_patch();
+                        state.set_status("source save: persisted".to_owned());
+                    }
+                    Err(error) => state.set_status(format!("source save failed: {error}")),
+                }
+            }
+            "editor.discard_source_edit" => {
+                state.clear_pending_source_scalar_patch();
+                state.set_status(
+                    "source edit draft discarded; runtime value is unchanged".to_owned(),
+                );
+            }
             _ => state.set_status(format!("unknown editor command: {command}")),
         },
         EditorHitAction::ToggleTreeNode { node_id } => {
@@ -380,6 +432,20 @@ fn handle_hit_target(
     }
 
     Ok(())
+}
+
+fn stage_source_scalar_patch(
+    state: &IngameEditorState,
+    result: &ApplyResult,
+    source: Option<&EditorSourceScalar>,
+    next: &EditorPropertyValue,
+) {
+    if !matches!(result, ApplyResult::Applied) {
+        return;
+    }
+    if let Some(patch) = source.and_then(|source| source.patch_for(next)) {
+        state.stage_source_scalar_patch(patch);
+    }
 }
 
 fn slider_value_from_cursor(

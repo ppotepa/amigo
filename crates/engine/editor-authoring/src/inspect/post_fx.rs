@@ -43,6 +43,7 @@ fn postfx_panel(node: &AuthoringNode) -> AuthoringPropertyPanel {
         read_only: false,
         source_file: node.source_file.display().to_string(),
         yaml_pointer: child_pointer(&node.yaml_pointer, "enabled"),
+        source_value: mapping_get(&node.value, "enabled").cloned(),
         group: "postfx".to_owned(),
         trait_kind: None,
         binding: Some(AuthoringRuntimeBinding::PostFxFrameEnabled { index }),
@@ -116,6 +117,7 @@ fn postfx_float(
         read_only: false,
         source_file: node.source_file.display().to_string(),
         yaml_pointer: child_pointer(&node.yaml_pointer, field),
+        source_value: mapping_get(&node.value, field).cloned(),
         group: "postfx".to_owned(),
         trait_kind: None,
         binding: Some(AuthoringRuntimeBinding::PostFxFrameField {
@@ -139,6 +141,7 @@ fn postfx_toggle(node: &AuthoringNode, index: usize, field: &str) -> AuthoringPr
         read_only: false,
         source_file: node.source_file.display().to_string(),
         yaml_pointer: child_pointer(&node.yaml_pointer, field),
+        source_value: mapping_get(&node.value, field).cloned(),
         group: "postfx".to_owned(),
         trait_kind: None,
         binding: Some(AuthoringRuntimeBinding::PostFxFrameField {
@@ -175,6 +178,7 @@ fn postfx_debug_view(node: &AuthoringNode, index: usize) -> AuthoringProperty {
         read_only: false,
         source_file: node.source_file.display().to_string(),
         yaml_pointer: child_pointer(&node.yaml_pointer, "debug_view"),
+        source_value: mapping_get(&node.value, "debug_view").cloned(),
         group: "postfx".to_owned(),
         trait_kind: None,
         binding: Some(AuthoringRuntimeBinding::PostFxFrameField {
