@@ -86,6 +86,8 @@ The in-game editor offers `Save NPR scene` when the selected scene contains an
 `NprSettings` component. It writes the complete typed component atomically,
 including construction marks and per-object surface policy. The replacement
 rejects stale or ambiguous source data and preserves YAML outside that component.
-The current implementation intentionally does not expose
-suggestive contours or apparent ridges: those need validated curvature
-derivatives rather than a threshold over triangulation noise.
+`Kontury sugerowane` są opt-in dla powierzchni Smooth. Powstają z
+widokozależnego pola krzywizny radialnej, mają własny próg pewności oraz
+niezależne width/opacity; nie zastępują sylwetki. Apparent ridges pozostają
+poza zakresem, ponieważ wymagają dodatkowego, zwalidowanego modelu pochodnych
+krzywizny.
