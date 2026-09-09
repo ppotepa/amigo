@@ -482,6 +482,7 @@ fn authored_scene_settings_override_only_declared_npr_intent() {
                 NprObjectSceneSettings {
                     rotating: Some(false),
                     surface_subdivision_level: Some(2),
+                    smooth_weld_relative_tolerance: Some(0.000_02),
                     ..Default::default()
                 },
             )]),
@@ -496,6 +497,7 @@ fn authored_scene_settings_override_only_declared_npr_intent() {
     assert_eq!(settings.camera_yaw, 31.0);
     assert!(!settings.objects["sphere"].rotating);
     assert_eq!(settings.objects["sphere"].surface_subdivision_level, 2);
+    assert_eq!(settings.objects["sphere"].smooth_weld_relative_tolerance, 0.000_02);
     assert!(settings.objects["cube"].rotating, "undeclared defaults survive");
 }
 

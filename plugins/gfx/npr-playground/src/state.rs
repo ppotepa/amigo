@@ -183,6 +183,9 @@ pub fn style_preset_id(style: ComicInk) -> &'static str {
 fn default_surface_subdivision_level() -> u8 {
     1
 }
+fn default_smooth_weld_relative_tolerance() -> f32 {
+    1.0e-5
+}
 
 /// A point on an authored model surface.  It deliberately omits the runtime
 /// surface revision: RenderExtract attaches that identity after it selects the
@@ -279,6 +282,9 @@ pub struct ObjectSettings {
     /// camera frame. Zero means use the authored source surface directly.
     #[serde(default = "default_surface_subdivision_level")]
     pub surface_subdivision_level: u8,
+    /// Seam-weld radius relative to model scale, used only by Smooth proxies.
+    #[serde(default = "default_smooth_weld_relative_tolerance")]
+    pub smooth_weld_relative_tolerance: f32,
     pub visible: bool,
     pub rotating: bool,
     pub position: Vec3,
@@ -339,6 +345,7 @@ impl Settings {
                             "cube" | "wedge" => 0,
                             _ => default_surface_subdivision_level(),
                         },
+                        smooth_weld_relative_tolerance: default_smooth_weld_relative_tolerance(),
                         visible: true,
                         rotating: true,
                         position: if gallery {
@@ -429,6 +436,8 @@ impl Settings {
                 || !object.scale.is_finite()
                 || !(0.01..=10.0).contains(&object.scale)
                 || object.surface_subdivision_level > 2
+                || !object.smooth_weld_relative_tolerance.is_finite()
+                || !(0.0..=1.0e-2).contains(&object.smooth_weld_relative_tolerance)
             {
                 return Err("invalid object parameters".into());
             }
@@ -1484,6 +1493,7 @@ fn property_range(key: &str) -> Option<ControlRange> {
         "outline_width" | "crease_width" | "boundary_width" => (0.0, 20.0),
         "min_crease_length_pixels" => (0.0, 64.0),
         "surface_subdivision_level" => (0.0, 2.0),
+        "smooth_weld_relative_tolerance" => (0.0, 0.01),
         "crease_angle" | "smooth_crease_angle" => (0.0, 180.0),
         "taper" => (0.0, 1.0),
         "wobble" => (0.0, 10.0),

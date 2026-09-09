@@ -293,6 +293,7 @@ impl NprPlaygroundRenderService {
                 let proxy_policy = NprSmoothProxyPolicy {
                     levels: object.surface_subdivision_level,
                     crease_angle: style.smooth_crease_angle,
+                    weld_relative_tolerance: object.smooth_weld_relative_tolerance,
                     ..NprSmoothProxyPolicy::default()
                 };
                 let prepared = if object.surface_mode == NprSurfaceMode::Smooth {

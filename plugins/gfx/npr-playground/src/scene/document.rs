@@ -69,6 +69,8 @@ pub struct NprObjectSceneSettings {
     #[serde(default)]
     pub surface_subdivision_level: Option<u8>,
     #[serde(default)]
+    pub smooth_weld_relative_tolerance: Option<f32>,
+    #[serde(default)]
     pub override_style: Option<bool>,
     #[serde(default)]
     pub style: Option<ComicInk>,
@@ -101,6 +103,9 @@ impl NprPlaygroundSceneDocument {
                 surface_subdivision_level: (object.surface_subdivision_level
                     != default.surface_subdivision_level)
                     .then_some(object.surface_subdivision_level),
+                smooth_weld_relative_tolerance: (object.smooth_weld_relative_tolerance
+                    != default.smooth_weld_relative_tolerance)
+                    .then_some(object.smooth_weld_relative_tolerance),
                 override_style: (object.override_style != default.override_style)
                     .then_some(object.override_style),
                 style: (object.style != default.style).then_some(object.style),
@@ -179,6 +184,7 @@ fn apply_object_settings(object: &mut ObjectSettings, authored: &NprObjectSceneS
     if let Some(value) = authored.angular_speed { object.angular_speed = value; }
     if let Some(value) = authored.surface_mode { object.surface_mode = value; }
     if let Some(value) = authored.surface_subdivision_level { object.surface_subdivision_level = value; }
+    if let Some(value) = authored.smooth_weld_relative_tolerance { object.smooth_weld_relative_tolerance = value; }
     if let Some(value) = authored.override_style { object.override_style = value; }
     if let Some(value) = authored.style { object.style = value; }
     if let Some(value) = &authored.construction_marks { object.construction_marks = value.clone(); }

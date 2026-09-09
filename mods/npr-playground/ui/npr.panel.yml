@@ -680,6 +680,15 @@ root:
               max: 2
               step: 1
             -
+              type: "slider"
+              id: "object-smooth-weld-tolerance"
+              text: "Seam weld tolerance"
+              tooltip: "Relative radius used only by Smooth proxy. Zero preserves only exact matching positions; a small value removes tiny importer seams without changing Polygonal objects."
+              value_bind: "world.npr.settings.NprSettings.object.smooth_weld_relative_tolerance"
+              min: 0
+              max: 0.0001
+              step: 0.000001
+            -
               type: "row"
               id: "object-flags"
               children:
