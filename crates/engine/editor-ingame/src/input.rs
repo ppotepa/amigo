@@ -1,4 +1,5 @@
 use amigo_core::AmigoResult;
+use amigo_editor_api::{EditorRuntimeApplyOutcome, EditorRuntimeApplyRequest};
 use amigo_editor_authoring::AuthoringSceneGraphService;
 use amigo_input_api::{InputEvent, InputModifiers, KeyCode, MouseButton};
 use amigo_overlay_api::UiViewportSize;
@@ -12,6 +13,7 @@ use crate::state::{
     EditorHitAction, EditorHitTarget, EditorOpenMode, EditorPropertyValue, EditorSourceScalar,
     EditorTreeMode, IngameEditorState, SelectionSource,
 };
+use crate::IngameEditorRuntimeApplyProviderRegistry;
 
 pub fn handle_editor_input(
     runtime: &Runtime,
@@ -423,6 +425,24 @@ fn handle_hit_target(
                 state.set_status(
                     "source edit draft discarded; runtime value is unchanged".to_owned(),
                 );
+            }
+            "editor.save_npr_document" => {
+                let Some(providers) = runtime.resolve::<IngameEditorRuntimeApplyProviderRegistry>() else {
+                    state.set_status("NPR document save unavailable".to_owned());
+                    return Ok(());
+                };
+                match providers.apply_first(
+                    runtime,
+                    EditorRuntimeApplyRequest::Command {
+                        id: command.clone(),
+                        args: Vec::new(),
+                    },
+                )? {
+                    Some(EditorRuntimeApplyOutcome::Applied(message)) => state.set_status(message),
+                    Some(EditorRuntimeApplyOutcome::Ignored) | None => {
+                        state.set_status("NPR document save unavailable for this scene".to_owned())
+                    }
+                }
             }
             _ => state.set_status(format!("unknown editor command: {command}")),
         },

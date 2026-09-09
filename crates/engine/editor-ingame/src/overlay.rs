@@ -1126,7 +1126,34 @@ fn top_bar(
             },
         });
     }
+    if graph.nodes.iter().any(has_npr_settings_component) {
+        let save_id = "editor-save-npr-document";
+        let mut save_button = button_node(save_id, "Save NPR scene");
+        save_button.style.left = Some((layout.top_bar.content_rect.width - 390.0).max(0.0));
+        save_button.style.top = Some(0.0);
+        node.children.push(save_button);
+        hit_targets.push(EditorHitTarget {
+            id: save_id.to_owned(),
+            rect: EditorRect {
+                x: layout.top_bar.content_rect.x + layout.top_bar.content_rect.width - 390.0,
+                y: layout.top_bar.content_rect.y,
+                width: 126.0,
+                height: ROW_H,
+            },
+            action: EditorHitAction::Command {
+                command: "editor.save_npr_document".to_owned(),
+            },
+        });
+    }
     node
+}
+
+fn has_npr_settings_component(node: &AuthoringNode) -> bool {
+    matches!(
+        node.semantic.component_type.as_deref(),
+        Some("amigo.gfx.npr-playground.NprSettings" | "NprSettings")
+    )
+        || node.children.iter().any(has_npr_settings_component)
 }
 
 fn center_viewport_panel(layout: EditorLayout, snapshot: &IngameEditorSnapshot) -> UiOverlayNode {
