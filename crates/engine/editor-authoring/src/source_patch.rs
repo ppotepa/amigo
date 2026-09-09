@@ -20,6 +20,18 @@ pub struct AuthoringSourceScalarPatch {
     pub replacement: Value,
 }
 
+/// A deliberate replacement of one complete YAML component value. The patcher
+/// preserves text outside the selected value; comments inside it are rewritten.
+#[derive(Debug, Clone, PartialEq)]
+pub struct AuthoringSourceValuePatch {
+    pub source_file: PathBuf,
+    /// RFC 6901-style path in the parsed source document.
+    pub yaml_pointer: String,
+    /// Complete value observed when editing started. Prevents stale overwrite.
+    pub expected: Value,
+    pub replacement: Value,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AuthoringSourcePatchError {
     InvalidPointer(String),
@@ -27,6 +39,7 @@ pub enum AuthoringSourcePatchError {
     Parse(String),
     StaleValue,
     AmbiguousScalar { key: String, matches: usize },
+    AmbiguousValue { matches: usize },
     Io(String),
 }
 
@@ -39,6 +52,9 @@ impl std::fmt::Display for AuthoringSourcePatchError {
             Self::StaleValue => f.write_str("authored YAML changed since this edit was started"),
             Self::AmbiguousScalar { key, matches } => {
                 write!(f, "YAML key `{key}` has {matches} matching scalar locations")
+            }
+            Self::AmbiguousValue { matches } => {
+                write!(f, "YAML value has {matches} matching list-item locations")
             }
             Self::Io(error) => write!(f, "source patch I/O error: {error}"),
         }
@@ -114,6 +130,46 @@ pub fn patch_yaml_source_scalars(
     Ok(output)
 }
 
+/// Replaces one existing mapping or sequence list-item block without
+/// reserializing its surrounding YAML document. This deliberately narrow
+/// operation covers authored scene components; a general comment-preserving
+/// YAML structural editor is not silently approximated here.
+pub fn patch_yaml_source_value(
+    source: &str,
+    yaml_pointer: &str,
+    expected: &Value,
+    replacement: &Value,
+) -> Result<String, AuthoringSourcePatchError> {
+    if !matches!(expected, Value::Mapping(_) | Value::Sequence(_))
+        || !matches!(replacement, Value::Mapping(_) | Value::Sequence(_))
+    {
+        return Err(AuthoringSourcePatchError::UnsupportedValue);
+    }
+    let parsed: Value = serde_yaml::from_str(source)
+        .map_err(|error| AuthoringSourcePatchError::Parse(error.to_string()))?;
+    if value_at_pointer(&parsed, yaml_pointer) != Some(expected) {
+        return Err(AuthoringSourcePatchError::StaleValue);
+    }
+    let matches = matching_list_item_blocks(source, expected)?;
+    if matches.len() != 1 {
+        return Err(AuthoringSourcePatchError::AmbiguousValue {
+            matches: matches.len(),
+        });
+    }
+    let block = matches[0];
+    let replacement_text = yaml_list_item_text(replacement, block.indent)?;
+    let mut output = String::with_capacity(source.len() + replacement_text.len());
+    output.push_str(&source[..block.start]);
+    output.push_str(&replacement_text);
+    output.push_str(&source[block.end..]);
+    let reparsed: Value = serde_yaml::from_str(&output)
+        .map_err(|error| AuthoringSourcePatchError::Parse(error.to_string()))?;
+    if value_at_pointer(&reparsed, yaml_pointer) != Some(replacement) {
+        return Err(AuthoringSourcePatchError::StaleValue);
+    }
+    Ok(output)
+}
+
 /// Atomically replaces an existing authored file with validated source text.
 /// If the final rename cannot be performed, the old document remains intact.
 pub fn write_yaml_source_atomically(
@@ -153,6 +209,105 @@ pub fn write_yaml_source_atomically(
 
 fn is_scalar(value: &Value) -> bool {
     matches!(value, Value::Null | Value::Bool(_) | Value::Number(_) | Value::String(_))
+}
+
+#[derive(Debug, Clone, Copy)]
+struct ListItemBlock {
+    start: usize,
+    end: usize,
+    indent: usize,
+}
+
+fn matching_list_item_blocks(
+    source: &str,
+    expected: &Value,
+) -> Result<Vec<ListItemBlock>, AuthoringSourcePatchError> {
+    let lines = source
+        .split_inclusive(['\n'])
+        .scan(0usize, |offset, line| {
+            let start = *offset;
+            *offset += line.len();
+            Some((start, line))
+        })
+        .collect::<Vec<_>>();
+    let mut matches = Vec::new();
+    for (index, (start, line)) in lines.iter().enumerate() {
+        let body = line.trim_end_matches(['\r', '\n']);
+        let indent = body.len() - body.trim_start_matches([' ', '\t']).len();
+        let content = &body[indent..];
+        let Some(first) = content.strip_prefix("- ") else {
+            continue;
+        };
+        if first.trim().is_empty() || first.trim_start().starts_with('#') {
+            continue;
+        }
+        let mut end_index = index + 1;
+        while end_index < lines.len() {
+            let candidate = lines[end_index].1.trim_end_matches(['\r', '\n']);
+            if !candidate.trim().is_empty() && !candidate.trim_start().starts_with('#') {
+                let candidate_indent = candidate.len()
+                    - candidate.trim_start_matches([' ', '\t']).len();
+                if candidate_indent <= indent {
+                    break;
+                }
+            }
+            end_index += 1;
+        }
+        let end = lines.get(end_index).map_or(source.len(), |(offset, _)| *offset);
+        if list_item_value(source, *start, end, indent)? == *expected {
+            matches.push(ListItemBlock {
+                start: *start,
+                end,
+                indent,
+            });
+        }
+    }
+    Ok(matches)
+}
+
+fn list_item_value(
+    source: &str,
+    start: usize,
+    end: usize,
+    indent: usize,
+) -> Result<Value, AuthoringSourcePatchError> {
+    let mut output = String::new();
+    for (index, line) in source[start..end].split_inclusive(['\n']).enumerate() {
+        let body = line.trim_end_matches(['\r', '\n']);
+        let ending = &line[body.len()..];
+        if index == 0 {
+            let content = body[indent..].strip_prefix("- ").ok_or_else(|| {
+                AuthoringSourcePatchError::Parse("invalid YAML list item block".into())
+            })?;
+            output.push_str(content);
+        } else {
+            let child_indent = indent + 2;
+            output.push_str(body.get(child_indent..).unwrap_or(body));
+        }
+        output.push_str(ending);
+    }
+    serde_yaml::from_str(&output).map_err(|error| AuthoringSourcePatchError::Parse(error.to_string()))
+}
+
+fn yaml_list_item_text(
+    value: &Value,
+    indent: usize,
+) -> Result<String, AuthoringSourcePatchError> {
+    let serialized = serde_yaml::to_string(value)
+        .map_err(|error| AuthoringSourcePatchError::Parse(error.to_string()))?;
+    let mut lines = serialized.lines();
+    let first = lines.next().ok_or_else(|| {
+        AuthoringSourcePatchError::Parse("cannot serialize empty YAML value".into())
+    })?;
+    let prefix = " ".repeat(indent);
+    let child_prefix = " ".repeat(indent + 2);
+    let mut output = format!("{prefix}- {first}\n");
+    for line in lines {
+        output.push_str(&child_prefix);
+        output.push_str(line);
+        output.push('\n');
+    }
+    Ok(output)
 }
 
 fn pointer_key(pointer: &str) -> Result<String, AuthoringSourcePatchError> {
@@ -302,6 +457,72 @@ mod tests {
         )
         .unwrap();
         assert_eq!(output, "camera:\n  distance: 7.5 # framing\n  yaw: 1.25\n");
+    }
+
+    #[test]
+    fn replaces_one_component_block_without_reformatting_the_scene() {
+        let source = concat!(
+            "# scene comment\n",
+            "entities:\n",
+            "  - id: npr\n",
+            "    components:\n",
+            "      # component comment is owned by the component\n",
+            "      - type: amigo.gfx.npr.NprSettings\n",
+            "        gallery: true\n",
+            "        objects:\n",
+            "          cube:\n",
+            "            rotating: true\n",
+            "  - id: untouched\n",
+            "    name: untouched # retain\n"
+        );
+        let expected: Value = serde_yaml::from_str(concat!(
+            "type: amigo.gfx.npr.NprSettings\n",
+            "gallery: true\n",
+            "objects:\n",
+            "  cube:\n",
+            "    rotating: true\n"
+        ))
+        .unwrap();
+        let replacement: Value = serde_yaml::from_str(concat!(
+            "type: amigo.gfx.npr.NprSettings\n",
+            "gallery: true\n",
+            "objects:\n",
+            "  cube:\n",
+            "    rotating: false\n",
+            "    construction_marks:\n",
+            "      - id: 7\n",
+            "        anchors: []\n"
+        ))
+        .unwrap();
+        let output = patch_yaml_source_value(
+            source,
+            "/entities/0/components/0",
+            &expected,
+            &replacement,
+        )
+        .unwrap();
+        assert!(output.starts_with("# scene comment\nentities:\n  - id: npr\n"));
+        assert!(output.contains("            rotating: false\n"));
+        assert!(output.contains("  - id: untouched\n    name: untouched # retain\n"));
+        let parsed: Value = serde_yaml::from_str(&output).unwrap();
+        assert_eq!(value_at_pointer(&parsed, "/entities/0/components/0"), Some(&replacement));
+    }
+
+    #[test]
+    fn refuses_ambiguous_component_blocks() {
+        let source = concat!(
+            "items:\n",
+            "  - type: demo\n",
+            "    enabled: true\n",
+            "  - type: demo\n",
+            "    enabled: true\n"
+        );
+        let expected: Value = serde_yaml::from_str("type: demo\nenabled: true\n").unwrap();
+        let replacement: Value = serde_yaml::from_str("type: demo\nenabled: false\n").unwrap();
+        assert!(matches!(
+            patch_yaml_source_value(source, "/items/0", &expected, &replacement),
+            Err(AuthoringSourcePatchError::AmbiguousValue { matches: 2 })
+        ));
     }
 
     #[test]

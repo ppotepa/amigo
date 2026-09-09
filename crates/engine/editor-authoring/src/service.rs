@@ -9,8 +9,9 @@ use amigo_runtime::Runtime;
 use amigo_session::SceneSessionService;
 
 use crate::{
-    AuthoringSceneGraph, AuthoringSourceScalarPatch, load_authoring_scene_graph,
-    patch_yaml_source_scalars, write_yaml_source_atomically,
+    AuthoringSceneGraph, AuthoringSourceScalarPatch, AuthoringSourceValuePatch,
+    load_authoring_scene_graph, patch_yaml_source_scalars,
+    patch_yaml_source_value, write_yaml_source_atomically,
 };
 
 #[derive(Debug, Default)]
@@ -134,6 +135,48 @@ impl AuthoringSceneGraphService {
             AmigoError::Message(format!("editor authoring: cannot read source patch: {error}"))
         })?;
         let output = patch_yaml_source_scalars(&source, patches)
+        .map_err(|error| AmigoError::Message(format!("editor authoring: {error}")))?;
+        write_yaml_source_atomically(&requested, &output)
+            .map_err(|error| AmigoError::Message(format!("editor authoring: {error}")))?;
+        self.invalidate_scene(&source_mod, &scene_id);
+        Ok(())
+    }
+
+    /// Persists one domain-owned structural component edit. The target must be
+    /// an existing list-item value in a source file owned by the current scene;
+    /// the source patcher rejects stale or ambiguous components before this
+    /// method atomically replaces the file.
+    pub fn apply_source_value_patch(
+        &self,
+        runtime: &Runtime,
+        patch: AuthoringSourceValuePatch,
+    ) -> AmigoResult<()> {
+        let (source_mod, scene_id) = current_scene_context(runtime)?;
+        let graph = self.graph_for_current_scene(runtime)?;
+        let requested = patch.source_file.canonicalize().map_err(|error| {
+            AmigoError::Message(format!(
+                "editor authoring: source patch file is unavailable: {error}"
+            ))
+        })?;
+        let owned = graph.source_files.iter().any(|file| {
+            file.canonicalize()
+                .is_ok_and(|candidate| candidate == requested)
+        });
+        if !owned {
+            return Err(AmigoError::Message(format!(
+                "editor authoring: source patch target is not owned by current scene: {}",
+                requested.display()
+            )));
+        }
+        let source = std::fs::read_to_string(&requested).map_err(|error| {
+            AmigoError::Message(format!("editor authoring: cannot read source patch: {error}"))
+        })?;
+        let output = patch_yaml_source_value(
+            &source,
+            &patch.yaml_pointer,
+            &patch.expected,
+            &patch.replacement,
+        )
         .map_err(|error| AmigoError::Message(format!("editor authoring: {error}")))?;
         write_yaml_source_atomically(&requested, &output)
             .map_err(|error| AmigoError::Message(format!("editor authoring: {error}")))?;
