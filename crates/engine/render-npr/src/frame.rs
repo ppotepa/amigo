@@ -271,8 +271,10 @@ fn build_packet_with_identity(
             )
         })
         .unwrap_or_default();
-    // A smooth contour replaces the polygon-edge approximation only. Open
-    // boundaries and authored sharp creases retain their explicit meaning.
+    // A smooth contour replaces the polygon-edge approximation. Open
+    // boundaries retain their explicit meaning; topology creases must be
+    // explicitly enabled because imports cannot distinguish a semantic hard
+    // edge from a triangulation artifact.
     let features = if style.surface_mode == NprSurfaceMode::Smooth {
         edge_features
             .iter()
@@ -286,6 +288,9 @@ fn build_packet_with_identity(
                 // dihedral which the smooth-normal policy itself treats as
                 // discontinuous.
                 FeatureClass::Crease => {
+                    if !style.smooth_draw_creases {
+                        return false;
+                    }
                     let [first, second] = feature.edge.faces;
                     second != u32::MAX
                         && face_normal(geometry, first).dot(face_normal(geometry, second))
@@ -1838,12 +1843,29 @@ mod tests {
             [512, 512],
             ComicInk {
                 surface_mode: NprSurfaceMode::Smooth,
+                smooth_draw_creases: true,
                 ..Default::default()
             },
             42,
             NprDebugView::Final,
         );
         assert!(packet.stats.creases > 0);
+    }
+
+    #[test]
+    fn smooth_surface_omits_topology_creases_until_authored() {
+        let packet = build_packet(
+            &NprGeometry::canonical_cube(),
+            PerspectiveCamera::cube_default(1.0),
+            [512, 512],
+            ComicInk {
+                surface_mode: NprSurfaceMode::Smooth,
+                ..Default::default()
+            },
+            42,
+            NprDebugView::Final,
+        );
+        assert_eq!(packet.stats.creases, 0);
     }
 
     #[test]

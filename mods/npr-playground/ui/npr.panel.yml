@@ -335,6 +335,12 @@ root:
                       step: 0.5
                     -
                       type: "toggle"
+                      id: "ink-smooth-draw-creases"
+                      text: "Rysuj załamania topologii w Smooth"
+                      tooltip: "Wyłączone chroni modele organiczne przed liniami wynikającymi z triangulacji. Włącz tylko dla świadomie ostrych form."
+                      value_bind: "world.npr.settings.NprSettings.appearance.smooth_draw_creases"
+                    -
+                      type: "toggle"
                       id: "ink-suggestive-contours"
                       text: "Kontury sugerowane"
                       tooltip: "Cienkie, widokozależne linie formy na powierzchniach Smooth."

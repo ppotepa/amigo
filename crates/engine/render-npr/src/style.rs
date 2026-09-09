@@ -37,6 +37,12 @@ pub struct ComicInk {
     /// normals across a mesh edge. This is independent from whether that edge
     /// is drawn as an explicit crease.
     pub smooth_crease_angle: f32,
+    /// Whether a Smooth drawing may retain topology-derived crease strokes.
+    /// Disabled by default: imported organic meshes frequently contain sharp
+    /// triangulation artifacts which are not authored drawing intent. The
+    /// smooth contour field still honours `smooth_crease_angle` as a normal
+    /// discontinuity.
+    pub smooth_draw_creases: bool,
     pub paper: Vec4,
     pub shadow: Vec4,
     pub mid: Vec4,
@@ -91,6 +97,7 @@ impl Default for ComicInk {
             ink: Vec4::new(0.035, 0.025, 0.02, 1.0),
             crease_angle: 0.35,
             smooth_crease_angle: 1.2,
+            smooth_draw_creases: false,
             paper: Vec4::new(0.92, 0.88, 0.78, 1.0),
             shadow: Vec4::new(0.18, 0.20, 0.28, 1.0),
             mid: Vec4::new(0.46, 0.54, 0.68, 1.0),
