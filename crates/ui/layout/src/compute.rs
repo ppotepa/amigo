@@ -18,7 +18,16 @@ pub fn compute_layout<T: Clone>(
 
     let measured = measure_element(root);
     let width = root.style.width.unwrap_or(measured.0).max(0.0);
-    let height = root.style.height.unwrap_or(measured.1).max(0.0);
+    let height = root
+        .style
+        .height
+        .or_else(|| {
+            root.style.top.zip(root.style.bottom).map(|(top, bottom)| {
+                (layout_viewport.height - top.max(0.0) - bottom.max(0.0)).max(0.0)
+            })
+        })
+        .unwrap_or(measured.1)
+        .max(0.0);
     let x = resolve_screen_axis(
         root.style.left,
         root.style.right,

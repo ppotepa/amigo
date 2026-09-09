@@ -1,5 +1,5 @@
 id: "npr"
-title: "NPR · Pracownia"
+title: "NPR · Workshop"
 preset_name_bind: "world.npr.settings.NprSettings.preset_name"
 preset_domain_bind: "world.npr.settings.NprSettings.preset_domain"
 confirm_actions:
@@ -17,6 +17,7 @@ presentation:
       - {value: Broad Nib, label: Broad Nib, artwork: Comic Ink}
       - {value: Blueprint, label: Blueprint, artwork: Blueprint}
       - {value: Soft Toon, label: Soft Toon, artwork: Soft Toon}
+      - {value: Watercolour Wash, label: Watercolour Wash, artwork: Comic Ink}
   browser:
     pin: "top"
   playback:
@@ -27,26 +28,26 @@ presentation:
     collapsed: true
   selected:
     navigation: true
-    tooltip: "Wybierz obiekt sceny. W trybie pojedynczym kamera dopasuje kadr."
+    tooltip: "Select a scene object. In single-object mode the camera frames it."
     choices:
       -
         value: "cube"
-        label: "Sześcian"
+        label: "Cube"
         artwork_bind: "world.npr.settings.NprSettings.objects.cube.model"
         status_bind: "world.npr.settings.NprSettings.objects.cube.status"
       -
         value: "wedge"
-        label: "Klin"
+        label: "Wedge"
         artwork_bind: "world.npr.settings.NprSettings.objects.wedge.model"
         status_bind: "world.npr.settings.NprSettings.objects.wedge.status"
       -
         value: "cylinder"
-        label: "Walec"
+        label: "Cylinder"
         artwork_bind: "world.npr.settings.NprSettings.objects.cylinder.model"
         status_bind: "world.npr.settings.NprSettings.objects.cylinder.status"
       -
         value: "sphere"
-        label: "Sfera"
+        label: "Sphere"
         artwork_bind: "world.npr.settings.NprSettings.objects.sphere.model"
         status_bind: "world.npr.settings.NprSettings.objects.sphere.status"
       -
@@ -56,11 +57,11 @@ presentation:
         status_bind: "world.npr.settings.NprSettings.objects.suzanne.status"
       -
         value: "avocado"
-        label: "Awokado"
+        label: "Avocado"
         artwork_bind: "world.npr.settings.NprSettings.objects.avocado.model"
         status_bind: "world.npr.settings.NprSettings.objects.avocado.status"
   object-override:
-    tooltip: "Włącz, aby skopiować styl sceny i edytować go niezależnie."
+    tooltip: "Detach the current scene style for deliberate independent editing."
   object-angular-speed:
     suffix: " °/s"
   object-rotation:
@@ -97,7 +98,7 @@ root:
         -
           type: "option-set"
           id: "selected"
-          text: "Obiekty sceny"
+          text: "Scene objects"
           value_bind: "world.npr.settings.NprSettings.selected"
           options:
             - "cube"
@@ -113,32 +114,32 @@ root:
             -
               type: "button"
               id: "previous-object"
-              text: "← Poprzedni"
+              text: "← Previous"
               enabled_bind: "world.npr.settings.NprSettings.can_select_previous_object"
               on_click:
                 event: "npr.select_previous_object"
             -
               type: "button"
               id: "next-object"
-              text: "Następny →"
+              text: "Next →"
               enabled_bind: "world.npr.settings.NprSettings.can_select_next_object"
               on_click:
                 event: "npr.select_next_object"
             -
               type: "toggle"
               id: "gallery"
-              text: "Wszystkie obiekty"
+              text: "All objects"
               value_bind: "world.npr.settings.NprSettings.gallery"
             -
               type: "button"
               id: "focus-selected"
-              text: "Pokaż tylko wybrany"
+              text: "Show selected only"
               on_click:
                 event: "npr.focus_selected"
         -
           type: "text"
           id: "badges"
-          text: "W: na ekranie · R: obrót · S: własny styl"
+          text: "V: visible · R: rotating · S: local style"
     -
       type: "column"
       id: "playback"
@@ -151,26 +152,26 @@ root:
             -
               type: "toggle"
               id: "paused"
-              text: "Pauza"
+              text: "Pause motion"
               value_bind: "world.npr.settings.NprSettings.paused"
             -
               type: "button"
               id: "step"
-              text: "Krok 1/60 s"
+              text: "Step 1/60 s"
               on_click:
                 event: "npr.step"
               enabled_bind: "world.npr.settings.NprSettings.paused"
             -
               type: "button"
               id: "undo"
-              text: "Cofnij"
+              text: "Undo"
               on_click:
                 event: "npr.undo"
               enabled_bind: "world.npr.settings.NprSettings.can_undo"
             -
               type: "button"
               id: "redo"
-              text: "Ponów"
+              text: "Redo"
               on_click:
                 event: "npr.redo"
               enabled_bind: "world.npr.settings.NprSettings.can_redo"
@@ -181,7 +182,7 @@ root:
             -
               type: "slider"
               id: "speed"
-              text: "Tempo animacji"
+              text: "Animation speed"
               value_bind: "world.npr.settings.NprSettings.speed"
               min: 0
               max: 4
@@ -204,8 +205,8 @@ root:
         -
           type: "slider"
           id: "appearance-fade-seconds"
-          text: "Pojawianie nowych kresek"
-          tooltip: "0 s wyłącza łagodne pojawianie się nowych linii. Obrót modelu i kamera działają niezależnie, a istniejący charakter kreski pozostaje stabilny."
+          text: "New stroke fade"
+          tooltip: "At 0 s new strokes appear immediately. Model motion and camera remain independent."
           value_bind: "world.npr.settings.NprSettings.motion.appearance_fade_seconds"
           min: 0
           max: 2
@@ -213,17 +214,24 @@ root:
         -
           type: "option-set"
           id: "stroke-motion-mode"
-          text: "Kreski podczas ruchu"
-          tooltip: "Stabilne zachowują ten sam wariant gestu podczas obrotu i pracy kamery. Przerysowuj zmienia wariant tylko po rzeczywistym ruchu kotwic powierzchni, z ograniczoną częstotliwością."
+          text: "Sketch motion"
+          tooltip: "Stable keeps one gesture variant. Redraw on motion changes it only after visible surface movement. Living sketch redraws at the chosen rate even while the model is still."
           value_bind: "world.npr.settings.NprSettings.motion.mode"
           options:
             - "stable"
             - "redraw-on-motion"
+            - "redraw-continuously"
+        -
+          type: "toggle"
+          id: "pause-sketch"
+          text: "Pause sketch"
+          tooltip: "Stops time-driven redraws without pausing model motion or camera controls."
+          value_bind: "world.npr.settings.NprSettings.sketch_paused"
         -
           type: "slider"
           id: "stroke-redraw-hz"
-          text: "Częstotliwość przerysowania"
-          tooltip: "Maksymalna liczba zmian wariantu gestu na sekundę podczas aktywnego ruchu; niezależna od FPS."
+          text: "Redraw rate"
+          tooltip: "Maximum gesture-variant changes per second; independent of frame rate."
           value_bind: "world.npr.settings.NprSettings.motion.redraw_hz"
           enabled_bind: "world.npr.settings.NprSettings.motion_redraw_editable"
           min: 0.25
@@ -232,8 +240,8 @@ root:
         -
           type: "slider"
           id: "stroke-redraw-strength"
-          text: "Siła przerysowania"
-          tooltip: "0 zachowuje stabilny seed; 1 wybiera pełny nowy wariant gestu."
+          text: "Redraw strength"
+          tooltip: "0 keeps the stable seed; 1 selects a fully new gesture variant."
           value_bind: "world.npr.settings.NprSettings.motion.redraw_strength"
           enabled_bind: "world.npr.settings.NprSettings.motion_redraw_editable"
           min: 0
@@ -242,8 +250,8 @@ root:
         -
           type: "button"
           id: "new-gesture-variant"
-          text: "Nowy wariant gestu"
-          tooltip: "Jednorazowo zmienia wariant rysunkowy wybranego obiektu. Nie zmienia geometrii, kotwic ani ruchu kamery."
+          text: "New gesture variant"
+          tooltip: "Changes the selected object's drawing variant once, without changing geometry, anchors, or camera motion."
           on_click: {event: npr.new_gesture_variant}
     -
       type: "tab-view"
@@ -251,22 +259,25 @@ root:
       tabs:
         -
           id: "appearance"
-          label: "Wygląd"
+          label: "Appearance"
+        -
+          id: "layers"
+          label: "Layers"
         -
           id: "object"
-          label: "Obiekt"
+          label: "Object"
         -
           id: "scene"
-          label: "Scena"
+          label: "Scene"
         -
           id: "camera"
-          label: "Kamera"
+          label: "Camera"
         -
           id: "presets"
-          label: "Presety"
+          label: "Presets"
         -
           id: "diagnostics"
-          label: "Diagnostyka"
+          label: "Diagnostics"
       children:
         -
           type: "column"
@@ -275,15 +286,15 @@ root:
             -
               type: "option-set"
               id: "style-scope"
-              text: "Zakres edycji"
+              text: "Edit scope"
               value_bind: "world.npr.settings.NprSettings.style_scope"
               options:
-                - "Globalny"
-                - "Obiekt"
+                - "scene"
+                - "object"
             -
               type: "text"
               id: "style-info"
-              text: "Edytujesz"
+              text: "Editing"
               text_bind: "world.npr.settings.NprSettings.style_info"
             -
               type: "column"
@@ -293,7 +304,7 @@ root:
                 -
                   type: "option-set"
                   id: "style-preset"
-                  text: "Gotowy styl"
+                  text: "Style preset"
                   value_bind: "world.npr.settings.NprSettings.style_preset"
                   options:
                     - "Comic Ink"
@@ -303,15 +314,16 @@ root:
                     - "Broad Nib"
                     - "Blueprint"
                     - "Soft Toon"
+                    - "Watercolour Wash"
                 -
                   type: "group-box"
                   id: "outlines"
-                  text: "Kontury"
+                  text: "Contours"
                   children:
                     -
                       type: "slider"
                       id: "ink-outline_width"
-                      text: "Sylwetka"
+                      text: "Silhouette"
                       value_bind: "world.npr.settings.NprSettings.appearance.outline_width"
                       min: 0
                       max: 20
@@ -319,7 +331,7 @@ root:
                     -
                       type: "slider"
                       id: "ink-crease_width"
-                      text: "Załamania"
+                      text: "Creases"
                       value_bind: "world.npr.settings.NprSettings.appearance.crease_width"
                       min: 0
                       max: 20
@@ -327,8 +339,8 @@ root:
                     -
                       type: "slider"
                       id: "ink-min_crease_length_pixels"
-                      text: "Minimalna długość załamania"
-                      tooltip: "Krótsze wewnętrzne chainy crease nie są tessellowane. Sylwetka i otwarte granice zawsze pozostają."
+                      text: "Minimum crease length"
+                      tooltip: "Short internal crease chains are not tessellated. Silhouettes and open boundaries are always retained."
                       value_bind: "world.npr.settings.NprSettings.appearance.min_crease_length_pixels"
                       min: 0
                       max: 64
@@ -336,14 +348,14 @@ root:
                     -
                       type: "toggle"
                       id: "ink-smooth-draw-creases"
-                      text: "Rysuj załamania topologii w Smooth"
-                      tooltip: "Wyłączone chroni modele organiczne przed liniami wynikającymi z triangulacji. Włącz tylko dla świadomie ostrych form."
+                      text: "Draw topology creases in Smooth"
+                      tooltip: "Disable this for organic models to prevent triangulation from becoming visible linework. Enable only for intentionally sharp forms."
                       value_bind: "world.npr.settings.NprSettings.appearance.smooth_draw_creases"
                     -
                       type: "slider"
                       id: "ink-min-smooth-contour-length"
-                      text: "Minimalna długość konturu Smooth"
-                      tooltip: "Krótsze, przypadkowe fragmenty konturu są odrzucane po projekcji na ekran."
+                      text: "Minimum Smooth contour length"
+                      tooltip: "Short accidental contour fragments are rejected after screen projection."
                       value_bind: "world.npr.settings.NprSettings.appearance.min_smooth_contour_length_pixels"
                       min: 0
                       max: 64
@@ -351,8 +363,8 @@ root:
                     -
                       type: "slider"
                       id: "ink-smooth-contour-simplification"
-                      text: "Wygładzanie konturu Smooth"
-                      tooltip: "Tolerancja w pikselach: usuwa drobne zagięcia triangulacji, zachowując główne zakręty obrysu."
+                      text: "Smooth contour simplification"
+                      tooltip: "Pixel tolerance that removes small triangulation kinks while retaining the main outline turns."
                       value_bind: "world.npr.settings.NprSettings.appearance.smooth_contour_simplification_pixels"
                       min: 0
                       max: 8
@@ -360,14 +372,14 @@ root:
                     -
                       type: "toggle"
                       id: "ink-suggestive-contours"
-                      text: "Kontury sugerowane"
-                      tooltip: "Cienkie, widokozależne linie formy na powierzchniach Smooth."
+                      text: "Suggestive contours"
+                      tooltip: "Thin, view-dependent form lines on Smooth surfaces."
                       value_bind: "world.npr.settings.NprSettings.appearance.suggestive_contours"
                     -
                       type: "slider"
                       id: "ink-suggestive-contour-confidence"
-                      text: "Pewność konturów sugerowanych"
-                      tooltip: "Wyższa wartość odrzuca niepewne linie z nieregularnej triangulacji."
+                      text: "Suggestive contour confidence"
+                      tooltip: "Higher values reject uncertain lines from irregular triangulation."
                       value_bind: "world.npr.settings.NprSettings.appearance.suggestive_contour_confidence"
                       min: 0
                       max: 1
@@ -375,7 +387,7 @@ root:
                     -
                       type: "slider"
                       id: "ink-suggestive-contour-width"
-                      text: "Grubość konturów sugerowanych"
+                      text: "Suggestive contour width"
                       value_bind: "world.npr.settings.NprSettings.appearance.suggestive_contour_width_scale"
                       min: 0
                       max: 2
@@ -383,7 +395,7 @@ root:
                     -
                       type: "slider"
                       id: "ink-suggestive-contour-opacity"
-                      text: "Krycie konturów sugerowanych"
+                      text: "Suggestive contour opacity"
                       value_bind: "world.npr.settings.NprSettings.appearance.suggestive_contour_opacity"
                       min: 0
                       max: 1
@@ -391,7 +403,7 @@ root:
                     -
                       type: "slider"
                       id: "ink-boundary_width"
-                      text: "Otwarte brzegi"
+                      text: "Open boundaries"
                       value_bind: "world.npr.settings.NprSettings.appearance.boundary_width"
                       min: 0
                       max: 20
@@ -399,12 +411,12 @@ root:
                 -
                   type: "group-box"
                   id: "gesture"
-                  text: "Gest ręki"
+                  text: "Hand gesture"
                   children:
                     -
                       type: "option-set"
                       id: "tool"
-                      text: "Narzędzie"
+                      text: "Tool"
                       value_bind: "world.npr.settings.NprSettings.appearance.tool"
                       options:
                         - "pencil"
@@ -414,7 +426,7 @@ root:
                     -
                       type: "slider"
                       id: "gesture-confidence"
-                      text: "Pewność pociągnięcia"
+                      text: "Stroke confidence"
                       value_bind: "world.npr.settings.NprSettings.appearance.gesture_confidence"
                       min: 0
                       max: 1
@@ -422,7 +434,7 @@ root:
                     -
                       type: "slider"
                       id: "gesture-simplification"
-                      text: "Uproszczenie przebiegu"
+                      text: "Path simplification"
                       value_bind: "world.npr.settings.NprSettings.appearance.gesture_simplification"
                       min: 0
                       max: 1
@@ -430,7 +442,7 @@ root:
                     -
                       type: "slider"
                       id: "gesture-correction"
-                      text: "Lokalne poprawki"
+                      text: "Local correction"
                       value_bind: "world.npr.settings.NprSettings.appearance.gesture_correction"
                       min: 0
                       max: 1
@@ -438,7 +450,7 @@ root:
                     -
                       type: "slider"
                       id: "gesture-overstroke"
-                      text: "Drugie pociągnięcie"
+                      text: "Overstroke"
                       value_bind: "world.npr.settings.NprSettings.appearance.gesture_overstroke"
                       min: 0
                       max: 1
@@ -446,12 +458,12 @@ root:
                 -
                   type: "group-box"
                   id: "tool-response"
-                  text: "Reakcja narzędzia"
+                  text: "Tool response"
                   children:
                     -
                       type: "slider"
                       id: "tool-pressure"
-                      text: "Nacisk"
+                      text: "Pressure"
                       value_bind: "world.npr.settings.NprSettings.appearance.tool_pressure"
                       min: 0
                       max: 1
@@ -459,7 +471,7 @@ root:
                     -
                       type: "slider"
                       id: "tool-hardness"
-                      text: "Twardość / krycie"
+                      text: "Hardness / opacity"
                       value_bind: "world.npr.settings.NprSettings.appearance.tool_hardness"
                       min: 0
                       max: 1
@@ -467,7 +479,7 @@ root:
                     -
                       type: "slider"
                       id: "nib-angle"
-                      text: "Kąt stalówki"
+                      text: "Nib angle"
                       value_bind: "world.npr.settings.NprSettings.appearance.nib_angle"
                       min: -180
                       max: 180
@@ -475,7 +487,7 @@ root:
                     -
                       type: "slider"
                       id: "nib-aspect"
-                      text: "Rozwarcie stalówki"
+                      text: "Nib aspect"
                       value_bind: "world.npr.settings.NprSettings.appearance.nib_aspect"
                       min: 0
                       max: 1
@@ -483,12 +495,12 @@ root:
                 -
                   type: "group-box"
                   id: "paper-character"
-                  text: "Papier i ślad"
+                  text: "Paper and mark"
                   children:
                     -
                       type: "slider"
                       id: "paper-tooth"
-                      text: "Zęby papieru"
+                      text: "Paper tooth"
                       value_bind: "world.npr.settings.NprSettings.appearance.paper_tooth"
                       min: 0
                       max: 1
@@ -496,7 +508,7 @@ root:
                     -
                       type: "slider"
                       id: "paper-grain"
-                      text: "Ziarnistość śladu"
+                      text: "Mark grain"
                       value_bind: "world.npr.settings.NprSettings.appearance.paper_grain"
                       min: 0
                       max: 1
@@ -504,7 +516,7 @@ root:
                     -
                       type: "slider"
                       id: "ink-dryness"
-                      text: "Suchość tuszu"
+                      text: "Ink dryness"
                       value_bind: "world.npr.settings.NprSettings.appearance.ink_dryness"
                       min: 0
                       max: 1
@@ -512,37 +524,37 @@ root:
                 -
                   type: "group-box"
                   id: "colors"
-                  text: "Trzy pasma koloru i tusz"
+                  text: "Three-band colour and ink"
                   children:
                     -
                       type: "color-picker-rgb"
                       id: "ink-ink"
-                      text: "Tusz"
+                      text: "Ink"
                       value_bind: "world.npr.settings.NprSettings.appearance.ink"
                     -
                       type: "color-picker-rgb"
                       id: "ink-shadow"
-                      text: "Cień"
+                      text: "Shadow"
                       value_bind: "world.npr.settings.NprSettings.appearance.shadow"
                     -
                       type: "color-picker-rgb"
                       id: "ink-mid"
-                      text: "Półton"
+                      text: "Midtone"
                       value_bind: "world.npr.settings.NprSettings.appearance.mid"
                     -
                       type: "color-picker-rgb"
                       id: "ink-light"
-                      text: "Światło"
+                      text: "Light"
                       value_bind: "world.npr.settings.NprSettings.appearance.light"
                 -
                   type: "group-box"
                   id: "advanced"
-                  text: "Zaawansowane"
+                  text: "Advanced"
                   children:
                     -
                       type: "slider"
                       id: "ink-crease_angle"
-                      text: "Próg załamania"
+                      text: "Crease threshold"
                       value_bind: "world.npr.settings.NprSettings.appearance.crease_angle"
                       min: 0
                       max: 180
@@ -550,8 +562,8 @@ root:
                     -
                       type: "slider"
                       id: "ink-smooth_crease_angle"
-                      text: "Próg gładkiej powierzchni"
-                      tooltip: "W trybie Smooth normalne nie są mieszane przez ostrzejsze krawędzie. To nie zmienia progu rysowanych załamań."
+                      text: "Smooth surface threshold"
+                      tooltip: "In Smooth mode, normals are not blended across sharper edges. This does not change the drawn-crease threshold."
                       value_bind: "world.npr.settings.NprSettings.appearance.smooth_crease_angle"
                       min: 0
                       max: 180
@@ -559,7 +571,7 @@ root:
                     -
                       type: "slider"
                       id: "ink-taper"
-                      text: "Zwężenie końców"
+                      text: "End taper"
                       value_bind: "world.npr.settings.NprSettings.appearance.taper"
                       min: 0
                       max: 1
@@ -567,7 +579,7 @@ root:
                     -
                       type: "slider"
                       id: "ink-wobble"
-                      text: "Nieregularność linii"
+                      text: "Line wobble"
                       value_bind: "world.npr.settings.NprSettings.appearance.wobble"
                       min: 0
                       max: 10
@@ -575,12 +587,12 @@ root:
                     -
                       type: "group-box"
                       id: "tone"
-                      text: "Ton i kreskowanie"
+                      text: "Tone and hatching"
                       children:
                         -
                           type: "slider"
                           id: "ink-tone-density"
-                          text: "Gęstość tonu"
+                          text: "Tone density"
                           value_bind: "world.npr.settings.NprSettings.appearance.tone_density"
                           min: 0
                           max: 1
@@ -597,7 +609,7 @@ root:
                         -
                           type: "slider"
                           id: "ink-form-line-width"
-                          text: "Grubość linii formy"
+                          text: "Form line width"
                           value_bind: "world.npr.settings.NprSettings.appearance.form_line_width_scale"
                           min: 0
                           max: 2
@@ -605,7 +617,7 @@ root:
                         -
                           type: "slider"
                           id: "ink-form-line-opacity"
-                          text: "Krycie linii formy"
+                          text: "Form line opacity"
                           value_bind: "world.npr.settings.NprSettings.appearance.form_line_opacity"
                           min: 0
                           max: 1
@@ -613,7 +625,7 @@ root:
                         -
                           type: "slider"
                           id: "ink-hatching-angle"
-                          text: "Kąt kreskowania"
+                          text: "Hatching angle"
                           value_bind: "world.npr.settings.NprSettings.appearance.hatching_angle"
                           min: -180
                           max: 180
@@ -621,7 +633,7 @@ root:
                         -
                           type: "slider"
                           id: "ink-hatching-spacing"
-                          text: "Odstęp kresek"
+                          text: "Hatching spacing"
                           value_bind: "world.npr.settings.NprSettings.appearance.hatching_spacing"
                           min: 1
                           max: 40
@@ -629,7 +641,7 @@ root:
                         -
                           type: "slider"
                           id: "ink-hatching-cross"
-                          text: "Kreskowanie krzyżowe"
+                          text: "Cross-hatching"
                           value_bind: "world.npr.settings.NprSettings.appearance.hatching_cross"
                           min: 0
                           max: 1
@@ -637,32 +649,134 @@ root:
             -
               type: "button"
               id: "reset-style"
-              text: "Przywróć styl / dziedziczenie"
+              text: "Reset style / inheritance"
               on_click:
                 event: "npr.reset_style"
               enabled_bind: "world.npr.settings.NprSettings.editable"
             -
               type: "group-box"
               id: "comparison"
-              text: "Porównanie wyglądu"
+              text: "Look comparison"
               children:
                 -
                   type: "button"
                   id: "capture-before"
-                  text: "Zapamiętaj bieżący wygląd"
+                  text: "Capture current look"
                   on_click:
                     event: "npr.capture_before"
                   enabled_bind: "world.npr.settings.NprSettings.editable"
                 -
                   type: "toggle"
                   id: "preview-before"
-                  text: "Pokaż zapamiętany wygląd (Przed)"
+                  text: "Show captured look (Before)"
                   value_bind: "world.npr.settings.NprSettings.preview_before"
                   enabled_bind: "world.npr.settings.NprSettings.can_compare"
                 -
                   type: "text"
                   id: "comparison-help"
-                  text: "Porównanie zachowuje kamerę i animację. Wyłącz „Przed”, aby edytować."
+                  text: "Comparison preserves the camera and animation. Disable Before to edit."
+        -
+          type: "column"
+          id: "layers"
+          enabled_bind: "world.npr.settings.NprSettings.editable"
+          children:
+            -
+              type: "text"
+              id: "layers-help"
+              text: "Layer order is authored by the current style. Edit scope determines whether this changes the scene stack or creates an object stack override."
+            -
+              type: "group-box"
+              id: "layer-paper"
+              text: "Paper"
+              enabled_bind: "world.npr.settings.NprSettings.layers.paper.editable"
+              children:
+                - {type: "slider", id: "layer-paper-order", text: "Order", value_bind: "world.npr.settings.NprSettings.layers.paper.position", min: 0, max: 7, step: 1}
+                - {type: "toggle", id: "layer-paper-enabled", text: "Enabled", value_bind: "world.npr.settings.NprSettings.layers.paper.enabled"}
+                - {type: "slider", id: "layer-paper-opacity", text: "Opacity", value_bind: "world.npr.settings.NprSettings.layers.paper.opacity", min: 0, max: 1, step: 0.01}
+            -
+              type: "group-box"
+              id: "layer-underpainting"
+              text: "Underpainting"
+              children:
+                - {type: "slider", id: "layer-underpainting-order", text: "Order", value_bind: "world.npr.settings.NprSettings.layers.underpainting.position", min: 0, max: 7, step: 1}
+                - {type: "toggle", id: "layer-underpainting-enabled", text: "Enabled", value_bind: "world.npr.settings.NprSettings.layers.underpainting.enabled"}
+                - {type: "slider", id: "layer-underpainting-opacity", text: "Opacity", value_bind: "world.npr.settings.NprSettings.layers.underpainting.opacity", min: 0, max: 1, step: 0.01}
+                - {type: "option-set", id: "layer-underpainting-blend", text: "Blend", value_bind: "world.npr.settings.NprSettings.layers.underpainting.blend", options: [normal, multiply, screen]}
+                - {type: "option-set", id: "layer-underpainting-color-source", text: "Colour source", value_bind: "world.npr.settings.NprSettings.layers.underpainting.color_source", options: [style-palette, model-base-colour, constant]}
+                - {type: "color-picker-rgb", id: "layer-underpainting-color", text: "Constant colour", value_bind: "world.npr.settings.NprSettings.layers.underpainting.color"}
+                - {type: "slider", id: "layer-underpainting-wash", text: "Wash strength", tooltip: "Scales pigment deposit before layer opacity and blending.", value_bind: "world.npr.settings.NprSettings.layers.underpainting.paint.wash", min: 0, max: 2, step: 0.01}
+                - {type: "slider", id: "layer-underpainting-granulation", text: "Granulation", tooltip: "Adds stable, restrained per-face pigment variation.", value_bind: "world.npr.settings.NprSettings.layers.underpainting.paint.granulation", min: 0, max: 1, step: 0.01}
+            -
+              type: "group-box"
+              id: "layer-fill"
+              text: "Flat fill"
+              children:
+                - {type: "slider", id: "layer-fill-order", text: "Order", value_bind: "world.npr.settings.NprSettings.layers.fill.position", min: 0, max: 7, step: 1}
+                - {type: "toggle", id: "layer-fill-enabled", text: "Enabled", value_bind: "world.npr.settings.NprSettings.layers.fill.enabled"}
+                - {type: "slider", id: "layer-fill-opacity", text: "Opacity", value_bind: "world.npr.settings.NprSettings.layers.fill.opacity", min: 0, max: 1, step: 0.01}
+                - {type: "option-set", id: "layer-fill-blend", text: "Blend", value_bind: "world.npr.settings.NprSettings.layers.fill.blend", options: [normal, multiply, screen]}
+                - {type: "option-set", id: "layer-fill-color-source", text: "Colour source", value_bind: "world.npr.settings.NprSettings.layers.fill.color_source", options: [style-palette, model-base-colour, constant]}
+                - {type: "color-picker-rgb", id: "layer-fill-color", text: "Constant colour", value_bind: "world.npr.settings.NprSettings.layers.fill.color"}
+            -
+              type: "group-box"
+              id: "layer-hatching"
+              text: "Hatching"
+              children:
+                - {type: "slider", id: "layer-hatching-order", text: "Order", value_bind: "world.npr.settings.NprSettings.layers.hatching.position", min: 0, max: 7, step: 1}
+                - {type: "toggle", id: "layer-hatching-enabled", text: "Enabled", value_bind: "world.npr.settings.NprSettings.layers.hatching.enabled"}
+                - {type: "slider", id: "layer-hatching-opacity", text: "Opacity", value_bind: "world.npr.settings.NprSettings.layers.hatching.opacity", min: 0, max: 1, step: 0.01}
+                - {type: "option-set", id: "layer-hatching-blend", text: "Blend", value_bind: "world.npr.settings.NprSettings.layers.hatching.blend", options: [normal, multiply, screen]}
+                - {type: "option-set", id: "layer-hatching-color-source", text: "Colour source", value_bind: "world.npr.settings.NprSettings.layers.hatching.color_source", options: [style-palette, model-base-colour, constant]}
+                - {type: "color-picker-rgb", id: "layer-hatching-color", text: "Constant colour", value_bind: "world.npr.settings.NprSettings.layers.hatching.color"}
+                - {type: "option-set", id: "layer-hatching-tool", text: "Drawing tool", value_bind: "world.npr.settings.NprSettings.layers.hatching.tool", options: [inherit, pencil, fineliner, nib, brush]}
+            -
+              type: "group-box"
+              id: "layer-form-lines"
+              text: "Form lines"
+              children:
+                - {type: "slider", id: "layer-form-lines-order", text: "Order", value_bind: "world.npr.settings.NprSettings.layers.form-lines.position", min: 0, max: 7, step: 1}
+                - {type: "toggle", id: "layer-form-lines-enabled", text: "Enabled", value_bind: "world.npr.settings.NprSettings.layers.form-lines.enabled"}
+                - {type: "slider", id: "layer-form-lines-opacity", text: "Opacity", value_bind: "world.npr.settings.NprSettings.layers.form-lines.opacity", min: 0, max: 1, step: 0.01}
+                - {type: "option-set", id: "layer-form-lines-blend", text: "Blend", value_bind: "world.npr.settings.NprSettings.layers.form-lines.blend", options: [normal, multiply, screen]}
+                - {type: "option-set", id: "layer-form-lines-color-source", text: "Colour source", value_bind: "world.npr.settings.NprSettings.layers.form-lines.color_source", options: [style-palette, model-base-colour, constant]}
+                - {type: "color-picker-rgb", id: "layer-form-lines-color", text: "Constant colour", value_bind: "world.npr.settings.NprSettings.layers.form-lines.color"}
+                - {type: "option-set", id: "layer-form-lines-tool", text: "Drawing tool", value_bind: "world.npr.settings.NprSettings.layers.form-lines.tool", options: [inherit, pencil, fineliner, nib, brush]}
+            -
+              type: "group-box"
+              id: "layer-contours"
+              text: "Contours"
+              children:
+                - {type: "slider", id: "layer-contours-order", text: "Order", value_bind: "world.npr.settings.NprSettings.layers.contours.position", min: 0, max: 7, step: 1}
+                - {type: "toggle", id: "layer-contours-enabled", text: "Enabled", value_bind: "world.npr.settings.NprSettings.layers.contours.enabled"}
+                - {type: "slider", id: "layer-contours-opacity", text: "Opacity", value_bind: "world.npr.settings.NprSettings.layers.contours.opacity", min: 0, max: 1, step: 0.01}
+                - {type: "option-set", id: "layer-contours-blend", text: "Blend", value_bind: "world.npr.settings.NprSettings.layers.contours.blend", options: [normal, multiply, screen]}
+                - {type: "option-set", id: "layer-contours-color-source", text: "Colour source", value_bind: "world.npr.settings.NprSettings.layers.contours.color_source", options: [style-palette, model-base-colour, constant]}
+                - {type: "color-picker-rgb", id: "layer-contours-color", text: "Constant colour", value_bind: "world.npr.settings.NprSettings.layers.contours.color"}
+                - {type: "option-set", id: "layer-contours-tool", text: "Drawing tool", value_bind: "world.npr.settings.NprSettings.layers.contours.tool", options: [inherit, pencil, fineliner, nib, brush]}
+            -
+              type: "group-box"
+              id: "layer-creases"
+              text: "Creases"
+              children:
+                - {type: "slider", id: "layer-creases-order", text: "Order", value_bind: "world.npr.settings.NprSettings.layers.creases.position", min: 0, max: 7, step: 1}
+                - {type: "toggle", id: "layer-creases-enabled", text: "Enabled", value_bind: "world.npr.settings.NprSettings.layers.creases.enabled"}
+                - {type: "slider", id: "layer-creases-opacity", text: "Opacity", value_bind: "world.npr.settings.NprSettings.layers.creases.opacity", min: 0, max: 1, step: 0.01}
+                - {type: "option-set", id: "layer-creases-blend", text: "Blend", value_bind: "world.npr.settings.NprSettings.layers.creases.blend", options: [normal, multiply, screen]}
+                - {type: "option-set", id: "layer-creases-color-source", text: "Colour source", value_bind: "world.npr.settings.NprSettings.layers.creases.color_source", options: [style-palette, model-base-colour, constant]}
+                - {type: "color-picker-rgb", id: "layer-creases-color", text: "Constant colour", value_bind: "world.npr.settings.NprSettings.layers.creases.color"}
+                - {type: "option-set", id: "layer-creases-tool", text: "Drawing tool", value_bind: "world.npr.settings.NprSettings.layers.creases.tool", options: [inherit, pencil, fineliner, nib, brush]}
+            -
+              type: "group-box"
+              id: "layer-construction"
+              text: "Construction"
+              children:
+                - {type: "slider", id: "layer-construction-order", text: "Order", value_bind: "world.npr.settings.NprSettings.layers.construction.position", min: 0, max: 7, step: 1}
+                - {type: "toggle", id: "layer-construction-enabled", text: "Enabled", value_bind: "world.npr.settings.NprSettings.layers.construction.enabled"}
+                - {type: "slider", id: "layer-construction-opacity", text: "Opacity", value_bind: "world.npr.settings.NprSettings.layers.construction.opacity", min: 0, max: 1, step: 0.01}
+                - {type: "option-set", id: "layer-construction-blend", text: "Blend", value_bind: "world.npr.settings.NprSettings.layers.construction.blend", options: [normal, multiply, screen]}
+                - {type: "option-set", id: "layer-construction-color-source", text: "Colour source", value_bind: "world.npr.settings.NprSettings.layers.construction.color_source", options: [style-palette, model-base-colour, constant]}
+                - {type: "color-picker-rgb", id: "layer-construction-color", text: "Constant colour", value_bind: "world.npr.settings.NprSettings.layers.construction.color"}
+                - {type: "option-set", id: "layer-construction-tool", text: "Drawing tool", value_bind: "world.npr.settings.NprSettings.layers.construction.tool", options: [inherit, pencil, fineliner, nib, brush]}
         -
           type: "column"
           id: "object"
@@ -671,12 +785,12 @@ root:
             -
               type: "text"
               id: "object-title"
-              text: "Wybrany obiekt"
+              text: "Selected object"
               text_bind: "world.npr.settings.NprSettings.selected"
             -
               type: "dropdown"
               id: "object-model"
-              text: "Geometria"
+              text: "Geometry"
               value_bind: "world.npr.settings.NprSettings.object.model"
               options:
                 - "cube"
@@ -686,10 +800,16 @@ root:
                 - "suzanne"
                 - "avocado"
             -
+              type: "color-picker-rgb"
+              id: "object-material-base-color"
+              text: "Material base colour"
+              tooltip: "Used only by drawing layers whose Colour source is Model base colour."
+              value_bind: "world.npr.settings.NprSettings.object.material_base_color"
+            -
               type: "option-set"
               id: "object-surface-intent"
-              text: "Rodzaj powierzchni"
-              tooltip: "Hard surface zachowuje świadomie ostre płaszczyzny. Organic używa Smooth proxy i nie zamienia triangulacji modelu w kreski. Autorskie respektuje ręcznie wybrany tryb poniżej."
+              text: "Surface intent"
+              tooltip: "Hard surface preserves intentionally sharp planes. Organic uses a Smooth proxy and does not turn model triangulation into linework. Authored respects the selected mode below."
               value_bind: "world.npr.settings.NprSettings.object.surface_intent"
               options:
                 - "hard-surface"
@@ -698,8 +818,8 @@ root:
             -
               type: "option-set"
               id: "object-surface-mode"
-              text: "Tryb autorski"
-              tooltip: "Używany tylko przy rodzaju powierzchni Autorskie."
+              text: "Authored mode"
+              tooltip: "Used only when Surface intent is Authored."
               value_bind: "world.npr.settings.NprSettings.object.surface_mode"
               options:
                 - "polygonal"
@@ -707,15 +827,15 @@ root:
             -
               type: "button"
               id: "object-natural-smooth"
-              text: "Natural Smooth dla modelu organicznego"
-              tooltip: "Tworzy lokalny styl obiektu: Smooth proxy, welding seamów, bez crease'ów topologii oraz filtr i wygładzanie konturów."
+              text: "Natural Smooth for organic models"
+              tooltip: "Creates local object overrides: Smooth proxy, seam welding, no topology creases, contour filtering and simplification."
               on_click:
                 event: "npr.natural_smooth"
               enabled_bind: "world.npr.settings.NprSettings.editable"
             -
               type: "text"
               id: "object-surface-policy-info"
-              text: "Polityka powierzchni"
+              text: "Surface policy"
               text_bind: "world.npr.settings.NprSettings.object.surface_policy_info"
             -
               type: "slider"
@@ -742,32 +862,32 @@ root:
                 -
                   type: "toggle"
                   id: "object-visible"
-                  text: "Widoczny"
+                  text: "Visible"
                   value_bind: "world.npr.settings.NprSettings.object.visible"
                 -
                   type: "toggle"
                   id: "object-rotating"
-                  text: "Obraca się"
+                  text: "Rotating"
                   value_bind: "world.npr.settings.NprSettings.object.rotating"
             -
               type: "group-box"
               id: "transform"
-              text: "Transformacja"
+              text: "Transform"
               children:
                 -
                   type: "slider"
                   id: "object-position"
-                  text: "Pozycja"
+                  text: "Position"
                   value_bind: "world.npr.settings.NprSettings.object.position"
                 -
                   type: "slider"
                   id: "object-rotation"
-                  text: "Obrót"
+                  text: "Rotation"
                   value_bind: "world.npr.settings.NprSettings.object.rotation"
                 -
                   type: "slider"
                   id: "object-scale"
-                  text: "Skala"
+                  text: "Scale"
                   value_bind: "world.npr.settings.NprSettings.object.scale"
                   min: 0.01
                   max: 10
@@ -775,29 +895,29 @@ root:
                 -
                   type: "button"
                   id: "reset-transform"
-                  text: "Reset transformacji"
+                  text: "Reset transform"
                   on_click:
                     event: "npr.reset_transform"
             -
               type: "group-box"
               id: "rotation"
-              text: "Animacja obiektu"
+              text: "Object animation"
               children:
                 -
                   type: "slider"
                   id: "object-angular-speed"
-                  text: "Prędkość kątowa"
+                  text: "Angular speed"
                   value_bind: "world.npr.settings.NprSettings.object.angular_speed"
                 -
                   type: "button"
                   id: "reset-rotation"
-                  text: "Reset obrotu"
+                  text: "Reset rotation"
                   on_click:
                     event: "npr.reset_rotation"
             -
               type: "group-box"
               id: "construction-marks"
-              text: "Linia konstrukcyjna"
+              text: "Construction line"
               children:
                 -
                   type: "text"
@@ -806,35 +926,35 @@ root:
                 -
                   type: "button"
                   id: "begin-construction-mark"
-                  text: "Nowa kreska"
-                  tooltip: "Wybierz punkty na aktualnie wybranym modelu. Punkty są zapisywane na powierzchni, nie na ekranie."
+                  text: "New stroke"
+                  tooltip: "Select points on the currently selected model. Points are stored on the surface, not on the screen."
                   on_click:
                     event: "npr.begin_construction_mark"
                 -
                   type: "button"
                   id: "commit-construction-mark"
-                  text: "Zatwierdź linię"
+                  text: "Commit line"
                   enabled_bind: "world.npr.settings.NprSettings.construction_authoring_can_commit"
                   on_click:
                     event: "npr.commit_construction_mark"
                 -
                   type: "button"
                   id: "close-construction-mark"
-                  text: "Zamknij i zatwierdź"
+                  text: "Close and commit"
                   enabled_bind: "world.npr.settings.NprSettings.construction_authoring_can_close"
                   on_click:
                     event: "npr.close_construction_mark"
                 -
                   type: "button"
                   id: "cancel-construction-mark"
-                  text: "Anuluj wybór"
+                  text: "Cancel selection"
                   enabled_bind: "world.npr.settings.NprSettings.construction_authoring_active"
                   on_click:
                     event: "npr.cancel_construction_mark"
                 -
                   type: "button"
                   id: "undo-construction-anchor"
-                  text: "Cofnij punkt"
+                  text: "Undo point"
                   enabled_bind: "world.npr.settings.NprSettings.construction_authoring_can_undo_point"
                   on_click:
                     event: "npr.undo_construction_anchor"
@@ -849,33 +969,33 @@ root:
                     -
                       type: "button"
                       id: "construction-previous"
-                      text: "← Poprzednia"
+                      text: "← Previous"
                       enabled_bind: "world.npr.settings.NprSettings.construction_mark_can_select_previous"
                       on_click:
                         event: "npr.select_previous_construction_mark"
                     -
                       type: "button"
                       id: "construction-next"
-                      text: "Następna →"
+                      text: "Next →"
                       enabled_bind: "world.npr.settings.NprSettings.construction_mark_can_select_next"
                       on_click:
                         event: "npr.select_next_construction_mark"
                 -
                   type: "group-box"
                   id: "construction-selected-style"
-                  text: "Wybrana linia"
+                  text: "Selected line"
                   enabled_bind: "world.npr.settings.NprSettings.construction_mark_can_edit"
                   children:
                     -
                       type: "toggle"
                       id: "construction-selected-closed"
-                      text: "Zamknięta pętla"
-                      tooltip: "Wymaga co najmniej trzech punktów na powierzchni."
+                      text: "Closed loop"
+                      tooltip: "Requires at least three surface points."
                       value_bind: "world.npr.settings.NprSettings.construction_mark_selected_closed"
                     -
                       type: "slider"
                       id: "construction-selected-width"
-                      text: "Skala grubości"
+                      text: "Width scale"
                       value_bind: "world.npr.settings.NprSettings.construction_mark_selected_width_scale"
                       min: 0
                       max: 2
@@ -883,7 +1003,7 @@ root:
                     -
                       type: "slider"
                       id: "construction-selected-opacity"
-                      text: "Krycie"
+                      text: "Opacity"
                       value_bind: "world.npr.settings.NprSettings.construction_mark_selected_opacity"
                       min: 0
                       max: 1
@@ -891,24 +1011,24 @@ root:
                 -
                   type: "button"
                   id: "delete-selected-construction-mark"
-                  text: "Usuń wybraną linię"
+                  text: "Delete selected line"
                   enabled_bind: "world.npr.settings.NprSettings.construction_mark_can_delete"
                   on_click:
                     event: "npr.delete_selected_construction_mark"
             -
               type: "group-box"
               id: "inheritance"
-              text: "Dziedziczenie stylu"
+              text: "Style inheritance"
               children:
                 -
                   type: "toggle"
                   id: "object-override"
-                  text: "Własny styl obiektu"
+                  text: "Object style override"
                   value_bind: "world.npr.settings.NprSettings.object.override_style"
                 -
                   type: "text"
                   id: "inheritance-help"
-                  text: "Włączenie kopiuje styl globalny. Wyłączenie przywraca dziedziczenie. Kolory edytuj w Wygląd → Obiekt."
+                  text: "Enabling detaches the current scene style. Disabling restores inheritance. Edit colours in Appearance → Object."
         -
           type: "column"
           id: "scene"
@@ -917,37 +1037,37 @@ root:
             -
               type: "group-box"
               id: "environment"
-              text: "Otoczenie"
+              text: "Environment"
               children:
                 -
                   type: "color-picker-rgb"
                   id: "paper"
-                  text: "Kolor papieru"
+                  text: "Paper colour"
                   value_bind: "world.npr.settings.NprSettings.global.paper"
                 -
                   type: "slider"
                   id: "light-direction"
-                  text: "Kierunek światła"
+                  text: "Light direction"
                   value_bind: "world.npr.settings.NprSettings.global.light_direction"
             -
               type: "group-box"
               id: "arrangement"
-              text: "Rozmieszczenie"
+              text: "Arrangement"
               children:
                 - type: toggle
                   id: highlight-selected
-                  text: Znacznik wybranego obiektu w galerii
+                  text: Highlight selected object in gallery
                   value_bind: world.npr.settings.NprSettings.highlight_selected
                 -
                   type: "button"
                   id: "layout-grid"
-                  text: "Ułóż w siatkę 3 × 2"
+                  text: "Arrange as 3 × 2 grid"
                   on_click:
                     event: "npr.layout_grid"
                 -
                   type: "text"
                   id: "layout-help"
-                  text: "Pozycje obiektów można zmieniać niezależnie w zakładce Obiekt."
+                  text: "Object positions can be changed independently in the Object tab."
         -
           type: "column"
           id: "camera"
@@ -960,31 +1080,31 @@ root:
                 -
                   type: "button"
                   id: "fit"
-                  text: "Dopasuj widok"
+                  text: "Fit view"
                   on_click:
                     event: "npr.fit"
                 -
                   type: "button"
                   id: "front"
-                  text: "Przód"
+                  text: "Front"
                   on_click:
                     event: "npr.camera_front"
                 -
                   type: "button"
                   id: "side"
-                  text: "Bok"
+                  text: "Side"
                   on_click:
                     event: "npr.camera_side"
                 -
                   type: "button"
                   id: "top"
-                  text: "Góra"
+                  text: "Top"
                   on_click:
                     event: "npr.camera_top"
             -
               type: "slider"
               id: "camera-yaw"
-              text: "Azymut"
+              text: "Yaw"
               value_bind: "world.npr.settings.NprSettings.camera_yaw"
               min: -180
               max: 180
@@ -992,7 +1112,7 @@ root:
             -
               type: "slider"
               id: "camera-pitch"
-              text: "Elewacja"
+              text: "Pitch"
               value_bind: "world.npr.settings.NprSettings.camera_pitch"
               min: -89
               max: 89
@@ -1000,7 +1120,7 @@ root:
             -
               type: "slider"
               id: "camera-distance"
-              text: "Odległość"
+              text: "Distance"
               value_bind: "world.npr.settings.NprSettings.camera_distance"
               min: 0.1
               max: 100
@@ -1008,7 +1128,7 @@ root:
             -
               type: "slider"
               id: "camera-fov"
-              text: "Pole widzenia"
+              text: "Field of view"
               value_bind: "world.npr.settings.NprSettings.camera_fov"
               min: 15
               max: 90
@@ -1016,7 +1136,7 @@ root:
             -
               type: "slider"
               id: "camera-target"
-              text: "Punkt obserwacji"
+              text: "Target"
               value_bind: "world.npr.settings.NprSettings.camera_target"
         -
           type: "column"
@@ -1025,17 +1145,17 @@ root:
           children:
             - type: option-set
               id: preset-kind
-              text: Zakres presetu
+              text: Preset scope
               value_bind: world.npr.settings.NprSettings.preset_kind
-              options: [Scena, Wygląd]
+              options: [scene, look]
             -
               type: "text"
               id: "preset-help"
-              text: "Presety sceny obejmują wszystkie obiekty, kamerę, animację i style. Gotowe style bez zmiany sceny znajdziesz w zakładce Wygląd."
+              text: "Scene presets include every object, camera, animation and style. Use the Appearance tab for reusable looks without changing the scene."
             -
               type: "slider"
               id: "preset-name"
-              text: "Nazwa presetu"
+              text: "Preset name"
               value_bind: "world.npr.settings.NprSettings.preset_name"
             -
               type: "row"
@@ -1044,31 +1164,31 @@ root:
                 -
                   type: "button"
                   id: "save"
-                  text: "Zapisz nowy"
+                  text: "Save new"
                   on_click:
                     event: "npr.save"
                 -
                   type: "button"
                   id: "load"
-                  text: "Wczytaj"
+                  text: "Load"
                   on_click:
                     event: "npr.load"
                 -
                   type: "button"
                   id: "overwrite"
-                  text: "Nadpisz…"
+                  text: "Overwrite…"
                   on_click:
                     event: "npr.overwrite"
             -
               type: "button"
               id: "reset"
-              text: "Reset całej sceny…"
+              text: "Reset whole scene…"
               on_click:
                 event: "npr.reset"
             -
               type: "text"
               id: "preset-name-help"
-              text: "Nazwa: litery ASCII, cyfry, myślnik lub podkreślenie. Zmiany można cofnąć."
+              text: "Name: ASCII letters, numbers, hyphen or underscore. Changes can be undone."
         -
           type: "column"
           id: "diagnostics"
@@ -1077,7 +1197,7 @@ root:
             -
               type: "option-set"
               id: "debug"
-              text: "Tryb podglądu"
+              text: "Debug view"
               value_bind: "world.npr.settings.NprSettings.debug"
               options:
                 - "Final"
@@ -1086,16 +1206,16 @@ root:
             -
               type: "text"
               id: "debug-help"
-              text: "FeatureClasses: zielony — sylwetka, niebieski — załamanie, czerwony — otwarty brzeg. StrokeIds: kolor oznacza ID kreski."
+              text: "FeatureClasses: green silhouette, blue crease, red open boundary. StrokeIds assigns a colour per stroke ID."
             -
               type: "slider"
               id: "seed"
-              text: "Seed nieregularności"
+              text: "Wobble seed"
               value_bind: "world.npr.settings.NprSettings.seed"
             -
               type: "text"
               id: "debug-note"
-              text: "Miniatury pokazują geometrię w neutralnym ujęciu; nie są podglądem bieżącej animacji."
+              text: "Thumbnails show neutral geometry views; they are not previews of the current animation."
             - type: text
               id: stats-geometry
               text: Renderowane obiekty
@@ -1118,7 +1238,7 @@ root:
               text_bind: world.npr.settings.NprSettings.stats.surface_proxy_triangles
             - type: text
               id: stats-topology
-              text: Krawędzie topologii
+              text: Topology edges
               text_bind: world.npr.settings.NprSettings.stats.topology_edges
             - type: text
               id: stats-features
@@ -1142,7 +1262,7 @@ root:
               text_bind: world.npr.settings.NprSettings.stats.silhouettes
             - type: text
               id: stats-creases
-              text: Załamania
+              text: Creases
               text_bind: world.npr.settings.NprSettings.stats.creases
             - type: text
               id: stats-smooth-contours
@@ -1158,7 +1278,7 @@ root:
               text_bind: world.npr.settings.NprSettings.stats.strokes
             - type: text
               id: stats-vertices
-              text: Wierzchołki kresek
+              text: Stroke vertices
               text_bind: world.npr.settings.NprSettings.stats.stroke_vertices
             - type: text
               id: stats-indices
@@ -1197,11 +1317,11 @@ root:
               children:
                 - type: text
                   id: stats-width
-                  text: Szerokość
+                  text: Width
                   text_bind: world.npr.settings.NprSettings.stats.viewport_width
                 - type: text
                   id: stats-height
-                  text: Wysokość
+                  text: Height
                   text_bind: world.npr.settings.NprSettings.stats.viewport_height
     -
       type: "row"
@@ -1210,7 +1330,7 @@ root:
         -
           type: "text"
           id: "connection"
-          text: "Połączono"
+          text: "Connected"
         -
           type: "text"
           id: "fps"

@@ -32,7 +32,47 @@ struct Out {
     return o;
 }
 @fragment fn fs_main(v: Out) -> @location(0) vec4<f32> {
-    return vec4<f32>(v.color.rgb, v.color.a * v.coverage);
+    let alpha = v.color.a * v.coverage;
+    return vec4<f32>(v.color.rgb * alpha, alpha);
+}
+"#;
+
+/// Underpainting uses continuous screen-space pigment granulation. The
+/// material coefficient is authored in `NprPaintMedium`; sampling here avoids
+/// discontinuities at source triangle boundaries.
+pub const NPR_PAINT_SHADER: &str = r#"
+struct Vertex {
+    @location(0) position: vec2<f32>,
+    @location(1) color: vec4<f32>,
+    @location(2) depth: f32,
+    @location(3) coverage: f32,
+    @location(4) phase: vec2<f32>,
+    @location(5) material: vec4<f32>,
+};
+struct Out {
+    @builtin(position) position: vec4<f32>,
+    @location(0) color: vec4<f32>,
+    @location(1) coverage: f32,
+    @location(2) granulation: f32,
+};
+@vertex fn vs_main(v: Vertex) -> Out {
+    var o: Out;
+    o.position = vec4<f32>(v.position, v.depth, 1.0);
+    o.color = v.color;
+    o.coverage = v.coverage;
+    o.granulation = v.material.x;
+    return o;
+}
+fn hash(p: vec2<f32>) -> f32 {
+    return fract(sin(dot(p, vec2<f32>(91.17, 217.43))) * 43758.5453);
+}
+@fragment fn fs_main(v: Out) -> @location(0) vec4<f32> {
+    let coarse = hash(floor(v.position.xy * 0.18));
+    let fine = hash(floor(v.position.xy * 0.71 + vec2<f32>(37.0, 19.0)));
+    let variation = ((coarse - 0.5) * 0.72 + (fine - 0.5) * 0.28)
+        * clamp(v.granulation, 0.0, 1.0) * 0.34;
+    let alpha = clamp(v.color.a * v.coverage * (1.0 + variation), 0.0, 1.0);
+    return vec4<f32>(v.color.rgb * alpha, alpha);
 }
 "#;
 
@@ -190,8 +230,15 @@ impl NprGpuVertex {
 pub struct NprPipelines {
     pub depth: wgpu::RenderPipeline,
     pub paper: wgpu::RenderPipeline,
-    pub fill: wgpu::RenderPipeline,
-    pub stroke: wgpu::RenderPipeline,
+    pub fill_normal: wgpu::RenderPipeline,
+    pub fill_multiply: wgpu::RenderPipeline,
+    pub fill_screen: wgpu::RenderPipeline,
+    pub paint_normal: wgpu::RenderPipeline,
+    pub paint_multiply: wgpu::RenderPipeline,
+    pub paint_screen: wgpu::RenderPipeline,
+    pub stroke_normal: wgpu::RenderPipeline,
+    pub stroke_multiply: wgpu::RenderPipeline,
+    pub stroke_screen: wgpu::RenderPipeline,
 }
 
 pub(crate) struct NprVertexBuffer {
@@ -214,6 +261,10 @@ impl NprPipelines {
         let stroke_shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("amigo-npr-stroke-shader"),
             source: wgpu::ShaderSource::Wgsl(NPR_STROKE_SHADER.into()),
+        });
+        let paint_shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+            label: Some("amigo-npr-paint-shader"),
+            source: wgpu::ShaderSource::Wgsl(NPR_PAINT_SHADER.into()),
         });
         let paper_shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("amigo-npr-paper-shader"),
@@ -285,7 +336,7 @@ impl NprPipelines {
                 entry_point: Some("fs_main"),
                 targets: &[Some(wgpu::ColorTargetState {
                     format,
-                    blend: None,
+                    blend: Some(wgpu::BlendState::ALPHA_BLENDING),
                     write_mask: wgpu::ColorWrites::ALL,
                 })],
                 compilation_options: wgpu::PipelineCompilationOptions::default(),
@@ -310,6 +361,34 @@ impl NprPipelines {
             multiview_mask: None,
             cache: None,
         });
+        let alpha = wgpu::BlendComponent {
+            src_factor: wgpu::BlendFactor::One,
+            dst_factor: wgpu::BlendFactor::OneMinusSrcAlpha,
+            operation: wgpu::BlendOperation::Add,
+        };
+        // NPR paint and strokes both emit premultiplied colour. Keeping this
+        // invariant at the shader boundary makes a layer's blend mode
+        // independent from the geometric source that produced it.
+        let normal = wgpu::BlendState {
+            color: alpha,
+            alpha,
+        };
+        let multiply = wgpu::BlendState {
+            color: wgpu::BlendComponent {
+                src_factor: wgpu::BlendFactor::Dst,
+                dst_factor: wgpu::BlendFactor::OneMinusSrcAlpha,
+                operation: wgpu::BlendOperation::Add,
+            },
+            alpha,
+        };
+        let screen = wgpu::BlendState {
+            color: wgpu::BlendComponent {
+                src_factor: wgpu::BlendFactor::One,
+                dst_factor: wgpu::BlendFactor::OneMinusSrc,
+                operation: wgpu::BlendOperation::Add,
+            },
+            alpha,
+        };
         Self {
             depth: make(
                 "amigo-npr-depth",
@@ -320,22 +399,108 @@ impl NprPipelines {
                 None,
             ),
             paper,
-            fill: make(
-                "amigo-npr-fill",
+            fill_normal: make(
+                "amigo-npr-fill-normal",
                 &fill_shader,
                 true,
                 Some(wgpu::Face::Back),
                 false,
-                None,
+                Some(normal),
             ),
-            stroke: make(
-                "amigo-npr-stroke",
+            fill_multiply: make(
+                "amigo-npr-fill-multiply",
+                &fill_shader,
+                true,
+                Some(wgpu::Face::Back),
+                false,
+                Some(multiply),
+            ),
+            fill_screen: make(
+                "amigo-npr-fill-screen",
+                &fill_shader,
+                true,
+                Some(wgpu::Face::Back),
+                false,
+                Some(screen),
+            ),
+            paint_normal: make(
+                "amigo-npr-paint-normal",
+                &paint_shader,
+                true,
+                Some(wgpu::Face::Back),
+                false,
+                Some(normal),
+            ),
+            paint_multiply: make(
+                "amigo-npr-paint-multiply",
+                &paint_shader,
+                true,
+                Some(wgpu::Face::Back),
+                false,
+                Some(multiply),
+            ),
+            paint_screen: make(
+                "amigo-npr-paint-screen",
+                &paint_shader,
+                true,
+                Some(wgpu::Face::Back),
+                false,
+                Some(screen),
+            ),
+            stroke_normal: make(
+                "amigo-npr-stroke-normal",
                 &stroke_shader,
                 true,
                 None,
                 false,
-                Some(wgpu::BlendState::PREMULTIPLIED_ALPHA_BLENDING),
+                Some(normal),
             ),
+            stroke_multiply: make(
+                "amigo-npr-stroke-multiply",
+                &stroke_shader,
+                true,
+                None,
+                false,
+                Some(multiply),
+            ),
+            stroke_screen: make(
+                "amigo-npr-stroke-screen",
+                &stroke_shader,
+                true,
+                None,
+                false,
+                Some(screen),
+            ),
+        }
+    }
+
+    pub fn fill_for(&self, blend: amigo_render_npr::NprBlendMode) -> &wgpu::RenderPipeline {
+        match blend {
+            amigo_render_npr::NprBlendMode::Normal => &self.fill_normal,
+            amigo_render_npr::NprBlendMode::Multiply => &self.fill_multiply,
+            amigo_render_npr::NprBlendMode::Screen => &self.fill_screen,
+            // Overlay is intentionally not approximated here. It needs a
+            // destination-sampling compositor and is rejected before batches
+            // are prepared (see `render_npr_commands`).
+            amigo_render_npr::NprBlendMode::Overlay => unreachable!("overlay requires compositing"),
+        }
+    }
+
+    pub fn paint_for(&self, blend: amigo_render_npr::NprBlendMode) -> &wgpu::RenderPipeline {
+        match blend {
+            amigo_render_npr::NprBlendMode::Normal => &self.paint_normal,
+            amigo_render_npr::NprBlendMode::Multiply => &self.paint_multiply,
+            amigo_render_npr::NprBlendMode::Screen => &self.paint_screen,
+            amigo_render_npr::NprBlendMode::Overlay => unreachable!("overlay requires compositing"),
+        }
+    }
+
+    pub fn stroke_for(&self, blend: amigo_render_npr::NprBlendMode) -> &wgpu::RenderPipeline {
+        match blend {
+            amigo_render_npr::NprBlendMode::Normal => &self.stroke_normal,
+            amigo_render_npr::NprBlendMode::Multiply => &self.stroke_multiply,
+            amigo_render_npr::NprBlendMode::Screen => &self.stroke_screen,
+            amigo_render_npr::NprBlendMode::Overlay => unreachable!("overlay requires compositing"),
         }
     }
 
@@ -426,7 +591,10 @@ mod tests {
     #[test]
     fn gpu_vertex_layout_matches_the_stroke_shader_contract() {
         let layout = NprGpuVertex::layout();
-        assert_eq!(layout.array_stride, std::mem::size_of::<NprGpuVertex>() as u64);
+        assert_eq!(
+            layout.array_stride,
+            std::mem::size_of::<NprGpuVertex>() as u64
+        );
         assert_eq!(layout.attributes[4].shader_location, 4);
         assert_eq!(layout.attributes[4].offset, 32);
         assert_eq!(layout.attributes[4].format, wgpu::VertexFormat::Float32x2);

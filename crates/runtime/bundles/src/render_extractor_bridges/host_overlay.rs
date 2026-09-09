@@ -13,6 +13,7 @@ use super::context::WgpuRenderExtractorRegistry;
 
 pub fn register_host_overlay_render_extractors(registry: &mut WgpuRenderExtractorRegistry) {
     registry.register(WgpuUiOverlayRenderExtractorBridge);
+    registry.register(WgpuEmbeddedPanelRenderExtractorBridge);
     register_surface_overlay_render_extractors(registry);
 }
 
@@ -71,6 +72,18 @@ impl RenderExtractorProvider for WgpuHostOverlayRenderExtractorProvider {
             },
             RenderExtractorDescriptor {
                 descriptor: RuntimeCapabilityDescriptor {
+                    domain_id: RuntimeDomainId::new("amigo.panels"),
+                    kind: RuntimeCapabilityKind::RenderExtractor,
+                    id: "embedded_panel_overlay".to_owned(),
+                    label: "Embedded Panel Overlay Extractor".to_owned(),
+                    description: "panel snapshot to host overlay extractor".to_owned(),
+                    capabilities: vec!["embedded-panel".to_owned()],
+                    tags: vec!["ui".to_owned(), "panel".to_owned()],
+                    migration_seam: false,
+                },
+            },
+            RenderExtractorDescriptor {
+                descriptor: RuntimeCapabilityDescriptor {
                     domain_id: RuntimeDomainId::new("app.host"),
                     kind: RuntimeCapabilityKind::RenderExtractor,
                     id: "app_dev_console_overlay".to_owned(),
@@ -121,6 +134,7 @@ pub fn register_host_render_extractor_provider(
 }
 
 pub struct WgpuUiOverlayRenderExtractorBridge;
+pub struct WgpuEmbeddedPanelRenderExtractorBridge;
 pub struct WgpuDevConsoleOverlayRenderExtractorBridge;
 pub struct WgpuDebugOverlayRenderExtractorBridge;
 
@@ -145,6 +159,30 @@ impl RenderFrameExtractor<Runtime, WgpuRenderFramePacket> for WgpuUiOverlayRende
             ui_theme_service.as_ref(),
             &mut WgpuUiOverlayOutput(packet),
         );
+    }
+}
+
+impl RenderFrameExtractor<Runtime, WgpuRenderFramePacket>
+    for WgpuEmbeddedPanelRenderExtractorBridge
+{
+    fn name(&self) -> &'static str {
+        "embedded_panel_overlay"
+    }
+
+    fn extract(&self, runtime: &Runtime, packet: &mut WgpuRenderFramePacket) {
+        let Some(panels) = optional::<amigo_panels::PanelService>(runtime) else {
+            return;
+        };
+        let Some(controls) = optional::<amigo_runtime_control::RuntimeControlService>(runtime)
+        else {
+            return;
+        };
+        let Some(presets) = optional::<amigo_panels::PresetService>(runtime) else {
+            return;
+        };
+        if let Ok(overlays) = panels.embedded_overlays(controls.as_ref(), presets.as_ref()) {
+            packet.extend_game_ui_overlay(overlays);
+        }
     }
 }
 

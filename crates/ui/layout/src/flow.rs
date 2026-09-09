@@ -114,6 +114,20 @@ fn layout_column_children<'a, T>(
     content: LayoutRect,
     gap: f32,
 ) -> Vec<(&'a LayoutElement<T>, LayoutRect)> {
+    let fill_count = node
+        .children
+        .iter()
+        .filter(|child| child.style.fill_height)
+        .count();
+    let fixed_height = node
+        .children
+        .iter()
+        .filter(|child| !child.style.fill_height)
+        .map(|child| measure_element(child).1.max(0.0))
+        .sum::<f32>();
+    let total_gap = gap * node.children.len().saturating_sub(1) as f32;
+    let fill_height =
+        (content.height - fixed_height - total_gap).max(0.0) / fill_count.max(1) as f32;
     let mut cursor = content.y;
     let mut laid_out = Vec::with_capacity(node.children.len());
     for child in &node.children {
@@ -123,7 +137,11 @@ fn layout_column_children<'a, T>(
             .width
             .unwrap_or(content.width.max(measured.0))
             .max(0.0);
-        let height = child.style.height.unwrap_or(measured.1).max(0.0);
+        let height = if child.style.fill_height {
+            fill_height
+        } else {
+            child.style.height.unwrap_or(measured.1).max(0.0)
+        };
         let x = content.x + child.style.left.unwrap_or(0.0);
         let y = cursor + child.style.top.unwrap_or(0.0);
         laid_out.push((child, LayoutRect::new(x, y, width, height)));

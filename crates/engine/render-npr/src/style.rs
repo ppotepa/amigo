@@ -210,6 +210,33 @@ mod tests {
         assert!(!NprSurfaceIntent::HardSurface.suppresses_topology_creases());
         assert!(NprSurfaceIntent::Organic.suppresses_topology_creases());
     }
+
+    #[test]
+    fn sparse_override_keeps_unedited_parent_properties_live() {
+        let overrides = ComicInkOverrides {
+            outline_width: Some(7.0),
+            ..Default::default()
+        };
+        let mut parent = ComicInk::default();
+        parent.ink = Vec4::new(0.2, 0.3, 0.4, 1.0);
+        let first = overrides.resolve(parent);
+        assert_eq!(first.outline_width, 7.0);
+        assert_eq!(first.ink, parent.ink);
+
+        parent.ink = Vec4::new(0.7, 0.1, 0.2, 1.0);
+        let second = overrides.resolve(parent);
+        assert_eq!(second.outline_width, 7.0);
+        assert_eq!(second.ink, parent.ink);
+        assert!(!overrides.is_empty());
+    }
+
+    #[test]
+    fn detached_override_is_an_explicit_full_snapshot() {
+        let style = ComicInk::default();
+        let overrides = ComicInkOverrides::detached(style);
+        assert_eq!(overrides.resolve(ComicInk::default()), style);
+        assert!(overrides.outline_width.is_some());
+    }
 }
 impl ComicInk {
     pub fn width(self, class: FeatureClass) -> f32 {
@@ -217,6 +244,154 @@ impl ComicInk {
             FeatureClass::Boundary => self.boundary_width,
             FeatureClass::Silhouette => self.outline_width,
             FeatureClass::Crease => self.crease_width,
+        }
+    }
+}
+
+/// Sparse, typed changes to a [`ComicInk`] style.
+///
+/// A scene or object owns this value instead of a copied effective style. Each
+/// `Some` value deliberately shadows only that one inherited property, so a
+/// later edit to the parent style still reaches every `None` field. This is a
+/// domain contract; it has no renderer or serialization-format policy.
+#[derive(Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct ComicInkOverrides {
+    pub tool: Option<StrokeTool>,
+    pub tone_mode: Option<NprToneMode>,
+    pub surface_mode: Option<NprSurfaceMode>,
+    pub light_direction: Option<glam::Vec3>,
+    pub ink: Option<Vec4>,
+    pub crease_angle: Option<f32>,
+    pub smooth_crease_angle: Option<f32>,
+    pub smooth_draw_creases: Option<bool>,
+    pub paper: Option<Vec4>,
+    pub shadow: Option<Vec4>,
+    pub mid: Option<Vec4>,
+    pub light: Option<Vec4>,
+    pub outline_width: Option<f32>,
+    pub crease_width: Option<f32>,
+    pub boundary_width: Option<f32>,
+    pub min_crease_length_pixels: Option<f32>,
+    pub min_smooth_contour_length_pixels: Option<f32>,
+    pub smooth_contour_simplification_pixels: Option<f32>,
+    pub taper: Option<f32>,
+    pub wobble: Option<f32>,
+    pub gesture_confidence: Option<f32>,
+    pub gesture_simplification: Option<f32>,
+    pub gesture_correction: Option<f32>,
+    pub gesture_overstroke: Option<f32>,
+    pub tool_pressure: Option<f32>,
+    pub tool_hardness: Option<f32>,
+    pub paper_tooth: Option<f32>,
+    pub paper_grain: Option<f32>,
+    pub nib_angle: Option<f32>,
+    pub nib_aspect: Option<f32>,
+    pub ink_dryness: Option<f32>,
+    pub tone_density: Option<f32>,
+    pub min_form_line_confidence: Option<f32>,
+    pub suggestive_contours: Option<bool>,
+    pub suggestive_contour_confidence: Option<f32>,
+    pub suggestive_contour_width_scale: Option<f32>,
+    pub suggestive_contour_opacity: Option<f32>,
+    pub form_line_width_scale: Option<f32>,
+    pub form_line_opacity: Option<f32>,
+    pub hatching_angle: Option<f32>,
+    pub hatching_spacing: Option<f32>,
+    pub hatching_cross: Option<f32>,
+}
+
+impl ComicInkOverrides {
+    pub fn is_empty(&self) -> bool {
+        self == &Self::default()
+    }
+
+    pub fn resolve(&self, mut inherited: ComicInk) -> ComicInk {
+        macro_rules! resolve {
+            ($field:ident) => {
+                if let Some(value) = self.$field {
+                    inherited.$field = value;
+                }
+            };
+        }
+        resolve!(tool);
+        resolve!(tone_mode);
+        resolve!(surface_mode);
+        resolve!(light_direction);
+        resolve!(ink);
+        resolve!(crease_angle);
+        resolve!(smooth_crease_angle);
+        resolve!(smooth_draw_creases);
+        resolve!(paper);
+        resolve!(shadow);
+        resolve!(mid);
+        resolve!(light);
+        resolve!(outline_width);
+        resolve!(crease_width);
+        resolve!(boundary_width);
+        resolve!(min_crease_length_pixels);
+        resolve!(min_smooth_contour_length_pixels);
+        resolve!(smooth_contour_simplification_pixels);
+        resolve!(taper);
+        resolve!(wobble);
+        resolve!(gesture_confidence);
+        resolve!(gesture_simplification);
+        resolve!(gesture_correction);
+        resolve!(gesture_overstroke);
+        resolve!(tool_pressure);
+        resolve!(tool_hardness);
+        resolve!(paper_tooth);
+        resolve!(paper_grain);
+        resolve!(nib_angle);
+        resolve!(nib_aspect);
+        resolve!(ink_dryness);
+        resolve!(tone_density);
+        resolve!(min_form_line_confidence);
+        resolve!(suggestive_contours);
+        resolve!(suggestive_contour_confidence);
+        resolve!(suggestive_contour_width_scale);
+        resolve!(suggestive_contour_opacity);
+        resolve!(form_line_width_scale);
+        resolve!(form_line_opacity);
+        resolve!(hatching_angle);
+        resolve!(hatching_spacing);
+        resolve!(hatching_cross);
+        inherited
+    }
+
+    /// Captures every property explicitly. This is reserved for callers that
+    /// intentionally detach a style; ordinary local editing should set just
+    /// the edited field and preserve inheritance.
+    pub fn detached(style: ComicInk) -> Self {
+        Self {
+            tool: Some(style.tool), tone_mode: Some(style.tone_mode),
+            surface_mode: Some(style.surface_mode), light_direction: Some(style.light_direction),
+            ink: Some(style.ink), crease_angle: Some(style.crease_angle),
+            smooth_crease_angle: Some(style.smooth_crease_angle),
+            smooth_draw_creases: Some(style.smooth_draw_creases), paper: Some(style.paper),
+            shadow: Some(style.shadow), mid: Some(style.mid), light: Some(style.light),
+            outline_width: Some(style.outline_width), crease_width: Some(style.crease_width),
+            boundary_width: Some(style.boundary_width),
+            min_crease_length_pixels: Some(style.min_crease_length_pixels),
+            min_smooth_contour_length_pixels: Some(style.min_smooth_contour_length_pixels),
+            smooth_contour_simplification_pixels: Some(style.smooth_contour_simplification_pixels),
+            taper: Some(style.taper), wobble: Some(style.wobble),
+            gesture_confidence: Some(style.gesture_confidence),
+            gesture_simplification: Some(style.gesture_simplification),
+            gesture_correction: Some(style.gesture_correction),
+            gesture_overstroke: Some(style.gesture_overstroke),
+            tool_pressure: Some(style.tool_pressure), tool_hardness: Some(style.tool_hardness),
+            paper_tooth: Some(style.paper_tooth), paper_grain: Some(style.paper_grain),
+            nib_angle: Some(style.nib_angle), nib_aspect: Some(style.nib_aspect),
+            ink_dryness: Some(style.ink_dryness), tone_density: Some(style.tone_density),
+            min_form_line_confidence: Some(style.min_form_line_confidence),
+            suggestive_contours: Some(style.suggestive_contours),
+            suggestive_contour_confidence: Some(style.suggestive_contour_confidence),
+            suggestive_contour_width_scale: Some(style.suggestive_contour_width_scale),
+            suggestive_contour_opacity: Some(style.suggestive_contour_opacity),
+            form_line_width_scale: Some(style.form_line_width_scale), form_line_opacity: Some(style.form_line_opacity),
+            hatching_angle: Some(style.hatching_angle), hatching_spacing: Some(style.hatching_spacing),
+            hatching_cross: Some(style.hatching_cross),
         }
     }
 }

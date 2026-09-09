@@ -3,17 +3,17 @@ use std::collections::BTreeMap;
 use amigo_core::{AmigoError, AmigoResult};
 use amigo_math::ColorRgba;
 use amigo_overlay_api::{
-    UiLayoutNode, UiOverlayCurvePoint, UiOverlayDocument, UiOverlayLayer, UiOverlayNode,
-    UiOverlayNodeKind, UiOverlayStyle, UiOverlayTab, UiOverlayTextGlow, UiOverlayTextOutline,
-    UiOverlayTextShadow, UiOverlayViewport, UiOverlayViewportScaling, UiRect, build_ui_layout_tree,
+    build_ui_layout_tree, UiLayoutNode, UiOverlayCurvePoint, UiOverlayDocument, UiOverlayLayer,
+    UiOverlayNode, UiOverlayNodeKind, UiOverlayStyle, UiOverlayTab, UiOverlayTextGlow,
+    UiOverlayTextOutline, UiOverlayTextShadow, UiOverlayViewport, UiOverlayViewportScaling, UiRect,
 };
 use amigo_runtime::Runtime;
 use amigo_scripting_api::{ScriptEvent, ScriptEventQueue};
 
 use crate::{
-    UiCurvePoint, UiEventBinding, UiInputService, UiInputViewportState, UiSceneService,
-    UiStateService, UiStateSnapshot, UiTextAlign, UiTheme, UiThemeService, UiViewportScaling,
-    curve_editor_edit_from_mouse,
+    curve_editor_edit_from_mouse, UiCurvePoint, UiEventBinding, UiInputService,
+    UiInputViewportState, UiSceneService, UiStateService, UiStateSnapshot, UiTextAlign, UiTheme,
+    UiThemeService, UiViewportScaling,
 };
 
 fn required<T: Send + Sync + 'static>(runtime: &Runtime) -> AmigoResult<std::sync::Arc<T>> {
@@ -692,6 +692,7 @@ fn resolve_style(
         bottom: merged.bottom,
         width: merged.width,
         height: merged.height,
+        fill_height: false,
         padding: merged.padding,
         gap: merged.gap,
         background: merged
@@ -727,6 +728,7 @@ fn resolve_style(
             intensity: glow.intensity,
             passes: glow.passes,
         }),
+        preview_triangles: vec![],
     };
     if let Some(color) = snapshot.color_overrides.get(path).copied() {
         overlay.color = Some(color);

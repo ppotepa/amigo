@@ -7,19 +7,20 @@
 //! future intentional contract change is explicit in a review.
 
 use crate::{
-    FeatureClass, NprDebugView, NprFillTriangle, NprRenderPacket, NprRenderStats, StrokeRole,
-    StrokeVertex, TessellatedStroke,
+    FeatureClass, NprDebugView, NprFillTriangle, NprPaintTriangle, NprRenderPacket, NprRenderStats,
+    StrokeRole, StrokeVertex, TessellatedStroke,
 };
 
 /// Increment when the byte order or field set hashed by [`NprPacketFingerprint`]
 /// changes.  Do not use this as a rendering version; it is a test-artifact format.
-pub const NPR_PACKET_FINGERPRINT_VERSION: u16 = 1;
+pub const NPR_PACKET_FINGERPRINT_VERSION: u16 = 2;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct NprPacketFingerprint {
     pub version: u16,
     pub hash: u64,
     pub occluders: usize,
+    pub underpainting: usize,
     pub fills: usize,
     pub strokes: usize,
     pub stroke_vertices: usize,
@@ -31,6 +32,7 @@ impl NprPacketFingerprint {
         let mut hasher = PacketHasher::default();
         hasher.u16(NPR_PACKET_FINGERPRINT_VERSION);
         hash_triangles(&mut hasher, &packet.occluders);
+        hash_paint_triangles(&mut hasher, &packet.underpainting);
         hash_triangles(&mut hasher, &packet.fills);
         hasher.vec4(packet.background.to_array());
         hasher.u8(debug_view_tag(packet.debug_view));
@@ -41,6 +43,7 @@ impl NprPacketFingerprint {
             version: NPR_PACKET_FINGERPRINT_VERSION,
             hash: hasher.finish(),
             occluders: packet.occluders.len(),
+            underpainting: packet.underpainting.len(),
             fills: packet.fills.len(),
             strokes: packet.strokes.len(),
             stroke_vertices: packet
@@ -54,6 +57,21 @@ impl NprPacketFingerprint {
                 .map(|stroke| stroke.indices.len())
                 .sum(),
         }
+    }
+}
+
+fn hash_paint_triangles(hasher: &mut PacketHasher, triangles: &[NprPaintTriangle]) {
+    hasher.usize(triangles.len());
+    for triangle in triangles {
+        for position in triangle.positions {
+            hasher.vec2(position.to_array());
+        }
+        hasher.vec4(triangle.color.to_array());
+        triangle
+            .depths
+            .into_iter()
+            .for_each(|depth| hasher.f32(depth));
+        hasher.f32(triangle.coverage);
     }
 }
 
@@ -181,9 +199,11 @@ fn hash_stats(hasher: &mut PacketHasher, stats: &NprRenderStats) {
     hasher.usize(stats.silhouettes);
     hasher.usize(stats.creases);
     hasher.usize(stats.strokes);
+    hasher.usize(stats.underpainting_triangles);
     hasher.usize(stats.stroke_vertices);
     hasher.usize(stats.stroke_indices);
     hasher.usize(stats.hatching_strokes);
+    hasher.usize(stats.form_line_strokes);
     hasher.usize(stats.hatching_correction_strokes);
     hasher.f32(stats.graphite_mass);
     hasher.usize(stats.hatching_candidates);
@@ -216,7 +236,8 @@ fn stroke_role_tag(value: StrokeRole) -> u8 {
     match value {
         StrokeRole::Feature => 0,
         StrokeRole::Tone => 1,
-        StrokeRole::Construction => 2,
+        StrokeRole::FormLine => 2,
+        StrokeRole::Construction => 3,
     }
 }
 fn debug_view_tag(value: NprDebugView) -> u8 {
@@ -240,6 +261,7 @@ mod tests {
                 color: Vec4::ONE,
                 depths: [0.1, 0.2, 0.3],
             }],
+            underpainting: Vec::new(),
             fills: Vec::new(),
             strokes: Vec::new(),
             background: Vec4::ZERO,

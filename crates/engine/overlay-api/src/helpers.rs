@@ -40,6 +40,7 @@ pub(crate) fn kind_slug(kind: &UiOverlayNodeKind) -> &'static str {
         UiOverlayNodeKind::Row => "row",
         UiOverlayNodeKind::Column => "column",
         UiOverlayNodeKind::Stack => "stack",
+        UiOverlayNodeKind::ScrollArea { .. } => "scroll-area",
         UiOverlayNodeKind::Text { .. } => "text",
         UiOverlayNodeKind::Button { .. } => "button",
         UiOverlayNodeKind::ProgressBar { .. } => "progress-bar",

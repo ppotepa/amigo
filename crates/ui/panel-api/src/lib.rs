@@ -249,6 +249,20 @@ pub struct PropertySnapshot {
     pub description: Option<String>,
 }
 
+/// A complete, transport-independent view of one live scene panel.
+///
+/// Native, embedded and remote hosts all consume this exact snapshot. The
+/// generation/revision pair is carried with user input so a host cannot apply
+/// an interaction to a scene or layout that has since changed.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PanelSnapshot {
+    pub generation: u64,
+    pub revision: u64,
+    pub document: PanelDocument,
+    pub preset_names: Vec<String>,
+    pub values: BTreeMap<String, PropertySnapshot>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ClientMessage {
     Hello {

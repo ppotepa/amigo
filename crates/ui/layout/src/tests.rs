@@ -1,6 +1,6 @@
 use crate::{
-    LayoutElement, LayoutKind, LayoutLeafKind, LayoutStyle, LayoutViewport, LayoutViewportScaling,
-    compute_layout, find_layout_node, hit_test,
+    compute_layout, find_layout_node, hit_test, LayoutElement, LayoutKind, LayoutLeafKind,
+    LayoutStyle, LayoutViewport, LayoutViewportScaling,
 };
 
 fn node(
@@ -113,6 +113,48 @@ fn row_layout_places_children_left_to_right() {
     assert_eq!(left.rect.y, 8.0);
     assert_eq!(right.rect.x, 62.0);
     assert_eq!(right.rect.y, 8.0);
+}
+
+#[test]
+fn column_fill_height_uses_remaining_space_and_root_honours_top_and_bottom() {
+    let root = node(
+        "root",
+        LayoutKind::Column,
+        LayoutStyle {
+            top: Some(20.0),
+            bottom: Some(20.0),
+            width: Some(300.0),
+            padding: 10.0,
+            gap: 5.0,
+            ..LayoutStyle::default()
+        },
+        vec![
+            leaf(
+                "header",
+                LayoutLeafKind::Spacer,
+                LayoutStyle {
+                    height: Some(30.0),
+                    ..LayoutStyle::default()
+                },
+            ),
+            leaf(
+                "content",
+                LayoutLeafKind::Spacer,
+                LayoutStyle {
+                    fill_height: true,
+                    ..LayoutStyle::default()
+                },
+            ),
+        ],
+    );
+
+    let layout = compute_layout("doc", LayoutViewport::new(320.0, 200.0), &root, None);
+    let content = find_layout_node(&layout, "doc.root.content").expect("content node");
+
+    assert_eq!(layout.rect.y, 20.0);
+    assert_eq!(layout.rect.height, 160.0);
+    assert_eq!(content.rect.y, 65.0);
+    assert_eq!(content.rect.height, 105.0);
 }
 
 #[test]

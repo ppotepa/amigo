@@ -1,10 +1,13 @@
 use std::{any::Any, collections::BTreeMap};
 
-use amigo_render_npr::{ComicInk, NprMotionPolicy, NprSurfaceIntent, NprSurfaceMode};
+use amigo_render_npr::{
+    ComicInk, ComicInkOverrides, NprMotionPolicy, NprStyleLayerOverrides, NprStyleLayers,
+    NprSurfaceIntent, NprSurfaceMode,
+};
 use amigo_scene::{
     SceneComponentPayload, SceneComponentSchemaProvider, SceneDocumentError, SceneDocumentResult,
 };
-use glam::Vec3;
+use glam::{Vec3, Vec4};
 use serde::{Deserialize, Serialize};
 use serde_yaml::Value;
 
@@ -27,7 +30,11 @@ pub struct NprPlaygroundSceneDocument {
     #[serde(default)]
     pub motion: Option<NprMotionPolicy>,
     #[serde(default)]
+    pub sketch_paused: Option<bool>,
+    #[serde(default)]
     pub global_style: Option<ComicInk>,
+    #[serde(default)]
+    pub style_layers: Option<NprStyleLayers>,
     #[serde(default)]
     pub camera: NprCameraSceneSettings,
     #[serde(default)]
@@ -53,6 +60,8 @@ pub struct NprCameraSceneSettings {
 #[serde(deny_unknown_fields)]
 pub struct NprObjectSceneSettings {
     #[serde(default)]
+    pub material_base_color: Option<Vec4>,
+    #[serde(default)]
     pub visible: Option<bool>,
     #[serde(default)]
     pub rotating: Option<bool>,
@@ -73,9 +82,9 @@ pub struct NprObjectSceneSettings {
     #[serde(default)]
     pub smooth_weld_relative_tolerance: Option<f32>,
     #[serde(default)]
-    pub override_style: Option<bool>,
+    pub style_overrides: Option<ComicInkOverrides>,
     #[serde(default)]
-    pub style: Option<ComicInk>,
+    pub style_layer_overrides: Option<NprStyleLayerOverrides>,
     #[serde(default)]
     pub construction_marks: Option<Vec<ConstructionMarkSettings>>,
 }
@@ -93,6 +102,8 @@ impl NprPlaygroundSceneDocument {
         for (id, object) in &settings.objects {
             let default = &defaults.objects[id];
             let authored = NprObjectSceneSettings {
+                material_base_color: (object.material_base_color != default.material_base_color)
+                    .then_some(object.material_base_color),
                 visible: (object.visible != default.visible).then_some(object.visible),
                 rotating: (object.rotating != default.rotating).then_some(object.rotating),
                 position: (object.position != default.position).then_some(object.position),
@@ -110,9 +121,11 @@ impl NprPlaygroundSceneDocument {
                 smooth_weld_relative_tolerance: (object.smooth_weld_relative_tolerance
                     != default.smooth_weld_relative_tolerance)
                     .then_some(object.smooth_weld_relative_tolerance),
-                override_style: (object.override_style != default.override_style)
-                    .then_some(object.override_style),
-                style: (object.style != default.style).then_some(object.style),
+                style_overrides: (object.style_overrides != default.style_overrides)
+                    .then_some(object.style_overrides.clone()),
+                style_layer_overrides: (!object.style_layer_overrides.is_empty()
+                    && object.style_layer_overrides != default.style_layer_overrides)
+                    .then_some(object.style_layer_overrides.clone()),
                 construction_marks: (object.construction_marks != default.construction_marks)
                     .then_some(object.construction_marks.clone()),
             };
@@ -125,7 +138,11 @@ impl NprPlaygroundSceneDocument {
             selected: (settings.selected != defaults.selected).then_some(settings.selected.clone()),
             seed: (settings.seed != defaults.seed).then_some(settings.seed),
             motion: (settings.motion != defaults.motion).then_some(settings.motion),
+            sketch_paused: (settings.sketch_paused != defaults.sketch_paused)
+                .then_some(settings.sketch_paused),
             global_style: (settings.global != defaults.global).then_some(settings.global),
+            style_layers: (settings.style_layers != defaults.style_layers)
+                .then_some(settings.style_layers.clone()),
             camera: NprCameraSceneSettings {
                 target: (settings.camera_target != defaults.camera_target)
                     .then_some(settings.camera_target),
@@ -151,8 +168,14 @@ impl NprPlaygroundSceneDocument {
         if let Some(motion) = self.motion {
             settings.motion = motion;
         }
+        if let Some(paused) = self.sketch_paused {
+            settings.sketch_paused = paused;
+        }
         if let Some(style) = self.global_style {
             settings.global = style;
+        }
+        if let Some(layers) = &self.style_layers {
+            settings.style_layers = layers.clone();
         }
         if let Some(target) = self.camera.target {
             settings.camera_target = target;
@@ -180,37 +203,77 @@ impl NprPlaygroundSceneDocument {
 }
 
 fn apply_object_settings(object: &mut ObjectSettings, authored: &NprObjectSceneSettings) {
-    if let Some(value) = authored.visible { object.visible = value; }
-    if let Some(value) = authored.rotating { object.rotating = value; }
-    if let Some(value) = authored.position { object.position = value; }
-    if let Some(value) = authored.rotation { object.rotation = value; }
-    if let Some(value) = authored.scale { object.scale = value; }
-    if let Some(value) = authored.angular_speed { object.angular_speed = value; }
-    if let Some(value) = authored.surface_intent { object.surface_intent = value; }
-    if let Some(value) = authored.surface_mode { object.surface_mode = value; }
-    if let Some(value) = authored.surface_subdivision_level { object.surface_subdivision_level = value; }
-    if let Some(value) = authored.smooth_weld_relative_tolerance { object.smooth_weld_relative_tolerance = value; }
-    if let Some(value) = authored.override_style { object.override_style = value; }
-    if let Some(value) = authored.style { object.style = value; }
-    if let Some(value) = &authored.construction_marks { object.construction_marks = value.clone(); }
+    if let Some(value) = authored.material_base_color {
+        object.material_base_color = value;
+    }
+    if let Some(value) = authored.visible {
+        object.visible = value;
+    }
+    if let Some(value) = authored.rotating {
+        object.rotating = value;
+    }
+    if let Some(value) = authored.position {
+        object.position = value;
+    }
+    if let Some(value) = authored.rotation {
+        object.rotation = value;
+    }
+    if let Some(value) = authored.scale {
+        object.scale = value;
+    }
+    if let Some(value) = authored.angular_speed {
+        object.angular_speed = value;
+    }
+    if let Some(value) = authored.surface_intent {
+        object.surface_intent = value;
+    }
+    if let Some(value) = authored.surface_mode {
+        object.surface_mode = value;
+    }
+    if let Some(value) = authored.surface_subdivision_level {
+        object.surface_subdivision_level = value;
+    }
+    if let Some(value) = authored.smooth_weld_relative_tolerance {
+        object.smooth_weld_relative_tolerance = value;
+    }
+    if let Some(value) = &authored.style_overrides {
+        object.style_overrides = value.clone();
+    }
+    if let Some(value) = &authored.style_layer_overrides {
+        object.style_layer_overrides = value.clone();
+    }
+    if let Some(value) = &authored.construction_marks {
+        object.construction_marks = value.clone();
+    }
 }
 
 impl amigo_scene::SceneComponentPayload for NprPlaygroundSceneDocument {
-    fn component_type(&self) -> &'static str { NPR_SETTINGS_COMPONENT_TYPE }
-    fn as_any(&self) -> &dyn Any { self }
+    fn component_type(&self) -> &'static str {
+        NPR_SETTINGS_COMPONENT_TYPE
+    }
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
 }
 
 #[derive(Debug, Clone, Copy, Default)]
 pub struct NprPlaygroundSceneSchemaProvider;
 
 impl SceneComponentSchemaProvider for NprPlaygroundSceneSchemaProvider {
-    fn component_type(&self) -> &'static str { NPR_SETTINGS_COMPONENT_TYPE }
-
-    fn parse_yaml(&self, payload: serde_yaml::Mapping) -> Result<Value, serde_yaml::Error> {
-        serde_yaml::to_value(serde_yaml::from_value::<NprPlaygroundSceneDocument>(Value::Mapping(payload))?)
+    fn component_type(&self) -> &'static str {
+        NPR_SETTINGS_COMPONENT_TYPE
     }
 
-    fn parse_payload_value(&self, payload: &Value) -> SceneDocumentResult<Box<dyn SceneComponentPayload>> {
+    fn parse_yaml(&self, payload: serde_yaml::Mapping) -> Result<Value, serde_yaml::Error> {
+        serde_yaml::to_value(serde_yaml::from_value::<NprPlaygroundSceneDocument>(
+            Value::Mapping(payload),
+        )?)
+    }
+
+    fn parse_payload_value(
+        &self,
+        payload: &Value,
+    ) -> SceneDocumentResult<Box<dyn SceneComponentPayload>> {
         serde_yaml::from_value::<NprPlaygroundSceneDocument>(payload.clone())
             .map(|document| Box::new(document) as Box<dyn SceneComponentPayload>)
             .map_err(|source| SceneDocumentError::Parse { path: None, source })

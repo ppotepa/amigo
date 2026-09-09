@@ -54,42 +54,30 @@ fn playground_3d_main_scene_bootstraps() {
             .as_deref(),
         Some("scenes/hello-world-cube/scene.yml")
     );
-    assert!(
-        summary
-            .mesh_entities_3d
-            .iter()
-            .any(|entity| entity == "playground-3d-cube")
-    );
-    assert!(
-        summary
-            .material_entities_3d
-            .iter()
-            .any(|entity| entity == "playground-3d-cube")
-    );
-    assert!(
-        summary
-            .text_entities_3d
-            .iter()
-            .any(|entity| entity == "playground-3d-hello")
-    );
-    assert!(
-        summary
-            .prepared_assets
-            .iter()
-            .any(|asset| asset == "playground-3d/meshes/cube (mesh-3d)")
-    );
-    assert!(
-        summary
-            .prepared_assets
-            .iter()
-            .any(|asset| asset == "playground-3d/materials/cube-material (material-3d)")
-    );
-    assert!(
-        summary
-            .prepared_assets
-            .iter()
-            .any(|asset| asset == "playground-3d/fonts/debug-3d (font-3d)")
-    );
+    assert!(summary
+        .mesh_entities_3d
+        .iter()
+        .any(|entity| entity == "playground-3d-cube"));
+    assert!(summary
+        .material_entities_3d
+        .iter()
+        .any(|entity| entity == "playground-3d-cube"));
+    assert!(summary
+        .text_entities_3d
+        .iter()
+        .any(|entity| entity == "playground-3d-hello"));
+    assert!(summary
+        .prepared_assets
+        .iter()
+        .any(|asset| asset == "playground-3d/meshes/cube (mesh-3d)"));
+    assert!(summary
+        .prepared_assets
+        .iter()
+        .any(|asset| asset == "playground-3d/materials/cube-material (material-3d)"));
+    assert!(summary
+        .prepared_assets
+        .iter()
+        .any(|asset| asset == "playground-3d/fonts/debug-3d (font-3d)"));
     assert!(summary.failed_assets.is_empty());
 }
 
@@ -145,14 +133,12 @@ fn npr_playground_offscreen_matches_packet_contract() {
     assert_eq!(stats.viewport, [512, 512]);
     assert_eq!(
         packet.npr()[0].packet.fingerprint().hash,
-        2_809_724_424_463_895_818
+        1_855_321_817_102_543_714
     );
-    assert!(
-        first
-            .pixels_rgba8
-            .chunks_exact(4)
-            .any(|pixel| pixel[0] != 0)
-    );
+    assert!(first
+        .pixels_rgba8
+        .chunks_exact(4)
+        .any(|pixel| pixel[0] != 0));
 }
 
 #[test]
@@ -194,7 +180,7 @@ fn npr_pencil_profile_uses_depth_occluders_without_color_bands() {
     assert!(!command.packet.occluders.is_empty());
     assert!(command.packet.fills.is_empty());
     assert!(command.packet.stats.hatching_strokes > 0);
-    assert_eq!(command.packet.fingerprint().hash, 13_345_830_997_983_363_732);
+    assert_eq!(command.packet.fingerprint().hash, 3_120_497_883_406_475_149);
     let darkest = image
         .pixels_rgba8
         .chunks_exact(4)
@@ -252,7 +238,7 @@ fn npr_pencil_cylinder_streamlines_match_reviewed_golden() {
     assert!(!command.packet.occluders.is_empty());
     assert!(command.packet.fills.is_empty());
     assert!(command.packet.stats.hatching_strokes > 0);
-    assert_eq!(command.packet.fingerprint().hash, 13_534_643_788_415_099_487);
+    assert_eq!(command.packet.fingerprint().hash, 5_510_998_769_617_673_323);
     assert!(
         command
             .packet
@@ -286,56 +272,40 @@ fn playground_3d_material_scene_populates_3d_material_domain_and_assets() {
     assert!(summary.processed_scene_commands.iter().any(|command| {
         command.starts_with("scene.plugin(amigo.rendering.3d.scene-command.Material3d)")
     }));
-    assert!(
-        summary
-            .registered_assets
-            .iter()
-            .any(|asset| asset == "playground-3d/meshes/material-probe")
-    );
-    assert!(
-        summary
-            .registered_assets
-            .iter()
-            .any(|asset| asset == "playground-3d/materials/debug-surface")
-    );
-    assert!(
-        summary
-            .loaded_assets
-            .iter()
-            .any(|asset| asset == "playground-3d/meshes/material-probe")
-    );
-    assert!(
-        summary
-            .loaded_assets
-            .iter()
-            .any(|asset| asset == "playground-3d/materials/debug-surface")
-    );
-    assert!(
-        summary
-            .prepared_assets
-            .iter()
-            .any(|asset| asset == "playground-3d/meshes/material-probe (mesh-3d)")
-    );
-    assert!(
-        summary
-            .prepared_assets
-            .iter()
-            .any(|asset| asset == "playground-3d/materials/debug-surface (material-3d)")
-    );
+    assert!(summary
+        .registered_assets
+        .iter()
+        .any(|asset| asset == "playground-3d/meshes/material-probe"));
+    assert!(summary
+        .registered_assets
+        .iter()
+        .any(|asset| asset == "playground-3d/materials/debug-surface"));
+    assert!(summary
+        .loaded_assets
+        .iter()
+        .any(|asset| asset == "playground-3d/meshes/material-probe"));
+    assert!(summary
+        .loaded_assets
+        .iter()
+        .any(|asset| asset == "playground-3d/materials/debug-surface"));
+    assert!(summary
+        .prepared_assets
+        .iter()
+        .any(|asset| asset == "playground-3d/meshes/material-probe (mesh-3d)"));
+    assert!(summary
+        .prepared_assets
+        .iter()
+        .any(|asset| asset == "playground-3d/materials/debug-surface (material-3d)"));
     assert!(summary.failed_assets.is_empty());
     assert!(summary.pending_asset_loads.is_empty());
-    assert!(
-        summary
-            .mesh_entities_3d
-            .iter()
-            .any(|entity| entity == "playground-3d-material-probe")
-    );
-    assert!(
-        summary
-            .material_entities_3d
-            .iter()
-            .any(|entity| entity == "playground-3d-material-probe")
-    );
+    assert!(summary
+        .mesh_entities_3d
+        .iter()
+        .any(|entity| entity == "playground-3d-material-probe"));
+    assert!(summary
+        .material_entities_3d
+        .iter()
+        .any(|entity| entity == "playground-3d-material-probe"));
 }
 
 #[test]
@@ -395,18 +365,14 @@ fn playground_3d_physics_scene_bootstraps() {
             .as_deref(),
         Some("scenes/physics-cubes/scene.yml")
     );
-    assert!(
-        summary
-            .mesh_entities_3d
-            .iter()
-            .any(|entity| entity == "playground-3d-ground")
-    );
-    assert!(
-        summary
-            .text_entities_3d
-            .iter()
-            .any(|entity| entity == "playground-3d-physics-label")
-    );
+    assert!(summary
+        .mesh_entities_3d
+        .iter()
+        .any(|entity| entity == "playground-3d-ground"));
+    assert!(summary
+        .text_entities_3d
+        .iter()
+        .any(|entity| entity == "playground-3d-physics-label"));
     assert!(summary.failed_assets.is_empty());
 }
 
@@ -433,32 +399,24 @@ fn playground_3d_mesh_scene_populates_3d_domain_and_assets() {
     assert!(summary.processed_scene_commands.iter().any(|command| {
         command.starts_with("scene.plugin(amigo.rendering.3d.scene-command.Mesh3d)")
     }));
-    assert!(
-        summary
-            .registered_assets
-            .iter()
-            .any(|asset| asset == "playground-3d/meshes/probe")
-    );
-    assert!(
-        summary
-            .loaded_assets
-            .iter()
-            .any(|asset| asset == "playground-3d/meshes/probe")
-    );
-    assert!(
-        summary
-            .prepared_assets
-            .iter()
-            .any(|asset| asset == "playground-3d/meshes/probe (mesh-3d)")
-    );
+    assert!(summary
+        .registered_assets
+        .iter()
+        .any(|asset| asset == "playground-3d/meshes/probe"));
+    assert!(summary
+        .loaded_assets
+        .iter()
+        .any(|asset| asset == "playground-3d/meshes/probe"));
+    assert!(summary
+        .prepared_assets
+        .iter()
+        .any(|asset| asset == "playground-3d/meshes/probe (mesh-3d)"));
     assert!(summary.failed_assets.is_empty());
     assert!(summary.pending_asset_loads.is_empty());
-    assert!(
-        summary
-            .mesh_entities_3d
-            .iter()
-            .any(|entity| entity == "playground-3d-probe")
-    );
+    assert!(summary
+        .mesh_entities_3d
+        .iter()
+        .any(|entity| entity == "playground-3d-probe"));
     assert!(summary.material_entities_3d.is_empty());
 }
 
@@ -540,88 +498,60 @@ fn playground_sidescroller_vertical_slice_bootstraps() {
         .as_ref()
         .expect("loaded scene document should exist")
         .component_kinds;
-    assert!(
-        component_kinds
-            .iter()
-            .any(|kind| kind == "amigo.gfx.tilemap-2d.TileMap2D x1")
-    );
-    assert!(
-        component_kinds
-            .iter()
-            .any(|kind| kind == "KinematicBody2D x1")
-    );
-    assert!(
-        component_kinds
-            .iter()
-            .any(|kind| kind == "AabbCollider2D x1")
-    );
-    assert!(
-        component_kinds
-            .iter()
-            .any(|kind| kind == "MotionController2D x1")
-    );
-    assert!(
-        component_kinds
-            .iter()
-            .any(|kind| kind == "CameraFollow2D x1")
-    );
+    assert!(component_kinds
+        .iter()
+        .any(|kind| kind == "amigo.gfx.tilemap-2d.TileMap2D x1"));
+    assert!(component_kinds
+        .iter()
+        .any(|kind| kind == "KinematicBody2D x1"));
+    assert!(component_kinds
+        .iter()
+        .any(|kind| kind == "AabbCollider2D x1"));
+    assert!(component_kinds
+        .iter()
+        .any(|kind| kind == "MotionController2D x1"));
+    assert!(component_kinds
+        .iter()
+        .any(|kind| kind == "CameraFollow2D x1"));
     assert!(component_kinds.iter().any(|kind| kind == "Parallax2D x4"));
-    assert!(
-        component_kinds
-            .iter()
-            .any(|kind| kind == "TileMapMarker2D x27")
-    );
+    assert!(component_kinds
+        .iter()
+        .any(|kind| kind == "TileMapMarker2D x27"));
     assert!(component_kinds.iter().any(|kind| kind == "Trigger2D x26"));
     assert!(component_kinds.iter().any(|kind| kind == "UiDocument x1"));
 
-    assert!(
-        summary
-            .scene_entities
-            .iter()
-            .any(|entity| entity == "playground-sidescroller-background-layer-01")
-    );
-    assert!(
-        summary
-            .scene_entities
-            .iter()
-            .any(|entity| entity == "playground-sidescroller-background-layer-02")
-    );
-    assert!(
-        summary
-            .scene_entities
-            .iter()
-            .any(|entity| entity == "playground-sidescroller-background-layer-03")
-    );
-    assert!(
-        summary
-            .scene_entities
-            .iter()
-            .any(|entity| entity == "playground-sidescroller-background-layer-04")
-    );
-    assert!(
-        summary
-            .scene_entities
-            .iter()
-            .any(|entity| entity == "playground-sidescroller-player")
-    );
-    assert!(
-        summary
-            .scene_entities
-            .iter()
-            .any(|entity| entity == "playground-sidescroller-coin-25")
-    );
-    assert!(
-        summary
-            .scene_entities
-            .iter()
-            .any(|entity| entity == "playground-sidescroller-tilemap")
-    );
-    assert!(
-        summary
-            .scene_entities
-            .iter()
-            .any(|entity| entity == "playground-sidescroller-hud")
-    );
+    assert!(summary
+        .scene_entities
+        .iter()
+        .any(|entity| entity == "playground-sidescroller-background-layer-01"));
+    assert!(summary
+        .scene_entities
+        .iter()
+        .any(|entity| entity == "playground-sidescroller-background-layer-02"));
+    assert!(summary
+        .scene_entities
+        .iter()
+        .any(|entity| entity == "playground-sidescroller-background-layer-03"));
+    assert!(summary
+        .scene_entities
+        .iter()
+        .any(|entity| entity == "playground-sidescroller-background-layer-04"));
+    assert!(summary
+        .scene_entities
+        .iter()
+        .any(|entity| entity == "playground-sidescroller-player"));
+    assert!(summary
+        .scene_entities
+        .iter()
+        .any(|entity| entity == "playground-sidescroller-coin-25"));
+    assert!(summary
+        .scene_entities
+        .iter()
+        .any(|entity| entity == "playground-sidescroller-tilemap"));
+    assert!(summary
+        .scene_entities
+        .iter()
+        .any(|entity| entity == "playground-sidescroller-hud"));
     let player_transform = _runtime
         .resolve::<SceneService>()
         .expect("scene service should exist")
@@ -639,47 +569,35 @@ fn playground_sidescroller_vertical_slice_bootstraps() {
         == "playground-sidescroller/spritesheets/background-layer-03 (sprite-sheet-2d)"));
     assert!(summary.prepared_assets.iter().any(|asset| asset
         == "playground-sidescroller/spritesheets/background-layer-04 (sprite-sheet-2d)"));
-    assert!(
-        summary
-            .prepared_assets
-            .iter()
-            .any(|asset| asset == "playground-sidescroller/spritesheets/player (sprite-sheet-2d)")
-    );
-    assert!(
-        summary
-            .prepared_assets
-            .iter()
-            .any(|asset| asset == "playground-sidescroller/spritesheets/coin (sprite-sheet-2d)")
-    );
-    assert!(
-        summary
-            .prepared_assets
-            .iter()
-            .any(|asset| asset == "playground-sidescroller/spritesheets/finish (sprite-sheet-2d)")
-    );
+    assert!(summary
+        .prepared_assets
+        .iter()
+        .any(|asset| asset == "playground-sidescroller/spritesheets/player (sprite-sheet-2d)"));
+    assert!(summary
+        .prepared_assets
+        .iter()
+        .any(|asset| asset == "playground-sidescroller/spritesheets/coin (sprite-sheet-2d)"));
+    assert!(summary
+        .prepared_assets
+        .iter()
+        .any(|asset| asset == "playground-sidescroller/spritesheets/finish (sprite-sheet-2d)"));
     assert!(summary.prepared_assets.iter().any(|asset| asset
         == "playground-sidescroller/spritesheets/platformer/tilesets/platform/base (tileset-2d)"));
     assert!(summary.prepared_assets.iter().any(|asset| {
         asset == "playground-sidescroller/spritesheets/platformer/rulesets/platform/rules (tile-ruleset-2d)"
     }));
-    assert!(
-        summary
-            .prepared_assets
-            .iter()
-            .any(|asset| asset == "playground-sidescroller/fonts/debug-ui (font-2d)")
-    );
-    assert!(
-        summary
-            .prepared_assets
-            .iter()
-            .any(|asset| { asset == "playground-sidescroller/audio/jump (generated-audio)" })
-    );
-    assert!(
-        summary
-            .prepared_assets
-            .iter()
-            .any(|asset| { asset == "playground-sidescroller/audio/coin (generated-audio)" })
-    );
+    assert!(summary
+        .prepared_assets
+        .iter()
+        .any(|asset| asset == "playground-sidescroller/fonts/debug-ui (font-2d)"));
+    assert!(summary
+        .prepared_assets
+        .iter()
+        .any(|asset| { asset == "playground-sidescroller/audio/jump (generated-audio)" }));
+    assert!(summary
+        .prepared_assets
+        .iter()
+        .any(|asset| { asset == "playground-sidescroller/audio/coin (generated-audio)" }));
     assert!(summary.prepared_assets.iter().any(|asset| {
         asset == "playground-sidescroller/audio/level-complete (generated-audio)"
     }));
@@ -688,12 +606,10 @@ fn playground_sidescroller_vertical_slice_bootstraps() {
     }));
     assert_eq!(summary.audio_master_volume, 1.0);
     assert!(summary.audio_sources.is_empty());
-    assert!(
-        summary
-            .pending_audio_runtime_commands
-            .iter()
-            .any(|entry| entry == "audio.play(playground-sidescroller/audio/jump)")
-    );
+    assert!(summary
+        .pending_audio_runtime_commands
+        .iter()
+        .any(|entry| entry == "audio.play(playground-sidescroller/audio/jump)"));
     assert!(!summary.audio_output_started);
     assert!(summary.failed_assets.is_empty());
 }

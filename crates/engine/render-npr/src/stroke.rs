@@ -9,6 +9,9 @@ pub enum StrokeRole {
     #[default]
     Feature,
     Tone,
+    /// Sparse interior contour describing a turning form under three-band
+    /// shading. It is not hatch density and therefore owns its own layer.
+    FormLine,
     Construction,
 }
 

@@ -870,13 +870,16 @@ version = "0.1.0"
 dependencies = [
  "amigo-core",
  "amigo-hot-reload",
+ "amigo-math",
  "amigo-modding",
+ "amigo-overlay-api",
  "amigo-panel-api",
  "amigo-runtime",
  "amigo-runtime-control",
  "amigo-scene",
  "amigo-scripting-api",
  "amigo-session",
+ "amigo-ui",
  "serde",
  "serde_yaml",
 ]

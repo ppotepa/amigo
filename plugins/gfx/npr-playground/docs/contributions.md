@@ -1,40 +1,50 @@
-# Contributions
+# NPR playground contributions
 
-The plugin registers `amigo.gfx.npr-playground.extractor` and `gfx.npr@1`.
-Its render service publishes NprDrawCommand packets and one shared paper
-background. The runtime bundle bridge copies these neutral commands into WGPU
-frame packets. SceneColor and SceneDepth are the declared outputs; no renderer
-object-name heuristic or Mesh3D scene entity is required.
+The plugin contributes the `gfx.npr` capability, an `NprSettings` scene
+component, runtime controls under `world.npr.settings.NprSettings.*`, and one
+render extractor contribution per visible object.
 
-RuntimeControlProvider exposes the complete settings tree and a selected-object
-alias. PresetProvider validates a candidate before replacing all settings. Panel
-actions use the existing Rhai event queue, not backend-specific entrypoints.
+Styles resolve in this order:
 
-The plugin contributes an `NprDrawCommand` and does not call a backend directly.
+```text
+scene ComicInk + scene NprStyleLayers
+  -> selected object ComicInkOverrides + NprStyleLayerOverrides
+  -> effective NprDrawCommand
+```
 
-Scenes can own a typed `amigo.gfx.npr-playground.NprSettings` component. It
-selects gallery/single-object composition and may override camera, motion, ink,
-per-object surface policy and construction marks. The component is schema- and
-hydrator-backed, so an editor can use the same authored payload; it is not an
-ID-based renderer preset.
+Layer scalar overrides are sparse (`enabled`, `opacity`, `blend`, colour source
+and tool). A local reorder is explicitly structural and records the full stable
+layer-ID order. Therefore later scene changes still reach object layers that did
+not override the relevant property.
 
-The surface policy records `HardSurface`, `Organic` or `Authored` intent. The
-domain extractor resolves it to a concrete Smooth/Polygonal packet policy; it
-does not ask WGPU to interpret topology as drawing intent.
+For stroke layers, an explicit tool is applied by `amigo-render-npr` after
+feature extraction and before backend submission. It retargets the pixel-space
+strip envelope, analytic edge softness, coverage and round caps while retaining
+the source stroke identity and topology. `inherit` keeps the scene `ComicInk`
+tool.
 
-The in-game editor's `Save NPR scene` command is handled by the domain runtime
-apply provider. It snapshots the typed `NprSettings`, locates its exact owned
-source component through the authoring graph, and asks the neutral authoring
-service for one validated atomic value replacement. The renderer and app host
-do not participate in source persistence.
+`ThreeBand` shading can also emit sparse `FormLine` marks. They are distinct
+from `Tone`/hatching in the render packet, diagnostics, budget priority and
+the ordered `form-lines` layer; disabling that layer never removes hatching.
 
-The workshop adds `appearance.*`, object rotation switches, read-only badge/history
-state and `stats.*` metadata. `npr-look` contributes appearance-only preset storage;
-`npr-playground` retains complete scene storage. Panel tabs, pinned groups, reset
-requests and choice artwork are neutral panel-api contracts, reusable by an editor.
+`Underpainting` receives its own packet channel rather than reusing flat fill
+triangles. Each source face carries restrained seeded pigment coverage, so the
+layer can be reordered, disabled or blended without changing `Fill`.
+Its typed medium exposes `wash` (0..2) and `granulation` (0..1); both are
+resolved sparsely from scene to object. Wash is applied to packet coverage;
+granulation is sampled continuously by the dedicated paint material, avoiding
+triangle-boundary artifacts.
+The separate `fill` layer is disabled by default and can explicitly place the
+crisp three-band geometry over the wash.
 
-The appearance metadata includes `tool`, gesture confidence/simplification/
-correction/overstroke, tool pressure/hardness, nib angle/aspect, paper
-tooth/grain, ink dryness and optional tone hatching controls. Rhai only sends
-typed values through the provider; it does not own projection, line selection or
-tessellation policy.
+`Watercolour Wash` is a built-in typed look, not a renderer preset. It selects
+the brush and three-band response, enables an underpainting with `wash: 1.12`
+and `granulation: 0.64`, and disables flat fill and hatching. Applying it in
+object scope produces sparse layer overrides; applying it in scene scope
+replaces the scene layer stack.
+
+WGPU executes `normal`, `multiply` and `screen`. `overlay` is intentionally not
+available in the workshop until destination-sampling compositing exists.
+`Constant` and `ModelBaseColor` colour sources are executed for fill/stroke
+layers. The latter uses the selected object's explicitly authored RGBA material
+contribution, carried by `NprDrawCommand`; it never falls back to a palette.

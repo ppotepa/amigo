@@ -34,6 +34,7 @@ const UNIT_FRACTION: EditorNumberConstraints = EditorNumberConstraints {
 const STROKE_MOTION_OPTIONS: &[EditorPropertyOption] = &[
     EditorPropertyOption { id: "stable", label: "Stable" },
     EditorPropertyOption { id: "redraw-on-motion", label: "Redraw on motion" },
+    EditorPropertyOption { id: "redraw-continuously", label: "Living sketch" },
 ];
 
 const SEED: EditorNumberConstraints = EditorNumberConstraints {

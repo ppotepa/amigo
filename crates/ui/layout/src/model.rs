@@ -64,6 +64,9 @@ pub struct LayoutStyle {
     pub bottom: Option<f32>,
     pub width: Option<f32>,
     pub height: Option<f32>,
+    /// In a column-like parent, consume an equal share of the remaining
+    /// vertical content space after fixed-height siblings are laid out.
+    pub fill_height: bool,
     pub padding: f32,
     pub gap: f32,
     pub border_width: f32,
@@ -82,6 +85,7 @@ impl Default for LayoutStyle {
             bottom: None,
             width: None,
             height: None,
+            fill_height: false,
             padding: 0.0,
             gap: 0.0,
             border_width: 0.0,

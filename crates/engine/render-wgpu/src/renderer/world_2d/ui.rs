@@ -10,6 +10,9 @@ pub(crate) fn append_ui_overlay_vertices(
             UiDrawPrimitive::Quad { rect, color } => {
                 append_ui_quad_vertices(vertices, viewport, *rect, *color);
             }
+            UiDrawPrimitive::Triangle { points, color } => {
+                append_ui_triangle_vertices(vertices, viewport, *points, *color);
+            }
             UiDrawPrimitive::Text {
                 rect,
                 content,
@@ -46,6 +49,16 @@ pub(crate) fn append_ui_overlay_vertices(
             ),
         }
     }
+}
+
+fn append_ui_triangle_vertices(
+    vertices: &mut Vec<ColorVertex>,
+    viewport: &Viewport,
+    points: [[f32; 2]; 3],
+    color: ColorRgba,
+) {
+    let points = points.map(|point| ndc_from_ui_screen(Vec2::new(point[0], point[1]), viewport));
+    push_triangle(vertices, points, color);
 }
 
 fn append_ui_quad_vertices(

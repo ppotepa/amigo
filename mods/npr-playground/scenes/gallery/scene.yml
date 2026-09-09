@@ -5,6 +5,7 @@ scene:
 panels:
   - id: npr
     layout: ../../ui/npr.panel.yml
+    host: both
     auto_open: true
 entities:
   - id: npr-settings

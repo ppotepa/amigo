@@ -70,6 +70,11 @@ pub enum UiOverlayNodeKind {
     Row,
     Column,
     Stack,
+    /// A viewport for scrollable authored content. The backend owns clipping;
+    /// hosts own the offset and input state.
+    ScrollArea {
+        offset_y: f32,
+    },
     Text {
         content: String,
         font: Option<AssetKey>,
@@ -138,6 +143,7 @@ pub struct UiOverlayStyle {
     pub bottom: Option<f32>,
     pub width: Option<f32>,
     pub height: Option<f32>,
+    pub fill_height: bool,
     pub padding: f32,
     pub gap: f32,
     pub background: Option<ColorRgba>,
@@ -153,6 +159,15 @@ pub struct UiOverlayStyle {
     pub text_shadow: Option<UiOverlayTextShadow>,
     pub text_outline: Option<UiOverlayTextOutline>,
     pub text_glow: Option<UiOverlayTextGlow>,
+    /// Authored normalized triangles painted within the node's layout rect.
+    /// This is presentation data only: it carries no domain-specific geometry.
+    pub preview_triangles: Vec<UiOverlayPreviewTriangle>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct UiOverlayPreviewTriangle {
+    pub points: [[f32; 2]; 3],
+    pub color: ColorRgba,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -184,6 +199,7 @@ impl Default for UiOverlayStyle {
             bottom: None,
             width: None,
             height: None,
+            fill_height: false,
             padding: 0.0,
             gap: 0.0,
             background: None,
@@ -199,6 +215,7 @@ impl Default for UiOverlayStyle {
             text_shadow: None,
             text_outline: None,
             text_glow: None,
+            preview_triangles: vec![],
         }
     }
 }
@@ -230,6 +247,13 @@ impl UiRect {
             height: (self.height - clamped * 2.0).max(0.0),
         }
     }
+
+    pub fn intersects(self, other: Self) -> bool {
+        self.x < other.x + other.width
+            && self.x + self.width > other.x
+            && self.y < other.y + other.height
+            && self.y + self.height > other.y
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -250,6 +274,10 @@ pub enum UiTextAnchor {
 pub enum UiDrawPrimitive {
     Quad {
         rect: UiRect,
+        color: ColorRgba,
+    },
+    Triangle {
+        points: [[f32; 2]; 3],
         color: ColorRgba,
     },
     Text {

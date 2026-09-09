@@ -40,7 +40,12 @@ pub fn run() -> Result<(), String> {
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
             .with_inner_size([520.0, 840.0])
-            .with_min_inner_size([380.0, 620.0]),
+            .with_min_inner_size([380.0, 620.0])
+            // A scene panel must remain discoverable when monitors are added,
+            // removed, or rearranged. Persisting an old physical position can
+            // otherwise launch a healthy process entirely off-screen.
+            .with_position([24.0, 24.0]),
+        persist_window: false,
         ..Default::default()
     };
     let close_sender = outgoing.clone();
@@ -255,8 +260,8 @@ impl PanelApp {
                             && hint.reset != Some(false)
                             && hint.choices.is_empty()
                             && ui
-                                .small_button("↺")
-                                .on_hover_text("Przywróć wartość domyślną")
+                                .small_button("Reset")
+                                .on_hover_text("Restore the authored default")
                                 .clicked()
                         {
                             self.request += 1;
@@ -392,7 +397,7 @@ impl PanelApp {
                             if hint.navigation {
                                 let index = node.options.iter().position(|o| o == v).unwrap_or(0);
                                 ui.horizontal(|ui| {
-                                    if ui.button("< Poprzedni").clicked() {
+                                    if ui.button("< Previous").clicked() {
                                         *v = node.options
                                             [(index + node.options.len() - 1) % node.options.len()]
                                         .clone();
@@ -407,7 +412,7 @@ impl PanelApp {
                                             .map(|c| c.label.as_str())
                                             .unwrap_or(v)
                                     ));
-                                    if ui.button("Następny >").clicked() {
+                                    if ui.button("Next >").clicked() {
                                         *v = node.options[(index + 1) % node.options.len()].clone();
                                     }
                                 });
@@ -498,7 +503,7 @@ fn display(value: &ControlValue) -> String {
         ControlValue::F64(v) => format!("{v:.2}"),
         ControlValue::U64(v) => v.to_string(),
         ControlValue::I64(v) => v.to_string(),
-        ControlValue::Bool(v) => if *v { "Tak" } else { "Nie" }.into(),
+        ControlValue::Bool(v) => if *v { "Yes" } else { "No" }.into(),
         v => format!("{v:?}"),
     }
 }

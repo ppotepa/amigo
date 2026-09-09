@@ -1,3 +1,4 @@
+use amigo_overlay_api::{build_ui_layout_tree, UiOverlayDocument, UiOverlayNodeKind};
 use amigo_panel_api::*;
 use amigo_runtime::{Runtime, RuntimePlugin, ServiceRegistry, SystemPhase, SystemRegistry};
 use amigo_runtime_control::RuntimeControlService;
@@ -7,11 +8,13 @@ use std::{
     collections::BTreeMap,
     path::{Path, PathBuf},
     process::{Child, Command, Stdio},
-    sync::{Arc, Mutex, mpsc},
+    sync::{mpsc, Arc, Mutex},
     time::{Duration, Instant},
 };
 
-pub use amigo_scene::ScenePanelReferenceDocument as PanelReference;
+pub use amigo_scene::{
+    ScenePanelHostDocument as PanelHost, ScenePanelReferenceDocument as PanelReference,
+};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PanelConnectionSnapshot {
@@ -19,6 +22,35 @@ pub struct PanelConnectionSnapshot {
     pub process_id: Option<u32>,
     pub ready: bool,
     pub failure: Option<String>,
+}
+
+/// An interaction submitted by a transport-independent panel host.
+///
+/// The external egui process currently serializes equivalent messages over
+/// stdio. Keeping this contract local to the panel service lets an embedded
+/// host use the same validation and authored script-event routing without
+/// pretending to be a separate process.
+#[derive(Debug, Clone)]
+pub enum PanelInteraction {
+    Edit {
+        panel_id: String,
+        generation: u64,
+        revision: u64,
+        control: String,
+        value: amigo_runtime_control::ControlValue,
+    },
+    Reset {
+        panel_id: String,
+        generation: u64,
+        revision: u64,
+        control: String,
+    },
+    Click {
+        panel_id: String,
+        generation: u64,
+        revision: u64,
+        control: String,
+    },
 }
 #[derive(Default, Deserialize)]
 struct ScenePanels {
@@ -49,6 +81,7 @@ struct Panel {
     document: PanelDocument,
     revision: u64,
     error: Option<String>,
+    host: PanelHost,
     connection: Option<Connection>,
 }
 struct State {
@@ -57,6 +90,12 @@ struct State {
     scene: Option<String>,
     generation: u64,
     panels: BTreeMap<String, Panel>,
+    embedded_tabs: BTreeMap<String, String>,
+    embedded_collapsed: BTreeMap<String, bool>,
+    embedded_hovered: BTreeMap<String, String>,
+    embedded_dropdowns: BTreeMap<String, bool>,
+    embedded_dropdown_scrolls: BTreeMap<String, f32>,
+    embedded_scroll_offsets: BTreeMap<String, f32>,
     last_poll: Instant,
     last_snapshot: Instant,
     error: Option<String>,
@@ -69,6 +108,12 @@ impl Default for State {
             scene: None,
             generation: 0,
             panels: BTreeMap::new(),
+            embedded_tabs: BTreeMap::new(),
+            embedded_collapsed: BTreeMap::new(),
+            embedded_hovered: BTreeMap::new(),
+            embedded_dropdowns: BTreeMap::new(),
+            embedded_dropdown_scrolls: BTreeMap::new(),
+            embedded_scroll_offsets: BTreeMap::new(),
             last_poll: Instant::now(),
             last_snapshot: Instant::now(),
             error: None,
@@ -99,6 +144,197 @@ impl PanelService {
     }
     pub fn last_error(&self) -> Option<String> {
         self.state.lock().unwrap().error.clone()
+    }
+    /// Returns the declared document and current bound values without choosing
+    /// a windowing or rendering backend. Callers render this snapshot and send
+    /// changes back through [`Self::apply_interaction`].
+    pub fn snapshots(
+        &self,
+        controls: &RuntimeControlService,
+        presets: &crate::PresetService,
+    ) -> Result<Vec<PanelSnapshot>, String> {
+        let state = self.state.lock().unwrap();
+        state
+            .panels
+            .values()
+            .filter(|panel| panel.host.includes_embedded())
+            .map(|panel| {
+                snapshot_panel(
+                    state.generation,
+                    panel.revision,
+                    &panel.document,
+                    controls,
+                    presets,
+                )
+            })
+            .collect()
+    }
+    pub fn embedded_overlays(
+        &self,
+        controls: &RuntimeControlService,
+        presets: &crate::PresetService,
+    ) -> Result<Vec<UiOverlayDocument>, String> {
+        let state = self.state.lock().unwrap();
+        let tabs = state.embedded_tabs.clone();
+        let collapsed = state.embedded_collapsed.clone();
+        let hovered = state.embedded_hovered.clone();
+        let dropdowns = state.embedded_dropdowns.clone();
+        let dropdown_scrolls = state.embedded_dropdown_scrolls.clone();
+        let scroll_offsets = state.embedded_scroll_offsets.clone();
+        drop(state);
+        self.snapshots(controls, presets).map(|snapshots| {
+            snapshots
+                .iter()
+                .map(|snapshot| {
+                    crate::overlay(
+                        snapshot,
+                        &tabs,
+                        &collapsed,
+                        &hovered,
+                        &dropdowns,
+                        &dropdown_scrolls,
+                        &scroll_offsets,
+                    )
+                })
+                .collect()
+        })
+    }
+    pub fn set_embedded_tab(&self, panel_id: &str, control_id: &str, tab_id: String) {
+        self.state
+            .lock()
+            .unwrap()
+            .embedded_tabs
+            .insert(format!("{panel_id}:{control_id}"), tab_id);
+    }
+    pub fn set_embedded_collapsed(&self, panel_id: &str, control_id: &str, value: bool) {
+        self.state
+            .lock()
+            .unwrap()
+            .embedded_collapsed
+            .insert(format!("{panel_id}:{control_id}"), value);
+    }
+    pub fn set_embedded_hovered(&self, panel_id: &str, value: Option<String>) {
+        let mut state = self.state.lock().unwrap();
+        match value {
+            Some(value) => {
+                state.embedded_hovered.insert(panel_id.to_owned(), value);
+            }
+            None => {
+                state.embedded_hovered.remove(panel_id);
+            }
+        }
+    }
+    pub fn set_embedded_dropdown(&self, panel_id: &str, control_id: &str, value: bool) {
+        self.state
+            .lock()
+            .unwrap()
+            .embedded_dropdowns
+            .insert(format!("{panel_id}:{control_id}"), value);
+    }
+    pub fn close_embedded_dropdowns(&self) {
+        self.state.lock().unwrap().embedded_dropdowns.clear();
+    }
+    pub fn set_embedded_dropdown_scroll(
+        &self,
+        panel_id: &str,
+        control_id: &str,
+        value: f32,
+        option_count: usize,
+    ) {
+        let max = option_count.saturating_sub(10) as f32;
+        self.state
+            .lock()
+            .unwrap()
+            .embedded_dropdown_scrolls
+            .insert(format!("{panel_id}:{control_id}"), value.clamp(0.0, max));
+    }
+    pub fn set_embedded_scroll_offset(&self, panel_id: &str, value: f32, max_offset: f32) {
+        self.state
+            .lock()
+            .unwrap()
+            .embedded_scroll_offsets
+            .insert(panel_id.to_owned(), value.clamp(0.0, max_offset.max(0.0)));
+    }
+    /// Applies an interaction against the exact scene/layout revision supplied
+    /// by a host. This is deliberately shared by native and external hosts.
+    pub fn apply_interaction(
+        &self,
+        interaction: PanelInteraction,
+        controls: &RuntimeControlService,
+        events: &ScriptEventQueue,
+    ) -> Result<(), String> {
+        let mut state = self.state.lock().unwrap();
+        let generation = state.generation;
+        let (panel_id, control) = match &interaction {
+            PanelInteraction::Edit {
+                panel_id,
+                revision: _,
+                control,
+                ..
+            }
+            | PanelInteraction::Reset {
+                panel_id,
+                revision: _,
+                control,
+                ..
+            }
+            | PanelInteraction::Click {
+                panel_id,
+                revision: _,
+                control,
+                ..
+            } => (panel_id.clone(), control.clone()),
+        };
+        let panel = state
+            .panels
+            .get_mut(&panel_id)
+            .ok_or_else(|| format!("unknown panel {panel_id}"))?;
+        match interaction {
+            PanelInteraction::Edit {
+                generation: actual_generation,
+                revision: actual_revision,
+                value,
+                ..
+            } => apply_edit(
+                &panel.document,
+                generation,
+                panel.revision,
+                actual_generation,
+                actual_revision,
+                &control,
+                value,
+                controls,
+                events,
+            ),
+            PanelInteraction::Reset {
+                generation: actual_generation,
+                revision: actual_revision,
+                ..
+            } => apply_reset(
+                &panel.document,
+                generation,
+                panel.revision,
+                actual_generation,
+                actual_revision,
+                &control,
+                controls,
+                events,
+            ),
+            PanelInteraction::Click {
+                generation: actual_generation,
+                revision: actual_revision,
+                ..
+            } => apply_click(
+                &panel.document,
+                generation,
+                panel.revision,
+                actual_generation,
+                actual_revision,
+                &control,
+                controls,
+                events,
+            ),
+        }
     }
     fn report_diagnostics(&self, runtime: &Runtime) {
         let error = {
@@ -167,6 +403,12 @@ impl PanelService {
             return Ok(());
         }
         state.panels.clear();
+        state.embedded_tabs.clear();
+        state.embedded_collapsed.clear();
+        state.embedded_hovered.clear();
+        state.embedded_dropdowns.clear();
+        state.embedded_dropdown_scrolls.clear();
+        state.embedded_scroll_offsets.clear();
         self.watches.sync_assets(vec![]);
         state.scene = None;
         state.generation += 1;
@@ -205,9 +447,10 @@ impl PanelService {
                 document,
                 revision: 1,
                 error: None,
+                host: reference.host,
                 connection: None,
             };
-            if reference.auto_open {
+            if reference.auto_open && reference.host.includes_external() {
                 auto_open.push(reference.id.clone());
             }
             pending.insert(reference.id, panel);
@@ -365,33 +608,16 @@ impl PanelService {
                                 break;
                             }
                             connection.last_request = request;
-                            let result = validate_epoch(generation, panel.revision, g, revision)
-                                .and_then(|_| {
-                                    panel
-                                        .document
-                                        .validate_bindings(&controls.registry_snapshot())?;
-                                    validate_enabled(&panel.document, &control, controls)?;
-                                    let node = panel
-                                        .document
-                                        .nodes()
-                                        .into_iter()
-                                        .find(|n| n.id.as_deref() == Some(&control))
-                                        .ok_or("unknown control")?;
-                                    let path = node
-                                        .value_bind
-                                        .as_ref()
-                                        .ok_or("control has no value binding")?;
-                                    controls.reset(path).map_err(|e| e.to_string())?;
-                                    if let Some(binding) = &node.on_change {
-                                        let mut payload = binding.payload.clone();
-                                        payload.push(path.clone());
-                                        events.publish(ScriptEvent::new(
-                                            binding.event.clone(),
-                                            payload,
-                                        ));
-                                    }
-                                    Ok(())
-                                });
+                            let result = apply_reset(
+                                &panel.document,
+                                generation,
+                                panel.revision,
+                                g,
+                                revision,
+                                &control,
+                                controls,
+                                events,
+                            );
                             (request, result)
                         }
                         ClientMessage::Click {
@@ -411,25 +637,16 @@ impl PanelService {
                                 break;
                             }
                             connection.last_request = request;
-                            let result = validate_epoch(generation, panel.revision, g, revision)
-                                .and_then(|_| {
-                                    let node = panel
-                                        .document
-                                        .nodes()
-                                        .into_iter()
-                                        .find(|n| n.id.as_deref() == Some(&control))
-                                        .ok_or("unknown control")?;
-                                    validate_enabled(&panel.document, &control, controls)?;
-                                    let binding = node
-                                        .on_click
-                                        .as_ref()
-                                        .ok_or("control has no click action")?;
-                                    events.publish(ScriptEvent::new(
-                                        binding.event.clone(),
-                                        binding.payload.clone(),
-                                    ));
-                                    Ok(())
-                                });
+                            let result = apply_click(
+                                &panel.document,
+                                generation,
+                                panel.revision,
+                                g,
+                                revision,
+                                &control,
+                                controls,
+                                events,
+                            );
                             (request, result)
                         }
                     };
@@ -476,61 +693,24 @@ impl PanelService {
                     }
                 }
                 if publish && connection.ready && !closed {
-                    let registry = controls.registry_snapshot();
-                    if let Err(e) = panel.document.validate_bindings(&registry) {
-                        error = Some(e);
-                    }
-                    let mut values = BTreeMap::new();
-                    let paths = panel
-                        .document
-                        .binding_paths()
-                        .into_iter()
-                        .collect::<Vec<_>>();
-                    let batch = controls.get_many(&paths);
-                    if let Err(e) = &batch {
-                        error = Some(e.to_string());
-                    }
-                    for path in &paths {
-                        if let Some(property) = registry.property(path) {
-                            match batch
-                                .as_ref()
-                                .ok()
-                                .and_then(|values| values.get(path))
-                                .cloned()
-                                .ok_or_else(|| format!("missing value {path}"))
-                            {
-                                Ok(value) => {
-                                    values.insert(
-                                        path.clone(),
-                                        PropertySnapshot {
-                                            path: path.clone(),
-                                            value,
-                                            value_type: property.value_type,
-                                            writable: property.writable,
-                                            range: property.range.clone(),
-                                            description: property.description.clone(),
-                                        },
-                                    );
-                                }
-                                Err(e) => error = Some(e.to_string()),
-                            }
-                        } else {
-                            error = Some(format!("unknown binding {path}"));
-                        }
-                    }
-                    *connection.latest.lock().unwrap() = Some(ServerMessage::Snapshot {
+                    match snapshot_panel(
                         generation,
-                        revision: panel.revision,
-                        acknowledged: connection.last_request,
-                        preset_names: panel
-                            .document
-                            .preset_domain_bind
-                            .as_ref()
-                            .and_then(|path| batch.as_ref().ok()?.get(path)?.as_string())
-                            .map(|domain| presets.list_for(domain))
-                            .unwrap_or_else(|| presets.list()),
-                        values,
-                    });
+                        panel.revision,
+                        &panel.document,
+                        controls,
+                        presets,
+                    ) {
+                        Ok(snapshot) => {
+                            *connection.latest.lock().unwrap() = Some(ServerMessage::Snapshot {
+                                generation: snapshot.generation,
+                                revision: snapshot.revision,
+                                acknowledged: connection.last_request,
+                                preset_names: snapshot.preset_names,
+                                values: snapshot.values,
+                            });
+                        }
+                        Err(e) => error = Some(e),
+                    }
                 }
                 if let Some(e) = &error {
                     let _ = connection
@@ -600,6 +780,112 @@ fn apply_edit(
         events.publish(ScriptEvent::new(binding.event.clone(), payload));
     }
     Ok(())
+}
+fn apply_reset(
+    doc: &PanelDocument,
+    generation: u64,
+    revision: u64,
+    actual_generation: u64,
+    actual_revision: u64,
+    id: &str,
+    controls: &RuntimeControlService,
+    events: &ScriptEventQueue,
+) -> Result<(), String> {
+    validate_epoch(generation, revision, actual_generation, actual_revision)?;
+    doc.validate_bindings(&controls.registry_snapshot())?;
+    validate_enabled(doc, id, controls)?;
+    let node = doc
+        .nodes()
+        .into_iter()
+        .find(|node| node.id.as_deref() == Some(id))
+        .ok_or("unknown control")?;
+    let path = node
+        .value_bind
+        .as_ref()
+        .ok_or("control has no value binding")?;
+    controls.reset(path).map_err(|error| error.to_string())?;
+    if let Some(binding) = &node.on_change {
+        let mut payload = binding.payload.clone();
+        payload.push(path.clone());
+        events.publish(ScriptEvent::new(binding.event.clone(), payload));
+    }
+    Ok(())
+}
+fn apply_click(
+    doc: &PanelDocument,
+    generation: u64,
+    revision: u64,
+    actual_generation: u64,
+    actual_revision: u64,
+    id: &str,
+    controls: &RuntimeControlService,
+    events: &ScriptEventQueue,
+) -> Result<(), String> {
+    validate_epoch(generation, revision, actual_generation, actual_revision)?;
+    validate_enabled(doc, id, controls)?;
+    let node = doc
+        .nodes()
+        .into_iter()
+        .find(|node| node.id.as_deref() == Some(id))
+        .ok_or("unknown control")?;
+    let binding = node
+        .on_click
+        .as_ref()
+        .ok_or("control has no click action")?;
+    events.publish(ScriptEvent::new(
+        binding.event.clone(),
+        binding.payload.clone(),
+    ));
+    Ok(())
+}
+fn snapshot_panel(
+    generation: u64,
+    revision: u64,
+    document: &PanelDocument,
+    controls: &RuntimeControlService,
+    presets: &crate::PresetService,
+) -> Result<PanelSnapshot, String> {
+    let registry = controls.registry_snapshot();
+    document.validate_bindings(&registry)?;
+    let paths = document.binding_paths().into_iter().collect::<Vec<_>>();
+    let batch = controls
+        .get_many(&paths)
+        .map_err(|error| error.to_string())?;
+    let mut values = BTreeMap::new();
+    for path in paths {
+        let property = registry
+            .property(&path)
+            .ok_or_else(|| format!("unknown binding {path}"))?;
+        let value = batch
+            .get(&path)
+            .cloned()
+            .ok_or_else(|| format!("missing value {path}"))?;
+        values.insert(
+            path.clone(),
+            PropertySnapshot {
+                path,
+                value,
+                value_type: property.value_type,
+                writable: property.writable,
+                range: property.range.clone(),
+                description: property.description.clone(),
+            },
+        );
+    }
+    let preset_names = document
+        .preset_domain_bind
+        .as_ref()
+        .and_then(|path| batch.get(path))
+        .and_then(|value| value.as_string())
+        .map(|domain| presets.list_for(domain))
+        .unwrap_or_else(|| presets.list());
+    Ok(PanelSnapshot {
+        generation,
+        revision,
+        document: document.clone(),
+        preset_names,
+        values,
+    })
 }
 fn validate_enabled(
     doc: &PanelDocument,
@@ -682,39 +968,35 @@ fn spawn_connection(
     let transport_error: Arc<Mutex<Option<String>>> = Arc::default();
     let writer_error = transport_error.clone();
     let reader_error = transport_error.clone();
-    std::thread::spawn(move || {
-        loop {
-            match rx.recv_timeout(Duration::from_millis(10)) {
-                Ok(message) => {
-                    if let Err(e) = write_message(&mut input, &message) {
-                        *writer_error.lock().unwrap() = Some(e.to_string());
-                        break;
-                    }
-                }
-                Err(mpsc::RecvTimeoutError::Disconnected) => break,
-                Err(mpsc::RecvTimeoutError::Timeout) => {}
-            }
-            if let Some(message) = latest_writer.lock().unwrap().take() {
+    std::thread::spawn(move || loop {
+        match rx.recv_timeout(Duration::from_millis(10)) {
+            Ok(message) => {
                 if let Err(e) = write_message(&mut input, &message) {
                     *writer_error.lock().unwrap() = Some(e.to_string());
                     break;
                 }
             }
+            Err(mpsc::RecvTimeoutError::Disconnected) => break,
+            Err(mpsc::RecvTimeoutError::Timeout) => {}
+        }
+        if let Some(message) = latest_writer.lock().unwrap().take() {
+            if let Err(e) = write_message(&mut input, &message) {
+                *writer_error.lock().unwrap() = Some(e.to_string());
+                break;
+            }
         }
     });
-    std::thread::spawn(move || {
-        loop {
-            match read_message(&mut output) {
-                Ok(message) => {
-                    let close = matches!(message, ClientMessage::Close);
-                    if tx.send(message).is_err() || close {
-                        break;
-                    }
-                }
-                Err(e) => {
-                    *reader_error.lock().unwrap() = Some(e.to_string());
+    std::thread::spawn(move || loop {
+        match read_message(&mut output) {
+            Ok(message) => {
+                let close = matches!(message, ClientMessage::Close);
+                if tx.send(message).is_err() || close {
                     break;
                 }
+            }
+            Err(e) => {
+                *reader_error.lock().unwrap() = Some(e.to_string());
+                break;
             }
         }
     });
@@ -747,6 +1029,11 @@ impl RuntimePlugin for PanelsPlugin {
             SystemPhase::PreUpdate,
             "panel_commands",
             |runtime| tick_panels(runtime),
+        );
+        registry.required::<SystemRegistry>()?.register_fn(
+            SystemPhase::PreUpdate,
+            "panel_embedded_input",
+            |runtime| tick_embedded_panel_input(runtime),
         );
         Ok(())
     }
@@ -798,6 +1085,292 @@ fn tick_panels(runtime: &Runtime) -> amigo_core::AmigoResult<()> {
     );
     panels.report_diagnostics(runtime);
     Ok(())
+}
+fn tick_embedded_panel_input(runtime: &Runtime) -> amigo_core::AmigoResult<()> {
+    let Some(viewport) = runtime
+        .resolve::<amigo_ui::UiInputViewportState>()
+        .and_then(|state| state.get())
+    else {
+        return Ok(());
+    };
+    let Some(input) = runtime.resolve::<amigo_ui::UiInputService>() else {
+        return Ok(());
+    };
+    let input = input.snapshot();
+    let Some(mouse) = input.mouse_position else {
+        return Ok(());
+    };
+    let panels = runtime.required::<PanelService>()?;
+    let controls = runtime.required::<RuntimeControlService>()?;
+    let events = runtime.required::<ScriptEventQueue>()?;
+    let presets = runtime.required::<crate::PresetService>()?;
+    let snapshots = panels
+        .snapshots(controls.as_ref(), presets.as_ref())
+        .map_err(amigo_core::AmigoError::Message)?;
+    let state = panels.state.lock().unwrap();
+    let tabs = state.embedded_tabs.clone();
+    let collapsed = state.embedded_collapsed.clone();
+    let dropdowns = state.embedded_dropdowns.clone();
+    let dropdown_scrolls = state.embedded_dropdown_scrolls.clone();
+    let scroll_offsets = state.embedded_scroll_offsets.clone();
+    drop(state);
+    for snapshot in &snapshots {
+        panels.set_embedded_hovered(&snapshot.document.id, None);
+    }
+    if input.mouse_left_released {
+        panels.close_embedded_dropdowns();
+    }
+    for snapshot in snapshots.iter().rev() {
+        let overlay = crate::overlay(
+            snapshot,
+            &tabs,
+            &collapsed,
+            &Default::default(),
+            &dropdowns,
+            &dropdown_scrolls,
+            &scroll_offsets,
+        );
+        let layout = build_ui_layout_tree(viewport, &overlay);
+        let Some(path) = amigo_ui::hit_test_ui_layout(&layout, mouse.x, mouse.y) else {
+            continue;
+        };
+        let Some(layout_node) = amigo_ui::find_ui_layout_node(&layout, &path) else {
+            continue;
+        };
+        if input.mouse_wheel_y.abs() > f32::EPSILON
+            && !expanded_dropdown_owns_wheel(&layout_node.node.kind)
+        {
+            if let Some(max_offset) = embedded_scroll_area_max_offset_at(&layout, mouse.x, mouse.y)
+            {
+                panels.set_embedded_scroll_offset(
+                    &snapshot.document.id,
+                    scroll_offsets
+                        .get(&snapshot.document.id)
+                        .copied()
+                        .unwrap_or_default()
+                        - input.mouse_wheel_y * 36.0,
+                    max_offset,
+                );
+                break;
+            }
+        }
+        let Some(id) = layout_node.node.id.as_deref() else {
+            continue;
+        };
+        let hovered = crate::choice_value_for_id(snapshot, id)
+            .is_some()
+            .then(|| id.to_owned());
+        panels.set_embedded_hovered(&snapshot.document.id, hovered);
+        if input.mouse_left_released {
+            if let Some((control, value)) = crate::choice_value_for_id(snapshot, id) {
+                panels
+                    .apply_interaction(
+                        PanelInteraction::Edit {
+                            panel_id: snapshot.document.id.clone(),
+                            generation: snapshot.generation,
+                            revision: snapshot.revision,
+                            control,
+                            value: amigo_runtime_control::ControlValue::String(value),
+                        },
+                        controls.as_ref(),
+                        events.as_ref(),
+                    )
+                    .map_err(amigo_core::AmigoError::Message)?;
+                break;
+            }
+        }
+        let Some(node) = crate::node_by_id(snapshot, id) else {
+            continue;
+        };
+        if node.kind == amigo_scene::SceneUiNodeTypeComponentDocument::GroupBox
+            && input.mouse_left_released
+        {
+            let value = !crate::group_is_collapsed(snapshot, node, &collapsed);
+            panels.set_embedded_collapsed(&snapshot.document.id, id, value);
+            break;
+        }
+        if let UiOverlayNodeKind::Dropdown {
+            options,
+            expanded,
+            scroll_offset,
+            ..
+        } = &layout_node.node.kind
+        {
+            if *expanded && input.mouse_wheel_y.abs() > f32::EPSILON {
+                panels.set_embedded_dropdown_scroll(
+                    &snapshot.document.id,
+                    id,
+                    *scroll_offset - input.mouse_wheel_y * 0.65,
+                    options.len(),
+                );
+                break;
+            }
+            if input.mouse_left_released {
+                if !expanded {
+                    panels.set_embedded_dropdown(&snapshot.document.id, id, true);
+                } else if let Some(value) =
+                    dropdown_value_from_mouse(layout_node.rect, options, *scroll_offset, mouse.y)
+                {
+                    panels
+                        .apply_interaction(
+                            PanelInteraction::Edit {
+                                panel_id: snapshot.document.id.clone(),
+                                generation: snapshot.generation,
+                                revision: snapshot.revision,
+                                control: id.to_owned(),
+                                value: amigo_runtime_control::ControlValue::String(value),
+                            },
+                            controls.as_ref(),
+                            events.as_ref(),
+                        )
+                        .map_err(amigo_core::AmigoError::Message)?;
+                }
+            }
+            break;
+        }
+        let interaction = match &layout_node.node.kind {
+            UiOverlayNodeKind::TabView { tabs, .. } if input.mouse_left_released => {
+                amigo_overlay_api::tab_view_tab_from_mouse(
+                    layout_node.rect,
+                    &layout_node.node,
+                    tabs,
+                    mouse.x,
+                    mouse.y,
+                )
+                .map(|tab| {
+                    panels.set_embedded_tab(&snapshot.document.id, id, tab);
+                    return None;
+                })
+                .flatten()
+            }
+            UiOverlayNodeKind::Button { .. } if input.mouse_left_released => {
+                Some(PanelInteraction::Click {
+                    panel_id: snapshot.document.id.clone(),
+                    generation: snapshot.generation,
+                    revision: snapshot.revision,
+                    control: id.into(),
+                })
+            }
+            UiOverlayNodeKind::Toggle { checked, .. } if input.mouse_left_released => {
+                crate::editable_value(snapshot, node).map(|_| PanelInteraction::Edit {
+                    panel_id: snapshot.document.id.clone(),
+                    generation: snapshot.generation,
+                    revision: snapshot.revision,
+                    control: id.into(),
+                    value: amigo_runtime_control::ControlValue::Bool(!checked),
+                })
+            }
+            UiOverlayNodeKind::OptionSet {
+                selected, options, ..
+            } if input.mouse_left_released => {
+                crate::editable_value(snapshot, node).and_then(|_| {
+                    next_option(options, selected).map(|value| PanelInteraction::Edit {
+                        panel_id: snapshot.document.id.clone(),
+                        generation: snapshot.generation,
+                        revision: snapshot.revision,
+                        control: id.into(),
+                        value: amigo_runtime_control::ControlValue::String(value),
+                    })
+                })
+            }
+            UiOverlayNodeKind::Slider { min, max, step, .. } if input.mouse_left_down => {
+                crate::editable_value(snapshot, node).and_then(|property| {
+                    let width = layout_node.rect.width;
+                    (width > f32::EPSILON).then(|| {
+                        let t = ((mouse.x - layout_node.rect.x) / width).clamp(0.0, 1.0);
+                        let raw = min + (max - min) * t;
+                        let value = (raw / step.max(f32::EPSILON)).round() * step.max(f32::EPSILON);
+                        let value = match property.value {
+                            amigo_runtime_control::ControlValue::I64(_) => {
+                                amigo_runtime_control::ControlValue::I64(value.round() as i64)
+                            }
+                            amigo_runtime_control::ControlValue::U64(_) => {
+                                amigo_runtime_control::ControlValue::U64(
+                                    value.max(0.0).round() as u64
+                                )
+                            }
+                            _ => amigo_runtime_control::ControlValue::F64(value as f64),
+                        };
+                        PanelInteraction::Edit {
+                            panel_id: snapshot.document.id.clone(),
+                            generation: snapshot.generation,
+                            revision: snapshot.revision,
+                            control: id.into(),
+                            value,
+                        }
+                    })
+                })
+            }
+            _ => None,
+        };
+        if let Some(interaction) = interaction {
+            panels
+                .apply_interaction(interaction, controls.as_ref(), events.as_ref())
+                .map_err(amigo_core::AmigoError::Message)?;
+        }
+        break;
+    }
+    Ok(())
+}
+fn next_option(options: &[String], selected: &str) -> Option<String> {
+    (!options.is_empty()).then(|| {
+        let current = options
+            .iter()
+            .position(|option| option == selected)
+            .unwrap_or(0);
+        options[(current + 1) % options.len()].clone()
+    })
+}
+
+fn expanded_dropdown_owns_wheel(kind: &UiOverlayNodeKind) -> bool {
+    matches!(kind, UiOverlayNodeKind::Dropdown { expanded: true, .. })
+}
+
+fn embedded_scroll_area_max_offset_at(
+    layout: &amigo_overlay_api::UiLayoutNode,
+    mouse_x: f32,
+    mouse_y: f32,
+) -> Option<f32> {
+    let contains = mouse_x >= layout.rect.x
+        && mouse_x <= layout.rect.x + layout.rect.width
+        && mouse_y >= layout.rect.y
+        && mouse_y <= layout.rect.y + layout.rect.height;
+    if !contains {
+        return None;
+    }
+    if let UiOverlayNodeKind::ScrollArea { .. } = layout.node.kind {
+        let content_bottom = layout
+            .children
+            .iter()
+            .map(|child| child.rect.y + child.rect.height)
+            .fold(layout.rect.y + layout.rect.height, f32::max);
+        return layout
+            .node
+            .id
+            .as_deref()
+            .map(|_| (content_bottom - (layout.rect.y + layout.rect.height)).max(0.0));
+    }
+    layout
+        .children
+        .iter()
+        .find_map(|child| embedded_scroll_area_max_offset_at(child, mouse_x, mouse_y))
+}
+
+fn dropdown_value_from_mouse(
+    rect: amigo_overlay_api::UiRect,
+    options: &[String],
+    scroll_offset: f32,
+    mouse_y: f32,
+) -> Option<String> {
+    let row_height = 38.0_f32.min(rect.height.max(0.0));
+    if row_height <= f32::EPSILON {
+        return None;
+    }
+    let row = ((mouse_y - rect.y) / row_height).floor();
+    let index = (scroll_offset + row - 1.0).floor();
+    (row >= 1.0 && index.is_finite() && index >= 0.0)
+        .then(|| options.get(index as usize).cloned())
+        .flatten()
 }
 
 #[cfg(test)]

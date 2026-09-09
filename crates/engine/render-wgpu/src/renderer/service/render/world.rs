@@ -1,6 +1,6 @@
 use super::material_candidates::WgpuMaterialCandidate2d;
 use super::*;
-use crate::renderer::npr::{NprGpuVertex, NprPipelines};
+use crate::renderer::npr::{NprGpuVertex, NprIndexedBuffer, NprPipelines, NprVertexBuffer};
 use amigo_material_api::MaterialCandidateDecision2d;
 use amigo_render_api::{
     LightSource2dCommon, NprBackgroundCommand, NprDrawCommand, RenderAssetSource,
@@ -372,12 +372,62 @@ pub(super) fn execute_world_to_offscreen(
     )
 }
 
+enum NprColorBatch {
+    Paint {
+        buffer: NprVertexBuffer,
+        blend: amigo_render_npr::NprBlendMode,
+    },
+    Fill {
+        buffer: NprVertexBuffer,
+        blend: amigo_render_npr::NprBlendMode,
+    },
+    Stroke {
+        buffer: NprIndexedBuffer,
+        blend: amigo_render_npr::NprBlendMode,
+    },
+}
+
 fn render_npr_commands(
     renderer: &WgpuSceneRenderer,
     target: &mut WgpuOffscreenTarget,
     commands: &[NprDrawCommand],
     background: Option<NprBackgroundCommand>,
 ) -> AmigoResult<()> {
+    if commands
+        .iter()
+        .flat_map(|command| command.layers.layers.iter())
+        .any(|layer| layer.enabled && layer.blend == amigo_render_npr::NprBlendMode::Overlay)
+    {
+        return Err(amigo_core::AmigoError::Message(
+            "NPR Overlay layers require the destination-sampling compositor, which is not available yet"
+                .into(),
+        ));
+    }
+    if commands.iter().any(|command| {
+        command.material_base_color.is_none()
+            && command.layers.layers.iter().any(|layer| {
+                layer.enabled
+                    && layer.color_source == amigo_render_npr::NprLayerColorSource::ModelBaseColor
+            })
+    }) {
+        return Err(amigo_core::AmigoError::Message(
+            "NPR ModelBaseColor layers require declared material-base-colour data in the render packet"
+                .into(),
+        ));
+    }
+    let layer_color = |source: amigo_render_npr::NprLayerColorSource,
+                       fallback: [f32; 4],
+                       material_base_color: Option<[f32; 4]>| {
+        match source {
+            amigo_render_npr::NprLayerColorSource::StylePalette => fallback,
+            amigo_render_npr::NprLayerColorSource::Constant(color) => color.to_array(),
+            // The preflight above proves this contribution is present for
+            // every active model-colour layer.
+            amigo_render_npr::NprLayerColorSource::ModelBaseColor => {
+                material_base_color.expect("validated NPR material base colour")
+            }
+        }
+    };
     let width = target.width as f32;
     let height = target.height as f32;
     let to_clip = |position: amigo_render_npr::Point2| {
@@ -387,20 +437,45 @@ fn render_npr_commands(
         ]
     };
     let mut occluder_vertices = Vec::new();
-    let mut fill_vertices = Vec::new();
+    let mut color_batches = Vec::new();
     // Stroke batches are indexed and capped before GPU allocation. The cap is
     // global to this NPR view, rather than an accidental per-object allocation.
     const MAX_STROKE_BATCH_BYTES: usize = 64 * 1024 * 1024;
     const MAX_STROKE_UPLOAD_BYTES: usize = 128 * 1024 * 1024;
-    let mut stroke_batches: Vec<(Vec<NprGpuVertex>, Vec<u32>)> = Vec::new();
-    let mut current_stroke_vertices = Vec::new();
-    let mut current_stroke_indices = Vec::new();
     let mut stroke_upload_bytes = 0usize;
     let mut paper_vertices = Vec::new();
-    if let Some(background) = background
-        .filter(|background| background.grain > f32::EPSILON || background.tooth > f32::EPSILON)
-    {
-        let color = background.color;
+    let paper_layer = commands.first().and_then(|command| {
+        command
+            .layers
+            .layers
+            .iter()
+            .find(|layer| layer.kind == amigo_render_npr::NprLayerKind::Paper)
+    });
+    if let Some(reference) = paper_layer {
+        if commands.iter().skip(1).any(|command| {
+            command
+                .layers
+                .layers
+                .iter()
+                .find(|layer| layer.kind == amigo_render_npr::NprLayerKind::Paper)
+                .map(|layer| {
+                    layer.enabled == reference.enabled && layer.opacity == reference.opacity
+                })
+                != Some(true)
+        }) {
+            return Err(amigo_core::AmigoError::Message(
+                "NPR Paper is scene-owned and must have one consistent enabled state and opacity"
+                    .into(),
+            ));
+        }
+    }
+    let paper_enabled = paper_layer.map(|layer| layer.enabled).unwrap_or(true);
+    let paper_opacity = paper_layer.map(|layer| layer.opacity).unwrap_or(1.0);
+    if let Some(background) = background.filter(|background| {
+        paper_enabled && (background.grain > f32::EPSILON || background.tooth > f32::EPSILON)
+    }) {
+        let mut color = background.color;
+        color[3] *= paper_opacity;
         let phase = [
             (background.seed.wrapping_mul(0x9e37_79b9) as u32 as f32 / u32::MAX as f32) * 37.0,
             (background.seed.rotate_left(17) as u32 as f32 / u32::MAX as f32) * 29.0,
@@ -436,78 +511,168 @@ fn render_npr_commands(
                 });
             }
         }
-        for triangle in &command.packet.fills {
-            let color = triangle.color.to_array();
-            for (index, position) in triangle.positions.into_iter().enumerate() {
-                fill_vertices.push(NprGpuVertex {
-                    position: to_clip(position),
-                    color,
-                    depth: triangle.depths[index],
-                    coverage: 1.0,
-                    phase: [0.0; 2],
-                    material: [0.0; 4],
-                });
+        for layer in command.layers.layers.iter().filter(|layer| layer.enabled) {
+            match layer.kind {
+                amigo_render_npr::NprLayerKind::Underpainting => {
+                    let granulation = layer.paint.map(|paint| paint.granulation).unwrap_or(0.0);
+                    let mut vertices = Vec::with_capacity(command.packet.underpainting.len() * 3);
+                    for triangle in &command.packet.underpainting {
+                        let mut color = layer_color(
+                            layer.color_source,
+                            triangle.color.to_array(),
+                            command.material_base_color,
+                        );
+                        color[3] *= layer.opacity;
+                        for (index, position) in triangle.positions.into_iter().enumerate() {
+                            vertices.push(NprGpuVertex {
+                                position: to_clip(position),
+                                color,
+                                depth: triangle.depths[index],
+                                coverage: triangle.coverage,
+                                phase: [0.0; 2],
+                                material: [granulation, 0.0, 0.0, 0.0],
+                            });
+                        }
+                    }
+                    for buffer in NprPipelines::vertex_buffers(
+                        &target.device,
+                        &vertices,
+                        "amigo-npr-layer-underpainting",
+                    ) {
+                        color_batches.push(NprColorBatch::Paint {
+                            buffer,
+                            blend: layer.blend,
+                        });
+                    }
+                }
+                amigo_render_npr::NprLayerKind::Fill => {
+                    let mut vertices = Vec::with_capacity(command.packet.fills.len() * 3);
+                    for triangle in &command.packet.fills {
+                        let mut color = layer_color(
+                            layer.color_source,
+                            triangle.color.to_array(),
+                            command.material_base_color,
+                        );
+                        color[3] *= layer.opacity;
+                        for (index, position) in triangle.positions.into_iter().enumerate() {
+                            vertices.push(NprGpuVertex {
+                                position: to_clip(position),
+                                color,
+                                depth: triangle.depths[index],
+                                coverage: 1.0,
+                                phase: [0.0; 2],
+                                material: [0.0; 4],
+                            });
+                        }
+                    }
+                    for buffer in NprPipelines::vertex_buffers(
+                        &target.device,
+                        &vertices,
+                        "amigo-npr-layer-fill",
+                    ) {
+                        color_batches.push(NprColorBatch::Fill {
+                            buffer,
+                            blend: layer.blend,
+                        });
+                    }
+                }
+                amigo_render_npr::NprLayerKind::Hatching
+                | amigo_render_npr::NprLayerKind::FormLines
+                | amigo_render_npr::NprLayerKind::Contours
+                | amigo_render_npr::NprLayerKind::Creases
+                | amigo_render_npr::NprLayerKind::Construction => {
+                    let mut vertices = Vec::new();
+                    let mut indices = Vec::new();
+                    for stroke in &command.packet.strokes {
+                        if command
+                            .layers
+                            .stroke_layer(stroke)
+                            .map(|selected| selected.id.as_str())
+                            != Some(layer.id.as_str())
+                        {
+                            continue;
+                        }
+                        let vertex_bytes = stroke
+                            .vertices
+                            .len()
+                            .checked_mul(std::mem::size_of::<NprGpuVertex>());
+                        let index_bytes =
+                            stroke.indices.len().checked_mul(std::mem::size_of::<u32>());
+                        let Some(stroke_bytes) = vertex_bytes.and_then(|bytes| {
+                            index_bytes.and_then(|indices| bytes.checked_add(indices))
+                        }) else {
+                            continue;
+                        };
+                        let current_bytes = vertices.len() * std::mem::size_of::<NprGpuVertex>()
+                            + indices.len() * std::mem::size_of::<u32>();
+                        if !indices.is_empty()
+                            && current_bytes.saturating_add(stroke_bytes) > MAX_STROKE_BATCH_BYTES
+                        {
+                            if let Some(buffer) = NprPipelines::indexed_buffer(
+                                &target.device,
+                                &vertices,
+                                &indices,
+                                "amigo-npr-layer-strokes",
+                            ) {
+                                color_batches.push(NprColorBatch::Stroke {
+                                    buffer,
+                                    blend: layer.blend,
+                                });
+                            }
+                            vertices.clear();
+                            indices.clear();
+                        }
+                        if stroke_bytes > MAX_STROKE_BATCH_BYTES
+                            || stroke_upload_bytes.saturating_add(stroke_bytes)
+                                > MAX_STROKE_UPLOAD_BYTES
+                            || stroke
+                                .indices
+                                .iter()
+                                .any(|index| *index as usize >= stroke.vertices.len())
+                        {
+                            continue;
+                        }
+                        let mut color = layer_color(
+                            layer.color_source,
+                            command.packet.stroke_color(stroke),
+                            command.material_base_color,
+                        );
+                        color[3] *= layer.opacity;
+                        let base = vertices.len() as u32;
+                        vertices.extend(stroke.vertices.iter().map(|vertex| NprGpuVertex {
+                            position: to_clip(vertex.position),
+                            color,
+                            depth: (vertex.depth - 0.00001).max(0.0),
+                            coverage: vertex.coverage,
+                            phase: [vertex.edge, vertex.grain],
+                            material: [
+                                vertex.edge_softness,
+                                vertex.pressure,
+                                vertex.paper_tooth,
+                                vertex.dryness,
+                            ],
+                        }));
+                        indices.extend(stroke.indices.iter().map(|index| base + index));
+                        stroke_upload_bytes += stroke_bytes;
+                    }
+                    if let Some(buffer) = NprPipelines::indexed_buffer(
+                        &target.device,
+                        &vertices,
+                        &indices,
+                        "amigo-npr-layer-strokes",
+                    ) {
+                        color_batches.push(NprColorBatch::Stroke {
+                            buffer,
+                            blend: layer.blend,
+                        });
+                    }
+                }
+                // Paper is executed from the shared NprBackgroundCommand.
+                amigo_render_npr::NprLayerKind::Paper => {}
             }
         }
-        for stroke in &command.packet.strokes {
-            let color = command.packet.stroke_color(stroke);
-            let vertex_bytes = stroke
-                .vertices
-                .len()
-                .checked_mul(std::mem::size_of::<NprGpuVertex>());
-            let index_bytes = stroke.indices.len().checked_mul(std::mem::size_of::<u32>());
-            let Some(stroke_bytes) = vertex_bytes
-                .and_then(|bytes| index_bytes.and_then(|indices| bytes.checked_add(indices)))
-            else {
-                continue;
-            };
-            if stroke_bytes > MAX_STROKE_BATCH_BYTES
-                || stroke_upload_bytes.saturating_add(stroke_bytes) > MAX_STROKE_UPLOAD_BYTES
-                || stroke
-                    .indices
-                    .iter()
-                    .any(|index| *index as usize >= stroke.vertices.len())
-            {
-                continue;
-            }
-            let current_bytes = current_stroke_vertices.len() * std::mem::size_of::<NprGpuVertex>()
-                + current_stroke_indices.len() * std::mem::size_of::<u32>();
-            if !current_stroke_indices.is_empty()
-                && current_bytes.saturating_add(stroke_bytes) > MAX_STROKE_BATCH_BYTES
-            {
-                stroke_batches.push((
-                    std::mem::take(&mut current_stroke_vertices),
-                    std::mem::take(&mut current_stroke_indices),
-                ));
-            }
-            let base = current_stroke_vertices.len() as u32;
-            for vertex in &stroke.vertices {
-                current_stroke_vertices.push(NprGpuVertex {
-                    position: to_clip(vertex.position),
-                    color,
-                    depth: (vertex.depth - 0.00001).max(0.0),
-                    coverage: vertex.coverage,
-                    phase: [vertex.edge, vertex.grain],
-                    material: [
-                        vertex.edge_softness,
-                        vertex.pressure,
-                        vertex.paper_tooth,
-                        vertex.dryness,
-                    ],
-                });
-            }
-            current_stroke_indices.extend(stroke.indices.iter().map(|index| base + index));
-            stroke_upload_bytes += stroke_bytes;
-        }
     }
-    if !current_stroke_indices.is_empty() {
-        stroke_batches.push((current_stroke_vertices, current_stroke_indices));
-    }
-    if occluder_vertices.is_empty()
-        && fill_vertices.is_empty()
-        && stroke_batches.is_empty()
-        && paper_vertices.is_empty()
-    {
+    if occluder_vertices.is_empty() && color_batches.is_empty() && paper_vertices.is_empty() {
         return Ok(());
     }
 
@@ -516,19 +681,6 @@ fn render_npr_commands(
         &occluder_vertices,
         "amigo-npr-occluder-vertices",
     );
-    let fill_buffers =
-        NprPipelines::vertex_buffers(&target.device, &fill_vertices, "amigo-npr-fill-vertices");
-    let stroke_buffers = stroke_batches
-        .iter()
-        .filter_map(|(vertices, indices)| {
-            NprPipelines::indexed_buffer(
-                &target.device,
-                vertices,
-                indices,
-                "amigo-npr-stroke-vertices",
-            )
-        })
-        .collect::<Vec<_>>();
     let background_load = background
         .map(|background| {
             let color = background.color;
@@ -567,9 +719,11 @@ fn render_npr_commands(
             pass.draw(0..buffer.vertex_count, 0..1);
         }
     }
+    let paper_buffer = (!paper_vertices.is_empty())
+        .then(|| NprPipelines::vertex_buffer(&target.device, &paper_vertices, "amigo-npr-paper"));
     {
         let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-            label: Some("amigo-npr-fill-pass"),
+            label: Some("amigo-npr-color-layers-pass"),
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                 view: &target.view,
                 resolve_target: None,
@@ -591,51 +745,30 @@ fn render_npr_commands(
             timestamp_writes: None,
             multiview_mask: None,
         });
-        pass.set_pipeline(&renderer.npr_pipelines.fill);
-        if !paper_vertices.is_empty() {
-            let paper_buffer =
-                NprPipelines::vertex_buffer(&target.device, &paper_vertices, "amigo-npr-paper");
+        if let Some(paper_buffer) = &paper_buffer {
             pass.set_pipeline(&renderer.npr_pipelines.paper);
             pass.set_vertex_buffer(0, paper_buffer.slice(..));
             pass.draw(0..paper_vertices.len() as u32, 0..1);
         }
-        pass.set_pipeline(&renderer.npr_pipelines.fill);
-        if !fill_vertices.is_empty() {
-            for buffer in &fill_buffers {
-                pass.set_vertex_buffer(0, buffer.buffer.slice(..));
-                pass.draw(0..buffer.vertex_count, 0..1);
+        for batch in &color_batches {
+            match batch {
+                NprColorBatch::Paint { buffer, blend } => {
+                    pass.set_pipeline(renderer.npr_pipelines.paint_for(*blend));
+                    pass.set_vertex_buffer(0, buffer.buffer.slice(..));
+                    pass.draw(0..buffer.vertex_count, 0..1);
+                }
+                NprColorBatch::Fill { buffer, blend } => {
+                    pass.set_pipeline(renderer.npr_pipelines.fill_for(*blend));
+                    pass.set_vertex_buffer(0, buffer.buffer.slice(..));
+                    pass.draw(0..buffer.vertex_count, 0..1);
+                }
+                NprColorBatch::Stroke { buffer, blend } => {
+                    pass.set_pipeline(renderer.npr_pipelines.stroke_for(*blend));
+                    pass.set_vertex_buffer(0, buffer.vertices.slice(..));
+                    pass.set_index_buffer(buffer.indices.slice(..), wgpu::IndexFormat::Uint32);
+                    pass.draw_indexed(0..buffer.index_count, 0, 0..1);
+                }
             }
-        }
-    }
-    {
-        let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-            label: Some("amigo-npr-stroke-pass"),
-            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                view: &target.view,
-                resolve_target: None,
-                depth_slice: None,
-                ops: wgpu::Operations {
-                    load: wgpu::LoadOp::Load,
-                    store: wgpu::StoreOp::Store,
-                },
-            })],
-            depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
-                view: &target.depth_view,
-                depth_ops: Some(wgpu::Operations {
-                    load: wgpu::LoadOp::Load,
-                    store: wgpu::StoreOp::Store,
-                }),
-                stencil_ops: None,
-            }),
-            occlusion_query_set: None,
-            timestamp_writes: None,
-            multiview_mask: None,
-        });
-        pass.set_pipeline(&renderer.npr_pipelines.stroke);
-        for buffer in &stroke_buffers {
-            pass.set_vertex_buffer(0, buffer.vertices.slice(..));
-            pass.set_index_buffer(buffer.indices.slice(..), wgpu::IndexFormat::Uint32);
-            pass.draw_indexed(0..buffer.index_count, 0, 0..1);
         }
     }
     target.queue.submit(Some(encoder.finish()));

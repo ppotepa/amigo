@@ -3,7 +3,10 @@ use amigo_ui_layout::{
     LayoutViewportScaling,
 };
 
-pub fn build_ui_layout_tree(viewport: UiViewportSize, document: &UiOverlayDocument) -> UiLayoutNode {
+pub fn build_ui_layout_tree(
+    viewport: UiViewportSize,
+    document: &UiOverlayDocument,
+) -> UiLayoutNode {
     let document_viewport = document.viewport.map(|vp| {
         (
             LayoutViewport::new(vp.width, vp.height),
@@ -34,7 +37,8 @@ pub fn build_ui_layout_tree(viewport: UiViewportSize, document: &UiOverlayDocume
     );
     if let Some(vp) = document.viewport {
         if vp.scaling == UiOverlayViewportScaling::Fit {
-            let scale = (viewport.width / vp.width.max(1.0)).min(viewport.height / vp.height.max(1.0));
+            let scale =
+                (viewport.width / vp.width.max(1.0)).min(viewport.height / vp.height.max(1.0));
             scale_styles(&mut ui_layout, scale.max(0.0));
         }
     }
@@ -42,6 +46,12 @@ pub fn build_ui_layout_tree(viewport: UiViewportSize, document: &UiOverlayDocume
 }
 
 fn overlay_node_to_layout(node: &UiOverlayNode) -> LayoutElement<UiOverlayNode> {
+    let mut children = node.children.clone();
+    if let UiOverlayNodeKind::ScrollArea { offset_y } = node.kind {
+        for child in &mut children {
+            child.style.top = Some(child.style.top.unwrap_or(0.0) - offset_y.max(0.0));
+        }
+    }
     LayoutElement {
         id: node.id.clone(),
         kind: overlay_kind_to_layout_kind(&node.kind),
@@ -52,6 +62,7 @@ fn overlay_node_to_layout(node: &UiOverlayNode) -> LayoutElement<UiOverlayNode> 
             bottom: node.style.bottom,
             width: node.style.width,
             height: node.style.height,
+            fill_height: node.style.fill_height,
             padding: node.style.padding,
             gap: node.style.gap,
             border_width: node.style.border_width,
@@ -61,7 +72,7 @@ fn overlay_node_to_layout(node: &UiOverlayNode) -> LayoutElement<UiOverlayNode> 
             fit_to_width: node.style.fit_to_width,
         },
         data: node.clone(),
-        children: node.children.iter().map(overlay_node_to_layout).collect(),
+        children: children.iter().map(overlay_node_to_layout).collect(),
     }
 }
 
@@ -74,6 +85,10 @@ fn overlay_kind_to_layout_kind(kind: &UiOverlayNodeKind) -> LayoutKind {
         UiOverlayNodeKind::Row => LayoutKind::Row,
         UiOverlayNodeKind::Column => LayoutKind::Column,
         UiOverlayNodeKind::Stack => LayoutKind::Stack,
+        // A scroll area needs normal column flow for its content.  Mapping it
+        // to a stack would clamp a tall child to the viewport before the
+        // primitive stage has a chance to apply the scroll offset and clip.
+        UiOverlayNodeKind::ScrollArea { .. } => LayoutKind::Column,
         UiOverlayNodeKind::Text { content, .. } => LayoutKind::Leaf(LayoutLeafKind::Text {
             content: content.clone(),
         }),
@@ -82,12 +97,14 @@ fn overlay_kind_to_layout_kind(kind: &UiOverlayNodeKind) -> LayoutKind {
         }
         UiOverlayNodeKind::ProgressBar { .. } => LayoutKind::Leaf(LayoutLeafKind::ProgressBar),
         UiOverlayNodeKind::Slider { .. } => LayoutKind::Leaf(LayoutLeafKind::Slider),
-        UiOverlayNodeKind::Toggle { text, .. } => LayoutKind::Leaf(LayoutLeafKind::Toggle {
-            text: text.clone(),
-        }),
-        UiOverlayNodeKind::OptionSet { options, .. } => LayoutKind::Leaf(LayoutLeafKind::OptionSet {
-            option_count: options.len(),
-        }),
+        UiOverlayNodeKind::Toggle { text, .. } => {
+            LayoutKind::Leaf(LayoutLeafKind::Toggle { text: text.clone() })
+        }
+        UiOverlayNodeKind::OptionSet { options, .. } => {
+            LayoutKind::Leaf(LayoutLeafKind::OptionSet {
+                option_count: options.len(),
+            })
+        }
         UiOverlayNodeKind::Dropdown {
             options, expanded, ..
         } => LayoutKind::Leaf(LayoutLeafKind::Dropdown {
@@ -104,7 +121,9 @@ fn overlay_kind_to_layout_kind(kind: &UiOverlayNodeKind) -> LayoutKind {
                 })
                 .collect(),
         },
-        UiOverlayNodeKind::ColorPickerRgb { .. } => LayoutKind::Leaf(LayoutLeafKind::ColorPickerRgb),
+        UiOverlayNodeKind::ColorPickerRgb { .. } => {
+            LayoutKind::Leaf(LayoutLeafKind::ColorPickerRgb)
+        }
         UiOverlayNodeKind::CurveEditor { .. } => LayoutKind::Leaf(LayoutLeafKind::CurveEditor),
         UiOverlayNodeKind::Spacer => LayoutKind::Leaf(LayoutLeafKind::Spacer),
     }

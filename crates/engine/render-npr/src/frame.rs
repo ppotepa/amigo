@@ -1,15 +1,15 @@
 use crate::{
+    GraphiteTonePlan, NprConstructionMark, NprConstructionMarkError, NprDebugView, NprSurfaceMode,
+    RankedCandidate, StrokeRole, SurfaceDirectionField,
     camera::PerspectiveCamera,
     feature::FeatureClass,
     geometry::NprGeometry,
     plan_graphite_tone, select_ranked, smooth_perspective_contours,
     style::{ComicInk, NprToneMode},
     suggestive_perspective_contours,
-    tessellation::{tessellate_polyline, tessellate_polyline_variants, TessellatedStroke},
+    tessellation::{TessellatedStroke, tessellate_polyline, tessellate_polyline_variants},
     topology::{build_topology, face_normal},
-    trace_parallel_surface_lines, trace_surface_streamline, GraphiteTonePlan, NprConstructionMark,
-    NprConstructionMarkError, NprDebugView, NprSurfaceMode, RankedCandidate, StrokeRole,
-    SurfaceDirectionField,
+    trace_parallel_surface_lines, trace_surface_streamline,
 };
 use glam::{Vec2, Vec4};
 use std::collections::BTreeMap;
@@ -66,6 +66,15 @@ pub struct NprFillTriangle {
     pub color: Vec4,
     pub depths: [f32; 3],
 }
+/// Paint geometry is deliberately distinct from flat fill geometry. Coverage
+/// is a deterministic pigment deposit, not a post-process opacity heuristic.
+#[derive(Debug, Clone, PartialEq)]
+pub struct NprPaintTriangle {
+    pub positions: [Vec2; 3],
+    pub color: Vec4,
+    pub depths: [f32; 3],
+    pub coverage: f32,
+}
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct NprRenderStats {
     pub geometry: usize,
@@ -99,10 +108,15 @@ pub struct NprRenderStats {
     pub silhouettes: usize,
     pub creases: usize,
     pub strokes: usize,
+    /// Paint-medium triangles submitted to the Underpainting layer.
+    pub underpainting_triangles: usize,
     pub stroke_vertices: usize,
     pub stroke_indices: usize,
     /// Number of tone strokes emitted after the per-packet hatch limit.
     pub hatching_strokes: usize,
+    /// Sparse form contours emitted by the three-band planner. These are
+    /// independent from hatch density and route to `FormLines`.
+    pub form_line_strokes: usize,
     /// Restrained second tonal passes. They refine accepted paths rather than
     /// creating further planned hatching candidates.
     pub hatching_correction_strokes: usize,
@@ -147,6 +161,8 @@ pub struct NprRenderPacket {
     /// chooses to paint a visible fill. This preserves hidden-line removal for
     /// pencil-on-paper profiles.
     pub occluders: Vec<NprFillTriangle>,
+    /// Independent paint-medium contribution for the Underpainting layer.
+    pub underpainting: Vec<NprPaintTriangle>,
     pub fills: Vec<NprFillTriangle>,
     pub strokes: Vec<TessellatedStroke>,
     pub background: Vec4,
@@ -202,6 +218,7 @@ impl NprRenderPacket {
             NprDebugView::Final => self.ink.to_array(),
             NprDebugView::FeatureClasses => match stroke.role {
                 StrokeRole::Tone => [0.82, 0.48, 0.10, 1.0],
+                StrokeRole::FormLine => [0.18, 0.72, 0.72, 1.0],
                 StrokeRole::Construction => [0.62, 0.20, 0.78, 1.0],
                 StrokeRole::Feature => match stroke.class {
                     FeatureClass::Boundary => [0.9, 0.15, 0.1, 1.0],
@@ -320,6 +337,7 @@ fn build_packet_with_identity(
     };
     let mut occluders = Vec::new();
     let mut fills = Vec::new();
+    let mut underpainting = Vec::new();
     let mut hatch_segments = Vec::new();
     let mut surface_hatch_tones = vec![GraphiteTonePlan::PAPER; geometry.triangles.len()];
     let mut hatching_budget = MAX_HATCHING_LINES_PER_PACKET;
@@ -351,6 +369,13 @@ fn build_packet_with_identity(
                 };
                 occluders.push(occluder.clone());
                 if style.tone_mode == NprToneMode::ThreeBand {
+                    let coverage = underpainting_coverage(seed, face_index as u32);
+                    underpainting.push(NprPaintTriangle {
+                        positions,
+                        depths,
+                        color,
+                        coverage,
+                    });
                     fills.push(occluder);
                 }
                 if style.tone_mode == NprToneMode::Hatching {
@@ -440,10 +465,8 @@ fn build_packet_with_identity(
             })
             .collect::<Option<Vec<_>>>();
         if let Some(points) = points.filter(|points| points.len() >= 2) {
-            let points = simplify_projected_contour(
-                points,
-                style.smooth_contour_simplification_pixels,
-            );
+            let points =
+                simplify_projected_contour(points, style.smooth_contour_simplification_pixels);
             strokes.extend(tessellate_polyline_variants(
                 contour.id,
                 FeatureClass::Silhouette,
@@ -465,10 +488,8 @@ fn build_packet_with_identity(
             })
             .collect::<Option<Vec<_>>>();
         if let Some(points) = points.filter(|points| points.len() >= 2) {
-            let points = simplify_projected_contour(
-                points,
-                style.smooth_contour_simplification_pixels,
-            );
+            let points =
+                simplify_projected_contour(points, style.smooth_contour_simplification_pixels);
             let suggestive_style = stroke_layer_style(style, style.suggestive_contour_width_scale);
             let mut contour_strokes = tessellate_polyline_variants(
                 contour.id,
@@ -504,6 +525,7 @@ fn build_packet_with_identity(
             hatch_segments,
             stroke_layer_style(style, style.form_line_width_scale),
             seed,
+            StrokeRole::FormLine,
         );
         apply_stroke_opacity(&mut strokes, style.form_line_opacity);
         HatchingOutput {
@@ -514,7 +536,6 @@ fn build_packet_with_identity(
             corrections: 0,
         }
     };
-    let hatching_strokes = hatching.strokes.len();
     let hatching_budget_exhausted = hatching_budget == 0;
     let mut candidates = strokes;
     candidates.extend(hatching.strokes);
@@ -549,9 +570,17 @@ fn build_packet_with_identity(
         silhouettes,
         creases,
         strokes: strokes.len(),
+        underpainting_triangles: underpainting.len(),
         stroke_vertices: strokes.iter().map(|s| s.vertices.len()).sum(),
         stroke_indices: strokes.iter().map(|s| s.indices.len()).sum(),
-        hatching_strokes: hatching_strokes.saturating_sub(stroke_budget_rejected_tone),
+        hatching_strokes: strokes
+            .iter()
+            .filter(|stroke| stroke.role == StrokeRole::Tone)
+            .count(),
+        form_line_strokes: strokes
+            .iter()
+            .filter(|stroke| stroke.role == StrokeRole::FormLine)
+            .count(),
         hatching_correction_strokes: hatching.corrections,
         graphite_mass,
         hatching_candidates: hatching.candidates,
@@ -571,6 +600,7 @@ fn build_packet_with_identity(
     };
     NprRenderPacket {
         occluders,
+        underpainting,
         fills,
         strokes,
         background: style.paper,
@@ -739,7 +769,13 @@ fn simplify_open_projected_contour(points: &[(Vec2, f32)], tolerance: f32) -> Ve
     let mut keep = vec![false; points.len()];
     keep[0] = true;
     keep[points.len() - 1] = true;
-    mark_rdp_points(points, 0, points.len() - 1, tolerance * tolerance, &mut keep);
+    mark_rdp_points(
+        points,
+        0,
+        points.len() - 1,
+        tolerance * tolerance,
+        &mut keep,
+    );
     points
         .iter()
         .zip(keep)
@@ -943,7 +979,12 @@ fn append_hatching(
         0,
         face_direction,
     );
-    output.extend(emit_hatching_segments(segments, style, seed));
+    output.extend(emit_hatching_segments(
+        segments,
+        style,
+        seed,
+        StrokeRole::Tone,
+    ));
 }
 
 /// Collect raw hatch segments before tessellation. This makes the shared edge
@@ -1446,6 +1487,15 @@ fn stable_hatch_noise(id: u32) -> f32 {
     ((value >> 32) as u32) as f32 / u32::MAX as f32
 }
 
+fn underpainting_coverage(seed: u64, face: u32) -> f32 {
+    // One value per source face prevents a clipped face from gaining a seam.
+    // Keep the range restrained: it should read as uneven pigment, not noise.
+    let mixed = seed
+        .wrapping_add(u64::from(face).wrapping_mul(0x9e37_79b9))
+        .rotate_left(19);
+    0.86 + stable_hatch_noise((mixed ^ (mixed >> 32)) as u32) * 0.12
+}
+
 fn streamline_step_count(curvature: f32, id: u32) -> usize {
     // The one-ring normal turn is small for a well-tessellated cylinder, so
     // normalize its useful range before it influences stroke extent.
@@ -1460,6 +1510,7 @@ fn emit_hatching_segments(
     segments: Vec<HatchSegment>,
     style: ComicInk,
     seed: u64,
+    role: StrokeRole,
 ) -> Vec<TessellatedStroke> {
     let mut buckets: BTreeMap<HatchKey, Vec<HatchSegment>> = BTreeMap::new();
     for segment in segments {
@@ -1525,7 +1576,7 @@ fn emit_hatching_segments(
                 style,
                 seed ^ u64::from(id),
             );
-            stroke.role = StrokeRole::Tone;
+            stroke.role = role;
             if coverage < 1.0 {
                 for vertex in &mut stroke.vertices {
                     vertex.coverage *= coverage;
@@ -1703,13 +1754,14 @@ mod tests {
     #[test]
     fn near_clipping_keeps_crossing_segment() {
         let c = PerspectiveCamera::cube_default(1.0);
-        assert!(c
-            .project_segment(
+        assert!(
+            c.project_segment(
                 c.position + c.forward * 0.01,
                 c.position + c.forward * 2.0,
                 Vec2::splat(512.0)
             )
-            .is_some());
+            .is_some()
+        );
     }
 
     #[test]
@@ -1915,6 +1967,53 @@ mod tests {
     }
 
     #[test]
+    fn underpainting_is_a_deterministic_packet_channel_separate_from_flat_fill() {
+        let packet = build_packet(
+            &NprGeometry::canonical_cube(),
+            PerspectiveCamera::cube_default(1.0),
+            [512, 512],
+            ComicInk::default(),
+            73,
+            NprDebugView::Final,
+        );
+        assert!(!packet.underpainting.is_empty());
+        assert_eq!(packet.underpainting.len(), packet.fills.len());
+        assert_eq!(
+            packet.stats.underpainting_triangles,
+            packet.underpainting.len()
+        );
+        assert!(
+            packet
+                .underpainting
+                .iter()
+                .all(|triangle| (0.86..=0.98).contains(&triangle.coverage))
+        );
+    }
+
+    #[test]
+    fn three_band_form_marks_have_a_role_separate_from_hatching() {
+        let mut style = ComicInk::default();
+        style.tone_mode = NprToneMode::ThreeBand;
+        style.tone_density = 1.0;
+        let packet = build_packet(
+            &NprGeometry::cylinder(16),
+            PerspectiveCamera::cube_default(1.0),
+            [512, 512],
+            style,
+            71,
+            NprDebugView::Final,
+        );
+        let emitted = packet
+            .strokes
+            .iter()
+            .filter(|stroke| stroke.role == StrokeRole::FormLine)
+            .count();
+        assert!(emitted > 0);
+        assert_eq!(packet.stats.form_line_strokes, emitted);
+        assert_eq!(packet.stats.hatching_strokes, 0);
+    }
+
+    #[test]
     fn construction_marks_resolve_source_anchors_atomically() {
         let source = crate::NprPreparedSurface::new(NprGeometry::canonical_cube());
         let mark = NprConstructionMark {
@@ -1947,10 +2046,12 @@ mod tests {
         )
         .unwrap();
         assert_eq!(first.stats.construction_marks, 1);
-        assert!(first
-            .strokes
-            .iter()
-            .any(|stroke| stroke.id == mark.id && stroke.role == StrokeRole::Construction));
+        assert!(
+            first
+                .strokes
+                .iter()
+                .any(|stroke| stroke.id == mark.id && stroke.role == StrokeRole::Construction)
+        );
 
         let mut second = build_packet_for_surface(
             &source,
@@ -1974,16 +2075,18 @@ mod tests {
 
         let incompatible = crate::NprPreparedSurface::new(NprGeometry::wedge());
         let before = second.clone();
-        assert!(append_construction_marks(
-            &mut second,
-            &incompatible,
-            camera,
-            [512, 512],
-            ComicInk::default(),
-            11,
-            std::slice::from_ref(&mark),
-        )
-        .is_err());
+        assert!(
+            append_construction_marks(
+                &mut second,
+                &incompatible,
+                camera,
+                [512, 512],
+                ComicInk::default(),
+                11,
+                std::slice::from_ref(&mark),
+            )
+            .is_err()
+        );
         assert_eq!(second, before);
 
         assert!(matches!(
@@ -2153,10 +2256,12 @@ mod tests {
             None,
         );
         assert!(strokes.len() <= MAX_HATCHING_LINES_PER_PACKET);
-        assert!(strokes
-            .iter()
-            .flat_map(|stroke| stroke.vertices.iter())
-            .all(|vertex| vertex.position.is_finite()));
+        assert!(
+            strokes
+                .iter()
+                .flat_map(|stroke| stroke.vertices.iter())
+                .all(|vertex| vertex.position.is_finite())
+        );
     }
 
     #[test]

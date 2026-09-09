@@ -1,9 +1,9 @@
-use amigo_npr_playground_plugin::{NprPlaygroundRenderService, NprPlaygroundState, state::PREFIX};
-use amigo_panels::PresetProvider;
 use amigo_npr_playground_plugin::{
     scene::{NprCameraSceneSettings, NprObjectSceneSettings, NprPlaygroundSceneDocument},
     state::{ConstructionAnchorSettings, ConstructionMarkSettings},
 };
+use amigo_npr_playground_plugin::{state::PREFIX, NprPlaygroundRenderService, NprPlaygroundState};
+use amigo_panels::PresetProvider;
 use amigo_render_npr::{NprSurfaceIntent, NprSurfaceMode, StrokeRole};
 use amigo_runtime_control::{ControlValue, RuntimeControlService};
 use glam::Vec2;
@@ -41,7 +41,9 @@ fn construction_authoring_commits_open_and_closed_source_lines() {
             },
         )
         .unwrap();
-    assert!(state.snapshot().objects["cube"].construction_marks.is_empty());
+    assert!(state.snapshot().objects["cube"]
+        .construction_marks
+        .is_empty());
     assert!(state.commit_construction_mark(false).is_err());
 
     state
@@ -84,7 +86,14 @@ fn construction_authoring_commits_open_and_closed_source_lines() {
     assert!(remaining[0].closed);
 
     let document = state.authored_scene_document().unwrap();
-    assert_eq!(document.objects["cube"].construction_marks.as_ref().unwrap().len(), 1);
+    assert_eq!(
+        document.objects["cube"]
+            .construction_marks
+            .as_ref()
+            .unwrap()
+            .len(),
+        1
+    );
     let mut restored = amigo_npr_playground_plugin::state::Settings::for_scene(document.gallery);
     document.apply_to(&mut restored).unwrap();
     assert_eq!(
@@ -117,9 +126,16 @@ fn construction_authoring_can_remove_its_latest_draft_point() {
             )
             .unwrap();
     }
-    assert_eq!(state.render_snapshot().objects["cube"].construction_marks.len(), 1);
+    assert_eq!(
+        state.render_snapshot().objects["cube"]
+            .construction_marks
+            .len(),
+        1
+    );
     state.undo_construction_anchor().unwrap();
-    assert!(state.render_snapshot().objects["cube"].construction_marks.is_empty());
+    assert!(state.render_snapshot().objects["cube"]
+        .construction_marks
+        .is_empty());
     state.undo_construction_anchor().unwrap();
     assert!(state.undo_construction_anchor().is_err());
 }
@@ -140,7 +156,9 @@ fn construction_authoring_renders_a_transient_preview_without_serializing_it() {
             .unwrap();
     }
 
-    assert!(state.snapshot().objects["cube"].construction_marks.is_empty());
+    assert!(state.snapshot().objects["cube"]
+        .construction_marks
+        .is_empty());
     let preview = state.render_snapshot();
     let marks = &preview.objects["cube"].construction_marks;
     assert_eq!(marks.len(), 1);
@@ -168,7 +186,12 @@ fn before_comparison_discards_an_in_progress_construction_preview() {
             )
             .unwrap();
     }
-    assert_eq!(state.render_snapshot().objects["cube"].construction_marks.len(), 1);
+    assert_eq!(
+        state.render_snapshot().objects["cube"]
+            .construction_marks
+            .len(),
+        1
+    );
 
     let controls = RuntimeControlService::default();
     controls.register_provider(state.clone());
@@ -179,7 +202,9 @@ fn before_comparison_discards_an_in_progress_construction_preview() {
         .set(&format!("{PREFIX}preview_before"), ControlValue::Bool(true))
         .unwrap();
     assert!(!state.construction_authoring_active());
-    assert!(state.render_snapshot().objects["cube"].construction_marks.is_empty());
+    assert!(state.render_snapshot().objects["cube"]
+        .construction_marks
+        .is_empty());
 }
 
 #[test]
@@ -245,20 +270,16 @@ fn metadata_controls_validate_atomically_and_presets_restore_all_objects() {
     controls
         .set(&path("object.scale"), ControlValue::F64(2.0))
         .unwrap();
-    assert!(
-        controls
-            .set(&path("object.scale"), ControlValue::F64(-1.0))
-            .is_err()
-    );
+    assert!(controls
+        .set(&path("object.scale"), ControlValue::F64(-1.0))
+        .is_err());
     assert!(controls.set(&path("fps"), ControlValue::F64(90.0)).is_err());
-    assert!(
-        controls
-            .set(
-                &path("global.ink"),
-                ControlValue::Color([f32::NAN, 0.0, 0.0, 1.0])
-            )
-            .is_err()
-    );
+    assert!(controls
+        .set(
+            &path("global.ink"),
+            ControlValue::Color([f32::NAN, 0.0, 0.0, 1.0])
+        )
+        .is_err());
     assert_eq!(state.snapshot().objects["cube"].scale, 2.0);
     controls
         .set(
@@ -267,14 +288,12 @@ fn metadata_controls_validate_atomically_and_presets_restore_all_objects() {
         )
         .unwrap();
     assert_eq!(state.snapshot().motion.appearance_fade_seconds, 0.0);
-    assert!(
-        controls
-            .set(
-                &path("motion.appearance_fade_seconds"),
-                ControlValue::F64(2.1)
-            )
-            .is_err()
-    );
+    assert!(controls
+        .set(
+            &path("motion.appearance_fade_seconds"),
+            ControlValue::F64(2.1)
+        )
+        .is_err());
     controls
         .set(
             &path("motion.mode"),
@@ -292,11 +311,9 @@ fn metadata_controls_validate_atomically_and_presets_restore_all_objects() {
         controls.get(&path("motion.mode")).unwrap(),
         ControlValue::String("redraw-on-motion".into())
     );
-    assert!(
-        controls
-            .set(&path("motion.redraw_strength"), ControlValue::F64(1.1))
-            .is_err()
-    );
+    assert!(controls
+        .set(&path("motion.redraw_strength"), ControlValue::F64(1.1))
+        .is_err());
     controls
         .set(
             &path("global.min_crease_length_pixels"),
@@ -420,21 +437,21 @@ fn authored_construction_marks_flow_from_object_state_to_render_packet() {
         .get_mut("cube")
         .unwrap()
         .construction_marks = vec![ConstructionMarkSettings {
-            id: 0x4000_0100,
-            anchors: vec![
-                ConstructionAnchorSettings {
-                    triangle: 0,
-                    barycentric: [0.70, 0.20, 0.10],
-                },
-                ConstructionAnchorSettings {
-                    triangle: 0,
-                    barycentric: [0.10, 0.70, 0.20],
-                },
-            ],
-            closed: false,
-            width_scale: 0.5,
-            opacity: 0.35,
-        }];
+        id: 0x4000_0100,
+        anchors: vec![
+            ConstructionAnchorSettings {
+                triangle: 0,
+                barycentric: [0.70, 0.20, 0.10],
+            },
+            ConstructionAnchorSettings {
+                triangle: 0,
+                barycentric: [0.10, 0.70, 0.20],
+            },
+        ],
+        closed: false,
+        width_scale: 0.5,
+        opacity: 0.35,
+    }];
     let render = NprPlaygroundRenderService::default();
     render.rebuild(&state.snapshot(), [512, 512]).unwrap();
     let packet = &render.commands()[0].packet;
@@ -471,7 +488,9 @@ fn authored_scene_settings_override_only_declared_npr_intent() {
             selected: Some("sphere".to_owned()),
             seed: Some(99),
             motion: None,
+            sketch_paused: None,
             global_style: None,
+            style_layers: None,
             camera: NprCameraSceneSettings {
                 distance: Some(18.0),
                 yaw: Some(31.0),
@@ -497,8 +516,14 @@ fn authored_scene_settings_override_only_declared_npr_intent() {
     assert_eq!(settings.camera_yaw, 31.0);
     assert!(!settings.objects["sphere"].rotating);
     assert_eq!(settings.objects["sphere"].surface_subdivision_level, 2);
-    assert_eq!(settings.objects["sphere"].smooth_weld_relative_tolerance, 0.000_02);
-    assert!(settings.objects["cube"].rotating, "undeclared defaults survive");
+    assert_eq!(
+        settings.objects["sphere"].smooth_weld_relative_tolerance,
+        0.000_02
+    );
+    assert!(
+        settings.objects["cube"].rotating,
+        "undeclared defaults survive"
+    );
 }
 
 #[test]
@@ -682,12 +707,10 @@ fn gallery_imports_all_six_models_and_binds_the_authored_layout() {
         .validate_bindings(&controls.registry_snapshot())
         .unwrap();
     assert_eq!(layout.artwork.len(), 9);
-    assert!(
-        layout
-            .artwork
-            .values()
-            .all(|triangles| !triangles.is_empty())
-    );
+    assert!(layout
+        .artwork
+        .values()
+        .all(|triangles| !triangles.is_empty()));
     let mut transport = Vec::new();
     amigo_panel_api::write_message(&mut transport, &layout).unwrap();
     assert!(transport.len() < amigo_panel_api::MAX_FRAME_BYTES);
@@ -695,12 +718,10 @@ fn gallery_imports_all_six_models_and_binds_the_authored_layout() {
     render.load_models(&root).unwrap();
     render.rebuild(&state.snapshot(), [1024, 768]).unwrap();
     assert_eq!(render.commands().len(), 6);
-    assert!(
-        render
-            .commands()
-            .iter()
-            .all(|c| !c.packet.fills.is_empty() && !c.packet.strokes.is_empty())
-    );
+    assert!(render
+        .commands()
+        .iter()
+        .all(|c| !c.packet.fills.is_empty() && !c.packet.strokes.is_empty()));
     let annotated = render
         .commands()
         .iter()
@@ -747,37 +768,35 @@ fn workshop_history_rotation_scope_and_comparison_are_independent() {
     assert_eq!(state.snapshot().objects["sphere"].rotation, live_rotation);
     action("redo");
     assert_eq!(state.snapshot().objects["cube"].scale, 3.0);
-    set("style_scope", ControlValue::String("Obiekt".into()));
-    assert!(
-        controls
-            .set(
-                &format!("{PREFIX}appearance.outline_width"),
-                ControlValue::F64(9.0)
-            )
-            .is_err()
-    );
-    set("object.override_style", ControlValue::Bool(true));
+    set("style_scope", ControlValue::String("object".into()));
     action("capture_before");
     set("appearance.outline_width", ControlValue::F64(9.0));
-    assert_eq!(state.snapshot().objects["cube"].style.outline_width, 9.0);
+    assert_eq!(
+        state.snapshot().objects["cube"]
+            .style_overrides
+            .outline_width,
+        Some(9.0)
+    );
     assert_eq!(state.snapshot().global.outline_width, 4.0);
     set("preview_before", ControlValue::Bool(true));
     assert_eq!(
-        state.render_snapshot().objects["cube"].style.outline_width,
+        state.render_snapshot().objects["cube"]
+            .effective_style(state.render_snapshot().global)
+            .outline_width,
         4.0
     );
-    assert!(
-        controls
-            .set(&format!("{PREFIX}object.scale"), ControlValue::F64(4.0))
-            .is_err()
-    );
+    assert!(controls
+        .set(&format!("{PREFIX}object.scale"), ControlValue::F64(4.0))
+        .is_err());
     set("preview_before", ControlValue::Bool(false));
     assert_eq!(
-        state.render_snapshot().objects["cube"].style.outline_width,
+        state.render_snapshot().objects["cube"]
+            .effective_style(state.render_snapshot().global)
+            .outline_width,
         9.0
     );
     action("reset_style");
-    assert!(!state.snapshot().objects["cube"].override_style);
+    assert!(!state.snapshot().objects["cube"].has_style_overrides());
 }
 
 #[test]
@@ -796,20 +815,58 @@ fn typed_tool_profiles_are_exposed_and_validated() {
         controls.get(&path("global.tool")).unwrap(),
         ControlValue::String("pencil".into())
     );
-    assert!(
-        controls
-            .set(&path("global.gesture_confidence"), ControlValue::F64(1.5))
-            .is_err()
-    );
-    assert!(
-        controls
-            .set(
-                &path("global.tool"),
-                ControlValue::String("not-a-tool".into())
-            )
-            .is_err()
-    );
+    assert!(controls
+        .set(&path("global.gesture_confidence"), ControlValue::F64(1.5))
+        .is_err());
+    assert!(controls
+        .set(
+            &path("global.tool"),
+            ControlValue::String("not-a-tool".into())
+        )
+        .is_err());
     assert!(state.snapshot().global.paper_tooth > 0.5);
+}
+
+#[test]
+fn object_scoped_watercolour_keeps_scene_layers_and_creates_sparse_override() {
+    let state = Arc::new(NprPlaygroundState::default());
+    let controls = RuntimeControlService::default();
+    controls.register_provider(state.clone());
+    let set = |key: &str, value| controls.set(&format!("{PREFIX}{key}"), value).unwrap();
+
+    let scene_layers = state.snapshot().style_layers;
+    assert!(scene_layers.layer("hatching").unwrap().enabled);
+    set("style_scope", ControlValue::String("object".into()));
+    set(
+        "style_preset",
+        ControlValue::String("Watercolour Wash".into()),
+    );
+    assert_eq!(
+        controls.get(&format!("{PREFIX}style_preset")).unwrap(),
+        ControlValue::String("Watercolour Wash".into())
+    );
+
+    let snapshot = state.snapshot();
+    assert_eq!(snapshot.style_layers, scene_layers);
+    let object = &snapshot.objects["cube"];
+    assert!(!object.style_layer_overrides.is_empty());
+    let layers = object.effective_layers(&snapshot.style_layers);
+    assert!(!layers.layer("hatching").unwrap().enabled);
+    assert!(layers.layer("underpainting").unwrap().enabled);
+    assert_eq!(
+        layers
+            .layer("underpainting")
+            .unwrap()
+            .paint
+            .unwrap()
+            .granulation,
+        0.64
+    );
+    set("layers.hatching.enabled", ControlValue::Bool(true));
+    assert_eq!(
+        controls.get(&format!("{PREFIX}style_preset")).unwrap(),
+        ControlValue::String("Custom".into())
+    );
 }
 
 #[test]
@@ -846,7 +903,7 @@ fn look_presets_preserve_scene_and_are_atomic_and_undoable() {
     let state = Arc::new(NprPlaygroundState::default());
     let looks = LookPresetProvider(state.clone());
     let mut saved = looks.snapshot().unwrap();
-    saved["outline_width"] = serde_yaml::to_value(8.0).unwrap();
+    saved["style"]["outline_width"] = serde_yaml::to_value(8.0).unwrap();
     let before = state.snapshot();
     looks.apply(saved.clone()).unwrap();
     let after = state.snapshot();
@@ -855,7 +912,7 @@ fn look_presets_preserve_scene_and_are_atomic_and_undoable() {
     assert_eq!(after.global.light_direction, before.global.light_direction);
     assert_eq!(after.objects, before.objects);
     assert_eq!(after.camera_target, before.camera_target);
-    saved["outline_width"] = serde_yaml::to_value(-1.0).unwrap();
+    saved["style"]["outline_width"] = serde_yaml::to_value(-1.0).unwrap();
     assert!(looks.apply(saved).is_err());
     assert_eq!(state.snapshot(), after);
     let controls = RuntimeControlService::default();
@@ -868,7 +925,7 @@ fn look_presets_preserve_scene_and_are_atomic_and_undoable() {
 
 #[test]
 fn render_diagnostics_report_the_effective_typed_style_preset() {
-    use amigo_npr_playground_plugin::state::{Settings, style_preset_id};
+    use amigo_npr_playground_plugin::state::{style_preset_id, Settings};
 
     let settings = Settings::for_scene(false);
     assert_eq!(style_preset_id(settings.global), "comic-ink");
@@ -880,6 +937,213 @@ fn render_diagnostics_report_the_effective_typed_style_preset() {
     let mut custom = pencil;
     custom.wobble += 0.01;
     assert_eq!(style_preset_id(custom), "custom");
+}
+
+#[test]
+fn watercolour_style_preset_applies_its_typed_layer_stack() {
+    let state = Arc::new(NprPlaygroundState::default());
+    let controls = RuntimeControlService::default();
+    controls.register_provider(state.clone());
+    controls
+        .set(
+            &format!("{PREFIX}style_preset"),
+            ControlValue::String("Watercolour Wash".into()),
+        )
+        .unwrap();
+
+    let settings = state.snapshot();
+    assert_eq!(settings.global.tool, amigo_render_npr::StrokeTool::Brush);
+    assert!(!settings.style_layers.layer("fill").unwrap().enabled);
+    assert!(!settings.style_layers.layer("hatching").unwrap().enabled);
+    let paint = settings
+        .style_layers
+        .layer("underpainting")
+        .unwrap()
+        .paint
+        .unwrap();
+    assert_eq!(paint.wash, 1.12);
+    assert_eq!(paint.granulation, 0.64);
+}
+
+#[test]
+fn object_parameter_override_keeps_other_scene_style_properties_inherited() {
+    let state = Arc::new(NprPlaygroundState::default());
+    let controls = RuntimeControlService::default();
+    controls.register_provider(state.clone());
+    let set = |key: &str, value| controls.set(&format!("{PREFIX}{key}"), value).unwrap();
+
+    set("style_scope", ControlValue::String("object".into()));
+    set("appearance.outline_width", ControlValue::F64(8.0));
+    set("style_scope", ControlValue::String("scene".into()));
+    set("appearance.ink", ControlValue::Color([0.2, 0.3, 0.4, 1.0]));
+
+    let settings = state.snapshot();
+    let object = &settings.objects[&settings.selected];
+    assert_eq!(object.style_overrides.outline_width, Some(8.0));
+    assert_eq!(object.style_overrides.ink, None);
+    let effective = object.effective_style(settings.global);
+    assert_eq!(effective.outline_width, 8.0);
+    assert_eq!(effective.ink, glam::Vec4::new(0.2, 0.3, 0.4, 1.0));
+}
+
+#[test]
+fn layer_controls_update_scene_or_selected_object_stack_explicitly() {
+    let state = Arc::new(NprPlaygroundState::default());
+    let controls = RuntimeControlService::default();
+    controls.register_provider(state.clone());
+    let set = |key: &str, value| controls.set(&format!("{PREFIX}{key}"), value).unwrap();
+
+    set("layers.hatching.opacity", ControlValue::F64(0.42));
+    set(
+        "layers.hatching.blend",
+        ControlValue::String("screen".into()),
+    );
+    set(
+        "layers.hatching.color",
+        ControlValue::Color([0.15, 0.25, 0.35, 1.0]),
+    );
+    set("layers.hatching.tool", ControlValue::String("brush".into()));
+    set("layers.underpainting.paint.wash", ControlValue::F64(0.68));
+    set(
+        "layers.underpainting.paint.granulation",
+        ControlValue::F64(0.45),
+    );
+    set("layers.fill.enabled", ControlValue::Bool(true));
+    let scene = state.snapshot();
+    let hatching = scene.style_layers.layer("hatching").unwrap();
+    assert_eq!(hatching.opacity, 0.42);
+    assert_eq!(hatching.blend, amigo_render_npr::NprBlendMode::Screen);
+    assert_eq!(
+        hatching.color_source,
+        amigo_render_npr::NprLayerColorSource::Constant(glam::Vec4::new(0.15, 0.25, 0.35, 1.0))
+    );
+    assert_eq!(hatching.tool, Some(amigo_render_npr::StrokeTool::Brush));
+    let paint = scene
+        .style_layers
+        .layer("underpainting")
+        .unwrap()
+        .paint
+        .unwrap();
+    assert_eq!(paint.wash, 0.68);
+    assert_eq!(paint.granulation, 0.45);
+    assert!(scene.style_layers.layer("fill").unwrap().enabled);
+    assert!(scene.objects[&scene.selected]
+        .style_layer_overrides
+        .is_empty());
+
+    set("style_scope", ControlValue::String("object".into()));
+    set("layers.contours.enabled", ControlValue::Bool(false));
+    let object_scope = state.snapshot();
+    assert!(object_scope.style_layers.layer("contours").unwrap().enabled);
+    let object_overrides = &object_scope.objects[&object_scope.selected].style_layer_overrides;
+    assert_eq!(object_overrides.layers["contours"].enabled, Some(false));
+    assert!(object_overrides.layers.get("hatching").is_none());
+    set("style_scope", ControlValue::String("scene".into()));
+    set("layers.hatching.opacity", ControlValue::F64(0.75));
+    let inherited_change = state.snapshot();
+    assert_eq!(
+        inherited_change.objects[&inherited_change.selected]
+            .effective_layers(&inherited_change.style_layers)
+            .layer("hatching")
+            .unwrap()
+            .opacity,
+        0.75
+    );
+}
+
+#[test]
+fn rejected_object_layer_edits_are_transactional() {
+    let state = Arc::new(NprPlaygroundState::default());
+    let controls = RuntimeControlService::default();
+    controls.register_provider(state.clone());
+    let set = |key: &str, value| controls.set(&format!("{PREFIX}{key}"), value);
+
+    set("style_scope", ControlValue::String("object".into())).unwrap();
+    assert!(set("layers.hatching.opacity", ControlValue::F64(1.5)).is_err());
+    assert!(set("layers.missing.enabled", ControlValue::Bool(false)).is_err());
+
+    let settings = state.snapshot();
+    let object = &settings.objects[&settings.selected];
+    assert!(object.style_layer_overrides.is_empty());
+    assert_eq!(
+        object
+            .effective_layers(&settings.style_layers)
+            .layer("hatching")
+            .unwrap()
+            .opacity,
+        1.0
+    );
+}
+
+#[test]
+fn reset_style_restores_layer_inheritance_and_the_scene_default_stack() {
+    let state = Arc::new(NprPlaygroundState::default());
+    let controls = RuntimeControlService::default();
+    controls.register_provider(state.clone());
+    let set = |key: &str, value| controls.set(&format!("{PREFIX}{key}"), value).unwrap();
+
+    set("style_scope", ControlValue::String("object".into()));
+    set("layers.contours.enabled", ControlValue::Bool(false));
+    set("reset_style", ControlValue::Bool(true));
+    let inherited = state.snapshot();
+    assert!(inherited.objects[&inherited.selected]
+        .style_layer_overrides
+        .is_empty());
+
+    set("style_scope", ControlValue::String("scene".into()));
+    set("layers.hatching.opacity", ControlValue::F64(0.1));
+    set("reset_style", ControlValue::Bool(true));
+    let reset = state.snapshot();
+    assert_eq!(
+        reset.style_layers,
+        amigo_render_npr::NprStyleLayers::default()
+    );
+}
+
+#[test]
+fn layer_position_control_reorders_the_declared_render_stack() {
+    let state = Arc::new(NprPlaygroundState::default());
+    let controls = RuntimeControlService::default();
+    controls.register_provider(state.clone());
+    controls
+        .set(
+            &format!("{PREFIX}layers.hatching.position"),
+            ControlValue::F64(1.0),
+        )
+        .unwrap();
+    let settings = state.snapshot();
+    assert_eq!(
+        settings
+            .style_layers
+            .layers
+            .iter()
+            .map(|layer| layer.id.as_str())
+            .collect::<Vec<_>>(),
+        [
+            "paper",
+            "hatching",
+            "underpainting",
+            "fill",
+            "form-lines",
+            "contours",
+            "creases",
+            "construction"
+        ]
+    );
+}
+
+#[test]
+fn sketch_pause_is_independent_from_model_playback_pause() {
+    let state = Arc::new(NprPlaygroundState::default());
+    let controls = RuntimeControlService::default();
+    controls.register_provider(state.clone());
+    controls
+        .set(&format!("{PREFIX}sketch_paused"), ControlValue::Bool(true))
+        .unwrap();
+    let settings = state.snapshot();
+    assert!(settings.sketch_paused);
+    assert!(!settings.paused);
+    assert!(settings.objects[&settings.selected].rotating);
 }
 
 #[test]
@@ -897,11 +1161,17 @@ fn natural_smooth_action_creates_a_local_organic_drawing_policy() {
     assert_eq!(object.surface_mode, NprSurfaceMode::Smooth);
     assert!(object.surface_subdivision_level >= 1);
     assert!(object.smooth_weld_relative_tolerance > 0.0);
-    assert!(object.override_style);
-    assert_eq!(settings.style_scope, "Obiekt");
-    assert!(!object.style.smooth_draw_creases);
-    assert_eq!(object.style.min_smooth_contour_length_pixels, 8.0);
-    assert_eq!(object.style.smooth_contour_simplification_pixels, 0.75);
+    assert!(object.has_style_overrides());
+    assert_eq!(settings.style_scope, "object");
+    assert_eq!(object.style_overrides.smooth_draw_creases, Some(false));
+    assert_eq!(
+        object.style_overrides.min_smooth_contour_length_pixels,
+        Some(8.0)
+    );
+    assert_eq!(
+        object.style_overrides.smooth_contour_simplification_pixels,
+        Some(0.75)
+    );
 
     let root =
         std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../../mods/npr-playground");
@@ -933,7 +1203,7 @@ fn surface_intent_controls_the_extracted_proxy_not_just_panel_metadata() {
     cube.surface_intent = NprSurfaceIntent::Organic;
     cube.surface_mode = NprSurfaceMode::Polygonal;
     cube.surface_subdivision_level = 0;
-    cube.style.smooth_draw_creases = true;
+    cube.style_overrides.smooth_draw_creases = Some(true);
     render.rebuild(&organic, [512, 512]).unwrap();
     let organic_packet = &render.commands()[0].packet;
     assert!(
@@ -973,7 +1243,10 @@ fn editor_scalar_properties_use_the_validated_runtime_control_path() {
         .apply_editor_property("camera.fov", serde_yaml::to_value(55.0).unwrap())
         .unwrap());
     assert!(state
-        .apply_editor_property("motion.mode", serde_yaml::to_value("redraw-on-motion").unwrap())
+        .apply_editor_property(
+            "motion.mode",
+            serde_yaml::to_value("redraw-on-motion").unwrap()
+        )
         .unwrap());
     assert!(state
         .apply_editor_property("motion.redraw_hz", serde_yaml::to_value(5.0).unwrap())
@@ -990,7 +1263,10 @@ fn editor_scalar_properties_use_the_validated_runtime_control_path() {
     assert_eq!(after.camera_yaw, 35.0);
     assert_eq!(after.camera_pitch, -12.0);
     assert_eq!(after.camera_fov, 55.0);
-    assert_eq!(after.motion.mode, amigo_render_npr::StrokeMotionMode::RedrawOnMotion);
+    assert_eq!(
+        after.motion.mode,
+        amigo_render_npr::StrokeMotionMode::RedrawOnMotion
+    );
     assert_eq!(after.motion.redraw_hz, 5.0);
     assert_eq!(after.seed, 1234);
     assert_eq!(after.selected, "sphere");

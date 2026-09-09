@@ -1,9 +1,11 @@
 use amigo_render_npr::{
-    ComicInk, NprConstructionMark, NprPreparedSurface, NprMotionPolicy, NprSurfaceAnchorError,
-    NprSurfaceIntent, NprSurfaceMode, NprToneMode, StrokeMotionMode, StrokeTool,
+    ComicInk, ComicInkOverrides, NprBlendMode, NprConstructionMark, NprLayerColorSource,
+    NprMotionPolicy, NprPaintMedium, NprPreparedSurface, NprStyleLayerOverrides, NprStyleLayers,
+    NprSurfaceAnchorError, NprSurfaceIntent, NprSurfaceMode, NprToneMode, StrokeMotionMode,
+    StrokeTool,
 };
 use amigo_runtime_control::*;
-use glam::Vec3;
+use glam::{Vec3, Vec4};
 use serde::{Deserialize, Serialize};
 use std::{collections::BTreeMap, sync::Mutex};
 mod history;
@@ -41,8 +43,8 @@ fn resolved_key(key: &str, settings: &Settings) -> String {
     if let Some(field) = key.strip_prefix("object.") {
         format!("objects.{}.{field}", settings.selected)
     } else if let Some(field) = key.strip_prefix("appearance.") {
-        if settings.style_scope == "Obiekt" {
-            format!("objects.{}.style.{field}", settings.selected)
+        if settings.style_scope == "object" {
+            format!("objects.{}.style_overrides.{field}", settings.selected)
         } else {
             format!("global.{field}")
         }
@@ -154,9 +156,71 @@ pub fn style_preset(name: &str) -> Option<ComicInk> {
             style.wobble = 0.0;
             style.taper = 0.0;
         }
+        "Watercolour Wash" => {
+            style.tool = StrokeTool::Brush;
+            style.tone_mode = NprToneMode::ThreeBand;
+            style.ink = glam::Vec4::new(0.09, 0.12, 0.16, 0.82);
+            style.paper = glam::Vec4::new(0.94, 0.92, 0.86, 1.0);
+            style.shadow = glam::Vec4::new(0.22, 0.34, 0.48, 1.0);
+            style.mid = glam::Vec4::new(0.48, 0.66, 0.72, 1.0);
+            style.light = glam::Vec4::new(0.78, 0.84, 0.76, 1.0);
+            style.outline_width = 2.4;
+            style.crease_width = 0.7;
+            style.wobble = 0.55;
+            style.paper_grain = 0.44;
+            style.paper_tooth = 0.28;
+            style.ink_dryness = 0.08;
+        }
         _ => return None,
     }
     Some(style)
+}
+
+fn style_preset_layers(name: &str) -> Option<NprStyleLayers> {
+    let mut layers = NprStyleLayers::default();
+    match name {
+        "Watercolour Wash" => {
+            let underpainting = layers.layer_mut("underpainting")?;
+            underpainting.opacity = 0.86;
+            underpainting.paint = Some(NprPaintMedium {
+                wash: 1.12,
+                granulation: 0.64,
+            });
+            layers.layer_mut("fill")?.enabled = false;
+            layers.layer_mut("hatching")?.enabled = false;
+            layers.layer_mut("form-lines")?.tool = Some(StrokeTool::Brush);
+            layers.layer_mut("contours")?.tool = Some(StrokeTool::Brush);
+            Some(layers)
+        }
+        _ => None,
+    }
+}
+
+fn style_preset_label(style: ComicInk, layers: &NprStyleLayers) -> &'static str {
+    let defaults = ComicInk::default();
+    let normalize = |mut value: ComicInk| {
+        // Paper and illumination belong to the scene, so a look is identified
+        // from the remaining authored drawing response.
+        value.paper = defaults.paper;
+        value.light_direction = defaults.light_direction;
+        value
+    };
+    [
+        "Comic Ink",
+        "Pencil Study",
+        "Loose Study",
+        "Confident Ink",
+        "Broad Nib",
+        "Blueprint",
+        "Soft Toon",
+        "Watercolour Wash",
+    ]
+    .into_iter()
+    .find(|name| {
+        style_preset(name).map(normalize) == Some(style)
+            && style_preset_layers(name).unwrap_or_default() == *layers
+    })
+    .unwrap_or("Custom")
 }
 
 /// Stable diagnostic id for the effective typed look. The render contract
@@ -179,6 +243,7 @@ pub fn style_preset_id(style: ComicInk) -> &'static str {
         ("broad-nib", "Broad Nib"),
         ("blueprint", "Blueprint"),
         ("soft-toon", "Soft Toon"),
+        ("watercolour-wash", "Watercolour Wash"),
     ]
     .into_iter()
     .find_map(|(id, label)| {
@@ -241,10 +306,16 @@ impl ConstructionMarkSettings {
                 || anchor.barycentric.iter().any(|value| *value < 0.0)
                 || (anchor.barycentric.iter().sum::<f32>() - 1.0).abs() > 1e-4
         }) {
-            return Err(format!("construction mark {} has invalid barycentric coordinates", self.id));
+            return Err(format!(
+                "construction mark {} has invalid barycentric coordinates",
+                self.id
+            ));
         }
         if !self.width_scale.is_finite() || !(0.0..=2.0).contains(&self.width_scale) {
-            return Err(format!("construction mark {} has invalid width scale", self.id));
+            return Err(format!(
+                "construction mark {} has invalid width scale",
+                self.id
+            ));
         }
         if !self.opacity.is_finite() || !(0.0..=1.0).contains(&self.opacity) {
             return Err(format!("construction mark {} has invalid opacity", self.id));
@@ -283,6 +354,9 @@ struct ConstructionAuthoringState {
 #[serde(deny_unknown_fields)]
 pub struct ObjectSettings {
     pub model: String,
+    /// Explicit material contribution used only when an authored NPR layer
+    /// selects `model-base-colour`. It is object data, never inferred by WGPU.
+    pub material_base_color: Vec4,
     /// Semantic source of the drawing policy.  It is authored data: WGPU only
     /// receives the resolved mode and never guesses from a model identifier.
     #[serde(default)]
@@ -306,23 +380,55 @@ pub struct ObjectSettings {
     /// and changes only after the explicit workshop action.
     #[serde(default)]
     pub gesture_variant: u32,
-    pub override_style: bool,
-    pub style: ComicInk,
+    /// Sparse local values. `None` preserves the scene style, while a value
+    /// shadows only that parameter.
+    #[serde(default)]
+    pub style_overrides: ComicInkOverrides,
+    /// A whole layer stack may be intentionally replaced for an object. Layer
+    /// parameter overrides are introduced only once every layer has a stable
+    /// renderer execution path.
+    #[serde(default)]
+    pub style_layer_overrides: NprStyleLayerOverrides,
     /// Authored marks resolve against the selected source surface only during
     /// RenderExtract, so authored data never stores an internal mesh revision.
     #[serde(default)]
     pub construction_marks: Vec<ConstructionMarkSettings>,
 }
 
+impl ObjectSettings {
+    pub fn effective_style(&self, scene_style: ComicInk) -> ComicInk {
+        self.style_overrides.resolve(scene_style)
+    }
+
+    pub fn has_style_overrides(&self) -> bool {
+        !self.style_overrides.is_empty()
+    }
+
+    pub fn effective_layers(&self, scene_layers: &NprStyleLayers) -> NprStyleLayers {
+        self.style_layer_overrides
+            .resolve(scene_layers)
+            .expect("object layer overrides are validated with the scene stack")
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Settings {
     pub global: ComicInk,
+    /// Ordered scene-owned drawing layers. Object-level layer overrides are
+    /// introduced separately from style-parameter inheritance so stable layer
+    /// identities can be preserved across preset changes.
+    #[serde(default)]
+    pub style_layers: NprStyleLayers,
     pub objects: BTreeMap<String, ObjectSettings>,
     pub selected: String,
     pub gallery: bool,
     pub highlight_selected: bool,
     pub paused: bool,
+    /// Stops time-driven gesture variants without affecting model playback or
+    /// camera interaction.
+    #[serde(default)]
+    pub sketch_paused: bool,
     pub speed: f32,
     pub step: bool,
     #[serde(default)]
@@ -348,6 +454,7 @@ impl Settings {
                     (*id).into(),
                     ObjectSettings {
                         model: (*id).into(),
+                        material_base_color: default_material_base_color(id),
                         surface_intent: match *id {
                             "cube" | "wedge" => NprSurfaceIntent::HardSurface,
                             _ => NprSurfaceIntent::Organic,
@@ -372,8 +479,8 @@ impl Settings {
                         scale: 1.0,
                         angular_speed: Vec3::new(21.2, 40.7, 0.0),
                         gesture_variant: 0,
-                        override_style: false,
-                        style: ComicInk::default(),
+                        style_overrides: ComicInkOverrides::default(),
+                        style_layer_overrides: NprStyleLayerOverrides::default(),
                         construction_marks: vec![],
                     },
                 )
@@ -381,11 +488,13 @@ impl Settings {
             .collect();
         Self {
             global: ComicInk::default(),
+            style_layers: NprStyleLayers::default(),
             objects,
             selected: "cube".into(),
             gallery,
             highlight_selected: true,
             paused: false,
+            sketch_paused: false,
             speed: 1.0,
             step: false,
             motion: NprMotionPolicy::default(),
@@ -397,15 +506,15 @@ impl Settings {
             camera_distance: if gallery { 14.0 } else { 5.0 },
             camera_fov: 45.0,
             preset_name: "my-preset".into(),
-            style_scope: "Globalny".into(),
-            preset_kind: "Scena".into(),
+            style_scope: "scene".into(),
+            preset_kind: "scene".into(),
         }
     }
     pub fn validate(&self) -> Result<(), String> {
-        if !["Globalny", "Obiekt"].contains(&self.style_scope.as_str()) {
+        if !["scene", "object"].contains(&self.style_scope.as_str()) {
             return Err("invalid style scope".into());
         }
-        if !["Scena", "Wygląd"].contains(&self.preset_kind.as_str()) {
+        if !["scene", "look"].contains(&self.preset_kind.as_str()) {
             return Err("invalid preset kind".into());
         }
         if !self.objects.contains_key(&self.selected)
@@ -438,14 +547,20 @@ impl Settings {
         }
         if !matches!(
             self.motion.mode,
-            StrokeMotionMode::Stable | StrokeMotionMode::RedrawOnMotion
+            StrokeMotionMode::Stable
+                | StrokeMotionMode::RedrawOnMotion
+                | StrokeMotionMode::RedrawContinuously
         ) {
             return Err("invalid stroke motion mode".into());
         }
         validate_style(self.global)?;
+        self.style_layers.validate()?;
         for object in self.objects.values() {
             if !MODELS.contains(&object.model.as_str())
                 || !object.position.is_finite()
+                || !object.material_base_color.is_finite()
+                || object.material_base_color.min_element() < 0.0
+                || object.material_base_color.max_element() > 1.0
                 || !object.rotation.is_finite()
                 || !object.angular_speed.is_finite()
                 || !object.scale.is_finite()
@@ -456,7 +571,11 @@ impl Settings {
             {
                 return Err("invalid object parameters".into());
             }
-            validate_style(object.style)?;
+            validate_style(object.effective_style(self.global))?;
+            object
+                .style_layer_overrides
+                .resolve(&self.style_layers)?
+                .validate()?;
             let mut construction_ids = std::collections::BTreeSet::new();
             for mark in &object.construction_marks {
                 mark.validate()?;
@@ -466,6 +585,20 @@ impl Settings {
             }
         }
         Ok(())
+    }
+}
+fn default_material_base_color(model: &str) -> Vec4 {
+    match model {
+        // These are authored defaults for the built-in study models. They do
+        // not influence a palette layer; they become visible only after a
+        // layer explicitly chooses `model-base-colour`.
+        "cube" => Vec4::new(0.82, 0.30, 0.20, 1.0),
+        "wedge" => Vec4::new(0.94, 0.66, 0.20, 1.0),
+        "cylinder" => Vec4::new(0.22, 0.59, 0.43, 1.0),
+        "sphere" => Vec4::new(0.22, 0.48, 0.78, 1.0),
+        "suzanne" => Vec4::new(0.56, 0.32, 0.68, 1.0),
+        "avocado" => Vec4::new(0.30, 0.65, 0.24, 1.0),
+        _ => Vec4::ONE,
     }
 }
 fn validate_style(s: ComicInk) -> Result<(), String> {
@@ -576,9 +709,11 @@ impl Default for NprPlaygroundState {
                     "silhouettes",
                     "creases",
                     "strokes",
+                    "underpainting_triangles",
                     "stroke_vertices",
                     "stroke_indices",
                     "hatching_strokes",
+                    "form_line_strokes",
                     "hatching_confidence_rejected",
                     "construction_marks",
                     "construction_rejected",
@@ -740,7 +875,11 @@ impl NprPlaygroundState {
     }
 
     pub fn construction_authoring_active(&self) -> bool {
-        self.construction_authoring.lock().unwrap().object_id.is_some()
+        self.construction_authoring
+            .lock()
+            .unwrap()
+            .object_id
+            .is_some()
     }
 
     /// Arms authoring after the panel-button press has been released.
@@ -773,7 +912,9 @@ impl NprPlaygroundState {
             .as_deref()
             .ok_or("construction mark authoring is not active")?;
         if expected != object_id {
-            return Err(format!("select {expected} before placing its construction mark"));
+            return Err(format!(
+                "select {expected} before placing its construction mark"
+            ));
         }
         authoring.anchors.push(anchor);
         Ok(())
@@ -808,7 +949,9 @@ impl NprPlaygroundState {
             .ok_or_else(|| format!("unknown construction-mark object {object_id}"))?;
         let mut id = 0x4000_0000u32;
         while object.construction_marks.iter().any(|mark| mark.id == id) {
-            id = id.checked_add(1).ok_or("construction mark id space is exhausted")?;
+            id = id
+                .checked_add(1)
+                .ok_or("construction mark id space is exhausted")?;
         }
         object.construction_marks.push(ConstructionMarkSettings {
             id,
@@ -844,7 +987,9 @@ impl NprPlaygroundState {
     pub fn select_construction_mark(&self, direction: isize) -> Result<(), String> {
         let count = {
             let settings = self.settings.lock().unwrap();
-            settings.objects[&settings.selected].construction_marks.len()
+            settings.objects[&settings.selected]
+                .construction_marks
+                .len()
         };
         let current = self
             .selected_construction_mark_index(count)
@@ -892,7 +1037,9 @@ impl NprPlaygroundState {
         let selected_index = {
             let settings = self.settings.lock().unwrap();
             self.selected_construction_mark_index(
-                settings.objects[&settings.selected].construction_marks.len(),
+                settings.objects[&settings.selected]
+                    .construction_marks
+                    .len(),
             )
             .ok_or("the selected object has no construction marks")?
         };
@@ -912,23 +1059,21 @@ impl NprPlaygroundState {
             .unwrap()
             .record("delete_construction_mark", &before, &settings);
         drop(settings);
-        *self.selected_construction_mark.lock().unwrap() = (remaining > 0)
-            .then(|| selected_index.min(remaining - 1));
+        *self.selected_construction_mark.lock().unwrap() =
+            (remaining > 0).then(|| selected_index.min(remaining - 1));
         Ok(())
     }
 
-    fn set_selected_construction_mark_style(
-        &self,
-        field: &str,
-        value: f32,
-    ) -> Result<(), String> {
+    fn set_selected_construction_mark_style(&self, field: &str, value: f32) -> Result<(), String> {
         if !value.is_finite() {
             return Err("construction mark value must be finite".into());
         }
         let selected_index = {
             let settings = self.settings.lock().unwrap();
             self.selected_construction_mark_index(
-                settings.objects[&settings.selected].construction_marks.len(),
+                settings.objects[&settings.selected]
+                    .construction_marks
+                    .len(),
             )
             .ok_or("the selected object has no construction marks")?
         };
@@ -946,7 +1091,9 @@ impl NprPlaygroundState {
         match field {
             "width_scale" if (0.0..=2.0).contains(&value) => mark.width_scale = value,
             "opacity" if (0.0..=1.0).contains(&value) => mark.opacity = value,
-            "width_scale" => return Err("construction mark width scale must be within 0..=2".into()),
+            "width_scale" => {
+                return Err("construction mark width scale must be within 0..=2".into());
+            }
             "opacity" => return Err("construction mark opacity must be within 0..=1".into()),
             _ => return Err(format!("unknown construction mark style field {field}")),
         }
@@ -963,7 +1110,9 @@ impl NprPlaygroundState {
         let selected_index = {
             let settings = self.settings.lock().unwrap();
             self.selected_construction_mark_index(
-                settings.objects[&settings.selected].construction_marks.len(),
+                settings.objects[&settings.selected]
+                    .construction_marks
+                    .len(),
             )
             .ok_or("the selected object has no construction marks")?
         };
@@ -995,16 +1144,98 @@ impl NprPlaygroundState {
                 props.insert(format!("object.{field}"), value);
             }
         }
-        let prefix = if settings.style_scope == "Obiekt" {
-            format!("objects.{}.style.", settings.selected)
+        let prefix = if settings.style_scope == "object" {
+            format!("objects.{}.style_overrides.", settings.selected)
         } else {
             "global.".into()
         };
-        for (key, value) in props.clone() {
+        // The serialized object contains sparse values, but the inspector must
+        // display the effective value a user will actually see. Materialize a
+        // temporary detached snapshot solely for presentation; authored state
+        // remains sparse.
+        let mut effective_settings = settings.clone();
+        for object in effective_settings.objects.values_mut() {
+            object.style_overrides =
+                ComicInkOverrides::detached(object.effective_style(settings.global));
+        }
+        let effective_props = values(&effective_settings);
+        for (key, value) in effective_props {
             if let Some(field) = key.strip_prefix(&prefix) {
                 props.insert(format!("appearance.{field}"), value);
             }
         }
+        // Layers are authored in scene order. Object scope starts from the
+        // effective stack and only materializes an object stack on the first
+        // layer edit, matching the sparse style-parameter override model.
+        let effective_layers = if settings.style_scope == "object" {
+            settings.objects[&settings.selected].effective_layers(&settings.style_layers)
+        } else {
+            settings.style_layers.clone()
+        };
+        for (position, layer) in effective_layers.layers.iter().enumerate() {
+            let prefix = format!("layers.{}.", layer.id);
+            props.insert(
+                format!("{prefix}enabled"),
+                ControlValue::Bool(layer.enabled),
+            );
+            props.insert(
+                format!("{prefix}opacity"),
+                ControlValue::F64(layer.opacity as f64),
+            );
+            props.insert(
+                format!("{prefix}position"),
+                ControlValue::F64(position as f64),
+            );
+            props.insert(
+                format!("{prefix}blend"),
+                ControlValue::String(
+                    match layer.blend {
+                        NprBlendMode::Normal => "normal",
+                        NprBlendMode::Multiply => "multiply",
+                        NprBlendMode::Screen => "screen",
+                        NprBlendMode::Overlay => "overlay",
+                    }
+                    .into(),
+                ),
+            );
+            let (color_source, color) = match layer.color_source {
+                NprLayerColorSource::StylePalette => ("style-palette", [1.0; 4]),
+                NprLayerColorSource::Constant(color) => ("constant", color.to_array()),
+                NprLayerColorSource::ModelBaseColor => ("model-base-colour", [1.0; 4]),
+            };
+            props.insert(
+                format!("{prefix}color_source"),
+                ControlValue::String(color_source.into()),
+            );
+            props.insert(format!("{prefix}color"), ControlValue::Color(color));
+            props.insert(
+                format!("{prefix}tool"),
+                ControlValue::String(
+                    match layer.tool {
+                        None => "inherit",
+                        Some(StrokeTool::Pencil) => "pencil",
+                        Some(StrokeTool::Fineliner) => "fineliner",
+                        Some(StrokeTool::Nib) => "nib",
+                        Some(StrokeTool::Brush) => "brush",
+                    }
+                    .into(),
+                ),
+            );
+            if let Some(paint) = layer.paint {
+                props.insert(
+                    format!("{prefix}paint.wash"),
+                    ControlValue::F64(paint.wash as f64),
+                );
+                props.insert(
+                    format!("{prefix}paint.granulation"),
+                    ControlValue::F64(paint.granulation as f64),
+                );
+            }
+        }
+        props.insert(
+            "layers.paper.editable".into(),
+            ControlValue::Bool(settings.style_scope == "scene"),
+        );
         for (id, object) in &settings.objects {
             let visible = object.visible && (settings.gallery || settings.selected == *id);
             props.insert(
@@ -1017,7 +1248,11 @@ impl NprPlaygroundState {
                     } else {
                         "-"
                     },
-                    if object.override_style { " S" } else { "" }
+                    if object.has_style_overrides() {
+                        " S"
+                    } else {
+                        ""
+                    }
                 )),
             );
         }
@@ -1026,10 +1261,10 @@ impl NprPlaygroundState {
             "object.surface_policy_info".into(),
             ControlValue::String(match selected_object.surface_intent {
                 NprSurfaceIntent::HardSurface => {
-                    "Hard surface: ostre płaszczyzny i autorskie krawędzie".into()
+                    "Hard surface: sharp planes and authored edges".into()
                 }
                 NprSurfaceIntent::Organic => format!(
-                    "Organic: Smooth proxy L{} · weld {:.6} · bez crease'ów topologii",
+                    "Organic: Smooth proxy L{} · weld {:.6} · no topology creases",
                     selected_object
                         .surface_intent
                         .resolve_subdivision_level(selected_object.surface_subdivision_level),
@@ -1037,16 +1272,19 @@ impl NprPlaygroundState {
                 ),
                 NprSurfaceIntent::Authored => match selected_object.surface_mode {
                     NprSurfaceMode::Polygonal => {
-                        "Autorskie: literalna topologia i ostre krawędzie".into()
+                        "Authored: literal topology and sharp edges".into()
                     }
                     NprSurfaceMode::Smooth => format!(
-                        "Autorskie Smooth proxy L{} · weld {:.6} · crease topologii {}",
+                        "Authored Smooth proxy L{} · weld {:.6} · topology creases {}",
                         selected_object.surface_subdivision_level,
                         selected_object.smooth_weld_relative_tolerance,
-                        if selected_object.style.smooth_draw_creases {
-                            "włączone"
+                        if selected_object
+                            .effective_style(settings.global)
+                            .smooth_draw_creases
+                        {
+                            "enabled"
                         } else {
-                            "wyłączone"
+                            "disabled"
                         }
                     ),
                 },
@@ -1156,7 +1394,7 @@ impl NprPlaygroundState {
         props.insert(
             "construction_mark_summary".into(),
             ControlValue::String(format!(
-                "Linie: {} · wybrana: {}",
+                "Lines: {} · selected: {}",
                 marks.len(),
                 selected_mark
                     .map(|mark| format!("0x{:08X}", mark.id))
@@ -1166,51 +1404,45 @@ impl NprPlaygroundState {
         props.insert(
             "construction_authoring_status".into(),
             ControlValue::String(match authoring.object_id.as_deref() {
-                Some(_) if authoring.waiting_for_release => "Zwolnij przycisk myszy, aby rozpocząć wybór punktów.".into(),
-                Some(object) => format!("{object}: {} punktów — dodaj kolejny lub zatwierdź", authoring.anchors.len()),
-                None => "Wybierz „Dodaj linię”, potem punkty na modelu.".into(),
+                Some(_) if authoring.waiting_for_release => {
+                    "Release the mouse button to begin selecting points.".into()
+                }
+                Some(object) => format!(
+                    "{object}: {} points — add another or commit",
+                    authoring.anchors.len()
+                ),
+                None => "Choose New stroke, then select points on the model.".into(),
             }),
         );
         props.insert(
             "motion_redraw_editable".into(),
             ControlValue::Bool(
-                !preview && settings.motion.mode == StrokeMotionMode::RedrawOnMotion,
-            ),
-        );
-        props.insert(
-            "appearance_editable".into(),
-            ControlValue::Bool(
                 !preview
-                    && (settings.style_scope == "Globalny"
-                        || settings.objects[&settings.selected].override_style),
+                    && matches!(
+                        settings.motion.mode,
+                        StrokeMotionMode::RedrawOnMotion | StrokeMotionMode::RedrawContinuously
+                    ),
             ),
         );
-        let mut effective = if settings.style_scope == "Obiekt"
-            && settings.objects[&settings.selected].override_style
-        {
-            settings.objects[&settings.selected].style
+        props.insert("appearance_editable".into(), ControlValue::Bool(!preview));
+        let mut effective = if settings.style_scope == "object" {
+            settings.objects[&settings.selected].effective_style(settings.global)
         } else {
             settings.global
         };
         effective.paper = ComicInk::default().paper;
         effective.light_direction = ComicInk::default().light_direction;
-        let preset = [
-            "Comic Ink",
-            "Pencil Study",
-            "Loose Study",
-            "Confident Ink",
-            "Broad Nib",
-            "Blueprint",
-            "Soft Toon",
-        ]
-        .into_iter()
-        .find(|name| style_preset(name) == Some(effective))
-        .unwrap_or("Własny");
+        let effective_layers = if settings.style_scope == "object" {
+            settings.objects[&settings.selected].effective_layers(&settings.style_layers)
+        } else {
+            settings.style_layers.clone()
+        };
+        let preset = style_preset_label(effective, &effective_layers);
         props.insert("style_preset".into(), ControlValue::String(preset.into()));
         props.insert(
             "preset_domain".into(),
             ControlValue::String(
-                if settings.preset_kind == "Scena" {
+                if settings.preset_kind == "scene" {
                     "npr-playground"
                 } else {
                     "npr-look"
@@ -1220,16 +1452,17 @@ impl NprPlaygroundState {
         );
         props.insert(
             "style_info".into(),
-            ControlValue::String(if settings.style_scope == "Globalny" {
-                "Styl sceny — obiekty bez własnego stylu".into()
-            } else if settings.objects[&settings.selected].override_style {
-                format!("Własny styl: {}", settings.selected)
+            ControlValue::String(if settings.style_scope == "scene" {
+                "Scene style — objects without local overrides".into()
+            } else if settings.objects[&settings.selected].has_style_overrides() {
+                format!("{}: local parameter overrides", settings.selected)
             } else {
-                format!(
-                    "{} dziedziczy styl sceny — włącz własny styl w zakładce Obiekt",
-                    settings.selected
-                )
+                format!("{} inherits the scene style", settings.selected)
             }),
+        );
+        props.insert(
+            "object.override_style".into(),
+            ControlValue::Bool(settings.objects[&settings.selected].has_style_overrides()),
         );
         let fps = *self.fps.lock().unwrap();
         props.insert("fps".into(), ControlValue::F64(fps));
@@ -1252,10 +1485,10 @@ impl NprPlaygroundState {
         props.insert(
             "stats.budget_status".into(),
             ControlValue::String(if budget_rejected == 0 && budget_exhausted == 0 {
-                "Budżet kresek: OK".into()
+                "Stroke budget: OK".into()
             } else {
                 format!(
-                    "Budżet kresek: ograniczono {budget_rejected}; pakiety z limitem: {budget_exhausted}"
+                    "Stroke budget: rejected {budget_rejected}; capped packets: {budget_exhausted}"
                 )
             }),
         );
@@ -1347,14 +1580,17 @@ impl NprPlaygroundState {
                     s.camera_pitch = 89.0;
                 }
                 "reset_style" => {
-                    if s.style_scope == "Obiekt" {
-                        s.objects.get_mut(&selected).unwrap().override_style = false;
+                    if s.style_scope == "object" {
+                        let object = s.objects.get_mut(&selected).unwrap();
+                        object.style_overrides = ComicInkOverrides::default();
+                        object.style_layer_overrides = NprStyleLayerOverrides::default();
                     } else {
                         let paper = s.global.paper;
                         let light = s.global.light_direction;
                         s.global = ComicInk::default();
                         s.global.paper = paper;
                         s.global.light_direction = light;
+                        s.style_layers = NprStyleLayers::default();
                     }
                 }
                 "natural_smooth" => {
@@ -1362,20 +1598,17 @@ impl NprPlaygroundState {
                     // than a backend preset: an imported organic model needs
                     // both a Smooth proxy and a local line policy that does
                     // not reinterpret its triangulation as ink.
-                    let mut style = s.global;
-                    style.surface_mode = NprSurfaceMode::Smooth;
-                    style.smooth_draw_creases = false;
-                    style.min_smooth_contour_length_pixels = 8.0;
-                    style.smooth_contour_simplification_pixels = 0.75;
                     let object = s.objects.get_mut(&selected).unwrap();
                     object.surface_intent = NprSurfaceIntent::Organic;
                     object.surface_mode = NprSurfaceMode::Smooth;
                     object.surface_subdivision_level = object.surface_subdivision_level.max(1);
                     object.smooth_weld_relative_tolerance =
                         default_smooth_weld_relative_tolerance();
-                    object.override_style = true;
-                    object.style = style;
-                    s.style_scope = "Obiekt".into();
+                    object.style_overrides.surface_mode = Some(NprSurfaceMode::Smooth);
+                    object.style_overrides.smooth_draw_creases = Some(false);
+                    object.style_overrides.min_smooth_contour_length_pixels = Some(8.0);
+                    object.style_overrides.smooth_contour_simplification_pixels = Some(0.75);
+                    s.style_scope = "object".into();
                 }
                 "new_gesture_variant" => {
                     let object = s.objects.get_mut(&selected).unwrap();
@@ -1453,8 +1686,8 @@ impl NprPlaygroundState {
             if let Some(before) = self.comparison.lock().unwrap().as_ref() {
                 settings.global = before.global;
                 for (id, object) in &mut settings.objects {
-                    object.style = before.objects[id].style;
-                    object.override_style = before.objects[id].override_style;
+                    object.style_overrides = before.objects[id].style_overrides.clone();
+                    object.style_layer_overrides = before.objects[id].style_layer_overrides.clone();
                 }
             }
         }
@@ -1551,7 +1784,7 @@ fn values(settings: &Settings) -> BTreeMap<String, ControlValue> {
             }
             _ => ControlValue::Null,
         };
-        let value = if prefix.ends_with("crease_angle") {
+        let value = if prefix.ends_with("crease_angle") && value.as_f64().is_some() {
             ControlValue::F64(value.as_f64().unwrap().to_degrees())
         } else {
             value
@@ -1764,24 +1997,379 @@ impl RuntimeControlProvider for NprPlaygroundState {
                 .set_selected_construction_mark_style(field, value)
                 .map_err(failure);
         }
+        if let Some(layer_path) = path.property_path.strip_prefix("layers.") {
+            let (layer_id, field) = layer_path
+                .split_once('.')
+                .ok_or_else(|| failure("layer property must be `layers.<id>.<field>`".into()))?;
+            let mut current = self.settings.lock().unwrap();
+            let before = current.clone();
+            let selected = current.selected.clone();
+            if current.style_scope == "object" && layer_id == "paper" {
+                return Err(failure(
+                    "Paper is scene-owned; edit it in scene scope".into(),
+                ));
+            }
+            let layers = if current.style_scope == "object" {
+                let inherited = current.style_layers.clone();
+                if inherited.layer(layer_id).is_none() {
+                    return Err(failure(format!("unknown NPR layer `{layer_id}`")));
+                }
+                // Validate the complete incoming scalar before inserting an
+                // override entry. Runtime controls are callable without the
+                // egui widget, so an invalid remote/script edit must not leave
+                // a poisoned sparse override in the live scene state.
+                match field {
+                    "enabled" if value.as_bool().is_none() => {
+                        return Err(failure("layer enabled requires a boolean".into()));
+                    }
+                    "opacity" => {
+                        let opacity = value
+                            .as_f64()
+                            .ok_or_else(|| failure("layer opacity requires a number".into()))?
+                            as f32;
+                        if !opacity.is_finite() || !(0.0..=1.0).contains(&opacity) {
+                            return Err(failure("layer opacity must be within 0..=1".into()));
+                        }
+                    }
+                    "blend"
+                        if !matches!(
+                            value.as_string(),
+                            Some("normal" | "multiply" | "screen" | "overlay")
+                        ) =>
+                    {
+                        return Err(failure("unknown NPR layer blend mode".into()));
+                    }
+                    "color_source"
+                        if !matches!(
+                            value.as_string(),
+                            Some("style-palette" | "constant" | "model-base-colour")
+                        ) =>
+                    {
+                        return Err(failure("unknown NPR layer colour source".into()));
+                    }
+                    "color" => match value {
+                        ControlValue::Color(color)
+                            if color.iter().all(|component| {
+                                component.is_finite() && (0.0..=1.0).contains(component)
+                            }) => {}
+                        ControlValue::Color(_) => {
+                            return Err(failure(
+                                "layer colour components must be within 0..=1".into(),
+                            ));
+                        }
+                        _ => return Err(failure("layer colour requires a colour".into())),
+                    },
+                    "tool"
+                        if !matches!(
+                            value.as_string(),
+                            Some("inherit" | "pencil" | "fineliner" | "nib" | "brush")
+                        ) =>
+                    {
+                        return Err(failure("unknown NPR layer tool".into()));
+                    }
+                    "paint.wash" | "paint.granulation" => {
+                        let component = value
+                            .as_f64()
+                            .ok_or_else(|| failure("paint medium requires a number".into()))?
+                            as f32;
+                        let maximum = if field == "paint.wash" { 2.0 } else { 1.0 };
+                        if !component.is_finite() || !(0.0..=maximum).contains(&component) {
+                            return Err(failure("invalid paint medium value".into()));
+                        }
+                    }
+                    "enabled" | "blend" | "color_source" | "tool" => {}
+                    _ => return Err(failure(format!("unknown NPR layer field `{field}`"))),
+                }
+                let object = current
+                    .objects
+                    .get_mut(&selected)
+                    .expect("selected object is validated");
+                // Scalar changes remain sparse. A position edit below records
+                // a complete identity order, because ordering is structural.
+                if field != "position" {
+                    let override_layer = object
+                        .style_layer_overrides
+                        .layers
+                        .entry(layer_id.into())
+                        .or_default();
+                    match field {
+                        "enabled" => {
+                            override_layer.enabled = Some(value.as_bool().ok_or_else(|| {
+                                failure("layer enabled requires a boolean".into())
+                            })?)
+                        }
+                        "opacity" => {
+                            override_layer.opacity =
+                                Some(value.as_f64().ok_or_else(|| {
+                                    failure("layer opacity requires a number".into())
+                                })? as f32)
+                        }
+                        "blend" => {
+                            override_layer.blend = Some(match value.as_string().unwrap_or("") {
+                                "normal" => NprBlendMode::Normal,
+                                "multiply" => NprBlendMode::Multiply,
+                                "screen" => NprBlendMode::Screen,
+                                "overlay" => NprBlendMode::Overlay,
+                                _ => return Err(failure("unknown NPR layer blend mode".into())),
+                            })
+                        }
+                        "color_source" => {
+                            override_layer.color_source =
+                                Some(match value.as_string().unwrap_or("") {
+                                    "style-palette" => NprLayerColorSource::StylePalette,
+                                    "constant" => NprLayerColorSource::Constant(glam::Vec4::ONE),
+                                    "model-base-colour" => NprLayerColorSource::ModelBaseColor,
+                                    _ => {
+                                        return Err(failure(
+                                            "unknown NPR layer colour source".into(),
+                                        ));
+                                    }
+                                })
+                        }
+                        "color" => {
+                            override_layer.color_source = Some(NprLayerColorSource::Constant(
+                                glam::Vec4::from_array(match value {
+                                    ControlValue::Color(color) => color,
+                                    _ => {
+                                        return Err(failure(
+                                            "layer colour requires a colour".into(),
+                                        ));
+                                    }
+                                }),
+                            ))
+                        }
+                        "tool" => {
+                            override_layer.tool = Some(match value.as_string().unwrap_or("") {
+                                "inherit" => None,
+                                "pencil" => Some(StrokeTool::Pencil),
+                                "fineliner" => Some(StrokeTool::Fineliner),
+                                "nib" => Some(StrokeTool::Nib),
+                                "brush" => Some(StrokeTool::Brush),
+                                _ => return Err(failure("unknown NPR layer tool".into())),
+                            })
+                        }
+                        "paint.wash" | "paint.granulation" => {
+                            let mut paint = override_layer
+                                .paint
+                                .flatten()
+                                .or_else(|| inherited.layer(layer_id).and_then(|layer| layer.paint))
+                                .unwrap_or_else(NprPaintMedium::default);
+                            let component = value.as_f64().unwrap_or_default() as f32;
+                            if field == "paint.wash" {
+                                paint.wash = component;
+                            } else {
+                                paint.granulation = component;
+                            }
+                            override_layer.paint = Some(Some(paint));
+                        }
+                        _ => return Err(failure(format!("unknown NPR layer field `{field}`"))),
+                    }
+                    if let Err(error) = current.validate() {
+                        *current = before;
+                        return Err(failure(error));
+                    }
+                    self.history.lock().unwrap().record(
+                        &format!("layer_{layer_id}_{field}"),
+                        &before,
+                        &current,
+                    );
+                    return Ok(());
+                }
+                // A structural order override starts from the resolved stack.
+                // It can still inherit all scalar properties from the scene.
+                let requested = value
+                    .as_f64()
+                    .ok_or_else(|| failure("layer position requires a number".into()))?;
+                let mut order = object
+                    .effective_layers(&inherited)
+                    .layers
+                    .into_iter()
+                    .map(|layer| layer.id)
+                    .collect::<Vec<_>>();
+                let position = order
+                    .iter()
+                    .position(|id| id == layer_id)
+                    .ok_or_else(|| failure(format!("unknown NPR layer `{layer_id}`")))?;
+                if !requested.is_finite()
+                    || requested.fract() != 0.0
+                    || !(0.0..order.len() as f64).contains(&requested)
+                {
+                    return Err(failure(
+                        "layer position must be a valid integer index".into(),
+                    ));
+                }
+                let id = order.remove(position);
+                order.insert(requested as usize, id);
+                object.style_layer_overrides.order = Some(order);
+                if let Err(error) = current.validate() {
+                    *current = before;
+                    return Err(failure(error));
+                }
+                self.history.lock().unwrap().record(
+                    &format!("layer_{layer_id}_{field}"),
+                    &before,
+                    &current,
+                );
+                return Ok(());
+            } else {
+                &mut current.style_layers
+            };
+            if field == "position" {
+                let requested = value
+                    .as_f64()
+                    .ok_or_else(|| failure("layer position requires a number".into()))?;
+                let position = layers
+                    .layers
+                    .iter()
+                    .position(|layer| layer.id == layer_id)
+                    .ok_or_else(|| failure(format!("unknown NPR layer `{layer_id}`")))?;
+                if !requested.is_finite()
+                    || requested.fract() != 0.0
+                    || !(0.0..layers.layers.len() as f64).contains(&requested)
+                {
+                    return Err(failure(
+                        "layer position must be a valid integer index".into(),
+                    ));
+                }
+                let layer = layers.layers.remove(position);
+                layers.layers.insert(requested as usize, layer);
+                if let Err(error) = current.validate() {
+                    *current = before;
+                    return Err(failure(error));
+                }
+                self.history.lock().unwrap().record(
+                    &format!("layer_{layer_id}_{field}"),
+                    &before,
+                    &current,
+                );
+                return Ok(());
+            }
+            let layer = layers
+                .layers
+                .iter_mut()
+                .find(|layer| layer.id == layer_id)
+                .ok_or_else(|| failure(format!("unknown NPR layer `{layer_id}`")))?;
+            match field {
+                "enabled" => {
+                    layer.enabled = value
+                        .as_bool()
+                        .ok_or_else(|| failure("layer enabled requires a boolean".into()))?;
+                }
+                "opacity" => {
+                    let opacity = value
+                        .as_f64()
+                        .ok_or_else(|| failure("layer opacity requires a number".into()))?
+                        as f32;
+                    if !(0.0..=1.0).contains(&opacity) {
+                        return Err(failure("layer opacity must be within 0..=1".into()));
+                    }
+                    layer.opacity = opacity;
+                }
+                "blend" => {
+                    layer.blend = match value.as_string().unwrap_or("") {
+                        "normal" => NprBlendMode::Normal,
+                        "multiply" => NprBlendMode::Multiply,
+                        "screen" => NprBlendMode::Screen,
+                        "overlay" => NprBlendMode::Overlay,
+                        _ => return Err(failure("unknown NPR layer blend mode".into())),
+                    };
+                }
+                "color_source" => {
+                    layer.color_source = match value.as_string().unwrap_or("") {
+                        "style-palette" => NprLayerColorSource::StylePalette,
+                        "constant" => NprLayerColorSource::Constant(glam::Vec4::ONE),
+                        "model-base-colour" => NprLayerColorSource::ModelBaseColor,
+                        _ => return Err(failure("unknown NPR layer colour source".into())),
+                    };
+                }
+                "color" => {
+                    layer.color_source =
+                        NprLayerColorSource::Constant(glam::Vec4::from_array(match value {
+                            ControlValue::Color(color) => color,
+                            _ => return Err(failure("layer colour requires a colour".into())),
+                        }));
+                }
+                "tool" => {
+                    layer.tool = match value.as_string().unwrap_or("") {
+                        "inherit" => None,
+                        "pencil" => Some(StrokeTool::Pencil),
+                        "fineliner" => Some(StrokeTool::Fineliner),
+                        "nib" => Some(StrokeTool::Nib),
+                        "brush" => Some(StrokeTool::Brush),
+                        _ => return Err(failure("unknown NPR layer tool".into())),
+                    };
+                }
+                "paint.wash" | "paint.granulation" => {
+                    let paint = layer.paint.get_or_insert_with(NprPaintMedium::default);
+                    let component = value.as_f64().unwrap_or_default() as f32;
+                    if field == "paint.wash" {
+                        paint.wash = component;
+                    } else {
+                        paint.granulation = component;
+                    }
+                }
+                _ => return Err(failure(format!("unknown NPR layer field `{field}`"))),
+            }
+            if let Err(error) = current.validate() {
+                *current = before;
+                return Err(failure(error));
+            }
+            self.history.lock().unwrap().record(
+                &format!("layer_{layer_id}_{field}"),
+                &before,
+                &current,
+            );
+            return Ok(());
+        }
         let mut current = self.settings.lock().unwrap();
-        if (path.property_path.starts_with("appearance.") || path.property_path == "style_preset")
-            && current.style_scope == "Obiekt"
-            && !current.objects[&current.selected].override_style
-        {
-            return Err(failure("enable an object style override first".into()));
+        if path.property_path == "object.override_style" {
+            let enabled = value
+                .as_bool()
+                .ok_or_else(|| failure("boolean required".into()))?;
+            let before = current.clone();
+            let selected = current.selected.clone();
+            let object = current.objects.get_mut(&selected).unwrap();
+            object.style_overrides = if enabled {
+                // This legacy-facing toggle has an explicit meaning: detach
+                // the complete current look. Ordinary parameter edits below
+                // stay sparse and never take this path.
+                ComicInkOverrides::detached(before.global)
+            } else {
+                ComicInkOverrides::default()
+            };
+            self.history
+                .lock()
+                .unwrap()
+                .record("object.override_style", &before, &current);
+            return Ok(());
         }
         if path.property_path == "style_preset" {
-            let mut style = style_preset(value.as_string().unwrap_or(""))
-                .ok_or_else(|| failure("unknown style preset".into()))?;
+            let name = value.as_string().unwrap_or("");
+            let mut style =
+                style_preset(name).ok_or_else(|| failure("unknown style preset".into()))?;
+            let preset_layers = style_preset_layers(name);
             let before = current.clone();
             let selected = current.selected.clone();
             style.paper = current.global.paper;
             style.light_direction = current.global.light_direction;
-            if current.style_scope == "Obiekt" {
-                current.objects.get_mut(&selected).unwrap().style = style;
+            if current.style_scope == "object" {
+                let scene_layers = current.style_layers.clone();
+                let object = current.objects.get_mut(&selected).unwrap();
+                object.style_overrides = ComicInkOverrides::detached(style);
+                if let Some(layers) = preset_layers {
+                    object.style_layer_overrides =
+                        NprStyleLayerOverrides::from_resolved(&scene_layers, &layers)
+                            .map_err(failure)?;
+                }
             } else {
                 current.global = style;
+                if let Some(layers) = preset_layers {
+                    current.style_layers = layers;
+                }
+            }
+            if let Err(error) = current.validate() {
+                *current = before;
+                return Err(failure(error));
             }
             self.history
                 .lock()
@@ -1818,12 +2406,6 @@ impl RuntimeControlProvider for NprPlaygroundState {
                 path: path.console_path.clone(),
                 reason: e.to_string(),
             })?;
-        // Enabling an override starts from the currently effective global style.
-        for (id, object) in &mut next.objects {
-            if object.override_style && !current.objects[id].override_style {
-                object.style = current.global;
-            }
-        }
         next.validate()
             .map_err(|reason| RuntimeControlError::Unsupported {
                 path: path.console_path.clone(),

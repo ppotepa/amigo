@@ -1,4 +1,4 @@
-use crate::state::{style_preset_id, ObjectSettings, Settings};
+use crate::state::{ObjectSettings, Settings, style_preset_id};
 use amigo_render_api::{NprBackgroundCommand, NprDrawCommand};
 use amigo_render_npr::*;
 use glam::{Mat4, Quat, Vec3};
@@ -119,9 +119,11 @@ impl NprPlaygroundRenderService {
                 ("silhouettes", s.silhouettes),
                 ("creases", s.creases),
                 ("strokes", s.strokes),
+                ("underpainting_triangles", s.underpainting_triangles),
                 ("stroke_vertices", s.stroke_vertices),
                 ("stroke_indices", s.stroke_indices),
                 ("hatching_strokes", s.hatching_strokes),
+                ("form_line_strokes", s.form_line_strokes),
                 ("hatching_correction_strokes", s.hatching_correction_strokes),
                 (
                     "graphite_mass_milli",
@@ -247,12 +249,21 @@ impl NprPlaygroundRenderService {
             self.clear();
             return Ok(());
         }
-        let input_changed = !self
-            .last_input
-            .lock()
-            .unwrap()
-            .as_ref()
-            .is_some_and(|(last, size)| last == settings && *size == viewport);
+        // A living sketch owns a time-driven gesture seed.  It must rebuild
+        // even when camera and authored settings are unchanged; otherwise the
+        // temporal clock would be correct in isolation but never become visible
+        // in a cached render packet.  The interactive-quality path can later
+        // reduce this rebuild cost without changing this contract.
+        let continuous_redraw = apply_temporal
+            && delta_seconds > 0.0
+            && settings.motion.mode == StrokeMotionMode::RedrawContinuously;
+        let input_changed = continuous_redraw
+            || !self
+                .last_input
+                .lock()
+                .unwrap()
+                .as_ref()
+                .is_some_and(|(last, size)| last == settings && *size == viewport);
         if input_changed {
             settings.validate()?;
             let yaw = settings.camera_yaw.to_radians();
@@ -285,11 +296,7 @@ impl NprPlaygroundRenderService {
                 if !object.visible || (!settings.gallery && *id != settings.selected) {
                     continue;
                 }
-                let mut style = if object.override_style {
-                    object.style
-                } else {
-                    settings.global
-                };
+                let mut style = object.effective_style(settings.global);
                 style.surface_mode = object.surface_intent.resolve_mode(object.surface_mode);
                 if object.surface_intent.suppresses_topology_creases() {
                     // Organic source meshes routinely contain triangulation
@@ -350,15 +357,23 @@ impl NprPlaygroundRenderService {
                     .transform_vector3(settings.global.light_direction)
                     .normalize_or_zero();
                 let preset = style_preset_id(style);
+                let motion = if settings.sketch_paused {
+                    NprMotionPolicy {
+                        mode: StrokeMotionMode::Stable,
+                        ..settings.motion
+                    }
+                } else {
+                    settings.motion
+                };
                 let variant_epoch = variants.advance(
                     temporal_scope,
                     &projected_motion_anchors(&world_geometry, world_camera, viewport),
                     delta_seconds,
-                    settings.motion,
+                    motion,
                 );
                 let variant_epoch = object.gesture_variant.wrapping_add(variant_epoch);
                 let variant_strength = if object.gesture_variant == 0 {
-                    settings.motion.redraw_strength
+                    motion.redraw_strength
                 } else {
                     1.0
                 };
@@ -408,10 +423,14 @@ impl NprPlaygroundRenderService {
                     &construction_marks,
                 )
                 .map_err(|error| format!("object {id} construction marks: {error}"))?;
+                let layers = object.effective_layers(&settings.style_layers).clone();
+                layers.apply_tools(&mut packet, style);
+                layers.apply_paint_media(&mut packet);
                 source.push(SourceCommand {
                     object_id: id.clone(),
                     temporal_scope,
-                    command: NprDrawCommand::with_preset(packet, preset),
+                    command: NprDrawCommand::with_preset_and_layers(packet, preset, layers)
+                        .with_material_base_color(object.material_base_color.to_array()),
                 });
             }
             *self.source.lock().unwrap() = source;
@@ -442,10 +461,11 @@ impl NprPlaygroundRenderService {
         } else {
             source
         };
-        let commands = retain_gallery_strokes_under_budget(commands, settings.gallery, &settings.selected)
-            .into_iter()
-            .map(|entry| entry.command)
-            .collect();
+        let commands =
+            retain_gallery_strokes_under_budget(commands, settings.gallery, &settings.selected)
+                .into_iter()
+                .map(|entry| entry.command)
+                .collect();
         *self.output.lock().unwrap() = (
             commands,
             Some(NprBackgroundCommand {
@@ -496,11 +516,18 @@ fn retain_gallery_strokes_with_budget(
         let mut retained = Vec::with_capacity(packet.strokes.len());
         let mut rejected = 0usize;
         let mut rejected_tone = 0usize;
+        let mut rejected_form_lines = 0usize;
         // `build_packet_for_surface` emits feature strokes before tonal ones.
         // Preserve that authored order, while construction marks and features
-        // are always considered ahead of tone within each object.
+        // are always considered ahead of form lines and hatch density within
+        // each object.
         let mut lower_priority_allowed = true;
-        for role in [StrokeRole::Construction, StrokeRole::Feature, StrokeRole::Tone] {
+        for role in [
+            StrokeRole::Construction,
+            StrokeRole::Feature,
+            StrokeRole::FormLine,
+            StrokeRole::Tone,
+        ] {
             for stroke in packet.strokes.iter().filter(|stroke| stroke.role == role) {
                 let bytes = gallery_stroke_data_bytes(stroke);
                 if lower_priority_allowed && bytes <= remaining {
@@ -509,11 +536,12 @@ fn retain_gallery_strokes_with_budget(
                 } else {
                     rejected += 1;
                     rejected_tone += usize::from(role == StrokeRole::Tone);
+                    rejected_form_lines += usize::from(role == StrokeRole::FormLine);
                     // A lower-priority mark must not consume the remaining
                     // bytes after a construction/feature mark did not fit.
                     // This preserves the declared line hierarchy rather than
                     // merely sorting candidates once.
-                    if role != StrokeRole::Tone {
+                    if !matches!(role, StrokeRole::Tone | StrokeRole::FormLine) {
                         lower_priority_allowed = false;
                     }
                 }
@@ -524,13 +552,25 @@ fn retain_gallery_strokes_with_budget(
         }
         packet.strokes = retained;
         packet.stats.strokes = packet.strokes.len();
-        packet.stats.stroke_vertices = packet.strokes.iter().map(|stroke| stroke.vertices.len()).sum();
-        packet.stats.stroke_indices = packet.strokes.iter().map(|stroke| stroke.indices.len()).sum();
+        packet.stats.stroke_vertices = packet
+            .strokes
+            .iter()
+            .map(|stroke| stroke.vertices.len())
+            .sum();
+        packet.stats.stroke_indices = packet
+            .strokes
+            .iter()
+            .map(|stroke| stroke.indices.len())
+            .sum();
         packet.stats.stroke_data_bytes = packet.strokes.iter().map(gallery_stroke_data_bytes).sum();
         packet.stats.stroke_budget_rejected += rejected;
         packet.stats.stroke_budget_exhausted = true;
         packet.stats.hatching_rejected += rejected_tone;
         packet.stats.hatching_strokes = packet.stats.hatching_strokes.saturating_sub(rejected_tone);
+        packet.stats.form_line_strokes = packet
+            .stats
+            .form_line_strokes
+            .saturating_sub(rejected_form_lines);
     }
     commands
 }
@@ -577,6 +617,7 @@ mod tests {
             temporal_scope: 0,
             command: NprDrawCommand::new(NprRenderPacket {
                 occluders: vec![],
+                underpainting: vec![],
                 fills: vec![],
                 strokes,
                 background: Vec4::ONE,

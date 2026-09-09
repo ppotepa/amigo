@@ -19,6 +19,10 @@ pub enum StrokeMotionMode {
     #[default]
     Stable,
     RedrawOnMotion,
+    /// Advance the gesture seed at a fixed cadence even when the projected
+    /// surface is still. This is useful for an intentionally living sketch;
+    /// the cadence is time-based, never frame-count-based.
+    RedrawContinuously,
 }
 
 /// Domain-owned motion policy. The host supplies projected, stable surface
@@ -39,8 +43,8 @@ pub struct NprMotionPolicy {
 impl Default for NprMotionPolicy {
     fn default() -> Self {
         Self {
-            mode: StrokeMotionMode::Stable,
-            redraw_hz: 3.0,
+            mode: StrokeMotionMode::RedrawContinuously,
+            redraw_hz: 8.0,
             redraw_strength: 1.0,
             appearance_fade_seconds: 0.12,
         }
@@ -90,7 +94,11 @@ impl StrokeVariantClock {
                     anchors,
                     epoch: 0,
                     active: false,
-                    seconds_until_next: 0.0,
+                    seconds_until_next: if policy.mode == StrokeMotionMode::RedrawContinuously {
+                        redraw_period(policy.redraw_hz)
+                    } else {
+                        0.0
+                    },
                 },
             );
             return 0;
@@ -102,6 +110,17 @@ impl StrokeVariantClock {
             previous.epoch = 0;
             previous.active = false;
             previous.seconds_until_next = 0.0;
+            return previous.epoch;
+        }
+
+        if policy.mode == StrokeMotionMode::RedrawContinuously {
+            previous.active = true;
+            previous.seconds_until_next -= delta_seconds.clamp(0.0, 0.25);
+            let period = redraw_period(policy.redraw_hz);
+            while previous.seconds_until_next <= 0.0 {
+                previous.epoch = previous.epoch.wrapping_add(1);
+                previous.seconds_until_next += period;
+            }
             return previous.epoch;
         }
 
@@ -330,6 +349,7 @@ mod tests {
     fn packet(ids: &[u32]) -> NprRenderPacket {
         NprRenderPacket {
             occluders: vec![],
+            underpainting: vec![],
             fills: vec![],
             strokes: ids
                 .iter()
@@ -436,7 +456,10 @@ mod tests {
     #[test]
     fn stable_motion_mode_never_changes_the_gesture_epoch() {
         let mut clock = StrokeVariantClock::default();
-        let policy = NprMotionPolicy::default();
+        let policy = NprMotionPolicy {
+            mode: StrokeMotionMode::Stable,
+            ..Default::default()
+        };
         assert_eq!(clock.advance(3, &[Vec2::ZERO], 0.0, policy), 0);
         assert_eq!(clock.advance(3, &[Vec2::new(8.0, 0.0)], 1.0, policy), 0);
     }
@@ -455,6 +478,21 @@ mod tests {
         // Continued motion below one 250 ms period does not depend on FPS.
         assert_eq!(clock.advance(3, &[Vec2::new(2.0, 0.0)], 0.10, policy), 1);
         assert_eq!(clock.advance(3, &[Vec2::new(3.0, 0.0)], 0.15, policy), 2);
+    }
+
+    #[test]
+    fn continuous_redraw_advances_without_motion_at_a_time_based_cadence() {
+        let mut clock = StrokeVariantClock::default();
+        let policy = NprMotionPolicy {
+            mode: StrokeMotionMode::RedrawContinuously,
+            redraw_hz: 8.0,
+            ..Default::default()
+        };
+        assert_eq!(clock.advance(3, &[Vec2::ZERO], 0.0, policy), 0);
+        assert_eq!(clock.advance(3, &[Vec2::ZERO], 0.12, policy), 0);
+        assert_eq!(clock.advance(3, &[Vec2::ZERO], 0.01, policy), 1);
+        assert_eq!(clock.advance(3, &[Vec2::ZERO], 0.12, policy), 1);
+        assert_eq!(clock.advance(3, &[Vec2::ZERO], 0.01, policy), 2);
     }
 
     #[test]

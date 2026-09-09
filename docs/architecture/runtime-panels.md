@@ -1,15 +1,17 @@
 # Runtime scene panels
 
-Scenes opt in with top-level `panels: [{id, layout, auto_open}]`. Paths are relative
-to `scene.yml`, confined to the owning mod. Normal scenes create no extra window.
-Interactive startup uses `--hosted`; offscreen/headless sessions never spawn a UI.
+Scenes opt in with top-level `panels: [{id, layout, host, auto_open}]`. Paths are
+relative to `scene.yml`, confined to the owning mod. `host` defaults to `external`
+for compatibility with existing scenes; authored values are `external`, `embedded`
+and `both`. Normal scenes create no extra window. Interactive startup uses
+`--hosted`; offscreen/headless sessions never spawn a UI.
 
 The engine contract is reusable by an editor:
 
 ```text
 scene panel reference + external YAML layout
   -> amigo-panel-api (existing SceneUiNode document)
-  -> amigo-panels (lifecycle, validation, command queue)
+  -> amigo-panels (lifecycle, validation, snapshot/interaction seam)
   -> RuntimeControlService (typed provider metadata and values)
   -> domain provider
 ```
@@ -22,6 +24,18 @@ version, scene generation, layout revision and ordered request IDs reject stale
 traffic. Bounded queues and replaceable 30 Hz snapshots keep a slow UI from
 blocking simulation. Closing/crashing a panel does not terminate the scene;
 scene changes drop the old connections. The parent owns child cleanup.
+
+`PanelSnapshot` is the complete backend-neutral render view. A host must echo its
+generation and revision through `PanelInteraction`; `PanelService` applies the
+same range, enabled/visible, control-provider and Rhai-event validation for every
+host. `embedded` emits the existing engine overlay in the main viewport and
+routes buttons, toggles, sliders and direct-selection option cards back through
+`PanelInteraction`; tab, collapsed-group and scroll-offset state are local to the
+host. Long content is placed in a viewport that fills the space left after the
+panel header, responds to window resize, moves with the mouse wheel and is
+clipped before it reaches the backend. It never silently launches an
+external process. `both` deliberately exposes the same snapshot to both surfaces.
+Richer editor docking remains follow-up work rather than renderer-side policy.
 
 ## Authoring and Rhai
 
@@ -68,7 +82,8 @@ children. Tab IDs must correspond one-to-one to child page IDs. Ordinary unpinne
 panels retain their scrolling layout.
 
 Choice entries declare `value`, `label`, optional `artwork_bind` and `status_bind`.
-Fixed choices may use an `artwork` key instead; `navigation: true` enables prev/next.
+Fixed choices may use an `artwork` key instead; embedded option cards render this
+authored triangle preview before their label. `navigation: true` enables prev/next.
 All bindings participate in the same validated, batched metadata snapshot.
 `artwork` maps keys to painter-ordered triangles with normalized `[0,1]` coordinates
 and RGB8 colors. The UI clips a single mesh per thumbnail; it never imports models,

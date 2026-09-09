@@ -30,15 +30,38 @@ pub struct SceneDocument {
     pub entities: Vec<SceneEntityDocument>,
 }
 
-/// Optional external engine panels. Layout paths are relative to the scene file
-/// and must resolve inside the owning mod.
+/// Optional engine panels. Layout paths are relative to the scene file and
+/// must resolve inside the owning mod.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub struct ScenePanelReferenceDocument {
     pub id: String,
     pub layout: String,
+    /// Selects the host explicitly. Existing authored scenes continue to use
+    /// the native external egui window until they opt into an embedded host.
+    #[serde(default)]
+    pub host: ScenePanelHostDocument,
     #[serde(default = "panel_auto_open")]
     pub auto_open: bool,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default)]
+#[serde(rename_all = "kebab-case")]
+pub enum ScenePanelHostDocument {
+    #[default]
+    External,
+    Embedded,
+    Both,
+}
+
+impl ScenePanelHostDocument {
+    pub const fn includes_external(self) -> bool {
+        matches!(self, Self::External | Self::Both)
+    }
+
+    pub const fn includes_embedded(self) -> bool {
+        matches!(self, Self::Embedded | Self::Both)
+    }
 }
 fn panel_auto_open() -> bool {
     true
@@ -53,6 +76,10 @@ mod panel_tests {
         let document = crate::load_scene_document_from_str(source).unwrap();
         assert_eq!(document.panels.len(), 1);
         assert!(document.panels[0].auto_open);
+        assert_eq!(
+            document.panels[0].host,
+            crate::ScenePanelHostDocument::External
+        );
         let encoded = serde_yaml::to_string(&document).unwrap();
         assert_eq!(
             crate::load_scene_document_from_str(&encoded)
@@ -60,6 +87,16 @@ mod panel_tests {
                 .panels,
             document.panels
         );
+    }
+
+    #[test]
+    fn panel_host_accepts_embedded_and_both_without_compatibility_shims() {
+        let source = "scene: {id: example}\npanels: [{id: tools, layout: ui.yml, host: embedded}, {id: monitor, layout: monitor.yml, host: both}]\nentities: []";
+        let document = crate::load_scene_document_from_str(source).unwrap();
+        assert!(document.panels[0].host.includes_embedded());
+        assert!(!document.panels[0].host.includes_external());
+        assert!(document.panels[1].host.includes_embedded());
+        assert!(document.panels[1].host.includes_external());
     }
 }
 

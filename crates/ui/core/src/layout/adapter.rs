@@ -17,6 +17,7 @@ fn ui_node_to_layout(node: &UiNode) -> LayoutElement<UiNode> {
             bottom: node.style.bottom,
             width: node.style.width,
             height: node.style.height,
+            fill_height: false,
             padding: node.style.padding,
             gap: node.style.gap,
             border_width: node.style.border_width,
@@ -47,9 +48,9 @@ fn ui_kind_to_layout_kind(kind: &UiNodeKind) -> LayoutKind {
         }
         UiNodeKind::ProgressBar { .. } => LayoutKind::Leaf(LayoutLeafKind::ProgressBar),
         UiNodeKind::Slider { .. } => LayoutKind::Leaf(LayoutLeafKind::Slider),
-        UiNodeKind::Toggle { text, .. } => LayoutKind::Leaf(LayoutLeafKind::Toggle {
-            text: text.clone(),
-        }),
+        UiNodeKind::Toggle { text, .. } => {
+            LayoutKind::Leaf(LayoutLeafKind::Toggle { text: text.clone() })
+        }
         UiNodeKind::OptionSet { options, .. } => LayoutKind::Leaf(LayoutLeafKind::OptionSet {
             option_count: options.len(),
         }),
@@ -100,7 +101,11 @@ fn apply_stable_paths(node: &mut UiLayoutNode) {
 
 fn compute_layout_with_kernel(document: &UiDocument, viewport: UiRect) -> UiLayoutNode {
     let root = ui_document_to_layout(document);
-    let root_path = document.root.id.clone().unwrap_or_else(|| "root".to_owned());
+    let root_path = document
+        .root
+        .id
+        .clone()
+        .unwrap_or_else(|| "root".to_owned());
     let layout = amigo_ui_layout::compute_layout(
         "",
         LayoutViewport::new(viewport.width, viewport.height),
