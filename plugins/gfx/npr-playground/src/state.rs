@@ -1013,6 +1013,25 @@ impl NprPlaygroundState {
                 )),
             );
         }
+        let selected_object = &settings.objects[&settings.selected];
+        props.insert(
+            "object.surface_policy_info".into(),
+            ControlValue::String(match selected_object.surface_mode {
+                NprSurfaceMode::Polygonal => {
+                    "Polygonal: literalna topologia i ostre krawędzie".into()
+                }
+                NprSurfaceMode::Smooth => format!(
+                    "Smooth proxy L{} · weld {:.6} · crease topologii {}",
+                    selected_object.surface_subdivision_level,
+                    selected_object.smooth_weld_relative_tolerance,
+                    if selected_object.style.smooth_draw_creases {
+                        "włączone"
+                    } else {
+                        "wyłączone"
+                    }
+                ),
+            }),
+        );
         for action in ACTIONS {
             props.insert((*action).into(), ControlValue::Bool(false));
         }

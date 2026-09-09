@@ -703,6 +703,11 @@ root:
                 event: "npr.natural_smooth"
               enabled_bind: "world.npr.settings.NprSettings.editable"
             -
+              type: "text"
+              id: "object-surface-policy-info"
+              text: "Polityka powierzchni"
+              text_bind: "world.npr.settings.NprSettings.object.surface_policy_info"
+            -
               type: "slider"
               id: "object-surface-subdivision-level"
               text: "Smooth proxy level"
