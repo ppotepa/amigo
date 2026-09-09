@@ -920,6 +920,41 @@ fn natural_smooth_action_creates_a_local_organic_drawing_policy() {
 }
 
 #[test]
+fn surface_intent_controls_the_extracted_proxy_not_just_panel_metadata() {
+    use amigo_npr_playground_plugin::state::Settings;
+
+    let root =
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../../mods/npr-playground");
+    let render = NprPlaygroundRenderService::default();
+    render.load_models(&root).unwrap();
+
+    let mut organic = Settings::for_scene(false);
+    let cube = organic.objects.get_mut("cube").unwrap();
+    cube.surface_intent = NprSurfaceIntent::Organic;
+    cube.surface_mode = NprSurfaceMode::Polygonal;
+    cube.surface_subdivision_level = 0;
+    cube.style.smooth_draw_creases = true;
+    render.rebuild(&organic, [512, 512]).unwrap();
+    let organic_packet = &render.commands()[0].packet;
+    assert!(
+        organic_packet.stats.surface_proxy_vertices > organic_packet.stats.surface_source_vertices,
+        "Organic must select a prepared Smooth proxy even if a stale mode says Polygonal"
+    );
+
+    let mut hard_surface = organic;
+    let cube = hard_surface.objects.get_mut("cube").unwrap();
+    cube.surface_intent = NprSurfaceIntent::HardSurface;
+    cube.surface_mode = NprSurfaceMode::Smooth;
+    cube.surface_subdivision_level = 2;
+    render.rebuild(&hard_surface, [512, 512]).unwrap();
+    let hard_packet = &render.commands()[0].packet;
+    assert_eq!(
+        hard_packet.stats.surface_proxy_vertices, hard_packet.stats.surface_source_vertices,
+        "HardSurface must preserve literal topology even if a stale mode says Smooth"
+    );
+}
+
+#[test]
 fn editor_scalar_properties_use_the_validated_runtime_control_path() {
     let state = NprPlaygroundState::default();
     assert!(state
