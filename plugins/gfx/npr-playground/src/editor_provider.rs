@@ -22,6 +22,9 @@ impl EditorRuntimeApplyProvider for NprPlaygroundEditorRuntimeApplyProvider {
     fn can_apply(&self, request: &EditorRuntimeApplyRequest) -> bool {
         matches!(
             request,
+            EditorRuntimeApplyRequest::Command { id, .. } if id == "editor.save_npr_document"
+        ) || matches!(
+            request,
             EditorRuntimeApplyRequest::RuntimeProperty {
                 binding: AuthoringRuntimeBinding::ComponentProperty { component_type, .. },
                 ..
@@ -113,4 +116,29 @@ fn find_npr_component(node: &AuthoringNode) -> Option<&AuthoringNode> {
     )
         .then_some(node)
         .or_else(|| node.children.iter().find_map(find_npr_component))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn accepts_the_structural_npr_save_command() {
+        assert!(NprPlaygroundEditorRuntimeApplyProvider.can_apply(
+            &EditorRuntimeApplyRequest::Command {
+                id: "editor.save_npr_document".to_owned(),
+                args: Vec::new(),
+            }
+        ));
+    }
+
+    #[test]
+    fn ignores_unrelated_editor_commands() {
+        assert!(!NprPlaygroundEditorRuntimeApplyProvider.can_apply(
+            &EditorRuntimeApplyRequest::Command {
+                id: "editor.save_other_document".to_owned(),
+                args: Vec::new(),
+            }
+        ));
+    }
 }
