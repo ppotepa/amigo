@@ -13,11 +13,6 @@ use glam::Vec3;
 use std::collections::BTreeMap;
 use std::fmt;
 
-/// Relative to the source bounding-box diagonal. This absorbs ordinary
-/// importer float jitter at UV/normal seams without changing authored
-/// polygonal surfaces.
-const SMOOTH_DRAWING_WELD_TOLERANCE: f32 = 1.0e-5;
-
 /// Stable content identifier for a prepared drawing surface.
 ///
 /// This is not a replacement for an asset-system revision.  Asset owners can
@@ -95,6 +90,9 @@ pub struct NprPreparedSurface {
 pub struct NprSmoothProxyPolicy {
     pub levels: u8,
     pub crease_angle: f32,
+    /// Relative to the source bounding-box diagonal. Zero welds only exactly
+    /// coincident positions; a positive value absorbs importer seam jitter.
+    pub weld_relative_tolerance: f32,
     pub max_triangles: usize,
 }
 
@@ -103,6 +101,7 @@ impl Default for NprSmoothProxyPolicy {
         Self {
             levels: 1,
             crease_angle: 1.2,
+            weld_relative_tolerance: 1.0e-5,
             max_triangles: 250_000,
         }
     }
@@ -111,7 +110,7 @@ impl Default for NprSmoothProxyPolicy {
 #[derive(Debug, Clone, PartialEq)]
 pub struct NprPreparedSurfaceVariants {
     source: NprPreparedSurface,
-    smooth_drawing_source: Option<NprGeometry>,
+    smooth_drawing_sources: BTreeMap<u32, NprGeometry>,
     smooth_proxies: BTreeMap<SmoothProxyKey, NprPreparedSurface>,
 }
 
@@ -119,6 +118,7 @@ pub struct NprPreparedSurfaceVariants {
 struct SmoothProxyKey {
     levels: u8,
     crease_angle_bits: u32,
+    weld_relative_tolerance_bits: u32,
     max_triangles: usize,
 }
 
@@ -126,7 +126,7 @@ impl NprPreparedSurfaceVariants {
     pub fn new(geometry: NprGeometry) -> Self {
         Self {
             source: NprPreparedSurface::new(geometry),
-            smooth_drawing_source: None,
+            smooth_drawing_sources: BTreeMap::new(),
             smooth_proxies: BTreeMap::new(),
         }
     }
@@ -143,14 +143,21 @@ impl NprPreparedSurfaceVariants {
         // physical surface. Weld only in the explicitly authored Smooth path:
         // Polygonal assets retain their literal topology, while smooth drawing
         // contours stop promoting importer seams to boundaries.
+        let weld_relative_tolerance_bits = canonical_weld_tolerance_bits(policy.weld_relative_tolerance);
         let source_vertex_count = self.source.geometry().vertices.len();
-        if policy.levels == 0 && self.smooth_drawing_source().vertices.len() == source_vertex_count
+        if policy.levels == 0
+            && self
+                .smooth_drawing_source(weld_relative_tolerance_bits)
+                .vertices
+                .len()
+                == source_vertex_count
         {
             return Ok(&self.source);
         }
         let key = SmoothProxyKey {
             levels: policy.levels,
             crease_angle_bits: canonical_angle_bits(policy.crease_angle),
+            weld_relative_tolerance_bits,
             max_triangles: policy.max_triangles,
         };
         if !self.smooth_proxies.contains_key(&key) {
@@ -160,7 +167,7 @@ impl NprPreparedSurfaceVariants {
                 self.smooth_proxies.clear();
             }
             let proxy = {
-                let drawing_source = self.smooth_drawing_source();
+                let drawing_source = self.smooth_drawing_source(weld_relative_tolerance_bits);
                 subdivide_smooth_proxy_with_provenance(
                     drawing_source,
                     policy.levels,
@@ -179,12 +186,13 @@ impl NprPreparedSurfaceVariants {
             .expect("newly inserted NPR smooth proxy must be present"))
     }
 
-    fn smooth_drawing_source(&mut self) -> &NprGeometry {
-        self.smooth_drawing_source
-            .get_or_insert_with(|| {
+    fn smooth_drawing_source(&mut self, tolerance_bits: u32) -> &NprGeometry {
+        self.smooth_drawing_sources
+            .entry(tolerance_bits)
+            .or_insert_with(|| {
                 self.source
                     .geometry()
-                    .welded_nearby_vertices(SMOOTH_DRAWING_WELD_TOLERANCE)
+                    .welded_nearby_vertices(f32::from_bits(tolerance_bits))
             })
     }
 }
@@ -200,6 +208,15 @@ fn canonical_angle_bits(value: f32) -> u32 {
     } else {
         value.to_bits()
     }
+}
+
+fn canonical_weld_tolerance_bits(value: f32) -> u32 {
+    let value = if value.is_finite() {
+        value.clamp(0.0, 1.0e-2)
+    } else {
+        NprSmoothProxyPolicy::default().weld_relative_tolerance
+    };
+    if value == 0.0 { 0 } else { value.to_bits() }
 }
 
 impl NprPreparedSurface {
@@ -618,6 +635,30 @@ mod tests {
             .triangles
             .iter()
             .all(|triangle| triangle[0] != triangle[1] && triangle[1] != triangle[2]));
+    }
+
+    #[test]
+    fn smooth_proxy_weld_tolerance_is_an_explicit_surface_policy() {
+        let split = NprGeometry::from_indexed(
+            &[
+                [0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0],
+                [1.0 + 0.000_001, 0.0, 0.0], [1.0, 1.0, 0.0], [0.0, 1.0 + 0.000_001, 0.0],
+            ],
+            &[0, 1, 2, 3, 4, 5],
+        ).unwrap();
+        let mut variants = NprPreparedSurfaceVariants::new(split);
+        let exact = variants.smooth_proxy(NprSmoothProxyPolicy {
+            levels: 0,
+            weld_relative_tolerance: 0.0,
+            ..NprSmoothProxyPolicy::default()
+        }).unwrap().geometry().vertices.len();
+        let tolerant = variants.smooth_proxy(NprSmoothProxyPolicy {
+            levels: 0,
+            weld_relative_tolerance: 1.0e-5,
+            ..NprSmoothProxyPolicy::default()
+        }).unwrap().geometry().vertices.len();
+        assert_eq!(exact, 6);
+        assert_eq!(tolerant, 4);
     }
 
     #[test]
