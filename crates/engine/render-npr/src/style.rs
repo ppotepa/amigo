@@ -53,6 +53,10 @@ pub struct ComicInk {
     /// Shorter interior crease chains are omitted before tessellation. This is
     /// a screen-space drawing policy; silhouettes and boundaries are retained.
     pub min_crease_length_pixels: f32,
+    /// Short smooth-contour spans tend to be local sampling noise rather than
+    /// a readable silhouette. This screen-space gate runs after contour
+    /// assembly and before tessellation.
+    pub min_smooth_contour_length_pixels: f32,
     pub taper: f32,
     pub wobble: f32,
     pub gesture_confidence: f32,
@@ -106,6 +110,7 @@ impl Default for ComicInk {
             crease_width: 2.0,
             boundary_width: 3.0,
             min_crease_length_pixels: 4.0,
+            min_smooth_contour_length_pixels: 8.0,
             taper: 0.18,
             wobble: 0.0,
             gesture_confidence: 1.0,

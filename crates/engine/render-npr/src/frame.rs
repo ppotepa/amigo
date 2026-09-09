@@ -85,6 +85,11 @@ pub struct NprRenderStats {
     pub feature_candidates: usize,
     /// Candidate segments omitted because their whole crease chain was too short.
     pub feature_rejected: usize,
+    /// Smooth contour spans rejected because their projected length was below
+    /// the authored screen-space threshold.
+    pub smooth_contour_rejected: usize,
+    /// Suggestive contour spans rejected by the same screen-space gate.
+    pub suggestive_contour_rejected: usize,
     /// View-dependent contour spans generated from a smooth normal field,
     /// rather than from topology edges.
     pub smooth_contour_spans: usize,
@@ -271,6 +276,18 @@ fn build_packet_with_identity(
             )
         })
         .unwrap_or_default();
+    let (smooth_contours, smooth_contour_rejected) = rank_smooth_contours(
+        smooth_contours,
+        camera,
+        vp,
+        style.min_smooth_contour_length_pixels,
+    );
+    let (suggestive_contours, suggestive_contour_rejected) = rank_smooth_contours(
+        suggestive_contours,
+        camera,
+        vp,
+        style.min_smooth_contour_length_pixels,
+    );
     // A smooth contour replaces the polygon-edge approximation. Open
     // boundaries retain their explicit meaning; topology creases must be
     // explicitly enabled because imports cannot distinguish a semantic hard
@@ -517,6 +534,8 @@ fn build_packet_with_identity(
         feature_segments: features.len(),
         feature_candidates,
         feature_rejected,
+        smooth_contour_rejected,
+        suggestive_contour_rejected,
         smooth_contour_spans: smooth_contours.len(),
         suggestive_contour_spans: suggestive_contours.len(),
         silhouettes,
@@ -608,6 +627,33 @@ fn rank_feature_chains(
             let keep = length >= min_crease_length_pixels.max(0.0);
             if !keep {
                 rejected += chain.vertices.len().saturating_sub(1);
+            }
+            keep
+        })
+        .collect();
+    (selected, rejected)
+}
+
+fn rank_smooth_contours(
+    contours: Vec<crate::SmoothContourStroke>,
+    camera: PerspectiveCamera,
+    viewport: Vec2,
+    min_length_pixels: f32,
+) -> (Vec<crate::SmoothContourStroke>, usize) {
+    let minimum = min_length_pixels.max(0.0);
+    let mut rejected = 0;
+    let selected = contours
+        .into_iter()
+        .filter(|contour| {
+            let length = contour
+                .points
+                .windows(2)
+                .filter_map(|segment| camera.project_segment(segment[0], segment[1], viewport))
+                .map(|(a, b)| a.screen.distance(b.screen))
+                .sum::<f32>();
+            let keep = length >= minimum;
+            if !keep {
+                rejected += 1;
             }
             keep
         })
@@ -1866,6 +1912,18 @@ mod tests {
             NprDebugView::Final,
         );
         assert_eq!(packet.stats.creases, 0);
+    }
+
+    #[test]
+    fn smooth_contour_gate_rejects_short_projected_spans() {
+        let camera = PerspectiveCamera::cube_default(1.0);
+        let contours = vec![crate::SmoothContourStroke {
+            id: 7,
+            points: vec![glam::Vec3::ZERO, glam::Vec3::new(0.0001, 0.0, 0.0)],
+        }];
+        let (selected, rejected) = rank_smooth_contours(contours, camera, Vec2::splat(512.0), 8.0);
+        assert!(selected.is_empty());
+        assert_eq!(rejected, 1);
     }
 
     #[test]

@@ -340,6 +340,15 @@ root:
                       tooltip: "Wyłączone chroni modele organiczne przed liniami wynikającymi z triangulacji. Włącz tylko dla świadomie ostrych form."
                       value_bind: "world.npr.settings.NprSettings.appearance.smooth_draw_creases"
                     -
+                      type: "slider"
+                      id: "ink-min-smooth-contour-length"
+                      text: "Minimalna długość konturu Smooth"
+                      tooltip: "Krótsze, przypadkowe fragmenty konturu są odrzucane po projekcji na ekran."
+                      value_bind: "world.npr.settings.NprSettings.appearance.min_smooth_contour_length_pixels"
+                      min: 0
+                      max: 64
+                      step: 0.5
+                    -
                       type: "toggle"
                       id: "ink-suggestive-contours"
                       text: "Kontury sugerowane"
@@ -1087,6 +1096,14 @@ root:
               id: stats-feature-rejected
               text: Odrzucone cechy siatki
               text_bind: world.npr.settings.NprSettings.stats.feature_rejected
+            - type: text
+              id: stats-smooth-contour-rejected
+              text: Odrzucone fragmenty Smooth
+              text_bind: world.npr.settings.NprSettings.stats.smooth_contour_rejected
+            - type: text
+              id: stats-suggestive-contour-rejected
+              text: Odrzucone kontury sugerowane
+              text_bind: world.npr.settings.NprSettings.stats.suggestive_contour_rejected
             - type: text
               id: stats-silhouettes
               text: Sylwetki
