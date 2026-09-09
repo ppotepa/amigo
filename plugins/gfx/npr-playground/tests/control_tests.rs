@@ -891,7 +891,8 @@ fn natural_smooth_action_creates_a_local_organic_drawing_policy() {
     set("selected", ControlValue::String("suzanne".into()));
     set("natural_smooth", ControlValue::Bool(true));
 
-    let object = &state.snapshot().objects["suzanne"];
+    let settings = state.snapshot();
+    let object = &settings.objects["suzanne"];
     assert_eq!(object.surface_mode, NprSurfaceMode::Smooth);
     assert!(object.surface_subdivision_level >= 1);
     assert!(object.smooth_weld_relative_tolerance > 0.0);
@@ -899,6 +900,21 @@ fn natural_smooth_action_creates_a_local_organic_drawing_policy() {
     assert!(!object.style.smooth_draw_creases);
     assert_eq!(object.style.min_smooth_contour_length_pixels, 8.0);
     assert_eq!(object.style.smooth_contour_simplification_pixels, 0.75);
+
+    let root =
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../../mods/npr-playground");
+    let render = NprPlaygroundRenderService::default();
+    render.load_models(&root).unwrap();
+    render.rebuild(&settings, [512, 512]).unwrap();
+    let packet = &render.commands()[0].packet;
+    assert!(
+        packet.stats.surface_proxy_vertices > packet.stats.surface_source_vertices,
+        "Natural Smooth must use the prepared subdivision proxy"
+    );
+    assert!(
+        packet.stats.surface_proxy_triangles > packet.stats.surface_source_triangles,
+        "Natural Smooth must extract features from the prepared subdivision proxy"
+    );
 }
 
 #[test]
