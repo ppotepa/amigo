@@ -73,10 +73,26 @@ fn hash(p: vec2<f32>) -> f32 {
 @fragment fn fs_main(v: Out) -> @location(0) vec4<f32> {
     let edge_width = max(fwidth(v.lateral), 0.008) * (1.0 + v.material.x * 6.0);
     let edge = 1.0 - smoothstep(1.0 - edge_width, 1.0 + edge_width, abs(v.lateral));
-    let tooth = hash(floor(v.position.xy * 1.7 + vec2<f32>(v.grain, v.grain * 1.73)));
-    let graphite = 1.0 - (tooth - 0.5) * v.material.z * (0.32 + (1.0 - v.material.y) * 0.24)
-        - v.material.w * (tooth - 0.5) * 0.08;
-    let alpha = clamp(v.color.a * v.coverage * edge * graphite, 0.0, 1.0);
+    // Paper lives in screen space: it is a physical sheet under a moving
+    // drawing, not noise glued to the object or regenerated per frame.
+    let paper_cell = floor(v.position.xy * 1.55 + vec2<f32>(v.grain, v.grain * 1.73));
+    let tooth = hash(paper_cell);
+    let fiber = hash(floor(v.position.xy * vec2<f32>(0.42, 3.1) + vec2<f32>(v.grain * 3.7, v.grain)));
+    let tooth_amount = clamp(v.material.z, 0.0, 1.0);
+    let dryness = clamp(v.material.w, 0.0, 1.0);
+    let pressure = clamp(v.material.y, 0.0, 1.0);
+    // Low-pressure graphite catches on paper peaks; a hard, pressed ink line
+    // remains continuous. Dry media gets stable, local dropouts rather than
+    // temporal flicker.
+    let pigment = mix(
+        1.0,
+        0.24 + 0.76 * smoothstep(0.12, 0.92, tooth * 0.72 + fiber * 0.28),
+        tooth_amount * (0.46 + (1.0 - pressure) * 0.34),
+    );
+    let dropout = smoothstep(0.79 - pressure * 0.16, 0.98, tooth)
+        * dryness
+        * (0.28 + tooth_amount * 0.54);
+    let alpha = clamp(v.color.a * v.coverage * edge * pigment * (1.0 - dropout), 0.0, 1.0);
     return vec4<f32>(v.color.rgb * alpha, alpha);
 }
 "#;
