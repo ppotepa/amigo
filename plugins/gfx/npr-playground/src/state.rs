@@ -26,6 +26,7 @@ const ACTIONS: &[&str] = &[
     "camera_side",
     "camera_top",
     "reset_style",
+    "natural_smooth",
     "new_gesture_variant",
     "begin_construction_mark",
     "commit_construction_mark",
@@ -1291,6 +1292,24 @@ impl NprPlaygroundState {
                         s.global.paper = paper;
                         s.global.light_direction = light;
                     }
+                }
+                "natural_smooth" => {
+                    // Keep this as a domain-owned authored shortcut rather
+                    // than a backend preset: an imported organic model needs
+                    // both a Smooth proxy and a local line policy that does
+                    // not reinterpret its triangulation as ink.
+                    let mut style = s.global;
+                    style.surface_mode = NprSurfaceMode::Smooth;
+                    style.smooth_draw_creases = false;
+                    style.min_smooth_contour_length_pixels = 8.0;
+                    style.smooth_contour_simplification_pixels = 0.75;
+                    let object = s.objects.get_mut(&selected).unwrap();
+                    object.surface_mode = NprSurfaceMode::Smooth;
+                    object.surface_subdivision_level = object.surface_subdivision_level.max(1);
+                    object.smooth_weld_relative_tolerance =
+                        default_smooth_weld_relative_tolerance();
+                    object.override_style = true;
+                    object.style = style;
                 }
                 "new_gesture_variant" => {
                     let object = s.objects.get_mut(&selected).unwrap();

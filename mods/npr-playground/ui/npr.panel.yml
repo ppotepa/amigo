@@ -695,6 +695,14 @@ root:
                 - "polygonal"
                 - "smooth"
             -
+              type: "button"
+              id: "object-natural-smooth"
+              text: "Natural Smooth dla modelu organicznego"
+              tooltip: "Tworzy lokalny styl obiektu: Smooth proxy, welding seamów, bez crease'ów topologii oraz filtr i wygładzanie konturów."
+              on_click:
+                event: "npr.natural_smooth"
+              enabled_bind: "world.npr.settings.NprSettings.editable"
+            -
               type: "slider"
               id: "object-surface-subdivision-level"
               text: "Smooth proxy level"

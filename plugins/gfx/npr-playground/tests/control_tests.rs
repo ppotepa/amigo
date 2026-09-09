@@ -4,7 +4,7 @@ use amigo_npr_playground_plugin::{
     scene::{NprCameraSceneSettings, NprObjectSceneSettings, NprPlaygroundSceneDocument},
     state::{ConstructionAnchorSettings, ConstructionMarkSettings},
 };
-use amigo_render_npr::{StrokeRole};
+use amigo_render_npr::{NprSurfaceMode, StrokeRole};
 use amigo_runtime_control::{ControlValue, RuntimeControlService};
 use glam::Vec2;
 use std::{collections::BTreeMap, sync::Arc};
@@ -880,6 +880,25 @@ fn render_diagnostics_report_the_effective_typed_style_preset() {
     let mut custom = pencil;
     custom.wobble += 0.01;
     assert_eq!(style_preset_id(custom), "custom");
+}
+
+#[test]
+fn natural_smooth_action_creates_a_local_organic_drawing_policy() {
+    let state = Arc::new(NprPlaygroundState::default());
+    let controls = RuntimeControlService::default();
+    controls.register_provider(state.clone());
+    let set = |key: &str, value| controls.set(&format!("{PREFIX}{key}"), value).unwrap();
+    set("selected", ControlValue::String("suzanne".into()));
+    set("natural_smooth", ControlValue::Bool(true));
+
+    let object = &state.snapshot().objects["suzanne"];
+    assert_eq!(object.surface_mode, NprSurfaceMode::Smooth);
+    assert!(object.surface_subdivision_level >= 1);
+    assert!(object.smooth_weld_relative_tolerance > 0.0);
+    assert!(object.override_style);
+    assert!(!object.style.smooth_draw_creases);
+    assert_eq!(object.style.min_smooth_contour_length_pixels, 8.0);
+    assert_eq!(object.style.smooth_contour_simplification_pixels, 0.75);
 }
 
 #[test]

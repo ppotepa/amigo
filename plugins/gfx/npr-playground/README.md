@@ -81,6 +81,10 @@ applied only while preparing a Smooth proxy, never to a Polygonal object.
 projection, while `Wygładzanie konturu Smooth` applies a deterministic
 pixel-space simplification to longer spans. Together these controls remove
 triangulation-sized bends without changing authored source geometry.
+`Natural Smooth dla modelu organicznego` applies the same policy as a local
+selected-object override: Smooth proxy, seam weld, no topology creases and the
+reviewed contour cleanup defaults. It never changes another gallery object or
+adds an implicit renderer preset.
 
 `Stable` is the default stroke-motion mode. It keeps an existing seeded gesture
 through object orbit, camera orbit and zoom; `0 s` appearance fade makes new
