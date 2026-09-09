@@ -816,6 +816,7 @@ dependencies = [
  "amigo-capabilities",
  "amigo-core",
  "amigo-editor-api",
+ "amigo-editor-authoring",
  "amigo-editor-ingame",
  "amigo-modding",
  "amigo-panel-api",
