@@ -225,7 +225,7 @@ struct IngameEditorInner {
     inspect_target: Option<InspectTarget>,
     cursor: Option<(f32, f32)>,
     property_overrides: BTreeMap<String, EditorPropertyValue>,
-    pending_source_patch: Option<AuthoringSourceScalarPatch>,
+    pending_source_patches: BTreeMap<(std::path::PathBuf, String), AuthoringSourceScalarPatch>,
     hit_targets: Vec<EditorHitTarget>,
     tree_scroll: f32,
     properties_scroll: f32,
@@ -258,7 +258,7 @@ impl IngameEditorState {
                 inspect_target: None,
                 cursor: None,
                 property_overrides: BTreeMap::new(),
-                pending_source_patch: None,
+                pending_source_patches: BTreeMap::new(),
                 hit_targets: Vec::new(),
                 tree_scroll: 0.0,
                 properties_scroll: 0.0,
@@ -294,7 +294,7 @@ impl IngameEditorState {
             inspect_target: inner.inspect_target.clone(),
             cursor: inner.cursor,
             property_overrides: inner.property_overrides.clone(),
-            has_pending_source_patch: inner.pending_source_patch.is_some(),
+            has_pending_source_patch: !inner.pending_source_patches.is_empty(),
             hit_targets: inner.hit_targets.clone(),
             tree_scroll: inner.tree_scroll,
             properties_scroll: inner.properties_scroll,
@@ -478,25 +478,36 @@ impl IngameEditorState {
     }
 
     pub fn stage_source_scalar_patch(&self, patch: AuthoringSourceScalarPatch) {
-        self.inner
+        let mut inner = self
+            .inner
             .lock()
-            .unwrap_or_else(|poison| poison.into_inner())
-            .pending_source_patch = Some(patch);
+            .unwrap_or_else(|poison| poison.into_inner());
+        let key = (patch.source_file.clone(), patch.yaml_pointer.clone());
+        if let Some(existing) = inner.pending_source_patches.get_mut(&key) {
+            // Preserve the first expected value for optimistic concurrency;
+            // repeated drags merely replace the requested final value.
+            existing.replacement = patch.replacement;
+        } else {
+            inner.pending_source_patches.insert(key, patch);
+        }
     }
 
-    pub fn pending_source_scalar_patch(&self) -> Option<AuthoringSourceScalarPatch> {
+    pub fn pending_source_scalar_patches(&self) -> Vec<AuthoringSourceScalarPatch> {
         self.inner
             .lock()
             .unwrap_or_else(|poison| poison.into_inner())
-            .pending_source_patch
-            .clone()
+            .pending_source_patches
+            .values()
+            .cloned()
+            .collect()
     }
 
     pub fn clear_pending_source_scalar_patch(&self) {
         self.inner
             .lock()
             .unwrap_or_else(|poison| poison.into_inner())
-            .pending_source_patch = None;
+            .pending_source_patches
+            .clear();
     }
 
     pub fn set_status(&self, status: impl Into<String>) {

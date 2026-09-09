@@ -145,7 +145,15 @@ fn source_scalar_draft_preserves_yaml_semantics_and_can_be_discarded() {
 
     let state = IngameEditorState::new(true);
     state.stage_source_scalar_patch(patch);
+    state.stage_source_scalar_patch(
+        floating
+            .patch_for(&state::EditorPropertyValue::Number(9.0))
+            .unwrap(),
+    );
     assert!(state.snapshot().has_pending_source_patch);
+    let drafts = state.pending_source_scalar_patches();
+    assert_eq!(drafts.len(), 1);
+    assert_eq!(drafts[0].replacement, serde_yaml::to_value(9.0f32).unwrap());
     state.clear_pending_source_scalar_patch();
     assert!(!state.snapshot().has_pending_source_patch);
 }

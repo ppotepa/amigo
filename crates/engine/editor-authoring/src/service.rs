@@ -10,7 +10,7 @@ use amigo_session::SceneSessionService;
 
 use crate::{
     AuthoringSceneGraph, AuthoringSourceScalarPatch, load_authoring_scene_graph,
-    patch_yaml_source_scalar, write_yaml_source_atomically,
+    patch_yaml_source_scalars, write_yaml_source_atomically,
 };
 
 #[derive(Debug, Default)]
@@ -86,13 +86,40 @@ impl AuthoringSceneGraphService {
         runtime: &Runtime,
         patch: AuthoringSourceScalarPatch,
     ) -> AmigoResult<()> {
+        self.apply_source_scalar_patches(runtime, std::slice::from_ref(&patch))
+    }
+
+    /// Persists a batch of scalar edits in one source file. All patches must
+    /// target the current scene and the complete text is validated before its
+    /// single atomic replacement, so a later stale field cannot leave an early
+    /// field partially written.
+    pub fn apply_source_scalar_patches(
+        &self,
+        runtime: &Runtime,
+        patches: &[AuthoringSourceScalarPatch],
+    ) -> AmigoResult<()> {
+        if patches.is_empty() {
+            return Ok(());
+        }
         let (source_mod, scene_id) = current_scene_context(runtime)?;
         let graph = self.graph_for_current_scene(runtime)?;
-        let requested = patch.source_file.canonicalize().map_err(|error| {
+        let requested = patches[0].source_file.canonicalize().map_err(|error| {
             AmigoError::Message(format!(
                 "editor authoring: source patch file is unavailable: {error}"
             ))
         })?;
+        for patch in patches {
+            let candidate = patch.source_file.canonicalize().map_err(|error| {
+                AmigoError::Message(format!(
+                    "editor authoring: source patch file is unavailable: {error}"
+                ))
+            })?;
+            if candidate != requested {
+                return Err(AmigoError::Message(
+                    "editor authoring: source scalar batch must target one file".to_owned(),
+                ));
+            }
+        }
         let owned = graph.source_files.iter().any(|file| {
             file.canonicalize()
                 .is_ok_and(|candidate| candidate == requested)
@@ -106,12 +133,7 @@ impl AuthoringSceneGraphService {
         let source = std::fs::read_to_string(&requested).map_err(|error| {
             AmigoError::Message(format!("editor authoring: cannot read source patch: {error}"))
         })?;
-        let output = patch_yaml_source_scalar(
-            &source,
-            &patch.yaml_pointer,
-            &patch.expected,
-            &patch.replacement,
-        )
+        let output = patch_yaml_source_scalars(&source, patches)
         .map_err(|error| AmigoError::Message(format!("editor authoring: {error}")))?;
         write_yaml_source_atomically(&requested, &output)
             .map_err(|error| AmigoError::Message(format!("editor authoring: {error}")))?;

@@ -95,6 +95,25 @@ pub fn patch_yaml_source_scalar(
     Ok(output)
 }
 
+/// Applies an ordered scalar batch to one already-loaded source document. Each
+/// replacement is validated against the original value declared by its patch;
+/// callers write the returned document only after the complete batch succeeds.
+pub fn patch_yaml_source_scalars(
+    source: &str,
+    patches: &[AuthoringSourceScalarPatch],
+) -> Result<String, AuthoringSourcePatchError> {
+    let mut output = source.to_owned();
+    for patch in patches {
+        output = patch_yaml_source_scalar(
+            &output,
+            &patch.yaml_pointer,
+            &patch.expected,
+            &patch.replacement,
+        )?;
+    }
+    Ok(output)
+}
+
 /// Atomically replaces an existing authored file with validated source text.
 /// If the final rename cannot be performed, the old document remains intact.
 pub fn write_yaml_source_atomically(
@@ -263,6 +282,26 @@ mod tests {
         )
         .unwrap();
         assert_eq!(output, "# authored heading\ncamera:\n  distance: 7.5 # framing\n  yaw: 0\n");
+    }
+
+    #[test]
+    fn batches_scalar_replacements_in_one_validated_document() {
+        let source = "camera:\n  distance: 14.0 # framing\n  yaw: 0.0\n";
+        let patch = |pointer: &str, expected: f32, replacement: f32| AuthoringSourceScalarPatch {
+            source_file: "scene.yml".into(),
+            yaml_pointer: pointer.to_owned(),
+            expected: serde_yaml::to_value(expected).unwrap(),
+            replacement: serde_yaml::to_value(replacement).unwrap(),
+        };
+        let output = patch_yaml_source_scalars(
+            source,
+            &[
+                patch("/camera/distance", 14.0f32, 7.5f32),
+                patch("/camera/yaw", 0.0f32, 1.25f32),
+            ],
+        )
+        .unwrap();
+        assert_eq!(output, "camera:\n  distance: 7.5 # framing\n  yaw: 1.25\n");
     }
 
     #[test]

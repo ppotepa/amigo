@@ -400,16 +400,17 @@ fn handle_hit_target(
             "editor.tree.stack" => state.set_tree_mode(EditorTreeMode::Stack),
             "editor.tree.raw" => state.set_tree_mode(EditorTreeMode::RawYaml),
             "editor.save_source_edit" => {
-                let Some(patch) = state.pending_source_scalar_patch() else {
+                let patches = state.pending_source_scalar_patches();
+                if patches.is_empty() {
                     state.set_status("source save: no pending scalar edit".to_owned());
                     return Ok(());
-                };
+                }
                 let Some(service) = runtime.resolve::<AuthoringSceneGraphService>() else {
                     state
                         .set_status("source save failed: authoring service unavailable".to_owned());
                     return Ok(());
                 };
-                match service.apply_source_scalar_patch(runtime, patch) {
+                match service.apply_source_scalar_patches(runtime, &patches) {
                     Ok(()) => {
                         state.clear_pending_source_scalar_patch();
                         state.set_status("source save: persisted".to_owned());
