@@ -4,7 +4,7 @@ use amigo_npr_playground_plugin::{
     scene::{NprCameraSceneSettings, NprObjectSceneSettings, NprPlaygroundSceneDocument},
     state::{ConstructionAnchorSettings, ConstructionMarkSettings},
 };
-use amigo_render_npr::{NprSurfaceMode, StrokeRole};
+use amigo_render_npr::{NprSurfaceIntent, NprSurfaceMode, StrokeRole};
 use amigo_runtime_control::{ControlValue, RuntimeControlService};
 use glam::Vec2;
 use std::{collections::BTreeMap, sync::Arc};
@@ -893,6 +893,7 @@ fn natural_smooth_action_creates_a_local_organic_drawing_policy() {
 
     let settings = state.snapshot();
     let object = &settings.objects["suzanne"];
+    assert_eq!(object.surface_intent, NprSurfaceIntent::Organic);
     assert_eq!(object.surface_mode, NprSurfaceMode::Smooth);
     assert!(object.surface_subdivision_level >= 1);
     assert!(object.smooth_weld_relative_tolerance > 0.0);

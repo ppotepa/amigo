@@ -687,9 +687,19 @@ root:
                 - "avocado"
             -
               type: "option-set"
+              id: "object-surface-intent"
+              text: "Rodzaj powierzchni"
+              tooltip: "Hard surface zachowuje świadomie ostre płaszczyzny. Organic używa Smooth proxy i nie zamienia triangulacji modelu w kreski. Autorskie respektuje ręcznie wybrany tryb poniżej."
+              value_bind: "world.npr.settings.NprSettings.object.surface_intent"
+              options:
+                - "hard-surface"
+                - "organic"
+                - "authored"
+            -
+              type: "option-set"
               id: "object-surface-mode"
-              text: "Interpretacja powierzchni"
-              tooltip: "Gładka buduje sylwetkę z pola normalnych, zamiast rysować krawędzie triangulacji. Polygonal zachowuje ostre formy, np. cube."
+              text: "Tryb autorski"
+              tooltip: "Używany tylko przy rodzaju powierzchni Autorskie."
               value_bind: "world.npr.settings.NprSettings.object.surface_mode"
               options:
                 - "polygonal"

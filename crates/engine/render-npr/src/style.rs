@@ -24,6 +24,46 @@ pub enum NprSurfaceMode {
     Smooth,
 }
 
+/// The authored reading of a model surface.  Unlike [`NprSurfaceMode`], which
+/// selects a concrete contour pipeline, this records *why* that pipeline is
+/// appropriate.  Extractors resolve it before creating an NPR packet, so a
+/// backend never has to infer drawing intent from mesh density or a model name.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum NprSurfaceIntent {
+    /// Preserve deliberately faceted planes and their authored sharp edges.
+    HardSurface,
+    /// Treat topology as a sampling of a continuous form.  The drawing uses a
+    /// smooth proxy and never turns incidental triangle creases into ink.
+    Organic,
+    /// Respect an explicit [`NprSurfaceMode`] selected by an author.
+    #[default]
+    Authored,
+}
+
+impl NprSurfaceIntent {
+    pub const fn resolve_mode(self, authored_mode: NprSurfaceMode) -> NprSurfaceMode {
+        match self {
+            Self::HardSurface => NprSurfaceMode::Polygonal,
+            Self::Organic => NprSurfaceMode::Smooth,
+            Self::Authored => authored_mode,
+        }
+    }
+
+    pub const fn resolve_subdivision_level(self, authored_level: u8) -> u8 {
+        match self {
+            Self::HardSurface => 0,
+            Self::Organic if authored_level == 0 => 1,
+            Self::Organic => authored_level,
+            Self::Authored => authored_level,
+        }
+    }
+
+    pub const fn suppresses_topology_creases(self) -> bool {
+        matches!(self, Self::Organic)
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, serde::Serialize, serde::Deserialize)]
 #[serde(default)]
 pub struct ComicInk {
@@ -144,6 +184,31 @@ impl Default for ComicInk {
             hatching_spacing: 9.0,
             hatching_cross: 0.0,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn surface_intent_resolves_without_mesh_name_heuristics() {
+        assert_eq!(
+            NprSurfaceIntent::HardSurface.resolve_mode(NprSurfaceMode::Smooth),
+            NprSurfaceMode::Polygonal
+        );
+        assert_eq!(
+            NprSurfaceIntent::Organic.resolve_mode(NprSurfaceMode::Polygonal),
+            NprSurfaceMode::Smooth
+        );
+        assert_eq!(
+            NprSurfaceIntent::Authored.resolve_mode(NprSurfaceMode::Smooth),
+            NprSurfaceMode::Smooth
+        );
+        assert_eq!(NprSurfaceIntent::HardSurface.resolve_subdivision_level(2), 0);
+        assert_eq!(NprSurfaceIntent::Organic.resolve_subdivision_level(0), 1);
+        assert!(!NprSurfaceIntent::HardSurface.suppresses_topology_creases());
+        assert!(NprSurfaceIntent::Organic.suppresses_topology_creases());
     }
 }
 impl ComicInk {

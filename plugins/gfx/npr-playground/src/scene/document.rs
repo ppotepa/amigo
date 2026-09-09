@@ -1,6 +1,6 @@
 use std::{any::Any, collections::BTreeMap};
 
-use amigo_render_npr::{ComicInk, NprMotionPolicy, NprSurfaceMode};
+use amigo_render_npr::{ComicInk, NprMotionPolicy, NprSurfaceIntent, NprSurfaceMode};
 use amigo_scene::{
     SceneComponentPayload, SceneComponentSchemaProvider, SceneDocumentError, SceneDocumentResult,
 };
@@ -65,6 +65,8 @@ pub struct NprObjectSceneSettings {
     #[serde(default)]
     pub angular_speed: Option<Vec3>,
     #[serde(default)]
+    pub surface_intent: Option<NprSurfaceIntent>,
+    #[serde(default)]
     pub surface_mode: Option<NprSurfaceMode>,
     #[serde(default)]
     pub surface_subdivision_level: Option<u8>,
@@ -98,6 +100,8 @@ impl NprPlaygroundSceneDocument {
                 scale: (object.scale != default.scale).then_some(object.scale),
                 angular_speed: (object.angular_speed != default.angular_speed)
                     .then_some(object.angular_speed),
+                surface_intent: (object.surface_intent != default.surface_intent)
+                    .then_some(object.surface_intent),
                 surface_mode: (object.surface_mode != default.surface_mode)
                     .then_some(object.surface_mode),
                 surface_subdivision_level: (object.surface_subdivision_level
@@ -182,6 +186,7 @@ fn apply_object_settings(object: &mut ObjectSettings, authored: &NprObjectSceneS
     if let Some(value) = authored.rotation { object.rotation = value; }
     if let Some(value) = authored.scale { object.scale = value; }
     if let Some(value) = authored.angular_speed { object.angular_speed = value; }
+    if let Some(value) = authored.surface_intent { object.surface_intent = value; }
     if let Some(value) = authored.surface_mode { object.surface_mode = value; }
     if let Some(value) = authored.surface_subdivision_level { object.surface_subdivision_level = value; }
     if let Some(value) = authored.smooth_weld_relative_tolerance { object.smooth_weld_relative_tolerance = value; }

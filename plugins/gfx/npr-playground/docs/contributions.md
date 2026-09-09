@@ -18,6 +18,10 @@ per-object surface policy and construction marks. The component is schema- and
 hydrator-backed, so an editor can use the same authored payload; it is not an
 ID-based renderer preset.
 
+The surface policy records `HardSurface`, `Organic` or `Authored` intent. The
+domain extractor resolves it to a concrete Smooth/Polygonal packet policy; it
+does not ask WGPU to interpret topology as drawing intent.
+
 The in-game editor's `Save NPR scene` command is handled by the domain runtime
 apply provider. It snapshots the typed `NprSettings`, locates its exact owned
 source component through the authoring graph, and asks the neutral authoring

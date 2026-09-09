@@ -1,6 +1,6 @@
 use amigo_render_npr::{
     ComicInk, NprConstructionMark, NprPreparedSurface, NprMotionPolicy, NprSurfaceAnchorError,
-    NprSurfaceMode, NprToneMode, StrokeMotionMode, StrokeTool,
+    NprSurfaceIntent, NprSurfaceMode, NprToneMode, StrokeMotionMode, StrokeTool,
 };
 use amigo_runtime_control::*;
 use glam::Vec3;
@@ -283,6 +283,10 @@ struct ConstructionAuthoringState {
 #[serde(deny_unknown_fields)]
 pub struct ObjectSettings {
     pub model: String,
+    /// Semantic source of the drawing policy.  It is authored data: WGPU only
+    /// receives the resolved mode and never guesses from a model identifier.
+    #[serde(default)]
+    pub surface_intent: NprSurfaceIntent,
     #[serde(default)]
     pub surface_mode: NprSurfaceMode,
     /// Fixed smooth-proxy level, prepared per source revision rather than per
@@ -344,6 +348,10 @@ impl Settings {
                     (*id).into(),
                     ObjectSettings {
                         model: (*id).into(),
+                        surface_intent: match *id {
+                            "cube" | "wedge" => NprSurfaceIntent::HardSurface,
+                            _ => NprSurfaceIntent::Organic,
+                        },
                         surface_mode: match *id {
                             "cube" | "wedge" => NprSurfaceMode::Polygonal,
                             _ => NprSurfaceMode::Smooth,
@@ -1016,20 +1024,32 @@ impl NprPlaygroundState {
         let selected_object = &settings.objects[&settings.selected];
         props.insert(
             "object.surface_policy_info".into(),
-            ControlValue::String(match selected_object.surface_mode {
-                NprSurfaceMode::Polygonal => {
-                    "Polygonal: literalna topologia i ostre krawędzie".into()
+            ControlValue::String(match selected_object.surface_intent {
+                NprSurfaceIntent::HardSurface => {
+                    "Hard surface: ostre płaszczyzny i autorskie krawędzie".into()
                 }
-                NprSurfaceMode::Smooth => format!(
-                    "Smooth proxy L{} · weld {:.6} · crease topologii {}",
-                    selected_object.surface_subdivision_level,
+                NprSurfaceIntent::Organic => format!(
+                    "Organic: Smooth proxy L{} · weld {:.6} · bez crease'ów topologii",
+                    selected_object
+                        .surface_intent
+                        .resolve_subdivision_level(selected_object.surface_subdivision_level),
                     selected_object.smooth_weld_relative_tolerance,
-                    if selected_object.style.smooth_draw_creases {
-                        "włączone"
-                    } else {
-                        "wyłączone"
-                    }
                 ),
+                NprSurfaceIntent::Authored => match selected_object.surface_mode {
+                    NprSurfaceMode::Polygonal => {
+                        "Autorskie: literalna topologia i ostre krawędzie".into()
+                    }
+                    NprSurfaceMode::Smooth => format!(
+                        "Autorskie Smooth proxy L{} · weld {:.6} · crease topologii {}",
+                        selected_object.surface_subdivision_level,
+                        selected_object.smooth_weld_relative_tolerance,
+                        if selected_object.style.smooth_draw_creases {
+                            "włączone"
+                        } else {
+                            "wyłączone"
+                        }
+                    ),
+                },
             }),
         );
         for action in ACTIONS {
@@ -1329,6 +1349,7 @@ impl NprPlaygroundState {
                     style.min_smooth_contour_length_pixels = 8.0;
                     style.smooth_contour_simplification_pixels = 0.75;
                     let object = s.objects.get_mut(&selected).unwrap();
+                    object.surface_intent = NprSurfaceIntent::Organic;
                     object.surface_mode = NprSurfaceMode::Smooth;
                     object.surface_subdivision_level = object.surface_subdivision_level.max(1);
                     object.smooth_weld_relative_tolerance =

@@ -283,7 +283,13 @@ impl NprPlaygroundRenderService {
                 } else {
                     settings.global
                 };
-                style.surface_mode = object.surface_mode;
+                style.surface_mode = object.surface_intent.resolve_mode(object.surface_mode);
+                if object.surface_intent.suppresses_topology_creases() {
+                    // Organic source meshes routinely contain triangulation
+                    // seams which are not authorial marks.  The intent is
+                    // resolved here, before the neutral packet is built.
+                    style.smooth_draw_creases = false;
+                }
                 let prepared_variants = cache
                     .get_mut(&object.model)
                     .ok_or_else(|| format!("model {} is not prepared", object.model))?;
@@ -297,12 +303,14 @@ impl NprPlaygroundRenderService {
                     object.position,
                 );
                 let proxy_policy = NprSmoothProxyPolicy {
-                    levels: object.surface_subdivision_level,
+                    levels: object
+                        .surface_intent
+                        .resolve_subdivision_level(object.surface_subdivision_level),
                     crease_angle: style.smooth_crease_angle,
                     weld_relative_tolerance: object.smooth_weld_relative_tolerance,
                     ..NprSmoothProxyPolicy::default()
                 };
-                let prepared = if object.surface_mode == NprSurfaceMode::Smooth {
+                let prepared = if style.surface_mode == NprSurfaceMode::Smooth {
                     prepared_variants.smooth_proxy(proxy_policy)
                 } else {
                     Ok(prepared_variants.source())

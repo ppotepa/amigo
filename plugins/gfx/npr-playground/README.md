@@ -62,10 +62,12 @@ while width, clipping and visibility are resolved for the current viewport.
 
 ## Surface and motion policy
 
-Each object declares `Polygonal` or `Smooth`; this is authored state, never a
-renderer guess based on a mesh name. Polygonal keeps the literal edge language
-for cube and wedge. Smooth replaces polygon-edge silhouettes with zeroes of a
-smoothed corner-normal field. `Próg gładkiej powierzchni` stops that field from
+Each object first declares a semantic surface intent: `HardSurface`, `Organic`
+or `Authored`. This is typed authored state, never a renderer guess based on a
+mesh name. HardSurface resolves to Polygonal and preserves literal edge language
+for deliberately faceted forms. Organic resolves to Smooth, prepares a welded
+proxy and suppresses topology-derived crease ink. Authored exposes the explicit
+`Polygonal`/`Smooth` mode for cases where an author needs an exception. `Próg gładkiej powierzchni` stops that field from
 blending through a large dihedral independently of the separately drawn crease
 threshold. Open boundaries remain explicit; topology-derived creases are off by
 default in Smooth because an imported dihedral is not proof of authored drawing
@@ -81,7 +83,7 @@ applied only while preparing a Smooth proxy, never to a Polygonal object.
 projection, while `Wygładzanie konturu Smooth` applies a deterministic
 pixel-space simplification to longer spans. Together these controls remove
 triangulation-sized bends without changing authored source geometry.
-`Natural Smooth dla modelu organicznego` applies the same policy as a local
+`Natural Smooth dla modelu organicznego` applies the `Organic` intent as a local
 selected-object override: Smooth proxy, seam weld, no topology creases and the
 reviewed contour cleanup defaults. It never changes another gallery object or
 adds an implicit renderer preset, and switches Appearance to the selected
