@@ -440,11 +440,15 @@ fn build_packet_with_identity(
             })
             .collect::<Option<Vec<_>>>();
         if let Some(points) = points.filter(|points| points.len() >= 2) {
+            let points = simplify_projected_contour(
+                points,
+                style.smooth_contour_simplification_pixels,
+            );
             strokes.extend(tessellate_polyline_variants(
                 contour.id,
                 FeatureClass::Silhouette,
                 &points,
-                false,
+                is_closed_projected_contour(&points),
                 style,
                 seed,
             ));
@@ -461,12 +465,16 @@ fn build_packet_with_identity(
             })
             .collect::<Option<Vec<_>>>();
         if let Some(points) = points.filter(|points| points.len() >= 2) {
+            let points = simplify_projected_contour(
+                points,
+                style.smooth_contour_simplification_pixels,
+            );
             let suggestive_style = stroke_layer_style(style, style.suggestive_contour_width_scale);
             let mut contour_strokes = tessellate_polyline_variants(
                 contour.id,
                 FeatureClass::Crease,
                 &points,
-                false,
+                is_closed_projected_contour(&points),
                 suggestive_style,
                 seed,
             );
@@ -659,6 +667,118 @@ fn rank_smooth_contours(
         })
         .collect();
     (selected, rejected)
+}
+
+fn is_closed_projected_contour(points: &[(Vec2, f32)]) -> bool {
+    points.len() >= 3
+        && points
+            .first()
+            .zip(points.last())
+            .is_some_and(|(first, last)| first.0.distance_squared(last.0) <= 1.0e-6)
+}
+
+fn simplify_projected_contour(points: Vec<(Vec2, f32)>, tolerance_pixels: f32) -> Vec<(Vec2, f32)> {
+    let tolerance = tolerance_pixels.max(0.0);
+    if tolerance <= f32::EPSILON || points.len() <= 2 {
+        return points;
+    }
+    if !is_closed_projected_contour(&points) {
+        return simplify_open_projected_contour(&points, tolerance);
+    }
+    let ring = &points[..points.len() - 1];
+    if ring.len() < 3 {
+        return points;
+    }
+    // A lexicographic anchor makes the treatment of an otherwise cyclic path
+    // independent of the triangle at which extraction happened to start.
+    let anchor = ring
+        .iter()
+        .enumerate()
+        .min_by(|(_, a), (_, b)| {
+            a.0.x
+                .total_cmp(&b.0.x)
+                .then_with(|| a.0.y.total_cmp(&b.0.y))
+                .then_with(|| a.1.total_cmp(&b.1))
+        })
+        .map(|(index, _)| index)
+        .expect("non-empty contour ring has an anchor");
+    let mut rotated = ring
+        .iter()
+        .cycle()
+        .skip(anchor)
+        .take(ring.len())
+        .copied()
+        .collect::<Vec<_>>();
+    let split = rotated
+        .iter()
+        .enumerate()
+        .skip(1)
+        .max_by(|(_, a), (_, b)| {
+            a.0.distance_squared(rotated[0].0)
+                .total_cmp(&b.0.distance_squared(rotated[0].0))
+        })
+        .map(|(index, _)| index)
+        .unwrap_or(1);
+    if split >= rotated.len() - 1 {
+        rotated.push(rotated[0]);
+        return simplify_open_projected_contour(&rotated, tolerance);
+    }
+    let mut first = simplify_open_projected_contour(&rotated[..=split], tolerance);
+    let mut second = rotated[split..].to_vec();
+    second.push(rotated[0]);
+    let second = simplify_open_projected_contour(&second, tolerance);
+    first.pop();
+    first.extend(second);
+    first
+}
+
+fn simplify_open_projected_contour(points: &[(Vec2, f32)], tolerance: f32) -> Vec<(Vec2, f32)> {
+    if points.len() <= 2 {
+        return points.to_vec();
+    }
+    let mut keep = vec![false; points.len()];
+    keep[0] = true;
+    keep[points.len() - 1] = true;
+    mark_rdp_points(points, 0, points.len() - 1, tolerance * tolerance, &mut keep);
+    points
+        .iter()
+        .zip(keep)
+        .filter_map(|(point, keep)| keep.then_some(*point))
+        .collect()
+}
+
+fn mark_rdp_points(
+    points: &[(Vec2, f32)],
+    start: usize,
+    end: usize,
+    tolerance_squared: f32,
+    keep: &mut [bool],
+) {
+    if end <= start + 1 {
+        return;
+    }
+    let a = points[start].0;
+    let b = points[end].0;
+    let direction = b - a;
+    let direction_squared = direction.length_squared();
+    let (index, distance_squared) = ((start + 1)..end)
+        .map(|index| {
+            let offset = points[index].0 - a;
+            let distance_squared = if direction_squared <= f32::EPSILON {
+                offset.length_squared()
+            } else {
+                let t = (offset.dot(direction) / direction_squared).clamp(0.0, 1.0);
+                (offset - direction * t).length_squared()
+            };
+            (index, distance_squared)
+        })
+        .max_by(|(_, left), (_, right)| left.total_cmp(right))
+        .expect("non-empty RDP interior");
+    if distance_squared > tolerance_squared {
+        keep[index] = true;
+        mark_rdp_points(points, start, index, tolerance_squared, keep);
+        mark_rdp_points(points, index, end, tolerance_squared, keep);
+    }
 }
 
 fn retain_strokes_under_budget(
@@ -1924,6 +2044,24 @@ mod tests {
         let (selected, rejected) = rank_smooth_contours(contours, camera, Vec2::splat(512.0), 8.0);
         assert!(selected.is_empty());
         assert_eq!(rejected, 1);
+    }
+
+    #[test]
+    fn projected_contour_simplification_preserves_major_turns() {
+        let points = vec![
+            (Vec2::new(0.0, 0.0), 0.2),
+            (Vec2::new(1.0, 0.1), 0.2),
+            (Vec2::new(2.0, 0.0), 0.2),
+            (Vec2::new(2.0, 4.0), 0.2),
+        ];
+        assert_eq!(
+            simplify_projected_contour(points, 0.25),
+            vec![
+                (Vec2::new(0.0, 0.0), 0.2),
+                (Vec2::new(2.0, 0.0), 0.2),
+                (Vec2::new(2.0, 4.0), 0.2),
+            ]
+        );
     }
 
     #[test]

@@ -57,6 +57,10 @@ pub struct ComicInk {
     /// a readable silhouette. This screen-space gate runs after contour
     /// assembly and before tessellation.
     pub min_smooth_contour_length_pixels: f32,
+    /// Pixel tolerance for deterministic contour simplification after
+    /// projection. It removes sub-pixel triangulation bends while preserving
+    /// the visible path's endpoints and major turns.
+    pub smooth_contour_simplification_pixels: f32,
     pub taper: f32,
     pub wobble: f32,
     pub gesture_confidence: f32,
@@ -111,6 +115,7 @@ impl Default for ComicInk {
             boundary_width: 3.0,
             min_crease_length_pixels: 4.0,
             min_smooth_contour_length_pixels: 8.0,
+            smooth_contour_simplification_pixels: 0.75,
             taper: 0.18,
             wobble: 0.0,
             gesture_confidence: 1.0,

@@ -469,6 +469,8 @@ fn validate_style(s: ComicInk) -> Result<(), String> {
         || !(0.0..=64.0).contains(&s.min_crease_length_pixels)
         || !s.min_smooth_contour_length_pixels.is_finite()
         || !(0.0..=64.0).contains(&s.min_smooth_contour_length_pixels)
+        || !s.smooth_contour_simplification_pixels.is_finite()
+        || !(0.0..=8.0).contains(&s.smooth_contour_simplification_pixels)
         || !s.taper.is_finite()
         || !(0.0..=1.0).contains(&s.taper)
         || !s.wobble.is_finite()
@@ -1498,6 +1500,7 @@ fn property_range(key: &str) -> Option<ControlRange> {
     let (min, max) = match key.rsplit('.').next().unwrap_or(key) {
         "outline_width" | "crease_width" | "boundary_width" => (0.0, 20.0),
         "min_crease_length_pixels" | "min_smooth_contour_length_pixels" => (0.0, 64.0),
+        "smooth_contour_simplification_pixels" => (0.0, 8.0),
         "surface_subdivision_level" => (0.0, 2.0),
         "smooth_weld_relative_tolerance" => (0.0, 0.01),
         "crease_angle" | "smooth_crease_angle" => (0.0, 180.0),
