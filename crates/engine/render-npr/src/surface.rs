@@ -13,6 +13,11 @@ use glam::Vec3;
 use std::collections::BTreeMap;
 use std::fmt;
 
+/// Relative to the source bounding-box diagonal. This absorbs ordinary
+/// importer float jitter at UV/normal seams without changing authored
+/// polygonal surfaces.
+const SMOOTH_DRAWING_WELD_TOLERANCE: f32 = 1.0e-5;
+
 /// Stable content identifier for a prepared drawing surface.
 ///
 /// This is not a replacement for an asset-system revision.  Asset owners can
@@ -176,7 +181,11 @@ impl NprPreparedSurfaceVariants {
 
     fn smooth_drawing_source(&mut self) -> &NprGeometry {
         self.smooth_drawing_source
-            .get_or_insert_with(|| self.source.geometry().welded_coincident_vertices())
+            .get_or_insert_with(|| {
+                self.source
+                    .geometry()
+                    .welded_nearby_vertices(SMOOTH_DRAWING_WELD_TOLERANCE)
+            })
     }
 }
 
@@ -579,6 +588,36 @@ mod tests {
         let anchor = proxy.source_anchor(0, [1.0, 0.0, 0.0]).unwrap();
         assert_eq!(anchor.content_id, source.content_id());
         assert_eq!(anchor.triangle, 0);
+    }
+
+    #[test]
+    fn smooth_proxy_welds_small_importer_position_jitter() {
+        let split = NprGeometry::from_indexed(
+            &[
+                [0.0, 0.0, 0.0],
+                [1.0, 0.0, 0.0],
+                [0.0, 1.0, 0.0],
+                [1.0 + 0.000_001, 0.0, 0.0],
+                [1.0, 1.0, 0.0],
+                [0.0, 1.0 + 0.000_001, 0.0],
+            ],
+            &[0, 1, 2, 3, 4, 5],
+        )
+        .unwrap();
+        let mut variants = NprPreparedSurfaceVariants::new(split);
+        let proxy = variants
+            .smooth_proxy(NprSmoothProxyPolicy {
+                levels: 0,
+                ..NprSmoothProxyPolicy::default()
+            })
+            .unwrap();
+
+        assert_eq!(proxy.geometry().vertices.len(), 4);
+        assert!(proxy
+            .geometry()
+            .triangles
+            .iter()
+            .all(|triangle| triangle[0] != triangle[1] && triangle[1] != triangle[2]));
     }
 
     #[test]

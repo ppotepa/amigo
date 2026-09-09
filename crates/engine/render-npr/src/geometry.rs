@@ -130,7 +130,7 @@ impl NprGeometry {
     pub fn welded_coincident_vertices(&self) -> Self {
         let mut vertex_for_position = BTreeMap::<[u32; 3], u32>::new();
         let mut remap = Vec::with_capacity(self.vertices.len());
-        let mut vertices = Vec::with_capacity(self.vertices.len());
+        let mut vertices = Vec::<NprVertex>::with_capacity(self.vertices.len());
         for vertex in &self.vertices {
             let key = vertex.position.to_array().map(canonical_position_bits);
             let index = *vertex_for_position.entry(key).or_insert_with(|| {
@@ -138,6 +138,74 @@ impl NprGeometry {
                 vertices.push(*vertex);
                 index
             });
+            remap.push(index);
+        }
+        Self {
+            vertices,
+            triangles: self
+                .triangles
+                .iter()
+                .map(|triangle| triangle.map(|index| remap[index as usize]))
+                .collect(),
+        }
+    }
+
+    /// Merges near-coincident importer seam vertices with a tolerance relative
+    /// to the model's bounding-box diagonal. This is intentionally opt-in: a
+    /// model author can retain exact polygonal topology while a smooth drawing
+    /// proxy treats tiny export jitter as one continuous surface.
+    ///
+    /// Vertices from the same source triangle are never merged, so the proxy
+    /// retains a valid source-triangle/barycentric chart for construction marks.
+    pub fn welded_nearby_vertices(&self, relative_tolerance: f32) -> Self {
+        if !relative_tolerance.is_finite() || relative_tolerance <= 0.0 || self.vertices.is_empty() {
+            return self.welded_coincident_vertices();
+        }
+        let (minimum, maximum) = self.vertices.iter().fold(
+            (Vec3::splat(f32::INFINITY), Vec3::splat(f32::NEG_INFINITY)),
+            |(minimum, maximum), vertex| {
+                (minimum.min(vertex.position), maximum.max(vertex.position))
+            },
+        );
+        let tolerance = minimum.distance(maximum) * relative_tolerance;
+        if !tolerance.is_finite() || tolerance <= f32::EPSILON {
+            return self.welded_coincident_vertices();
+        }
+        let faces_by_vertex = incident_faces(self);
+        let mut cells = BTreeMap::<[i64; 3], Vec<u32>>::new();
+        let mut vertices = Vec::<NprVertex>::with_capacity(self.vertices.len());
+        let mut members = Vec::<Vec<usize>>::with_capacity(self.vertices.len());
+        let mut remap = Vec::with_capacity(self.vertices.len());
+        for (original, vertex) in self.vertices.iter().enumerate() {
+            let cell = spatial_cell(vertex.position, tolerance);
+            let mut selected = None;
+            for x in -1..=1 {
+                for y in -1..=1 {
+                    for z in -1..=1 {
+                        let neighbor = [cell[0] + x, cell[1] + y, cell[2] + z];
+                        for &candidate in cells.get(&neighbor).into_iter().flatten() {
+                            let candidate_index = candidate as usize;
+                            if vertices[candidate_index].position.distance(vertex.position) <= tolerance
+                                && !shares_source_face(
+                                    &faces_by_vertex[original],
+                                    &members[candidate_index],
+                                    &faces_by_vertex,
+                                )
+                            {
+                                selected = Some(selected.map_or(candidate, |current: u32| current.min(candidate)));
+                            }
+                        }
+                    }
+                }
+            }
+            let index = selected.unwrap_or_else(|| {
+                let index = vertices.len() as u32;
+                vertices.push(*vertex);
+                members.push(Vec::new());
+                cells.entry(cell).or_default().push(index);
+                index
+            });
+            members[index as usize].push(original);
             remap.push(index);
         }
         Self {
@@ -212,6 +280,33 @@ fn canonical_position_bits(value: f32) -> u32 {
     } else {
         value.to_bits()
     }
+}
+
+fn spatial_cell(position: Vec3, size: f32) -> [i64; 3] {
+    position
+        .to_array()
+        .map(|coordinate| (coordinate / size).floor() as i64)
+}
+
+fn incident_faces(geometry: &NprGeometry) -> Vec<Vec<usize>> {
+    let mut output = vec![Vec::new(); geometry.vertices.len()];
+    for (face, triangle) in geometry.triangles.iter().enumerate() {
+        for &vertex in triangle {
+            output[vertex as usize].push(face);
+        }
+    }
+    output
+}
+
+fn shares_source_face(
+    faces: &[usize],
+    candidate_members: &[usize],
+    faces_by_vertex: &[Vec<usize>],
+) -> bool {
+    candidate_members.iter().any(|&member| {
+        let candidate_faces = &faces_by_vertex[member];
+        faces.iter().any(|face| candidate_faces.contains(face))
+    })
 }
 
 impl Default for NprGeometry {

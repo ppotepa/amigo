@@ -46,6 +46,30 @@ fn welding_coincident_indices_removes_false_import_seam_boundaries() {
 }
 
 #[test]
+fn nearby_welding_removes_export_jitter_without_collapsing_source_triangles() {
+    let split = NprGeometry::from_indexed(
+        &[
+            [0.0, 0.0, 0.0],
+            [1.0, 0.0, 0.0],
+            [0.0, 1.0, 0.0],
+            [1.0 + 0.000_001, 0.0, 0.0],
+            [1.0, 1.0, 0.0],
+            [0.0, 1.0 + 0.000_001, 0.0],
+        ],
+        &[0, 1, 2, 3, 4, 5],
+    )
+    .unwrap();
+    let welded = split.welded_nearby_vertices(0.000_01);
+
+    assert_eq!(welded.vertices.len(), 4);
+    assert_eq!(welded.triangles.len(), split.triangles.len());
+    assert!(welded
+        .triangles
+        .iter()
+        .all(|triangle| triangle[0] != triangle[1] && triangle[1] != triangle[2] && triangle[0] != triangle[2]));
+}
+
+#[test]
 fn coplanar_groups_merge_cube_face_triangulation_but_not_cube_edges() {
     let cube = NprGeometry::canonical_cube();
     let topology = build_topology(&cube);
