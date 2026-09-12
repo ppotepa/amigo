@@ -880,6 +880,7 @@ impl NprPlaygroundService {
                             source_model: next.selected.clone(),
                             settings: next.clone(),
                         };
+                        draft.validate()?;
                         if let Some(root) = s.root.as_deref() {
                             validate_document_id(&draft.source_model)?;
                             let path = authored_path(
@@ -939,7 +940,7 @@ impl NprPlaygroundService {
                     if draft.source_model != model {
                         return Err("draft source model does not match its identifier".into());
                     }
-                    draft.settings.validate()?;
+                    draft.validate()?;
                     next = draft.settings;
                     s.baseline = next.clone();
                     s.active_look = None;
@@ -1237,8 +1238,7 @@ fn load_drafts(root: &Path) -> Result<BTreeMap<String, crate::documents::NprDraw
         let draft: crate::documents::NprDrawingDraft =
             serde_yaml::from_slice(&std::fs::read(&path).map_err(|error| error.to_string())?)
                 .map_err(|error| format!("{}: {error}", path.display()))?;
-        validate_document_id(&draft.source_model)?;
-        draft.settings.validate()?;
+        draft.validate()?;
         if drafts.insert(draft.source_model.clone(), draft).is_some() {
             return Err(format!(
                 "duplicate NPR drawing draft in {}",

@@ -466,6 +466,24 @@ fn save_all_preflights_conflicts_before_writing_any_document() {
 }
 
 #[test]
+fn drawing_draft_requires_its_selected_source_model() {
+    let mut draft = NprDrawingDraft {
+        version: 1,
+        source_model: "sphere".into(),
+        settings: Settings::for_scene(),
+    };
+    assert!(draft
+        .validate()
+        .unwrap_err()
+        .contains("source model does not match"));
+
+    draft.source_model = "cube".into();
+    draft.validate().unwrap();
+    draft.version = 2;
+    assert!(draft.validate().unwrap_err().contains("unsupported"));
+}
+
+#[test]
 fn explicit_profile_migration_requires_a_source_model_and_keeps_a_durable_backup() {
     use amigo_npr_playground_plugin::documents::migration::DrawingStudioProfileMigration;
     let directory = tempfile::tempdir().unwrap();

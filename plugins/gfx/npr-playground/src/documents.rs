@@ -90,6 +90,28 @@ pub struct NprDrawingDraft {
     pub settings: Settings,
 }
 
+impl NprDrawingDraft {
+    /// Verifies that the draft key, selected object and rendered source stay
+    /// the same stable model identity.  A Draft is not a generic scene save:
+    /// it is the checkpoint that lets Basic Studio return to one drawing.
+    pub fn validate(&self) -> Result<(), String> {
+        if self.version != 1 {
+            return Err("unsupported NPR drawing draft version".into());
+        }
+        validate_document_id(&self.source_model)?;
+        self.settings.validate()?;
+        let selected = self
+            .settings
+            .objects
+            .get(&self.settings.selected)
+            .ok_or("drawing draft has no selected source model")?;
+        if self.settings.selected != self.source_model || selected.model != self.source_model {
+            return Err("drawing draft source model does not match its settings".into());
+        }
+        Ok(())
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct NprSceneCameraDocument {
