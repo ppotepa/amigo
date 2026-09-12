@@ -39,6 +39,16 @@ Drawing Studio accepts an empty Gallery profile or exactly one source model; a
 hand-edited profile with multiple objects is rejected even if its legacy flag
 has been cleared.
 
+To migrate a retired multi-model profile, choose the retained source explicitly:
+
+```powershell
+rtk cargo run -p amigo-npr-playground-plugin --example migrate_drawing_studio -- sphere mods/npr-playground/scenes/gallery/npr.scene.yml
+```
+
+The command only previews by default. Put `--apply` immediately after `--` to
+write; every input is prepared before any profile is replaced, and each profile
+receives its own exclusive `<profile>.before-drawing-studio` backup.
+
 The mod ships a `drawing-studio-demo` preset based on `comic-ink`. It exercises
 the complete ordered composition: watercolour underpainting, surface hatching,
 form lines and contour ink.
