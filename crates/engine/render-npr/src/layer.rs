@@ -553,6 +553,17 @@ impl NprStyleLayers {
                     layer.id
                 ));
             }
+            if layer.tool.is_some()
+                && matches!(
+                    layer.source,
+                    NprGeometrySource::Wash | NprGeometrySource::FlatFill
+                )
+            {
+                return Err(format!(
+                    "stroke tool is invalid for surface NPR layer `{}`",
+                    layer.id
+                ));
+            }
             if layer.source == NprGeometrySource::Paper
                 && (layer.brush.is_some() || layer.tool.is_some() || layer.paint.is_some())
             {
@@ -1076,6 +1087,16 @@ mod tests {
         layers.layers[1].id = "underpainting".into();
         layers.layers[1].opacity = 1.5;
         assert!(layers.validate().unwrap_err().contains("opacity"));
+    }
+
+    #[test]
+    fn validation_rejects_a_stroke_tool_on_a_surface_layer() {
+        let mut layers = NprStyleLayers::default();
+        layers.layer_mut("fill").unwrap().tool = Some(StrokeTool::Pencil);
+        assert!(layers
+            .validate()
+            .unwrap_err()
+            .contains("stroke tool is invalid for surface"));
     }
 
     #[test]
