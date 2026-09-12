@@ -62,7 +62,7 @@ pub fn thumbnail(root: &Path, model: &str, path: Option<&Path>) -> Result<String
     if let Some(path) = path {
         render.load_model(model, path)?;
     }
-    let mut settings = crate::state::Settings::for_scene(false);
+    let mut settings = crate::state::Settings::for_scene();
     if !settings.objects.contains_key(model) {
         let mut object = settings.objects[&settings.selected].clone();
         object.model = model.into();
@@ -121,7 +121,7 @@ pub fn look_thumbnail(
     let resolved = crate::playground::resolve_preview_look(root, look_id)?;
     let render = crate::NprPlaygroundRenderService::default();
     render.load_models(root)?;
-    let mut settings = crate::state::Settings::for_scene(false);
+    let mut settings = crate::state::Settings::for_scene();
     settings.global = resolved.style;
     settings.style_layers = resolved.layers;
     settings.brushes = brushes.clone();
@@ -152,7 +152,7 @@ pub fn brush_thumbnail(root: &Path, brush: &BrushDefinition) -> Result<String, S
         BrushMedium::FlatFill => NprGeometrySource::FlatFill,
         BrushMedium::WatercolourWash => NprGeometrySource::Wash,
     };
-    let mut settings = crate::state::Settings::for_scene(false);
+    let mut settings = crate::state::Settings::for_scene();
     settings.global = resolved.style;
     settings.style_layers = resolved.layers;
     for layer in &mut settings.style_layers.layers {

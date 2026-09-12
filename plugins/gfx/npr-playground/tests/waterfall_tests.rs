@@ -10,7 +10,7 @@ fn scene_layer_intent_reaches_the_extracted_npr_draw_command() {
     use amigo_npr_playground_plugin::{NprPlaygroundRenderService, state::Settings};
     use amigo_render_npr::{NprBlendMode, NprLayerColorSource};
 
-    let mut settings = Settings::for_scene(false);
+    let mut settings = Settings::for_scene();
     let hatching = settings
         .style_layers
         .layers
@@ -42,7 +42,7 @@ fn scene_layer_intent_reaches_the_extracted_npr_draw_command() {
 fn authored_underpainting_medium_is_kept_as_per_layer_compositor_state() {
     use amigo_npr_playground_plugin::{NprPlaygroundRenderService, state::Settings};
 
-    let mut settings = Settings::for_scene(false);
+    let mut settings = Settings::for_scene();
     settings
         .style_layers
         .layers
@@ -85,7 +85,7 @@ fn authored_underpainting_medium_is_kept_as_per_layer_compositor_state() {
 fn two_contour_layers_emit_two_independent_layer_contributions() {
     use amigo_npr_playground_plugin::{NprPlaygroundRenderService, state::Settings};
 
-    let mut settings = Settings::for_scene(false);
+    let mut settings = Settings::for_scene();
     let mut soft_contour = settings.style_layers.layer("contours").unwrap().clone();
     soft_contour.id = "contours-soft".into();
     soft_contour.label = "Soft contour".into();
@@ -117,7 +117,7 @@ use amigo_npr_playground_plugin::{NprPlaygroundRenderService, state::Settings};
 fn shared_surfaces_preserve_independent_camera_packets_and_temporal_histories() {
     let renderer = NprPlaygroundRenderService::default();
     let companion = renderer.fork_view();
-    let mut settings = Settings::for_scene(false);
+    let mut settings = Settings::for_scene();
     settings.sketch_paused = true;
     renderer
         .rebuild_with_delta(&settings, [640, 360], 0.016)

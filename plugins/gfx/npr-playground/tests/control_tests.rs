@@ -259,7 +259,7 @@ fn authored_construction_marks_reject_invalid_geometry_before_extraction() {
 #[test]
 fn authored_sidecar_preserves_camera_surface_and_object_intent() {
     let state = NprPlaygroundState::default();
-    let mut settings = amigo_npr_playground_plugin::state::Settings::for_scene(true);
+    let mut settings = amigo_npr_playground_plugin::state::Settings::for_scene();
     settings.seed = 99;
     settings.camera_distance = 18.;
     settings.camera_yaw = 31.;
@@ -320,7 +320,7 @@ fn blank_scene_extracts_paper_without_any_model_draw_command() {
         std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../../mods/npr-playground");
     let render = NprPlaygroundRenderService::default();
     render.load_models(&root).unwrap();
-    let settings = amigo_npr_playground_plugin::state::Settings::empty_scene(true);
+    let settings = amigo_npr_playground_plugin::state::Settings::empty_scene();
 
     render.rebuild(&settings, [512, 512]).unwrap();
     assert!(render.commands().is_empty());
@@ -444,7 +444,7 @@ fn asset_browser_models_are_ready_and_route_add_and_replace_to_npr_state() {
 
     let state = Arc::new(NprPlaygroundState::default());
     *state.settings.lock().unwrap() =
-        amigo_npr_playground_plugin::state::Settings::empty_scene(true);
+        amigo_npr_playground_plugin::state::Settings::empty_scene();
     let service = amigo_npr_playground_plugin::playground::NprPlaygroundService::new(state.clone());
     service
         .dispatch_intent(
@@ -479,7 +479,7 @@ fn basic_mode_renders_one_selected_model_and_exposes_only_basic_views() {
     let root =
         std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../../mods/npr-playground");
     let state = Arc::new(NprPlaygroundState::default());
-    state.configure_scene(false);
+    state.configure_scene();
     let metadata = amigo_npr_playground_plugin::playground::NprPlaygroundService::metadata();
     assert_eq!(
         metadata["views"],
@@ -504,7 +504,7 @@ fn basic_mode_renders_one_selected_model_and_exposes_only_basic_views() {
 fn render_diagnostics_report_the_effective_typed_style_preset() {
     use amigo_npr_playground_plugin::state::{Settings, style_preset_id};
 
-    let settings = Settings::for_scene(false);
+    let settings = Settings::for_scene();
     assert_eq!(style_preset_id(settings.global), "comic-ink");
 
     let pencil = amigo_npr_playground_plugin::state::style_preset("Pencil Study")
@@ -525,7 +525,7 @@ fn surface_intent_controls_the_extracted_proxy_not_just_panel_metadata() {
     let render = NprPlaygroundRenderService::default();
     render.load_models(&root).unwrap();
 
-    let mut organic = Settings::for_scene(false);
+    let mut organic = Settings::for_scene();
     let cube = organic.objects.get_mut("cube").unwrap();
     cube.surface_intent = NprSurfaceIntent::Organic;
     cube.surface_mode = NprSurfaceMode::Polygonal;

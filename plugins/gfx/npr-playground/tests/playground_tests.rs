@@ -865,7 +865,7 @@ fn opening_a_draft_restores_its_model_bound_layer_stack() {
 fn model_browser_never_accumulates_objects_from_a_gallery_profile() {
     let state = Arc::new(NprPlaygroundState::default());
     *state.settings.lock().unwrap() =
-        amigo_npr_playground_plugin::state::Settings::empty_scene(true);
+        amigo_npr_playground_plugin::state::Settings::empty_scene();
     let service = NprPlaygroundService::new(state.clone());
     service
         .dispatch_intent(

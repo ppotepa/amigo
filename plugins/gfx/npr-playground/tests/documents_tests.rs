@@ -138,7 +138,7 @@ fn flat_layer_stack_round_trips_with_independent_mask() {
 #[test]
 fn scene_profile_round_trip_persists_variants_and_pinned_brush_library() {
     let mut profile =
-        NprSceneProfileDocument::from_settings(&Settings::empty_scene(true), None).unwrap();
+        NprSceneProfileDocument::from_settings(&Settings::empty_scene(), None).unwrap();
     profile.variants.insert(
         "ink-study".into(),
         NprLookPatch::from_resolved(&NprResolvedLook {
@@ -297,7 +297,7 @@ fn migration_visits_object_patches_without_rewriting_paint_medium() {
     let dir = tempfile::tempdir().unwrap();
     let path = dir.path().join("scene.yml");
     let mut value = serde_json::to_value(
-        NprSceneProfileDocument::from_settings(&Settings::empty_scene(true), None).unwrap(),
+        NprSceneProfileDocument::from_settings(&Settings::empty_scene(), None).unwrap(),
     )
     .unwrap();
     value["object_overrides"] = json!({"cube": {"look": split_document()["look"].clone()}});
@@ -405,7 +405,7 @@ fn layers_replace_parameters_by_identity_and_use_explicit_order() {
 #[test]
 fn sidecar_round_trip_includes_empty_scene_and_camera() {
     let mut profile =
-        NprSceneProfileDocument::from_settings(&Settings::empty_scene(true), None).unwrap();
+        NprSceneProfileDocument::from_settings(&Settings::empty_scene(), None).unwrap();
     profile.look = width(3.0);
     let encoded = serde_yaml::to_string(&profile).unwrap();
     assert_eq!(
@@ -423,7 +423,7 @@ fn sidecar_round_trip_includes_empty_scene_and_camera() {
 #[test]
 fn legacy_multi_model_profile_requires_an_explicit_drawing_studio_migration() {
     let mut profile =
-        NprSceneProfileDocument::from_settings(&Settings::empty_scene(false), None).unwrap();
+        NprSceneProfileDocument::from_settings(&Settings::empty_scene(), None).unwrap();
     profile.render_all_objects = true;
     assert!(
         profile
@@ -471,7 +471,7 @@ fn explicit_profile_migration_requires_a_source_model_and_keeps_a_durable_backup
     let directory = tempfile::tempdir().unwrap();
     let path = directory.path().join("legacy.npr-scene.yml");
     let backup = directory.path().join("legacy.backup.yml");
-    let mut settings = Settings::for_scene(false);
+    let mut settings = Settings::for_scene();
     let mut sphere = settings.objects["cube"].clone();
     sphere.model = "sphere".into();
     let mut profile = NprSceneProfileDocument::from_settings(&settings, None).unwrap();
@@ -513,7 +513,7 @@ fn save_all_prepares_every_payload_before_replacing_any_document() {
 
 #[test]
 fn drawing_studio_profile_rejects_multiple_sources_even_without_legacy_flag() {
-    let settings = Settings::for_scene(false);
+    let settings = Settings::for_scene();
     let mut profile = NprSceneProfileDocument::from_settings(&settings, None).unwrap();
     let mut sphere = profile.objects["cube"].clone();
     sphere.model = "sphere".into();

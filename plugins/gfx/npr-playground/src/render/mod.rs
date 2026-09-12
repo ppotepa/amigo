@@ -614,7 +614,7 @@ impl NprPlaygroundRenderService {
         Ok(())
     }
     pub fn rebuild_cube(&self, viewport: [u32; 2], seed: u64) {
-        let mut settings = Settings::for_scene(false);
+        let mut settings = Settings::for_scene();
         settings.seed = seed;
         self.rebuild(&settings, viewport)
             .expect("built-in cube is valid");
@@ -721,7 +721,7 @@ mod tests {
     #[test]
     fn paused_sketch_reuses_geometry_while_fade_advances() {
         let renderer = NprPlaygroundRenderService::default();
-        let mut settings = Settings::for_scene(false);
+        let mut settings = Settings::for_scene();
         settings.sketch_paused = true;
         renderer
             .rebuild_with_delta(&settings, [640, 360], 0.016)
@@ -743,7 +743,7 @@ mod tests {
     #[test]
     fn sketch_geometry_rebuilds_only_on_variant_epoch() {
         let renderer = NprPlaygroundRenderService::default();
-        let mut settings = Settings::for_scene(false);
+        let mut settings = Settings::for_scene();
         settings.sketch_paused = false;
         settings.motion.mode = StrokeMotionMode::RedrawContinuously;
         settings.motion.redraw_hz = 8.0;
@@ -766,7 +766,7 @@ mod tests {
     #[test]
     fn compositor_layer_edits_reuse_extracted_paths() {
         let renderer = NprPlaygroundRenderService::default();
-        let mut settings = Settings::for_scene(false);
+        let mut settings = Settings::for_scene();
         settings.sketch_paused = true;
         renderer.rebuild(&settings, [640, 360]).unwrap();
         let builds = renderer.stats()["packet_builds"];
@@ -790,7 +790,7 @@ mod tests {
     fn layer_diagnostics_report_the_extracted_source_and_contribution() {
         let renderer = NprPlaygroundRenderService::default();
         renderer
-            .rebuild(&Settings::for_scene(false), [512, 512])
+            .rebuild(&Settings::for_scene(), [512, 512])
             .unwrap();
         let contours = &renderer.layer_diagnostics()["contours"];
         assert!(contours.source_geometry > 0);

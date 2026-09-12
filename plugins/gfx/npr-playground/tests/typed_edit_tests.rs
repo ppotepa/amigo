@@ -18,7 +18,7 @@ fn edit(
 
 #[test]
 fn viewport_animation_tracks_visible_models_and_independent_sketch_clock() {
-    let mut settings = Settings::for_scene(false);
+    let mut settings = Settings::for_scene();
     settings.paused = true;
     settings.sketch_paused = true;
     assert!(!settings.needs_temporal_frames());
@@ -190,7 +190,7 @@ fn layer_reordering_blend_and_sparse_overrides_are_undoable_and_paper_is_scene_o
 
 #[test]
 fn sidecar_reload_retains_inheritance_and_rejects_unknown_style_fields() {
-    let mut settings = Settings::for_scene(true);
+    let mut settings = Settings::for_scene();
     settings
         .objects
         .get_mut("cube")

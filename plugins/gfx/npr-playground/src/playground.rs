@@ -899,7 +899,7 @@ impl NprPlaygroundService {
                         }
                         s.drafts.insert(draft.source_model.clone(), draft);
                     }
-                    let defaults = Settings::for_scene(false);
+                    let defaults = Settings::for_scene();
                     let template = if let Some(template) = defaults.objects.get(&model) {
                         template.clone()
                     } else {

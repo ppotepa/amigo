@@ -372,7 +372,7 @@ impl Settings {
                     && self.motion.mode == StrokeMotionMode::RedrawContinuously))
     }
 
-    pub fn for_scene(_gallery: bool) -> Self {
+    pub fn for_scene() -> Self {
         let objects = MODELS
             .iter()
             .take(1)
@@ -436,8 +436,8 @@ impl Settings {
 
     /// A scene-owned NPR workspace with no instantiated model. Catalog assets
     /// remain available, but no draw command is emitted until an asset is added.
-    pub fn empty_scene(gallery: bool) -> Self {
-        let mut settings = Self::for_scene(gallery);
+    pub fn empty_scene() -> Self {
+        let mut settings = Self::for_scene();
         settings.objects.clear();
         settings.selected.clear();
         settings
@@ -621,7 +621,7 @@ pub struct NprPlaygroundState {
 }
 impl Default for NprPlaygroundState {
     fn default() -> Self {
-        let s = Settings::for_scene(false);
+        let s = Settings::for_scene();
         Self {
             settings: Mutex::new(s.clone()),
             build_up: Mutex::new(1.0),
@@ -892,8 +892,8 @@ impl NprPlaygroundState {
         Ok(())
     }
 
-    pub fn configure_scene(&self, gallery: bool) {
-        let settings = Settings::for_scene(gallery);
+    pub fn configure_scene(&self) {
+        let settings = Settings::for_scene();
         *self.defaults.lock().unwrap() = settings.clone();
         *self.settings.lock().unwrap() = settings;
         *self.construction_authoring.lock().unwrap() = ConstructionAuthoringState::default();

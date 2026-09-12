@@ -270,7 +270,7 @@ pub fn resolve_look(
         layers: ordered.into_iter().map(|p| p.parameters).collect(),
     };
     layers.validate()?;
-    let mut validation = Settings::empty_scene(true);
+    let mut validation = Settings::empty_scene();
     validation.global = style;
     validation.style_layers = layers.clone();
     validation.validate()?;
@@ -332,7 +332,7 @@ impl NprSceneProfileDocument {
                     .into(),
             );
         }
-        let mut settings = Settings::empty_scene(self.render_all_objects);
+        let mut settings = Settings::empty_scene();
         settings.objects = self.objects.clone();
         settings.selected = settings.objects.keys().next().cloned().unwrap_or_default();
         settings.seed = self.seed;
