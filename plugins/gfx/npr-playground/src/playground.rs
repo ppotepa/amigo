@@ -98,9 +98,6 @@ pub enum NprPlaygroundIntent {
     OpenDraft {
         model: String,
     },
-    RemoveObject {
-        object: String,
-    },
     Undo,
     Redo,
     SaveAll,
@@ -950,13 +947,6 @@ impl NprPlaygroundService {
                     s.locked_layers.clear();
                     record = false;
                     event = Some("draft_opened");
-                }
-                NprPlaygroundIntent::RemoveObject { object } => {
-                    next.objects.remove(&object).ok_or("unknown object")?;
-                    if next.selected == object {
-                        next.selected = next.objects.keys().next().cloned().unwrap_or_default();
-                    }
-                    event = Some("selection_changed");
                 }
                 NprPlaygroundIntent::Undo => {
                     let entry = s.undo.last().cloned().ok_or("nothing to undo")?;
