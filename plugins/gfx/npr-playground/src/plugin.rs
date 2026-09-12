@@ -16,7 +16,21 @@ impl RuntimePlugin for NprPlaygroundPlugin {
     }
     fn register(&self, registry: &mut ServiceRegistry) -> amigo_core::AmigoResult<()> {
         registry.register(NprPlaygroundState::default())?;
+        registry.register(crate::playground::NprPlaygroundService::new(
+            registry.required::<NprPlaygroundState>()?,
+        ))?;
+        let playground = registry.required::<crate::playground::NprPlaygroundService>()?;
+        if let Some(host) = registry.resolve::<amigo_playground_api::PlaygroundHostService>() {
+            host.register(playground)
+                .map_err(amigo_core::AmigoError::Message)?;
+        }
         registry.register(NprPlaygroundRenderService::default())?;
+        registry
+            .required::<crate::playground::NprPlaygroundService>()?
+            .attach_runtime(
+                registry.required::<amigo_assets::AssetCatalog>()?,
+                registry.required::<NprPlaygroundRenderService>()?,
+            );
         registry.register(Lifecycle::default())?;
         if !registry.has::<amigo_editor_ingame::IngameEditorRuntimeApplyProviderRegistry>() {
             registry.register(
@@ -31,24 +45,15 @@ impl RuntimePlugin for NprPlaygroundPlugin {
         amigo_scene::register_scene_component_plugin_spec::<
             crate::scene::NprPlaygroundSceneComponentSpec,
         >(registry)?;
-        let state = registry.required::<NprPlaygroundState>()?;
-        registry
-            .required::<amigo_runtime_control::RuntimeControlService>()?
-            .register_provider(state.clone());
-        registry
-            .required::<amigo_panels::PresetService>()?
-            .register(state.clone());
-        registry
-            .required::<amigo_panels::PresetService>()?
-            .register(std::sync::Arc::new(
-                crate::state::look_presets::LookPresetProvider(state),
-            ));
-        let scene_handlers = registry.required::<amigo_scene::RuntimeSceneCommandHandlerRegistry>()?;
+        let scene_handlers =
+            registry.required::<amigo_scene::RuntimeSceneCommandHandlerRegistry>()?;
         amigo_scene::register_runtime_scene_command_handler(
             scene_handlers.as_ref(),
             crate::scene::NprPlaygroundSceneCommandHandler,
         );
-        if let Some(plugin_scene_handlers) = registry.resolve::<amigo_scene::ScenePluginCommandHandlerRegistry>() {
+        if let Some(plugin_scene_handlers) =
+            registry.resolve::<amigo_scene::ScenePluginCommandHandlerRegistry>()
+        {
             plugin_scene_handlers.register(
                 crate::scene::NPR_PLAYGROUND_SCENE_COMMAND_TYPE,
                 Arc::new(crate::scene::NprPlaygroundSceneCommandHandler),
@@ -74,12 +79,6 @@ impl RuntimePlugin for NprPlaygroundPlugin {
                         );
                         let mut active = lifecycle.scene.lock().unwrap();
                         if active.as_ref() != Some(&key) {
-                            if !state
-                                .apply_staged_authored_scene()
-                                .map_err(amigo_core::AmigoError::Message)?
-                            {
-                                state.configure_scene(doc.scene_id == "gallery");
-                            }
                             *lifecycle.zoom.lock().unwrap() = Default::default();
                             *lifecycle.mouse.lock().unwrap() = None;
                             if let Some(source) = mods.mod_by_id(&doc.source_mod) {
@@ -88,16 +87,33 @@ impl RuntimePlugin for NprPlaygroundPlugin {
                                         .required::<NprPlaygroundRenderService>()?
                                         .load_models(&source.root_path)
                                         .map_err(amigo_core::AmigoError::Message)?;
+                                    if let Some(assets) =
+                                        runtime.resolve::<amigo_assets::AssetCatalog>()
+                                    {
+                                        crate::asset_browser::register_models(
+                                            assets.as_ref(),
+                                            &source.root_path,
+                                        );
+                                    }
+                                    // Hydrate the authored sidecar during the scene activation
+                                    // frame. The companion lifecycle runs in PostUpdate, so
+                                    // waiting for its transport callback would expose the
+                                    // state's built-in defaults to a newly connected client.
+                                    let scene_path = source.root_path.join(&doc.relative_path);
+                                    let service = runtime
+                                        .required::<crate::playground::NprPlaygroundService>()?;
+                                    amigo_playground_api::PlaygroundProvider::open_scene(
+                                        service.as_ref(),
+                                        &source.root_path,
+                                        &scene_path,
+                                    )
+                                    .map_err(amigo_core::AmigoError::Message)?;
+                                    // The scene command remains useful to generic hydration,
+                                    // but the service now owns the authoritative sidecar load.
+                                    let _ = state.take_staged_authored_scene();
                                 }
                             }
                             *active = Some(key);
-                        } else {
-                            // Hydration and Update can occur in different
-                            // frames. A late command is still applied exactly
-                            // once, without resetting live metadata edits.
-                            state
-                                .apply_staged_authored_scene()
-                                .map_err(amigo_core::AmigoError::Message)?;
                         }
                     }
                 }
@@ -111,6 +127,9 @@ impl RuntimePlugin for NprPlaygroundPlugin {
             SystemPhase::PostUpdate,
             "npr_playground_camera",
             |runtime| {
+                runtime
+                    .required::<crate::playground::NprPlaygroundService>()?
+                    .advance_camera(amigo_session::host_delta_seconds(runtime));
                 if !runtime
                     .required::<amigo_session::SceneSessionService>()?
                     .snapshot()

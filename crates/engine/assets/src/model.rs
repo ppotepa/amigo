@@ -23,12 +23,23 @@ pub enum AssetSourceKind {
 }
 
 impl AssetSourceKind {
+    /// Stable machine identifier used by catalog and transport contracts.
     pub fn label(&self) -> String {
         match self {
             Self::Engine => "engine".to_owned(),
             Self::Mod(mod_id) => format!("mod:{mod_id}"),
             Self::FileSystemRoot(root) => format!("fs:{root}"),
             Self::Generated => "generated".to_owned(),
+        }
+    }
+
+    /// Human-readable source name for browsers and inspectors.
+    pub fn display_label(&self) -> String {
+        match self {
+            Self::Engine => "Engine assets".to_owned(),
+            Self::Mod(mod_id) => format!("Mod · {mod_id}"),
+            Self::FileSystemRoot(root) => format!("Folder · {root}"),
+            Self::Generated => "Generated assets".to_owned(),
         }
     }
 }

@@ -4,7 +4,7 @@ use amigo_runtime::{RuntimePlugin, ServiceRegistry};
 
 #[derive(Debug, Clone, Copy)]
 pub struct WgpuRenderBackend {
-    backends: wgpu::Backends,
+    pub(super) backends: wgpu::Backends,
 }
 
 impl Default for WgpuRenderBackend {

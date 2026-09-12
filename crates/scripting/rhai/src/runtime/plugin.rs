@@ -53,6 +53,9 @@ impl RuntimePlugin for RhaiScriptingPlugin {
         }
 
         let mut runtime = RhaiScriptRuntime::from_services(RhaiRuntimeServices::resolve(registry));
+        if let Some(host) = registry.resolve::<amigo_playground_api::PlaygroundHostService>() {
+            crate::plugin_bindings::register_playground_bindings(&mut runtime.engine,host);
+        }
         crate::bindings::panels::register(
             &mut runtime.engine,
             registry.resolve(),

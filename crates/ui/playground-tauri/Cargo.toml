@@ -1,0 +1,23 @@
+[package]
+name = "amigo-playground-tauri"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[dependencies]
+amigo-playground-native.workspace = true
+amigo-playground-api.workspace = true
+serde.workspace = true
+tauri = { version = "2", features = [] }
+serde_json.workspace = true
+rfd = "0.15"
+
+[target.'cfg(windows)'.dependencies]
+webview2-com = "0.38"
+windows = { version = "0.61", features = ["Win32_Foundation"] }
+windows-native = { package = "windows", version = "0.62", features = ["Win32_Foundation"] }
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }

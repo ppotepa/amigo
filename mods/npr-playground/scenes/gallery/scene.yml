@@ -2,18 +2,12 @@ version: 1
 scene:
   id: gallery
   label: NPR Gallery
-panels:
-  - id: npr
-    layout: ../../ui/npr.panel.yml
-    host: both
+playgrounds:
+  - id: npr-playground
     auto_open: true
 entities:
   - id: npr-settings
     name: npr-settings
     components:
       - type: amigo.gfx.npr-playground.NprSettings
-        gallery: true
-        selected: cube
-        seed: 5134274
-        camera:
-          distance: 14.0
+        profile: npr.scene.yml

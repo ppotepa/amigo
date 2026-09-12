@@ -114,6 +114,10 @@ pub fn run_hosted_with_options(options: BootstrapOptions) -> AmigoResult<()> {
     let (session, summary) = bootstrap_session_with_options(options)?.into_parts();
 
     if interactive {
+        amigo_runtime_bundles::enable_playground_companions(
+            session.runtime(),
+            std::env::current_exe().map_err(|e| amigo_core::AmigoError::Message(e.to_string()))?,
+        )?;
         amigo_runtime_bundles::enable_external_panels(
             session.runtime(),
             std::env::current_exe().map_err(|e| amigo_core::AmigoError::Message(e.to_string()))?,

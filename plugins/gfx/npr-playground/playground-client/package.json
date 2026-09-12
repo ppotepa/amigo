@@ -1,0 +1,9 @@
+{
+  "name": "npr-playground-client",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": { "build": "vite build", "check": "svelte-check --tsconfig ./tsconfig.json", "test": "vitest run" },
+  "dependencies": { "svelte": "^5.0.0", "@tauri-apps/api": "^2.0.0" },
+  "devDependencies": { "@sveltejs/vite-plugin-svelte": "^5.0.0", "vite": "^6.0.0", "typescript": "^5.0.0", "svelte-check": "^4.0.0", "vitest": "^3.0.0" }
+}

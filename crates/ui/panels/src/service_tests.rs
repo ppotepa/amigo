@@ -292,6 +292,7 @@ fn embedded_panel_scroll_viewport_fills_the_available_window_height() {
         document: layout("value"),
         preset_names: vec![],
         values: Default::default(),
+        asset_browser: None,
     };
     let overlay = crate::overlay(
         &snapshot,
@@ -339,6 +340,7 @@ fn embedded_option_cards_resolve_to_their_exact_authored_value() {
         document,
         preset_names: vec![],
         values: Default::default(),
+        asset_browser: None,
     };
     let card = crate::choice_id("test", "style", "Pencil Study");
     assert_eq!(
@@ -386,6 +388,7 @@ fn option_set_without_choice_presentation_remains_compact() {
         document,
         preset_names: vec![],
         values: Default::default(),
+        asset_browser: None,
     };
     let overlay = crate::overlay(
         &snapshot,
@@ -414,6 +417,7 @@ fn embedded_group_box_uses_authored_default_and_local_expansion_state() {
         document,
         preset_names: vec![],
         values: Default::default(),
+        asset_browser: None,
     };
     let collapsed = crate::overlay(
         &snapshot,
@@ -449,6 +453,7 @@ fn embedded_dropdown_expands_and_resolves_the_clicked_option() {
         document,
         preset_names: vec![],
         values: Default::default(),
+        asset_browser: None,
     };
     let overlay = crate::overlay(
         &snapshot,
@@ -548,6 +553,241 @@ impl RuntimeControlProvider for Provider {
         Ok(())
     }
 }
+
+struct DynamicOptionsProvider {
+    selected: Mutex<String>,
+    options: String,
+}
+
+impl RuntimeControlProvider for DynamicOptionsProvider {
+    fn provider_id(&self) -> &'static str {
+        "dynamic-options"
+    }
+
+    fn rebuild_registry(
+        &self,
+        registry: &mut RuntimeControlRegistry,
+    ) -> Result<(), RuntimeControlError> {
+        for (path, writable) in [("selected", true), ("object_ids", false)] {
+            registry.register_property(RuntimeControlProperty {
+                console_path: path.into(),
+                target_path: "dynamic-options".into(),
+                component: None,
+                property_path: path.into(),
+                value_type: ControlValueType::String,
+                range: None,
+                writable,
+                readable: true,
+                animatable: false,
+                source_file: None,
+                source_pointer: None,
+                provider_id: "dynamic-options".into(),
+                description: None,
+            });
+        }
+        Ok(())
+    }
+
+    fn get(&self, property: &RuntimeControlProperty) -> Result<ControlValue, RuntimeControlError> {
+        Ok(match property.console_path.as_str() {
+            "selected" => ControlValue::String(self.selected.lock().unwrap().clone()),
+            "object_ids" => ControlValue::String(self.options.clone()),
+            _ => {
+                return Err(RuntimeControlError::UnknownProperty {
+                    path: property.console_path.clone(),
+                })
+            }
+        })
+    }
+
+    fn set(
+        &self,
+        property: &RuntimeControlProperty,
+        value: ControlValue,
+    ) -> Result<(), RuntimeControlError> {
+        if property.console_path != "selected" {
+            return Err(RuntimeControlError::NotWritable {
+                path: property.console_path.clone(),
+            });
+        }
+        *self.selected.lock().unwrap() = value
+            .as_string()
+            .ok_or_else(|| RuntimeControlError::TypeMismatch {
+                path: property.console_path.clone(),
+                expected: "string".into(),
+                actual: format!("{:?}", value.value_type()),
+            })?
+            .to_owned();
+        Ok(())
+    }
+}
+
+#[derive(Default)]
+struct AssetIntentRecorder(Mutex<Vec<PanelAssetIntent>>);
+
+impl PanelAssetIntentHandler for AssetIntentRecorder {
+    fn handler_id(&self) -> &'static str {
+        "asset-intent-recorder"
+    }
+
+    fn handle_asset_intent(&self, intent: &PanelAssetIntent) -> Option<Result<(), String>> {
+        if intent.usage != "scene.add_model" {
+            return None;
+        }
+        self.0.lock().unwrap().push(intent.clone());
+        Some(Ok(()))
+    }
+}
+
+#[test]
+fn asset_browser_snapshot_prefers_the_authored_source_when_available() {
+    let catalog = amigo_assets::AssetCatalog::default();
+    for (source_name, key) in [
+        ("core", "core/models/console-mono"),
+        ("npr-playground", "npr-playground/models/cube"),
+    ] {
+        catalog.register_manifest(amigo_assets::AssetManifest {
+            key: amigo_assets::AssetKey::new(key),
+            source: amigo_assets::AssetSourceKind::Mod(source_name.into()),
+            tags: vec!["mesh-3d".into()],
+        });
+    }
+    let browser = PanelAssetBrowserDocument {
+        preferred_source: Some("mod:npr-playground".into()),
+        add_usage: None,
+        replace_usage: None,
+    };
+    let snapshot = asset_browser_snapshot(&catalog, &browser);
+    assert_eq!(
+        snapshot.selected_source.as_deref(),
+        Some("mod:npr-playground")
+    );
+}
+
+#[test]
+fn asset_intent_requires_current_catalog_revision_and_declared_usage() {
+    let service = PanelService::default();
+    let mut document = layout("value");
+    document.asset_browser = Some(PanelAssetBrowserDocument {
+        preferred_source: None,
+        add_usage: Some("scene.add_model".into()),
+        replace_usage: None,
+    });
+    {
+        let mut state = service.state.lock().unwrap();
+        state.generation = 7;
+        state.panels.insert(
+            "test".into(),
+            Panel {
+                failure: None,
+                path: PathBuf::new(),
+                source: String::new(),
+                document,
+                revision: 3,
+                error: None,
+                host: PanelHost::External,
+                connection: None,
+            },
+        );
+    }
+    let catalog = amigo_assets::AssetCatalog::default();
+    let key = amigo_assets::AssetKey::new("test/models/cube");
+    let source = amigo_assets::AssetSourceKind::Mod("test".into());
+    catalog.register_manifest(amigo_assets::AssetManifest {
+        key: key.clone(),
+        source: source.clone(),
+        tags: vec!["mesh-3d".into()],
+    });
+    catalog.mark_prepared(amigo_assets::PreparedAsset {
+        key: key.clone(),
+        source: source.clone(),
+        resolved_path: PathBuf::new(),
+        byte_len: 0,
+        kind: amigo_assets::PreparedAssetKind::Mesh3d,
+        label: None,
+        format: None,
+        metadata: Default::default(),
+    });
+    let source_snapshot = catalog
+        .asset_source_snapshot(&amigo_assets::AssetSourceId::from_kind(&source))
+        .unwrap();
+    let recorder = Arc::new(AssetIntentRecorder::default());
+    service.register_asset_intent_handler(recorder.clone());
+    let intent = PanelAssetIntent {
+        panel_id: "test".into(),
+        generation: 7,
+        revision: 3,
+        source_id: "mod:test".into(),
+        source_revision: source_snapshot.revision,
+        asset_id: key.as_str().into(),
+        usage: "scene.add_model".into(),
+    };
+    service
+        .apply_asset_intent(intent.clone(), &catalog)
+        .unwrap();
+    assert_eq!(recorder.0.lock().unwrap().as_slice(), &[intent.clone()]);
+
+    let stale = PanelAssetIntent {
+        source_revision: intent.source_revision + 1,
+        ..intent
+    };
+    assert!(service.apply_asset_intent(stale, &catalog).is_err());
+}
+
+#[test]
+fn refreshable_asset_source_requeues_entries_without_blocking_the_panel() {
+    let catalog = amigo_assets::AssetCatalog::default();
+    let key = amigo_assets::AssetKey::new("imports/study-head");
+    let source = amigo_assets::AssetSourceKind::FileSystemRoot("imports".into());
+    catalog.register_manifest(amigo_assets::AssetManifest {
+        key: key.clone(),
+        source: source.clone(),
+        tags: vec!["mesh-3d".into()],
+    });
+    catalog.mark_prepared(amigo_assets::PreparedAsset {
+        key,
+        source: source.clone(),
+        resolved_path: PathBuf::new(),
+        byte_len: 0,
+        kind: amigo_assets::PreparedAssetKind::Mesh3d,
+        label: None,
+        format: None,
+        metadata: Default::default(),
+    });
+    let source_id = amigo_assets::AssetSourceId::from_kind(&source);
+    let before = catalog.asset_source_snapshot(&source_id).unwrap();
+    refresh_asset_source_from_snapshot(7, 3, 7, 3, source_id.as_str(), before.revision, &catalog)
+        .unwrap();
+    let after = catalog.asset_source_snapshot(&source_id).unwrap();
+    assert!(matches!(
+        after.entries[0].state,
+        amigo_assets::AssetBrowserEntryState::Loading
+    ));
+}
+
+#[test]
+fn asset_browser_snapshot_is_opt_in_per_panel_document() {
+    let controls = controls();
+    let presets = crate::PresetService::default();
+    let assets = amigo_assets::AssetCatalog::default();
+    let document = layout("value");
+    assert!(
+        snapshot_panel(1, 1, &document, &controls, &presets, Some(&assets))
+            .unwrap()
+            .asset_browser
+            .is_none()
+    );
+
+    let mut document = document;
+    document.asset_browser = Some(PanelAssetBrowserDocument::default());
+    assert!(
+        snapshot_panel(1, 1, &document, &controls, &presets, Some(&assets))
+            .unwrap()
+            .asset_browser
+            .is_some()
+    );
+}
+
 fn layout(binding: &str) -> PanelDocument {
     serde_yaml::from_str(&format!("id: test\ntitle: Test\nroot:\n  type: slider\n  id: edit\n  min: 0.0\n  max: 1.0\n  value_bind: {binding}\n")).unwrap()
 }
@@ -555,6 +795,49 @@ fn controls() -> RuntimeControlService {
     let s = RuntimeControlService::default();
     s.register_provider(Arc::new(Provider(Mutex::new(0.5))));
     s
+}
+
+#[test]
+fn dynamic_option_binding_accepts_runtime_instances_and_rejects_unknown_values() {
+    let controls = RuntimeControlService::default();
+    controls.register_provider(Arc::new(DynamicOptionsProvider {
+        selected: Mutex::new("cube".into()),
+        options: "cube\ncube-7".into(),
+    }));
+    let doc: PanelDocument = serde_yaml::from_str(
+        "id: test\ntitle: Test\nroot:\n  type: option-set\n  id: selected\n  value_bind: selected\n  options_bind: object_ids\n  options: [cube]\n",
+    )
+    .unwrap();
+    let events = ScriptEventQueue::default();
+
+    apply_edit(
+        &doc,
+        1,
+        1,
+        1,
+        1,
+        "selected",
+        ControlValue::String("cube-7".into()),
+        &controls,
+        &events,
+    )
+    .unwrap();
+    assert_eq!(
+        controls.get("selected").unwrap(),
+        ControlValue::String("cube-7".into())
+    );
+    assert!(apply_edit(
+        &doc,
+        1,
+        1,
+        1,
+        1,
+        "selected",
+        ControlValue::String("missing".into()),
+        &controls,
+        &events,
+    )
+    .is_err());
 }
 
 #[test]

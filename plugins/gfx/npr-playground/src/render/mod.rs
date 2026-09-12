@@ -2,7 +2,11 @@ use crate::state::{ObjectSettings, Settings, style_preset_id};
 use amigo_render_api::{NprBackgroundCommand, NprDrawCommand};
 use amigo_render_npr::*;
 use glam::{Mat4, Quat, Vec3};
-use std::{collections::BTreeMap, path::Path, sync::Mutex};
+use std::{
+    collections::BTreeMap,
+    path::Path,
+    sync::{Arc, Mutex},
+};
 pub const NPR_PLAYGROUND_EXTRACTOR_ID: &str = "amigo.gfx.npr-playground.extractor";
 
 #[derive(Clone)]
@@ -12,11 +16,57 @@ struct SourceCommand {
     command: NprDrawCommand,
 }
 
+#[derive(Clone, PartialEq)]
+struct ObjectPacketKey {
+    object: ObjectSettings,
+    camera: PerspectiveCamera,
+    viewport: [u32; 2],
+    style: ComicInk,
+    layers: LayerGeometryKey,
+    seed: u64,
+    epoch: u32,
+    strength: f32,
+    debug: NprDebugView,
+    highlighted: bool,
+}
+
+/// Properties that alter extracted packet geometry are kept separate from
+/// compositor-only layer state. Changing opacity, colour, blend, masks,
+/// targets or group presentation can therefore reuse the expensive packet.
+#[derive(Clone, PartialEq)]
+struct LayerGeometryKey(
+    Vec<(
+        String,
+        NprGeometrySource,
+        Option<StrokeTool>,
+        Option<NprPaintMedium>,
+        Option<BrushInstance>,
+    )>,
+);
+
+fn layer_geometry_key(layers: &NprStyleLayers) -> LayerGeometryKey {
+    LayerGeometryKey(
+        layers
+            .layers
+            .iter()
+            .map(|layer| {
+                (
+                    layer.id.clone(),
+                    layer.source,
+                    layer.tool,
+                    layer.paint,
+                    layer.brush.clone(),
+                )
+            })
+            .collect(),
+    )
+}
+
 /// A gallery contains several independent NPR packets.  Individual packets
 /// already have a CPU payload ceiling, but without a scene-level cap their
 /// combined upload could still make the backend silently skip late strokes.
 /// This budget deliberately leaves headroom below the WGPU upload ceiling.
-const MAX_GALLERY_STROKE_DATA_BYTES: usize = 48 * 1024 * 1024;
+const MAX_DRAWING_STROKE_DATA_BYTES: usize = 48 * 1024 * 1024;
 
 /// A stable source-surface result selected from the current NPR scene.
 ///
@@ -32,18 +82,21 @@ pub struct NprSurfacePick {
 }
 
 pub struct NprPlaygroundRenderService {
-    geometry: Mutex<BTreeMap<String, NprPreparedSurfaceVariants>>,
+    geometry: Arc<Mutex<BTreeMap<String, NprPreparedSurfaceVariants>>>,
     source: Mutex<Vec<SourceCommand>>,
+    packet_keys: Mutex<BTreeMap<String, ObjectPacketKey>>,
+    packet_builds: std::sync::atomic::AtomicU64,
     output: Mutex<(Vec<NprDrawCommand>, Option<NprBackgroundCommand>)>,
     last_input: Mutex<Option<(Settings, [u32; 2])>>,
     temporal: Mutex<DrawingHistory>,
     variants: Mutex<StrokeVariantClock>,
     lod: Mutex<BTreeMap<String, HatchLodState>>,
+    layer_diagnostics: Mutex<BTreeMap<String, NprLayerDiagnostics>>,
 }
 impl Default for NprPlaygroundRenderService {
     fn default() -> Self {
         Self {
-            geometry: Mutex::new(
+            geometry: Arc::new(Mutex::new(
                 [
                     ("cube", NprGeometry::canonical_cube()),
                     ("wedge", NprGeometry::wedge()),
@@ -53,23 +106,50 @@ impl Default for NprPlaygroundRenderService {
                 .into_iter()
                 .map(|(name, g)| (name.into(), NprPreparedSurfaceVariants::new(g)))
                 .collect(),
-            ),
+            )),
             source: Mutex::new(vec![]),
+            packet_keys: Mutex::default(),
+            packet_builds: std::sync::atomic::AtomicU64::new(0),
             output: Mutex::new((vec![], None)),
             last_input: Mutex::new(None),
             temporal: Mutex::new(DrawingHistory::default()),
             variants: Mutex::new(StrokeVariantClock::default()),
             lod: Mutex::new(BTreeMap::new()),
+            layer_diagnostics: Mutex::default(),
         }
     }
 }
 impl NprPlaygroundRenderService {
+    /// Immutable surfaces and their revision caches are shared; every camera
+    /// retains independent packet, LOD, variant and fade state.
+    pub fn fork_view(&self) -> Self {
+        Self {
+            geometry: self.geometry.clone(),
+            ..Self::default()
+        }
+    }
+    pub fn load_model(&self, id: &str, path: &Path) -> Result<(), String> {
+        if self.geometry.lock().unwrap().contains_key(id) {
+            return Ok(());
+        }
+        let mesh = amigo_3d_mesh::load_gltf_geometry(path)?;
+        let geometry = NprGeometry::from_indexed(&mesh.positions, &mesh.indices)?;
+        self.geometry
+            .lock()
+            .unwrap()
+            .insert(id.into(), NprPreparedSurfaceVariants::new(geometry));
+        Ok(())
+    }
     pub fn clear(&self) {
         *self.last_input.lock().unwrap() = None;
         self.source.lock().unwrap().clear();
+        self.packet_keys.lock().unwrap().clear();
+        self.packet_builds
+            .store(0, std::sync::atomic::Ordering::Relaxed);
         self.temporal.lock().unwrap().clear();
         self.variants.lock().unwrap().clear();
         self.lod.lock().unwrap().clear();
+        self.layer_diagnostics.lock().unwrap().clear();
         *self.output.lock().unwrap() = (vec![], None);
     }
     pub fn load_models(&self, root: &Path) -> Result<(), String> {
@@ -97,9 +177,26 @@ impl NprPlaygroundRenderService {
     pub fn commands(&self) -> Vec<NprDrawCommand> {
         self.output.lock().unwrap().0.clone()
     }
+    pub fn layer_diagnostics(&self) -> BTreeMap<String, NprLayerDiagnostics> {
+        self.layer_diagnostics.lock().unwrap().clone()
+    }
+    /// Borrow the prepared view for synchronous backend submission without
+    /// cloning its stroke/vertex packets. The callback must not reenter us.
+    pub fn with_commands<T>(
+        &self,
+        read: impl FnOnce(&[NprDrawCommand], Option<NprBackgroundCommand>) -> T,
+    ) -> T {
+        let output = self.output.lock().unwrap();
+        read(&output.0, output.1)
+    }
     pub fn stats(&self) -> BTreeMap<String, u64> {
         let output = self.output.lock().unwrap();
         let mut stats = BTreeMap::new();
+        stats.insert(
+            "packet_builds".into(),
+            self.packet_builds
+                .load(std::sync::atomic::Ordering::Relaxed),
+        );
         for command in &output.0 {
             let s = &command.packet.stats;
             for (key, value) in [
@@ -193,9 +290,7 @@ impl NprPlaygroundRenderService {
         settings
             .objects
             .iter()
-            .filter(|(id, object)| {
-                object.visible && (settings.gallery || **id == settings.selected)
-            })
+            .filter(|(id, object)| object.visible && **id == settings.selected)
             .filter_map(|(id, object)| {
                 let transform = object_transform(object);
                 let inverse = transform.inverse();
@@ -249,23 +344,16 @@ impl NprPlaygroundRenderService {
             self.clear();
             return Ok(());
         }
-        // A living sketch owns a time-driven gesture seed.  It must rebuild
-        // even when camera and authored settings are unchanged; otherwise the
-        // temporal clock would be correct in isolation but never become visible
-        // in a cached render packet.  The interactive-quality path can later
-        // reduce this rebuild cost without changing this contract.
-        let continuous_redraw = apply_temporal
-            && delta_seconds > 0.0
-            && settings.motion.mode == StrokeMotionMode::RedrawContinuously;
-        let input_changed = continuous_redraw
-            || !self
-                .last_input
-                .lock()
-                .unwrap()
-                .as_ref()
-                .is_some_and(|(last, size)| last == settings && *size == viewport);
+        let input_changed = !self
+            .last_input
+            .lock()
+            .unwrap()
+            .as_ref()
+            .is_some_and(|(last, size)| last == settings && *size == viewport);
         if input_changed {
             settings.validate()?;
+        }
+        {
             let yaw = settings.camera_yaw.to_radians();
             let pitch = settings.camera_pitch.to_radians();
             let position = settings.camera_target
@@ -288,12 +376,16 @@ impl NprPlaygroundRenderService {
                 "StrokeIds" => NprDebugView::StrokeIds,
                 _ => NprDebugView::Final,
             };
-            let mut cache = self.geometry.lock().unwrap();
             let mut lod = self.lod.lock().unwrap();
             let mut variants = self.variants.lock().unwrap();
+            let mut packet_keys = self.packet_keys.lock().unwrap();
+            let mut old_source: BTreeMap<_, _> = std::mem::take(&mut *self.source.lock().unwrap())
+                .into_iter()
+                .map(|entry| (entry.object_id.clone(), entry))
+                .collect();
             let mut source = Vec::new();
             for (id, object) in &settings.objects {
-                if !object.visible || (!settings.gallery && *id != settings.selected) {
+                if !object.visible || *id != settings.selected {
                     continue;
                 }
                 let mut style = object.effective_style(settings.global);
@@ -304,10 +396,12 @@ impl NprPlaygroundRenderService {
                     // resolved here, before the neutral packet is built.
                     style.smooth_draw_creases = false;
                 }
+                let mut cache = self.geometry.lock().unwrap();
                 let prepared_variants = cache
                     .get_mut(&object.model)
                     .ok_or_else(|| format!("model {} is not prepared", object.model))?;
-                let source_geometry = prepared_variants.source().geometry();
+                let source_surface = prepared_variants.source_shared();
+                let source_geometry = source_surface.geometry();
                 let source_vertices = source_geometry.vertices.len();
                 let source_triangles = source_geometry.triangles.len();
                 let rotation = object.rotation.map(f32::to_radians);
@@ -327,9 +421,10 @@ impl NprPlaygroundRenderService {
                 let prepared = if style.surface_mode == NprSurfaceMode::Smooth {
                     prepared_variants.smooth_proxy(proxy_policy)
                 } else {
-                    Ok(prepared_variants.source())
+                    Ok(source_surface.clone())
                 }
                 .map_err(|error| format!("model {} smooth proxy: {error}", object.model))?;
+                drop(cache);
                 let world_geometry = prepared.geometry().transformed(transform);
                 // NPR source identities live in model space. Transforming the
                 // camera and directional light into that space produces the
@@ -368,7 +463,7 @@ impl NprPlaygroundRenderService {
                 let variant_epoch = variants.advance(
                     temporal_scope,
                     &projected_motion_anchors(&world_geometry, world_camera, viewport),
-                    delta_seconds,
+                    if apply_temporal { delta_seconds } else { 0.0 },
                     motion,
                 );
                 let variant_epoch = object.gesture_variant.wrapping_add(variant_epoch);
@@ -382,8 +477,32 @@ impl NprPlaygroundRenderService {
                     HatchLodPolicy::default(),
                 );
                 style.hatching_spacing *= decision.spacing_multiplier;
+                let layers = object.effective_layers(&settings.style_layers).clone();
+                let highlighted = false;
+                let key = ObjectPacketKey {
+                    object: object.clone(),
+                    camera,
+                    viewport,
+                    style,
+                    layers: layer_geometry_key(&layers),
+                    seed: settings.seed,
+                    epoch: variant_epoch,
+                    strength: variant_strength,
+                    debug,
+                    highlighted,
+                };
+                if packet_keys.get(id) == Some(&key) {
+                    if let Some(mut entry) = old_source.remove(id) {
+                        // Refresh compositor semantics while retaining the
+                        // extracted packet and its tessellated paths.
+                        entry.command.layers = layers;
+                        source.push(entry);
+                        continue;
+                    }
+                }
+                let extraction_started = std::time::Instant::now();
                 let mut packet = build_packet_for_surface(
-                    prepared,
+                    &prepared,
                     camera,
                     viewport,
                     style,
@@ -400,7 +519,7 @@ impl NprPlaygroundRenderService {
                 packet.stats.surface_proxy_triangles = prepared.geometry().triangles.len();
                 packet.stats.hatching_lod_tier = decision.tier;
                 packet.stats.gesture_variant_epoch = variant_epoch;
-                if settings.gallery && settings.highlight_selected && *id == settings.selected {
+                if highlighted {
                     packet.mark_selection(
                         prepared.geometry(),
                         camera,
@@ -410,12 +529,12 @@ impl NprPlaygroundRenderService {
                 let construction_marks = object
                     .construction_marks
                     .iter()
-                    .map(|mark| mark.resolve(prepared_variants.source()))
+                    .map(|mark| mark.resolve(&source_surface))
                     .collect::<Result<Vec<_>, _>>()
                     .map_err(|error| format!("object {id} construction marks: {error}"))?;
                 append_construction_marks(
                     &mut packet,
-                    prepared_variants.source(),
+                    &source_surface,
                     camera,
                     viewport,
                     style,
@@ -423,16 +542,33 @@ impl NprPlaygroundRenderService {
                     &construction_marks,
                 )
                 .map_err(|error| format!("object {id} construction marks: {error}"))?;
-                let layers = object.effective_layers(&settings.style_layers).clone();
-                layers.apply_tools(&mut packet, style);
-                layers.apply_paint_media(&mut packet);
+                let extraction_micros = extraction_started.elapsed().as_micros() as u64;
+                let tessellation_started = std::time::Instant::now();
+                let source_packet = packet.clone();
+                layers
+                    .validate_brushes(&settings.brushes)
+                    .map_err(|error| format!("object {id} brush: {error}"))?;
+                layers
+                    .apply_tools_with_library(&mut packet, style, Some(&settings.brushes))
+                    .map_err(|error| format!("object {id} brush: {error}"))?;
+                *self.layer_diagnostics.lock().unwrap() = layers.diagnostics(
+                    &source_packet,
+                    &packet,
+                    extraction_micros,
+                    tessellation_started.elapsed().as_micros() as u64,
+                );
                 source.push(SourceCommand {
                     object_id: id.clone(),
                     temporal_scope,
                     command: NprDrawCommand::with_preset_and_layers(packet, preset, layers)
+                        .with_object_id(id.clone())
                         .with_material_base_color(object.material_base_color.to_array()),
                 });
+                packet_keys.insert(id.clone(), key);
+                self.packet_builds
+                    .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
             }
+            packet_keys.retain(|id, _| source.iter().any(|entry| &entry.object_id == id));
             *self.source.lock().unwrap() = source;
             *self.last_input.lock().unwrap() = Some((settings.clone(), viewport));
         }
@@ -461,11 +597,10 @@ impl NprPlaygroundRenderService {
         } else {
             source
         };
-        let commands =
-            retain_gallery_strokes_under_budget(commands, settings.gallery, &settings.selected)
-                .into_iter()
-                .map(|entry| entry.command)
-                .collect();
+        let commands = retain_strokes_under_budget(commands, &settings.selected)
+            .into_iter()
+            .map(|entry| entry.command)
+            .collect();
         *self.output.lock().unwrap() = (
             commands,
             Some(NprBackgroundCommand {
@@ -485,24 +620,15 @@ impl NprPlaygroundRenderService {
     }
 }
 
-fn retain_gallery_strokes_under_budget(
-    commands: Vec<SourceCommand>,
-    gallery: bool,
-    selected: &str,
-) -> Vec<SourceCommand> {
-    retain_gallery_strokes_with_budget(commands, gallery, selected, MAX_GALLERY_STROKE_DATA_BYTES)
+fn retain_strokes_under_budget(commands: Vec<SourceCommand>, selected: &str) -> Vec<SourceCommand> {
+    retain_strokes_with_budget(commands, selected, MAX_DRAWING_STROKE_DATA_BYTES)
 }
 
-fn retain_gallery_strokes_with_budget(
+fn retain_strokes_with_budget(
     mut commands: Vec<SourceCommand>,
-    gallery: bool,
     selected: &str,
     byte_budget: usize,
 ) -> Vec<SourceCommand> {
-    if !gallery {
-        return commands;
-    }
-
     // The selected model is the active inspection target. Remaining ties are
     // object-id ordered, which keeps the resulting packet deterministic.
     commands.sort_by(|left, right| {
@@ -513,6 +639,11 @@ fn retain_gallery_strokes_with_budget(
     let mut remaining = byte_budget;
     for entry in &mut commands {
         let packet = &mut entry.command.packet;
+        let bytes: usize = packet.strokes.iter().map(gallery_stroke_data_bytes).sum();
+        if bytes <= remaining {
+            remaining -= bytes;
+            continue;
+        }
         let mut retained = Vec::with_capacity(packet.strokes.len());
         let mut rejected = 0usize;
         let mut rejected_tone = 0usize;
@@ -586,6 +717,86 @@ mod tests {
     use amigo_render_npr::{NprDebugView, NprRenderPacket, NprRenderStats, StrokeVertex};
     use glam::{Vec2, Vec4};
 
+    #[test]
+    fn paused_sketch_reuses_geometry_while_fade_advances() {
+        let renderer = NprPlaygroundRenderService::default();
+        let mut settings = Settings::for_scene(false);
+        settings.sketch_paused = true;
+        renderer
+            .rebuild_with_delta(&settings, [640, 360], 0.016)
+            .unwrap();
+        let builds = renderer.stats()["packet_builds"];
+        for _ in 0..20 {
+            renderer
+                .rebuild_with_delta(&settings, [640, 360], 0.016)
+                .unwrap();
+        }
+        assert_eq!(renderer.stats()["packet_builds"], builds);
+        settings.camera_yaw += 1.0;
+        renderer
+            .rebuild_with_delta(&settings, [640, 360], 0.016)
+            .unwrap();
+        assert_eq!(renderer.stats()["packet_builds"], builds + 1);
+    }
+
+    #[test]
+    fn sketch_geometry_rebuilds_only_on_variant_epoch() {
+        let renderer = NprPlaygroundRenderService::default();
+        let mut settings = Settings::for_scene(false);
+        settings.sketch_paused = false;
+        settings.motion.mode = StrokeMotionMode::RedrawContinuously;
+        settings.motion.redraw_hz = 8.0;
+        renderer
+            .rebuild_with_delta(&settings, [640, 360], 0.01)
+            .unwrap();
+        let builds = renderer.stats()["packet_builds"];
+        for _ in 0..10 {
+            renderer
+                .rebuild_with_delta(&settings, [640, 360], 0.01)
+                .unwrap();
+        }
+        assert_eq!(renderer.stats()["packet_builds"], builds);
+        renderer
+            .rebuild_with_delta(&settings, [640, 360], 0.03)
+            .unwrap();
+        assert_eq!(renderer.stats()["packet_builds"], builds + 1);
+    }
+
+    #[test]
+    fn compositor_layer_edits_reuse_extracted_paths() {
+        let renderer = NprPlaygroundRenderService::default();
+        let mut settings = Settings::for_scene(false);
+        settings.sketch_paused = true;
+        renderer.rebuild(&settings, [640, 360]).unwrap();
+        let builds = renderer.stats()["packet_builds"];
+        let layer = settings.style_layers.layer_mut("contours").unwrap();
+        layer.opacity = 0.37;
+        layer.blend = NprBlendMode::Multiply;
+        layer.color_source = NprLayerColorSource::Constant(Vec4::new(0.2, 0.4, 0.8, 1.0));
+        renderer.rebuild(&settings, [640, 360]).unwrap();
+        assert_eq!(renderer.stats()["packet_builds"], builds);
+        assert_eq!(
+            renderer.commands()[0]
+                .layers
+                .layer("contours")
+                .unwrap()
+                .opacity,
+            0.37
+        );
+    }
+
+    #[test]
+    fn layer_diagnostics_report_the_extracted_source_and_contribution() {
+        let renderer = NprPlaygroundRenderService::default();
+        renderer
+            .rebuild(&Settings::for_scene(false), [512, 512])
+            .unwrap();
+        let contours = &renderer.layer_diagnostics()["contours"];
+        assert!(contours.source_geometry > 0);
+        assert!(contours.generated_marks > 0);
+        assert!(contours.extraction_micros > 0);
+    }
+
     fn stroke(role: StrokeRole, vertices: usize) -> TessellatedStroke {
         TessellatedStroke {
             vertices: vec![
@@ -635,12 +846,11 @@ mod tests {
         let other_tone = stroke(StrokeRole::Tone, 1);
         let budget = gallery_stroke_data_bytes(&selected_feature)
             + gallery_stroke_data_bytes(&selected_tone);
-        let retained = retain_gallery_strokes_with_budget(
+        let retained = retain_strokes_with_budget(
             vec![
                 command("other", vec![other_tone]),
                 command("selected", vec![selected_feature, selected_tone]),
             ],
-            true,
             "selected",
             budget,
         );
@@ -654,9 +864,8 @@ mod tests {
     fn gallery_budget_never_replaces_a_rejected_feature_with_tone() {
         let feature = stroke(StrokeRole::Feature, 2);
         let tone = stroke(StrokeRole::Tone, 1);
-        let retained = retain_gallery_strokes_with_budget(
+        let retained = retain_strokes_with_budget(
             vec![command("selected", vec![feature, tone])],
-            true,
             "selected",
             gallery_stroke_data_bytes(&stroke(StrokeRole::Tone, 1)),
         );

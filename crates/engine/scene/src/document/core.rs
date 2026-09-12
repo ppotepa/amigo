@@ -14,6 +14,8 @@ pub struct SceneDocument {
     pub scene: SceneMetadataDocument,
     #[serde(default)]
     pub panels: Vec<ScenePanelReferenceDocument>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub playgrounds: Vec<ScenePlaygroundReferenceDocument>,
     #[serde(default)]
     pub transitions: Vec<SceneTransitionDocument>,
     #[serde(default)]
@@ -28,6 +30,15 @@ pub struct SceneDocument {
     pub state: BTreeMap<String, SceneStateValueDocument>,
     #[serde(default)]
     pub entities: Vec<SceneEntityDocument>,
+}
+
+/// Opt-in scene tools. The registered descriptor owns the client technology.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
+pub struct ScenePlaygroundReferenceDocument {
+    pub id: String,
+    #[serde(default)]
+    pub auto_open: bool,
 }
 
 /// Optional engine panels. Layout paths are relative to the scene file and
@@ -69,6 +80,17 @@ fn panel_auto_open() -> bool {
 
 #[cfg(test)]
 mod panel_tests {
+    #[test]
+    fn playground_references_are_opt_in_and_round_trip() {
+        let source = "scene: {id: gallery}\nplaygrounds: [{id: npr-playground, auto_open: true}, {id: tools}]";
+        let document = crate::load_scene_document_from_str(source).unwrap();
+        assert!(document.playgrounds[0].auto_open);
+        assert!(!document.playgrounds[1].auto_open);
+        let encoded = serde_yaml::to_string(&document).unwrap();
+        assert_eq!(crate::load_scene_document_from_str(&encoded).unwrap(), document);
+        assert!(crate::load_scene_document_from_str("scene: {id: cube}").unwrap().playgrounds.is_empty());
+    }
+
     #[test]
     fn panel_references_survive_scene_loading_and_serialization() {
         let source =

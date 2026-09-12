@@ -1,8 +1,4 @@
 version: 1
-panels:
-  - id: npr
-    layout: ../../ui/npr.panel.yml
-    auto_open: true
 scene:
   id: cube
   label: NPR Cube
@@ -12,9 +8,4 @@ entities:
     name: npr-settings
     components:
       - type: amigo.gfx.npr-playground.NprSettings
-        gallery: false
-        selected: cube
-        objects:
-          cube:
-            rotating: true
-            surface_mode: polygonal
+        profile: npr.scene.yml

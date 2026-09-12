@@ -1,14 +1,24 @@
 # NPR playground contributions
 
+Scene, model, included look and object look patches share the same authored
+`layers` contract. Paint and strokes no longer occupy separate document lists.
+The per-layer `parameters.paint` field still describes wash/granulation; it is
+not a layer collection and the migration preserves it unchanged. Repeated
+generator kinds can be represented with distinct IDs; independent brush
+generation and versioned brush resources are explicit domain contracts. Brush
+versions are immutable; instances hold local overrides, targets and masks.
+Groups apply opacity/blend over their children, and UpdateBrushVersion is one
+history operation.
+
 The plugin contributes the `gfx.npr` capability, an `NprSettings` scene
-component, runtime controls under `world.npr.settings.NprSettings.*`, and one
+component, the `npr-playground` provider for typed intents/snapshots, and one
 render extractor contribution per visible object.
 
 Styles resolve in this order:
 
 ```text
-scene ComicInk + scene NprStyleLayers
-  -> selected object ComicInkOverrides + NprStyleLayerOverrides
+engine defaults -> model defaults -> included looks -> active look
+  -> scene profile -> object override -> live session patch
   -> effective NprDrawCommand
 ```
 

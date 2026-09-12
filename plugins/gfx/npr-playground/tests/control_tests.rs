@@ -1,11 +1,11 @@
+use amigo_assets::{AssetBrowserEntryState, AssetCatalog, AssetSourceId};
+use amigo_npr_playground_plugin::{NprPlaygroundRenderService, NprPlaygroundState, state::MODELS};
 use amigo_npr_playground_plugin::{
-    scene::{NprCameraSceneSettings, NprObjectSceneSettings, NprPlaygroundSceneDocument},
+    asset_browser::register_models,
+    scene::NprPlaygroundSceneDocument,
     state::{ConstructionAnchorSettings, ConstructionMarkSettings},
 };
-use amigo_npr_playground_plugin::{state::PREFIX, NprPlaygroundRenderService, NprPlaygroundState};
-use amigo_panels::PresetProvider;
 use amigo_render_npr::{NprSurfaceIntent, NprSurfaceMode, StrokeRole};
-use amigo_runtime_control::{ControlValue, RuntimeControlService};
 use glam::Vec2;
 use std::{collections::BTreeMap, sync::Arc};
 
@@ -41,9 +41,11 @@ fn construction_authoring_commits_open_and_closed_source_lines() {
             },
         )
         .unwrap();
-    assert!(state.snapshot().objects["cube"]
-        .construction_marks
-        .is_empty());
+    assert!(
+        state.snapshot().objects["cube"]
+            .construction_marks
+            .is_empty()
+    );
     assert!(state.commit_construction_mark(false).is_err());
 
     state
@@ -86,16 +88,10 @@ fn construction_authoring_commits_open_and_closed_source_lines() {
     assert!(remaining[0].closed);
 
     let document = state.authored_scene_document().unwrap();
-    assert_eq!(
-        document.objects["cube"]
-            .construction_marks
-            .as_ref()
-            .unwrap()
-            .len(),
-        1
-    );
-    let mut restored = amigo_npr_playground_plugin::state::Settings::for_scene(document.gallery);
-    document.apply_to(&mut restored).unwrap();
+    assert_eq!(document.objects["cube"].construction_marks.len(), 1);
+    let restored = document
+        .resolve(&BTreeMap::new(), &BTreeMap::new(), &Default::default())
+        .unwrap();
     assert_eq!(
         restored.objects["cube"].construction_marks,
         state.snapshot().objects["cube"].construction_marks
@@ -133,9 +129,11 @@ fn construction_authoring_can_remove_its_latest_draft_point() {
         1
     );
     state.undo_construction_anchor().unwrap();
-    assert!(state.render_snapshot().objects["cube"]
-        .construction_marks
-        .is_empty());
+    assert!(
+        state.render_snapshot().objects["cube"]
+            .construction_marks
+            .is_empty()
+    );
     state.undo_construction_anchor().unwrap();
     assert!(state.undo_construction_anchor().is_err());
 }
@@ -156,9 +154,11 @@ fn construction_authoring_renders_a_transient_preview_without_serializing_it() {
             .unwrap();
     }
 
-    assert!(state.snapshot().objects["cube"]
-        .construction_marks
-        .is_empty());
+    assert!(
+        state.snapshot().objects["cube"]
+            .construction_marks
+            .is_empty()
+    );
     let preview = state.render_snapshot();
     let marks = &preview.objects["cube"].construction_marks;
     assert_eq!(marks.len(), 1);
@@ -168,239 +168,14 @@ fn construction_authoring_renders_a_transient_preview_without_serializing_it() {
     let render = NprPlaygroundRenderService::default();
     render.rebuild(&preview, [512, 512]).unwrap();
     assert_eq!(render.commands()[0].packet.stats.construction_marks, 1);
-    assert!(state.authored_scene_document().unwrap().objects.is_empty());
-}
-
-#[test]
-fn before_comparison_discards_an_in_progress_construction_preview() {
-    let state = Arc::new(NprPlaygroundState::default());
-    state.begin_construction_mark().unwrap();
-    for barycentric in [[0.7, 0.2, 0.1], [0.1, 0.7, 0.2]] {
+    assert!(
         state
-            .place_construction_anchor(
-                "cube",
-                ConstructionAnchorSettings {
-                    triangle: 0,
-                    barycentric,
-                },
-            )
-            .unwrap();
-    }
-    assert_eq!(
-        state.render_snapshot().objects["cube"]
-            .construction_marks
-            .len(),
-        1
+            .authored_scene_document()
+            .unwrap()
+            .objects
+            .values()
+            .all(|object| object.construction_marks.is_empty())
     );
-
-    let controls = RuntimeControlService::default();
-    controls.register_provider(state.clone());
-    controls
-        .set(&format!("{PREFIX}capture_before"), ControlValue::Bool(true))
-        .unwrap();
-    controls
-        .set(&format!("{PREFIX}preview_before"), ControlValue::Bool(true))
-        .unwrap();
-    assert!(!state.construction_authoring_active());
-    assert!(state.render_snapshot().objects["cube"]
-        .construction_marks
-        .is_empty());
-}
-
-#[test]
-fn latest_construction_mark_style_is_live_editable_and_validated() {
-    let state = Arc::new(NprPlaygroundState::default());
-    state.begin_construction_mark().unwrap();
-    for barycentric in [[0.7, 0.2, 0.1], [0.1, 0.7, 0.2]] {
-        state
-            .place_construction_anchor(
-                "cube",
-                ConstructionAnchorSettings {
-                    triangle: 0,
-                    barycentric,
-                },
-            )
-            .unwrap();
-    }
-    state.commit_construction_mark(false).unwrap();
-    let controls = RuntimeControlService::default();
-    controls.register_provider(state.clone());
-    let path = |field: &str| format!("{PREFIX}{field}");
-    controls
-        .set(
-            &path("construction_mark_selected_width_scale"),
-            ControlValue::F64(0.85),
-        )
-        .unwrap();
-    controls
-        .set(
-            &path("construction_mark_selected_opacity"),
-            ControlValue::F64(0.6),
-        )
-        .unwrap();
-    assert_eq!(
-        state.snapshot().objects["cube"].construction_marks[0].width_scale,
-        0.85
-    );
-    assert_eq!(
-        state.snapshot().objects["cube"].construction_marks[0].opacity,
-        0.6
-    );
-    assert!(controls
-        .set(
-            &path("construction_mark_selected_opacity"),
-            ControlValue::F64(1.1),
-        )
-        .is_err());
-    assert!(controls
-        .set(
-            &path("construction_mark_selected_closed"),
-            ControlValue::Bool(true),
-        )
-        .is_err());
-    assert!(!state.snapshot().objects["cube"].construction_marks[0].closed);
-}
-
-#[test]
-fn metadata_controls_validate_atomically_and_presets_restore_all_objects() {
-    let state = Arc::new(NprPlaygroundState::default());
-    let controls = RuntimeControlService::default();
-    controls.register_provider(state.clone());
-    let path = |field: &str| format!("{PREFIX}{field}");
-    controls
-        .set(&path("object.scale"), ControlValue::F64(2.0))
-        .unwrap();
-    assert!(controls
-        .set(&path("object.scale"), ControlValue::F64(-1.0))
-        .is_err());
-    assert!(controls.set(&path("fps"), ControlValue::F64(90.0)).is_err());
-    assert!(controls
-        .set(
-            &path("global.ink"),
-            ControlValue::Color([f32::NAN, 0.0, 0.0, 1.0])
-        )
-        .is_err());
-    assert_eq!(state.snapshot().objects["cube"].scale, 2.0);
-    controls
-        .set(
-            &path("motion.appearance_fade_seconds"),
-            ControlValue::F64(0.0),
-        )
-        .unwrap();
-    assert_eq!(state.snapshot().motion.appearance_fade_seconds, 0.0);
-    assert!(controls
-        .set(
-            &path("motion.appearance_fade_seconds"),
-            ControlValue::F64(2.1)
-        )
-        .is_err());
-    controls
-        .set(
-            &path("motion.mode"),
-            ControlValue::String("redraw-on-motion".into()),
-        )
-        .unwrap();
-    assert_eq!(
-        controls.get(&path("motion_redraw_editable")).unwrap(),
-        ControlValue::Bool(true)
-    );
-    controls
-        .set(&path("motion.redraw_hz"), ControlValue::F64(6.0))
-        .unwrap();
-    assert_eq!(
-        controls.get(&path("motion.mode")).unwrap(),
-        ControlValue::String("redraw-on-motion".into())
-    );
-    assert!(controls
-        .set(&path("motion.redraw_strength"), ControlValue::F64(1.1))
-        .is_err());
-    controls
-        .set(
-            &path("global.min_crease_length_pixels"),
-            ControlValue::F64(64.0),
-        )
-        .unwrap();
-    assert_eq!(
-        controls
-            .get(&path("global.min_crease_length_pixels"))
-            .unwrap(),
-        ControlValue::F64(64.0)
-    );
-    assert!(controls
-        .set(
-            &path("global.min_crease_length_pixels"),
-            ControlValue::F64(64.5)
-        )
-        .is_err());
-    controls
-        .set(
-            &path("global.min_form_line_confidence"),
-            ControlValue::F64(0.55),
-        )
-        .unwrap();
-    assert!(controls
-        .set(
-            &path("global.min_form_line_confidence"),
-            ControlValue::F64(1.01)
-        )
-        .is_err());
-    controls
-        .set(
-            &path("global.suggestive_contours"),
-            ControlValue::Bool(true),
-        )
-        .unwrap();
-    assert_eq!(
-        controls.get(&path("global.suggestive_contours")).unwrap(),
-        ControlValue::Bool(true)
-    );
-    assert!(controls
-        .set(
-            &path("global.suggestive_contour_confidence"),
-            ControlValue::F64(-0.01)
-        )
-        .is_err());
-    controls
-        .set(
-            &path("global.suggestive_contour_width_scale"),
-            ControlValue::F64(1.25),
-        )
-        .unwrap();
-    assert!(controls
-        .set(
-            &path("global.form_line_width_scale"),
-            ControlValue::F64(2.01)
-        )
-        .is_err());
-    controls
-        .set(&path("global.form_line_opacity"), ControlValue::F64(0.35))
-        .unwrap();
-    controls
-        .set(
-            &path("object.surface_mode"),
-            ControlValue::String("smooth".into()),
-        )
-        .unwrap();
-    assert_eq!(
-        controls.get(&path("object.surface_mode")).unwrap(),
-        ControlValue::String("smooth".into())
-    );
-    controls
-        .set(&path("seed"), ControlValue::U64(u64::MAX))
-        .unwrap();
-    assert_eq!(
-        controls.get(&path("seed")).unwrap(),
-        ControlValue::U64(u64::MAX)
-    );
-    let saved = PresetProvider::snapshot(state.as_ref()).unwrap();
-    let mut invalid = saved.clone();
-    invalid["camera_distance"] = serde_yaml::to_value(-3.0).unwrap();
-    assert!(state.apply(invalid).is_err());
-    assert_eq!(PresetProvider::snapshot(state.as_ref()).unwrap(), saved);
-    controls.reset(&path("object.scale")).unwrap();
-    assert_eq!(state.snapshot().objects["cube"].scale, 1.0);
-    state.apply(saved).unwrap();
-    assert_eq!(state.snapshot().objects["cube"].scale, 2.0);
 }
 
 #[test]
@@ -456,10 +231,12 @@ fn authored_construction_marks_flow_from_object_state_to_render_packet() {
     render.rebuild(&state.snapshot(), [512, 512]).unwrap();
     let packet = &render.commands()[0].packet;
     assert_eq!(packet.stats.construction_marks, 1);
-    assert!(packet
-        .strokes
-        .iter()
-        .any(|stroke| stroke.role == StrokeRole::Construction));
+    assert!(
+        packet
+            .strokes
+            .iter()
+            .any(|stroke| stroke.role == StrokeRole::Construction)
+    );
 }
 
 #[test]
@@ -480,76 +257,76 @@ fn authored_construction_marks_reject_invalid_geometry_before_extraction() {
 }
 
 #[test]
-fn authored_scene_settings_override_only_declared_npr_intent() {
+fn authored_sidecar_preserves_camera_surface_and_object_intent() {
     let state = NprPlaygroundState::default();
-    state
-        .apply_authored_scene(NprPlaygroundSceneDocument {
-            gallery: true,
-            selected: Some("sphere".to_owned()),
-            seed: Some(99),
-            motion: None,
-            sketch_paused: None,
-            global_style: None,
-            style_layers: None,
-            camera: NprCameraSceneSettings {
-                distance: Some(18.0),
-                yaw: Some(31.0),
-                ..Default::default()
-            },
-            objects: BTreeMap::from([(
-                "sphere".to_owned(),
-                NprObjectSceneSettings {
-                    rotating: Some(false),
-                    surface_subdivision_level: Some(2),
-                    smooth_weld_relative_tolerance: Some(0.000_02),
-                    ..Default::default()
-                },
-            )]),
-        })
-        .unwrap();
-
-    let settings = state.snapshot();
-    assert!(settings.gallery);
-    assert_eq!(settings.selected, "sphere");
-    assert_eq!(settings.seed, 99);
-    assert_eq!(settings.camera_distance, 18.0);
-    assert_eq!(settings.camera_yaw, 31.0);
-    assert!(!settings.objects["sphere"].rotating);
-    assert_eq!(settings.objects["sphere"].surface_subdivision_level, 2);
+    let mut settings = amigo_npr_playground_plugin::state::Settings::for_scene(true);
+    settings.seed = 99;
+    settings.camera_distance = 18.;
+    settings.camera_yaw = 31.;
+    let cube = settings.objects.get_mut("cube").unwrap();
+    cube.rotating = false;
+    cube.surface_subdivision_level = 2;
+    cube.smooth_weld_relative_tolerance = 0.000_02;
+    let profile = amigo_npr_playground_plugin::documents::NprSceneProfileDocument::from_settings(
+        &settings, None,
+    )
+    .unwrap();
+    state.apply_authored_scene(profile).unwrap();
+    let restored = state.snapshot();
+    assert_eq!(restored.seed, 99);
+    assert_eq!(restored.camera_distance, 18.);
+    assert_eq!(restored.camera_yaw, 31.);
+    assert!(!restored.objects["cube"].rotating);
+    assert_eq!(restored.objects["cube"].surface_subdivision_level, 2);
     assert_eq!(
-        settings.objects["sphere"].smooth_weld_relative_tolerance,
+        restored.objects["cube"].smooth_weld_relative_tolerance,
         0.000_02
-    );
-    assert!(
-        settings.objects["cube"].rotating,
-        "undeclared defaults survive"
     );
 }
 
 #[test]
-fn interactive_extract_eases_only_new_stroke_identities() {
-    let state = NprPlaygroundState::default();
+fn gallery_scene_file_starts_empty_and_hydrates_no_model_instances() {
+    let root =
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../../mods/npr-playground");
+    let scene: serde_yaml::Value = serde_yaml::from_str(
+        &std::fs::read_to_string(root.join("scenes/gallery/scene.yml")).unwrap(),
+    )
+    .unwrap();
+    let component = scene["entities"]
+        .as_sequence()
+        .unwrap()
+        .iter()
+        .flat_map(|entity| entity["components"].as_sequence().unwrap())
+        .find(|component| component["type"] == "amigo.gfx.npr-playground.NprSettings")
+        .unwrap();
+    let mut payload = component.as_mapping().unwrap().clone();
+    payload.remove(serde_yaml::Value::String("type".into()));
+    let authored: NprPlaygroundSceneDocument =
+        serde_yaml::from_value(serde_yaml::Value::Mapping(payload)).unwrap();
+
+    assert_eq!(authored.profile, "npr.scene.yml");
+    let state = Arc::new(NprPlaygroundState::default());
+    let service = amigo_npr_playground_plugin::playground::NprPlaygroundService::new(state.clone());
+    service
+        .open_scene(&root, std::path::Path::new("scenes/gallery/npr.scene.yml"))
+        .unwrap();
+    assert!(state.snapshot().objects.is_empty());
+    assert!(state.snapshot().selected.is_empty());
+}
+
+#[test]
+fn blank_scene_extracts_paper_without_any_model_draw_command() {
+    let root =
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../../mods/npr-playground");
     let render = NprPlaygroundRenderService::default();
-    let single = state.snapshot();
-    render
-        .rebuild_with_delta(&single, [512, 512], 1.0 / 60.0)
-        .unwrap();
-    let mut gallery = single.clone();
-    gallery.gallery = true;
-    for (id, object) in &mut gallery.objects {
-        object.visible = id == "cube" || id == "wedge";
-    }
-    render
-        .rebuild_with_delta(&gallery, [512, 512], 0.06)
-        .unwrap();
-    let commands = render.commands();
-    assert!(commands.len() > 1);
-    assert!(commands[0].packet.stats.temporal_retained_strokes > 0);
-    assert!(
-        commands[1].packet.stats.temporal_entering_strokes > 0,
-        "new={:?}, strokes={}",
-        commands[1].packet.stats.temporal_entering_strokes,
-        commands[1].packet.strokes.len(),
+    render.load_models(&root).unwrap();
+    let settings = amigo_npr_playground_plugin::state::Settings::empty_scene(true);
+
+    render.rebuild(&settings, [512, 512]).unwrap();
+    assert!(render.commands().is_empty());
+    assert_eq!(
+        render.background().unwrap().color,
+        settings.global.paper.to_array()
     );
 }
 
@@ -598,60 +375,6 @@ fn material_edits_do_not_reset_stroke_identity_scope() {
 }
 
 #[test]
-fn manual_gesture_variant_is_explicit_and_undoable() {
-    let state = Arc::new(NprPlaygroundState::default());
-    let controls = RuntimeControlService::default();
-    controls.register_provider(state.clone());
-    let path = |field: &str| format!("{PREFIX}{field}");
-    controls
-        .set(&path("new_gesture_variant"), ControlValue::Bool(true))
-        .unwrap();
-    assert_eq!(state.snapshot().objects["cube"].gesture_variant, 1);
-    controls
-        .set(&path("undo"), ControlValue::Bool(true))
-        .unwrap();
-    assert_eq!(state.snapshot().objects["cube"].gesture_variant, 0);
-}
-
-#[test]
-fn manual_gesture_variant_changes_gesture_not_surface_identity() {
-    use amigo_render_npr::StrokeRole;
-    use std::collections::BTreeSet;
-
-    let state = Arc::new(NprPlaygroundState::default());
-    state.settings.lock().unwrap().global =
-        amigo_npr_playground_plugin::state::style_preset("Pencil Study").unwrap();
-    let render = NprPlaygroundRenderService::default();
-    render.rebuild(&state.snapshot(), [512, 512]).unwrap();
-    let before = render.commands()[0].packet.clone();
-    let before_ids = before
-        .strokes
-        .iter()
-        .filter(|stroke| stroke.role == StrokeRole::Tone)
-        .map(|stroke| stroke.id)
-        .collect::<BTreeSet<_>>();
-
-    let controls = RuntimeControlService::default();
-    controls.register_provider(state.clone());
-    controls
-        .set(
-            &format!("{PREFIX}new_gesture_variant"),
-            ControlValue::Bool(true),
-        )
-        .unwrap();
-    render.rebuild(&state.snapshot(), [512, 512]).unwrap();
-    let after = render.commands()[0].packet.clone();
-    let after_ids = after
-        .strokes
-        .iter()
-        .filter(|stroke| stroke.role == StrokeRole::Tone)
-        .map(|stroke| stroke.id)
-        .collect::<BTreeSet<_>>();
-    assert_eq!(before_ids, after_ids);
-    assert_ne!(before, after);
-}
-
-#[test]
 fn surface_hatch_identities_survive_a_rigid_object_rotation() {
     use amigo_render_npr::StrokeRole;
     use glam::{EulerRot, Quat, Vec3};
@@ -693,239 +416,96 @@ fn surface_hatch_identities_survive_a_rigid_object_rotation() {
 }
 
 #[test]
-fn gallery_imports_all_six_models_and_binds_the_authored_layout() {
+fn asset_browser_models_are_ready_and_route_add_and_replace_to_npr_state() {
+    let catalog = AssetCatalog::default();
+    register_models(&catalog, std::path::Path::new("mods/npr-playground"));
+    let source = catalog
+        .asset_source_snapshot(&AssetSourceId::from_kind(
+            &amigo_assets::AssetSourceKind::Mod("npr-playground".into()),
+        ))
+        .unwrap();
+    assert_eq!(source.entries.len(), 2);
+    assert_eq!(
+        catalog
+            .asset_source_snapshot(&AssetSourceId::from_kind(
+                &amigo_assets::AssetSourceKind::Engine
+            ))
+            .unwrap()
+            .entries
+            .len(),
+        4
+    );
+    assert!(
+        source
+            .entries
+            .iter()
+            .all(|entry| matches!(entry.state, AssetBrowserEntryState::Ready))
+    );
+
+    let state = Arc::new(NprPlaygroundState::default());
+    *state.settings.lock().unwrap() =
+        amigo_npr_playground_plugin::state::Settings::empty_scene(true);
+    let service = amigo_npr_playground_plugin::playground::NprPlaygroundService::new(state.clone());
+    service
+        .dispatch_intent(
+            1,
+            0,
+            "models".into(),
+            amigo_npr_playground_plugin::playground::NprPlaygroundIntent::SelectModel {
+                model: "cube".into(),
+            },
+        )
+        .unwrap();
+    let selected = state.snapshot().selected;
+    assert_eq!(selected, "cube");
+    assert_eq!(state.snapshot().objects[&selected].model, "cube");
+
+    let mut replacement = state.snapshot().objects[&selected].clone();
+    replacement.model = "suzanne".into();
+    service
+        .dispatch_intent(
+            2,
+            1,
+            "models".into(),
+            amigo_npr_playground_plugin::playground::NprPlaygroundIntent::SetObject {
+                object: selected.clone(),
+                settings: replacement,
+            },
+        )
+        .unwrap();
+    assert_eq!(state.snapshot().objects[&selected].model, "suzanne");
+}
+
+#[test]
+fn model_explorer_renders_one_selected_model_and_exposes_studio_tabs() {
     let root =
         std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../../mods/npr-playground");
     let state = Arc::new(NprPlaygroundState::default());
-    state.configure_scene(true);
-    let controls = RuntimeControlService::default();
-    controls.register_provider(state.clone());
-    let layout: amigo_panel_api::PanelDocument =
-        serde_yaml::from_str(&std::fs::read_to_string(root.join("ui/npr.panel.yml")).unwrap())
-            .unwrap();
-    layout
-        .validate_bindings(&controls.registry_snapshot())
-        .unwrap();
-    assert_eq!(layout.artwork.len(), 9);
-    assert!(layout
-        .artwork
-        .values()
-        .all(|triangles| !triangles.is_empty()));
-    let mut transport = Vec::new();
-    amigo_panel_api::write_message(&mut transport, &layout).unwrap();
-    assert!(transport.len() < amigo_panel_api::MAX_FRAME_BYTES);
+    state.configure_scene(false);
+    let metadata = amigo_npr_playground_plugin::playground::NprPlaygroundService::metadata();
+    assert_eq!(
+        metadata["tabs"],
+        serde_json::json!([
+            "Scene",
+            "Model",
+            "Look",
+            "Layers",
+            "Camera",
+            "Motion",
+            "Diagnostics"
+        ])
+    );
     let render = NprPlaygroundRenderService::default();
     render.load_models(&root).unwrap();
     render.rebuild(&state.snapshot(), [1024, 768]).unwrap();
-    assert_eq!(render.commands().len(), 6);
-    assert!(render
-        .commands()
-        .iter()
-        .all(|c| !c.packet.fills.is_empty() && !c.packet.strokes.is_empty()));
-    let annotated = render
-        .commands()
-        .iter()
-        .map(|c| c.packet.fills.len())
-        .sum::<usize>();
-    let mut plain = state.snapshot();
-    plain.highlight_selected = false;
-    render.rebuild(&plain, [1024, 768]).unwrap();
-    assert_eq!(
-        annotated,
-        render
-            .commands()
-            .iter()
-            .map(|c| c.packet.fills.len())
-            .sum::<usize>()
-            + 2
-    );
-}
-
-#[test]
-fn workshop_history_rotation_scope_and_comparison_are_independent() {
-    let state = Arc::new(NprPlaygroundState::default());
-    let controls = RuntimeControlService::default();
-    controls.register_provider(state.clone());
-    let set = |key: &str, value| controls.set(&format!("{PREFIX}{key}"), value).unwrap();
-    let action = |key| set(key, ControlValue::Bool(true));
-    set("object.rotating", ControlValue::Bool(false));
-    let before = state.snapshot();
-    state.tick(0.5);
-    assert_eq!(
-        before.objects["cube"].rotation,
-        state.snapshot().objects["cube"].rotation
-    );
-    assert_ne!(
-        before.objects["sphere"].rotation,
-        state.snapshot().objects["sphere"].rotation
-    );
-    set("object.scale", ControlValue::F64(2.0));
-    state.tick(0.1);
-    set("object.scale", ControlValue::F64(3.0));
-    let live_rotation = state.snapshot().objects["sphere"].rotation;
-    action("undo");
-    assert_eq!(state.snapshot().objects["cube"].scale, 1.0);
-    assert_eq!(state.snapshot().objects["sphere"].rotation, live_rotation);
-    action("redo");
-    assert_eq!(state.snapshot().objects["cube"].scale, 3.0);
-    set("style_scope", ControlValue::String("object".into()));
-    action("capture_before");
-    set("appearance.outline_width", ControlValue::F64(9.0));
-    assert_eq!(
-        state.snapshot().objects["cube"]
-            .style_overrides
-            .outline_width,
-        Some(9.0)
-    );
-    assert_eq!(state.snapshot().global.outline_width, 4.0);
-    set("preview_before", ControlValue::Bool(true));
-    assert_eq!(
-        state.render_snapshot().objects["cube"]
-            .effective_style(state.render_snapshot().global)
-            .outline_width,
-        4.0
-    );
-    assert!(controls
-        .set(&format!("{PREFIX}object.scale"), ControlValue::F64(4.0))
-        .is_err());
-    set("preview_before", ControlValue::Bool(false));
-    assert_eq!(
-        state.render_snapshot().objects["cube"]
-            .effective_style(state.render_snapshot().global)
-            .outline_width,
-        9.0
-    );
-    action("reset_style");
-    assert!(!state.snapshot().objects["cube"].has_style_overrides());
-}
-
-#[test]
-fn typed_tool_profiles_are_exposed_and_validated() {
-    let state = Arc::new(NprPlaygroundState::default());
-    let controls = RuntimeControlService::default();
-    controls.register_provider(state.clone());
-    let path = |field: &str| format!("{PREFIX}{field}");
-    controls
-        .set(
-            &path("style_preset"),
-            ControlValue::String("Pencil Study".into()),
-        )
-        .unwrap();
-    assert_eq!(
-        controls.get(&path("global.tool")).unwrap(),
-        ControlValue::String("pencil".into())
-    );
-    assert!(controls
-        .set(&path("global.gesture_confidence"), ControlValue::F64(1.5))
-        .is_err());
-    assert!(controls
-        .set(
-            &path("global.tool"),
-            ControlValue::String("not-a-tool".into())
-        )
-        .is_err());
-    assert!(state.snapshot().global.paper_tooth > 0.5);
-}
-
-#[test]
-fn object_scoped_watercolour_keeps_scene_layers_and_creates_sparse_override() {
-    let state = Arc::new(NprPlaygroundState::default());
-    let controls = RuntimeControlService::default();
-    controls.register_provider(state.clone());
-    let set = |key: &str, value| controls.set(&format!("{PREFIX}{key}"), value).unwrap();
-
-    let scene_layers = state.snapshot().style_layers;
-    assert!(scene_layers.layer("hatching").unwrap().enabled);
-    set("style_scope", ControlValue::String("object".into()));
-    set(
-        "style_preset",
-        ControlValue::String("Watercolour Wash".into()),
-    );
-    assert_eq!(
-        controls.get(&format!("{PREFIX}style_preset")).unwrap(),
-        ControlValue::String("Watercolour Wash".into())
-    );
-
-    let snapshot = state.snapshot();
-    assert_eq!(snapshot.style_layers, scene_layers);
-    let object = &snapshot.objects["cube"];
-    assert!(!object.style_layer_overrides.is_empty());
-    let layers = object.effective_layers(&snapshot.style_layers);
-    assert!(!layers.layer("hatching").unwrap().enabled);
-    assert!(layers.layer("underpainting").unwrap().enabled);
-    assert_eq!(
-        layers
-            .layer("underpainting")
-            .unwrap()
-            .paint
-            .unwrap()
-            .granulation,
-        0.64
-    );
-    set("layers.hatching.enabled", ControlValue::Bool(true));
-    assert_eq!(
-        controls.get(&format!("{PREFIX}style_preset")).unwrap(),
-        ControlValue::String("Custom".into())
-    );
-}
-
-#[test]
-fn selection_fits_only_single_mode_and_undo_targets_stable_object_ids() {
-    let state = Arc::new(NprPlaygroundState::default());
-    state.configure_scene(true);
-    let controls = RuntimeControlService::default();
-    controls.register_provider(state.clone());
-    let set = |key: &str, value| controls.set(&format!("{PREFIX}{key}"), value).unwrap();
-    set("object.scale", ControlValue::F64(2.0));
-    let camera = state.snapshot().camera_target;
-    set("selected", ControlValue::String("sphere".into()));
-    assert_eq!(state.snapshot().camera_target, camera);
-    set("object.scale", ControlValue::F64(3.0));
-    set("undo", ControlValue::Bool(true));
-    assert_eq!(state.snapshot().objects["sphere"].scale, 1.0);
-    assert_eq!(state.snapshot().objects["cube"].scale, 2.0);
-    set("focus_selected", ControlValue::Bool(true));
-    assert!(!state.snapshot().gallery);
-    assert_eq!(
-        state.snapshot().camera_target,
-        state.snapshot().objects["sphere"].position
-    );
-    set("selected", ControlValue::String("wedge".into()));
-    assert_eq!(
-        state.snapshot().camera_target,
-        state.snapshot().objects["wedge"].position
-    );
-}
-
-#[test]
-fn look_presets_preserve_scene_and_are_atomic_and_undoable() {
-    use amigo_npr_playground_plugin::state::look_presets::LookPresetProvider;
-    let state = Arc::new(NprPlaygroundState::default());
-    let looks = LookPresetProvider(state.clone());
-    let mut saved = looks.snapshot().unwrap();
-    saved["style"]["outline_width"] = serde_yaml::to_value(8.0).unwrap();
-    let before = state.snapshot();
-    looks.apply(saved.clone()).unwrap();
-    let after = state.snapshot();
-    assert_eq!(after.global.outline_width, 8.0);
-    assert_eq!(after.global.paper, before.global.paper);
-    assert_eq!(after.global.light_direction, before.global.light_direction);
-    assert_eq!(after.objects, before.objects);
-    assert_eq!(after.camera_target, before.camera_target);
-    saved["style"]["outline_width"] = serde_yaml::to_value(-1.0).unwrap();
-    assert!(looks.apply(saved).is_err());
-    assert_eq!(state.snapshot(), after);
-    let controls = RuntimeControlService::default();
-    controls.register_provider(state.clone());
-    controls
-        .set(&format!("{PREFIX}undo"), ControlValue::Bool(true))
-        .unwrap();
-    assert_eq!(state.snapshot(), before);
+    assert_eq!(render.commands().len(), 1);
+    assert!(!render.commands()[0].packet.fills.is_empty());
+    assert!(!render.commands()[0].packet.strokes.is_empty());
 }
 
 #[test]
 fn render_diagnostics_report_the_effective_typed_style_preset() {
-    use amigo_npr_playground_plugin::state::{style_preset_id, Settings};
+    use amigo_npr_playground_plugin::state::{Settings, style_preset_id};
 
     let settings = Settings::for_scene(false);
     assert_eq!(style_preset_id(settings.global), "comic-ink");
@@ -937,256 +517,6 @@ fn render_diagnostics_report_the_effective_typed_style_preset() {
     let mut custom = pencil;
     custom.wobble += 0.01;
     assert_eq!(style_preset_id(custom), "custom");
-}
-
-#[test]
-fn watercolour_style_preset_applies_its_typed_layer_stack() {
-    let state = Arc::new(NprPlaygroundState::default());
-    let controls = RuntimeControlService::default();
-    controls.register_provider(state.clone());
-    controls
-        .set(
-            &format!("{PREFIX}style_preset"),
-            ControlValue::String("Watercolour Wash".into()),
-        )
-        .unwrap();
-
-    let settings = state.snapshot();
-    assert_eq!(settings.global.tool, amigo_render_npr::StrokeTool::Brush);
-    assert!(!settings.style_layers.layer("fill").unwrap().enabled);
-    assert!(!settings.style_layers.layer("hatching").unwrap().enabled);
-    let paint = settings
-        .style_layers
-        .layer("underpainting")
-        .unwrap()
-        .paint
-        .unwrap();
-    assert_eq!(paint.wash, 1.12);
-    assert_eq!(paint.granulation, 0.64);
-}
-
-#[test]
-fn object_parameter_override_keeps_other_scene_style_properties_inherited() {
-    let state = Arc::new(NprPlaygroundState::default());
-    let controls = RuntimeControlService::default();
-    controls.register_provider(state.clone());
-    let set = |key: &str, value| controls.set(&format!("{PREFIX}{key}"), value).unwrap();
-
-    set("style_scope", ControlValue::String("object".into()));
-    set("appearance.outline_width", ControlValue::F64(8.0));
-    set("style_scope", ControlValue::String("scene".into()));
-    set("appearance.ink", ControlValue::Color([0.2, 0.3, 0.4, 1.0]));
-
-    let settings = state.snapshot();
-    let object = &settings.objects[&settings.selected];
-    assert_eq!(object.style_overrides.outline_width, Some(8.0));
-    assert_eq!(object.style_overrides.ink, None);
-    let effective = object.effective_style(settings.global);
-    assert_eq!(effective.outline_width, 8.0);
-    assert_eq!(effective.ink, glam::Vec4::new(0.2, 0.3, 0.4, 1.0));
-}
-
-#[test]
-fn layer_controls_update_scene_or_selected_object_stack_explicitly() {
-    let state = Arc::new(NprPlaygroundState::default());
-    let controls = RuntimeControlService::default();
-    controls.register_provider(state.clone());
-    let set = |key: &str, value| controls.set(&format!("{PREFIX}{key}"), value).unwrap();
-
-    set("layers.hatching.opacity", ControlValue::F64(0.42));
-    set(
-        "layers.hatching.blend",
-        ControlValue::String("screen".into()),
-    );
-    set(
-        "layers.hatching.color",
-        ControlValue::Color([0.15, 0.25, 0.35, 1.0]),
-    );
-    set("layers.hatching.tool", ControlValue::String("brush".into()));
-    set("layers.underpainting.paint.wash", ControlValue::F64(0.68));
-    set(
-        "layers.underpainting.paint.granulation",
-        ControlValue::F64(0.45),
-    );
-    set("layers.fill.enabled", ControlValue::Bool(true));
-    let scene = state.snapshot();
-    let hatching = scene.style_layers.layer("hatching").unwrap();
-    assert_eq!(hatching.opacity, 0.42);
-    assert_eq!(hatching.blend, amigo_render_npr::NprBlendMode::Screen);
-    assert_eq!(
-        hatching.color_source,
-        amigo_render_npr::NprLayerColorSource::Constant(glam::Vec4::new(0.15, 0.25, 0.35, 1.0))
-    );
-    assert_eq!(hatching.tool, Some(amigo_render_npr::StrokeTool::Brush));
-    let paint = scene
-        .style_layers
-        .layer("underpainting")
-        .unwrap()
-        .paint
-        .unwrap();
-    assert_eq!(paint.wash, 0.68);
-    assert_eq!(paint.granulation, 0.45);
-    assert!(scene.style_layers.layer("fill").unwrap().enabled);
-    assert!(scene.objects[&scene.selected]
-        .style_layer_overrides
-        .is_empty());
-
-    set("style_scope", ControlValue::String("object".into()));
-    set("layers.contours.enabled", ControlValue::Bool(false));
-    let object_scope = state.snapshot();
-    assert!(object_scope.style_layers.layer("contours").unwrap().enabled);
-    let object_overrides = &object_scope.objects[&object_scope.selected].style_layer_overrides;
-    assert_eq!(object_overrides.layers["contours"].enabled, Some(false));
-    assert!(object_overrides.layers.get("hatching").is_none());
-    set("style_scope", ControlValue::String("scene".into()));
-    set("layers.hatching.opacity", ControlValue::F64(0.75));
-    let inherited_change = state.snapshot();
-    assert_eq!(
-        inherited_change.objects[&inherited_change.selected]
-            .effective_layers(&inherited_change.style_layers)
-            .layer("hatching")
-            .unwrap()
-            .opacity,
-        0.75
-    );
-}
-
-#[test]
-fn rejected_object_layer_edits_are_transactional() {
-    let state = Arc::new(NprPlaygroundState::default());
-    let controls = RuntimeControlService::default();
-    controls.register_provider(state.clone());
-    let set = |key: &str, value| controls.set(&format!("{PREFIX}{key}"), value);
-
-    set("style_scope", ControlValue::String("object".into())).unwrap();
-    assert!(set("layers.hatching.opacity", ControlValue::F64(1.5)).is_err());
-    assert!(set("layers.missing.enabled", ControlValue::Bool(false)).is_err());
-
-    let settings = state.snapshot();
-    let object = &settings.objects[&settings.selected];
-    assert!(object.style_layer_overrides.is_empty());
-    assert_eq!(
-        object
-            .effective_layers(&settings.style_layers)
-            .layer("hatching")
-            .unwrap()
-            .opacity,
-        1.0
-    );
-}
-
-#[test]
-fn reset_style_restores_layer_inheritance_and_the_scene_default_stack() {
-    let state = Arc::new(NprPlaygroundState::default());
-    let controls = RuntimeControlService::default();
-    controls.register_provider(state.clone());
-    let set = |key: &str, value| controls.set(&format!("{PREFIX}{key}"), value).unwrap();
-
-    set("style_scope", ControlValue::String("object".into()));
-    set("layers.contours.enabled", ControlValue::Bool(false));
-    set("reset_style", ControlValue::Bool(true));
-    let inherited = state.snapshot();
-    assert!(inherited.objects[&inherited.selected]
-        .style_layer_overrides
-        .is_empty());
-
-    set("style_scope", ControlValue::String("scene".into()));
-    set("layers.hatching.opacity", ControlValue::F64(0.1));
-    set("reset_style", ControlValue::Bool(true));
-    let reset = state.snapshot();
-    assert_eq!(
-        reset.style_layers,
-        amigo_render_npr::NprStyleLayers::default()
-    );
-}
-
-#[test]
-fn layer_position_control_reorders_the_declared_render_stack() {
-    let state = Arc::new(NprPlaygroundState::default());
-    let controls = RuntimeControlService::default();
-    controls.register_provider(state.clone());
-    controls
-        .set(
-            &format!("{PREFIX}layers.hatching.position"),
-            ControlValue::F64(1.0),
-        )
-        .unwrap();
-    let settings = state.snapshot();
-    assert_eq!(
-        settings
-            .style_layers
-            .layers
-            .iter()
-            .map(|layer| layer.id.as_str())
-            .collect::<Vec<_>>(),
-        [
-            "paper",
-            "hatching",
-            "underpainting",
-            "fill",
-            "form-lines",
-            "contours",
-            "creases",
-            "construction"
-        ]
-    );
-}
-
-#[test]
-fn sketch_pause_is_independent_from_model_playback_pause() {
-    let state = Arc::new(NprPlaygroundState::default());
-    let controls = RuntimeControlService::default();
-    controls.register_provider(state.clone());
-    controls
-        .set(&format!("{PREFIX}sketch_paused"), ControlValue::Bool(true))
-        .unwrap();
-    let settings = state.snapshot();
-    assert!(settings.sketch_paused);
-    assert!(!settings.paused);
-    assert!(settings.objects[&settings.selected].rotating);
-}
-
-#[test]
-fn natural_smooth_action_creates_a_local_organic_drawing_policy() {
-    let state = Arc::new(NprPlaygroundState::default());
-    let controls = RuntimeControlService::default();
-    controls.register_provider(state.clone());
-    let set = |key: &str, value| controls.set(&format!("{PREFIX}{key}"), value).unwrap();
-    set("selected", ControlValue::String("suzanne".into()));
-    set("natural_smooth", ControlValue::Bool(true));
-
-    let settings = state.snapshot();
-    let object = &settings.objects["suzanne"];
-    assert_eq!(object.surface_intent, NprSurfaceIntent::Organic);
-    assert_eq!(object.surface_mode, NprSurfaceMode::Smooth);
-    assert!(object.surface_subdivision_level >= 1);
-    assert!(object.smooth_weld_relative_tolerance > 0.0);
-    assert!(object.has_style_overrides());
-    assert_eq!(settings.style_scope, "object");
-    assert_eq!(object.style_overrides.smooth_draw_creases, Some(false));
-    assert_eq!(
-        object.style_overrides.min_smooth_contour_length_pixels,
-        Some(8.0)
-    );
-    assert_eq!(
-        object.style_overrides.smooth_contour_simplification_pixels,
-        Some(0.75)
-    );
-
-    let root =
-        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../../mods/npr-playground");
-    let render = NprPlaygroundRenderService::default();
-    render.load_models(&root).unwrap();
-    render.rebuild(&settings, [512, 512]).unwrap();
-    let packet = &render.commands()[0].packet;
-    assert!(
-        packet.stats.surface_proxy_vertices > packet.stats.surface_source_vertices,
-        "Natural Smooth must use the prepared subdivision proxy"
-    );
-    assert!(
-        packet.stats.surface_proxy_triangles > packet.stats.surface_source_triangles,
-        "Natural Smooth must extract features from the prepared subdivision proxy"
-    );
 }
 
 #[test]
@@ -1225,73 +555,29 @@ fn surface_intent_controls_the_extracted_proxy_not_just_panel_metadata() {
 }
 
 #[test]
-fn editor_scalar_properties_use_the_validated_runtime_control_path() {
-    let state = NprPlaygroundState::default();
-    assert!(state
-        .apply_editor_property("gallery", serde_yaml::to_value(true).unwrap())
-        .unwrap());
-    assert!(state
-        .apply_editor_property("camera.distance", serde_yaml::to_value(7.5).unwrap())
-        .unwrap());
-    assert!(state
-        .apply_editor_property("camera.yaw", serde_yaml::to_value(35.0).unwrap())
-        .unwrap());
-    assert!(state
-        .apply_editor_property("camera.pitch", serde_yaml::to_value(-12.0).unwrap())
-        .unwrap());
-    assert!(state
-        .apply_editor_property("camera.fov", serde_yaml::to_value(55.0).unwrap())
-        .unwrap());
-    assert!(state
-        .apply_editor_property(
-            "motion.mode",
-            serde_yaml::to_value("redraw-on-motion").unwrap()
-        )
-        .unwrap());
-    assert!(state
-        .apply_editor_property("motion.redraw_hz", serde_yaml::to_value(5.0).unwrap())
-        .unwrap());
-    assert!(state
-        .apply_editor_property("seed", serde_yaml::to_value(1234_u64).unwrap())
-        .unwrap());
-    assert!(state
-        .apply_editor_property("selected", serde_yaml::to_value("sphere").unwrap())
-        .unwrap());
-    let after = state.snapshot();
-    assert!(after.gallery);
-    assert_eq!(after.camera_distance, 7.5);
-    assert_eq!(after.camera_yaw, 35.0);
-    assert_eq!(after.camera_pitch, -12.0);
-    assert_eq!(after.camera_fov, 55.0);
-    assert_eq!(
-        after.motion.mode,
-        amigo_render_npr::StrokeMotionMode::RedrawOnMotion
+fn scene_component_requires_a_sidecar_reference_and_rejects_inline_settings() {
+    let reference: NprPlaygroundSceneDocument =
+        serde_yaml::from_str("profile: npr.scene.yml").unwrap();
+    assert_eq!(reference.profile, "npr.scene.yml");
+    assert!(serde_yaml::from_str::<NprPlaygroundSceneDocument>("gallery: true").is_err());
+    assert!(
+        serde_yaml::from_str::<NprPlaygroundSceneDocument>("profile: npr.scene.yml\ncamera: {}")
+            .is_err()
     );
-    assert_eq!(after.motion.redraw_hz, 5.0);
-    assert_eq!(after.seed, 1234);
-    assert_eq!(after.selected, "sphere");
-
-    assert!(!state
-        .apply_editor_property("objects", serde_yaml::Value::Null)
-        .unwrap());
-    assert!(state
-        .apply_editor_property("selected", serde_yaml::to_value("not-a-model").unwrap())
-        .is_err());
-    assert_eq!(state.snapshot(), after);
 }
 
 #[test]
-fn gallery_navigation_wraps_and_preserves_single_object_camera_fit() {
+fn single_model_navigation_keeps_the_selected_camera_fit() {
     let state = NprPlaygroundState::default();
     state.select_scene_object(-1).unwrap();
-    assert_eq!(state.snapshot().selected, "avocado");
+    assert_eq!(state.snapshot().selected, "cube");
     assert!(state.snapshot().camera_distance > 0.1);
     state.select_scene_object(1).unwrap();
     assert_eq!(state.snapshot().selected, "cube");
 
-    state.configure_scene(true);
+    state.configure_scene(false);
     let camera = state.snapshot().camera_distance;
     state.select_scene_object(1).unwrap();
-    assert_eq!(state.snapshot().selected, "wedge");
-    assert_eq!(state.snapshot().camera_distance, camera);
+    assert_eq!(state.snapshot().selected, "cube");
+    assert!(state.snapshot().camera_distance > 0.1);
 }

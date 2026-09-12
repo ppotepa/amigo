@@ -1,6 +1,20 @@
 use super::super::*;
 
 use std::fs;
+use amigo_npr_playground_plugin::playground::{NprPlaygroundService, NprPlaygroundIntent};
+
+fn npr_edit(service: &NprPlaygroundService, intent: NprPlaygroundIntent) {
+    service.dispatch_intent(1,service.domain_snapshot().revision,"render.fixture".into(),intent).unwrap();
+}
+fn pencil_fixture(service: &NprPlaygroundService) {
+    let snapshot=service.domain_snapshot();
+    let mut style=amigo_npr_playground_plugin::state::style_preset("Pencil Study").unwrap();
+    style.paper=snapshot.settings.global.paper;
+    style.light_direction=snapshot.settings.global.light_direction;
+    npr_edit(service,NprPlaygroundIntent::SetLook{style,layers:snapshot.settings.style_layers});
+    npr_edit(service,NprPlaygroundIntent::SetMotion{paused:true,speed:1.,sketch_paused:false});
+}
+
 
 fn capture_npr_candidate(name: &str, pixels_rgba8: &[u8]) {
     let Some(root) = std::env::var_os("AMIGO_CAPTURE_NPR_GOLDEN_DIR") else {
@@ -89,34 +103,12 @@ fn npr_playground_offscreen_matches_packet_contract() {
         .with_playback_delta_seconds(1.0 / 60.0);
     let mut preview = crate::ScenePreviewHost::new(options);
     preview.warmup(1).unwrap();
-    let controls = preview
-        .runtime()
-        .unwrap()
-        .required::<amigo_runtime_control::RuntimeControlService>()
-        .unwrap();
-    let prefix = "world.npr.settings.NprSettings.";
-    controls
-        .set(
-            &format!("{prefix}paused"),
-            amigo_runtime_control::ControlValue::Bool(true),
-        )
-        .unwrap();
-    controls
-        .set(
-            &format!("{prefix}object.rotation"),
-            amigo_runtime_control::ControlValue::Vec3([
-                0.36_f32.to_degrees(),
-                0.71_f32.to_degrees(),
-                0.0,
-            ]),
-        )
-        .unwrap();
-    controls
-        .set(
-            &format!("{prefix}seed"),
-            amigo_runtime_control::ControlValue::U64(42),
-        )
-        .unwrap();
+    let service=preview.runtime().unwrap().required::<NprPlaygroundService>().unwrap();
+    npr_edit(&service,NprPlaygroundIntent::SetMotion{paused:true,speed:1.,sketch_paused:false});
+    let mut object=service.domain_snapshot().settings.objects["cube"].clone();
+    object.rotation=[0.36_f32.to_degrees(),0.71_f32.to_degrees(),0.].into();
+    npr_edit(&service,NprPlaygroundIntent::SetObjectPose{object:"cube".into(),position:object.position,rotation:object.rotation,scale:object.scale});
+    npr_edit(&service,NprPlaygroundIntent::SetSeed{seed:42});
     let first = preview
         .capture_rgba8()
         .expect("NPR preview should render offscreen");
@@ -149,24 +141,8 @@ fn npr_pencil_profile_uses_depth_occluders_without_color_bands() {
         .with_playback_delta_seconds(1.0 / 60.0);
     let mut preview = crate::ScenePreviewHost::new(options);
     preview.warmup(1).unwrap();
-    let controls = preview
-        .runtime()
-        .unwrap()
-        .required::<amigo_runtime_control::RuntimeControlService>()
-        .unwrap();
-    let prefix = "world.npr.settings.NprSettings.";
-    controls
-        .set(
-            &format!("{prefix}style_preset"),
-            amigo_runtime_control::ControlValue::String("Pencil Study".into()),
-        )
-        .unwrap();
-    controls
-        .set(
-            &format!("{prefix}paused"),
-            amigo_runtime_control::ControlValue::Bool(true),
-        )
-        .unwrap();
+    let service=preview.runtime().unwrap().required::<NprPlaygroundService>().unwrap();
+    pencil_fixture(&service);
     let image = preview
         .capture_rgba8()
         .expect("pencil profile should render offscreen");
@@ -201,30 +177,13 @@ fn npr_pencil_cylinder_streamlines_match_reviewed_golden() {
         .with_playback_delta_seconds(1.0 / 60.0);
     let mut preview = crate::ScenePreviewHost::new(options);
     preview.warmup(1).unwrap();
-    let controls = preview
-        .runtime()
-        .unwrap()
-        .required::<amigo_runtime_control::RuntimeControlService>()
-        .unwrap();
-    let prefix = "world.npr.settings.NprSettings.";
-    controls
-        .set(
-            &format!("{prefix}selected"),
-            amigo_runtime_control::ControlValue::String("cylinder".into()),
-        )
-        .unwrap();
-    controls
-        .set(
-            &format!("{prefix}style_preset"),
-            amigo_runtime_control::ControlValue::String("Pencil Study".into()),
-        )
-        .unwrap();
-    controls
-        .set(
-            &format!("{prefix}paused"),
-            amigo_runtime_control::ControlValue::Bool(true),
-        )
-        .unwrap();
+    let service=preview.runtime().unwrap().required::<NprPlaygroundService>().unwrap();
+    let pose=preview.runtime().unwrap().required::<amigo_npr_playground_plugin::NprPlaygroundState>().unwrap().snapshot().objects["cube"].rotation;
+    npr_edit(&service,NprPlaygroundIntent::SelectModel{model:"cylinder".into()});
+    let mut object=service.domain_snapshot().settings.objects["cylinder"].clone();object.rotation=pose;
+    npr_edit(&service,NprPlaygroundIntent::SetObject{object:"cylinder".into(),settings:object});
+    npr_edit(&service,NprPlaygroundIntent::Navigate{mode:"focus".into(),dx:0.,dy:0.,wheel:0.,x:0.,y:0.,width:512,height:512,focused:true});
+    pencil_fixture(&service);
     let image = preview
         .capture_rgba8()
         .expect("pencil cylinder should render offscreen");
@@ -235,10 +194,12 @@ fn npr_pencil_cylinder_streamlines_match_reviewed_golden() {
     )
     .extract_all(preview.runtime().unwrap());
     let command = &packet.npr()[0];
+    assert_eq!(service.domain_snapshot().settings.objects.len(), 1);
+    assert_eq!(service.domain_snapshot().settings.selected, "cylinder");
     assert!(!command.packet.occluders.is_empty());
     assert!(command.packet.fills.is_empty());
     assert!(command.packet.stats.hatching_strokes > 0);
-    assert_eq!(command.packet.fingerprint().hash, 5_510_998_769_617_673_323);
+    assert_eq!(command.packet.fingerprint().hash, 4_859_497_068_049_137_257);
     assert!(
         command
             .packet

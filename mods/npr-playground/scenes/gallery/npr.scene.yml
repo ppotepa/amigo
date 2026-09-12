@@ -1,0 +1,7 @@
+version: 1
+active_look: null
+look: {}
+objects: {}
+camera:
+  distance: 14.0
+object_overrides: {}

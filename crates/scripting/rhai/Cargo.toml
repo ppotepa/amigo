@@ -7,6 +7,8 @@ license.workspace = true
 authors.workspace = true
 
 [dependencies]
+amigo-playground-api.workspace = true
+serde_json.workspace = true
 amigo-panels.workspace = true
 amigo-2d-physics.workspace = true
 amigo-particles-2d-plugin.workspace = true
@@ -35,6 +37,6 @@ amigo-scripting-api.workspace = true
 amigo-session.workspace = true
 amigo-state.workspace = true
 amigo-ui.workspace = true
-rhai.workspace = true
+rhai = { workspace = true, features = ["serde"] }
 serde.workspace = true
 serde_yaml.workspace = true

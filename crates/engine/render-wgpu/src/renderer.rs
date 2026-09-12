@@ -67,7 +67,7 @@ mod graph;
 mod lightmap2d;
 mod math;
 #[allow(dead_code)]
-mod npr;
+pub(crate) mod npr;
 mod particles;
 mod pipelines;
 mod render_types;

@@ -15,6 +15,9 @@ struct AppArgs {
 }
 
 fn main() -> AmigoResult<()> {
+    if let Some(result) = amigo_runtime_bundles::dispatch_playground_client() {
+        return result;
+    }
     if let Some(result) = amigo_runtime_bundles::dispatch_external_panel_client() {
         return result;
     }

@@ -3,6 +3,7 @@
 //! This crate deliberately contains no WGPU types.  It turns authored geometry and
 //! a camera into a stable packet of flat triangles and screen-space ink strokes.
 
+pub mod brush;
 pub mod budget;
 pub mod camera;
 pub mod construction;
@@ -15,8 +16,8 @@ pub mod frame;
 pub mod geometry;
 pub mod gesture;
 pub mod hatching;
-pub mod lod;
 pub mod layer;
+pub mod lod;
 pub mod math;
 pub mod stroke;
 pub mod style;
@@ -28,6 +29,7 @@ pub mod tone;
 pub mod tool;
 pub mod topology;
 
+pub use brush::*;
 pub use budget::*;
 pub use camera::*;
 pub use construction::*;
@@ -39,8 +41,8 @@ pub use fingerprint::*;
 pub use frame::*;
 pub use geometry::*;
 pub use hatching::*;
-pub use lod::*;
 pub use layer::*;
+pub use lod::*;
 pub use math::*;
 pub use stroke::*;
 pub use style::*;

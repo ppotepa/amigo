@@ -24,6 +24,7 @@ impl PluginBundle for CoreRuntimeBundle {
     fn register(self, builder: RuntimeBuilder) -> AmigoResult<RuntimeBuilder> {
         builder
             .with_plugin(SystemRegistryPlugin)?
+            .with_plugin(crate::playgrounds::PlaygroundsPlugin)?
             .with_plugin(SceneCommandRegistryPlugin)?
             .with_plugin(ScriptCommandRegistryPlugin)?
             .with_plugin(RenderExtractorIdRegistryPlugin)?

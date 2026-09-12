@@ -7,6 +7,8 @@ license.workspace = true
 authors.workspace = true
 
 [dependencies]
+amigo-playground-native.workspace = true
+
 amigo-2d-spatial.workspace = true
 amigo-assets.workspace = true
 amigo-font.workspace = true
@@ -26,3 +28,6 @@ image.workspace = true
 wgpu.workspace = true
 bytemuck.workspace = true
 fontdue.workspace = true
+
+[target.'cfg(windows)'.dependencies]
+windows = { version = "0.62", features = ["Win32_Graphics_Direct3D12", "Win32_Graphics_Dxgi_Common", "Win32_Security"] }

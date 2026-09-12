@@ -4,9 +4,8 @@ use crate::{
     camera::PerspectiveCamera,
     feature::FeatureClass,
     geometry::NprGeometry,
-    plan_graphite_tone, select_ranked, smooth_perspective_contours,
+    plan_graphite_tone, select_ranked,
     style::{ComicInk, NprToneMode},
-    suggestive_perspective_contours,
     tessellation::{TessellatedStroke, tessellate_polyline, tessellate_polyline_variants},
     topology::{build_topology, face_normal},
     trace_parallel_surface_lines, trace_surface_streamline,
@@ -65,6 +64,9 @@ pub struct NprFillTriangle {
     pub positions: [Vec2; 3],
     pub color: Vec4,
     pub depths: [f32; 3],
+    /// Assigned only after a source surface has been expanded into an authored
+    /// compositing-layer contribution.
+    pub layer_id: Option<String>,
 }
 /// Paint geometry is deliberately distinct from flat fill geometry. Coverage
 /// is a deterministic pigment deposit, not a post-process opacity heuristic.
@@ -74,6 +76,9 @@ pub struct NprPaintTriangle {
     pub color: Vec4,
     pub depths: [f32; 3],
     pub coverage: f32,
+    /// Assigned only after a source surface has been expanded into an authored
+    /// compositing-layer contribution.
+    pub layer_id: Option<String>,
 }
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct NprRenderStats {
@@ -210,6 +215,7 @@ impl NprRenderPacket {
                 positions,
                 color,
                 depths: [0.0; 3],
+                layer_id: None,
             });
         }
     }
@@ -279,17 +285,28 @@ fn build_packet_with_identity(
         camera.position,
         style.crease_angle,
     );
-    let smooth_contours = (style.surface_mode == NprSurfaceMode::Smooth)
-        .then(|| smooth_perspective_contours(geometry, camera.position, style.smooth_crease_angle))
+    let contour_field = (style.surface_mode == NprSurfaceMode::Smooth).then(|| {
+        surface
+            .map(|surface| surface.contour_field(style.smooth_crease_angle))
+            .unwrap_or_else(|| {
+                std::sync::Arc::new(crate::contour::ContourField::build(
+                    geometry,
+                    style.smooth_crease_angle,
+                ))
+            })
+    });
+    let smooth_contours = contour_field
+        .as_ref()
+        .map(|field| crate::contour::smooth_contours_with_field(geometry, camera.position, field))
         .unwrap_or_default();
     let suggestive_contours = (style.surface_mode == NprSurfaceMode::Smooth
         && style.suggestive_contours)
         .then(|| {
-            suggestive_perspective_contours(
+            crate::contour::suggestive_contours_with_field(
                 geometry,
                 camera.position,
-                style.smooth_crease_angle,
                 style.suggestive_contour_confidence,
+                contour_field.as_ref().expect("smooth contour field"),
             )
         })
         .unwrap_or_default();
@@ -342,7 +359,13 @@ fn build_packet_with_identity(
     let mut surface_hatch_tones = vec![GraphiteTonePlan::PAPER; geometry.triangles.len()];
     let mut hatching_budget = MAX_HATCHING_LINES_PER_PACKET;
     let light_direction = style.light_direction.normalize_or_zero();
-    let direction_field = SurfaceDirectionField::build(geometry, topology, 0.85);
+    let uncached_field;
+    let direction_field = if let Some(surface) = surface {
+        surface.direction_field()
+    } else {
+        uncached_field = SurfaceDirectionField::build(geometry, topology, 0.85);
+        &uncached_field
+    };
     for (face_index, tri) in geometry.triangles.iter().enumerate() {
         for clipped in camera.clip_triangle(tri.map(|i| geometry.vertices[i as usize].position)) {
             if let (Some(a), Some(b), Some(c)) = (
@@ -366,6 +389,7 @@ fn build_packet_with_identity(
                     // The depth pass does not read colour. Retaining it makes
                     // the primitive self-contained for neutral consumers.
                     color,
+                    layer_id: None,
                 };
                 occluders.push(occluder.clone());
                 if style.tone_mode == NprToneMode::ThreeBand {
@@ -375,6 +399,7 @@ fn build_packet_with_identity(
                         depths,
                         color,
                         coverage,
+                        layer_id: None,
                     });
                     fills.push(occluder);
                 }
@@ -513,6 +538,7 @@ fn build_packet_with_identity(
             geometry,
             topology,
             surface,
+            direction_field,
             camera,
             viewport,
             style,
@@ -1084,6 +1110,7 @@ fn emit_surface_hatching(
     geometry: &NprGeometry,
     topology: &[crate::TopologyEdge],
     surface: Option<&crate::NprPreparedSurface>,
+    direction_field: &SurfaceDirectionField,
     camera: PerspectiveCamera,
     viewport: [u32; 2],
     style: ComicInk,
@@ -1106,7 +1133,6 @@ fn emit_surface_hatching(
         .iter()
         .map(|tone| tone.primary_coverage)
         .collect::<Vec<_>>();
-    let direction_field = SurfaceDirectionField::build(geometry, topology, 0.85);
     let form_axis = direction_field.form_axis();
     // A tonal path is a mark on the object, not a new random screen pattern.
     // Keep its plane family in object space so orbiting the camera only
@@ -1794,6 +1820,7 @@ mod tests {
             class: FeatureClass::Silhouette,
             role: StrokeRole::Feature,
             correction: false,
+            layer_id: None,
         };
         let mut tone = feature.clone();
         tone.id = 2;

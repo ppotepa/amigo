@@ -24,6 +24,7 @@ struct SurfaceSegment {
 /// A connection is allowed only across a shared edge whose normal agreement is
 /// above `smooth_dot_threshold`. Degenerate vertex hits are intentionally
 /// skipped rather than creating ambiguous branches at a mesh vertex.
+/// `topology` must use the canonical edge order returned by `build_topology`.
 pub fn trace_parallel_surface_lines(
     geometry: &NprGeometry,
     topology: &[TopologyEdge],
@@ -106,7 +107,10 @@ fn intersect_triangle(
         (triangle[1], triangle[2]),
         (triangle[2], triangle[0]),
     ];
-    let mut hits = Vec::with_capacity(2);
+    // Most face/plane pairs do not intersect. Keep the three possible edge
+    // hits on the stack instead of allocating for every tested triangle.
+    let mut hits = [(Vec3::ZERO, (0, 0)); 3];
+    let mut hit_count = 0;
     for (a, b) in edges {
         let point_a = geometry.vertices[a as usize].position;
         let point_b = geometry.vertices[b as usize].position;
@@ -118,9 +122,10 @@ fn intersect_triangle(
             continue;
         }
         let t = da / (da - db);
-        hits.push((point_a.lerp(point_b, t), ordered_edge(a, b)));
+        hits[hit_count] = (point_a.lerp(point_b, t), ordered_edge(a, b));
+        hit_count += 1;
     }
-    (hits.len() == 2).then(|| SurfaceSegment {
+    (hit_count == 2).then(|| SurfaceSegment {
         face,
         points: [hits[0].0, hits[1].0],
         edges: [hits[0].1, hits[1].1],
@@ -202,12 +207,18 @@ fn smooth_connection(
     threshold: f32,
 ) -> bool {
     from != to
-        && topology.iter().any(|topology_edge| {
-            ordered_edge(topology_edge.a, topology_edge.b) == edge
-                && topology_edge.faces.contains(&from)
+        && topology_edge(topology, edge).is_some_and(|topology_edge| {
+            topology_edge.faces.contains(&from)
                 && topology_edge.faces.contains(&to)
                 && normals[from as usize].dot(normals[to as usize]) >= threshold
         })
+}
+
+fn topology_edge(topology: &[TopologyEdge], edge: (u32, u32)) -> Option<&TopologyEdge> {
+    topology
+        .binary_search_by_key(&edge, |item| (item.a, item.b))
+        .ok()
+        .map(|index| &topology[index])
 }
 
 fn ordered_edge(a: u32, b: u32) -> (u32, u32) {
@@ -217,6 +228,7 @@ fn ordered_edge(a: u32, b: u32) -> (u32, u32) {
 /// Integrates a local tangent field over the actual triangle surface. A path
 /// may cross only a selected, smooth neighbor; clipping and tessellation are
 /// deliberately left to later stages.
+/// `topology` must use the canonical edge order returned by `build_topology`.
 pub fn trace_surface_streamline(
     geometry: &NprGeometry,
     topology: &[TopologyEdge],
@@ -427,19 +439,20 @@ fn smooth_neighbor(
     edge: (u32, u32),
     threshold: f32,
 ) -> Option<u32> {
-    topology.iter().find_map(|topology_edge| {
-        (ordered_edge(topology_edge.a, topology_edge.b) == edge
-            && topology_edge.faces.contains(&face))
-        .then(|| {
-            topology_edge.faces.iter().copied().find(|neighbor| {
-                *neighbor != face
-                    && *neighbor != u32::MAX
-                    && selected_faces[*neighbor as usize]
-                    && face_normal(geometry, face).dot(face_normal(geometry, *neighbor))
-                        >= threshold
+    topology_edge(topology, edge).and_then(|topology_edge| {
+        topology_edge
+            .faces
+            .contains(&face)
+            .then(|| {
+                topology_edge.faces.iter().copied().find(|neighbor| {
+                    *neighbor != face
+                        && *neighbor != u32::MAX
+                        && selected_faces[*neighbor as usize]
+                        && face_normal(geometry, face).dot(face_normal(geometry, *neighbor))
+                            >= threshold
+                })
             })
-        })
-        .flatten()
+            .flatten()
     })
 }
 

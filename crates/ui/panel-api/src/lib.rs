@@ -1,13 +1,13 @@
 //! Transport-independent scene panel contracts. No UI backend or domain dependencies.
 use amigo_runtime_control::{ControlRange, ControlValue, ControlValueType};
 use amigo_scene::SceneUiNodeComponentDocument;
-use serde::{Deserialize, Serialize, de::DeserializeOwned};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::{
     collections::{BTreeMap, BTreeSet},
     io::{self, Read, Write},
 };
 
-pub const PROTOCOL_VERSION: u32 = 1;
+pub const PROTOCOL_VERSION: u32 = 3;
 pub const MAX_FRAME_BYTES: usize = 4 * 1024 * 1024;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -20,11 +20,27 @@ pub struct PanelDocument {
     pub preset_domain_bind: Option<String>,
     #[serde(default)]
     pub confirm_actions: Vec<String>,
+    /// Optional, authored capabilities for the generic asset browser.
+    #[serde(default)]
+    pub asset_browser: Option<PanelAssetBrowserDocument>,
     #[serde(default)]
     pub presentation: BTreeMap<String, PanelPresentation>,
     #[serde(default)]
     pub artwork: BTreeMap<String, Vec<PreviewTriangle>>,
     pub root: SceneUiNodeComponentDocument,
+}
+
+/// Actions that a panel author explicitly permits for the generic asset browser.
+/// The usage strings are routed to a domain handler; panel-api never assigns
+/// semantics such as "model" or "scene" to an asset entry.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PanelAssetBrowserDocument {
+    /// The authored source to open first when it is present in the runtime catalog.
+    #[serde(default)]
+    pub preferred_source: Option<String>,
+    pub add_usage: Option<String>,
+    pub replace_usage: Option<String>,
 }
 
 /// Backend-neutral layout hints. Domain actions remain authored script events.
@@ -87,6 +103,7 @@ impl PanelDocument {
                     &n.text_bind,
                     &n.visible_bind,
                     &n.enabled_bind,
+                    &n.options_bind,
                 ]
                 .into_iter()
                 .flatten()
@@ -136,6 +153,15 @@ impl PanelDocument {
             }
             if node.kind == amigo_scene::SceneUiNodeTypeComponentDocument::CurveEditor {
                 return Err("curve-editor is not supported by runtime panels".into());
+            }
+            if node.options_bind.is_some()
+                && !matches!(
+                    node.kind,
+                    amigo_scene::SceneUiNodeTypeComponentDocument::Dropdown
+                        | amigo_scene::SceneUiNodeTypeComponentDocument::OptionSet
+                )
+            {
+                return Err("options_bind is only valid for dropdowns and option sets".into());
             }
             if let Some(id) = &node.id {
                 if id.is_empty() || !ids.insert(id) {
@@ -200,6 +226,7 @@ impl PanelDocument {
                 &node.text_bind,
                 &node.visible_bind,
                 &node.enabled_bind,
+                &node.options_bind,
             ]
             .into_iter()
             .flatten()
@@ -217,6 +244,11 @@ impl PanelDocument {
             {
                 if registry.property(path).unwrap().value_type != ControlValueType::Bool {
                     return Err(format!("{path} must be boolean"));
+                }
+            }
+            if let Some(path) = &node.options_bind {
+                if registry.property(path).unwrap().value_type != ControlValueType::String {
+                    return Err(format!("{path} must be a newline-separated string"));
                 }
             }
             if let Some(path) = &node.value_bind {
@@ -261,6 +293,65 @@ pub struct PanelSnapshot {
     pub document: PanelDocument,
     pub preset_names: Vec<String>,
     pub values: BTreeMap<String, PropertySnapshot>,
+    #[serde(default)]
+    pub asset_browser: Option<PanelAssetBrowserSnapshot>,
+}
+
+/// Transport-safe asset catalog data for a panel host. This mirrors a runtime
+/// catalog snapshot without coupling the external protocol to engine services.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
+pub struct PanelAssetBrowserSnapshot {
+    pub selected_source: Option<String>,
+    pub sources: Vec<PanelAssetSourceSnapshot>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct PanelAssetSourceSnapshot {
+    pub id: String,
+    pub label: String,
+    pub refreshable: bool,
+    pub revision: u64,
+    pub state: PanelAssetSourceState,
+    pub entries: Vec<PanelAssetEntrySnapshot>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "kebab-case")]
+pub enum PanelAssetSourceState {
+    Empty,
+    Loading,
+    Ready,
+    Failed { failed_assets: usize },
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct PanelAssetEntrySnapshot {
+    pub id: String,
+    pub label: String,
+    pub tags: Vec<String>,
+    pub kind: Option<String>,
+    pub state: PanelAssetEntryState,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "kebab-case")]
+pub enum PanelAssetEntryState {
+    Unloaded,
+    Loading,
+    Ready,
+    Failed { message: String },
+}
+
+/// A revision-checked request to use one catalog entry for an authored purpose.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct PanelAssetIntent {
+    pub panel_id: String,
+    pub generation: u64,
+    pub revision: u64,
+    pub source_id: String,
+    pub source_revision: u64,
+    pub asset_id: String,
+    pub usage: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -287,6 +378,18 @@ pub enum ClientMessage {
         revision: u64,
         control: String,
     },
+    AssetIntent {
+        request: u64,
+        intent: PanelAssetIntent,
+    },
+    RefreshAssetSource {
+        request: u64,
+        panel_id: String,
+        generation: u64,
+        revision: u64,
+        source_id: String,
+        source_revision: u64,
+    },
     Close,
 }
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -303,6 +406,8 @@ pub enum ServerMessage {
         acknowledged: u64,
         preset_names: Vec<String>,
         values: BTreeMap<String, PropertySnapshot>,
+        #[serde(default)]
+        asset_browser: Option<PanelAssetBrowserSnapshot>,
     },
     Result {
         request: u64,
@@ -346,13 +451,13 @@ mod tests {
     fn presentation_bindings_and_invalid_artwork_are_validated() {
         let mut doc: PanelDocument = serde_json::from_value(serde_json::json!({
             "id":"test", "title":"Test", "root":{"type":"column", "id":"root", "children":[
-                {"type":"option-set","id":"objects","value_bind":"selected","options":["a"]}
+                {"type":"option-set","id":"objects","value_bind":"selected","options_bind":"object_ids","options":["a"]}
             ]}, "presentation":{"objects":{"pin":"top","choices":[{"value":"a","label":"A","artwork_bind":"model","status_bind":"status"}]}}
         })).unwrap();
         doc.validate().unwrap();
         assert_eq!(
             doc.binding_paths(),
-            ["selected", "model", "status"]
+            ["selected", "object_ids", "model", "status"]
                 .into_iter()
                 .map(String::from)
                 .collect()
@@ -395,7 +500,9 @@ mod tests {
         .unwrap();
         assert!(matches!(
             read_message::<ClientMessage>(&mut Fragmented(std::io::Cursor::new(bytes))).unwrap(),
-            ClientMessage::Hello { version: 1 }
+            ClientMessage::Hello {
+                version: PROTOCOL_VERSION
+            }
         ));
     }
     #[test]

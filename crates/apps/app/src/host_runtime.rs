@@ -461,6 +461,25 @@ impl HostHandler for SummaryHostHandler {
 }
 
 impl HostHandler for InteractiveRuntimeHostHandler {
+    fn primary_window_enabled(&self) -> bool {
+        !self.runtime().resolve::<amigo_runtime_bundles::PlaygroundCompanionService>()
+            .is_some_and(|service| service.owns_primary_window())
+    }
+
+    fn on_background_tick(&mut self) -> AmigoResult<HostControl> {
+        self.tick_host_frame(std::time::Instant::now())?;
+        self.clear_host_frame_transients();
+        if let Some(service) = self.runtime().resolve::<amigo_runtime_bundles::PlaygroundCompanionService>() {
+            if service.primary_window_closed() {
+                if let Some(error) = service.error() {
+                    return Err(amigo_core::AmigoError::Message(error));
+                }
+                return Ok(HostControl::Exit);
+            }
+        }
+        Ok(HostControl::Continue)
+    }
+
     fn config(&self) -> HostConfig {
         HostConfig {
             window: WindowDescriptor {
@@ -474,9 +493,20 @@ impl HostHandler for InteractiveRuntimeHostHandler {
     }
 
     fn on_lifecycle(&mut self, event: HostLifecycleEvent) -> AmigoResult<HostControl> {
-        if matches!(event, HostLifecycleEvent::WindowCreated) && !self.printed {
+        if matches!(event, HostLifecycleEvent::Resumed) {
+            // Compose scene-owned UIs before the platform chooses whether a
+            // primary host window is needed. No domain-specific policy here.
+            self.tick_runtime_post_update()?;
+            if !self.primary_window_enabled() {
+                start_audio_output(self.runtime())?;
+            }
+        }
+        if (matches!(event, HostLifecycleEvent::WindowCreated)
+            || matches!(event, HostLifecycleEvent::Resumed) && !self.primary_window_enabled()) && !self.printed {
             println!("{}", self.summary);
-            if self.host_scene_switch_enabled() {
+            if !self.primary_window_enabled() {
+                println!("host: scene companion owns the application window");
+            } else if self.host_scene_switch_enabled() {
                 println!(
                     "host controls: Left/Right switch scenes, Enter help, Space diagnostics, Escape exits"
                 );

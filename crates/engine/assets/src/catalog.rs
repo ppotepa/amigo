@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Mutex;
 
 use crate::{
@@ -10,6 +10,7 @@ use crate::{
 struct AssetCatalogState {
     manifests: BTreeMap<AssetKey, AssetManifest>,
     pending_loads: BTreeMap<AssetKey, AssetLoadRequest>,
+    external_loads: BTreeSet<AssetKey>,
     loaded_assets: BTreeMap<AssetKey, LoadedAsset>,
     prepared_assets: BTreeMap<AssetKey, PreparedAsset>,
     failed_assets: BTreeMap<AssetKey, FailedAsset>,
@@ -22,6 +23,18 @@ pub struct AssetCatalog {
 }
 
 impl AssetCatalog {
+    /// Records work owned by a domain loader without queuing it for the file loader.
+    pub fn begin_external_load(&self, key: AssetKey) {
+        let mut state = self.state.lock().expect("asset catalog mutex poisoned");
+        state.failed_assets.remove(&key);
+        state.prepared_assets.remove(&key);
+        state.external_loads.insert(key);
+    }
+
+    pub fn external_loading_keys(&self) -> BTreeSet<AssetKey> {
+        self.state.lock().expect("asset catalog mutex poisoned").external_loads.clone()
+    }
+
     pub fn register(&self, key: AssetKey) -> bool {
         self.register_manifest(AssetManifest::engine(key))
     }
@@ -92,6 +105,7 @@ impl AssetCatalog {
             .expect("asset catalog mutex should not be poisoned");
         let key = asset.key.clone();
         state.pending_loads.remove(&key);
+        state.external_loads.remove(&key);
         state.failed_assets.remove(&key);
         state.loaded_assets.insert(key.clone(), asset);
         state.events.push(AssetEvent::LoadCompleted(key));
@@ -103,6 +117,7 @@ impl AssetCatalog {
             .lock()
             .expect("asset catalog mutex should not be poisoned");
         let reason = reason.into();
+        state.external_loads.remove(&key);
         state.pending_loads.remove(&key);
         state.loaded_assets.remove(&key);
         state.prepared_assets.remove(&key);
@@ -122,6 +137,7 @@ impl AssetCatalog {
             .lock()
             .expect("asset catalog mutex should not be poisoned");
         let key = asset.key.clone();
+        state.external_loads.remove(&key);
         state.failed_assets.remove(&key);
         state.prepared_assets.insert(key.clone(), asset);
         state.events.push(AssetEvent::Prepared(key));

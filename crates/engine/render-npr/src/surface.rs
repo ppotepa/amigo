@@ -6,8 +6,8 @@
 //! geometry/topology cache.
 
 use crate::{
-    build_topology, subdivide_smooth_proxy_with_provenance, NprGeometry, NprSmoothProxyGeometry,
-    NprSourceTriangleMapping, NprSubdivisionError, TopologyEdge,
+    NprGeometry, NprSmoothProxyGeometry, NprSourceTriangleMapping, NprSubdivisionError,
+    TopologyEdge, build_topology, subdivide_smooth_proxy_with_provenance,
 };
 use glam::Vec3;
 use std::collections::BTreeMap;
@@ -77,11 +77,23 @@ impl std::error::Error for NprSurfaceAnchorError {}
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct NprPreparedSurface {
+    contour_cache: ContourCache,
     geometry: NprGeometry,
     topology: Vec<TopologyEdge>,
+    direction_field: crate::SurfaceDirectionField,
     content_id: NprSurfaceContentId,
     source_content_id: NprSurfaceContentId,
     source_triangles: Option<Vec<NprSourceTriangleMapping>>,
+}
+
+#[derive(Debug, Default, Clone)]
+struct ContourCache(
+    std::sync::Arc<std::sync::Mutex<BTreeMap<u32, std::sync::Arc<crate::contour::ContourField>>>>,
+);
+impl PartialEq for ContourCache {
+    fn eq(&self, _: &Self) -> bool {
+        true
+    }
 }
 
 /// Fixed, revision-scoped policy for a smooth drawing proxy. It is deliberately
@@ -109,9 +121,9 @@ impl Default for NprSmoothProxyPolicy {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct NprPreparedSurfaceVariants {
-    source: NprPreparedSurface,
+    source: std::sync::Arc<NprPreparedSurface>,
     smooth_drawing_sources: BTreeMap<u32, NprGeometry>,
-    smooth_proxies: BTreeMap<SmoothProxyKey, NprPreparedSurface>,
+    smooth_proxies: BTreeMap<SmoothProxyKey, std::sync::Arc<NprPreparedSurface>>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -125,7 +137,7 @@ struct SmoothProxyKey {
 impl NprPreparedSurfaceVariants {
     pub fn new(geometry: NprGeometry) -> Self {
         Self {
-            source: NprPreparedSurface::new(geometry),
+            source: std::sync::Arc::new(NprPreparedSurface::new(geometry)),
             smooth_drawing_sources: BTreeMap::new(),
             smooth_proxies: BTreeMap::new(),
         }
@@ -135,15 +147,20 @@ impl NprPreparedSurfaceVariants {
         &self.source
     }
 
+    pub fn source_shared(&self) -> std::sync::Arc<NprPreparedSurface> {
+        self.source.clone()
+    }
+
     pub fn smooth_proxy(
         &mut self,
         policy: NprSmoothProxyPolicy,
-    ) -> Result<&NprPreparedSurface, NprSubdivisionError> {
+    ) -> Result<std::sync::Arc<NprPreparedSurface>, NprSubdivisionError> {
         // UV/normal seams often duplicate vertex indices without splitting the
         // physical surface. Weld only in the explicitly authored Smooth path:
         // Polygonal assets retain their literal topology, while smooth drawing
         // contours stop promoting importer seams to boundaries.
-        let weld_relative_tolerance_bits = canonical_weld_tolerance_bits(policy.weld_relative_tolerance);
+        let weld_relative_tolerance_bits =
+            canonical_weld_tolerance_bits(policy.weld_relative_tolerance);
         let source_vertex_count = self.source.geometry().vertices.len();
         if policy.levels == 0
             && self
@@ -152,7 +169,7 @@ impl NprPreparedSurfaceVariants {
                 .len()
                 == source_vertex_count
         {
-            return Ok(&self.source);
+            return Ok(self.source.clone());
         }
         let key = SmoothProxyKey {
             levels: policy.levels,
@@ -177,13 +194,17 @@ impl NprPreparedSurfaceVariants {
             };
             self.smooth_proxies.insert(
                 key,
-                NprPreparedSurface::from_proxy(proxy, self.source.content_id),
+                std::sync::Arc::new(NprPreparedSurface::from_proxy(
+                    proxy,
+                    self.source.content_id,
+                )),
             );
         }
         Ok(self
             .smooth_proxies
             .get(&key)
-            .expect("newly inserted NPR smooth proxy must be present"))
+            .expect("newly inserted NPR smooth proxy must be present")
+            .clone())
     }
 
     fn smooth_drawing_source(&mut self, tolerance_bits: u32) -> &NprGeometry {
@@ -203,11 +224,7 @@ fn canonical_angle_bits(value: f32) -> u32 {
     } else {
         NprSmoothProxyPolicy::default().crease_angle
     };
-    if value == 0.0 {
-        0
-    } else {
-        value.to_bits()
-    }
+    if value == 0.0 { 0 } else { value.to_bits() }
 }
 
 fn canonical_weld_tolerance_bits(value: f32) -> u32 {
@@ -223,9 +240,12 @@ impl NprPreparedSurface {
     pub fn new(geometry: NprGeometry) -> Self {
         let content_id = NprSurfaceContentId(hash_geometry(&geometry));
         let topology = build_topology(&geometry);
+        let direction_field = crate::SurfaceDirectionField::build(&geometry, &topology, 0.85);
         Self {
             geometry,
+            contour_cache: Default::default(),
             topology,
+            direction_field,
             content_id,
             source_content_id: content_id,
             source_triangles: None,
@@ -235,9 +255,12 @@ impl NprPreparedSurface {
     fn from_proxy(proxy: NprSmoothProxyGeometry, source_content_id: NprSurfaceContentId) -> Self {
         let content_id = NprSurfaceContentId(hash_geometry(&proxy.geometry));
         let topology = build_topology(&proxy.geometry);
+        let direction_field = crate::SurfaceDirectionField::build(&proxy.geometry, &topology, 0.85);
         Self {
             geometry: proxy.geometry,
+            contour_cache: Default::default(),
             topology,
+            direction_field,
             content_id,
             source_content_id,
             source_triangles: Some(proxy.source_triangles),
@@ -254,6 +277,25 @@ impl NprPreparedSurface {
 
     pub fn topology(&self) -> &[TopologyEdge] {
         &self.topology
+    }
+
+    /// Revision-owned field shared by all packet passes and camera views.
+    pub fn direction_field(&self) -> &crate::SurfaceDirectionField {
+        &self.direction_field
+    }
+
+    pub(crate) fn contour_field(&self, angle: f32) -> std::sync::Arc<crate::contour::ContourField> {
+        let mut cache = self.contour_cache.0.lock().unwrap();
+        let key = angle.to_bits();
+        if let Some(field) = cache.get(&key) {
+            return field.clone();
+        }
+        if cache.len() >= 8 {
+            cache.clear();
+        }
+        let field = std::sync::Arc::new(crate::contour::ContourField::build(&self.geometry, angle));
+        cache.insert(key, field.clone());
+        field
     }
 
     pub fn content_id(&self) -> NprSurfaceContentId {
@@ -503,8 +545,8 @@ fn hash_geometry(geometry: &NprGeometry) -> u64 {
 mod tests {
     use super::*;
     use crate::{
-        build_packet_for_surface, build_packet_with_topology, ComicInk, NprDebugView,
-        NprSurfaceMode, PerspectiveCamera,
+        ComicInk, NprDebugView, NprSurfaceMode, PerspectiveCamera, build_packet_for_surface,
+        build_packet_with_topology,
     };
     use glam::{Mat4, Vec3};
 
@@ -599,10 +641,12 @@ mod tests {
 
         assert_eq!(proxy.geometry().vertices.len(), 4);
         assert_eq!(proxy.source_content_id(), source.content_id());
-        assert!(proxy
-            .topology()
-            .iter()
-            .any(|edge| edge.faces[0] != u32::MAX && edge.faces[1] != u32::MAX));
+        assert!(
+            proxy
+                .topology()
+                .iter()
+                .any(|edge| edge.faces[0] != u32::MAX && edge.faces[1] != u32::MAX)
+        );
         let anchor = proxy.source_anchor(0, [1.0, 0.0, 0.0]).unwrap();
         assert_eq!(anchor.content_id, source.content_id());
         assert_eq!(anchor.triangle, 0);
@@ -657,33 +701,50 @@ mod tests {
             .unwrap();
 
         assert_eq!(proxy.geometry().vertices.len(), 4);
-        assert!(proxy
-            .geometry()
-            .triangles
-            .iter()
-            .all(|triangle| triangle[0] != triangle[1] && triangle[1] != triangle[2]));
+        assert!(
+            proxy
+                .geometry()
+                .triangles
+                .iter()
+                .all(|triangle| triangle[0] != triangle[1] && triangle[1] != triangle[2])
+        );
     }
 
     #[test]
     fn smooth_proxy_weld_tolerance_is_an_explicit_surface_policy() {
         let split = NprGeometry::from_indexed(
             &[
-                [0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0],
-                [1.0 + 0.000_001, 0.0, 0.0], [1.0, 1.0, 0.0], [0.0, 1.0 + 0.000_001, 0.0],
+                [0.0, 0.0, 0.0],
+                [1.0, 0.0, 0.0],
+                [0.0, 1.0, 0.0],
+                [1.0 + 0.000_001, 0.0, 0.0],
+                [1.0, 1.0, 0.0],
+                [0.0, 1.0 + 0.000_001, 0.0],
             ],
             &[0, 1, 2, 3, 4, 5],
-        ).unwrap();
+        )
+        .unwrap();
         let mut variants = NprPreparedSurfaceVariants::new(split);
-        let exact = variants.smooth_proxy(NprSmoothProxyPolicy {
-            levels: 0,
-            weld_relative_tolerance: 0.0,
-            ..NprSmoothProxyPolicy::default()
-        }).unwrap().geometry().vertices.len();
-        let tolerant = variants.smooth_proxy(NprSmoothProxyPolicy {
-            levels: 0,
-            weld_relative_tolerance: 1.0e-5,
-            ..NprSmoothProxyPolicy::default()
-        }).unwrap().geometry().vertices.len();
+        let exact = variants
+            .smooth_proxy(NprSmoothProxyPolicy {
+                levels: 0,
+                weld_relative_tolerance: 0.0,
+                ..NprSmoothProxyPolicy::default()
+            })
+            .unwrap()
+            .geometry()
+            .vertices
+            .len();
+        let tolerant = variants
+            .smooth_proxy(NprSmoothProxyPolicy {
+                levels: 0,
+                weld_relative_tolerance: 1.0e-5,
+                ..NprSmoothProxyPolicy::default()
+            })
+            .unwrap()
+            .geometry()
+            .vertices
+            .len();
         assert_eq!(exact, 6);
         assert_eq!(tolerant, 4);
     }

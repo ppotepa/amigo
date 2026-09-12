@@ -125,6 +125,10 @@ pub struct SceneUiNodeComponentDocument {
     pub selected: Option<String>,
     #[serde(default)]
     pub options: Vec<String>,
+    /// Newline-separated runtime options for dropdowns and option sets.
+    /// Static `options` remain the authored fallback when this binding is empty.
+    #[serde(default)]
+    pub options_bind: Option<String>,
     #[serde(default)]
     pub tabs: Vec<SceneUiTabComponentDocument>,
     #[serde(default)]

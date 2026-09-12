@@ -1,0 +1,50 @@
+id: comic-ink
+includes: []
+look:
+  layers:
+  - layer_id: paper
+    order: 0
+    parameters: { id: paper, label: Paper, source: paper }
+  - layer_id: wash
+    order: 1
+    parameters:
+      id: wash
+      label: Watercolour wash
+      source: wash
+      opacity: 0.45
+      paint: { wash: 0.82, granulation: 0.18 }
+      brush: { brush: { id: watercolour-wash, version: 1 } }
+  - layer_id: flat-fill
+    order: 2
+    parameters:
+      id: flat-fill
+      label: Flat fill
+      source: flat-fill
+      enabled: true
+      opacity: 0.72
+      brush: { brush: { id: flat-fill, version: 1 } }
+  - layer_id: hatch
+    order: 3
+    parameters:
+      id: hatch
+      label: Shadow hatch
+      source: shadow-hatch
+      blend: multiply
+      brush: { brush: { id: surface-hatch, version: 1 } }
+  - layer_id: graphite
+    order: 4
+    parameters:
+      id: graphite
+      label: Graphite form lines
+      source: form-lines
+      opacity: 0.72
+      tool: pencil
+      brush: { brush: { id: graphite-study, version: 1 } }
+  - layer_id: ink
+    order: 5
+    parameters:
+      id: ink
+      label: Ink contours
+      source: silhouette
+      tool: fineliner
+      brush: { brush: { id: ink-liner, version: 1 } }

@@ -1,0 +1,53 @@
+id: pencil-study
+includes:
+- comic-ink
+look:
+  layers: []
+  style:
+    boundary_width: 2.4000000953674316
+    crease_width: 1.600000023841858
+    gesture_confidence: 0.7200000286102295
+    gesture_correction: 0.18000000715255737
+    gesture_overstroke: 0.11999999731779099
+    gesture_simplification: 0.07999999821186066
+    hatching_cross: 0.10000000149011612
+    hatching_spacing: 7.0
+    ink:
+    - 0.03500000014901161
+    - 0.02800000086426735
+    - 0.02199999988079071
+    - 1.0
+    ink_dryness: 0.18000000715255737
+    light:
+    - 0.8799999952316284
+    - 0.8600000143051147
+    - 0.800000011920929
+    - 1.0
+    mid:
+    - 0.5799999833106995
+    - 0.5899999737739563
+    - 0.6000000238418579
+    - 1.0
+    min_smooth_contour_length_pixels: 0.0
+    outline_width: 3.5999999046325684
+    paper:
+    - 0.9399999976158142
+    - 0.9100000262260437
+    - 0.8399999737739563
+    - 1.0
+    paper_grain: 0.7200000286102295
+    paper_tooth: 0.5799999833106995
+    shadow:
+    - 0.25
+    - 0.27000001072883606
+    - 0.30000001192092896
+    - 1.0
+    smooth_contour_simplification_pixels: 0.0
+    smooth_draw_creases: true
+    taper: 0.25999999046325684
+    tone_density: 0.4399999976158142
+    tone_mode: hatching
+    tool: pencil
+    tool_hardness: 0.3799999952316284
+    tool_pressure: 0.8799999952316284
+    wobble: 1.25

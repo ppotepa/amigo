@@ -1006,34 +1006,25 @@ korzysta z obecnego `zoom.rs`; poprawa rysunku nie wymaga jego zastąpienia.
 
 ### 16.3. Wiązania i atomowe operacje
 
-Obecny provider korzysta z prefiksu `world.npr.settings.NprSettings.` i m.in.
-aliasów `appearance.*`. Nowe nazwy poniżej są propozycją schematu, nie opisem
-już działających bindings:
-
-```text
-appearance.profile
-appearance.tone.contrast
-appearance.lines.lost_edges
-appearance.gesture.confidence
-appearance.tool.pressure
-appearance.hatching.form_alignment
-appearance.paper.tooth
-diagnostics.npr.upload_bytes          // tylko odczyt
-diagnostics.npr.budget_limited        // tylko odczyt
-```
-
-Przykładowa intencja Rhai po zarejestrowaniu właściwej ścieżki:
+NprPlayground publikuje wersjonowany snapshot i typed intents przez wspólną
+usługę domenową. Metadane opisują zakresy oraz stan readonly/disabled. Parametry
+nowych narzędzi rozszerzają ten kontrakt, bez stringowych aliasów właściwości.
 
 ```rhai
-world.controls.set(
-    "world.npr.settings.NprSettings.appearance.tool.pressure",
-    0.55
-);
+let snapshot = npr_playground_metadata().values.npr;
+let style = snapshot.settings.global;
+style.tool_pressure = 0.55;
+npr_playground_dispatch(#{
+    kind: "set_look",
+    style: style,
+    layers: snapshot.settings.style_layers
+});
 ```
 
-Provider waliduje typ, zakres, dostępność narzędzia i komplet zależnych parametrów.
-UI i Rhai mają identyczne reguły. Zmiana całego profilu/presetu jest atomowa:
-nie publikujemy jednej klatki z nowym narzędziem i starym niezgodnym materiałem.
+Usługa waliduje typ, zakres, dostępność narzędzia i komplet zależnych parametrów.
+UI i Rhai mają identyczne reguły. Nowy snapshot jest publikowany dopiero po
+walidacji całej zmiany. Aktualny klient i zapis sidecarów są opisane w
+[dokumentacji NprPlayground](../../plugins/gfx/npr-playground/docs/npr-playground-ui.md).
 
 Przy zmianie schematu aktualizujemy razem provider, layout, skrypty, presety
 w repozytorium i testy. Starszy nieobsługiwany zapis użytkownika dostaje jawny
@@ -1128,7 +1119,7 @@ jest kontrakt/warstwa renderowania, nie aplikacja.
 | MODIFY `plugins/gfx/npr-playground/src/state/look_presets.rs` | Wersjonowany zapis kompletnego profilu i atomowy odczyt | `rtk cargo test -p amigo-npr-playground-plugin preset` | Nie nadpisywać niezgodnych plików użytkownika |
 | MODIFY `plugins/gfx/npr-playground/src/state/history.rs` | Historia edycji obejmuje kompletny profil | Test undo/redo w crate pluginu | Nie mieszać historii edycji z historią temporalną rysunku |
 | MODIFY `crates/3d/mesh/src/geometry_asset.rs` | Tylko gdy wymagane: zachowanie jawnych normalnych/szwów/identyfikatorów wejścia | `rtk cargo check -p amigo-3d-mesh`; testy importu | Nie rozszerzać importera bez wykazanego wymagania |
-| MODIFY `mods/npr-playground/ui/npr.panel.yml` | Sekcje narzędzi, podstawowe kontrolki, bindings i diagnostyka | Test ładowania panelu/pluginu i sesja hosted | Nie umieszczać tu algorytmów |
+| MODIFY `plugins/gfx/npr-playground/playground-client/src/App.svelte` | Sekcje narzędzi, metadane i diagnostyka | Svelte check/test, testy pluginu i companionu | Nie umieszczać tu algorytmów |
 | MODIFY `mods/npr-playground/scenes/gallery/scene.yml` | Zadeklarowane profile, modele referencyjne, panel auto_open | Test sceny i plugin-check | Nie dodawać drugiego mesha renderującego te same obiekty |
 | ADD `mods/npr-playground/scenes/stroke-lab/scene.yml` | Plansza próbek w domenie NPR; authored wybór sceny | Test ładowania plus offscreen | Mod nie implementuje modelu narzędzia |
 | MODIFY `plugins/gfx/npr-playground/README.md` | Instrukcja warsztatu i odnośnik do niniejszej architektury przy wdrożeniu | `rtk git diff --check` | Nie reklamować niewdrożonych etapów jako gotowych |

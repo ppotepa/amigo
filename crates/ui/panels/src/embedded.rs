@@ -107,12 +107,27 @@ pub fn choice_value_for_id(snapshot: &PanelSnapshot, id: &str) -> Option<(String
             .then_some(node)
             .and_then(|node| {
                 let control_id = node.id.as_deref()?;
-                node.options
+                resolved_options(node, snapshot)
                     .iter()
                     .find(|value| choice_id(&snapshot.document.id, control_id, value) == id)
                     .map(|value| (control_id.to_owned(), value.clone()))
             })
     })
+}
+
+fn resolved_options(node: &Node, snapshot: &PanelSnapshot) -> Vec<String> {
+    node.options_bind
+        .as_ref()
+        .and_then(|path| snapshot.values.get(path))
+        .and_then(|value| value.value.as_string())
+        .map(|value| {
+            value
+                .split('\n')
+                .filter(|option| !option.is_empty())
+                .map(str::to_owned)
+                .collect::<Vec<_>>()
+        })
+        .unwrap_or_else(|| node.options.clone())
 }
 
 fn render_node(
@@ -215,7 +230,7 @@ fn render_node(
                     .and_then(ControlValue::as_string)
                     .unwrap_or_default()
                     .to_owned(),
-                options: node.options.clone(),
+                options: resolved_options(node, snapshot),
                 font: None,
             },
             Kind::Dropdown => UiOverlayNodeKind::Dropdown {
@@ -223,7 +238,7 @@ fn render_node(
                     .and_then(ControlValue::as_string)
                     .unwrap_or_default()
                     .to_owned(),
-                options: node.options.clone(),
+                options: resolved_options(node, snapshot),
                 expanded: node
                     .id
                     .as_ref()
@@ -293,6 +308,7 @@ pub fn group_is_collapsed(
 
 fn uses_choice_cards(node: &Node, snapshot: &PanelSnapshot) -> bool {
     node.kind == Kind::OptionSet
+        && resolved_options(node, snapshot) == node.options
         && node
             .id
             .as_ref()

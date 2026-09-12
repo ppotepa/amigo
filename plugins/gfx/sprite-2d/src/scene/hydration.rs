@@ -224,6 +224,7 @@ mod tests {
         };
         let document = SceneDocument {
             panels: Vec::new(),
+            playgrounds: Vec::new(),
             version: 1,
             scene: SceneMetadataDocument {
                 id: "test-scene".to_owned(),

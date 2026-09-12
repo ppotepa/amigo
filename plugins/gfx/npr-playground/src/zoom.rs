@@ -1,10 +1,19 @@
-//! Transient viewport motion; never serialized into scene presets.
+//! Transient orbit-camera motion; never serialized into scene presets.
+
+/// `app-host-winit` normalizes a line wheel tick to this many logical pixels.
+/// Keeping that conversion at the consumer boundary lets pixel-precise
+/// trackpads and traditional line wheels share one perceptual zoom scale.
+const WHEEL_PIXELS_PER_NOTCH: f64 = 38.0;
+const LOG_DISTANCE_PER_NOTCH: f64 = 0.12;
 #[derive(Default)]
 pub(crate) struct SmoothZoom {
     target_log: f64,
     last_distance: Option<f32>,
 }
 impl SmoothZoom {
+    pub fn target_distance(&self) -> f32 {
+        self.target_log.exp() as f32
+    }
     pub fn advance(&mut self, distance: f32, wheel: f32, seconds: f32) -> f32 {
         debug_assert!(distance.is_finite(), "camera settings must be validated");
         let distance = distance.clamp(0.1, 100.0);
@@ -13,12 +22,16 @@ impl SmoothZoom {
             self.target_log = f64::from(distance).ln();
         }
         if wheel.is_finite() {
-            self.target_log =
-                (self.target_log - f64::from(wheel) * 0.1).clamp(0.1_f64.ln(), 100.0_f64.ln());
+            let wheel_notches = f64::from(wheel) / WHEEL_PIXELS_PER_NOTCH;
+            self.target_log = (self.target_log - wheel_notches * LOG_DISTANCE_PER_NOTCH)
+                .clamp(0.1_f64.ln(), 100.0_f64.ln());
         }
         let current = f64::from(distance).ln();
         let alpha = if seconds.is_finite() && seconds > 0.0 {
-            -(-18.0 * f64::from(seconds)).exp_m1()
+            // A critically damped-feeling exponential response: wheel input
+            // establishes the desired orbit radius, then the camera eases
+            // there over subsequent host frames without discrete levels.
+            -(-14.0 * f64::from(seconds)).exp_m1()
         } else {
             0.0
         };
@@ -40,8 +53,8 @@ mod tests {
     #[test]
     fn zoom_is_smooth_monotonic_and_reversible() {
         let mut zoom = SmoothZoom::default();
-        let target = 10.0 * (-0.1_f32).exp();
-        let mut distance = zoom.advance(10.0, 1.0, 1.0 / 60.0);
+        let target = 10.0 * (-0.12_f32).exp();
+        let mut distance = zoom.advance(10.0, 38.0, 1.0 / 60.0);
         assert!(distance > target && distance < 10.0);
         for _ in 0..120 {
             let next = zoom.advance(distance, 0.0, 1.0 / 60.0);
@@ -49,7 +62,7 @@ mod tests {
             distance = next;
         }
         assert!((distance - target).abs() < 0.00001);
-        distance = zoom.advance(distance, -1.0, 1.0 / 60.0);
+        distance = zoom.advance(distance, -38.0, 1.0 / 60.0);
         for _ in 0..120 {
             distance = zoom.advance(distance, 0.0, 1.0 / 60.0);
         }
@@ -59,7 +72,7 @@ mod tests {
     fn response_is_independent_of_frame_rate() {
         let sample = |fps: u32| {
             let mut zoom = SmoothZoom::default();
-            let mut d = zoom.advance(14.0, 3.0, 0.0);
+            let mut d = zoom.advance(14.0, 3.0 * 38.0, 0.0);
             for _ in 0..fps / 10 {
                 d = zoom.advance(d, 0.0, 1.0 / fps as f32);
             }
@@ -72,7 +85,7 @@ mod tests {
     #[test]
     fn external_edits_limits_and_fractional_wheel_are_respected() {
         let mut zoom = SmoothZoom::default();
-        zoom.advance(10.0, 4.0, 0.01);
+        zoom.advance(10.0, 4.0 * 38.0, 0.01);
         assert_eq!(zoom.advance(20.0, 0.0, 0.1), 20.0);
         assert_eq!(zoom.advance(20.0, f32::NAN, f32::NAN), 20.0);
         assert_eq!(zoom.advance(20.0, f32::MAX, 1.0), 0.1);
@@ -80,9 +93,21 @@ mod tests {
         let mut split = SmoothZoom::default();
         let mut d = 10.0;
         for _ in 0..10 {
-            d = split.advance(d, 0.1, 0.0);
+            d = split.advance(d, 0.1 * 38.0, 0.0);
         }
         d = split.advance(d, 0.0, 1.0);
-        assert!((d - SmoothZoom::default().advance(10.0, 1.0, 1.0)).abs() < 0.00001);
+        assert!((d - SmoothZoom::default().advance(10.0, 38.0, 1.0)).abs() < 0.00001);
+    }
+
+    #[test]
+    fn one_native_wheel_tick_cannot_jump_to_the_near_limit() {
+        let mut zoom = SmoothZoom::default();
+        let distance = zoom.advance(14.0, WHEEL_PIXELS_PER_NOTCH as f32, 1.0 / 60.0);
+
+        assert!(distance < 14.0);
+        assert!(
+            distance > 13.0,
+            "one wheel tick must remain a gentle orbit change"
+        );
     }
 }

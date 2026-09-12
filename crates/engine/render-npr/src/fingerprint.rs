@@ -260,6 +260,7 @@ mod tests {
                 positions: [Vec2::ZERO, Vec2::X, Vec2::Y],
                 color: Vec4::ONE,
                 depths: [0.1, 0.2, 0.3],
+                layer_id: None,
             }],
             underpainting: Vec::new(),
             fills: Vec::new(),

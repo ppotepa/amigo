@@ -40,6 +40,7 @@ impl WinitAppHost {
 struct HostedApp<H> {
     handler: H,
     window: Option<Window>,
+    window_visible: bool,
     exit_after_redraw: bool,
     max_frame_interval: Option<Duration>,
     next_redraw_at: Option<Instant>,
@@ -61,6 +62,7 @@ where
         Self {
             handler,
             window: None,
+            window_visible: false,
             exit_after_redraw,
             max_frame_interval,
             next_redraw_at: None,
@@ -88,7 +90,7 @@ where
         let outcome = self.handler.on_lifecycle(HostLifecycleEvent::Resumed);
         self.apply_control(event_loop, outcome);
 
-        if self.window.is_some() {
+        if self.window.is_some() || !self.handler.primary_window_enabled() {
             return;
         }
 
@@ -105,6 +107,7 @@ where
                     }
                 };
                 self.window = Some(window);
+                self.window_visible = true;
                 let outcome = self.handler.on_lifecycle(HostLifecycleEvent::WindowCreated);
                 self.apply_control(event_loop, outcome);
                 let outcome = self.handler.on_window_ready(handles);
@@ -121,6 +124,31 @@ where
         event_loop.set_control_flow(ControlFlow::Wait);
         let outcome = self.handler.on_lifecycle(HostLifecycleEvent::AboutToWait);
         self.apply_control(event_loop, outcome);
+
+        let primary_window = self.handler.primary_window_enabled();
+        if self.window_visible != primary_window {
+            if let Some(window) = &self.window {
+                window.set_visible(primary_window);
+                self.window_visible = primary_window;
+            }
+        }
+        if !primary_window {
+            // External UIs must not depend on redraw events from a hidden or
+            // nonexistent window. Keep runtime/input processing responsive.
+            let now = Instant::now();
+            let deadline = self.next_redraw_at.unwrap_or(now);
+            if now >= deadline {
+                let outcome = self.handler.on_background_tick();
+                self.apply_control(event_loop, outcome);
+                self.next_redraw_at = Some(now + self.max_frame_interval
+                    .unwrap_or(Duration::from_millis(4)));
+            }
+            event_loop.set_control_flow(ControlFlow::WaitUntil(self.next_redraw_at.unwrap()));
+            return;
+        }
+        if self.window.is_none() {
+            self.resumed(event_loop);
+        }
 
         if let Some(window) = &self.window {
             if let Some(interval) = self.max_frame_interval {
@@ -211,6 +239,9 @@ where
                 self.apply_control(event_loop, outcome);
             }
             WinitWindowEvent::RedrawRequested => {
+                if !self.handler.primary_window_enabled() {
+                    return;
+                }
                 let outcome = self.handler.on_redraw_requested();
                 self.apply_control(event_loop, outcome);
 

@@ -5,6 +5,7 @@ edition.workspace = true
 license.workspace = true
 [dependencies]
 amigo-panel-api.workspace = true
+amigo-assets.workspace = true
 amigo-runtime-control.workspace = true
 amigo-runtime.workspace = true
 amigo-core.workspace = true

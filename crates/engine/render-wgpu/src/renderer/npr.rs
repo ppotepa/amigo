@@ -3,7 +3,93 @@
 //! The packet itself remains owned by `amigo-render-npr`; this module only owns
 //! backend-friendly immutable buffers and shader sources.
 
-use wgpu::util::DeviceExt;
+use std::hash::{Hash, Hasher};
+
+/// Shared execution of declared NPR packets for full scenes and companion targets.
+pub struct WgpuNprRenderer {
+    pub(crate) npr_pipelines: NprPipelines,
+    pub(crate) npr_buffers: std::sync::Mutex<NprBufferPool>,
+}
+impl WgpuNprRenderer {
+    pub fn new(device: &wgpu::Device, format: wgpu::TextureFormat) -> Self {
+        Self {
+            npr_pipelines: NprPipelines::new(device, format),
+            npr_buffers: std::sync::Mutex::default(),
+        }
+    }
+}
+
+#[derive(Default)]
+pub(crate) struct NprBufferPool {
+    slots: Vec<NprBufferSlot>,
+    cursor: usize,
+}
+struct NprBufferSlot {
+    buffer: wgpu::Buffer,
+    capacity: u64,
+    hash: u64,
+    length: usize,
+    usage: wgpu::BufferUsages,
+}
+impl NprBufferPool {
+    pub fn begin(&mut self) {
+        self.cursor = 0;
+    }
+    pub fn finish(&mut self) {
+        self.slots.truncate(self.cursor);
+    }
+    fn upload(
+        &mut self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        bytes: &[u8],
+        usage: wgpu::BufferUsages,
+        label: &'static str,
+    ) -> wgpu::Buffer {
+        let mut hasher = std::collections::hash_map::DefaultHasher::new();
+        bytes.hash(&mut hasher);
+        let hash = hasher.finish();
+        let index = self.cursor;
+        self.cursor += 1;
+        let required = (bytes.len().max(4) as u64).next_multiple_of(4);
+        let allocate = self
+            .slots
+            .get(index)
+            .is_none_or(|slot| slot.capacity < required || slot.usage != usage);
+        if allocate {
+            let capacity = required
+                .next_power_of_two()
+                .min(device.limits().max_buffer_size);
+            let buffer = device.create_buffer(&wgpu::BufferDescriptor {
+                label: Some(label),
+                size: capacity,
+                usage: usage | wgpu::BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            });
+            let slot = NprBufferSlot {
+                buffer,
+                capacity,
+                hash: 0,
+                length: usize::MAX,
+                usage,
+            };
+            if index == self.slots.len() {
+                self.slots.push(slot);
+            } else {
+                self.slots[index] = slot;
+            }
+        }
+        let slot = &mut self.slots[index];
+        if slot.hash != hash || slot.length != bytes.len() {
+            if !bytes.is_empty() {
+                queue.write_buffer(&slot.buffer, 0, bytes);
+            }
+            slot.hash = hash;
+            slot.length = bytes.len();
+        }
+        slot.buffer.clone()
+    }
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct NprPipelineKey {
@@ -479,10 +565,6 @@ impl NprPipelines {
             amigo_render_npr::NprBlendMode::Normal => &self.fill_normal,
             amigo_render_npr::NprBlendMode::Multiply => &self.fill_multiply,
             amigo_render_npr::NprBlendMode::Screen => &self.fill_screen,
-            // Overlay is intentionally not approximated here. It needs a
-            // destination-sampling compositor and is rejected before batches
-            // are prepared (see `render_npr_commands`).
-            amigo_render_npr::NprBlendMode::Overlay => unreachable!("overlay requires compositing"),
         }
     }
 
@@ -491,7 +573,6 @@ impl NprPipelines {
             amigo_render_npr::NprBlendMode::Normal => &self.paint_normal,
             amigo_render_npr::NprBlendMode::Multiply => &self.paint_multiply,
             amigo_render_npr::NprBlendMode::Screen => &self.paint_screen,
-            amigo_render_npr::NprBlendMode::Overlay => unreachable!("overlay requires compositing"),
         }
     }
 
@@ -500,24 +581,29 @@ impl NprPipelines {
             amigo_render_npr::NprBlendMode::Normal => &self.stroke_normal,
             amigo_render_npr::NprBlendMode::Multiply => &self.stroke_multiply,
             amigo_render_npr::NprBlendMode::Screen => &self.stroke_screen,
-            amigo_render_npr::NprBlendMode::Overlay => unreachable!("overlay requires compositing"),
         }
     }
 
     pub fn vertex_buffer(
+        pool: &mut NprBufferPool,
         device: &wgpu::Device,
+        queue: &wgpu::Queue,
         vertices: &[NprGpuVertex],
         label: &'static str,
     ) -> wgpu::Buffer {
-        device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some(label),
-            contents: bytemuck::cast_slice(vertices),
-            usage: wgpu::BufferUsages::VERTEX,
-        })
+        pool.upload(
+            device,
+            queue,
+            bytemuck::cast_slice(vertices),
+            wgpu::BufferUsages::VERTEX,
+            label,
+        )
     }
 
     pub fn vertex_buffers(
+        pool: &mut NprBufferPool,
         device: &wgpu::Device,
+        queue: &wgpu::Queue,
         vertices: &[NprGpuVertex],
         label: &'static str,
     ) -> Vec<NprVertexBuffer> {
@@ -541,11 +627,13 @@ impl NprPipelines {
         vertices
             .chunks(max_vertices)
             .map(|chunk| NprVertexBuffer {
-                buffer: device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                    label: Some(label),
-                    contents: bytemuck::cast_slice(chunk),
-                    usage: wgpu::BufferUsages::VERTEX,
-                }),
+                buffer: pool.upload(
+                    device,
+                    queue,
+                    bytemuck::cast_slice(chunk),
+                    wgpu::BufferUsages::VERTEX,
+                    label,
+                ),
                 vertex_count: chunk.len() as u32,
             })
             .collect()
@@ -554,7 +642,9 @@ impl NprPipelines {
     /// Creates one bounded indexed draw. Callers partition batches before this
     /// boundary so no packet can request a device allocation above the limit.
     pub fn indexed_buffer(
+        pool: &mut NprBufferPool,
         device: &wgpu::Device,
+        queue: &wgpu::Queue,
         vertices: &[NprGpuVertex],
         indices: &[u32],
         label: &'static str,
@@ -569,16 +659,20 @@ impl NprPipelines {
             return None;
         }
         Some(NprIndexedBuffer {
-            vertices: device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some(label),
-                contents: bytemuck::cast_slice(vertices),
-                usage: wgpu::BufferUsages::VERTEX,
-            }),
-            indices: device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("amigo-npr-stroke-indices"),
-                contents: bytemuck::cast_slice(indices),
-                usage: wgpu::BufferUsages::INDEX,
-            }),
+            vertices: pool.upload(
+                device,
+                queue,
+                bytemuck::cast_slice(vertices),
+                wgpu::BufferUsages::VERTEX,
+                label,
+            ),
+            indices: pool.upload(
+                device,
+                queue,
+                bytemuck::cast_slice(indices),
+                wgpu::BufferUsages::INDEX,
+                "amigo-npr-stroke-indices",
+            ),
             index_count: indices.len() as u32,
         })
     }

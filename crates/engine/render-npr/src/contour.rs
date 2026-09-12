@@ -4,7 +4,7 @@
 //! the authored mesh, whereas a smooth contour is the zero set of a field and
 //! normally runs through triangle interiors.
 
-use crate::{face_normal, NprGeometry};
+use crate::{NprGeometry, face_normal};
 use glam::Vec3;
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -20,6 +20,20 @@ struct ContourSegment {
     component: u32,
 }
 
+#[derive(Debug)]
+pub(crate) struct ContourField {
+    normals: Vec<[Vec3; 3]>,
+    components: Vec<u32>,
+}
+impl ContourField {
+    pub(crate) fn build(geometry: &NprGeometry, angle: f32) -> Self {
+        Self {
+            normals: smoothed_corner_normals(geometry, angle),
+            components: smooth_face_components(geometry, angle),
+        }
+    }
+}
+
 /// Extracts the zero crossings of `dot(smoothed_normal, camera - position)`.
 /// Endpoints carry canonical mesh-edge keys, which lets segments produced by
 /// adjacent triangles be assembled without comparing rounded positions.
@@ -28,8 +42,22 @@ pub fn smooth_perspective_contours(
     camera: Vec3,
     smooth_crease_angle: f32,
 ) -> Vec<SmoothContourStroke> {
-    let normals = smoothed_corner_normals(geometry, smooth_crease_angle);
-    let components = smooth_face_components(geometry, smooth_crease_angle);
+    smooth_contours_with_field(
+        geometry,
+        camera,
+        &ContourField::build(geometry, smooth_crease_angle),
+    )
+}
+
+pub(crate) fn smooth_contours_with_field(
+    geometry: &NprGeometry,
+    camera: Vec3,
+    field: &ContourField,
+) -> Vec<SmoothContourStroke> {
+    let ContourField {
+        normals,
+        components,
+    } = field;
     let mut segments = Vec::new();
     for (face, triangle) in geometry.triangles.iter().enumerate() {
         let values: [f32; 3] = std::array::from_fn(|corner| {
@@ -71,8 +99,24 @@ pub fn suggestive_perspective_contours(
     smooth_crease_angle: f32,
     min_confidence: f32,
 ) -> Vec<SmoothContourStroke> {
-    let normals = smoothed_corner_normals(geometry, smooth_crease_angle);
-    let components = smooth_face_components(geometry, smooth_crease_angle);
+    suggestive_contours_with_field(
+        geometry,
+        camera,
+        min_confidence,
+        &ContourField::build(geometry, smooth_crease_angle),
+    )
+}
+
+pub(crate) fn suggestive_contours_with_field(
+    geometry: &NprGeometry,
+    camera: Vec3,
+    min_confidence: f32,
+    field: &ContourField,
+) -> Vec<SmoothContourStroke> {
+    let ContourField {
+        normals,
+        components,
+    } = field;
     let minimum = min_confidence.clamp(0.0, 1.0);
     let mut segments = Vec::new();
     for (face, triangle) in geometry.triangles.iter().enumerate() {
@@ -356,11 +400,7 @@ fn endpoint_point(segment: &ContourSegment, edge: (u32, u32)) -> Vec3 {
 }
 
 fn ordered_edge(a: u32, b: u32) -> (u32, u32) {
-    if a < b {
-        (a, b)
-    } else {
-        (b, a)
-    }
+    if a < b { (a, b) } else { (b, a) }
 }
 
 #[cfg(test)]
@@ -374,10 +414,7 @@ mod tests {
         let forward = contour_edge_crossing(7, 11, 0.0, opposite).unwrap();
         let reverse = contour_edge_crossing(11, 7, opposite, 0.0).unwrap();
         assert!((forward + reverse - 1.0).abs() < 1.0e-6);
-        assert_eq!(
-            symbolic,
-            symbolic_contour_value(0.0, 7, 1.0e-6)
-        );
+        assert_eq!(symbolic, symbolic_contour_value(0.0, 7, 1.0e-6));
         assert!(contour_edge_crossing(7, 11, 0.0, 0.0).is_none());
     }
 
@@ -485,9 +522,11 @@ mod tests {
         .unwrap();
         let first = suggestive_perspective_contours(&geometry, Vec3::new(0.2, 0.1, 4.0), 1.2, 0.0);
         assert!(!first.is_empty());
-        assert!(first
-            .iter()
-            .all(|stroke| stroke.id & 0xf000_0000 == 0x3000_0000));
+        assert!(
+            first
+                .iter()
+                .all(|stroke| stroke.id & 0xf000_0000 == 0x3000_0000)
+        );
         assert_eq!(
             first,
             suggestive_perspective_contours(&geometry, Vec3::new(0.2, 0.1, 4.0), 1.2, 0.0)

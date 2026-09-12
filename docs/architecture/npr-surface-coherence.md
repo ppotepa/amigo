@@ -824,30 +824,22 @@ czy bieżące bufory historii.
 
 ### 15.2. Planowane ścieżki
 
-Prefiks istniejący: `world.npr.settings.NprSettings.`. Sufiksy niżej są nowe:
-
-```text
-motion.mode                      // enum: Stable | RedrawOnMotion
-motion.redraw_hz                 // częstotliwość wariantu, nie FPS aplikacji
-motion.redraw_strength
-motion.appearance_fade_seconds   // 0 wyłącza przejście krycia
-reroll_gesture                   // zdarzenie/polecenie, nie utrzymywany bool
-object.surface.mode              // alias do wybranego obiektu
-object.surface.subdivision_level
-object.surface.analysis_radius
-```
+NprPlayground używa wspólnego snapshotu i typed intents. Kontrakt klienta
+opisuje [dokumentacja NprPlayground](../../plugins/gfx/npr-playground/docs/npr-playground-ui.md).
+Metadane i wartości są dostępne również dla Rhai:
 
 ```rhai
-// Pseudokod bindingów po dodaniu ich do istniejącego providera.
-let p = "world.npr.settings.NprSettings.";
-world.controls.set(p + "motion.mode", "Stable");
-world.controls.set(p + "motion.appearance_fade_seconds", 0.0);
+let state = npr_playground_metadata().values.npr.settings;
+let policy = state.motion;
+policy.mode = "stable";
+policy.appearance_fade_seconds = 0.0;
+npr_playground_dispatch(#{kind: "set_temporal_policy", policy: policy});
 ```
 
-Metadane definiują typ, zakres, jednostki, opis, możliwość zapisu i koszt
-inwalidacji. Provider jest jedynym właścicielem walidacji; UI i Rhai jej nie
-duplikują. Typed Rust definiuje algorytm i profile. YAML przechowuje layout
-i wartości, nie kod ekstrakcji powierzchni.
+Usługa domenowa waliduje kompletną zmianę. Svelte i Rhai delegują do niej;
+typed Rust definiuje algorytm i profile, a YAML przechowuje authored dane.
+Rozszerzenia analizy powierzchni dodają typed pola/intencje i metadane zamiast
+aliasów właściwości dla aktualnie wybranego obiektu.
 
 Pełny preset sceny obejmuje motion i surface. Preset samego wyglądu nie zmienia
 kamery, pauzy ani polityki ruchu. Zmiana schematu aktualizuje provider, authored
@@ -954,7 +946,7 @@ Walidacje skrócone w tabelach:
 | MODIFY `plugins/gfx/npr-playground/src/state.rs` | `Settings`, `ObjectSettings`, provider: motion/surface, zakresy, undo i atomowe snapshots | P | Algorytmy powierzchni nie należą do pluginu |
 | MODIFY `plugins/gfx/npr-playground/src/render/mod.rs` | `NprPlaygroundRenderService`, `stats`: przechowywanie zasobów domeny, stabilne instance IDs, view/frame context i agregacja liczników | P; waterfall tests | Bez kopiowania ekstrakcji i integratora do serwisu |
 | MODIFY `plugins/gfx/npr-playground/src/plugin.rs` | Update/RenderExtract: jawny czas, reset sesji i publikacja diagnostyk przez istniejący mechanizm | P; waterfall tests i diagnostics tests | Nie zmieniać zegara obrotu przez redraw_hz |
-| MODIFY `mods/npr-playground/ui/npr.panel.yml` | Nowe sekcje/wiązania, domyślnie Stable, opis fade, readiness | P; walidacja `PanelDocument` | Bez logiki rendererowej w YAML |
+| MODIFY `plugins/gfx/npr-playground/playground-client/src/App.svelte` | Sekcje polityki ruchu i powierzchni, metadane i readiness | Svelte check/test, typed intents i lifecycle | Bez logiki rendererowej w UI |
 | MODIFY `mods/npr-playground/scenes/gallery/scene.rhai` | Zdarzenie nowego wariantu i ewentualne akcje debug przez controls | P; testy sceny | Bez prywatnego dostępu do serwisu renderującego |
 | MODIFY `mods/npr-playground/scenes/cube/scene.rhai` | Te same dostępne akcje wspólnego panelu | P; testy sceny | Zachować Polygonal dla autorskiego cube |
 | READ `crates/engine/render-api/src/npr.rs` | `NprDrawCommand`: ocena, czy gotowy packet nadal wystarcza | `rtk cargo check -p amigo-render-api` tylko jeśli kontrakt zmieniony | Bez dodawania historii domenowej do backendu |

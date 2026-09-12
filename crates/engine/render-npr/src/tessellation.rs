@@ -28,6 +28,10 @@ pub struct TessellatedStroke {
     pub class: FeatureClass,
     pub role: StrokeRole,
     pub correction: bool,
+    /// Stable authored layer identity. Extraction deliberately leaves this
+    /// unset; the layer compositor expands one source stroke into one
+    /// contribution per compatible layer.
+    pub layer_id: Option<String>,
 }
 
 pub fn tessellate_segment(

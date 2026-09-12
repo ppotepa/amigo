@@ -1,0 +1,33 @@
+id: watercolour-wash
+includes:
+- comic-ink
+look:
+  layers:
+  - layer_id: wash
+    order: 1
+    parameters:
+      id: wash
+      label: Watercolour wash
+      source: wash
+      opacity: 0.78
+      paint: { wash: 1.15, granulation: 0.62 }
+      brush: { brush: { id: watercolour-wash, version: 1 } }
+  - layer_id: flat-fill
+    order: 2
+    parameters:
+      id: flat-fill
+      label: Flat fill
+      source: flat-fill
+      enabled: false
+      brush: { brush: { id: flat-fill, version: 1 } }
+  - layer_id: hatch
+    order: 3
+    parameters:
+      id: hatch
+      label: Shadow hatch
+      source: shadow-hatch
+      enabled: false
+      brush: { brush: { id: surface-hatch, version: 1 } }
+  style:
+    paper_grain: 0.42
+    paper_tooth: 0.28

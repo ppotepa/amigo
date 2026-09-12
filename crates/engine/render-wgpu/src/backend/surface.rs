@@ -7,8 +7,17 @@ use amigo_render_api::RenderInitializationReport;
 use amigo_window_api::{WindowSize, WindowSurfaceHandles};
 
 impl WgpuRenderBackend {
+    /// Companion device selection is independent of the visible Winit surface.
+    pub fn dx12() -> Self {
+        Self {
+            backends: wgpu::Backends::DX12,
+        }
+    }
     pub fn initialize_headless(&self) -> AmigoResult<WgpuHeadlessContext> {
-        let instance = wgpu::Instance::default();
+        let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
+            backends: self.backends,
+            ..wgpu::InstanceDescriptor::new_without_display_handle()
+        });
         let adapter = helpers::request_adapter(&instance, None)?;
         let adapter_info = adapter.get_info();
         let descriptor = helpers::create_device_descriptor();
@@ -283,6 +292,49 @@ impl WgpuSurfaceState {
 }
 
 impl WgpuOffscreenTarget {
+    /// Reallocates attachments on the existing device only when the size changes.
+    pub fn resize(&mut self, width: u32, height: u32) {
+        let width = width.max(1);
+        let height = height.max(1);
+        if self.width == width && self.height == height {
+            return;
+        }
+        let size = wgpu::Extent3d {
+            width,
+            height,
+            depth_or_array_layers: 1,
+        };
+        let color = self.device.create_texture(&wgpu::TextureDescriptor {
+            label: Some("resized-offscreen-color"),
+            size,
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: self.format,
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT
+                | wgpu::TextureUsages::TEXTURE_BINDING
+                | wgpu::TextureUsages::COPY_SRC
+                | wgpu::TextureUsages::COPY_DST,
+            view_formats: &[],
+        });
+        let depth = self.device.create_texture(&wgpu::TextureDescriptor {
+            label: Some("resized-offscreen-depth"),
+            size,
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: wgpu::TextureFormat::Depth32Float,
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+            view_formats: &[],
+        });
+        self.view = color.create_view(&Default::default());
+        self.texture = color;
+        self.depth_view = depth.create_view(&Default::default());
+        self._depth_texture = depth;
+        self.width = width;
+        self.height = height;
+    }
+
     pub fn read_rgba8(&self) -> AmigoResult<Vec<u8>> {
         self.read_rgba8_blocking()
     }

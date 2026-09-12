@@ -4,19 +4,24 @@
 //! pass is executed. They deliberately do not contain WGPU resources, shader
 //! names, or inferred material policy.
 
-use crate::{ComicInk, FeatureClass, NprRenderPacket, StrokeRole, StrokeTool, TessellatedStroke};
+use crate::{
+    BrushApplication, BrushInstance, BrushLibrary, ComicInk, CoverageMask, FeatureClass,
+    GeometryTarget, NprRenderPacket, StrokeRole, StrokeTool, TessellatedStroke,
+};
 use glam::Vec4;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
-pub enum NprLayerKind {
+/// The model-derived geometry a compositing layer consumes.  This names no
+/// rendering medium: identical sources can feed several independent layers.
+pub enum NprGeometrySource {
     Paper,
-    Underpainting,
-    Fill,
-    Hatching,
-    Contours,
+    Wash,
+    FlatFill,
+    ShadowHatch,
+    Silhouette,
     Creases,
     FormLines,
     Construction,
@@ -29,7 +34,6 @@ pub enum NprBlendMode {
     Normal,
     Multiply,
     Screen,
-    Overlay,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
@@ -51,6 +55,25 @@ pub enum NprLayerColorSource {
 pub struct NprPaintMedium {
     pub wash: f32,
     pub granulation: f32,
+}
+
+/// Per-layer selection of an already extracted shadow-hatch source. Spacing
+/// controls deterministic thinning, so two layers can share the exact source
+/// paths while producing different tonal density.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct NprHatchSettings {
+    pub density: f32,
+    pub spacing: f32,
+}
+
+impl Default for NprHatchSettings {
+    fn default() -> Self {
+        Self {
+            density: 1.0,
+            spacing: 1.0,
+        }
+    }
 }
 
 impl Default for NprPaintMedium {
@@ -75,7 +98,7 @@ impl Default for NprLayerColorSource {
 pub struct NprStyleLayer {
     pub id: String,
     pub label: String,
-    pub kind: NprLayerKind,
+    pub source: NprGeometrySource,
     #[serde(default = "enabled")]
     pub enabled: bool,
     #[serde(default = "one")]
@@ -92,6 +115,38 @@ pub struct NprStyleLayer {
     /// receiving an accidental paint treatment.
     #[serde(default)]
     pub paint: Option<NprPaintMedium>,
+    #[serde(default)]
+    pub hatch: Option<NprHatchSettings>,
+    #[serde(default)]
+    pub brush: Option<BrushInstance>,
+    #[serde(default)]
+    pub target: GeometryTarget,
+    #[serde(default)]
+    pub mask: CoverageMask,
+}
+
+/// Editor-facing evidence for one compositing layer. It is intentionally
+/// renderer-neutral: the backend may draw the contribution differently, but
+/// cannot invent a reason for a missing authored layer.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct NprLayerDiagnostics {
+    pub source_geometry: usize,
+    pub generated_marks: usize,
+    pub generated_triangles: usize,
+    pub mask_coverage: f32,
+    pub extraction_micros: u64,
+    pub tessellation_micros: u64,
+    pub no_effect_reason: Option<NprLayerNoEffectReason>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum NprLayerNoEffectReason {
+    Disabled,
+    NoSourceGeometry,
+    MaskExcludesAll,
+    ZeroOpacity,
+    HatchSelectionExcludesAll,
 }
 
 /// Sparse object-level changes to an inherited layer stack. Properties remain
@@ -255,37 +310,92 @@ fn one() -> f32 {
 pub struct NprStyleLayers {
     pub layers: Vec<NprStyleLayer>,
 }
+/// Public Drawing Studio names for the neutral layer contracts.
+pub type BrushLayer = NprStyleLayer;
 
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct StylePreset {
+    pub id: String,
+    pub layers: NprStyleLayers,
+    pub palette: BTreeMap<String, Vec4>,
+    pub paper: NprBackgroundSettings,
+}
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct NprBackgroundSettings {
+    pub color: Vec4,
+    pub grain: f32,
+    pub tooth: f32,
+    pub seed: u64,
+}
+impl Default for NprBackgroundSettings {
+    fn default() -> Self {
+        Self {
+            color: Vec4::ONE,
+            grain: 0.0,
+            tooth: 0.0,
+            seed: 0,
+        }
+    }
+}
+impl Default for StylePreset {
+    fn default() -> Self {
+        Self {
+            id: "drawing-studio".into(),
+            layers: NprStyleLayers::default(),
+            palette: BTreeMap::new(),
+            paper: NprBackgroundSettings::default(),
+        }
+    }
+}
 impl Default for NprStyleLayers {
     fn default() -> Self {
+        let brush = |id: &str| {
+            Some(BrushInstance {
+                brush: crate::BrushReference {
+                    id: id.into(),
+                    version: 1,
+                },
+                ..BrushInstance::default()
+            })
+        };
         Self {
             layers: vec![
                 NprStyleLayer {
                     id: "paper".into(),
                     label: "Paper".into(),
-                    kind: NprLayerKind::Paper,
+                    source: NprGeometrySource::Paper,
                     enabled: true,
                     opacity: 1.0,
                     blend: NprBlendMode::Normal,
                     color_source: NprLayerColorSource::StylePalette,
                     tool: None,
                     paint: None,
+                    hatch: None,
+                    brush: None,
+                    target: GeometryTarget::All,
+                    mask: CoverageMask::None,
                 },
                 NprStyleLayer {
                     id: "underpainting".into(),
                     label: "Underpainting".into(),
-                    kind: NprLayerKind::Underpainting,
+                    source: NprGeometrySource::Wash,
                     enabled: true,
                     opacity: 1.0,
                     blend: NprBlendMode::Normal,
                     color_source: NprLayerColorSource::StylePalette,
                     tool: None,
                     paint: Some(NprPaintMedium::default()),
+                    hatch: None,
+                    brush: brush("watercolour-wash"),
+                    target: GeometryTarget::All,
+                    mask: CoverageMask::None,
                 },
                 NprStyleLayer {
                     id: "fill".into(),
                     label: "Flat fill".into(),
-                    kind: NprLayerKind::Fill,
+                    source: NprGeometrySource::FlatFill,
                     // Preserve the existing painterly default. Authors can
                     // explicitly put crisp three-band regions over the wash.
                     enabled: false,
@@ -294,61 +404,85 @@ impl Default for NprStyleLayers {
                     color_source: NprLayerColorSource::StylePalette,
                     tool: None,
                     paint: None,
+                    hatch: None,
+                    brush: brush("flat-fill"),
+                    target: GeometryTarget::All,
+                    mask: CoverageMask::None,
                 },
                 NprStyleLayer {
                     id: "hatching".into(),
                     label: "Hatching".into(),
-                    kind: NprLayerKind::Hatching,
+                    source: NprGeometrySource::ShadowHatch,
                     enabled: true,
                     opacity: 1.0,
                     blend: NprBlendMode::Multiply,
                     color_source: NprLayerColorSource::StylePalette,
                     tool: Some(StrokeTool::Pencil),
                     paint: None,
+                    hatch: Some(NprHatchSettings::default()),
+                    brush: brush("surface-hatch"),
+                    target: GeometryTarget::All,
+                    mask: CoverageMask::None,
                 },
                 NprStyleLayer {
                     id: "form-lines".into(),
                     label: "Form lines".into(),
-                    kind: NprLayerKind::FormLines,
+                    source: NprGeometrySource::FormLines,
                     enabled: true,
                     opacity: 1.0,
                     blend: NprBlendMode::Normal,
                     color_source: NprLayerColorSource::StylePalette,
                     tool: Some(StrokeTool::Fineliner),
                     paint: None,
+                    hatch: None,
+                    brush: brush("ink-liner"),
+                    target: GeometryTarget::All,
+                    mask: CoverageMask::None,
                 },
                 NprStyleLayer {
                     id: "contours".into(),
                     label: "Contours".into(),
-                    kind: NprLayerKind::Contours,
+                    source: NprGeometrySource::Silhouette,
                     enabled: true,
                     opacity: 1.0,
                     blend: NprBlendMode::Normal,
                     color_source: NprLayerColorSource::StylePalette,
                     tool: None,
                     paint: None,
+                    hatch: None,
+                    brush: brush("ink-liner"),
+                    target: GeometryTarget::All,
+                    mask: CoverageMask::None,
                 },
                 NprStyleLayer {
                     id: "creases".into(),
                     label: "Creases".into(),
-                    kind: NprLayerKind::Creases,
+                    source: NprGeometrySource::Creases,
                     enabled: true,
                     opacity: 1.0,
                     blend: NprBlendMode::Normal,
                     color_source: NprLayerColorSource::StylePalette,
                     tool: None,
                     paint: None,
+                    hatch: None,
+                    brush: brush("graphite-study"),
+                    target: GeometryTarget::All,
+                    mask: CoverageMask::None,
                 },
                 NprStyleLayer {
                     id: "construction".into(),
                     label: "Construction".into(),
-                    kind: NprLayerKind::Construction,
+                    source: NprGeometrySource::Construction,
                     enabled: true,
                     opacity: 1.0,
                     blend: NprBlendMode::Normal,
                     color_source: NprLayerColorSource::StylePalette,
                     tool: Some(StrokeTool::Pencil),
                     paint: None,
+                    hatch: None,
+                    brush: brush("graphite-study"),
+                    target: GeometryTarget::All,
+                    mask: CoverageMask::None,
                 },
             ],
         }
@@ -396,13 +530,53 @@ impl NprStyleLayers {
             {
                 return Err(format!("invalid paint medium for NPR layer `{}`", layer.id));
             }
+            if let Some(hatch) = layer.hatch
+                && (layer.source != NprGeometrySource::ShadowHatch
+                    || !hatch.density.is_finite()
+                    || !(0.0..=1.0).contains(&hatch.density)
+                    || !hatch.spacing.is_finite()
+                    || !(0.25..=4.0).contains(&hatch.spacing))
+            {
+                return Err(format!(
+                    "invalid hatch settings for NPR layer `{}`",
+                    layer.id
+                ));
+            }
             if layer.paint.is_some()
-                && !matches!(layer.kind, NprLayerKind::Underpainting | NprLayerKind::Fill)
+                && !matches!(
+                    layer.source,
+                    NprGeometrySource::Wash | NprGeometrySource::FlatFill
+                )
             {
                 return Err(format!(
                     "paint medium is invalid for NPR layer `{}`",
                     layer.id
                 ));
+            }
+            if layer.source == NprGeometrySource::Paper
+                && (layer.brush.is_some() || layer.tool.is_some() || layer.paint.is_some())
+            {
+                return Err(format!(
+                    "paper layer `{}` cannot declare a brush, tool, or paint medium",
+                    layer.id
+                ));
+            }
+            if let Some(brush) = &layer.brush {
+                if brush.brush.id.is_empty() || brush.brush.version == 0 {
+                    return Err(format!(
+                        "invalid brush reference for NPR layer `{}`",
+                        layer.id
+                    ));
+                }
+            }
+            layer.mask.validate()?;
+            if let GeometryTarget::Objects(objects) = &layer.target {
+                if objects.iter().any(|id| id.is_empty()) {
+                    return Err(format!(
+                        "invalid geometry target for NPR layer `{}`",
+                        layer.id
+                    ));
+                }
             }
         }
         Ok(())
@@ -416,59 +590,300 @@ impl NprStyleLayers {
         self.layers.iter_mut().find(|layer| layer.id == id)
     }
 
-    /// The active paint layer for the current renderer contract. `Fill` and
-    /// `Underpainting` both map to the packet's flat fill geometry until the
-    /// packet carries independently generated paint media.
-    pub fn fill_layer(&self) -> Option<&NprStyleLayer> {
-        self.layers.iter().find(|layer| {
-            layer.enabled && matches!(layer.kind, NprLayerKind::Underpainting | NprLayerKind::Fill)
-        })
+    /// Resolves every pinned brush reference before extraction. Missing
+    /// versions and an application mismatch are authored-document errors, not
+    /// an invitation for the renderer to choose a fallback brush.
+    pub fn validate_brushes(&self, library: &BrushLibrary) -> Result<(), String> {
+        for layer in &self.layers {
+            let Some(instance) = &layer.brush else {
+                continue;
+            };
+            let brush = library.resolve(&instance.brush)?;
+            let application = match layer.source {
+                NprGeometrySource::Wash | NprGeometrySource::FlatFill => BrushApplication::Surface,
+                NprGeometrySource::Paper => continue,
+                NprGeometrySource::ShadowHatch
+                | NprGeometrySource::Silhouette
+                | NprGeometrySource::Creases
+                | NprGeometrySource::FormLines
+                | NprGeometrySource::Construction => BrushApplication::Stroke,
+            };
+            if !brush.applications.contains(&application) {
+                return Err(format!(
+                    "brush {}@{} is not compatible with layer `{}` ({:?})",
+                    brush.id, brush.version, layer.id, application
+                ));
+            }
+        }
+        Ok(())
     }
 
-    /// Selects the authored layer responsible for an emitted stroke. A missing
-    /// layer deliberately suppresses the mark rather than making a renderer
-    /// side guess about a suitable fallback.
-    pub fn stroke_layer(&self, stroke: &TessellatedStroke) -> Option<&NprStyleLayer> {
-        let kind = match stroke.role {
-            StrokeRole::Tone => NprLayerKind::Hatching,
-            StrokeRole::FormLine => NprLayerKind::FormLines,
-            StrokeRole::Construction => NprLayerKind::Construction,
-            StrokeRole::Feature if stroke.class == FeatureClass::Crease => NprLayerKind::Creases,
-            StrokeRole::Feature => NprLayerKind::Contours,
-        };
+    pub fn diagnostics(
+        &self,
+        source: &NprRenderPacket,
+        output: &NprRenderPacket,
+        extraction_micros: u64,
+        tessellation_micros: u64,
+    ) -> BTreeMap<String, NprLayerDiagnostics> {
         self.layers
             .iter()
-            .find(|layer| layer.enabled && layer.kind == kind)
+            .map(|layer| {
+                let surface_triangles = match layer.source {
+                    NprGeometrySource::Wash => source.underpainting.len(),
+                    NprGeometrySource::FlatFill => source.fills.len(),
+                    NprGeometrySource::Paper => 1,
+                    _ => 0,
+                };
+                let source_marks = source
+                    .strokes
+                    .iter()
+                    .filter(|stroke| stroke_source(stroke) == layer.source)
+                    .count();
+                let generated_marks = output
+                    .strokes
+                    .iter()
+                    .filter(|stroke| stroke.layer_id.as_deref() == Some(layer.id.as_str()))
+                    .count();
+                let generated_triangles = match layer.source {
+                    NprGeometrySource::Wash => output
+                        .underpainting
+                        .iter()
+                        .filter(|triangle| triangle.layer_id.as_deref() == Some(layer.id.as_str()))
+                        .count(),
+                    NprGeometrySource::FlatFill => output
+                        .fills
+                        .iter()
+                        .filter(|triangle| triangle.layer_id.as_deref() == Some(layer.id.as_str()))
+                        .count(),
+                    NprGeometrySource::Paper => 2,
+                    _ => 0,
+                };
+                let mask_coverage = if matches!(&layer.mask, CoverageMask::None) {
+                    1.0
+                } else {
+                    layer.mask.evaluate(0.5, 0.5, [0.0, 0.0, 1.0], 0.5)
+                };
+                let source_geometry = source_marks + surface_triangles;
+                let no_effect_reason = if !layer.enabled {
+                    Some(NprLayerNoEffectReason::Disabled)
+                } else if layer.opacity <= 0.0 {
+                    Some(NprLayerNoEffectReason::ZeroOpacity)
+                } else if source_geometry == 0 {
+                    Some(NprLayerNoEffectReason::NoSourceGeometry)
+                } else if mask_coverage <= 0.0 {
+                    Some(NprLayerNoEffectReason::MaskExcludesAll)
+                } else if layer.hatch.is_some_and(|hatch| hatch.density <= 0.0) {
+                    Some(NprLayerNoEffectReason::HatchSelectionExcludesAll)
+                } else {
+                    None
+                };
+                (
+                    layer.id.clone(),
+                    NprLayerDiagnostics {
+                        source_geometry,
+                        generated_marks,
+                        generated_triangles,
+                        mask_coverage,
+                        extraction_micros,
+                        tessellation_micros,
+                        no_effect_reason,
+                    },
+                )
+            })
+            .collect()
+    }
+
+    /// Every enabled layer which declares this source geometry.  This is the
+    /// important distinction between a source and a compositing layer: two
+    /// hatch layers share extracted hatch paths but produce two independent
+    /// contributions with their own brush, mask, colour and opacity.
+    pub fn stroke_layers(
+        &self,
+        stroke: &TessellatedStroke,
+    ) -> impl Iterator<Item = &NprStyleLayer> {
+        let source = stroke_source(stroke);
+        self.layers
+            .iter()
+            .filter(move |layer| layer.enabled && layer.source == source)
     }
 
     /// Applies an explicitly selected layer tool to already extracted gesture
     /// geometry. This reconstructs strip centres and rescales body plus round
     /// caps in the NPR domain, before a render backend receives the packet.
     pub fn apply_tools(&self, packet: &mut NprRenderPacket, style: ComicInk) {
-        for stroke in &mut packet.strokes {
-            let Some(tool) = self.stroke_layer(stroke).and_then(|layer| layer.tool) else {
-                continue;
-            };
-            if tool != style.tool {
-                retarget_stroke_tool(stroke, style, tool);
-            }
-        }
+        self.apply_tools_with_library(packet, style, None)
+            .expect("layer brush overrides are validated before extraction");
     }
 
-    /// Resolves authored wash coverage into the independent underpainting
-    /// channel. Granulation is sampled continuously by the paint material so
-    /// it cannot expose source-triangle boundaries.
-    pub fn apply_paint_media(&self, packet: &mut NprRenderPacket) {
-        let Some(medium) = self
-            .layers
-            .iter()
-            .find(|layer| layer.enabled && layer.kind == NprLayerKind::Underpainting)
-            .and_then(|layer| layer.paint)
-        else {
-            return;
-        };
-        for triangle in &mut packet.underpainting {
-            triangle.coverage = (triangle.coverage * medium.wash).clamp(0.0, 1.0);
+    /// Applies layer tools while resolving defaults from the pinned brush
+    /// library. Local instance fields always win over definition defaults.
+    pub fn apply_tools_with_library(
+        &self,
+        packet: &mut NprRenderPacket,
+        style: ComicInk,
+        library: Option<&BrushLibrary>,
+    ) -> Result<(), String> {
+        let library = library.filter(|library| !library.brushes.is_empty());
+        let source_strokes = std::mem::take(&mut packet.strokes);
+        let mut contributions = Vec::new();
+        for stroke in source_strokes {
+            for layer in self.stroke_layers(&stroke) {
+                if let Some(hatch) = layer.hatch {
+                    let density = (hatch.density / hatch.spacing).clamp(0.0, 1.0);
+                    let layer_hash = layer.id.bytes().fold(0u64, |hash, byte| {
+                        hash.wrapping_mul(1099511628211) ^ u64::from(byte)
+                    });
+                    let sample = ((u64::from(stroke.id) ^ layer_hash) % 10_000) as f32 / 10_000.0;
+                    if sample > density {
+                        continue;
+                    }
+                }
+                let mut stroke = stroke.clone();
+                stroke.layer_id = Some(layer.id.clone());
+                if let Some(tool) = layer.tool
+                    && tool != style.tool
+                {
+                    retarget_stroke_tool(&mut stroke, style, tool);
+                }
+                let definition = match (layer.brush.as_ref(), library) {
+                    (Some(brush), Some(library)) => Some(library.resolve(&brush.brush)?),
+                    _ => None,
+                };
+                let width = layer
+                    .brush
+                    .as_ref()
+                    .and_then(|brush| brush.width)
+                    .or_else(|| definition.map(|brush| brush.width));
+                if let Some(width) = width {
+                    let factor = (width / style.outline_width.max(0.001)).clamp(0.05, 20.0);
+                    scale_stroke_width(&mut stroke, factor);
+                }
+                let taper = layer
+                    .brush
+                    .as_ref()
+                    .and_then(|brush| brush.taper)
+                    .or_else(|| definition.map(|brush| brush.taper));
+                if let Some(taper) = taper {
+                    let last = stroke.vertices.len().saturating_sub(1).max(1) as f32;
+                    for (index, vertex) in stroke.vertices.iter_mut().enumerate() {
+                        let edge = ((index as f32 / last) * 2.0 - 1.0).abs();
+                        vertex.coverage *= (1.0 - taper.clamp(0.0, 1.0) * edge).max(0.002);
+                    }
+                }
+                let softness = layer
+                    .brush
+                    .as_ref()
+                    .and_then(|brush| brush.softness)
+                    .or_else(|| definition.map(|brush| brush.softness));
+                if let Some(softness) = softness {
+                    for vertex in &mut stroke.vertices {
+                        vertex.edge_softness = softness.clamp(0.0, 1.0);
+                    }
+                }
+                if let Some(brush) = &layer.brush {
+                    let seed = brush
+                        .seed
+                        .or_else(|| definition.map(|definition| definition.seed))
+                        .unwrap_or(0);
+                    if let Some(irregularity) = brush
+                        .irregularity
+                        .or_else(|| definition.map(|definition| definition.irregularity))
+                    {
+                        let amount = irregularity.clamp(0.0, 1.0);
+                        for (index, vertex) in stroke.vertices.iter_mut().enumerate() {
+                            let phase =
+                                (seed as f32 * 0.000_013 + index as f32 * 1.618_033_9).sin() * 0.5
+                                    + 0.5;
+                            vertex.coverage = (vertex.coverage
+                                * (1.0 - amount * (0.25 + phase * 0.5)))
+                                .clamp(0.002, 1.0);
+                        }
+                    }
+                    if let Some(dryness) = brush
+                        .dryness
+                        .or_else(|| definition.map(|definition| definition.dryness))
+                    {
+                        let dryness = dryness.clamp(0.0, 1.0);
+                        for vertex in &mut stroke.vertices {
+                            vertex.dryness = dryness;
+                        }
+                    }
+                }
+                contributions.push(stroke);
+            }
+        }
+        packet.strokes = contributions;
+        let source_fills = std::mem::take(&mut packet.fills);
+        let mut fill_contributions = source_fills.clone();
+        fill_contributions.extend(
+            self.layers
+                .iter()
+                .filter(|layer| layer.enabled && layer.source == NprGeometrySource::FlatFill)
+                .flat_map(|layer| {
+                    source_fills.iter().cloned().map(move |mut triangle| {
+                        triangle.layer_id = Some(layer.id.clone());
+                        triangle
+                    })
+                }),
+        );
+        packet.fills = fill_contributions;
+        let source_paint = std::mem::take(&mut packet.underpainting);
+        let mut paint_contributions = source_paint.clone();
+        paint_contributions.extend(
+            self.layers
+                .iter()
+                .filter(|layer| layer.enabled && layer.source == NprGeometrySource::Wash)
+                .flat_map(|layer| {
+                    source_paint.iter().cloned().map(move |mut triangle| {
+                        triangle.layer_id = Some(layer.id.clone());
+                        triangle
+                    })
+                }),
+        );
+        packet.underpainting = paint_contributions;
+        Ok(())
+    }
+}
+
+fn stroke_source(stroke: &TessellatedStroke) -> NprGeometrySource {
+    match stroke.role {
+        StrokeRole::Tone => NprGeometrySource::ShadowHatch,
+        StrokeRole::FormLine => NprGeometrySource::FormLines,
+        StrokeRole::Construction => NprGeometrySource::Construction,
+        StrokeRole::Feature if stroke.class == FeatureClass::Crease => NprGeometrySource::Creases,
+        StrokeRole::Feature => NprGeometrySource::Silhouette,
+    }
+}
+
+fn scale_stroke_width(stroke: &mut TessellatedStroke, factor: f32) {
+    if !factor.is_finite() || (factor - 1.0).abs() < 1e-5 {
+        return;
+    }
+    for vertex in &mut stroke.vertices {
+        vertex.width *= factor;
+    }
+    // Body vertices are emitted as left/right pairs around a shared centre.
+    // Rescale those pairs and round-cap rings around their local centres so a
+    // brush width override changes the visible strip, not just its metadata.
+    for pair in stroke.vertices.chunks_exact_mut(2) {
+        if pair[0].edge.abs() > 0.5 && pair[1].edge.abs() > 0.5 {
+            let centre = (pair[0].position + pair[1].position) * 0.5;
+            pair[0].position = centre + (pair[0].position - centre) * factor;
+            pair[1].position = centre + (pair[1].position - centre) * factor;
+        }
+    }
+    let mut index = 0;
+    while index < stroke.vertices.len() {
+        if stroke.vertices[index].edge.abs() < 0.5 {
+            let centre = stroke.vertices[index].position;
+            index += 1;
+            while index < stroke.vertices.len() && stroke.vertices[index].edge.abs() >= 0.5 {
+                stroke.vertices[index].position =
+                    centre + (stroke.vertices[index].position - centre) * factor;
+                index += 1;
+            }
+        } else {
+            index += 1;
         }
     }
 }
@@ -550,6 +965,7 @@ fn nib_aspect(tool: StrokeTool, nib_aspect: f32) -> f32 {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::BrushDefinition;
 
     #[test]
     fn default_stack_has_stable_ordered_drawing_layers() {
@@ -607,8 +1023,11 @@ mod tests {
             class: FeatureClass::Silhouette,
             ..Default::default()
         };
-        assert!(layers.stroke_layer(&tone).is_none());
-        assert_eq!(layers.stroke_layer(&contour).unwrap().id, "contours");
+        assert!(layers.stroke_layers(&tone).next().is_none());
+        assert_eq!(
+            layers.stroke_layers(&contour).next().unwrap().id,
+            "contours"
+        );
     }
 
     #[test]
@@ -635,8 +1054,228 @@ mod tests {
             class: FeatureClass::Silhouette,
             ..Default::default()
         };
-        assert_eq!(layers.stroke_layer(&crease).unwrap().id, "creases");
-        assert_eq!(layers.stroke_layer(&contour).unwrap().id, "contours");
+        assert_eq!(layers.stroke_layers(&crease).next().unwrap().id, "creases");
+        assert_eq!(
+            layers.stroke_layers(&contour).next().unwrap().id,
+            "contours"
+        );
+    }
+
+    #[test]
+    fn same_source_layers_expand_into_independent_brush_contributions() {
+        let mut layers = NprStyleLayers::default();
+        let mut second = layers.layer("hatching").unwrap().clone();
+        second.id = "hatching-soft".into();
+        second.opacity = 0.35;
+        second.brush.as_mut().unwrap().width = Some(3.0);
+        layers.layers.push(second);
+        let source = TessellatedStroke {
+            role: StrokeRole::Tone,
+            ..Default::default()
+        };
+        let mut packet = NprRenderPacket {
+            occluders: vec![],
+            underpainting: vec![],
+            fills: vec![],
+            strokes: vec![source],
+            background: Vec4::ZERO,
+            debug_view: crate::NprDebugView::Final,
+            ink: Vec4::ONE,
+            stats: crate::NprRenderStats::default(),
+        };
+        layers.apply_tools(&mut packet, ComicInk::default());
+        assert_eq!(packet.strokes.len(), 2);
+        assert_eq!(packet.strokes[0].layer_id.as_deref(), Some("hatching"));
+        assert_eq!(packet.strokes[1].layer_id.as_deref(), Some("hatching-soft"));
+    }
+
+    #[test]
+    fn same_surface_source_expands_into_independent_layer_contributions() {
+        let mut layers = NprStyleLayers::default();
+        layers.layer_mut("fill").unwrap().enabled = true;
+        layers.layer_mut("underpainting").unwrap().enabled = true;
+        let mut second_fill = layers.layer("fill").unwrap().clone();
+        second_fill.id = "fill-soft".into();
+        layers.layers.push(second_fill);
+        let mut second_wash = layers.layer("underpainting").unwrap().clone();
+        second_wash.id = "wash-soft".into();
+        layers.layers.push(second_wash);
+        let source_packet = NprRenderPacket {
+            occluders: vec![],
+            underpainting: vec![crate::NprPaintTriangle {
+                positions: [glam::Vec2::ZERO, glam::Vec2::X, glam::Vec2::Y],
+                color: Vec4::ONE,
+                depths: [0.1, 0.2, 0.3],
+                coverage: 1.0,
+                layer_id: None,
+            }],
+            fills: vec![crate::NprFillTriangle {
+                positions: [glam::Vec2::ZERO, glam::Vec2::X, glam::Vec2::Y],
+                color: Vec4::ONE,
+                depths: [0.1, 0.2, 0.3],
+                layer_id: None,
+            }],
+            strokes: vec![],
+            background: Vec4::ZERO,
+            debug_view: crate::NprDebugView::Final,
+            ink: Vec4::ONE,
+            stats: crate::NprRenderStats::default(),
+        };
+        let mut output = source_packet.clone();
+        layers.apply_tools(&mut output, ComicInk::default());
+        assert_eq!(
+            output
+                .fills
+                .iter()
+                .filter(|triangle| triangle.layer_id.is_some())
+                .count(),
+            2
+        );
+        assert_eq!(
+            output
+                .underpainting
+                .iter()
+                .filter(|triangle| triangle.layer_id.is_some())
+                .count(),
+            2
+        );
+        assert!(
+            output
+                .fills
+                .iter()
+                .any(|triangle| triangle.layer_id.as_deref() == Some("fill"))
+        );
+        assert!(
+            output
+                .fills
+                .iter()
+                .any(|triangle| triangle.layer_id.as_deref() == Some("fill-soft"))
+        );
+        assert!(
+            output
+                .underpainting
+                .iter()
+                .any(|triangle| triangle.layer_id.as_deref() == Some("underpainting"))
+        );
+        assert!(
+            output
+                .underpainting
+                .iter()
+                .any(|triangle| triangle.layer_id.as_deref() == Some("wash-soft"))
+        );
+        let diagnostics = layers.diagnostics(&source_packet, &output, 0, 0);
+        assert_eq!(diagnostics["fill"].generated_triangles, 1);
+        assert_eq!(diagnostics["fill-soft"].generated_triangles, 1);
+        assert_eq!(diagnostics["underpainting"].generated_triangles, 1);
+        assert_eq!(diagnostics["wash-soft"].generated_triangles, 1);
+    }
+
+    #[test]
+    fn diagnostics_identify_source_coverage_and_no_effect_reason() {
+        let mut layers = NprStyleLayers::default();
+        let source = TessellatedStroke {
+            role: StrokeRole::Tone,
+            ..Default::default()
+        };
+        let source_packet = NprRenderPacket {
+            occluders: vec![],
+            underpainting: vec![],
+            fills: vec![],
+            strokes: vec![source],
+            background: Vec4::ZERO,
+            debug_view: crate::NprDebugView::Final,
+            ink: Vec4::ONE,
+            stats: crate::NprRenderStats::default(),
+        };
+        let mut output = source_packet.clone();
+        layers.apply_tools(&mut output, ComicInk::default());
+        let report = layers.diagnostics(&source_packet, &output, 12, 7);
+        let hatch = &report["hatching"];
+        assert_eq!(hatch.source_geometry, 1);
+        assert_eq!(hatch.generated_marks, 1);
+        assert_eq!(hatch.extraction_micros, 12);
+        assert_eq!(hatch.tessellation_micros, 7);
+        assert_eq!(hatch.no_effect_reason, None);
+
+        let hatch = layers.layer_mut("hatching").unwrap();
+        hatch.mask = CoverageMask::ToneRange {
+            min: 0.8,
+            max: 1.0,
+            invert: false,
+        };
+        assert_eq!(
+            layers.diagnostics(&source_packet, &output, 0, 0)["hatching"].no_effect_reason,
+            Some(NprLayerNoEffectReason::MaskExcludesAll)
+        );
+    }
+
+    #[test]
+    fn brush_instance_taper_and_softness_change_only_its_layer_contribution() {
+        let mut layers = NprStyleLayers::default();
+        let contour = layers.layer_mut("contours").unwrap();
+        contour.brush.as_mut().unwrap().taper = Some(0.8);
+        contour.brush.as_mut().unwrap().softness = Some(0.73);
+        let stroke = crate::tessellate_segment(
+            1,
+            FeatureClass::Silhouette,
+            (glam::Vec2::ZERO, glam::Vec2::new(80.0, 0.0)),
+            ComicInk::default(),
+            4,
+        );
+        let mut packet = NprRenderPacket {
+            occluders: vec![],
+            underpainting: vec![],
+            fills: vec![],
+            strokes: vec![stroke],
+            background: Vec4::ZERO,
+            debug_view: crate::NprDebugView::Final,
+            ink: Vec4::ONE,
+            stats: crate::NprRenderStats::default(),
+        };
+        layers.apply_tools(&mut packet, ComicInk::default());
+        let contour = packet
+            .strokes
+            .iter()
+            .find(|stroke| stroke.layer_id.as_deref() == Some("contours"))
+            .unwrap();
+        assert!(contour.vertices.iter().any(|vertex| vertex.coverage < 0.5));
+        assert!(
+            contour
+                .vertices
+                .iter()
+                .all(|vertex| vertex.edge_softness == 0.73)
+        );
+    }
+
+    #[test]
+    fn hatch_density_filters_only_the_owning_layer_contribution() {
+        let mut layers = NprStyleLayers::default();
+        layers.layer_mut("hatching").unwrap().hatch = Some(NprHatchSettings {
+            density: 0.0,
+            spacing: 1.0,
+        });
+        let source = TessellatedStroke {
+            id: 7,
+            role: StrokeRole::Tone,
+            ..Default::default()
+        };
+        let source_packet = NprRenderPacket {
+            occluders: vec![],
+            underpainting: vec![],
+            fills: vec![],
+            strokes: vec![source],
+            background: Vec4::ZERO,
+            debug_view: crate::NprDebugView::Final,
+            ink: Vec4::ONE,
+            stats: crate::NprRenderStats::default(),
+        };
+        let mut output = source_packet.clone();
+        layers.apply_tools(&mut output, ComicInk::default());
+        assert!(output.strokes.is_empty());
+        assert_eq!(
+            layers.diagnostics(&source_packet, &output, 0, 0)["hatching"].no_effect_reason,
+            Some(NprLayerNoEffectReason::HatchSelectionExcludesAll)
+        );
     }
 
     #[test]
@@ -725,5 +1364,150 @@ mod tests {
                 .any(|vertex| vertex.edge_softness > 0.1)
         );
         assert_eq!(stroke.indices, before.indices);
+    }
+
+    #[test]
+    fn brush_width_override_changes_tessellated_strip_geometry() {
+        let style = ComicInk::default();
+        let mut layers = NprStyleLayers::default();
+        layers.layer_mut("contours").unwrap().brush = Some(BrushInstance {
+            brush: crate::BrushReference {
+                id: "ink-liner".into(),
+                version: 1,
+            },
+            width: Some(style.outline_width * 2.0),
+            irregularity: Some(0.8),
+            dryness: Some(0.9),
+            seed: Some(17),
+            ..BrushInstance::default()
+        });
+        let stroke = crate::tessellate_segment(
+            3,
+            FeatureClass::Silhouette,
+            (glam::Vec2::new(20.0, 20.0), glam::Vec2::new(120.0, 30.0)),
+            style,
+            11,
+        );
+        let before = stroke.vertices.clone();
+        let mut packet = NprRenderPacket {
+            occluders: vec![],
+            underpainting: vec![],
+            fills: vec![],
+            strokes: vec![stroke],
+            background: Vec4::ZERO,
+            debug_view: crate::NprDebugView::Final,
+            ink: Vec4::ONE,
+            stats: crate::NprRenderStats::default(),
+        };
+        layers.apply_tools(&mut packet, style);
+        assert!(
+            packet.strokes[0]
+                .vertices
+                .iter()
+                .zip(before)
+                .any(|(after, before)| { (after.position - before.position).length() > 1e-4 })
+        );
+        assert!(
+            packet.strokes[0]
+                .vertices
+                .iter()
+                .all(|vertex| vertex.dryness == 0.9)
+        );
+        assert!(
+            packet.strokes[0]
+                .vertices
+                .iter()
+                .any(|vertex| vertex.coverage < 1.0)
+        );
+    }
+
+    #[test]
+    fn pinned_brush_definition_supplies_default_width_and_dryness() {
+        let style = ComicInk::default();
+        let layers = NprStyleLayers::default();
+        let mut library = BrushLibrary::default();
+        library
+            .add_version(BrushDefinition {
+                id: "ink-liner".into(),
+                width: style.outline_width * 2.0,
+                dryness: 0.85,
+                ..BrushDefinition::default()
+            })
+            .unwrap();
+        let stroke = crate::tessellate_segment(
+            3,
+            FeatureClass::Silhouette,
+            (glam::Vec2::new(20.0, 20.0), glam::Vec2::new(120.0, 30.0)),
+            style,
+            11,
+        );
+        let before = stroke.vertices.clone();
+        let mut packet = NprRenderPacket {
+            occluders: vec![],
+            underpainting: vec![],
+            fills: vec![],
+            strokes: vec![stroke],
+            background: Vec4::ZERO,
+            debug_view: crate::NprDebugView::Final,
+            ink: Vec4::ONE,
+            stats: crate::NprRenderStats::default(),
+        };
+        layers
+            .apply_tools_with_library(&mut packet, style, Some(&library))
+            .unwrap();
+        assert!(
+            packet.strokes[0]
+                .vertices
+                .iter()
+                .zip(before)
+                .any(|(after, before)| { (after.position - before.position).length() > 1e-4 })
+        );
+        assert!(
+            packet.strokes[0]
+                .vertices
+                .iter()
+                .all(|vertex| vertex.dryness == 0.85)
+        );
+    }
+
+    #[test]
+    fn brush_definition_seed_keeps_humanization_deterministic() {
+        let style = ComicInk::default();
+        let layers = NprStyleLayers::default();
+        let mut library = BrushLibrary::default();
+        library
+            .add_version(BrushDefinition {
+                id: "ink-liner".into(),
+                irregularity: 0.7,
+                seed: 0x1234_5678,
+                ..BrushDefinition::default()
+            })
+            .unwrap();
+        let stroke = crate::tessellate_segment(
+            3,
+            FeatureClass::Silhouette,
+            (glam::Vec2::new(20.0, 20.0), glam::Vec2::new(120.0, 30.0)),
+            style,
+            11,
+        );
+        let packet = NprRenderPacket {
+            occluders: vec![],
+            underpainting: vec![],
+            fills: vec![],
+            strokes: vec![stroke],
+            background: Vec4::ZERO,
+            debug_view: crate::NprDebugView::Final,
+            ink: Vec4::ONE,
+            stats: crate::NprRenderStats::default(),
+        };
+        let mut first = packet.clone();
+        let mut second = packet;
+        layers
+            .apply_tools_with_library(&mut first, style, Some(&library))
+            .unwrap();
+        layers
+            .apply_tools_with_library(&mut second, style, Some(&library))
+            .unwrap();
+        assert_eq!(first.strokes[0].vertices, second.strokes[0].vertices);
     }
 }

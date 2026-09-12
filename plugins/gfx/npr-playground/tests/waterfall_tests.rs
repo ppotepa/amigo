@@ -39,7 +39,7 @@ fn scene_layer_intent_reaches_the_extracted_npr_draw_command() {
 }
 
 #[test]
-fn authored_underpainting_medium_changes_only_the_paint_packet_channel() {
+fn authored_underpainting_medium_is_kept_as_per_layer_compositor_state() {
     use amigo_npr_playground_plugin::{NprPlaygroundRenderService, state::Settings};
 
     let mut settings = Settings::for_scene(false);
@@ -58,12 +58,84 @@ fn authored_underpainting_medium_changes_only_the_paint_packet_channel() {
     let mut commands = service.commands();
     let command = commands.remove(0);
     assert!(!command.packet.underpainting.is_empty());
+    // Source geometry is shared by every wash layer.  Applying wash here
+    // would make another wash inherit this layer's zero coverage; the WGPU
+    // compositor applies this medium only while drawing its owning layer.
     assert!(
         command
             .packet
             .underpainting
             .iter()
-            .all(|triangle| triangle.coverage == 0.0)
+            .any(|triangle| triangle.coverage > 0.0)
+    );
+    assert_eq!(
+        command
+            .layers
+            .layer("underpainting")
+            .unwrap()
+            .paint
+            .unwrap()
+            .wash,
+        0.0
     );
     assert!(!command.packet.fills.is_empty());
+}
+
+#[test]
+fn two_contour_layers_emit_two_independent_layer_contributions() {
+    use amigo_npr_playground_plugin::{NprPlaygroundRenderService, state::Settings};
+
+    let mut settings = Settings::for_scene(false);
+    let mut soft_contour = settings.style_layers.layer("contours").unwrap().clone();
+    soft_contour.id = "contours-soft".into();
+    soft_contour.label = "Soft contour".into();
+    soft_contour.opacity = 0.35;
+    settings.style_layers.layers.push(soft_contour);
+
+    let service = NprPlaygroundRenderService::default();
+    service.rebuild(&settings, [512, 512]).unwrap();
+    let command = service.commands().remove(0);
+    let contour_layers = command
+        .packet
+        .strokes
+        .iter()
+        .filter(|stroke| {
+            stroke.role == amigo_render_npr::StrokeRole::Feature
+                && stroke.class == amigo_render_npr::FeatureClass::Silhouette
+        })
+        .filter_map(|stroke| stroke.layer_id.as_deref())
+        .collect::<std::collections::BTreeSet<_>>();
+    assert_eq!(
+        contour_layers,
+        std::collections::BTreeSet::from(["contours", "contours-soft"])
+    );
+}
+
+use amigo_npr_playground_plugin::{NprPlaygroundRenderService, state::Settings};
+
+#[test]
+fn shared_surfaces_preserve_independent_camera_packets_and_temporal_histories() {
+    let renderer = NprPlaygroundRenderService::default();
+    let companion = renderer.fork_view();
+    let mut settings = Settings::for_scene(false);
+    settings.sketch_paused = true;
+    renderer
+        .rebuild_with_delta(&settings, [640, 360], 0.016)
+        .unwrap();
+    let original = renderer.commands();
+    let mut second_camera = settings.clone();
+    second_camera.camera_yaw += 20.0;
+    companion
+        .rebuild_with_delta(&second_camera, [960, 540], 0.016)
+        .unwrap();
+    assert_eq!(renderer.commands(), original);
+    assert_ne!(companion.commands(), original);
+    assert_eq!(renderer.stats()["packet_builds"], 1);
+    for _ in 0..20 {
+        renderer
+            .rebuild_with_delta(&settings, [640, 360], 0.016)
+            .unwrap();
+    }
+    assert_eq!(renderer.stats()["packet_builds"], 1);
+    assert_eq!(companion.stats()["packet_builds"], 1);
 }

@@ -35,6 +35,8 @@ amigo-window-api.workspace = true
 serde_yaml.workspace = true
 
 [dev-dependencies]
+amigo-playground-api.workspace = true
+amigo-npr-playground-plugin.workspace = true
 amigo-panels.workspace = true
 image.workspace = true
 amigo-2d-composition.workspace = true

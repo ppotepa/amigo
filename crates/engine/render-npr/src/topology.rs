@@ -9,6 +9,8 @@ pub struct TopologyEdge {
     pub faces: [u32; 2],
 }
 
+/// Canonical topology sorted by the normalized `(a, b)` vertex pair. Surface
+/// traversal uses this ordering for logarithmic edge lookup.
 pub fn build_topology(geometry: &NprGeometry) -> Vec<TopologyEdge> {
     let mut edges: BTreeMap<(u32, u32), Vec<u32>> = BTreeMap::new();
     for (face, tri) in geometry.triangles.iter().enumerate() {

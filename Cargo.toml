@@ -17,6 +17,7 @@ members = [
     "crates/engine/capabilities",
     "crates/engine/camera",
     "crates/engine/scene",
+    "crates/engine/playground-api",
     "crates/engine/state",
     "crates/engine/input-actions",
     "crates/engine/event-pipeline",
@@ -57,6 +58,8 @@ members = [
     "crates/ui/panel-api",
     "crates/ui/panels",
     "crates/ui/panel-egui",
+    "crates/ui/playground-tauri",
+    "crates/platform/playground-native",
     "crates/runtime/bundles",
     "crates/apps/app",
     "crates/tools/scene-preview",
@@ -122,6 +125,9 @@ amigo-font = { path = "crates/engine/font" }
 amigo-hot-reload = { path = "crates/engine/hot-reload" }
 amigo-camera = { path = "crates/engine/camera" }
 amigo-scene = { path = "crates/engine/scene" }
+amigo-playground-api = { path = "crates/engine/playground-api" }
+amigo-playground-native = { path = "crates/platform/playground-native" }
+amigo-playground-tauri = { path = "crates/ui/playground-tauri" }
 amigo-state = { path = "crates/engine/state" }
 amigo-input-actions = { path = "crates/engine/input-actions" }
 amigo-behavior = { path = "plugins/gameplay/behavior" }
@@ -211,3 +217,8 @@ notify = "8"
 image = { version = "0.25", default-features = false, features = ["png", "jpeg", "webp"] }
 fontdue = "0.9.3"
 cpal = "0.15"
+
+[profile.playground]
+inherits = "release"
+debug = 1
+incremental = true

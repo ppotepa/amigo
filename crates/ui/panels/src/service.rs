@@ -52,6 +52,15 @@ pub enum PanelInteraction {
         control: String,
     },
 }
+
+/// Domain-owned execution seam for a generic asset-browser intent.
+///
+/// PanelService validates panel metadata and catalog freshness before calling a
+/// handler. The handler owns compatibility and scene semantics.
+pub trait PanelAssetIntentHandler: Send + Sync {
+    fn handler_id(&self) -> &'static str;
+    fn handle_asset_intent(&self, intent: &PanelAssetIntent) -> Option<Result<(), String>>;
+}
 #[derive(Default, Deserialize)]
 struct ScenePanels {
     #[serde(default)]
@@ -124,9 +133,81 @@ impl Default for State {
 #[derive(Default)]
 pub struct PanelService {
     state: Mutex<State>,
+    asset_intent_handlers: Mutex<Vec<Arc<dyn PanelAssetIntentHandler>>>,
     watches: amigo_hot_reload::HotReloadService,
 }
 impl PanelService {
+    pub fn register_asset_intent_handler(&self, handler: Arc<dyn PanelAssetIntentHandler>) {
+        let mut handlers = self.asset_intent_handlers.lock().unwrap();
+        if handlers
+            .iter()
+            .any(|registered| registered.handler_id() == handler.handler_id())
+        {
+            return;
+        }
+        handlers.push(handler);
+    }
+
+    /// Validates catalog freshness and author-declared usage before routing an
+    /// asset intent to its domain handler.
+    pub fn apply_asset_intent(
+        &self,
+        intent: PanelAssetIntent,
+        assets: &amigo_assets::AssetCatalog,
+    ) -> Result<(), String> {
+        let (document, generation, revision) = {
+            let state = self.state.lock().unwrap();
+            let panel = state
+                .panels
+                .get(&intent.panel_id)
+                .ok_or_else(|| format!("unknown panel {}", intent.panel_id))?;
+            (panel.document.clone(), state.generation, panel.revision)
+        };
+        let handlers = self.asset_intent_handlers.lock().unwrap().clone();
+        apply_asset_intent_to_document(&document, generation, revision, intent, assets, &handlers)
+    }
+
+    /// Re-queues a refreshable source after verifying the panel and source
+    /// revisions observed by the external host.
+    pub fn refresh_asset_source(
+        &self,
+        panel_id: &str,
+        generation: u64,
+        revision: u64,
+        source_id: &str,
+        source_revision: u64,
+        assets: &amigo_assets::AssetCatalog,
+    ) -> Result<(), String> {
+        {
+            let state = self.state.lock().unwrap();
+            let panel = state
+                .panels
+                .get(panel_id)
+                .ok_or_else(|| format!("unknown panel {panel_id}"))?;
+            if state.generation != generation || panel.revision != revision {
+                return Err("panel layout changed; refresh before refreshing assets".into());
+            }
+        }
+        let source = assets
+            .asset_sources()
+            .into_iter()
+            .find(|source| source.id.as_str() == source_id)
+            .ok_or_else(|| format!("unknown asset source {source_id}"))?;
+        let snapshot = assets
+            .asset_source_snapshot(&source.id)
+            .ok_or_else(|| format!("unknown asset source {source_id}"))?;
+        if snapshot.revision != source_revision {
+            return Err("asset catalog changed; refresh before refreshing assets".into());
+        }
+        if !snapshot.source.refreshable {
+            return Err(format!("asset source {source_id} is not refreshable"));
+        }
+        if !assets.refresh_asset_source(&source.id) {
+            return Err(format!("asset source {source_id} has no assets"));
+        }
+        Ok(())
+    }
+
     pub fn connection_snapshot(&self, id: &str) -> Option<PanelConnectionSnapshot> {
         let state = self.state.lock().unwrap();
         let panel = state.panels.get(id)?;
@@ -153,6 +234,14 @@ impl PanelService {
         controls: &RuntimeControlService,
         presets: &crate::PresetService,
     ) -> Result<Vec<PanelSnapshot>, String> {
+        self.snapshots_with_assets(controls, presets, None)
+    }
+    pub fn snapshots_with_assets(
+        &self,
+        controls: &RuntimeControlService,
+        presets: &crate::PresetService,
+        assets: Option<&amigo_assets::AssetCatalog>,
+    ) -> Result<Vec<PanelSnapshot>, String> {
         let state = self.state.lock().unwrap();
         state
             .panels
@@ -165,6 +254,7 @@ impl PanelService {
                     &panel.document,
                     controls,
                     presets,
+                    assets,
                 )
             })
             .collect()
@@ -174,6 +264,14 @@ impl PanelService {
         controls: &RuntimeControlService,
         presets: &crate::PresetService,
     ) -> Result<Vec<UiOverlayDocument>, String> {
+        self.embedded_overlays_with_assets(controls, presets, None)
+    }
+    pub fn embedded_overlays_with_assets(
+        &self,
+        controls: &RuntimeControlService,
+        presets: &crate::PresetService,
+        assets: Option<&amigo_assets::AssetCatalog>,
+    ) -> Result<Vec<UiOverlayDocument>, String> {
         let state = self.state.lock().unwrap();
         let tabs = state.embedded_tabs.clone();
         let collapsed = state.embedded_collapsed.clone();
@@ -182,22 +280,23 @@ impl PanelService {
         let dropdown_scrolls = state.embedded_dropdown_scrolls.clone();
         let scroll_offsets = state.embedded_scroll_offsets.clone();
         drop(state);
-        self.snapshots(controls, presets).map(|snapshots| {
-            snapshots
-                .iter()
-                .map(|snapshot| {
-                    crate::overlay(
-                        snapshot,
-                        &tabs,
-                        &collapsed,
-                        &hovered,
-                        &dropdowns,
-                        &dropdown_scrolls,
-                        &scroll_offsets,
-                    )
-                })
-                .collect()
-        })
+        self.snapshots_with_assets(controls, presets, assets)
+            .map(|snapshots| {
+                snapshots
+                    .iter()
+                    .map(|snapshot| {
+                        crate::overlay(
+                            snapshot,
+                            &tabs,
+                            &collapsed,
+                            &hovered,
+                            &dropdowns,
+                            &dropdown_scrolls,
+                            &scroll_offsets,
+                        )
+                    })
+                    .collect()
+            })
     }
     pub fn set_embedded_tab(&self, panel_id: &str, control_id: &str, tab_id: String) {
         self.state
@@ -484,6 +583,15 @@ impl PanelService {
         events: &ScriptEventQueue,
         presets: &crate::PresetService,
     ) {
+        self.tick_with_assets(controls, events, presets, None)
+    }
+    pub fn tick_with_assets(
+        &self,
+        controls: &RuntimeControlService,
+        events: &ScriptEventQueue,
+        presets: &crate::PresetService,
+        assets: Option<&amigo_assets::AssetCatalog>,
+    ) {
         let mut state = self.state.lock().unwrap();
         let generation = state.generation;
         let poll = state.last_poll.elapsed() >= Duration::from_millis(250);
@@ -649,6 +757,68 @@ impl PanelService {
                             );
                             (request, result)
                         }
+                        ClientMessage::AssetIntent { request, intent } => {
+                            if !connection.ready || request <= connection.last_request {
+                                panel.failure =
+                                    Some("invalid asset intent request/handshake".into());
+                                closed = true;
+                                break;
+                            }
+                            connection.last_request = request;
+                            let result = assets
+                                .ok_or_else(|| {
+                                    "asset browser is unavailable for this runtime".to_owned()
+                                })
+                                .and_then(|assets| {
+                                    let handlers =
+                                        self.asset_intent_handlers.lock().unwrap().clone();
+                                    apply_asset_intent_to_document(
+                                        &panel.document,
+                                        generation,
+                                        panel.revision,
+                                        intent,
+                                        assets,
+                                        &handlers,
+                                    )
+                                });
+                            (request, result)
+                        }
+                        ClientMessage::RefreshAssetSource {
+                            request,
+                            panel_id,
+                            generation: g,
+                            revision,
+                            source_id,
+                            source_revision,
+                        } => {
+                            if !connection.ready || request <= connection.last_request {
+                                panel.failure =
+                                    Some("invalid asset refresh request/handshake".into());
+                                closed = true;
+                                break;
+                            }
+                            connection.last_request = request;
+                            let result = if panel_id != panel.document.id {
+                                Err("asset refresh targeted a different panel".into())
+                            } else {
+                                assets
+                                    .ok_or_else(|| {
+                                        "asset browser is unavailable for this runtime".to_owned()
+                                    })
+                                    .and_then(|assets| {
+                                        refresh_asset_source_from_snapshot(
+                                            generation,
+                                            panel.revision,
+                                            g,
+                                            revision,
+                                            &source_id,
+                                            source_revision,
+                                            assets,
+                                        )
+                                    })
+                            };
+                            (request, result)
+                        }
                     };
                     if connection
                         .outgoing
@@ -699,6 +869,7 @@ impl PanelService {
                         &panel.document,
                         controls,
                         presets,
+                        assets,
                     ) {
                         Ok(snapshot) => {
                             *connection.latest.lock().unwrap() = Some(ServerMessage::Snapshot {
@@ -707,6 +878,7 @@ impl PanelService {
                                 acknowledged: connection.last_request,
                                 preset_names: snapshot.preset_names,
                                 values: snapshot.values,
+                                asset_browser: snapshot.asset_browser,
                             });
                         }
                         Err(e) => error = Some(e),
@@ -735,6 +907,89 @@ fn validate_epoch(g: u64, r: u64, actual_g: u64, actual_r: u64) -> Result<(), St
         Ok(())
     }
 }
+fn refresh_asset_source_from_snapshot(
+    generation: u64,
+    revision: u64,
+    actual_generation: u64,
+    actual_revision: u64,
+    source_id: &str,
+    source_revision: u64,
+    assets: &amigo_assets::AssetCatalog,
+) -> Result<(), String> {
+    if generation != actual_generation || revision != actual_revision {
+        return Err("panel layout changed; refresh before refreshing assets".into());
+    }
+    let source = assets
+        .asset_sources()
+        .into_iter()
+        .find(|source| source.id.as_str() == source_id)
+        .ok_or_else(|| format!("unknown asset source {source_id}"))?;
+    let snapshot = assets
+        .asset_source_snapshot(&source.id)
+        .ok_or_else(|| format!("unknown asset source {source_id}"))?;
+    if snapshot.revision != source_revision {
+        return Err("asset catalog changed; refresh before refreshing assets".into());
+    }
+    if !snapshot.source.refreshable {
+        return Err(format!("asset source {source_id} is not refreshable"));
+    }
+    if !assets.refresh_asset_source(&source.id) {
+        return Err(format!("asset source {source_id} has no assets"));
+    }
+    Ok(())
+}
+
+fn apply_asset_intent_to_document(
+    document: &PanelDocument,
+    generation: u64,
+    revision: u64,
+    intent: PanelAssetIntent,
+    assets: &amigo_assets::AssetCatalog,
+    handlers: &[Arc<dyn PanelAssetIntentHandler>],
+) -> Result<(), String> {
+    if intent.generation != generation || intent.revision != revision {
+        return Err("panel layout changed; refresh before using an asset".into());
+    }
+    let browser = document
+        .asset_browser
+        .as_ref()
+        .ok_or_else(|| "this panel does not declare asset browser actions".to_owned())?;
+    if browser.add_usage.as_deref() != Some(intent.usage.as_str())
+        && browser.replace_usage.as_deref() != Some(intent.usage.as_str())
+    {
+        return Err(format!(
+            "asset usage `{}` is not declared by this panel",
+            intent.usage
+        ));
+    }
+    let source = assets
+        .asset_sources()
+        .into_iter()
+        .find(|source| source.id.as_str() == intent.source_id)
+        .and_then(|source| assets.asset_source_snapshot(&source.id))
+        .ok_or_else(|| format!("unknown asset source {}", intent.source_id))?;
+    if source.revision != intent.source_revision {
+        return Err("asset catalog changed; refresh before using an asset".into());
+    }
+    let entry = source
+        .entries
+        .iter()
+        .find(|entry| entry.key.as_str() == intent.asset_id)
+        .ok_or_else(|| format!("unknown asset {}", intent.asset_id))?;
+    if !matches!(entry.state, amigo_assets::AssetBrowserEntryState::Ready) {
+        return Err(format!("asset {} is not ready", intent.asset_id));
+    }
+    for handler in handlers {
+        if let Some(result) = handler.handle_asset_intent(&intent) {
+            return result;
+        }
+    }
+    Err(format!(
+        "no domain handler accepts asset usage `{}`",
+        intent.usage
+    ))
+}
+
 fn apply_edit(
     doc: &PanelDocument,
     g: u64,
@@ -766,10 +1021,11 @@ fn apply_edit(
             return Err("value outside control range".into());
         }
     }
-    if !node.options.is_empty()
+    let options = runtime_options(node, controls)?;
+    if !options.is_empty()
         && !value
             .as_string()
-            .is_some_and(|v| node.options.iter().any(|o| o == v))
+            .is_some_and(|v| options.iter().any(|o| o == v))
     {
         return Err("unknown option".into());
     }
@@ -781,6 +1037,26 @@ fn apply_edit(
     }
     Ok(())
 }
+
+fn runtime_options(
+    node: &amigo_scene::SceneUiNodeComponentDocument,
+    controls: &RuntimeControlService,
+) -> Result<Vec<String>, String> {
+    let Some(path) = &node.options_bind else {
+        return Ok(node.options.clone());
+    };
+    let options = controls
+        .get(path)
+        .map_err(|error| error.to_string())?
+        .as_string()
+        .unwrap_or_default()
+        .split('\n')
+        .filter(|option| !option.is_empty())
+        .map(str::to_owned)
+        .collect::<Vec<_>>();
+    Ok(options)
+}
+
 fn apply_reset(
     doc: &PanelDocument,
     generation: u64,
@@ -844,6 +1120,7 @@ fn snapshot_panel(
     document: &PanelDocument,
     controls: &RuntimeControlService,
     presets: &crate::PresetService,
+    assets: Option<&amigo_assets::AssetCatalog>,
 ) -> Result<PanelSnapshot, String> {
     let registry = controls.registry_snapshot();
     document.validate_bindings(&registry)?;
@@ -885,7 +1162,79 @@ fn snapshot_panel(
         document: document.clone(),
         preset_names,
         values,
+        asset_browser: document
+            .asset_browser
+            .as_ref()
+            .and_then(|browser| assets.map(|assets| asset_browser_snapshot(assets, browser))),
     })
+}
+
+fn asset_browser_snapshot(
+    assets: &amigo_assets::AssetCatalog,
+    browser: &PanelAssetBrowserDocument,
+) -> PanelAssetBrowserSnapshot {
+    let sources = assets
+        .asset_sources()
+        .into_iter()
+        .filter_map(|source| {
+            let snapshot = assets.asset_source_snapshot(&source.id)?;
+            Some(PanelAssetSourceSnapshot {
+                id: snapshot.source.id.as_str().to_owned(),
+                label: snapshot.source.label,
+                refreshable: snapshot.source.refreshable,
+                revision: snapshot.revision,
+                state: match snapshot.state {
+                    amigo_assets::AssetSourceCatalogState::Empty => PanelAssetSourceState::Empty,
+                    amigo_assets::AssetSourceCatalogState::Loading => {
+                        PanelAssetSourceState::Loading
+                    }
+                    amigo_assets::AssetSourceCatalogState::Ready => PanelAssetSourceState::Ready,
+                    amigo_assets::AssetSourceCatalogState::Failed { failed_assets } => {
+                        PanelAssetSourceState::Failed { failed_assets }
+                    }
+                },
+                entries: snapshot
+                    .entries
+                    .into_iter()
+                    .map(|entry| PanelAssetEntrySnapshot {
+                        id: entry.key.as_str().to_owned(),
+                        label: entry
+                            .key
+                            .as_str()
+                            .rsplit('/')
+                            .next()
+                            .unwrap_or(entry.key.as_str())
+                            .to_owned(),
+                        tags: entry.tags,
+                        kind: entry.kind.map(|kind| format!("{kind:?}")),
+                        state: match entry.state {
+                            amigo_assets::AssetBrowserEntryState::Unloaded => {
+                                PanelAssetEntryState::Unloaded
+                            }
+                            amigo_assets::AssetBrowserEntryState::Loading => {
+                                PanelAssetEntryState::Loading
+                            }
+                            amigo_assets::AssetBrowserEntryState::Ready => {
+                                PanelAssetEntryState::Ready
+                            }
+                            amigo_assets::AssetBrowserEntryState::Failed { message } => {
+                                PanelAssetEntryState::Failed { message }
+                            }
+                        },
+                    })
+                    .collect(),
+            })
+        })
+        .collect::<Vec<_>>();
+    PanelAssetBrowserSnapshot {
+        selected_source: browser
+            .preferred_source
+            .as_ref()
+            .filter(|preferred| sources.iter().any(|source| &source.id == *preferred))
+            .cloned()
+            .or_else(|| sources.first().map(|source| source.id.clone())),
+        sources,
+    }
 }
 fn validate_enabled(
     doc: &PanelDocument,
@@ -1078,10 +1427,11 @@ fn tick_panels(runtime: &Runtime) -> amigo_core::AmigoResult<()> {
             let _ = panels.load_scene(None, Path::new("."), Path::new("."));
         }
     }
-    panels.tick(
+    panels.tick_with_assets(
         runtime.required::<RuntimeControlService>()?.as_ref(),
         runtime.required::<ScriptEventQueue>()?.as_ref(),
         runtime.required::<crate::PresetService>()?.as_ref(),
+        runtime.resolve::<amigo_assets::AssetCatalog>().as_deref(),
     );
     panels.report_diagnostics(runtime);
     Ok(())
@@ -1104,8 +1454,9 @@ fn tick_embedded_panel_input(runtime: &Runtime) -> amigo_core::AmigoResult<()> {
     let controls = runtime.required::<RuntimeControlService>()?;
     let events = runtime.required::<ScriptEventQueue>()?;
     let presets = runtime.required::<crate::PresetService>()?;
+    let assets = runtime.resolve::<amigo_assets::AssetCatalog>();
     let snapshots = panels
-        .snapshots(controls.as_ref(), presets.as_ref())
+        .snapshots_with_assets(controls.as_ref(), presets.as_ref(), assets.as_deref())
         .map_err(amigo_core::AmigoError::Message)?;
     let state = panels.state.lock().unwrap();
     let tabs = state.embedded_tabs.clone();

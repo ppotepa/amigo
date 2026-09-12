@@ -4,6 +4,7 @@ use amigo_render_npr::{NprDebugView, NprRenderPacket, NprStyleLayers};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct NprDrawCommand {
+    pub object_id: String,
     pub packet: NprRenderPacket,
     pub preset: &'static str,
     /// Authorial layer semantics travel with the neutral packet; WGPU is only
@@ -30,11 +31,16 @@ impl NprDrawCommand {
         layers: NprStyleLayers,
     ) -> Self {
         Self {
+            object_id: String::new(),
             packet,
             preset,
             layers,
             material_base_color: None,
         }
+    }
+    pub fn with_object_id(mut self, object_id: impl Into<String>) -> Self {
+        self.object_id = object_id.into();
+        self
     }
 
     pub fn with_material_base_color(mut self, color: [f32; 4]) -> Self {

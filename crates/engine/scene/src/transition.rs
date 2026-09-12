@@ -240,6 +240,7 @@ mod tests {
     fn builds_scene_transition_plan_from_document() {
         let document = SceneDocument {
             panels: Vec::new(),
+            playgrounds: Vec::new(),
             version: 1,
             scene: SceneMetadataDocument {
                 id: "intro".to_owned(),
@@ -286,6 +287,7 @@ mod tests {
         let service = SceneTransitionService::default();
         let document = SceneDocument {
             panels: Vec::new(),
+            playgrounds: Vec::new(),
             version: 1,
             scene: SceneMetadataDocument {
                 id: "intro".to_owned(),
@@ -319,6 +321,7 @@ mod tests {
         let service = SceneTransitionService::default();
         let document = SceneDocument {
             panels: Vec::new(),
+            playgrounds: Vec::new(),
             version: 1,
             scene: SceneMetadataDocument {
                 id: "cutscene".to_owned(),

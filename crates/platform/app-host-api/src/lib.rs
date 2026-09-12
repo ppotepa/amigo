@@ -35,6 +35,16 @@ pub enum HostControl {
 pub trait HostHandler {
     fn config(&self) -> HostConfig;
 
+    /// False when another UI owns presentation. The host keeps ticking without
+    /// creating a primary window or depending on window redraw events.
+    fn primary_window_enabled(&self) -> bool {
+        true
+    }
+
+    fn on_background_tick(&mut self) -> AmigoResult<HostControl> {
+        self.on_redraw_requested()
+    }
+
     fn on_lifecycle(&mut self, _event: HostLifecycleEvent) -> AmigoResult<HostControl> {
         Ok(HostControl::Continue)
     }

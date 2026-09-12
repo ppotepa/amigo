@@ -2,6 +2,7 @@
 //! It tracks manifests, load state, and prepared asset payloads that downstream domains consume.
 
 mod catalog;
+mod browser;
 mod model;
 mod plugin;
 mod prepare;
@@ -9,6 +10,7 @@ mod runtime_capabilities;
 mod script_command;
 
 pub use catalog::*;
+pub use browser::*;
 pub use model::*;
 pub use plugin::*;
 pub use prepare::*;

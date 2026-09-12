@@ -39,8 +39,8 @@ pub fn run() -> Result<(), String> {
         .map_err(|e| e.to_string())?;
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
-            .with_inner_size([520.0, 840.0])
-            .with_min_inner_size([380.0, 620.0])
+            .with_inner_size([1120.0, 860.0])
+            .with_min_inner_size([840.0, 640.0])
             // A scene panel must remain discoverable when monitors are added,
             // removed, or rearranged. Persisting an old physical position can
             // otherwise launch a healthy process entirely off-screen.
@@ -67,6 +67,11 @@ pub fn run() -> Result<(), String> {
                 values: BTreeMap::new(),
                 pending: BTreeMap::new(),
                 preset_names: Vec::new(),
+                asset_browser: None,
+                selected_asset_source: None,
+                selected_asset: None,
+                asset_query: String::new(),
+                asset_browser_expanded: true,
                 confirm: None,
                 generation: 0,
                 revision: 0,
@@ -91,6 +96,11 @@ struct PanelApp {
     values: BTreeMap<String, PropertySnapshot>,
     pending: BTreeMap<String, (u64, ControlValue)>,
     preset_names: Vec<String>,
+    asset_browser: Option<amigo_panel_api::PanelAssetBrowserSnapshot>,
+    selected_asset_source: Option<String>,
+    selected_asset: Option<String>,
+    asset_query: String,
+    asset_browser_expanded: bool,
     confirm: Option<String>,
     generation: u64,
     revision: u64,
@@ -105,6 +115,205 @@ impl PanelApp {
             return false;
         }
         true
+    }
+    fn send_asset_intent(&mut self, usage: String) {
+        let Some(document) = self.document.as_ref() else {
+            return;
+        };
+        let Some(browser) = self.asset_browser.as_ref() else {
+            return;
+        };
+        let Some(source_id) = self.selected_asset_source.as_ref() else {
+            return;
+        };
+        let Some(source) = browser
+            .sources
+            .iter()
+            .find(|source| &source.id == source_id)
+        else {
+            return;
+        };
+        let Some(asset_id) = self
+            .selected_asset
+            .as_ref()
+            .filter(|id| source.entries.iter().any(|entry| &entry.id == *id))
+        else {
+            return;
+        };
+        self.request += 1;
+        self.send(ClientMessage::AssetIntent {
+            request: self.request,
+            intent: amigo_panel_api::PanelAssetIntent {
+                panel_id: document.id.clone(),
+                generation: self.generation,
+                revision: self.revision,
+                source_id: source.id.clone(),
+                source_revision: source.revision,
+                asset_id: asset_id.clone(),
+                usage,
+            },
+        });
+    }
+    fn refresh_selected_asset_source(&mut self) {
+        let Some(panel_id) = self.document.as_ref().map(|document| document.id.clone()) else {
+            return;
+        };
+        let Some(browser) = self.asset_browser.as_ref() else {
+            return;
+        };
+        let Some(source_id) = self.selected_asset_source.as_ref() else {
+            return;
+        };
+        let Some(source) = browser
+            .sources
+            .iter()
+            .find(|source| &source.id == source_id)
+        else {
+            return;
+        };
+        self.request += 1;
+        self.send(ClientMessage::RefreshAssetSource {
+            request: self.request,
+            panel_id,
+            generation: self.generation,
+            revision: self.revision,
+            source_id: source.id.clone(),
+            source_revision: source.revision,
+        });
+    }
+    fn asset_browser(&mut self, ui: &mut egui::Ui) {
+        let Some(browser) = self.asset_browser.clone() else {
+            return;
+        };
+        let source_id = self
+            .selected_asset_source
+            .clone()
+            .filter(|id| browser.sources.iter().any(|source| source.id == *id))
+            .or(browser.selected_source.clone())
+            .or_else(|| browser.sources.first().map(|source| source.id.clone()));
+        let Some(source_id) = source_id else {
+            return;
+        };
+        self.selected_asset_source = Some(source_id.clone());
+        let Some(source) = browser.sources.iter().find(|source| source.id == source_id) else {
+            return;
+        };
+        let selected_source_before = self.selected_asset_source.clone();
+        ui.small("Choose a source, then use the selected asset in the scene.");
+        ui.separator();
+        {
+            ui.horizontal(|ui| {
+                egui::ComboBox::from_id_salt("asset-source")
+                    .selected_text(&source.label)
+                    .show_ui(ui, |ui| {
+                        for choice in &browser.sources {
+                            ui.selectable_value(
+                                &mut self.selected_asset_source,
+                                Some(choice.id.clone()),
+                                &choice.label,
+                            );
+                        }
+                    });
+                match source.state {
+                    amigo_panel_api::PanelAssetSourceState::Empty => {
+                        ui.label("No assets");
+                    }
+                    amigo_panel_api::PanelAssetSourceState::Loading => {
+                        ui.label("Loading…");
+                    }
+                    amigo_panel_api::PanelAssetSourceState::Ready => {
+                        ui.label("Ready");
+                    }
+                    amigo_panel_api::PanelAssetSourceState::Failed { failed_assets } => {
+                        ui.colored_label(
+                            egui::Color32::LIGHT_RED,
+                            format!("{failed_assets} failed"),
+                        );
+                    }
+                }
+                if source.refreshable && ui.small_button("Refresh").clicked() {
+                    self.refresh_selected_asset_source();
+                }
+            });
+            ui.text_edit_singleline(&mut self.asset_query)
+                .on_hover_text("Filter assets in this source");
+            let query = self.asset_query.to_lowercase();
+            egui::ScrollArea::vertical()
+                .max_height(220.0)
+                .show(ui, |ui| {
+                    for entry in source.entries.iter().filter(|entry| {
+                        query.is_empty()
+                            || entry.label.to_lowercase().contains(&query)
+                            || entry
+                                .tags
+                                .iter()
+                                .any(|tag| tag.to_lowercase().contains(&query))
+                    }) {
+                        let selected = self.selected_asset.as_deref() == Some(&entry.id);
+                        let glyph = if entry.kind.is_some() { "◇" } else { "·" };
+                        if ui
+                            .add_sized(
+                                [ui.available_width(), 36.0],
+                                egui::Button::selectable(
+                                    selected,
+                                    format!("{glyph}  {}", entry.label),
+                                ),
+                            )
+                            .clicked()
+                        {
+                            self.selected_asset = Some(entry.id.clone());
+                        }
+                        ui.small(format!("{} · {:?}", entry.tags.join(", "), entry.state));
+                    }
+                });
+            let selected_ready = self.selected_asset.as_ref().is_some_and(|id| {
+                source.entries.iter().any(|entry| {
+                    entry.id == *id
+                        && matches!(entry.state, amigo_panel_api::PanelAssetEntryState::Ready)
+                })
+            });
+            let actions = self
+                .document
+                .as_ref()
+                .and_then(|document| document.asset_browser.clone());
+            if let Some(actions) = actions {
+                ui.horizontal(|ui| {
+                    if let Some(usage) = actions.add_usage {
+                        if ui
+                            .add_enabled(selected_ready, egui::Button::new("Add to scene"))
+                            .clicked()
+                        {
+                            self.send_asset_intent(usage);
+                        }
+                    }
+                    if let Some(usage) = actions.replace_usage {
+                        if ui
+                            .add_enabled(selected_ready, egui::Button::new("Replace selected"))
+                            .clicked()
+                        {
+                            self.send_asset_intent(usage);
+                        }
+                    }
+                });
+            }
+        }
+        if self.selected_asset_source != selected_source_before {
+            self.selected_asset = None;
+        }
+    }
+    fn options_for(&self, node: &Node) -> Vec<String> {
+        node.options_bind
+            .as_ref()
+            .and_then(|path| self.values.get(path))
+            .and_then(|value| value.value.as_string())
+            .map(|value| {
+                value
+                    .split('\n')
+                    .filter(|option| !option.is_empty())
+                    .map(str::to_owned)
+                    .collect::<Vec<_>>()
+            })
+            .unwrap_or_else(|| node.options.clone())
     }
     fn node(&mut self, ui: &mut egui::Ui, node: &Node) {
         if node
@@ -159,14 +368,20 @@ impl PanelApp {
                     if !node.tabs.iter().any(|t| t.id == *selected) {
                         *selected = node.tabs.first().map(|t| t.id.clone()).unwrap_or_default();
                     }
-                    let columns = ((ui.available_width() / 86.0).floor() as usize).max(1);
+                    let columns = ((ui.available_width() / 112.0).floor() as usize).max(1);
                     for row in node.tabs.chunks(columns) {
-                        ui.horizontal(|ui| {
+                        ui.horizontal_wrapped(|ui| {
                             for tab in row {
+                                let active = *selected == tab.id;
+                                let label = if active {
+                                    egui::RichText::new(&tab.label).strong()
+                                } else {
+                                    egui::RichText::new(&tab.label)
+                                };
                                 if ui
                                     .add_sized(
-                                        [76.0, 28.0],
-                                        egui::Button::new(&tab.label).selected(*selected == tab.id),
+                                        [104.0, 30.0],
+                                        egui::Button::new(label).selected(active),
                                     )
                                     .clicked()
                                 {
@@ -176,7 +391,14 @@ impl PanelApp {
                         });
                     }
                     let selected = selected.clone();
+                    let selected_label = node
+                        .tabs
+                        .iter()
+                        .find(|tab| tab.id == selected)
+                        .map(|tab| tab.label.as_str())
+                        .unwrap_or("Workspace");
                     ui.separator();
+                    ui.label(egui::RichText::new(selected_label).heading().strong());
                     for child in &node.children {
                         if child.id.as_deref() == Some(&selected) {
                             egui::ScrollArea::vertical()
@@ -246,6 +468,7 @@ impl PanelApp {
             .and_then(|d| d.presentation.get(id))
             .cloned()
             .unwrap_or_default();
+        let options = self.options_for(node);
         let changed = ui
             .add_enabled_ui(snapshot.writable, |ui| {
                 if !matches!(value, ControlValue::Bool(_)) {
@@ -316,7 +539,7 @@ impl PanelApp {
                                     }
                                 });
                             *v != before
-                        } else if !hint.choices.is_empty() {
+                        } else if !hint.choices.is_empty() && options == node.options {
                             let before = v.clone();
                             egui::ScrollArea::horizontal()
                                 .id_salt("thumbnails")
@@ -395,17 +618,16 @@ impl PanelApp {
                                     });
                                 });
                             if hint.navigation {
-                                let index = node.options.iter().position(|o| o == v).unwrap_or(0);
+                                let index = options.iter().position(|o| o == v).unwrap_or(0);
                                 ui.horizontal(|ui| {
                                     if ui.button("< Previous").clicked() {
-                                        *v = node.options
-                                            [(index + node.options.len() - 1) % node.options.len()]
-                                        .clone();
+                                        *v = options[(index + options.len() - 1) % options.len()]
+                                            .clone();
                                     }
                                     ui.label(format!(
                                         "{} / {} · {}",
                                         index + 1,
-                                        node.options.len(),
+                                        options.len(),
                                         hint.choices
                                             .iter()
                                             .find(|c| c.value == *v)
@@ -413,17 +635,23 @@ impl PanelApp {
                                             .unwrap_or(v)
                                     ));
                                     if ui.button("Next >").clicked() {
-                                        *v = node.options[(index + 1) % node.options.len()].clone();
+                                        *v = options[(index + 1) % options.len()].clone();
                                     }
                                 });
                             }
                             *v != before
-                        } else if node.options.is_empty() {
+                        } else if options.is_empty()
+                            && node.options_bind.is_some()
+                            && matches!(node.kind, Kind::OptionSet | Kind::Dropdown)
+                        {
+                            ui.weak("No scene instances — add a model from Asset Browser.");
+                            false
+                        } else if options.is_empty() {
                             ui.text_edit_singleline(v).changed()
                         } else if node.kind == Kind::OptionSet {
                             let before = v.clone();
                             ui.horizontal_wrapped(|ui| {
-                                for option in &node.options {
+                                for option in &options {
                                     ui.selectable_value(v, option.clone(), option);
                                 }
                             });
@@ -433,7 +661,7 @@ impl PanelApp {
                             egui::ComboBox::from_id_salt("choice")
                                 .selected_text(v.as_str())
                                 .show_ui(ui, |ui| {
-                                    for option in &node.options {
+                                    for option in &options {
                                         ui.selectable_value(v, option.clone(), option);
                                     }
                                 });
@@ -537,6 +765,7 @@ impl eframe::App for PanelApp {
                     acknowledged,
                     preset_names,
                     mut values,
+                    asset_browser,
                 } => {
                     if generation == self.generation && revision == self.revision {
                         self.preset_names = preset_names;
@@ -548,6 +777,13 @@ impl eframe::App for PanelApp {
                             }
                         }
                         self.values = values;
+                        self.asset_browser = asset_browser;
+                        if self.selected_asset_source.is_none() {
+                            self.selected_asset_source = self
+                                .asset_browser
+                                .as_ref()
+                                .and_then(|browser| browser.selected_source.clone());
+                        }
                     }
                 }
                 ServerMessage::Result { request, error } => {
@@ -589,6 +825,40 @@ impl eframe::App for PanelApp {
                     });
                 });
         }
+        if self.asset_browser.is_some() {
+            if self.asset_browser_expanded {
+                egui::Panel::left("asset-browser")
+                    .default_size(270.0)
+                    .min_size(210.0)
+                    .max_size(360.0)
+                    .resizable(true)
+                    .show(root, |ui| {
+                        ui.horizontal(|ui| {
+                            ui.heading("Asset Browser");
+                            ui.with_layout(
+                                egui::Layout::right_to_left(egui::Align::Center),
+                                |ui| {
+                                    if ui.small_button("Hide").clicked() {
+                                        self.asset_browser_expanded = false;
+                                    }
+                                },
+                            );
+                        });
+                        self.asset_browser(ui);
+                    });
+            } else {
+                egui::Panel::left("asset-browser-toggle")
+                    .default_size(42.0)
+                    .min_size(32.0)
+                    .max_size(60.0)
+                    .resizable(false)
+                    .show(root, |ui| {
+                        if ui.button("Assets ›").clicked() {
+                            self.asset_browser_expanded = true;
+                        }
+                    });
+            }
+        }
         egui::CentralPanel::default().show(root, |ui| {
             if let Some(error) = &self.error {
                 ui.colored_label(egui::Color32::LIGHT_RED, error);
@@ -625,15 +895,19 @@ impl eframe::App for PanelApp {
                 };
                 let body_height = (ui.available_height() - footer_height).max(80.0);
                 ui.allocate_ui(egui::vec2(ui.available_width(), body_height), |ui| {
-                    if doc.root.children.is_empty() {
-                        self.node(ui, &doc.root);
-                    } else {
-                        for node in &doc.root.children {
-                            if pin(node).is_none() {
-                                self.node(ui, node);
+                    egui::ScrollArea::vertical()
+                        .auto_shrink([false, false])
+                        .show(ui, |ui| {
+                            if doc.root.children.is_empty() {
+                                self.node(ui, &doc.root);
+                            } else {
+                                for node in &doc.root.children {
+                                    if pin(node).is_none() {
+                                        self.node(ui, node);
+                                    }
+                                }
                             }
-                        }
-                    }
+                        });
                 });
                 for node in &doc.root.children {
                     if pin(node) == Some(PanelPin::Bottom) {

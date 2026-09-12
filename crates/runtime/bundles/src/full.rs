@@ -54,16 +54,18 @@ where
             .with_bundle(TwoDRuntimeBundle)?
             .with_bundle(AudioRuntimeBundle)?
             .with_bundle(ThreeDRuntimeBundle)?
-            .with_plugin(amigo_panels::PanelsPlugin)?
-            .with_bundle(ScriptingRuntimeBundle {
-                modding_plugin: self.modding_plugin,
-            })?;
+            .with_plugin(amigo_panels::PanelsPlugin)?;
 
         let builder = if enable_npr_playground {
             builder.with_plugin(amigo_npr_playground_plugin::NprPlaygroundPlugin)?
+                .with_plugin(crate::npr_playground_viewport::NprPlaygroundViewportPlugin)?
         } else {
             builder
         };
+
+        let builder = builder.with_bundle(ScriptingRuntimeBundle {
+            modding_plugin: self.modding_plugin,
+        })?;
 
         let builder = if self.enable_devtools {
             builder.with_bundle(DevtoolsRuntimeBundle)?

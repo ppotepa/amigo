@@ -1,0 +1,272 @@
+active_look: null
+camera:
+  distance: 5.0
+  fov: 45.0
+  pitch: 0.0
+  target:
+  - 0.0
+  - 0.0
+  - 0.0
+  yaw: 0.0
+look:
+  layers:
+  - layer_id: paper
+    order: 0
+    parameters:
+      blend: normal
+      color_source:
+        kind: style-palette
+      enabled: true
+      id: paper
+      source: paper
+      label: Paper
+      opacity: 1.0
+      paint: null
+      tool: null
+  - layer_id: underpainting
+    order: 1
+    parameters:
+      blend: normal
+      color_source:
+        kind: style-palette
+      enabled: true
+      id: underpainting
+      source: wash
+      label: Underpainting
+      opacity: 1.0
+      paint:
+        granulation: 0.0
+        wash: 1.0
+      tool: null
+  - layer_id: fill
+    order: 2
+    parameters:
+      blend: normal
+      color_source:
+        kind: style-palette
+      enabled: false
+      id: fill
+      source: flat-fill
+      label: Flat fill
+      opacity: 1.0
+      paint: null
+      tool: null
+  - layer_id: hatching
+    order: 3
+    parameters:
+      blend: multiply
+      color_source:
+        kind: style-palette
+      enabled: true
+      id: hatching
+      source: shadow-hatch
+      label: Hatching
+      opacity: 1.0
+      paint: null
+      tool: pencil
+  - layer_id: form-lines
+    order: 4
+    parameters:
+      blend: normal
+      color_source:
+        kind: style-palette
+      enabled: true
+      id: form-lines
+      source: form-lines
+      label: Form lines
+      opacity: 1.0
+      paint: null
+      tool: fineliner
+  - layer_id: contours
+    order: 5
+    parameters:
+      blend: normal
+      color_source:
+        kind: style-palette
+      enabled: true
+      id: contours
+      source: silhouette
+      label: Contours
+      opacity: 1.0
+      paint: null
+      tool: null
+  - layer_id: creases
+    order: 6
+    parameters:
+      blend: normal
+      color_source:
+        kind: style-palette
+      enabled: true
+      id: creases
+      source: creases
+      label: Creases
+      opacity: 1.0
+      paint: null
+      tool: null
+  - layer_id: construction
+    order: 7
+    parameters:
+      blend: normal
+      color_source:
+        kind: style-palette
+      enabled: true
+      id: construction
+      source: construction
+      label: Construction
+      opacity: 1.0
+      paint: null
+      tool: pencil
+  style:
+    boundary_width: 3.0
+    crease_angle: 0.3499999940395355
+    crease_width: 2.0
+    form_line_opacity: 1.0
+    form_line_width_scale: 1.0
+    gesture_confidence: 1.0
+    gesture_correction: 0.0
+    gesture_overstroke: 0.0
+    gesture_simplification: 0.0
+    hatching_angle: -25.0
+    hatching_cross: 0.0
+    hatching_spacing: 9.0
+    ink:
+    - 0.03500000014901161
+    - 0.02500000037252903
+    - 0.019999999552965164
+    - 1.0
+    ink_dryness: 0.0
+    light:
+    - 0.8199999928474426
+    - 0.8399999737739563
+    - 0.7799999713897705
+    - 1.0
+    light_direction:
+    - -0.4000000059604645
+    - 0.699999988079071
+    - 1.0
+    mid:
+    - 0.46000000834465027
+    - 0.5400000214576721
+    - 0.6800000071525574
+    - 1.0
+    min_crease_length_pixels: 4.0
+    min_form_line_confidence: 0.2199999988079071
+    min_smooth_contour_length_pixels: 8.0
+    nib_angle: 0.0
+    nib_aspect: 0.0
+    outline_width: 4.0
+    paper:
+    - 0.9200000166893005
+    - 0.8799999952316284
+    - 0.7799999713897705
+    - 1.0
+    paper_grain: 0.0
+    paper_tooth: 0.0
+    shadow:
+    - 0.18000000715255737
+    - 0.20000000298023224
+    - 0.2800000011920929
+    - 1.0
+    smooth_contour_simplification_pixels: 0.75
+    smooth_crease_angle: 1.2000000476837158
+    smooth_draw_creases: false
+    suggestive_contour_confidence: 0.4000000059604645
+    suggestive_contour_opacity: 0.550000011920929
+    suggestive_contour_width_scale: 0.550000011920929
+    suggestive_contours: false
+    surface_mode: polygonal
+    taper: 0.18000000715255737
+    tone_density: 0.0
+    tone_mode: three-band
+    tool: fineliner
+    tool_hardness: 0.8500000238418579
+    tool_pressure: 1.0
+    wobble: 0.0
+motion:
+  paused: false
+  policy:
+    appearance_fade_seconds: 0.12
+    mode: redraw-continuously
+    redraw_hz: 8.0
+    redraw_strength: 1.0
+  sketch_paused: false
+  speed: 1.0
+object_overrides: {}
+objects:
+  cube:
+    angular_speed:
+    - 21.2
+    - 40.7
+    - 0.0
+    construction_marks: []
+    gesture_variant: 0
+    material_base_color:
+    - 0.82
+    - 0.3
+    - 0.2
+    - 1.0
+    model: cube
+    position:
+    - 0.0
+    - 0.0
+    - 0.0
+    rotating: true
+    rotation:
+    - 20.626482
+    - 40.680004
+    - 0.0
+    scale: 1.0
+    smooth_weld_relative_tolerance: 0.00001
+    style_layer_overrides:
+      layers: {}
+      order: null
+    style_overrides:
+      boundary_width: null
+      crease_angle: null
+      crease_width: null
+      form_line_opacity: null
+      form_line_width_scale: null
+      gesture_confidence: null
+      gesture_correction: null
+      gesture_overstroke: null
+      gesture_simplification: null
+      hatching_angle: null
+      hatching_cross: null
+      hatching_spacing: null
+      ink: null
+      ink_dryness: null
+      light: null
+      light_direction: null
+      mid: null
+      min_crease_length_pixels: null
+      min_form_line_confidence: null
+      min_smooth_contour_length_pixels: null
+      nib_angle: null
+      nib_aspect: null
+      outline_width: null
+      paper: null
+      paper_grain: null
+      paper_tooth: null
+      shadow: null
+      smooth_contour_simplification_pixels: null
+      smooth_crease_angle: null
+      smooth_draw_creases: null
+      suggestive_contour_confidence: null
+      suggestive_contour_opacity: null
+      suggestive_contour_width_scale: null
+      suggestive_contours: null
+      surface_mode: null
+      taper: null
+      tone_density: null
+      tone_mode: null
+      tool: null
+      tool_hardness: null
+      tool_pressure: null
+      wobble: null
+    surface_intent: hard-surface
+    surface_mode: polygonal
+    surface_subdivision_level: 0
+    visible: true
+render_all_objects: false
+seed: 5132370
+version: 1

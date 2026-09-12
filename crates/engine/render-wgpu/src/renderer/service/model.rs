@@ -35,7 +35,7 @@ pub struct WgpuSceneRenderer {
     pub(crate) wet_reflections_texture_bind_group_layout: wgpu::BindGroupLayout,
     pub(crate) wet_reflections_uniform_bind_group_layout: wgpu::BindGroupLayout,
     pub(crate) pipelines: WgpuPipelineRegistry,
-    pub(crate) npr_pipelines: crate::renderer::npr::NprPipelines,
+    pub(crate) npr: crate::renderer::npr::WgpuNprRenderer,
     pub(crate) post_fx_executors: crate::renderer::service::post_fx::WgpuPostFxExecutorRegistry,
     pub(crate) shutter_blur_runtimes: BTreeMap<
         crate::renderer::service::post_fx::runtime_key::PostFxRuntimeKey,

@@ -1,0 +1,8 @@
+id: drawing-studio-demo
+includes:
+  - comic-ink
+look:
+  style:
+    tone_density: 0.72
+    ink_dryness: 0.38
+    hatching_cross: 0.35
