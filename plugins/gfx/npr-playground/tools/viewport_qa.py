@@ -92,6 +92,9 @@ def main():
         client.until("!!document.querySelector('.basic-workspace')", 30)
         client.until("document.querySelector('.viewport-hud')?.textContent.includes('Drawing ready')", 30)
         client.until("document.querySelectorAll('.model-card').length >= 2", 30)
+        report["history_controls"] = client.js(
+            "['Undo','Redo'].every(label=>[...document.querySelectorAll('.topbar button')].some(button=>button.textContent.trim()===label))"
+        )
         report["basic_workspace_ready"] = True
 
         click_card(client, ".model-card", "sphere")
