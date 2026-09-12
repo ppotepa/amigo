@@ -460,20 +460,18 @@ fn asset_browser_models_are_ready_and_route_add_and_replace_to_npr_state() {
     assert_eq!(selected, "cube");
     assert_eq!(state.snapshot().objects[&selected].model, "cube");
 
-    let mut replacement = state.snapshot().objects[&selected].clone();
-    replacement.model = "suzanne".into();
     service
         .dispatch_intent(
             2,
             1,
             "models".into(),
-            amigo_npr_playground_plugin::playground::NprPlaygroundIntent::SetObject {
-                object: selected.clone(),
-                settings: replacement,
+            amigo_npr_playground_plugin::playground::NprPlaygroundIntent::SelectModel {
+                model: "suzanne".into(),
             },
         )
         .unwrap();
-    assert_eq!(state.snapshot().objects[&selected].model, "suzanne");
+    assert_eq!(state.snapshot().selected, "suzanne");
+    assert_eq!(state.snapshot().objects["suzanne"].model, "suzanne");
 }
 
 #[test]
@@ -565,18 +563,3 @@ fn scene_component_requires_a_sidecar_reference_and_rejects_inline_settings() {
     );
 }
 
-#[test]
-fn single_model_navigation_keeps_the_selected_camera_fit() {
-    let state = NprPlaygroundState::default();
-    state.select_scene_object(-1).unwrap();
-    assert_eq!(state.snapshot().selected, "cube");
-    assert!(state.snapshot().camera_distance > 0.1);
-    state.select_scene_object(1).unwrap();
-    assert_eq!(state.snapshot().selected, "cube");
-
-    state.configure_scene(false);
-    let camera = state.snapshot().camera_distance;
-    state.select_scene_object(1).unwrap();
-    assert_eq!(state.snapshot().selected, "cube");
-    assert!(state.snapshot().camera_distance > 0.1);
-}

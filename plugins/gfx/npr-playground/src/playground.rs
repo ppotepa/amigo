@@ -851,7 +851,7 @@ impl NprPlaygroundService {
                         .model
                         != settings.model;
                     if source_changed {
-                        self.validate_source_model(&settings.model)?;
+                        return Err("change the Drawing Studio source with SelectModel".into());
                     }
                     let existing = next.objects.get_mut(&object).ok_or("unknown object")?;
                     *existing = settings;

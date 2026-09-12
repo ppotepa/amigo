@@ -9,23 +9,6 @@ use std::{collections::BTreeMap, sync::Mutex};
 
 pub const MODELS: &[&str] = &["cube", "wedge", "cylinder", "sphere", "suzanne", "avocado"];
 
-fn ordered_object_ids(settings: &Settings) -> Vec<String> {
-    let mut ids = MODELS
-        .iter()
-        .filter(|id| settings.objects.contains_key(**id))
-        .map(|id| (*id).to_owned())
-        .collect::<Vec<_>>();
-    // Instances created from the catalog are stable in BTreeMap order, but
-    // must never reshuffle the authored gallery cards.
-    ids.extend(
-        settings
-            .objects
-            .keys()
-            .filter(|id| !MODELS.contains(&id.as_str()))
-            .cloned(),
-    );
-    ids
-}
 pub fn style_preset(name: &str) -> Option<ComicInk> {
     let mut style = ComicInk::default();
     match name {
@@ -882,32 +865,6 @@ impl NprPlaygroundState {
         Ok(())
     }
 
-    /// Selects an authored scene object in stable gallery order. This is kept
-    /// separate from the dropdown property so buttons, keyboard shortcuts and
-    /// a future editor can share exactly the same camera/undo semantics.
-    pub fn select_scene_object(&self, direction: isize) -> Result<(), String> {
-        if direction == 0 {
-            return Ok(());
-        }
-        let mut settings = self.settings.lock().unwrap();
-        let mut next_settings = settings.clone();
-        let ids = ordered_object_ids(&next_settings);
-        if ids.is_empty() {
-            return Err("add a model before changing selection".into());
-        }
-        let current = ids
-            .iter()
-            .position(|id| *id == next_settings.selected)
-            .ok_or_else(|| format!("unknown selected NPR object `{}`", next_settings.selected))?;
-        let count = ids.len() as isize;
-        let next = (current as isize + direction).rem_euclid(count) as usize;
-        next_settings.selected = ids[next].clone();
-        Self::fit_candidate(&mut next_settings, *self.viewport.lock().unwrap())?;
-        next_settings.validate()?;
-        *settings = next_settings;
-        Ok(())
-    }
-
     /// Removes the selected authored mark from the authored settings.
     pub fn delete_selected_construction_mark(&self) -> Result<(), String> {
         let selected_index = {
@@ -941,38 +898,6 @@ impl NprPlaygroundState {
         *self.settings.lock().unwrap() = settings;
         *self.construction_authoring.lock().unwrap() = ConstructionAuthoringState::default();
         *self.selected_construction_mark.lock().unwrap() = None;
-    }
-    /// Replaces only the source model of the selected instance while retaining
-    /// its transform, animation and deliberate drawing overrides.
-    pub fn replace_selected_model(&self, model: &str) -> Result<(), String> {
-        if !MODELS.contains(&model) {
-            return Err(format!("unknown NPR model `{model}`"));
-        }
-        let mut settings = self.settings.lock().unwrap();
-        let selected = settings.selected.clone();
-        let existing = settings
-            .objects
-            .get(&selected)
-            .cloned()
-            .ok_or("no selected NPR object")?;
-        let mut replacement = Settings::for_scene(false)
-            .objects
-            .get(model)
-            .cloned()
-            .ok_or_else(|| format!("missing default NPR model `{model}`"))?;
-        replacement.position = existing.position;
-        replacement.rotation = existing.rotation;
-        replacement.scale = existing.scale;
-        replacement.visible = existing.visible;
-        replacement.rotating = existing.rotating;
-        replacement.angular_speed = existing.angular_speed;
-        replacement.gesture_variant = existing.gesture_variant;
-        replacement.style_overrides = existing.style_overrides;
-        replacement.style_layer_overrides = existing.style_layer_overrides;
-        replacement.construction_marks.clear();
-        settings.objects.insert(selected, replacement);
-        settings.validate()?;
-        Ok(())
     }
     pub fn tick(&self, dt: f32) {
         let mut s = self.settings.lock().unwrap();

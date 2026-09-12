@@ -719,7 +719,7 @@ fn source_selection_rejects_unknown_models_without_an_asset_catalog() {
 }
 
 #[test]
-fn object_updates_cannot_bypass_basic_source_validation() {
+fn object_updates_cannot_bypass_basic_source_selection() {
     let state = Arc::new(NprPlaygroundState::default());
     let service = NprPlaygroundService::new(state.clone());
     let before = state.snapshot();
@@ -738,7 +738,7 @@ fn object_updates_cannot_bypass_basic_source_validation() {
         )
         .unwrap_err()
         .message
-        .contains("unknown built-in source model"));
+        .contains("SelectModel"));
     assert_eq!(state.snapshot(), before);
 }
 
