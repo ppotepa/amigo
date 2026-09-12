@@ -70,6 +70,14 @@ def click_card(client, selector, label):
         raise AssertionError(f"missing Basic Mode card: {label}")
 
 
+def click_button(client, label):
+    clicked = client.js(
+        f"(()=>{{const button=[...document.querySelectorAll('button')].find(item=>item.textContent.trim()==={json.dumps(label)});if(!button||button.disabled)return false;button.click();return true;}})()"
+    )
+    if not clicked:
+        raise AssertionError(f"missing enabled Basic Mode button: {label}")
+
+
 def main():
     output = Path("target/viewport-qa")
     output.mkdir(exist_ok=True)
@@ -104,6 +112,12 @@ def main():
         click_card(client, ".look-card", "Pencil Study")
         client.until("[...document.querySelectorAll('.look-card')].some(card=>card.classList.contains('active')&&card.textContent.includes('Pencil Study'))", 15)
         report["look_selection"] = True
+
+        click_button(client, "Undo")
+        client.until("![...document.querySelectorAll('.look-card')].some(card=>card.classList.contains('active')&&card.textContent.includes('Pencil Study'))", 15)
+        click_button(client, "Redo")
+        client.until("[...document.querySelectorAll('.look-card')].some(card=>card.classList.contains('active')&&card.textContent.includes('Pencil Study'))", 15)
+        report["history_round_trip"] = True
 
         report["viewport_status"] = client.js("document.querySelector('.viewport-hud')?.textContent")
     except Exception as error:
