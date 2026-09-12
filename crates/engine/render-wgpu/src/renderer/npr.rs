@@ -338,6 +338,31 @@ pub(crate) struct NprIndexedBuffer {
     pub index_count: u32,
 }
 
+/// NPR fragments carry premultiplied colour.  Keeping the mode mapping in one
+/// place guarantees fills, washes and strokes compose with identical opacity
+/// semantics regardless of the pipeline selected by their source geometry.
+fn npr_blend_state(mode: amigo_render_npr::NprBlendMode) -> wgpu::BlendState {
+    let alpha = wgpu::BlendComponent {
+        src_factor: wgpu::BlendFactor::One,
+        dst_factor: wgpu::BlendFactor::OneMinusSrcAlpha,
+        operation: wgpu::BlendOperation::Add,
+    };
+    let color = match mode {
+        amigo_render_npr::NprBlendMode::Normal => alpha,
+        amigo_render_npr::NprBlendMode::Multiply => wgpu::BlendComponent {
+            src_factor: wgpu::BlendFactor::Dst,
+            dst_factor: wgpu::BlendFactor::OneMinusSrcAlpha,
+            operation: wgpu::BlendOperation::Add,
+        },
+        amigo_render_npr::NprBlendMode::Screen => wgpu::BlendComponent {
+            src_factor: wgpu::BlendFactor::One,
+            dst_factor: wgpu::BlendFactor::OneMinusSrc,
+            operation: wgpu::BlendOperation::Add,
+        },
+    };
+    wgpu::BlendState { color, alpha }
+}
+
 impl NprPipelines {
     pub fn new(device: &wgpu::Device, format: wgpu::TextureFormat) -> Self {
         let fill_shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
@@ -447,34 +472,9 @@ impl NprPipelines {
             multiview_mask: None,
             cache: None,
         });
-        let alpha = wgpu::BlendComponent {
-            src_factor: wgpu::BlendFactor::One,
-            dst_factor: wgpu::BlendFactor::OneMinusSrcAlpha,
-            operation: wgpu::BlendOperation::Add,
-        };
-        // NPR paint and strokes both emit premultiplied colour. Keeping this
-        // invariant at the shader boundary makes a layer's blend mode
-        // independent from the geometric source that produced it.
-        let normal = wgpu::BlendState {
-            color: alpha,
-            alpha,
-        };
-        let multiply = wgpu::BlendState {
-            color: wgpu::BlendComponent {
-                src_factor: wgpu::BlendFactor::Dst,
-                dst_factor: wgpu::BlendFactor::OneMinusSrcAlpha,
-                operation: wgpu::BlendOperation::Add,
-            },
-            alpha,
-        };
-        let screen = wgpu::BlendState {
-            color: wgpu::BlendComponent {
-                src_factor: wgpu::BlendFactor::One,
-                dst_factor: wgpu::BlendFactor::OneMinusSrc,
-                operation: wgpu::BlendOperation::Add,
-            },
-            alpha,
-        };
+        let normal = npr_blend_state(amigo_render_npr::NprBlendMode::Normal);
+        let multiply = npr_blend_state(amigo_render_npr::NprBlendMode::Multiply);
+        let screen = npr_blend_state(amigo_render_npr::NprBlendMode::Screen);
         Self {
             depth: make(
                 "amigo-npr-depth",
@@ -695,5 +695,25 @@ mod tests {
         assert_eq!(layout.attributes[5].shader_location, 5);
         assert_eq!(layout.attributes[5].offset, 40);
         assert_eq!(layout.attributes[5].format, wgpu::VertexFormat::Float32x4);
+    }
+
+    #[test]
+    fn npr_blend_modes_preserve_premultiplied_layer_opacity() {
+        let normal = npr_blend_state(amigo_render_npr::NprBlendMode::Normal);
+        assert_eq!(normal.color.src_factor, wgpu::BlendFactor::One);
+        assert_eq!(normal.color.dst_factor, wgpu::BlendFactor::OneMinusSrcAlpha);
+
+        let multiply = npr_blend_state(amigo_render_npr::NprBlendMode::Multiply);
+        assert_eq!(multiply.color.src_factor, wgpu::BlendFactor::Dst);
+        assert_eq!(multiply.color.dst_factor, wgpu::BlendFactor::OneMinusSrcAlpha);
+
+        let screen = npr_blend_state(amigo_render_npr::NprBlendMode::Screen);
+        assert_eq!(screen.color.src_factor, wgpu::BlendFactor::One);
+        assert_eq!(screen.color.dst_factor, wgpu::BlendFactor::OneMinusSrc);
+
+        for blend in [normal, multiply, screen] {
+            assert_eq!(blend.alpha.src_factor, wgpu::BlendFactor::One);
+            assert_eq!(blend.alpha.dst_factor, wgpu::BlendFactor::OneMinusSrcAlpha);
+        }
     }
 }
