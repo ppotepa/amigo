@@ -2,7 +2,7 @@
 use crate::{
     NprPlaygroundState,
     documents::*,
-    state::{ObjectSettings, Settings},
+    state::{MODELS, ObjectSettings, Settings},
 };
 use amigo_playground_api::*;
 use amigo_render_npr::{ComicInk, NprStyleLayers};
@@ -864,6 +864,8 @@ impl NprPlaygroundService {
                         {
                             return Err("model is not ready".into());
                         }
+                    } else if !MODELS.contains(&model.as_str()) {
+                        return Err(format!("unknown built-in source model `{model}`"));
                     }
                     if model != next.selected && next != s.baseline {
                         let draft = crate::documents::NprDrawingDraft {
