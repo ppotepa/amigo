@@ -410,6 +410,23 @@ impl NprPlaygroundService {
         })
     }
 
+    /// Keep every source-changing intent on the same validation path.  The
+    /// companion has both the Basic-mode source picker and typed object updates;
+    /// accepting an arbitrary model through the latter would bypass the former.
+    fn validate_source_model(&self, model: &str) -> Result<(), String> {
+        if let Some(assets) = self.assets.lock().unwrap().as_ref() {
+            if !crate::asset_browser::model_descriptors(assets)
+                .iter()
+                .any(|candidate| candidate.id == model && candidate.state == "ready")
+            {
+                return Err("model is not ready".into());
+            }
+        } else if !MODELS.contains(&model) {
+            return Err(format!("unknown built-in source model `{model}`"));
+        }
+        Ok(())
+    }
+
     pub fn domain_snapshot(&self) -> NprPlaygroundSnapshot {
         let s = self.session.lock().unwrap();
         let metadata = Self::metadata();
@@ -827,17 +844,16 @@ impl NprPlaygroundService {
                     explicit_pose = Some(object);
                 }
                 NprPlaygroundIntent::SetObject { object, settings } => {
-                    let existing = next.objects.get_mut(&object).ok_or("unknown object")?;
-                    if existing.model != settings.model {
-                        if let Some(assets) = self.assets.lock().unwrap().as_ref() {
-                            if !crate::asset_browser::model_descriptors(assets)
-                                .iter()
-                                .any(|model| model.id == settings.model && model.state == "ready")
-                            {
-                                return Err("model is not ready".into());
-                            }
-                        }
+                    let source_changed = next
+                        .objects
+                        .get(&object)
+                        .ok_or("unknown object")?
+                        .model
+                        != settings.model;
+                    if source_changed {
+                        self.validate_source_model(&settings.model)?;
                     }
+                    let existing = next.objects.get_mut(&object).ok_or("unknown object")?;
                     *existing = settings;
                 }
                 NprPlaygroundIntent::SetLook { style, layers } => {
@@ -857,16 +873,7 @@ impl NprPlaygroundService {
                     event = Some("look_changed");
                 }
                 NprPlaygroundIntent::SelectModel { model } => {
-                    if let Some(assets) = self.assets.lock().unwrap().as_ref() {
-                        if !crate::asset_browser::model_descriptors(assets)
-                            .iter()
-                            .any(|m| m.id == model && m.state == "ready")
-                        {
-                            return Err("model is not ready".into());
-                        }
-                    } else if !MODELS.contains(&model.as_str()) {
-                        return Err(format!("unknown built-in source model `{model}`"));
-                    }
+                    self.validate_source_model(&model)?;
                     if model != next.selected && next != s.baseline {
                         let draft = crate::documents::NprDrawingDraft {
                             version: 1,

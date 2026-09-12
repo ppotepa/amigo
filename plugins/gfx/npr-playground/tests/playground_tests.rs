@@ -719,6 +719,30 @@ fn source_selection_rejects_unknown_models_without_an_asset_catalog() {
 }
 
 #[test]
+fn object_updates_cannot_bypass_basic_source_validation() {
+    let state = Arc::new(NprPlaygroundState::default());
+    let service = NprPlaygroundService::new(state.clone());
+    let before = state.snapshot();
+    let mut settings = before.objects["cube"].clone();
+    settings.model = "not-a-source".into();
+
+    assert!(service
+        .dispatch_intent(
+            1,
+            0,
+            "object.model".into(),
+            NprPlaygroundIntent::SetObject {
+                object: "cube".into(),
+                settings,
+            },
+        )
+        .unwrap_err()
+        .message
+        .contains("unknown built-in source model"));
+    assert_eq!(state.snapshot(), before);
+}
+
+#[test]
 fn selecting_another_model_checkpoints_dirty_drawing_and_starts_clean_layers() {
     let state = Arc::new(NprPlaygroundState::default());
     let service = NprPlaygroundService::new(state.clone());
