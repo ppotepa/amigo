@@ -1,9 +1,8 @@
 # NprPlayground
 
-Opt-in NPR drawing with a Tauri/Svelte companion and embedded WGPU viewport.
-The initial companion is Basic Mode: choose one model, choose one complete Look
-and save the resulting drawing. It intentionally does not expose layers,
-geometry sources, masks, blend modes or individual brush editing.
+Opt-in NPR drawing with a Tauri/Svelte Drawing Studio companion and embedded
+WGPU viewport. One selected model owns one drawing document: paper, palette,
+an ordered stack of independently composited layers and pinned brush versions.
 
 Run `npm ci` in `plugins/gfx/npr-playground/playground-client`, then from
 the repository root:
@@ -11,7 +10,7 @@ the repository root:
 
 The viewport uses Native GPU when available and fails over to JPEG if required.
 Windows Native GPU uses a DX12 worker and a native child surface; Local RGBA
-remains a transport implementation detail rather than a Basic Mode control.
+remains a transport implementation detail rather than a Drawing Studio control.
 Scenes without a companion use the ordinary Winit host and its own backend.
 
 See [client and authoring](docs/npr-playground-ui.md), [pipeline](docs/pipeline.md),
@@ -29,7 +28,7 @@ authored intents. Smooth uses a prepared welded proxy; crease, contour cleanup
 and suggestive-contour thresholds remain domain policy. Paper is scene-owned.
 One authored `layers` list preserves stable IDs and explicit order across paint
 and strokes. Existing split documents require the explicit
-[migration workflow](docs/npr-playground-ui.md#basic-mode-and-migration). WGPU executes the
+[migration workflow](docs/npr-playground-ui.md#document-and-migration). WGPU executes the
 declared commands without inferring style from model names.
 
 Humanized strokes combine seeded gesture confidence, pressure, taper, correction

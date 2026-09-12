@@ -475,7 +475,7 @@ fn asset_browser_models_are_ready_and_route_add_and_replace_to_npr_state() {
 }
 
 #[test]
-fn basic_mode_renders_one_selected_model_and_exposes_only_basic_views() {
+fn drawing_studio_renders_one_selected_model_and_exposes_authoring_views() {
     let root =
         std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../../mods/npr-playground");
     let state = Arc::new(NprPlaygroundState::default());
@@ -483,7 +483,15 @@ fn basic_mode_renders_one_selected_model_and_exposes_only_basic_views() {
     let metadata = amigo_npr_playground_plugin::playground::NprPlaygroundService::metadata();
     assert_eq!(
         metadata["views"],
-        serde_json::json!(["Sources", "Drawing", "Looks"])
+        serde_json::json!([
+            "Sources",
+            "Brushes",
+            "Drawing",
+            "Layers",
+            "Layer Inspector",
+            "Paper & Palette",
+            "Drafts & Variants"
+        ])
     );
     let controls = metadata["controls"]
         .as_array()
@@ -491,7 +499,18 @@ fn basic_mode_renders_one_selected_model_and_exposes_only_basic_views() {
         .iter()
         .map(|control| control["id"].as_str().unwrap())
         .collect::<Vec<_>>();
-    assert_eq!(controls, vec!["source.select", "look.apply", "drawing.reset-view"]);
+    assert_eq!(
+        controls,
+        vec![
+            "source.select",
+            "layer.edit",
+            "layer.solo",
+            "layer.build-up",
+            "brush.assign",
+            "look.apply",
+            "drawing.reset-view"
+        ]
+    );
     let render = NprPlaygroundRenderService::default();
     render.load_models(&root).unwrap();
     render.rebuild(&state.snapshot(), [1024, 768]).unwrap();

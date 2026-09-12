@@ -393,15 +393,21 @@ impl NprPlaygroundService {
         METADATA.get_or_init(Self::build_metadata).clone()
     }
     fn build_metadata() -> Value {
-        // This describes the shipped Basic Mode, not the retired generic panel
-        // editor. Layer and brush parameters stay typed document data until a
-        // dedicated authoring surface ships; advertising them here recreated a
-        // second, conflicting Look editor in generic clients.
+        // Drawing Studio owns the authoring surface.  These controls describe
+        // real document operations; generic clients must not recreate a second
+        // global "Look" editor from the old ComicInk fields.
         json!({
-            "views": ["Sources", "Drawing", "Looks"],
+            "views": [
+                "Sources", "Brushes", "Drawing", "Layers", "Layer Inspector",
+                "Paper & Palette", "Drafts & Variants"
+            ],
             "controls": [
                 {"id":"source.select","label":"Select source model","readonly":false,"disabled":false},
-                {"id":"look.apply","label":"Apply saved look","readonly":false,"disabled":false},
+                {"id":"layer.edit","label":"Edit selected layer","readonly":false,"disabled":false},
+                {"id":"layer.solo","label":"Solo selected layer","readonly":false,"disabled":false},
+                {"id":"layer.build-up","label":"Preview layer build-up","readonly":false,"disabled":false},
+                {"id":"brush.assign","label":"Assign pinned brush version","readonly":false,"disabled":false},
+                {"id":"look.apply","label":"Apply saved preset","readonly":false,"disabled":false},
                 {"id":"drawing.reset-view","label":"Reset view","readonly":false,"disabled":false}
             ]
         })
