@@ -1,4 +1,33 @@
-use std::{env, fs, path::PathBuf, process::Command};
+use std::{
+    env, fs,
+    path::{Path, PathBuf},
+    process::Command,
+};
+
+fn client_assets(dist: &Path) -> Vec<(String, PathBuf)> {
+    fn collect(dist: &Path, directory: &Path, assets: &mut Vec<(String, PathBuf)>) {
+        for entry in fs::read_dir(directory).expect("read frontend dist directory") {
+            let entry = entry.expect("read frontend dist entry");
+            let path = entry.path();
+            if entry.file_type().expect("inspect frontend dist entry").is_dir() {
+                collect(dist, &path, assets);
+            } else if entry.file_type().expect("inspect frontend dist entry").is_file() {
+                let relative = path
+                    .strip_prefix(dist)
+                    .expect("frontend asset stays inside dist")
+                    .to_string_lossy()
+                    .replace('\\', "/");
+                assets.push((relative, path));
+            }
+        }
+    }
+
+    let mut assets = Vec::new();
+    collect(dist, dist, &mut assets);
+    assets.sort_by(|left, right| left.0.cmp(&right.0));
+    assets
+}
+
 fn main() {
     println!("cargo:rerun-if-changed=playground-client/src");
     println!("cargo:rerun-if-changed=playground-client/index.html");
@@ -30,14 +59,10 @@ fn main() {
     let mut generated = String::from(
         "pub fn playground_client_assets() -> Vec<(&'static str, &'static [u8])> { vec![\n",
     );
-    for entry in fs::read_dir(client.join("dist")).unwrap() {
-        let entry = entry.unwrap();
-        if !entry.file_type().unwrap().is_file() {
-            continue;
-        }
-        let name = entry.file_name().to_string_lossy().into_owned();
-        let target = out.join(&name);
-        fs::copy(entry.path(), &target).unwrap();
+    for (name, source) in client_assets(&client.join("dist")) {
+        let target = out.join(name.replace('/', std::path::MAIN_SEPARATOR_STR));
+        fs::create_dir_all(target.parent().expect("frontend asset parent")).unwrap();
+        fs::copy(source, &target).unwrap();
         generated.push_str(&format!(
             "({:?}, include_bytes!({:?})),\n",
             name,

@@ -464,3 +464,63 @@ fn save_all_preflights_conflicts_before_writing_any_document() {
     assert!(save_all(&mut docs).is_err());
     assert!(!docs[0].path.exists());
 }
+
+#[test]
+fn explicit_profile_migration_requires_a_source_model_and_keeps_a_durable_backup() {
+    use amigo_npr_playground_plugin::documents::migration::DrawingStudioProfileMigration;
+    let directory = tempfile::tempdir().unwrap();
+    let path = directory.path().join("legacy.npr-scene.yml");
+    let backup = directory.path().join("legacy.backup.yml");
+    let mut settings = Settings::for_scene(false);
+    let mut sphere = settings.objects["cube"].clone();
+    sphere.model = "sphere".into();
+    let mut profile = NprSceneProfileDocument::from_settings(&settings, None).unwrap();
+    profile.objects.insert("sphere".into(), sphere);
+    profile.render_all_objects = true;
+    let original = serde_yaml::to_string(&profile).unwrap();
+    fs::write(&path, &original).unwrap();
+
+    assert!(DrawingStudioProfileMigration::preview(path.clone(), "missing").is_err());
+    let migration = DrawingStudioProfileMigration::preview(path.clone(), "sphere").unwrap();
+    assert!(migration.removed_models.contains(&"cube".into()));
+    let converted: NprSceneProfileDocument = serde_yaml::from_slice(migration.output()).unwrap();
+    assert!(!converted.render_all_objects);
+    assert_eq!(converted.objects.len(), 1);
+    assert!(converted.objects.contains_key("sphere"));
+    migration.apply(&backup).unwrap();
+    assert_eq!(fs::read_to_string(&backup).unwrap(), original);
+    let saved: NprSceneProfileDocument = serde_yaml::from_slice(&fs::read(&path).unwrap()).unwrap();
+    assert!(saved
+        .resolve(&BTreeMap::new(), &BTreeMap::new(), &NprLookPatch::default())
+        .is_ok());
+}
+
+#[test]
+fn save_all_prepares_every_payload_before_replacing_any_document() {
+    let temp = tempfile::tempdir().unwrap();
+    let blocked_parent = temp.path().join("not-a-directory");
+    fs::write(&blocked_parent, b"file").unwrap();
+    let mut docs = [
+        NprTrackedDocument::new(temp.path().join("first"), b"first".to_vec()),
+        NprTrackedDocument::new(blocked_parent.join("second"), b"second".to_vec()),
+    ];
+    assert!(save_all(&mut docs).is_err());
+    assert!(
+        !docs[0].path.exists(),
+        "a later prepare failure must not commit the first document"
+    );
+}
+
+#[test]
+fn drawing_studio_profile_rejects_multiple_sources_even_without_legacy_flag() {
+    let settings = Settings::for_scene(false);
+    let mut profile = NprSceneProfileDocument::from_settings(&settings, None).unwrap();
+    let mut sphere = profile.objects["cube"].clone();
+    sphere.model = "sphere".into();
+    profile.objects.insert("sphere".into(), sphere);
+
+    assert!(profile
+        .resolve(&BTreeMap::new(), &BTreeMap::new(), &NprLookPatch::default())
+        .unwrap_err()
+        .contains("only one source model"));
+}

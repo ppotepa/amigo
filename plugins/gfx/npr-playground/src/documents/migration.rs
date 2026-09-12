@@ -1,5 +1,5 @@
 //! Explicit conversion of split authored stacks. Never called by document loading.
-use super::{NprLayerDocument, NprLookPatch, NprTrackedDocument};
+use super::{NprLayerDocument, NprLookPatch, NprSceneProfileDocument, NprTrackedDocument};
 use serde_json::Value;
 use std::{
     fs,
@@ -12,6 +12,69 @@ pub struct LayerStackMigration {
     document: NprTrackedDocument,
     original: Vec<u8>,
     pub changes: Vec<String>,
+}
+
+/// Explicitly converts a retired gallery profile into one Drawing Studio
+/// document. The caller must name the source model: guessing would silently
+/// change the authored subject. The original profile is backed up by `apply`.
+pub struct DrawingStudioProfileMigration {
+    document: NprTrackedDocument,
+    original: Vec<u8>,
+    pub source_model: String,
+    pub removed_models: Vec<String>,
+}
+
+impl DrawingStudioProfileMigration {
+    pub fn preview(path: PathBuf, source_model: &str) -> Result<Self, String> {
+        let mut document = NprTrackedDocument::open(path, true)?;
+        let original = document.pending.clone();
+        let mut profile: NprSceneProfileDocument =
+            serde_yaml::from_slice(&original).map_err(|e| e.to_string())?;
+        if !profile.render_all_objects {
+            return Err("profile is already a Drawing Studio document".into());
+        }
+        let selected = profile
+            .objects
+            .get(source_model)
+            .cloned()
+            .ok_or_else(|| format!("legacy profile has no model `{source_model}`"))?;
+        let removed_models = profile
+            .objects
+            .keys()
+            .filter(|id| id.as_str() != source_model)
+            .cloned()
+            .collect::<Vec<_>>();
+        profile.render_all_objects = false;
+        profile.objects.clear();
+        profile.objects.insert(source_model.into(), selected);
+        profile
+            .object_overrides
+            .retain(|id, _| id.as_str() == source_model);
+        document.stage(&profile)?;
+        Ok(Self {
+            document,
+            original,
+            source_model: source_model.into(),
+            removed_models,
+        })
+    }
+
+    pub fn output(&self) -> &[u8] {
+        &self.document.pending
+    }
+
+    pub fn apply(mut self, backup: &Path) -> Result<(), String> {
+        self.document.check_conflict()?;
+        let mut file = fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(backup)
+            .map_err(|e| format!("backup {}: {e}", backup.display()))?;
+        file.write_all(&self.original)
+            .and_then(|_| file.sync_all())
+            .map_err(|e| e.to_string())?;
+        self.document.save()
+    }
 }
 
 impl LayerStackMigration {

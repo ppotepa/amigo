@@ -179,7 +179,7 @@ fn build_up_is_editor_state_and_variants_are_undoable() {
 }
 
 #[test]
-fn brush_version_save_is_explicit_and_does_not_change_document_dirty_state() {
+fn brush_version_save_is_explicit_and_becomes_a_document_change() {
     let state = Arc::new(NprPlaygroundState::default());
     let service = NprPlaygroundService::new(state);
     let brush = amigo_render_npr::BrushDefinition {
@@ -196,7 +196,7 @@ fn brush_version_save_is_explicit_and_does_not_change_document_dirty_state() {
             NprPlaygroundIntent::SaveBrushVersion { brush },
         )
         .unwrap();
-    assert!(!service.domain_snapshot().dirty);
+    assert!(service.domain_snapshot().dirty);
     assert!(
         service
             .domain_snapshot()
@@ -274,6 +274,125 @@ fn brush_version_update_uses_document_library_and_is_one_undo_operation() {
         )
         .unwrap();
     assert_eq!(state.snapshot(), before);
+}
+
+#[test]
+fn custom_brush_version_survives_draft_checkpoint_and_restore() {
+    let state = Arc::new(NprPlaygroundState::default());
+    let service = NprPlaygroundService::new(state.clone());
+    service
+        .dispatch_intent(
+            1,
+            0,
+            "brush".into(),
+            NprPlaygroundIntent::SaveBrushVersion {
+                brush: amigo_render_npr::BrushDefinition {
+                    id: "ink-liner".into(),
+                    version: 2,
+                    name: "Draft-safe ink".into(),
+                    ..Default::default()
+                },
+            },
+        )
+        .unwrap();
+    service
+        .dispatch_intent(
+            2,
+            service.revision(),
+            "brush".into(),
+            NprPlaygroundIntent::UpdateBrushVersion {
+                id: "ink-liner".into(),
+                from: 1,
+                to: 2,
+            },
+        )
+        .unwrap();
+    service
+        .dispatch_intent(
+            3,
+            service.revision(),
+            "models".into(),
+            NprPlaygroundIntent::SelectModel {
+                model: "sphere".into(),
+            },
+        )
+        .unwrap();
+    let draft = &service.domain_snapshot().drafts["cube"].settings;
+    assert!(draft
+        .brushes
+        .resolve(&amigo_render_npr::BrushReference {
+            id: "ink-liner".into(),
+            version: 2,
+        })
+        .is_ok());
+    service
+        .dispatch_intent(
+            4,
+            service.revision(),
+            "draft".into(),
+            NprPlaygroundIntent::OpenDraft {
+                model: "cube".into(),
+            },
+        )
+        .unwrap();
+    assert!(state
+        .snapshot()
+        .brushes
+        .resolve(&amigo_render_npr::BrushReference {
+            id: "ink-liner".into(),
+            version: 2,
+        })
+        .is_ok());
+}
+
+#[test]
+fn custom_brush_version_survives_save_and_reload() {
+    let root = tempfile::tempdir().unwrap();
+    let path = root.path().join("npr.scene.yml");
+    std::fs::write(&path, "version: 1\nactive_look: null\nlook: {}\n").unwrap();
+    let service = NprPlaygroundService::new(Arc::new(NprPlaygroundState::default()));
+    service
+        .open_scene(root.path(), std::path::Path::new("npr.scene.yml"))
+        .unwrap();
+    service
+        .dispatch_intent(
+            1,
+            service.revision(),
+            "brush".into(),
+            NprPlaygroundIntent::SaveBrushVersion {
+                brush: amigo_render_npr::BrushDefinition {
+                    id: "ink-liner".into(),
+                    version: 2,
+                    name: "Persistent ink".into(),
+                    ..Default::default()
+                },
+            },
+        )
+        .unwrap();
+    service
+        .dispatch_intent(
+            2,
+            service.revision(),
+            "save".into(),
+            NprPlaygroundIntent::SaveAll,
+        )
+        .unwrap();
+    service
+        .dispatch_intent(
+            3,
+            service.revision(),
+            "reload".into(),
+            NprPlaygroundIntent::Reload,
+        )
+        .unwrap();
+    assert!(service
+        .domain_snapshot()
+        .brushes
+        .resolve(&amigo_render_npr::BrushReference {
+            id: "ink-liner".into(),
+            version: 2,
+        })
+        .is_ok());
 }
 
 #[test]

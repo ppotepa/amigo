@@ -29,7 +29,7 @@ authored intents. Smooth uses a prepared welded proxy; crease, contour cleanup
 and suggestive-contour thresholds remain domain policy. Paper is scene-owned.
 One authored `layers` list preserves stable IDs and explicit order across paint
 and strokes. Existing split documents require the explicit
-[layer-stack migration](docs/npr-playground-ui.md#layer-stack-migration). WGPU executes the
+[migration workflow](docs/npr-playground-ui.md#basic-mode-and-migration). WGPU executes the
 declared commands without inferring style from model names.
 
 Humanized strokes combine seeded gesture confidence, pressure, taper, correction

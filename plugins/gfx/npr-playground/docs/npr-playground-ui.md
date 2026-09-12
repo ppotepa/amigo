@@ -1,13 +1,16 @@
 # NprPlayground
 
-## Layer-stack migration
+## Basic Mode and migration
+
+The companion currently exposes Basic Mode only: choose one model, choose one
+complete Look, orbit the paper viewport and save. It deliberately does not
+expose the layer stack, geometry sources, masks, blend modes or brush editing.
+Those remain typed authored contracts used by the renderer and future advanced
+authoring, not hidden controls in the Basic UI.
 
 The current look patch uses one `layers` list rather than separate `paint` and
 `stroke` collections. Each entry retains its stable `layer_id`, explicit `order`
-and complete `parameters`. Save emits only this shape. The Layers panel exposes
-brushes, masks, grouping, build-up and variants. Brush editing is staged as a
-draft; Apply is one mutation and Cancel discards it. The host provides a
-reusable child editor window without another playground session.
+and complete `parameters`. Save emits only this shape.
 
 Preview an existing document from the repository root:
 
@@ -25,10 +28,16 @@ a no-op. Scene object look overrides and model look defaults are also supported.
 The tool preserves layer order, all parameters and paper; YAML formatting and
 mapping-key order may change. Runtime does not accept the split format.
 
-Scene profiles also persist named variants and the pinned brush library. Built-in
-brushes are copied into the profile as read-only definitions; `SaveBrushVersion`
-adds the next numeric version explicitly. Existing references retain their old
-version until `UpdateBrushVersion` is dispatched.
+Scene profiles also persist named variants and the pinned brush library. A saved
+brush version is an authored document change; Draft, Save and Reload preserve
+its pinned reference. Existing references retain their old version until
+`UpdateBrushVersion` is dispatched. Retired multi-model profiles are rejected
+at load time. `DrawingStudioProfileMigration` requires an explicit source model,
+writes a single-model profile and creates an exclusive durable backup before
+replacing the original; it reports every removed model rather than choosing one.
+Drawing Studio accepts an empty Gallery profile or exactly one source model; a
+hand-edited profile with multiple objects is rejected even if its legacy flag
+has been cleared.
 
 The mod ships a `drawing-studio-demo` preset based on `comic-ink`. It exercises
 the complete ordered composition: watercolour underpainting, surface hatching,
@@ -103,11 +112,10 @@ domain's Svelte client. The app only dispatches the generic client mode.
 The child receives a length-prefixed bootstrap over piped stdin. The host binds
 an ephemeral loopback port and checks protocol, playground ID, exact WebView
 origin and a single-use random token. CSP permits that session endpoint only.
-The presentation selector above the image offers Native GPU, Local RGBA and
-JPEG. First launch requests Native GPU; subsequent launches restore the last
-successfully presented mode. An unavailable mode reports its reason and requires
-manual selection. A failed switch preserves the previous active presentation.
-Presentation and camera interaction preferences do not dirty the scene.
+Basic Mode does not expose transport controls. It requests Native GPU on launch
+and falls back to JPEG when presentation fails; Local RGBA remains an internal
+transport path. Presentation and camera interaction preferences do not dirty the
+scene.
 
 On Windows, Native GPU uses a separate DX12 device and shared textures/fences;
 scenes using a Winit window retain their own backend. Local RGBA uses three read-only

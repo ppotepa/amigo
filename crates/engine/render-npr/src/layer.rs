@@ -622,6 +622,7 @@ impl NprStyleLayers {
         &self,
         source: &NprRenderPacket,
         output: &NprRenderPacket,
+        material_base_color: Option<[f32; 4]>,
         extraction_micros: u64,
         tessellation_micros: u64,
     ) -> BTreeMap<String, NprLayerDiagnostics> {
@@ -658,11 +659,7 @@ impl NprStyleLayers {
                     NprGeometrySource::Paper => 2,
                     _ => 0,
                 };
-                let mask_coverage = if matches!(&layer.mask, CoverageMask::None) {
-                    1.0
-                } else {
-                    layer.mask.evaluate(0.5, 0.5, [0.0, 0.0, 1.0], 0.5)
-                };
+                let mask_coverage = layer_mask_coverage(layer, output, material_base_color);
                 let source_geometry = source_marks + surface_triangles;
                 let no_effect_reason = if !layer.enabled {
                     Some(NprLayerNoEffectReason::Disabled)
@@ -842,6 +839,83 @@ impl NprStyleLayers {
         );
         packet.underpainting = paint_contributions;
         Ok(())
+    }
+}
+
+/// Mirrors the renderer's procedural-mask inputs over the actual, expanded
+/// contribution.  Diagnostics must describe the layer the user sees, not an
+/// arbitrary representative point unrelated to its geometry.
+fn layer_mask_coverage(
+    layer: &NprStyleLayer,
+    packet: &NprRenderPacket,
+    material_base_color: Option<[f32; 4]>,
+) -> f32 {
+    if matches!(&layer.mask, CoverageMask::None) {
+        return 1.0;
+    }
+    let color = |fallback: [f32; 4]| match layer.color_source {
+        NprLayerColorSource::Constant(color) => color.to_array(),
+        NprLayerColorSource::StylePalette => fallback,
+        NprLayerColorSource::ModelBaseColor => material_base_color.unwrap_or(fallback),
+    };
+    let coverage = |color: [f32; 4], depth: f32, position: glam::Vec2| {
+        let tone = (color[0] * 0.2126 + color[1] * 0.7152 + color[2] * 0.0722).clamp(0.0, 1.0);
+        let noise = (position.x.mul_add(12.9898, position.y * 78.233) + depth * 37.719).sin()
+            * 0.5
+            + 0.5;
+        layer
+            .mask
+            .evaluate(tone, depth.clamp(0.0, 1.0), [0.0, 0.0, 1.0], noise)
+    };
+    let mut samples = Vec::new();
+    match layer.source {
+        NprGeometrySource::Wash => packet
+            .underpainting
+            .iter()
+            .filter(|triangle| triangle.layer_id.as_deref() == Some(layer.id.as_str()))
+            .for_each(|triangle| {
+                let color = color(triangle.color.to_array());
+                samples.extend(
+                    triangle
+                        .positions
+                        .iter()
+                        .zip(triangle.depths)
+                        .map(|(position, depth)| coverage(color, depth, *position)),
+                );
+            }),
+        NprGeometrySource::FlatFill => packet
+            .fills
+            .iter()
+            .filter(|triangle| triangle.layer_id.as_deref() == Some(layer.id.as_str()))
+            .for_each(|triangle| {
+                let color = color(triangle.color.to_array());
+                samples.extend(
+                    triangle
+                        .positions
+                        .iter()
+                        .zip(triangle.depths)
+                        .map(|(position, depth)| coverage(color, depth, *position)),
+                );
+            }),
+        NprGeometrySource::Paper => return 1.0,
+        _ => packet
+            .strokes
+            .iter()
+            .filter(|stroke| stroke.layer_id.as_deref() == Some(layer.id.as_str()))
+            .for_each(|stroke| {
+                let color = color(packet.stroke_color(stroke));
+                samples.extend(
+                    stroke
+                        .vertices
+                        .iter()
+                        .map(|vertex| coverage(color, vertex.depth, vertex.position)),
+                );
+            }),
+    }
+    if samples.is_empty() {
+        0.0
+    } else {
+        samples.iter().sum::<f32>() / samples.len() as f32
     }
 }
 
@@ -1069,10 +1143,14 @@ mod tests {
         second.opacity = 0.35;
         second.brush.as_mut().unwrap().width = Some(3.0);
         layers.layers.push(second);
-        let source = TessellatedStroke {
-            role: StrokeRole::Tone,
-            ..Default::default()
-        };
+        let mut source = crate::tessellate_segment(
+            0,
+            FeatureClass::Boundary,
+            (glam::Vec2::new(10.0, 10.0), glam::Vec2::new(80.0, 10.0)),
+            ComicInk::default(),
+            7,
+        );
+        source.role = StrokeRole::Tone;
         let mut packet = NprRenderPacket {
             occluders: vec![],
             underpainting: vec![],
@@ -1163,7 +1241,7 @@ mod tests {
                 .iter()
                 .any(|triangle| triangle.layer_id.as_deref() == Some("wash-soft"))
         );
-        let diagnostics = layers.diagnostics(&source_packet, &output, 0, 0);
+        let diagnostics = layers.diagnostics(&source_packet, &output, None, 0, 0);
         assert_eq!(diagnostics["fill"].generated_triangles, 1);
         assert_eq!(diagnostics["fill-soft"].generated_triangles, 1);
         assert_eq!(diagnostics["underpainting"].generated_triangles, 1);
@@ -1173,10 +1251,14 @@ mod tests {
     #[test]
     fn diagnostics_identify_source_coverage_and_no_effect_reason() {
         let mut layers = NprStyleLayers::default();
-        let source = TessellatedStroke {
-            role: StrokeRole::Tone,
-            ..Default::default()
-        };
+        let mut source = crate::tessellate_segment(
+            0,
+            FeatureClass::Boundary,
+            (glam::Vec2::new(10.0, 10.0), glam::Vec2::new(80.0, 10.0)),
+            ComicInk::default(),
+            7,
+        );
+        source.role = StrokeRole::Tone;
         let source_packet = NprRenderPacket {
             occluders: vec![],
             underpainting: vec![],
@@ -1189,7 +1271,7 @@ mod tests {
         };
         let mut output = source_packet.clone();
         layers.apply_tools(&mut output, ComicInk::default());
-        let report = layers.diagnostics(&source_packet, &output, 12, 7);
+        let report = layers.diagnostics(&source_packet, &output, None, 12, 7);
         let hatch = &report["hatching"];
         assert_eq!(hatch.source_geometry, 1);
         assert_eq!(hatch.generated_marks, 1);
@@ -1203,10 +1285,12 @@ mod tests {
             max: 1.0,
             invert: false,
         };
-        assert_eq!(
-            layers.diagnostics(&source_packet, &output, 0, 0)["hatching"].no_effect_reason,
-            Some(NprLayerNoEffectReason::MaskExcludesAll)
-        );
+        let report = layers.diagnostics(&source_packet, &output, None, 0, 0);
+        // The prior implementation sampled an arbitrary middle-grey value and
+        // incorrectly rejected this white contribution. Diagnostics now sample
+        // the same generated vertices sent to the renderer.
+        assert_eq!(report["hatching"].mask_coverage, 1.0);
+        assert_eq!(report["hatching"].no_effect_reason, None);
     }
 
     #[test]
@@ -1273,7 +1357,7 @@ mod tests {
         layers.apply_tools(&mut output, ComicInk::default());
         assert!(output.strokes.is_empty());
         assert_eq!(
-            layers.diagnostics(&source_packet, &output, 0, 0)["hatching"].no_effect_reason,
+            layers.diagnostics(&source_packet, &output, None, 0, 0)["hatching"].no_effect_reason,
             Some(NprLayerNoEffectReason::HatchSelectionExcludesAll)
         );
     }

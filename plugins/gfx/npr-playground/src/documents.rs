@@ -326,6 +326,12 @@ impl NprSceneProfileDocument {
                     .into(),
             );
         }
+        if self.objects.len() > 1 {
+            return Err(
+                "Drawing Studio profile may contain only one source model; migrate or split the authored document before opening"
+                    .into(),
+            );
+        }
         let mut settings = Settings::empty_scene(self.render_all_objects);
         settings.objects = self.objects.clone();
         settings.selected = settings.objects.keys().next().cloned().unwrap_or_default();
@@ -470,7 +476,7 @@ pub fn authored_path(root: &Path, relative: &Path) -> Result<PathBuf, String> {
     Ok(target)
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct NprTrackedDocument {
     pub path: PathBuf,
     baseline: Option<[u8; 32]>,
@@ -554,11 +560,42 @@ impl NprTrackedDocument {
 }
 
 pub fn save_all(documents: &mut [NprTrackedDocument]) -> Result<(), String> {
-    for doc in documents.iter().filter(|d| d.dirty && d.writable) {
+    for doc in documents.iter().filter(|d| d.dirty) {
+        if !doc.writable {
+            return Err("document is read-only; use Save As".into());
+        }
         doc.check_conflict()?;
     }
-    for doc in documents.iter_mut().filter(|d| d.dirty && d.writable) {
-        doc.save()?;
+    // Prepare and fsync every payload before replacing any authored document.
+    // A filesystem cannot atomically rename several paths, but this removes
+    // the normal partial-save failure mode (serialization/write/fsync of a
+    // later document after an earlier one was already replaced).
+    let mut prepared = Vec::new();
+    for (index, doc) in documents.iter().enumerate().filter(|(_, doc)| doc.dirty) {
+        let parent = doc.path.parent().ok_or("missing document directory")?;
+        fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+        let mut temporary = tempfile::NamedTempFile::new_in(parent).map_err(|e| e.to_string())?;
+        temporary
+            .write_all(&doc.pending)
+            .map_err(|e| e.to_string())?;
+        temporary.as_file().sync_all().map_err(|e| e.to_string())?;
+        prepared.push((index, temporary));
+    }
+    // Recheck every baseline together immediately before the commit phase.
+    for doc in documents.iter().filter(|d| d.dirty) {
+        doc.check_conflict()?;
+    }
+    for (index, temporary) in prepared {
+        let doc = &mut documents[index];
+        if doc.baseline.is_none() {
+            temporary
+                .persist_noclobber(&doc.path)
+                .map_err(|e| e.to_string())?;
+        } else {
+            temporary.persist(&doc.path).map_err(|e| e.to_string())?;
+        }
+        doc.baseline = Some(Sha256::digest(&doc.pending).into());
+        doc.dirty = false;
     }
     Ok(())
 }

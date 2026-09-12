@@ -113,14 +113,18 @@ pub fn thumbnail(root: &Path, model: &str, path: Option<&Path>) -> Result<String
 /// A small, cached-on-demand rendering of a curated Look.  It consumes the
 /// exact NPR packet used by the viewport, including its tessellated strokes;
 /// the Svelte client never invents a visual substitute for a preset.
-pub fn look_thumbnail(root: &Path, look_id: &str) -> Result<String, String> {
+pub fn look_thumbnail(
+    root: &Path,
+    look_id: &str,
+    brushes: &amigo_render_npr::BrushLibrary,
+) -> Result<String, String> {
     let resolved = crate::playground::resolve_preview_look(root, look_id)?;
     let render = crate::NprPlaygroundRenderService::default();
     render.load_models(root)?;
     let mut settings = crate::state::Settings::for_scene(false);
     settings.global = resolved.style;
     settings.style_layers = resolved.layers;
-    settings.brushes = crate::documents::builtin_brush_library();
+    settings.brushes = brushes.clone();
     settings.paused = true;
     settings.sketch_paused = true;
     settings.camera_distance = 4.5;
@@ -421,7 +425,12 @@ mod tests {
     #[test]
     fn curated_looks_have_renderer_generated_preview_images() {
         for id in ["comic-ink", "pencil-study", "watercolour-wash"] {
-            let preview = look_thumbnail(&mod_root(), id).expect("curated look preview");
+            let preview = look_thumbnail(
+                &mod_root(),
+                id,
+                &crate::documents::builtin_brush_library(),
+            )
+            .expect("curated look preview");
             assert!(preview.starts_with("data:image/svg+xml,"));
             assert!(
                 preview.len() > 200,

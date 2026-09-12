@@ -554,6 +554,7 @@ impl NprPlaygroundRenderService {
                 *self.layer_diagnostics.lock().unwrap() = layers.diagnostics(
                     &source_packet,
                     &packet,
+                    Some(object.material_base_color.to_array()),
                     extraction_micros,
                     tessellation_started.elapsed().as_micros() as u64,
                 );

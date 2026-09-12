@@ -1,5 +1,11 @@
 # Windows viewport validation — 2026-09-12
 
+> Historical transport captures below predate the Basic Mode client and are not
+> acceptance evidence for its UI. `viewport_qa.py` and
+> `viewport_benchmark.py` now drive the current Basic Mode controls. The latter
+> records per-source/per-look readiness and live viewport status; it is not a
+> replacement for the retired transport p95 matrix below.
+
 ## Drawing Studio document-format checkpoint
 
 The unified authored layer list and explicit migration are implemented. Versioned
@@ -10,14 +16,8 @@ colour/opacity edits are covered by the owner-crate cache test, and the full
 4/8/16-layer performance matrix is recorded below. Performance acceptance still
 depends on the p95 and memory criteria.
 
-Real-window QA ran before changes on the existing optimized executable and again
-after `cargo build --profile playground -p amigo-app`. Both runs passed Gallery
-single-window lifecycle, Cube without companion, bounded-queue recovery, DPI 1/2,
-resize, mode switching, form focus, device-loss recovery and engine exit. In the
-new build Native GPU and Local RGBA matched exactly at 640×360; JPEG mean absolute
-channel error was `[0.866, 0.738, 0.877]` on the 0–255 scale. Final images/report
-are under `target/viewport-qa`; the initial capture is retained under
-`target/drawing-studio-baseline-qa`.
+The measurements below are historical. They need a benchmark harness that drives
+Basic Mode instead of the retired transport controls.
 
 These captures do not freeze the same sketch epoch across launches. They verify
 transport agreement, not deterministic migration image equivalence or p95
@@ -63,9 +63,19 @@ From the repository root, after installing the frontend dependencies:
 rtk cargo build --profile playground -p amigo-app
 rtk proxy python -m pip install -r plugins/gfx/npr-playground/tools/requirements.txt
 rtk proxy python plugins/gfx/npr-playground/tools/viewport_qa.py
-rtk proxy python plugins/gfx/npr-playground/tools/viewport_benchmark.py --seconds 2 --soak 300 --output target/viewport-validated.jsonl
-rtk proxy python plugins/gfx/npr-playground/tools/viewport_benchmark.py --skip-matrix --soak 300 --output target/viewport-resource-validation.jsonl
 ```
+
+The smoke test launches Cargo's current profile artifact,
+`target/playground/deps/amigo_app.exe`. It does not press Save, so it cannot
+rewrite the authored Gallery profile. To record Basic Mode readiness for every
+built-in source and look without creating Drafts, run:
+
+```powershell
+rtk proxy python plugins/gfx/npr-playground/tools/viewport_benchmark.py --seconds 2 --output target/viewport-basic-mode.jsonl
+```
+
+Each source is measured in a fresh process; the benchmark does not press Save
+or switch sources after a look has made the document dirty.
 
 The benchmark accepts `--layers 4,8,16` (the default) and records the selected
 stack size on every case. The current full matrix covers all three stack sizes;
@@ -226,7 +236,7 @@ Validation completed during implementation:
 | App `scene_loading_tests::threed::npr_` / `--test playground_lifecycle` | 3 / 5 passed |
 | Checks: render-wgpu, runtime-bundles, playground-tauri, app | Passed |
 | Frontend `npm run check`, `npm test`, `npm run build` | 0 errors, 3 DOM-reference warnings, 10 tests passed, build passed |
-| `cargo build --profile playground -p amigo-app` | Passed, actual executable used by QA |
+| `cargo build --profile playground -p amigo-app` | Passed; Basic Mode QA uses Cargo's `deps/amigo_app.exe` artifact |
 | `git diff --check` | Passed |
 
 Unit coverage includes accumulated small movements/wheel deltas, sticky drag

@@ -12,6 +12,7 @@ use std::{
     collections::{BTreeMap, BTreeSet},
     path::{Path, PathBuf},
     sync::{Arc, Mutex},
+    time::{Duration, Instant},
 };
 
 pub type NprPlaygroundActionError = PlaygroundActionError;
@@ -167,7 +168,6 @@ struct Session {
     model_fingerprint: Option<Value>,
     variants: BTreeMap<String, Settings>,
     drafts: BTreeMap<String, crate::documents::NprDrawingDraft>,
-    brushes: amigo_render_npr::BrushLibrary,
 }
 
 #[derive(Clone)]
@@ -192,9 +192,11 @@ pub struct NprPlaygroundService {
     thumbnail_updates: Mutex<Vec<std::sync::mpsc::Receiver<(String, Option<String>)>>>,
     look_thumbnails: Mutex<BTreeMap<String, Option<String>>>,
     look_thumbnail_errors: Mutex<BTreeMap<String, String>>,
+    look_thumbnail_retries: Mutex<BTreeMap<String, Instant>>,
     look_thumbnail_updates: Mutex<Vec<std::sync::mpsc::Receiver<(String, Result<String, String>)>>>,
     brush_thumbnails: Mutex<BTreeMap<String, Option<String>>>,
     brush_thumbnail_errors: Mutex<BTreeMap<String, String>>,
+    brush_thumbnail_retries: Mutex<BTreeMap<String, Instant>>,
     brush_thumbnail_updates:
         Mutex<Vec<std::sync::mpsc::Receiver<(String, Result<String, String>)>>>,
 }
@@ -222,9 +224,11 @@ impl NprPlaygroundService {
             thumbnail_updates: Mutex::default(),
             look_thumbnails: Mutex::default(),
             look_thumbnail_errors: Mutex::default(),
+            look_thumbnail_retries: Mutex::default(),
             look_thumbnail_updates: Mutex::default(),
             brush_thumbnails: Mutex::default(),
             brush_thumbnail_errors: Mutex::default(),
+            brush_thumbnail_retries: Mutex::default(),
             brush_thumbnail_updates: Mutex::default(),
             session: Mutex::new(Session {
                 camera_gesture: None,
@@ -244,7 +248,6 @@ impl NprPlaygroundService {
                 model_fingerprint: None,
                 variants: BTreeMap::new(),
                 drafts: BTreeMap::new(),
-                brushes: crate::documents::builtin_brush_library(),
             }),
         }
     }
@@ -284,11 +287,6 @@ impl NprPlaygroundService {
             variant.style_layers = resolved.layers;
             restored_variants.insert(id.clone(), variant);
         }
-        let brushes = if profile.brushes.brushes.is_empty() {
-            builtin_brush_library()
-        } else {
-            profile.brushes.clone()
-        };
         let look = profile
             .active_look
             .as_deref()
@@ -322,9 +320,11 @@ impl NprPlaygroundService {
         self.thumbnail_updates.lock().unwrap().clear();
         self.look_thumbnails.lock().unwrap().clear();
         self.look_thumbnail_errors.lock().unwrap().clear();
+        self.look_thumbnail_retries.lock().unwrap().clear();
         self.look_thumbnail_updates.lock().unwrap().clear();
         self.brush_thumbnails.lock().unwrap().clear();
         self.brush_thumbnail_errors.lock().unwrap().clear();
+        self.brush_thumbnail_retries.lock().unwrap().clear();
         self.brush_thumbnail_updates.lock().unwrap().clear();
         if let (Some(assets), Some(render)) = (
             self.assets.lock().unwrap().clone(),
@@ -383,7 +383,6 @@ impl NprPlaygroundService {
         session.model_fingerprint = None;
         session.variants = restored_variants;
         session.drafts = load_drafts(root)?;
-        session.brushes = brushes;
         session.camera_gesture = None;
         *self.zoom.lock().unwrap() = Default::default();
         *self.state.settings.lock().unwrap() = settings;
@@ -397,59 +396,23 @@ impl NprPlaygroundService {
         METADATA.get_or_init(Self::build_metadata).clone()
     }
     fn build_metadata() -> Value {
-        let mut metadata = json!({
-            "tabs": ["Scene", "Model", "Look", "Layers", "Camera", "Motion", "Diagnostics"],
+        // This describes the shipped Basic Mode, not the retired generic panel
+        // editor. Layer and brush parameters stay typed document data until a
+        // dedicated authoring surface ships; advertising them here recreated a
+        // second, conflicting Look editor in generic clients.
+        json!({
+            "views": ["Sources", "Drawing", "Looks"],
             "controls": [
-                {"id":"camera.distance","label":"Distance","min":0.1,"max":100.0,"step":0.1,"readonly":false,"disabled":false},
-                {"id":"camera.fov","label":"Field of view","min":15.0,"max":90.0,"step":1.0,"readonly":false,"disabled":false},
-                {"id":"camera.pitch","label":"Pitch","min":-89.0,"max":89.0,"step":0.1,"readonly":false,"disabled":false},
-                {"id":"motion.speed","label":"Speed","min":0.0,"max":4.0,"step":0.05,"readonly":false,"disabled":false},
-                {"id":"object.scale","label":"Scale","min":0.01,"max":10.0,"step":0.01,"readonly":false,"disabled":false},
-                {"id":"layer.opacity","label":"Opacity","min":0.0,"max":1.0,"step":0.01,"readonly":false,"disabled":false}
+                {"id":"source.select","label":"Select source model","readonly":false,"disabled":false},
+                {"id":"look.apply","label":"Apply saved look","readonly":false,"disabled":false},
+                {"id":"drawing.reset-view","label":"Reset view","readonly":false,"disabled":false}
             ]
-        });
-        let controls = metadata["controls"].as_array_mut().unwrap();
-        for (field, value) in serde_json::to_value(ComicInk::default())
-            .unwrap()
-            .as_object()
-            .unwrap()
-        {
-            let range = match field.as_str() {
-                "outline_width" | "crease_width" | "boundary_width" => Some((0., 20.)),
-                "crease_angle" | "smooth_crease_angle" => Some((0., std::f64::consts::PI)),
-                "min_crease_length_pixels" | "min_smooth_contour_length_pixels" => Some((0., 64.)),
-                "smooth_contour_simplification_pixels" => Some((0., 8.)),
-                "wobble" => Some((0., 10.)),
-                "hatching_spacing" => Some((1., 40.)),
-                "hatching_angle" | "nib_angle" => Some((-180., 180.)),
-                "suggestive_contour_width_scale" | "form_line_width_scale" => Some((0., 2.)),
-                _ if value.is_number() => Some((0., 1.)),
-                _ => None,
-            };
-            controls.push(json!({"id":format!("look.{field}"),"label":field.replace('_'," "),"kind":if value.is_boolean(){"boolean"}else if value.is_number(){"number"}else if value.is_array(){"vector"}else{"enum"},"min":range.map(|r|r.0),"max":range.map(|r|r.1),"step":0.01,"readonly":false,"disabled":false}));
-        }
-        controls.push(json!({"id":"camera.projection","label":"Projection","value":"perspective","readonly":true,"disabled":false}));
-        controls.push(json!({"id":"camera.near","label":"Near clip","value":0.05,"readonly":true,"disabled":false}));
-        metadata
+        })
     }
 
     pub fn domain_snapshot(&self) -> NprPlaygroundSnapshot {
         let s = self.session.lock().unwrap();
-        let mut metadata = Self::metadata();
-        if let Some(controls) = metadata["controls"].as_array_mut() {
-            for control in controls.iter_mut() {
-                if control["id"]
-                    .as_str()
-                    .is_some_and(|id| id.starts_with("object."))
-                {
-                    control["disabled"] =
-                        json!(!s.authored.objects.contains_key(&s.authored.selected));
-                }
-            }
-            for layer in &s.authored.style_layers.layers {
-                controls.push(json!({"id":format!("layer.{}.opacity",layer.id),"label":layer.label,"value":layer.opacity,"min":0.,"max":1.,"step":0.01,"readonly":false,"disabled":s.locked_layers.contains(&layer.id)}));
-            }
-        }
+        let metadata = Self::metadata();
         NprPlaygroundSnapshot {
             revision: s.revision,
             settings: s.authored.clone(),
@@ -472,7 +435,7 @@ impl NprPlaygroundService {
                 .unwrap_or_default(),
             locked_layers: s.locked_layers.clone(),
             metadata,
-            brushes: s.brushes.clone(),
+            brushes: s.authored.brushes.clone(),
             variants: s.variants.clone(),
             drafts: s.drafts.clone(),
             layer_diagnostics: self
@@ -576,6 +539,7 @@ impl NprPlaygroundService {
                 NprPlaygroundIntent::SaveBrushVersion { brush } => {
                     brush.validate()?;
                     let next_version = s
+                        .authored
                         .brushes
                         .brushes
                         .get(&brush.id)
@@ -585,8 +549,7 @@ impl NprPlaygroundService {
                     if brush.version != next_version {
                         return Err(format!("new brush version must be {}", next_version));
                     }
-                    s.brushes.add_version(brush)?;
-                    record = false;
+                    next.brushes.add_version(brush)?;
                     event = Some("brush_version_saved");
                 }
                 NprPlaygroundIntent::SaveVariant { id } => {
@@ -614,7 +577,7 @@ impl NprPlaygroundService {
                         id: id.clone(),
                         version: to,
                     };
-                    if s.brushes.resolve(&reference).is_err() {
+                    if next.brushes.resolve(&reference).is_err() {
                         // A fresh in-memory service has no persisted library
                         // yet; built-ins remain available as read-only
                         // resources in that state.
@@ -1038,15 +1001,23 @@ impl NprPlaygroundService {
                             ))
                         })
                         .collect::<Result<_, String>>()?;
-                    profile.brushes = s.brushes.clone();
-                    if let Some(look) = s.look.as_ref().filter(|d| d.dirty) {
-                        look.check_conflict()?;
+                    profile.brushes = next.brushes.clone();
+                    let mut profile_document = s
+                        .profile
+                        .as_ref()
+                        .ok_or("no writable scene profile")?
+                        .clone();
+                    profile_document.stage(&profile)?;
+                    let save_look = s.look.as_ref().filter(|look| look.dirty).cloned();
+                    let save_look_pending = save_look.is_some();
+                    let mut documents = vec![profile_document];
+                    if let Some(look) = save_look {
+                        documents.push(look);
                     }
-                    let doc = s.profile.as_mut().ok_or("no writable scene profile")?;
-                    doc.stage(&profile)?;
-                    doc.save()?;
-                    if let Some(look) = s.look.as_mut().filter(|d| d.dirty) {
-                        look.save()?;
+                    save_all(&mut documents)?;
+                    s.profile = Some(documents.remove(0));
+                    if save_look_pending {
+                        s.look = Some(documents.remove(0));
                     }
                     s.baseline_look = s.active_look.clone();
                     s.baseline = next.clone();
@@ -1429,14 +1400,17 @@ impl PlaygroundProvider for NprPlaygroundService {
         if !look_thumbnails.is_empty() {
             let mut previews = self.look_thumbnails.lock().unwrap();
             let mut errors = self.look_thumbnail_errors.lock().unwrap();
+            let mut retries = self.look_thumbnail_retries.lock().unwrap();
             for (id, result) in look_thumbnails {
                 match result {
                     Ok(preview) => {
                         previews.insert(id.clone(), Some(preview));
                         errors.remove(&id);
+                        retries.remove(&id);
                     }
                     Err(error) => {
                         previews.insert(id.clone(), None);
+                        retries.insert(id.clone(), Instant::now() + Duration::from_secs(2));
                         errors.insert(id, error);
                     }
                 }
@@ -1458,14 +1432,17 @@ impl PlaygroundProvider for NprPlaygroundService {
         if !brush_thumbnails.is_empty() {
             let mut previews = self.brush_thumbnails.lock().unwrap();
             let mut errors = self.brush_thumbnail_errors.lock().unwrap();
+            let mut retries = self.brush_thumbnail_retries.lock().unwrap();
             for (id, result) in brush_thumbnails {
                 match result {
                     Ok(preview) => {
                         previews.insert(id.clone(), Some(preview));
                         errors.remove(&id);
+                        retries.remove(&id);
                     }
                     Err(error) => {
                         previews.insert(id.clone(), None);
+                        retries.insert(id.clone(), Instant::now() + Duration::from_secs(2));
                         errors.insert(id, error);
                     }
                 }
@@ -1541,15 +1518,23 @@ impl PlaygroundProvider for NprPlaygroundService {
             .unwrap_or_default();
         let root = self.session.lock().unwrap().root.clone();
         let mut previews = self.look_thumbnails.lock().unwrap();
+        let mut errors = self.look_thumbnail_errors.lock().unwrap();
+        let mut retries = self.look_thumbnail_retries.lock().unwrap();
         for id in &snapshot.available_looks {
-            if !previews.contains_key(id) && self.look_thumbnail_updates.lock().unwrap().len() < 2 {
+            let retry_ready = retries.get(id).is_some_and(|retry| *retry <= Instant::now());
+            if (!previews.contains_key(id) || retry_ready)
+                && self.look_thumbnail_updates.lock().unwrap().len() < 2
+            {
                 if let Some(root) = root.clone() {
                     previews.insert(id.clone(), None);
+                    errors.remove(id);
+                    retries.remove(id);
                     let id = id.clone();
+                    let brushes = snapshot.brushes.clone();
                     let (tx, rx) = std::sync::mpsc::channel();
                     self.look_thumbnail_updates.lock().unwrap().push(rx);
                     std::thread::spawn(move || {
-                        let thumbnail = crate::asset_browser::look_thumbnail(&root, &id);
+                        let thumbnail = crate::asset_browser::look_thumbnail(&root, &id, &brushes);
                         let _ = tx.send((id, thumbnail));
                     });
                 }
@@ -1557,15 +1542,24 @@ impl PlaygroundProvider for NprPlaygroundService {
         }
         let look_previews = previews.clone();
         drop(previews);
+        drop(errors);
+        drop(retries);
         let look_preview_errors = self.look_thumbnail_errors.lock().unwrap().clone();
         let mut brush_previews = self.brush_thumbnails.lock().unwrap();
+        let mut brush_errors = self.brush_thumbnail_errors.lock().unwrap();
+        let mut brush_retries = self.brush_thumbnail_retries.lock().unwrap();
         for brush in snapshot.brushes.brushes.values().flatten() {
             let key = format!("{}@{}", brush.id, brush.version);
-            if !brush_previews.contains_key(&key)
+            let retry_ready = brush_retries
+                .get(&key)
+                .is_some_and(|retry| *retry <= Instant::now());
+            if (!brush_previews.contains_key(&key) || retry_ready)
                 && self.brush_thumbnail_updates.lock().unwrap().len() < 2
             {
                 if let Some(root) = root.clone() {
                     brush_previews.insert(key.clone(), None);
+                    brush_errors.remove(&key);
+                    brush_retries.remove(&key);
                     let brush = brush.clone();
                     let (tx, rx) = std::sync::mpsc::channel();
                     self.brush_thumbnail_updates.lock().unwrap().push(rx);
@@ -1578,6 +1572,8 @@ impl PlaygroundProvider for NprPlaygroundService {
         }
         let brush_preview_values = brush_previews.clone();
         drop(brush_previews);
+        drop(brush_errors);
+        drop(brush_retries);
         let brush_preview_errors = self.brush_thumbnail_errors.lock().unwrap().clone();
         let mut thumbnails = self.thumbnails.lock().unwrap();
         for model in &mut models {
