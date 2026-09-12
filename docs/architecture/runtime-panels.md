@@ -66,7 +66,7 @@ is explicit. `preset_name_bind` enables the saved-name chooser, and
 `confirm_actions` lists actions requiring native confirmation. No window position
 or measured FPS is persisted. Script preset errors return to the panel.
 
-Examples: `mods/npr-playground` (gallery, styles, camera, animation) and
+Examples: `mods/npr-playground` (drawing studio, looks, camera, animation) and
 `mods/panel-playground` (independent RenderLayer2D controls). No standalone editor,
 network listener, runtime shader authoring or in-process egui overlay is introduced.
 
@@ -106,10 +106,10 @@ release app. stdout is reserved for the framed protocol in either client.
 Rebuild after pulling changes, then run one of:
 
 ```text
-cargo run -p amigo-app -- --hosted --mod npr-playground --scene gallery
-cargo run -p amigo-launcher -- --hosted --profile dev --mod npr-playground --scene gallery
+cargo run -p amigo-app -- --hosted --mod npr-playground --scene drawing-studio
+cargo run -p amigo-launcher -- --hosted --profile dev --mod npr-playground --scene drawing-studio
 cargo build --release -p amigo-app
-cargo run -p amigo-launcher -- --hosted --profile release --mod npr-playground --scene gallery
+cargo run -p amigo-launcher -- --hosted --profile release --mod npr-playground --scene drawing-studio
 ```
 
 The TUI's Gallery selection uses the same hosted path. Headless/offscreen runs

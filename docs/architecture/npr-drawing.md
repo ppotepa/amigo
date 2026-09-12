@@ -1120,7 +1120,7 @@ jest kontrakt/warstwa renderowania, nie aplikacja.
 | MODIFY `plugins/gfx/npr-playground/src/state/history.rs` | Historia edycji obejmuje kompletny profil | Test undo/redo w crate pluginu | Nie mieszać historii edycji z historią temporalną rysunku |
 | MODIFY `crates/3d/mesh/src/geometry_asset.rs` | Tylko gdy wymagane: zachowanie jawnych normalnych/szwów/identyfikatorów wejścia | `rtk cargo check -p amigo-3d-mesh`; testy importu | Nie rozszerzać importera bez wykazanego wymagania |
 | MODIFY `plugins/gfx/npr-playground/playground-client/src/App.svelte` | Sekcje narzędzi, metadane i diagnostyka | Svelte check/test, testy pluginu i companionu | Nie umieszczać tu algorytmów |
-| MODIFY `mods/npr-playground/scenes/gallery/scene.yml` | Zadeklarowane profile, modele referencyjne, panel auto_open | Test sceny i plugin-check | Nie dodawać drugiego mesha renderującego te same obiekty |
+| MODIFY `mods/npr-playground/scenes/drawing-studio/scene.yml` | Zadeklarowane profile, modele referencyjne, panel auto_open | Test sceny i plugin-check | Nie dodawać drugiego mesha renderującego te same obiekty |
 | ADD `mods/npr-playground/scenes/stroke-lab/scene.yml` | Plansza próbek w domenie NPR; authored wybór sceny | Test ładowania plus offscreen | Mod nie implementuje modelu narzędzia |
 | MODIFY `plugins/gfx/npr-playground/README.md` | Instrukcja warsztatu i odnośnik do niniejszej architektury przy wdrożeniu | `rtk git diff --check` | Nie reklamować niewdrożonych etapów jako gotowych |
 | MODIFY `plugins/gfx/npr-playground/docs/pipeline.md` | Rzeczywisty przepływ stanu i nowych snapshotów | `rtk git diff --check` | Nie duplikować całej teorii z tego dokumentu |
@@ -1343,7 +1343,7 @@ Każdy milestone oglądamy w zamrożonym ujęciu i w ruchu. Pytania odbiorowe:
 8. Czy większa ilość detalu rzeczywiście poprawia rysunek?
 
 Akceptacja interaktywna obejmuje uruchomienie
-`rtk cargo run -p amigo-app -- --mod npr-playground --scene gallery`, widoczne
+`rtk cargo run -p amigo-app -- --mod npr-playground --scene drawing-studio`, widoczne
 okno renderowania, działający panel i zmianę ustawień potwierdzoną w obrazie.
 `stroke-lab` uruchamiamy analogicznie dopiero po dodaniu tej sceny.
 

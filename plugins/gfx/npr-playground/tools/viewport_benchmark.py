@@ -97,7 +97,7 @@ def resources(process):
 def launch(executable, output, env):
     log = output.with_suffix(".log").open("w", encoding="utf-8")
     process = subprocess.Popen(
-        [executable, "--hosted", "--mod", "npr-playground", "--scene", "gallery"],
+        [executable, "--hosted", "--mod", "npr-playground", "--scene", "drawing-studio"],
         env=env,
         stdout=log,
         stderr=log,

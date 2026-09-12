@@ -62,7 +62,7 @@ fn layer_geometry_key(layers: &NprStyleLayers) -> LayerGeometryKey {
     )
 }
 
-/// A gallery contains several independent NPR packets.  Individual packets
+/// A drawing frame can contain several independent NPR packets. Individual packets
 /// already have a CPU payload ceiling, but without a scene-level cap their
 /// combined upload could still make the backend silently skip late strokes.
 /// This budget deliberately leaves headroom below the WGPU upload ceiling.
@@ -640,7 +640,7 @@ fn retain_strokes_with_budget(
     let mut remaining = byte_budget;
     for entry in &mut commands {
         let packet = &mut entry.command.packet;
-        let bytes: usize = packet.strokes.iter().map(gallery_stroke_data_bytes).sum();
+        let bytes: usize = packet.strokes.iter().map(stroke_data_bytes).sum();
         if bytes <= remaining {
             remaining -= bytes;
             continue;
@@ -661,7 +661,7 @@ fn retain_strokes_with_budget(
             StrokeRole::Tone,
         ] {
             for stroke in packet.strokes.iter().filter(|stroke| stroke.role == role) {
-                let bytes = gallery_stroke_data_bytes(stroke);
+                let bytes = stroke_data_bytes(stroke);
                 if lower_priority_allowed && bytes <= remaining {
                     remaining -= bytes;
                     retained.push(stroke.clone());
@@ -694,7 +694,7 @@ fn retain_strokes_with_budget(
             .iter()
             .map(|stroke| stroke.indices.len())
             .sum();
-        packet.stats.stroke_data_bytes = packet.strokes.iter().map(gallery_stroke_data_bytes).sum();
+        packet.stats.stroke_data_bytes = packet.strokes.iter().map(stroke_data_bytes).sum();
         packet.stats.stroke_budget_rejected += rejected;
         packet.stats.stroke_budget_exhausted = true;
         packet.stats.hatching_rejected += rejected_tone;
@@ -707,7 +707,7 @@ fn retain_strokes_with_budget(
     commands
 }
 
-fn gallery_stroke_data_bytes(stroke: &TessellatedStroke) -> usize {
+fn stroke_data_bytes(stroke: &TessellatedStroke) -> usize {
     stroke.vertices.len() * std::mem::size_of::<StrokeVertex>()
         + stroke.indices.len() * std::mem::size_of::<u32>()
 }
@@ -841,12 +841,11 @@ mod tests {
     }
 
     #[test]
-    fn gallery_budget_keeps_selected_object_before_other_tone() {
+    fn stroke_budget_keeps_selected_source_before_other_tone() {
         let selected_feature = stroke(StrokeRole::Feature, 2);
         let selected_tone = stroke(StrokeRole::Tone, 1);
         let other_tone = stroke(StrokeRole::Tone, 1);
-        let budget = gallery_stroke_data_bytes(&selected_feature)
-            + gallery_stroke_data_bytes(&selected_tone);
+        let budget = stroke_data_bytes(&selected_feature) + stroke_data_bytes(&selected_tone);
         let retained = retain_strokes_with_budget(
             vec![
                 command("other", vec![other_tone]),
@@ -862,13 +861,13 @@ mod tests {
     }
 
     #[test]
-    fn gallery_budget_never_replaces_a_rejected_feature_with_tone() {
+    fn stroke_budget_never_replaces_a_rejected_feature_with_tone() {
         let feature = stroke(StrokeRole::Feature, 2);
         let tone = stroke(StrokeRole::Tone, 1);
         let retained = retain_strokes_with_budget(
             vec![command("selected", vec![feature, tone])],
             "selected",
-            gallery_stroke_data_bytes(&stroke(StrokeRole::Tone, 1)),
+            stroke_data_bytes(&stroke(StrokeRole::Tone, 1)),
         );
         assert!(retained[0].command.packet.strokes.is_empty());
         assert_eq!(retained[0].command.packet.stats.stroke_budget_rejected, 2);

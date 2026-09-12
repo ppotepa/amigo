@@ -42,7 +42,7 @@ has been cleared.
 To migrate a retired multi-model profile, choose the retained source explicitly:
 
 ```powershell
-rtk cargo run -p amigo-npr-playground-plugin --example migrate_drawing_studio -- sphere mods/npr-playground/scenes/gallery/npr.scene.yml
+rtk cargo run -p amigo-npr-playground-plugin --example migrate_drawing_studio -- sphere mods/npr-playground/scenes/drawing-studio/npr.scene.yml
 ```
 
 The command only previews by default. Put `--apply` immediately after `--` to
@@ -184,7 +184,7 @@ Tauri prerequisites. Run `npm ci` in `playground-client` once. Cargo builds the
 frontend when the runtime enables `playground-client`; generated dist assets
 are embedded from Cargo's output directory and are not committed.
 
-Use `rtk cargo run --profile playground -p amigo-app -- --hosted --mod npr-playground --scene gallery`
+Use `rtk cargo run --profile playground -p amigo-app -- --hosted --mod npr-playground --scene drawing-studio`
 for optimized interactive validation. The profile inherits release, includes
 debug symbols and enables incremental compilation (the repository's filesystem
 configuration can override incremental caching). Building libjpeg-turbo requires

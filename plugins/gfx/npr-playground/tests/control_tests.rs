@@ -285,11 +285,11 @@ fn authored_sidecar_preserves_camera_surface_and_object_intent() {
 }
 
 #[test]
-fn gallery_scene_file_starts_empty_and_hydrates_no_model_instances() {
+fn drawing_studio_scene_starts_empty_and_hydrates_no_model_instances() {
     let root =
         std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../../mods/npr-playground");
     let scene: serde_yaml::Value = serde_yaml::from_str(
-        &std::fs::read_to_string(root.join("scenes/gallery/scene.yml")).unwrap(),
+        &std::fs::read_to_string(root.join("scenes/drawing-studio/scene.yml")).unwrap(),
     )
     .unwrap();
     let component = scene["entities"]
@@ -308,7 +308,7 @@ fn gallery_scene_file_starts_empty_and_hydrates_no_model_instances() {
     let state = Arc::new(NprPlaygroundState::default());
     let service = amigo_npr_playground_plugin::playground::NprPlaygroundService::new(state.clone());
     service
-        .open_scene(&root, std::path::Path::new("scenes/gallery/npr.scene.yml"))
+        .open_scene(&root, std::path::Path::new("scenes/drawing-studio/npr.scene.yml"))
         .unwrap();
     assert!(state.snapshot().objects.is_empty());
     assert!(state.snapshot().selected.is_empty());

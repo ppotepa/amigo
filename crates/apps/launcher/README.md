@@ -6,10 +6,10 @@ Scene-declared external panels work in dev hosted/TUI and release hosted modes.
 The internal panel-client mode is dispatched before loading launcher config;
 window and protocol implementation remain in the engine/UI crates.
 
-For NPR Gallery:
+For NPR Drawing Studio:
 
 ```text
-cargo run -p amigo-launcher -- --hosted --profile dev --mod npr-playground --scene gallery
+cargo run -p amigo-launcher -- --hosted --profile dev --mod npr-playground --scene drawing-studio
 ```
 
 Close a running launcher before rebuilding on Windows. Release profiles require

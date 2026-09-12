@@ -8,7 +8,7 @@ fn active_playground_snapshot_publishes_renderer_generated_preview_channels() {
         std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../../mods/npr-playground");
     let service = NprPlaygroundService::new(Arc::new(NprPlaygroundState::default()));
     service
-        .open_scene(&root, std::path::Path::new("scenes/gallery/npr.scene.yml"))
+        .open_scene(&root, std::path::Path::new("scenes/drawing-studio/npr.scene.yml"))
         .unwrap();
     let mut received = false;
     for _ in 0..40 {
@@ -611,9 +611,9 @@ fn camera_navigation_updates_orbit_pan_zoom_and_selected_spin() {
 #[test]
 fn saving_sets_history_baseline_and_conflicts_preserve_edits() {
     let root = tempfile::tempdir().unwrap();
-    std::fs::create_dir_all(root.path().join("scenes/gallery")).unwrap();
+    std::fs::create_dir_all(root.path().join("scenes/drawing-studio")).unwrap();
     std::fs::write(
-        root.path().join("scenes/gallery/npr.scene.yml"),
+        root.path().join("scenes/drawing-studio/npr.scene.yml"),
         "version: 1\nactive_look: null\nlook: {}\n",
     )
     .unwrap();
@@ -621,7 +621,7 @@ fn saving_sets_history_baseline_and_conflicts_preserve_edits() {
     service
         .open_scene(
             root.path(),
-            std::path::Path::new("scenes/gallery/npr.scene.yml"),
+            std::path::Path::new("scenes/drawing-studio/npr.scene.yml"),
         )
         .unwrap();
     service
@@ -652,7 +652,7 @@ fn saving_sets_history_baseline_and_conflicts_preserve_edits() {
         )
         .unwrap();
     std::fs::write(
-        root.path().join("scenes/gallery/npr.scene.yml"),
+        root.path().join("scenes/drawing-studio/npr.scene.yml"),
         "external edit",
     )
     .unwrap();
@@ -862,7 +862,7 @@ fn opening_a_draft_restores_its_model_bound_layer_stack() {
 }
 
 #[test]
-fn model_browser_never_accumulates_objects_from_a_gallery_profile() {
+fn model_browser_never_accumulates_objects_from_an_empty_drawing_profile() {
     let state = Arc::new(NprPlaygroundState::default());
     *state.settings.lock().unwrap() =
         amigo_npr_playground_plugin::state::Settings::empty_scene();

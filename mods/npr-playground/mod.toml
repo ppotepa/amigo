@@ -17,8 +17,8 @@ path = "scenes/cube"
 launcher_visible = true
 
 [[scenes]]
-id = "gallery"
-label = "NPR Gallery"
-description = "Six models and an external live parameter panel."
-path = "scenes/gallery"
+id = "drawing-studio"
+label = "NPR Drawing Studio"
+description = "Choose one model, apply a complete Look, and save a drawing."
+path = "scenes/drawing-studio"
 launcher_visible = true

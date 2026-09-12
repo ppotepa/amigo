@@ -13,7 +13,7 @@ import psutil
 from viewport_benchmark import Client, find_native
 
 
-def launch(output, env, scene="gallery"):
+def launch(output, env, scene="drawing-studio"):
     log = output.with_suffix(".log").open("w", encoding="utf-8")
     process = subprocess.Popen(
         ["target/playground/deps/amigo_app.exe", "--hosted", "--mod", "npr-playground", "--scene", scene],

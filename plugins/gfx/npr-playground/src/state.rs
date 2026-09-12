@@ -767,7 +767,7 @@ impl NprPlaygroundState {
     /// Adds one source-surface point to the in-progress construction line.
     ///
     /// The selected object is fixed when authoring starts. This prevents a
-    /// gallery click from silently joining anchors from separate meshes.
+    /// source change from silently joining anchors from separate meshes.
     pub fn place_construction_anchor(
         &self,
         object_id: &str,

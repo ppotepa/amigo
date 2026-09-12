@@ -1,7 +1,7 @@
 version: 1
 scene:
-  id: gallery
-  label: NPR Gallery
+  id: drawing-studio
+  label: NPR Drawing Studio
 playgrounds:
   - id: npr-playground
     auto_open: true

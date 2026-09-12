@@ -7,7 +7,7 @@ geometry sources, masks, blend modes or individual brush editing.
 
 Run `npm ci` in `plugins/gfx/npr-playground/playground-client`, then from
 the repository root:
-`rtk cargo run --profile playground -p amigo-app -- --hosted --mod npr-playground --scene gallery`.
+`rtk cargo run --profile playground -p amigo-app -- --hosted --mod npr-playground --scene drawing-studio`.
 
 The viewport uses Native GPU when available and fails over to JPEG if required.
 Windows Native GPU uses a DX12 worker and a native child surface; Local RGBA

@@ -947,7 +947,7 @@ Walidacje skrócone w tabelach:
 | MODIFY `plugins/gfx/npr-playground/src/render/mod.rs` | `NprPlaygroundRenderService`, `stats`: przechowywanie zasobów domeny, stabilne instance IDs, view/frame context i agregacja liczników | P; waterfall tests | Bez kopiowania ekstrakcji i integratora do serwisu |
 | MODIFY `plugins/gfx/npr-playground/src/plugin.rs` | Update/RenderExtract: jawny czas, reset sesji i publikacja diagnostyk przez istniejący mechanizm | P; waterfall tests i diagnostics tests | Nie zmieniać zegara obrotu przez redraw_hz |
 | MODIFY `plugins/gfx/npr-playground/playground-client/src/App.svelte` | Sekcje polityki ruchu i powierzchni, metadane i readiness | Svelte check/test, typed intents i lifecycle | Bez logiki rendererowej w UI |
-| MODIFY `mods/npr-playground/scenes/gallery/scene.rhai` | Zdarzenie nowego wariantu i ewentualne akcje debug przez controls | P; testy sceny | Bez prywatnego dostępu do serwisu renderującego |
+| MODIFY `mods/npr-playground/scenes/drawing-studio/scene.rhai` | Zdarzenie nowego wariantu i ewentualne akcje debug przez controls | P; testy sceny | Bez prywatnego dostępu do serwisu renderującego |
 | MODIFY `mods/npr-playground/scenes/cube/scene.rhai` | Te same dostępne akcje wspólnego panelu | P; testy sceny | Zachować Polygonal dla autorskiego cube |
 | READ `crates/engine/render-api/src/npr.rs` | `NprDrawCommand`: ocena, czy gotowy packet nadal wystarcza | `rtk cargo check -p amigo-render-api` tylko jeśli kontrakt zmieniony | Bez dodawania historii domenowej do backendu |
 | READ `crates/runtime/bundles/src/render_extractor_bridges/world_3d.rs` | Bridge NPR: powinien nadal kopiować wynik | Check owner bundle dopiero jeśli plik wymaga modyfikacji | Bez domenowych heurystyk |

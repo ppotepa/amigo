@@ -161,8 +161,8 @@ impl RuntimePlugin for NprPlaygroundPlugin {
                                 )
                             {
                                 // The tool intentionally stays bound to the
-                                // selected object. A gallery hit on another
-                                // model is ignored instead of mixing meshes.
+                                // selected object. A hit on another source is
+                                // ignored instead of mixing meshes.
                                 if pick.object_id == selected {
                                     drop(settings);
                                     state
