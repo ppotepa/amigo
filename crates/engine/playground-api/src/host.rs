@@ -152,7 +152,12 @@ impl PlaygroundHostService {
         let snapshot = p.provider.snapshot();
         let mut events = Vec::new();
         if let Some(previous) = &p.previous {
-            if snapshot.revision != previous.revision {
+            // Provider telemetry/playheads may change without an authored mutation.
+            // Keep the same edit revision: a render tick must not reject queued input.
+            if snapshot.revision != previous.revision
+                || snapshot.values != previous.values
+                || snapshot.metadata != previous.metadata
+            {
                 events.push(PlaygroundEvent::Delta {
                     base_revision: previous.revision,
                     revision: snapshot.revision,

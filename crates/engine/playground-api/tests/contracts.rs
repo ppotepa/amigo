@@ -127,6 +127,33 @@ fn handshake_checks_every_boundary_and_consumes_token_once() {
 }
 
 #[test]
+fn transient_values_publish_without_invalidating_edit_revision() {
+    let host = PlaygroundHostService::default();
+    let provider = Arc::new(Provider::default());
+    host.register(provider.clone()).unwrap();
+    let id = PlaygroundId("test".into());
+    host.connect(&id).unwrap();
+    provider.0.lock().unwrap().1 = true;
+    let events = host.poll(&id).unwrap();
+    assert!(
+        matches!(&events[0],PlaygroundEvent::Delta {base_revision:0,revision:0,changed,..} if changed["paused"]==json!(true))
+    );
+    assert!(host.poll(&id).unwrap().is_empty());
+    assert!(matches!(
+        host.dispatch(
+            &id,
+            PlaygroundActionEnvelope {
+                request_id: 1,
+                base_revision: 0,
+                control: "pause".into(),
+                intent: json!(false)
+            }
+        ),
+        PlaygroundEvent::Accepted { revision: 1, .. }
+    ));
+}
+
+#[test]
 fn viewport_bounds_preserve_aspect_and_reject_invalid_sizes() {
     let mut request = PlaygroundViewportRequest {
         mode: PlaygroundViewportMode::Jpeg,

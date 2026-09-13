@@ -50,6 +50,8 @@ pub enum PlaygroundEvent {
     Snapshot {
         snapshot: PlaygroundSnapshot,
     },
+    /// Telemetry can change with `revision == base_revision`. Revisions order
+    /// authored actions; they are not frame numbers or playhead timestamps.
     Delta {
         base_revision: u64,
         revision: u64,
