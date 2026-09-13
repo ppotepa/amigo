@@ -27,6 +27,21 @@ pub enum NprGeometrySource {
     Construction,
 }
 
+impl NprGeometrySource {
+    pub fn key(self) -> &'static str {
+        match self {
+            Self::Paper => "paper",
+            Self::Wash => "wash",
+            Self::FlatFill => "flat-fill",
+            Self::ShadowHatch => "shadow-hatch",
+            Self::Silhouette => "silhouette",
+            Self::Creases => "creases",
+            Self::FormLines => "form-lines",
+            Self::Construction => "construction",
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum NprBlendMode {
@@ -57,14 +72,14 @@ pub struct NprPaintMedium {
     pub granulation: f32,
 }
 
-/// Per-layer selection of an already extracted shadow-hatch source. Spacing
-/// controls deterministic thinning, so two layers can share the exact source
-/// paths while producing different tonal density.
+/// Parameters of this entry's surface-hatching generator, before tessellation.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct NprHatchSettings {
     pub density: f32,
     pub spacing: f32,
+    pub angle: Option<f32>,
+    pub cross: Option<f32>,
 }
 
 impl Default for NprHatchSettings {
@@ -72,8 +87,19 @@ impl Default for NprHatchSettings {
         Self {
             density: 1.0,
             spacing: 1.0,
+            angle: None,
+            cross: None,
         }
     }
+}
+
+/// Geometric line selection, independent of the tool used to draw it.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Serialize, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct NprLineSettings {
+    pub crease_angle: Option<f32>,
+    pub min_length_pixels: Option<f32>,
+    pub simplification: Option<f32>,
 }
 
 impl Default for NprPaintMedium {
@@ -118,6 +144,8 @@ pub struct NprStyleLayer {
     #[serde(default)]
     pub hatch: Option<NprHatchSettings>,
     #[serde(default)]
+    pub line: Option<NprLineSettings>,
+    #[serde(default)]
     pub brush: Option<BrushInstance>,
     #[serde(default)]
     pub target: GeometryTarget,
@@ -145,7 +173,9 @@ pub enum NprLayerNoEffectReason {
     Disabled,
     NoSourceGeometry,
     MaskExcludesAll,
+    MissingCoverageInputs,
     ZeroOpacity,
+    TargetExcludesGeometry,
     HatchSelectionExcludesAll,
 }
 
@@ -310,45 +340,6 @@ fn one() -> f32 {
 pub struct NprStyleLayers {
     pub layers: Vec<NprStyleLayer>,
 }
-/// Public Drawing Studio names for the neutral layer contracts.
-pub type BrushLayer = NprStyleLayer;
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(default, deny_unknown_fields)]
-pub struct StylePreset {
-    pub id: String,
-    pub layers: NprStyleLayers,
-    pub palette: BTreeMap<String, Vec4>,
-    pub paper: NprBackgroundSettings,
-}
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
-#[serde(default)]
-pub struct NprBackgroundSettings {
-    pub color: Vec4,
-    pub grain: f32,
-    pub tooth: f32,
-    pub seed: u64,
-}
-impl Default for NprBackgroundSettings {
-    fn default() -> Self {
-        Self {
-            color: Vec4::ONE,
-            grain: 0.0,
-            tooth: 0.0,
-            seed: 0,
-        }
-    }
-}
-impl Default for StylePreset {
-    fn default() -> Self {
-        Self {
-            id: "drawing-studio".into(),
-            layers: NprStyleLayers::default(),
-            palette: BTreeMap::new(),
-            paper: NprBackgroundSettings::default(),
-        }
-    }
-}
 impl Default for NprStyleLayers {
     fn default() -> Self {
         let brush = |id: &str| {
@@ -373,6 +364,7 @@ impl Default for NprStyleLayers {
                     tool: None,
                     paint: None,
                     hatch: None,
+                    line: None,
                     brush: None,
                     target: GeometryTarget::All,
                     mask: CoverageMask::None,
@@ -388,6 +380,7 @@ impl Default for NprStyleLayers {
                     tool: None,
                     paint: Some(NprPaintMedium::default()),
                     hatch: None,
+                    line: None,
                     brush: brush("watercolour-wash"),
                     target: GeometryTarget::All,
                     mask: CoverageMask::None,
@@ -405,6 +398,7 @@ impl Default for NprStyleLayers {
                     tool: None,
                     paint: None,
                     hatch: None,
+                    line: None,
                     brush: brush("flat-fill"),
                     target: GeometryTarget::All,
                     mask: CoverageMask::None,
@@ -420,6 +414,7 @@ impl Default for NprStyleLayers {
                     tool: Some(StrokeTool::Pencil),
                     paint: None,
                     hatch: Some(NprHatchSettings::default()),
+                    line: None,
                     brush: brush("surface-hatch"),
                     target: GeometryTarget::All,
                     mask: CoverageMask::None,
@@ -435,6 +430,7 @@ impl Default for NprStyleLayers {
                     tool: Some(StrokeTool::Fineliner),
                     paint: None,
                     hatch: None,
+                    line: None,
                     brush: brush("ink-liner"),
                     target: GeometryTarget::All,
                     mask: CoverageMask::None,
@@ -450,6 +446,7 @@ impl Default for NprStyleLayers {
                     tool: None,
                     paint: None,
                     hatch: None,
+                    line: None,
                     brush: brush("ink-liner"),
                     target: GeometryTarget::All,
                     mask: CoverageMask::None,
@@ -465,6 +462,7 @@ impl Default for NprStyleLayers {
                     tool: None,
                     paint: None,
                     hatch: None,
+                    line: None,
                     brush: brush("graphite-study"),
                     target: GeometryTarget::All,
                     mask: CoverageMask::None,
@@ -480,12 +478,88 @@ impl Default for NprStyleLayers {
                     tool: Some(StrokeTool::Pencil),
                     paint: None,
                     hatch: None,
+                    line: None,
                     brush: brush("graphite-study"),
                     target: GeometryTarget::All,
                     mask: CoverageMask::None,
                 },
             ],
         }
+    }
+}
+
+impl NprStyleLayer {
+    /// Resolve generator and tool parameters before paths are tessellated.
+    /// Brush templates supply appearance only; source selection belongs here.
+    pub fn extraction_style(
+        &self,
+        mut style: ComicInk,
+        library: &BrushLibrary,
+    ) -> Result<ComicInk, String> {
+        style.tone_mode = if self.source == NprGeometrySource::ShadowHatch {
+            crate::NprToneMode::Hatching
+        } else {
+            crate::NprToneMode::ThreeBand
+        };
+        if self.source == NprGeometrySource::Creases {
+            style.smooth_draw_creases = true;
+        }
+        if let Some(line) = self.line {
+            if let Some(value) = line.crease_angle {
+                style.crease_angle = value;
+                style.smooth_draw_creases = true;
+            }
+            if let Some(value) = line.min_length_pixels {
+                style.min_crease_length_pixels = value;
+                style.min_smooth_contour_length_pixels = value;
+            }
+            if let Some(value) = line.simplification {
+                style.gesture_simplification = value;
+                style.smooth_contour_simplification_pixels = value * 2.5;
+            }
+        }
+        if self.source == NprGeometrySource::ShadowHatch {
+            let hatch = self.hatch.unwrap_or_default();
+            style.tone_density = hatch.density;
+            style.hatching_spacing *= hatch.spacing;
+            if let Some(angle) = hatch.angle {
+                style.hatching_angle = angle;
+            }
+            if let Some(cross) = hatch.cross {
+                style.hatching_cross = cross;
+            }
+        }
+        if let Some(instance) = &self.brush {
+            let definition = library.resolve(&instance.brush)?;
+            style.tool = definition.tool.unwrap_or_else(|| definition.medium.tool());
+            style.tool_pressure = instance
+                .pressure_profile
+                .unwrap_or(definition.pressure_profile);
+            style.gesture_correction = instance.correction.unwrap_or(definition.correction);
+            style.wobble = instance.irregularity.unwrap_or(definition.irregularity) * 2.0;
+            style.ink_dryness = instance.dryness.unwrap_or(definition.dryness);
+            style.taper = instance.taper.unwrap_or(definition.taper);
+            let width = instance.width.unwrap_or(definition.width);
+            style.outline_width = width;
+            style.crease_width = width;
+            style.boundary_width = width;
+            style.form_line_width_scale = 1.0;
+            match definition.medium {
+                crate::BrushMedium::Graphite | crate::BrushMedium::Hatching => {
+                    style.paper_grain = style.paper_grain.max(0.65);
+                    style.paper_tooth = style.paper_tooth.max(0.45);
+                    style.tool_hardness = 1.0 - instance.softness.unwrap_or(definition.softness);
+                }
+                crate::BrushMedium::Ink => {
+                    style.tool_hardness = 1.0 - instance.softness.unwrap_or(definition.softness);
+                }
+                crate::BrushMedium::FlatFill | crate::BrushMedium::WatercolourWash => {}
+            }
+        }
+        if let Some(tool) = self.tool {
+            style.tool = tool;
+        }
+        Ok(style)
     }
 }
 
@@ -535,12 +609,37 @@ impl NprStyleLayers {
                     || !hatch.density.is_finite()
                     || !(0.0..=1.0).contains(&hatch.density)
                     || !hatch.spacing.is_finite()
-                    || !(0.25..=4.0).contains(&hatch.spacing))
+                    || !(0.25..=4.0).contains(&hatch.spacing)
+                    || hatch
+                        .angle
+                        .is_some_and(|v| !v.is_finite() || !(-180.0..=180.0).contains(&v))
+                    || hatch
+                        .cross
+                        .is_some_and(|v| !v.is_finite() || !(0.0..=1.0).contains(&v)))
             {
                 return Err(format!(
                     "invalid hatch settings for NPR layer `{}`",
                     layer.id
                 ));
+            }
+            if let Some(line) = layer.line {
+                if matches!(
+                    layer.source,
+                    NprGeometrySource::Paper
+                        | NprGeometrySource::Wash
+                        | NprGeometrySource::FlatFill
+                ) {
+                    return Err(format!("line settings require a line source: {}", layer.id));
+                }
+                for (value, min, max) in [
+                    (line.crease_angle, 0.0, std::f32::consts::PI),
+                    (line.min_length_pixels, 0.0, 100.0),
+                    (line.simplification, 0.0, 1.0),
+                ] {
+                    if value.is_some_and(|v| !v.is_finite() || !(min..=max).contains(&v)) {
+                        return Err(format!("invalid line settings for `{}`", layer.id));
+                    }
+                }
             }
             if layer.paint.is_some()
                 && !matches!(
@@ -573,6 +672,20 @@ impl NprStyleLayers {
                 ));
             }
             if let Some(brush) = &layer.brush {
+                for (value, min, max) in [
+                    (brush.width, 0.001, 100.0),
+                    (brush.spacing, 0.01, 4.0),
+                    (brush.pressure_profile, 0.0, 1.0),
+                    (brush.correction, 0.0, 1.0),
+                    (brush.taper, 0.0, 1.0),
+                    (brush.softness, 0.0, 1.0),
+                    (brush.irregularity, 0.0, 1.0),
+                    (brush.dryness, 0.0, 1.0),
+                ] {
+                    if value.is_some_and(|v| !v.is_finite() || !(min..=max).contains(&v)) {
+                        return Err(format!("invalid local appearance for `{}`", layer.id));
+                    }
+                }
                 if brush.brush.id.is_empty() || brush.brush.version == 0 {
                     return Err(format!(
                         "invalid brush reference for NPR layer `{}`",
@@ -581,13 +694,20 @@ impl NprStyleLayers {
                 }
             }
             layer.mask.validate()?;
-            if let GeometryTarget::Objects(objects) = &layer.target {
-                if objects.iter().any(|id| id.is_empty()) {
-                    return Err(format!(
-                        "invalid geometry target for NPR layer `{}`",
-                        layer.id
-                    ));
+            let has_empty_target_id = match &layer.target {
+                GeometryTarget::Objects { objects } => {
+                    objects.iter().any(|id| id.trim().is_empty())
                 }
+                GeometryTarget::SurfaceFeatures { features } => {
+                    features.iter().any(|id| id.trim().is_empty())
+                }
+                GeometryTarget::All => false,
+            };
+            if has_empty_target_id {
+                return Err(format!(
+                    "invalid geometry target for NPR layer `{}`",
+                    layer.id
+                ));
             }
         }
         Ok(())
@@ -633,7 +753,6 @@ impl NprStyleLayers {
         &self,
         source: &NprRenderPacket,
         output: &NprRenderPacket,
-        material_base_color: Option<[f32; 4]>,
         extraction_micros: u64,
         tessellation_micros: u64,
     ) -> BTreeMap<String, NprLayerDiagnostics> {
@@ -670,7 +789,7 @@ impl NprStyleLayers {
                     NprGeometrySource::Paper => 2,
                     _ => 0,
                 };
-                let mask_coverage = layer_mask_coverage(layer, output, material_base_color);
+                let mask_coverage = layer_mask_coverage(layer, output);
                 let source_geometry = source_marks + surface_triangles;
                 let no_effect_reason = if !layer.enabled {
                     Some(NprLayerNoEffectReason::Disabled)
@@ -678,7 +797,13 @@ impl NprStyleLayers {
                     Some(NprLayerNoEffectReason::ZeroOpacity)
                 } else if source_geometry == 0 {
                     Some(NprLayerNoEffectReason::NoSourceGeometry)
-                } else if mask_coverage <= 0.0 {
+                } else if layer.validate_mask_inputs(output).is_err() {
+                    Some(NprLayerNoEffectReason::MissingCoverageInputs)
+                } else if layer.mask.requires_surface()
+                    && !layer
+                        .coverage_triangles(output)
+                        .any(|(samples, _)| layer.mask.triangle_may_cover(samples))
+                {
                     Some(NprLayerNoEffectReason::MaskExcludesAll)
                 } else if layer.hatch.is_some_and(|hatch| hatch.density <= 0.0) {
                     Some(NprLayerNoEffectReason::HatchSelectionExcludesAll)
@@ -737,7 +862,7 @@ impl NprStyleLayers {
         for stroke in source_strokes {
             for layer in self.stroke_layers(&stroke) {
                 if let Some(hatch) = layer.hatch {
-                    let density = (hatch.density / hatch.spacing).clamp(0.0, 1.0);
+                    let density = hatch.density.clamp(0.0, 1.0);
                     let layer_hash = layer.id.bytes().fold(0u64, |hash, byte| {
                         hash.wrapping_mul(1099511628211) ^ u64::from(byte)
                     });
@@ -816,6 +941,26 @@ impl NprStyleLayers {
                             vertex.dryness = dryness;
                         }
                     }
+                    // Contact spacing modulates deposit along the drawn strip,
+                    // never the geometric spacing of a hatching generator.
+                    if let Some(spacing) = brush.spacing.or_else(|| definition.map(|d| d.spacing)) {
+                        let mut distance = 0.0;
+                        let mut previous = None;
+                        for pair in stroke.vertices.chunks_mut(2) {
+                            let center = pair.iter().map(|v| v.position).sum::<glam::Vec2>()
+                                / pair.len() as f32;
+                            if let Some(point) = previous {
+                                distance += center.distance(point);
+                            }
+                            previous = Some(center);
+                            let wavelength = (spacing * pair[0].width).max(0.01);
+                            let deposit =
+                                0.5 + 0.5 * (distance / wavelength * std::f32::consts::TAU).cos();
+                            for vertex in pair {
+                                vertex.coverage *= 1.0 - vertex.dryness * 0.25 * deposit;
+                            }
+                        }
+                    }
                 }
                 contributions.push(stroke);
             }
@@ -853,81 +998,95 @@ impl NprStyleLayers {
     }
 }
 
-/// Mirrors the renderer's procedural-mask inputs over the actual, expanded
-/// contribution.  Diagnostics must describe the layer the user sees, not an
-/// arbitrary representative point unrelated to its geometry.
-fn layer_mask_coverage(
-    layer: &NprStyleLayer,
-    packet: &NprRenderPacket,
-    material_base_color: Option<[f32; 4]>,
-) -> f32 {
-    if matches!(&layer.mask, CoverageMask::None) {
-        return 1.0;
-    }
-    let color = |fallback: [f32; 4]| match layer.color_source {
-        NprLayerColorSource::Constant(color) => color.to_array(),
-        NprLayerColorSource::StylePalette => fallback,
-        NprLayerColorSource::ModelBaseColor => material_base_color.unwrap_or(fallback),
-    };
-    let coverage = |color: [f32; 4], depth: f32, position: glam::Vec2| {
-        let tone = (color[0] * 0.2126 + color[1] * 0.7152 + color[2] * 0.0722).clamp(0.0, 1.0);
-        let noise = (position.x.mul_add(12.9898, position.y * 78.233) + depth * 37.719).sin()
-            * 0.5
-            + 0.5;
-        layer
-            .mask
-            .evaluate(tone, depth.clamp(0.0, 1.0), [0.0, 0.0, 1.0], noise)
-    };
-    let mut samples = Vec::new();
-    match layer.source {
-        NprGeometrySource::Wash => packet
-            .underpainting
-            .iter()
-            .filter(|triangle| triangle.layer_id.as_deref() == Some(layer.id.as_str()))
-            .for_each(|triangle| {
-                let color = color(triangle.color.to_array());
-                samples.extend(
-                    triangle
-                        .positions
-                        .iter()
-                        .zip(triangle.depths)
-                        .map(|(position, depth)| coverage(color, depth, *position)),
-                );
-            }),
-        NprGeometrySource::FlatFill => packet
-            .fills
-            .iter()
-            .filter(|triangle| triangle.layer_id.as_deref() == Some(layer.id.as_str()))
-            .for_each(|triangle| {
-                let color = color(triangle.color.to_array());
-                samples.extend(
-                    triangle
-                        .positions
-                        .iter()
-                        .zip(triangle.depths)
-                        .map(|(position, depth)| coverage(color, depth, *position)),
-                );
-            }),
-        NprGeometrySource::Paper => return 1.0,
-        _ => packet
+impl NprStyleLayer {
+    fn coverage_triangles<'a>(
+        &'a self,
+        packet: &'a NprRenderPacket,
+    ) -> impl Iterator<Item = ([Option<crate::NprCoverageSample>; 3], [f32; 3])> + 'a {
+        packet
             .strokes
             .iter()
-            .filter(|stroke| stroke.layer_id.as_deref() == Some(layer.id.as_str()))
-            .for_each(|stroke| {
-                let color = color(packet.stroke_color(stroke));
-                samples.extend(
-                    stroke
-                        .vertices
-                        .iter()
-                        .map(|vertex| coverage(color, vertex.depth, vertex.position)),
-                );
-            }),
+            .filter(|s| s.layer_id.as_deref() == Some(self.id.as_str()))
+            .flat_map(|s| {
+                s.indices.chunks_exact(3).map(|indices| {
+                    (
+                        std::array::from_fn(|i| {
+                            s.vertices.get(indices[i] as usize).and_then(|v| v.surface)
+                        }),
+                        std::array::from_fn(|i| {
+                            s.vertices.get(indices[i] as usize).map_or(0.0, |v| v.depth)
+                        }),
+                    )
+                })
+            })
+            .chain(
+                packet
+                    .fills
+                    .iter()
+                    .filter(|t| t.layer_id.as_deref() == Some(self.id.as_str()))
+                    .map(|t| (t.surface, t.depths)),
+            )
+            .chain(
+                packet
+                    .underpainting
+                    .iter()
+                    .filter(|t| t.layer_id.as_deref() == Some(self.id.as_str()))
+                    .map(|t| (t.surface, t.depths)),
+            )
     }
-    if samples.is_empty() {
-        0.0
-    } else {
-        samples.iter().sum::<f32>() / samples.len() as f32
+    fn coverage_samples<'a>(
+        &'a self,
+        packet: &'a NprRenderPacket,
+    ) -> impl Iterator<Item = Option<crate::NprCoverageSample>> + 'a {
+        packet
+            .strokes
+            .iter()
+            .filter(|s| s.layer_id.as_deref() == Some(self.id.as_str()))
+            .flat_map(|s| s.vertices.iter().map(|v| v.surface))
+            .chain(
+                packet
+                    .fills
+                    .iter()
+                    .filter(|t| t.layer_id.as_deref() == Some(self.id.as_str()))
+                    .flat_map(|t| t.surface),
+            )
+            .chain(
+                packet
+                    .underpainting
+                    .iter()
+                    .filter(|t| t.layer_id.as_deref() == Some(self.id.as_str()))
+                    .flat_map(|t| t.surface),
+            )
     }
+    pub fn validate_mask_inputs(&self, packet: &NprRenderPacket) -> Result<(), String> {
+        if self.enabled
+            && self.mask.requires_surface()
+            && self.coverage_samples(packet).any(|sample| sample.is_none())
+        {
+            return Err(format!(
+                "NPR layer '{}' requires surface coverage inputs",
+                self.id
+            ));
+        }
+        Ok(())
+    }
+}
+
+/// The same surface samples and evaluator drive rendering and diagnostics.
+fn layer_mask_coverage(layer: &NprStyleLayer, packet: &NprRenderPacket) -> f32 {
+    if !layer.mask.requires_surface() || layer.source == NprGeometrySource::Paper {
+        return 1.0;
+    }
+    let (sum, count) =
+        layer
+            .coverage_triangles(packet)
+            .fold((0.0, 0usize), |(sum, count), (samples, depths)| {
+                (
+                    sum + layer.mask.triangle_estimate(samples, depths),
+                    count + 1,
+                )
+            });
+    if count == 0 { 0.0 } else { sum / count as f32 }
 }
 
 fn stroke_source(stroke: &TessellatedStroke) -> NprGeometrySource {
@@ -1093,10 +1252,12 @@ mod tests {
     fn validation_rejects_a_stroke_tool_on_a_surface_layer() {
         let mut layers = NprStyleLayers::default();
         layers.layer_mut("fill").unwrap().tool = Some(StrokeTool::Pencil);
-        assert!(layers
-            .validate()
-            .unwrap_err()
-            .contains("stroke tool is invalid for surface"));
+        assert!(
+            layers
+                .validate()
+                .unwrap_err()
+                .contains("stroke tool is invalid for surface")
+        );
     }
 
     #[test]
@@ -1202,6 +1363,7 @@ mod tests {
         let source_packet = NprRenderPacket {
             occluders: vec![],
             underpainting: vec![crate::NprPaintTriangle {
+                surface: [None; 3],
                 positions: [glam::Vec2::ZERO, glam::Vec2::X, glam::Vec2::Y],
                 color: Vec4::ONE,
                 depths: [0.1, 0.2, 0.3],
@@ -1209,6 +1371,7 @@ mod tests {
                 layer_id: None,
             }],
             fills: vec![crate::NprFillTriangle {
+                surface: [None; 3],
                 positions: [glam::Vec2::ZERO, glam::Vec2::X, glam::Vec2::Y],
                 color: Vec4::ONE,
                 depths: [0.1, 0.2, 0.3],
@@ -1262,7 +1425,7 @@ mod tests {
                 .iter()
                 .any(|triangle| triangle.layer_id.as_deref() == Some("wash-soft"))
         );
-        let diagnostics = layers.diagnostics(&source_packet, &output, None, 0, 0);
+        let diagnostics = layers.diagnostics(&source_packet, &output, 0, 0);
         assert_eq!(diagnostics["fill"].generated_triangles, 1);
         assert_eq!(diagnostics["fill-soft"].generated_triangles, 1);
         assert_eq!(diagnostics["underpainting"].generated_triangles, 1);
@@ -1292,7 +1455,7 @@ mod tests {
         };
         let mut output = source_packet.clone();
         layers.apply_tools(&mut output, ComicInk::default());
-        let report = layers.diagnostics(&source_packet, &output, None, 12, 7);
+        let report = layers.diagnostics(&source_packet, &output, 12, 7);
         let hatch = &report["hatching"];
         assert_eq!(hatch.source_geometry, 1);
         assert_eq!(hatch.generated_marks, 1);
@@ -1306,12 +1469,31 @@ mod tests {
             max: 1.0,
             invert: false,
         };
-        let report = layers.diagnostics(&source_packet, &output, None, 0, 0);
-        // The prior implementation sampled an arbitrary middle-grey value and
-        // incorrectly rejected this white contribution. Diagnostics now sample
-        // the same generated vertices sent to the renderer.
+        for vertex in &mut output.strokes[0].vertices {
+            vertex.surface = Some(crate::NprCoverageSample {
+                position: glam::Vec3::ZERO,
+                normal: glam::Vec3::Z,
+                height: 0.5,
+                tone: 0.9,
+            });
+        }
+        output.ink = Vec4::new(0.0, 0.0, 0.0, 1.0);
+        let report = layers.diagnostics(&source_packet, &output, 0, 0);
+        // Illumination belongs to the surface, not the black ink's luminance.
         assert_eq!(report["hatching"].mask_coverage, 1.0);
         assert_eq!(report["hatching"].no_effect_reason, None);
+        output.strokes[0].vertices[0].surface = None;
+        assert!(
+            layers
+                .layer("hatching")
+                .unwrap()
+                .validate_mask_inputs(&output)
+                .is_err()
+        );
+        assert_eq!(
+            layers.diagnostics(&source_packet, &output, 0, 0)["hatching"].no_effect_reason,
+            Some(NprLayerNoEffectReason::MissingCoverageInputs)
+        );
     }
 
     #[test]
@@ -1358,6 +1540,7 @@ mod tests {
         layers.layer_mut("hatching").unwrap().hatch = Some(NprHatchSettings {
             density: 0.0,
             spacing: 1.0,
+            ..Default::default()
         });
         let source = TessellatedStroke {
             id: 7,
@@ -1378,7 +1561,7 @@ mod tests {
         layers.apply_tools(&mut output, ComicInk::default());
         assert!(output.strokes.is_empty());
         assert_eq!(
-            layers.diagnostics(&source_packet, &output, None, 0, 0)["hatching"].no_effect_reason,
+            layers.diagnostics(&source_packet, &output, 0, 0)["hatching"].no_effect_reason,
             Some(NprLayerNoEffectReason::HatchSelectionExcludesAll)
         );
     }

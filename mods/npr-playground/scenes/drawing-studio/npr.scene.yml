@@ -1,7 +1,16 @@
 version: 1
-active_look: null
+active_look: drawing-studio-demo
 look: {}
-objects: {}
+objects:
+  cube:
+    model: cube
+    material_base_color: [0.82, 0.3, 0.2, 1.0]
+    visible: true
+    rotating: false
+    position: [0.0, 0.0, 0.0]
+    rotation: [20.626482, 40.680004, 0.0]
+    scale: 1.0
+    angular_speed: [21.2, 40.7, 0.0]
 camera:
   distance: 14.0
 object_overrides: {}

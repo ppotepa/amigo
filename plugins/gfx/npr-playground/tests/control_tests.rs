@@ -181,6 +181,7 @@ fn construction_authoring_renders_a_transient_preview_without_serializing_it() {
 #[test]
 fn pause_step_and_extract_do_not_advance_state() {
     let state = NprPlaygroundState::default();
+    state.settings.lock().unwrap().objects.get_mut("cube").unwrap().rotating = true;
     state.settings.lock().unwrap().paused = true;
     let before = state.snapshot().objects["cube"].rotation;
     state.tick(0.5);
@@ -285,7 +286,7 @@ fn authored_sidecar_preserves_camera_surface_and_object_intent() {
 }
 
 #[test]
-fn drawing_studio_scene_starts_empty_and_hydrates_no_model_instances() {
+fn drawing_studio_scene_starts_with_one_static_model() {
     let root =
         std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../../mods/npr-playground");
     let scene: serde_yaml::Value = serde_yaml::from_str(
@@ -310,8 +311,9 @@ fn drawing_studio_scene_starts_empty_and_hydrates_no_model_instances() {
     service
         .open_scene(&root, std::path::Path::new("scenes/drawing-studio/npr.scene.yml"))
         .unwrap();
-    assert!(state.snapshot().objects.is_empty());
-    assert!(state.snapshot().selected.is_empty());
+    assert_eq!(state.snapshot().objects.len(), 1);
+    assert_eq!(state.snapshot().selected, "cube");
+    assert!(!state.snapshot().objects["cube"].rotating);
 }
 
 #[test]
@@ -503,10 +505,16 @@ fn drawing_studio_renders_one_selected_model_and_exposes_authoring_views() {
         controls,
         vec![
             "source.select",
+            "layer.add",
             "layer.edit",
+            "layer.enabled",
+            "layer.duplicate",
+            "layer.delete",
+            "layer.move",
             "layer.solo",
             "layer.build-up",
             "brush.assign",
+            "brush.save",
             "look.apply",
             "drawing.reset-view"
         ]
@@ -515,7 +523,8 @@ fn drawing_studio_renders_one_selected_model_and_exposes_authoring_views() {
     render.load_models(&root).unwrap();
     render.rebuild(&state.snapshot(), [1024, 768]).unwrap();
     assert_eq!(render.commands().len(), 1);
-    assert!(!render.commands()[0].packet.fills.is_empty());
+    // Hidden-line depth is independent of whether a visible fill was authored.
+    assert!(!render.commands()[0].packet.occluders.is_empty());
     assert!(!render.commands()[0].packet.strokes.is_empty());
 }
 

@@ -1,0 +1,649 @@
+version: 1
+source_model: sphere
+settings:
+  global:
+    tool: fineliner
+    tone_mode: three-band
+    surface_mode: polygonal
+    light_direction:
+    - -0.4
+    - 0.7
+    - 1.0
+    ink:
+    - 0.035
+    - 0.025
+    - 0.02
+    - 1.0
+    crease_angle: 0.35
+    smooth_crease_angle: 1.2
+    smooth_draw_creases: false
+    paper:
+    - 0.92
+    - 0.88
+    - 0.78
+    - 1.0
+    shadow:
+    - 0.18
+    - 0.2
+    - 0.28
+    - 1.0
+    mid:
+    - 0.46
+    - 0.54
+    - 0.68
+    - 1.0
+    light:
+    - 0.82
+    - 0.84
+    - 0.78
+    - 1.0
+    outline_width: 4.0
+    crease_width: 2.0
+    boundary_width: 3.0
+    min_crease_length_pixels: 4.0
+    min_smooth_contour_length_pixels: 8.0
+    smooth_contour_simplification_pixels: 0.75
+    taper: 0.18
+    wobble: 0.0
+    gesture_confidence: 1.0
+    gesture_simplification: 0.0
+    gesture_correction: 0.0
+    gesture_overstroke: 0.0
+    tool_pressure: 1.0
+    tool_hardness: 0.85
+    paper_tooth: 0.0
+    paper_grain: 0.0
+    nib_angle: 0.0
+    nib_aspect: 0.0
+    ink_dryness: 0.0
+    tone_density: 0.0
+    min_form_line_confidence: 0.22
+    suggestive_contours: false
+    suggestive_contour_confidence: 0.4
+    suggestive_contour_width_scale: 0.55
+    suggestive_contour_opacity: 0.55
+    form_line_width_scale: 1.0
+    form_line_opacity: 1.0
+    hatching_angle: -25.0
+    hatching_spacing: 9.0
+    hatching_cross: 0.0
+  style_layers:
+    layers:
+    - id: paper
+      label: Paper
+      source: paper
+      enabled: true
+      opacity: 1.0
+      blend: normal
+      color_source:
+        kind: style-palette
+      tool: null
+      paint: null
+      hatch: null
+      brush: null
+      target:
+        kind: all
+      mask:
+        kind: none
+    - id: underpainting
+      label: Underpainting
+      source: wash
+      enabled: true
+      opacity: 1.0
+      blend: normal
+      color_source:
+        kind: style-palette
+      tool: null
+      paint:
+        wash: 1.0
+        granulation: 0.0
+      hatch: null
+      brush:
+        brush:
+          id: watercolour-wash
+          version: 1
+        width: null
+        taper: null
+        softness: null
+        irregularity: null
+        dryness: null
+        seed: null
+      target:
+        kind: all
+      mask:
+        kind: none
+    - id: wash
+      label: Watercolour wash
+      source: wash
+      enabled: true
+      opacity: 0.45
+      blend: normal
+      color_source:
+        kind: style-palette
+      tool: null
+      paint:
+        wash: 0.82
+        granulation: 0.18
+      hatch: null
+      brush:
+        brush:
+          id: watercolour-wash
+          version: 1
+        width: null
+        taper: null
+        softness: null
+        irregularity: null
+        dryness: null
+        seed: null
+      target:
+        kind: all
+      mask:
+        kind: none
+    - id: fill
+      label: Flat fill
+      source: flat-fill
+      enabled: false
+      opacity: 1.0
+      blend: normal
+      color_source:
+        kind: style-palette
+      tool: null
+      paint: null
+      hatch: null
+      brush:
+        brush:
+          id: flat-fill
+          version: 1
+        width: null
+        taper: null
+        softness: null
+        irregularity: null
+        dryness: null
+        seed: null
+      target:
+        kind: all
+      mask:
+        kind: none
+    - id: flat-fill
+      label: Flat fill
+      source: flat-fill
+      enabled: true
+      opacity: 0.72
+      blend: normal
+      color_source:
+        kind: style-palette
+      tool: null
+      paint: null
+      hatch: null
+      brush:
+        brush:
+          id: flat-fill
+          version: 1
+        width: null
+        taper: null
+        softness: null
+        irregularity: null
+        dryness: null
+        seed: null
+      target:
+        kind: all
+      mask:
+        kind: none
+    - id: hatch
+      label: Shadow hatch
+      source: shadow-hatch
+      enabled: true
+      opacity: 1.0
+      blend: multiply
+      color_source:
+        kind: style-palette
+      tool: null
+      paint: null
+      hatch: null
+      brush:
+        brush:
+          id: surface-hatch
+          version: 1
+        width: null
+        taper: null
+        softness: null
+        irregularity: null
+        dryness: null
+        seed: null
+      target:
+        kind: all
+      mask:
+        kind: none
+    - id: hatching
+      label: Hatching
+      source: shadow-hatch
+      enabled: true
+      opacity: 1.0
+      blend: multiply
+      color_source:
+        kind: style-palette
+      tool: pencil
+      paint: null
+      hatch:
+        density: 1.0
+        spacing: 1.0
+      brush:
+        brush:
+          id: surface-hatch
+          version: 1
+        width: null
+        taper: null
+        softness: null
+        irregularity: null
+        dryness: null
+        seed: null
+      target:
+        kind: all
+      mask:
+        kind: none
+    - id: form-lines
+      label: Form lines
+      source: form-lines
+      enabled: true
+      opacity: 1.0
+      blend: normal
+      color_source:
+        kind: style-palette
+      tool: fineliner
+      paint: null
+      hatch: null
+      brush:
+        brush:
+          id: ink-liner
+          version: 1
+        width: null
+        taper: null
+        softness: null
+        irregularity: null
+        dryness: null
+        seed: null
+      target:
+        kind: all
+      mask:
+        kind: none
+    - id: graphite
+      label: Graphite form lines
+      source: form-lines
+      enabled: true
+      opacity: 0.72
+      blend: normal
+      color_source:
+        kind: style-palette
+      tool: pencil
+      paint: null
+      hatch: null
+      brush:
+        brush:
+          id: graphite-study
+          version: 1
+        width: null
+        taper: null
+        softness: null
+        irregularity: null
+        dryness: null
+        seed: null
+      target:
+        kind: all
+      mask:
+        kind: none
+    - id: contours
+      label: Contours
+      source: silhouette
+      enabled: true
+      opacity: 1.0
+      blend: normal
+      color_source:
+        kind: style-palette
+      tool: null
+      paint: null
+      hatch: null
+      brush:
+        brush:
+          id: ink-liner
+          version: 1
+        width: null
+        taper: null
+        softness: null
+        irregularity: null
+        dryness: null
+        seed: null
+      target:
+        kind: all
+      mask:
+        kind: none
+    - id: ink
+      label: Ink contours
+      source: silhouette
+      enabled: true
+      opacity: 1.0
+      blend: normal
+      color_source:
+        kind: style-palette
+      tool: fineliner
+      paint: null
+      hatch: null
+      brush:
+        brush:
+          id: ink-liner
+          version: 1
+        width: null
+        taper: null
+        softness: null
+        irregularity: null
+        dryness: null
+        seed: null
+      target:
+        kind: all
+      mask:
+        kind: none
+    - id: creases
+      label: Creases
+      source: creases
+      enabled: true
+      opacity: 1.0
+      blend: normal
+      color_source:
+        kind: style-palette
+      tool: null
+      paint: null
+      hatch: null
+      brush:
+        brush:
+          id: graphite-study
+          version: 1
+        width: null
+        taper: null
+        softness: null
+        irregularity: null
+        dryness: null
+        seed: null
+      target:
+        kind: all
+      mask:
+        kind: none
+    - id: construction
+      label: Construction
+      source: construction
+      enabled: true
+      opacity: 1.0
+      blend: normal
+      color_source:
+        kind: style-palette
+      tool: pencil
+      paint: null
+      hatch: null
+      brush:
+        brush:
+          id: graphite-study
+          version: 1
+        width: null
+        taper: null
+        softness: null
+        irregularity: null
+        dryness: null
+        seed: null
+      target:
+        kind: all
+      mask:
+        kind: none
+    - id: flat-fill-2
+      label: Flat fill 2
+      source: flat-fill
+      enabled: true
+      opacity: 1.0
+      blend: normal
+      color_source:
+        kind: style-palette
+      tool: null
+      paint: null
+      hatch: null
+      brush:
+        brush:
+          id: flat-fill
+          version: 1
+        width: null
+        taper: null
+        softness: null
+        irregularity: null
+        dryness: null
+        seed: null
+      target:
+        kind: all
+      mask:
+        kind: none
+    - id: flat-fill-3
+      label: Flat fill 3
+      source: flat-fill
+      enabled: true
+      opacity: 1.0
+      blend: normal
+      color_source:
+        kind: style-palette
+      tool: null
+      paint: null
+      hatch: null
+      brush:
+        brush:
+          id: flat-fill
+          version: 1
+        width: null
+        taper: null
+        softness: null
+        irregularity: null
+        dryness: null
+        seed: null
+      target:
+        kind: all
+      mask:
+        kind: none
+    - id: flat-fill-4
+      label: Flat fill 4
+      source: flat-fill
+      enabled: true
+      opacity: 1.0
+      blend: normal
+      color_source:
+        kind: style-palette
+      tool: null
+      paint: null
+      hatch: null
+      brush:
+        brush:
+          id: flat-fill
+          version: 1
+        width: null
+        taper: null
+        softness: null
+        irregularity: null
+        dryness: null
+        seed: null
+      target:
+        kind: all
+      mask:
+        kind: none
+  brushes:
+    brushes:
+      flat-fill:
+      - id: flat-fill
+        name: Flat fill
+        version: 1
+        medium: flat-fill
+        applications:
+        - surface
+        width: 1.0
+        taper: 0.2
+        softness: 0.1
+        spacing: 0.25
+        pressure_profile: 0.5
+        irregularity: 0.1
+        correction: 0.2
+        dryness: 0.0
+        seed: 5132370
+      graphite-study:
+      - id: graphite-study
+        name: Graphite study
+        version: 1
+        medium: graphite
+        applications:
+        - stroke
+        width: 1.8
+        taper: 0.2
+        softness: 0.1
+        spacing: 0.25
+        pressure_profile: 0.5
+        irregularity: 0.1
+        correction: 0.2
+        dryness: 0.8
+        seed: 5132370
+      ink-liner:
+      - id: ink-liner
+        name: Ink liner
+        version: 1
+        medium: ink
+        applications:
+        - stroke
+        width: 1.2
+        taper: 0.2
+        softness: 0.1
+        spacing: 0.25
+        pressure_profile: 0.5
+        irregularity: 0.1
+        correction: 0.2
+        dryness: 0.25
+        seed: 5132370
+      surface-hatch:
+      - id: surface-hatch
+        name: Surface hatching
+        version: 1
+        medium: hatching
+        applications:
+        - stroke
+        - surface
+        width: 1.0
+        taper: 0.2
+        softness: 0.1
+        spacing: 0.25
+        pressure_profile: 0.5
+        irregularity: 0.1
+        correction: 0.2
+        dryness: 0.6
+        seed: 5132370
+      watercolour-wash:
+      - id: watercolour-wash
+        name: Watercolour wash
+        version: 1
+        medium: watercolour-wash
+        applications:
+        - surface
+        width: 1.0
+        taper: 0.2
+        softness: 0.1
+        spacing: 0.25
+        pressure_profile: 0.5
+        irregularity: 0.1
+        correction: 0.2
+        dryness: 0.9
+        seed: 5132370
+  objects:
+    sphere:
+      model: sphere
+      material_base_color:
+      - 1.0
+      - 1.0
+      - 1.0
+      - 1.0
+      surface_intent: hard-surface
+      surface_mode: polygonal
+      surface_subdivision_level: 0
+      smooth_weld_relative_tolerance: 0.00001
+      visible: true
+      rotating: true
+      position:
+      - 0.0
+      - 0.0
+      - 0.0
+      rotation:
+      - 20.626482
+      - 40.680004
+      - 0.0
+      scale: 1.0
+      angular_speed:
+      - 21.2
+      - 40.7
+      - 0.0
+      gesture_variant: 0
+      style_overrides:
+        tool: null
+        tone_mode: null
+        surface_mode: null
+        light_direction: null
+        ink: null
+        crease_angle: null
+        smooth_crease_angle: null
+        smooth_draw_creases: null
+        paper: null
+        shadow: null
+        mid: null
+        light: null
+        outline_width: null
+        crease_width: null
+        boundary_width: null
+        min_crease_length_pixels: null
+        min_smooth_contour_length_pixels: null
+        smooth_contour_simplification_pixels: null
+        taper: null
+        wobble: null
+        gesture_confidence: null
+        gesture_simplification: null
+        gesture_correction: null
+        gesture_overstroke: null
+        tool_pressure: null
+        tool_hardness: null
+        paper_tooth: null
+        paper_grain: null
+        nib_angle: null
+        nib_aspect: null
+        ink_dryness: null
+        tone_density: null
+        min_form_line_confidence: null
+        suggestive_contours: null
+        suggestive_contour_confidence: null
+        suggestive_contour_width_scale: null
+        suggestive_contour_opacity: null
+        form_line_width_scale: null
+        form_line_opacity: null
+        hatching_angle: null
+        hatching_spacing: null
+        hatching_cross: null
+      style_layer_overrides:
+        layers: {}
+        order: null
+      construction_marks: []
+  selected: sphere
+  paused: false
+  sketch_paused: false
+  speed: 1.0
+  step: false
+  motion:
+    mode: redraw-continuously
+    redraw_hz: 8.0
+    redraw_strength: 1.0
+    appearance_fade_seconds: 0.12
+  seed: 5132370
+  debug: Final
+  camera_target:
+  - 0.0
+  - 0.0
+  - 0.0
+  camera_yaw: 0.0
+  camera_pitch: 0.0
+  camera_distance: 5.0
+  camera_fov: 45.0
+  preset_name: my-preset
+  style_scope: scene
+  preset_kind: scene

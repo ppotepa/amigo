@@ -30,18 +30,32 @@ remain source errors; save conflicts leave edits dirty. Domain events include
 `selection_changed`, `model_loaded`, `look_changed`, `save_completed` and
 `save_failed`. Packet counts and transfer status have separate UI fields.
 
-Brush Editor messages carry a monotonic session ID and request ID. Apply and
-Cancel are accepted only for the active session; stale drafts are rejected by
-the host and never reach the document mutation queue.
+Entry edits stay inline in the main window. Preview actions update transient
+render state and may advance the transport revision, but never dirty the authored
+document or create undo entries. Apply creates one history operation; Cancel
+and transport disconnection discard the preview. Saving a reusable appearance
+and updating matching references is atomic, including lock validation.
 
-For reproducible browser-side measurements the client dispatches
-`playground-input-sent` and `playground-frame-presented` DOM events. They contain
-only request IDs and neutral frame metadata, never native handles or credentials.
-Input samples include the oldest queued movement timestamp, so measurements also
-cover time waiting for a preceding mutation. `AMIGO_NPR_BENCHMARK=1` enables a
+`layer_previews` contains cached backend reference samples of each entry's
+appearance; `layer_preview_errors` exposes failures. These SVG samples are not
+pixel-identical GPU captures. Native GPU/JPEG/Local RGBA live viewport preview
+is authoritative for paper, analytic edges, granulation and model coverage.
+
+Mask inputs are explicit object-local surface samples (position, normal,
+normalized Y and illumination), never ink luminance or camera depth. WGPU
+evaluates up to 128 recursively multiplied terms per fragment with perspective
+interpolation. Missing inputs produce `missing-coverage-inputs` diagnostics and
+are rejected by the backend. `mask_coverage` is an approximate CPU quadrature
+over triangle interiors, not a GPU pixel counter; conservative exclusion avoids
+misreporting a narrow unsampled band as having no effect. SVG look previews
+subdivide masked triangles at thumbnail resolution. Seeded local noise uses the
+same hash and interpolation on CPU/GPU.
+
+Queued actions retain their enqueue timestamp for transport diagnostics.
+`AMIGO_NPR_BENCHMARK=1` enables a
 one-second host frame cadence log for comparison with/without the companion.
-That comparison applies to the former two-window setup; Gallery now runs without
-the host renderer, so its presentation timing comes from the companion events.
+Presentation timing comes from the current single Drawing Studio window and
+its Native GPU/JPEG/Local RGBA transport events.
 Use the optimized `playground` Cargo profile and measure the actual Tauri window.
 The earlier offscreen measurements remain in `viewport-performance-analysis.md`;
 they are a baseline, not a claim about current Tauri FPS.
@@ -51,5 +65,5 @@ a temporarily full host input queue ended the WebSocket worker, and companion
 cleanup killed Tauri while Winit remained open. The transport now retains one
 pending message and pauses socket reads until space is available, while still
 sending replies and observing shutdown. Queue capacity stays bounded and actions
-retain their order. `viewport_qa.py` exercises a burst of 256 viewport requests
-around a temporary pause of its own test engine and verifies recovery.
+retain their order. The maintained manual checklist exercises burst recovery
+around a temporary pause of the test engine.

@@ -1,6 +1,6 @@
 //! Shared, typed domain endpoint for companion and scripting adapters.
 use crate::{
-    NprPlaygroundState,
+    NprPlaygroundState, authoring,
     documents::*,
     state::{MODELS, ObjectSettings, Settings},
 };
@@ -65,6 +65,9 @@ pub enum NprPlaygroundIntent {
         speed: f32,
         sketch_paused: bool,
     },
+    Playback {
+        command: crate::playback::PlaybackCommand,
+    },
     SetTemporalPolicy {
         policy: amigo_render_npr::NprMotionPolicy,
     },
@@ -91,6 +94,52 @@ pub enum NprPlaygroundIntent {
     SetLook {
         style: ComicInk,
         layers: NprStyleLayers,
+    },
+    AddLayer {
+        source: amigo_render_npr::NprGeometrySource,
+        #[serde(default)]
+        label: Option<String>,
+        #[serde(default)]
+        brush: Option<amigo_render_npr::BrushInstance>,
+        #[serde(default)]
+        target: Option<amigo_render_npr::GeometryTarget>,
+        #[serde(default)]
+        mask: Option<amigo_render_npr::CoverageMask>,
+    },
+    ReplaceLayer {
+        layer: String,
+        value: amigo_render_npr::NprStyleLayer,
+    },
+    PreviewLayer {
+        layer: String,
+        value: amigo_render_npr::NprStyleLayer,
+    },
+    CancelLayerPreview,
+    SaveAppearance {
+        layer: String,
+        value: amigo_render_npr::NprStyleLayer,
+        name: String,
+        #[serde(default)]
+        update_matching: bool,
+    },
+    SetLayerEnabled {
+        layer: String,
+        enabled: bool,
+    },
+    SetLayerBrush {
+        layer: String,
+        #[serde(default)]
+        brush: Option<amigo_render_npr::BrushInstance>,
+    },
+    DuplicateLayer {
+        layer: String,
+    },
+    DeleteLayer {
+        layer: String,
+    },
+    MoveLayer {
+        layer: String,
+        direction: i32,
     },
     SelectModel {
         model: String,
@@ -125,6 +174,12 @@ pub enum NprPlaygroundIntent {
     SaveBrushVersion {
         brush: amigo_render_npr::BrushDefinition,
     },
+    SaveBrushVersionAndPin {
+        brush: amigo_render_npr::BrushDefinition,
+        layer: String,
+        #[serde(default)]
+        update_matching: bool,
+    },
     Reload,
 }
 
@@ -133,6 +188,8 @@ pub struct NprPlaygroundSnapshot {
     pub revision: u64,
     pub settings: Settings,
     pub dirty: bool,
+    pub look_dirty: bool,
+    pub preview_layer: Option<String>,
     pub can_undo: bool,
     pub can_redo: bool,
     pub scene: Option<String>,
@@ -145,6 +202,10 @@ pub struct NprPlaygroundSnapshot {
     pub variants: BTreeMap<String, Settings>,
     pub drafts: BTreeMap<String, crate::documents::NprDrawingDraft>,
     pub layer_diagnostics: BTreeMap<String, amigo_render_npr::NprLayerDiagnostics>,
+    /// Transient preview controls are published by the domain so every host
+    /// observes the same build-up and solo state.
+    pub build_up: f32,
+    pub solo_layer: Option<String>,
 }
 
 struct Session {
@@ -158,6 +219,8 @@ struct Session {
     profile: Option<NprTrackedDocument>,
     active_look: Option<String>,
     baseline_look: Option<String>,
+    look_baselines: BTreeMap<String, NprResolvedLook>,
+    preview_layer: Option<amigo_render_npr::NprStyleLayer>,
     look: Option<NprTrackedDocument>,
     events: Vec<PlaygroundEvent>,
     available_looks: Vec<String>,
@@ -165,6 +228,19 @@ struct Session {
     model_fingerprint: Option<Value>,
     variants: BTreeMap<String, Settings>,
     drafts: BTreeMap<String, crate::documents::NprDrawingDraft>,
+}
+
+/// Read-only resolved data for one selectable Look.  Brush definitions remain
+/// in the document library; this catalog only names the pinned references that
+/// layers use.
+#[derive(Debug, Clone, Serialize)]
+pub struct LookCatalogEntry {
+    pub id: String,
+    pub includes: Vec<String>,
+    pub preview: Option<String>,
+    pub preview_error: Option<String>,
+    pub resolved_layers: NprStyleLayers,
+    pub brush_references: Vec<amigo_render_npr::BrushReference>,
 }
 
 #[derive(Clone)]
@@ -196,6 +272,7 @@ pub struct NprPlaygroundService {
     brush_thumbnail_retries: Mutex<BTreeMap<String, Instant>>,
     brush_thumbnail_updates:
         Mutex<Vec<std::sync::mpsc::Receiver<(String, Result<String, String>)>>>,
+    layer_samples: Mutex<BTreeMap<String, (Value, Result<String, String>)>>,
 }
 
 #[derive(Clone, Serialize)]
@@ -208,7 +285,8 @@ struct NprCatalogSource {
 
 impl NprPlaygroundService {
     pub fn new(state: Arc<NprPlaygroundState>) -> Self {
-        let settings = state.snapshot();
+        let mut settings = state.snapshot();
+        settings.playback = None;
         Self {
             state,
             assets: Mutex::new(None),
@@ -227,6 +305,7 @@ impl NprPlaygroundService {
             brush_thumbnail_errors: Mutex::default(),
             brush_thumbnail_retries: Mutex::default(),
             brush_thumbnail_updates: Mutex::default(),
+            layer_samples: Mutex::default(),
             session: Mutex::new(Session {
                 camera_gesture: None,
                 revision: 0,
@@ -238,6 +317,8 @@ impl NprPlaygroundService {
                 profile: None,
                 active_look: None,
                 baseline_look: None,
+                look_baselines: BTreeMap::new(),
+                preview_layer: None,
                 look: None,
                 events: vec![],
                 available_looks: vec![],
@@ -374,6 +455,13 @@ impl NprPlaygroundService {
         session.look = look;
         session.baseline_look = profile.active_look.clone();
         session.active_look = profile.active_look;
+        session.look_baselines.clear();
+        if let Some(id) = session.active_look.clone() {
+            session
+                .look_baselines
+                .insert(id.clone(), resolve_preview_look(root, &id)?);
+        }
+        session.preview_layer = None;
         session.events.clear();
         session.locked_layers.clear();
         session.available_looks = available_looks(root)?;
@@ -393,20 +481,28 @@ impl NprPlaygroundService {
         METADATA.get_or_init(Self::build_metadata).clone()
     }
     fn build_metadata() -> Value {
-        // Drawing Studio owns the authoring surface.  These controls describe
+        // Drawing Studio owns the authoring surface. These controls describe
         // real document operations; generic clients must not recreate a second
-        // global "Look" editor from the old ComicInk fields.
+        // global style editor from renderer implementation fields.
         json!({
             "views": [
                 "Sources", "Brushes", "Drawing", "Layers", "Layer Inspector",
                 "Paper & Palette", "Drafts & Variants"
             ],
+            "presentation_modes": ["native_gpu", "local_rgba", "jpeg"],
+            "transient_preview": ["build_up", "solo_layer"],
             "controls": [
                 {"id":"source.select","label":"Select source model","readonly":false,"disabled":false},
-                {"id":"layer.edit","label":"Edit selected layer","readonly":false,"disabled":false},
+                {"id":"layer.add","label":"Add layer","readonly":false,"disabled":false},
+                {"id":"layer.edit","label":"Replace selected layer","readonly":false,"disabled":false},
+                {"id":"layer.enabled","label":"Enable or disable layer","readonly":false,"disabled":false},
+                {"id":"layer.duplicate","label":"Duplicate layer","readonly":false,"disabled":false},
+                {"id":"layer.delete","label":"Delete layer","readonly":false,"disabled":false},
+                {"id":"layer.move","label":"Move layer","readonly":false,"disabled":false},
                 {"id":"layer.solo","label":"Solo selected layer","readonly":false,"disabled":false},
                 {"id":"layer.build-up","label":"Preview layer build-up","readonly":false,"disabled":false},
                 {"id":"brush.assign","label":"Assign pinned brush version","readonly":false,"disabled":false},
+                {"id":"brush.save","label":"Save brush version","readonly":false,"disabled":false},
                 {"id":"look.apply","label":"Apply saved preset","readonly":false,"disabled":false},
                 {"id":"drawing.reset-view","label":"Reset view","readonly":false,"disabled":false}
             ]
@@ -414,7 +510,7 @@ impl NprPlaygroundService {
     }
 
     /// Keep every source-changing intent on the same validation path.  The
-    /// companion has both the Basic-mode source picker and typed object updates;
+    /// companion has both the source picker and typed object updates;
     /// accepting an arbitrary model through the latter would bypass the former.
     fn validate_source_model(&self, model: &str) -> Result<(), String> {
         if let Some(assets) = self.assets.lock().unwrap().as_ref() {
@@ -437,6 +533,14 @@ impl NprPlaygroundService {
             revision: s.revision,
             settings: s.authored.clone(),
             dirty: s.authored != s.baseline || s.active_look != s.baseline_look,
+            look_dirty: s
+                .active_look
+                .as_ref()
+                .and_then(|id| s.look_baselines.get(id))
+                .is_some_and(|saved| {
+                    saved.style != s.authored.global || saved.layers != s.authored.style_layers
+                }),
+            preview_layer: s.preview_layer.as_ref().map(|layer| layer.id.clone()),
             can_undo: !s.undo.is_empty(),
             can_redo: !s.redo.is_empty(),
             scene: s
@@ -465,6 +569,8 @@ impl NprPlaygroundService {
                 .as_ref()
                 .map(|render| render.layer_diagnostics())
                 .unwrap_or_default(),
+            build_up: (*self.state.build_up.lock().unwrap()).clamp(0.0, 1.0),
+            solo_layer: self.state.solo_layer.lock().unwrap().clone(),
         }
     }
 
@@ -515,20 +621,87 @@ impl NprPlaygroundService {
         let mut next = before.clone();
         let mut record = true;
         let mut explicit_pose = None;
+        let mut playback_change = None;
         let mut smoothed_distance = None;
         let mut event = None;
+        let keep_preview = matches!(
+            &intent,
+            NprPlaygroundIntent::Navigate { .. }
+                | NprPlaygroundIntent::BeginCameraGesture { .. }
+                | NprPlaygroundIntent::EndCameraGesture { .. }
+                | NprPlaygroundIntent::SetSoloLayer { .. }
+                | NprPlaygroundIntent::SetBuildUp { .. }
+                | NprPlaygroundIntent::Playback { .. }
+        );
+        let mut layer_preview = if keep_preview {
+            s.preview_layer.clone()
+        } else {
+            None
+        };
         let navigation = matches!(&intent, NprPlaygroundIntent::Navigate { .. });
         if !navigation
             && !matches!(
                 &intent,
                 NprPlaygroundIntent::BeginCameraGesture { .. }
                     | NprPlaygroundIntent::EndCameraGesture { .. }
+                    | NprPlaygroundIntent::Playback { .. }
             )
         {
             s.camera_gesture = None;
         }
         let result: Result<(), String> = (|| {
             match intent {
+                NprPlaygroundIntent::Playback { command } => {
+                    let runtime = self.state.snapshot();
+                    let clips = runtime
+                        .objects
+                        .get(&runtime.selected)
+                        .and_then(|object| {
+                            self.render
+                                .lock()
+                                .unwrap()
+                                .as_ref()
+                                .map(|render| render.animations(&object.model))
+                        })
+                        .unwrap_or_default();
+                    let playback = runtime
+                        .playback
+                        .clone()
+                        .unwrap_or_else(|| crate::playback::ModelPlayback::for_settings(&runtime));
+                    playback_change = Some(playback.apply(command, &runtime, &clips)?);
+                    record = false;
+                }
+                NprPlaygroundIntent::PreviewLayer { layer, value } => {
+                    authoring::validate_layer_edit(
+                        &next.style_layers,
+                        &next.brushes,
+                        &s.locked_layers,
+                        &layer,
+                        &value,
+                    )?;
+                    layer_preview = Some(value);
+                    record = false;
+                }
+                NprPlaygroundIntent::CancelLayerPreview => {
+                    record = false;
+                }
+                NprPlaygroundIntent::SaveAppearance {
+                    layer,
+                    value,
+                    name,
+                    update_matching,
+                } => {
+                    authoring::save_appearance(
+                        &mut next.style_layers,
+                        &mut next.brushes,
+                        &s.locked_layers,
+                        &layer,
+                        value,
+                        name,
+                        update_matching,
+                    )?;
+                    event = Some("appearance_saved");
+                }
                 NprPlaygroundIntent::BeginCameraGesture { gesture_id } => {
                     s.camera_gesture = Some((gesture_id, false));
                     record = false;
@@ -565,12 +738,76 @@ impl NprPlaygroundService {
                         .get(&brush.id)
                         .and_then(|items| items.iter().map(|item| item.version).max())
                         .unwrap_or(0)
-                        + 1;
+                        .checked_add(1)
+                        .ok_or("appearance revision limit reached")?;
                     if brush.version != next_version {
                         return Err(format!("new brush version must be {}", next_version));
                     }
                     next.brushes.add_version(brush)?;
                     event = Some("brush_version_saved");
+                }
+                NprPlaygroundIntent::SaveBrushVersionAndPin {
+                    brush,
+                    layer,
+                    update_matching,
+                } => {
+                    brush.validate()?;
+                    let next_version = s
+                        .authored
+                        .brushes
+                        .brushes
+                        .get(&brush.id)
+                        .and_then(|items| items.iter().map(|item| item.version).max())
+                        .unwrap_or(0)
+                        .checked_add(1)
+                        .ok_or("appearance revision limit reached")?;
+                    if brush.version != next_version {
+                        return Err(format!("new brush version must be {next_version}"));
+                    }
+                    let current = next
+                        .style_layers
+                        .layer(&layer)
+                        .ok_or_else(|| format!("unknown layer `{layer}`"))?
+                        .clone();
+                    if current.source == amigo_render_npr::NprGeometrySource::Paper {
+                        return Err("Paper cannot have a brush assignment".into());
+                    }
+                    if s.locked_layers.contains(&layer) {
+                        return Err(format!("layer is locked: {layer}"));
+                    }
+                    let old = current.brush.as_ref().map(|instance| instance.brush.clone());
+                    next.brushes.add_version(brush.clone())?;
+                    let reference = amigo_render_npr::BrushReference {
+                        id: brush.id,
+                        version: brush.version,
+                    };
+                    for candidate in &mut next.style_layers.layers {
+                        let matching = candidate.id == layer
+                            || (update_matching
+                                && old.as_ref().is_some_and(|old| {
+                                    candidate
+                                        .brush
+                                        .as_ref()
+                                        .is_some_and(|instance| &instance.brush == old)
+                                }));
+                        if !matching {
+                            continue;
+                        }
+                        if s.locked_layers.contains(&candidate.id) {
+                            return Err(format!("layer is locked: {}", candidate.id));
+                        }
+                        if let Some(instance) = &mut candidate.brush {
+                            instance.brush = reference.clone();
+                        } else {
+                            candidate.brush = Some(amigo_render_npr::BrushInstance {
+                                brush: reference.clone(),
+                                ..Default::default()
+                            });
+                        }
+                    }
+                    next.style_layers.validate()?;
+                    next.style_layers.validate_brushes(&next.brushes)?;
+                    event = Some("brush_version_saved_and_pinned");
                 }
                 NprPlaygroundIntent::SaveVariant { id } => {
                     validate_document_id(&id)?;
@@ -586,6 +823,9 @@ impl NprPlaygroundService {
                         .get(&id)
                         .cloned()
                         .ok_or_else(|| format!("unknown variant `{id}`"))?;
+                    self.state.set_solo_layer(None);
+                    s.locked_layers
+                        .retain(|layer| next.style_layers.layer(layer).is_some());
                     event = Some("variant_applied");
                 }
                 NprPlaygroundIntent::UpdateBrushVersion { id, from, to } => {
@@ -597,17 +837,15 @@ impl NprPlaygroundService {
                         id: id.clone(),
                         version: to,
                     };
-                    if next.brushes.resolve(&reference).is_err() {
-                        // A fresh in-memory service has no persisted library
-                        // yet; built-ins remain available as read-only
-                        // resources in that state.
-                        builtin_brush_library().resolve(&reference)?;
-                    }
+                    next.brushes.resolve(&reference)?;
                     let mut updated = 0usize;
                     for layer in &mut next.style_layers.layers {
                         if layer.brush.as_ref().is_some_and(|instance| {
                             instance.brush.id == id && instance.brush.version == from
                         }) {
+                            if s.locked_layers.contains(&layer.id) {
+                                return Err(format!("layer is locked: {}", layer.id));
+                            }
                             layer.brush.as_mut().expect("checked above").brush.version = to;
                             updated += 1;
                         }
@@ -635,13 +873,24 @@ impl NprPlaygroundService {
                     let looks = load_looks(root, Some(&id))?;
                     let empty = NprLookPatch::default();
                     let resolved = resolve_look(&looks, &empty, Some(&id), &empty, &empty, &empty)?;
+                    for look in looks.values() {
+                        next.brushes.merge(&look.look.brushes)?;
+                    }
+                    let saved = resolved.clone();
                     next.global = resolved.style;
                     next.style_layers = resolved.layers;
+                    next.style_layers.validate_brushes(&next.brushes)?;
                     next.validate()?;
                     let doc = NprTrackedDocument::open(
                         authored_path(root, Path::new(&format!("npr/looks/{id}.npr-look.yml")))?,
                         true,
                     )?;
+                    // Solo is transient viewport state. A preset can replace the
+                    // entire stack, so never leave it pointing at an old layer.
+                    self.state.set_solo_layer(None);
+                    s.locked_layers
+                        .retain(|layer| next.style_layers.layer(layer).is_some());
+                    s.look_baselines.insert(id.clone(), saved);
                     s.active_look = Some(id);
                     s.look = Some(doc);
                     event = Some("look_changed");
@@ -847,12 +1096,8 @@ impl NprPlaygroundService {
                     explicit_pose = Some(object);
                 }
                 NprPlaygroundIntent::SetObject { object, settings } => {
-                    let source_changed = next
-                        .objects
-                        .get(&object)
-                        .ok_or("unknown object")?
-                        .model
-                        != settings.model;
+                    let source_changed =
+                        next.objects.get(&object).ok_or("unknown object")?.model != settings.model;
                     if source_changed {
                         return Err("change the Drawing Studio source with SelectModel".into());
                     }
@@ -873,7 +1118,175 @@ impl NprPlaygroundService {
                     }
                     next.global = style;
                     next.style_layers = layers;
+                    self.state.set_solo_layer(None);
+                    s.locked_layers
+                        .retain(|layer| next.style_layers.layer(layer).is_some());
                     event = Some("look_changed");
+                }
+                NprPlaygroundIntent::AddLayer {
+                    source,
+                    label,
+                    brush,
+                    target,
+                    mask,
+                } => {
+                    let layer = authoring::create_layer(
+                        &next.style_layers,
+                        source,
+                        label,
+                        brush,
+                        target,
+                        mask,
+                    )?;
+                    let mut candidate = next.style_layers.clone();
+                    candidate.layers.push(layer.clone());
+                    candidate.validate()?;
+                    candidate.validate_brushes(&next.brushes)?;
+                    next.style_layers.layers.push(layer);
+                    event = Some("layer_added");
+                }
+                NprPlaygroundIntent::ReplaceLayer { layer, value } => {
+                    let current = next
+                        .style_layers
+                        .layer(&layer)
+                        .ok_or_else(|| format!("unknown layer `{layer}`"))?;
+                    if current.source == amigo_render_npr::NprGeometrySource::Paper
+                        && value.source != amigo_render_npr::NprGeometrySource::Paper
+                    {
+                        return Err("Paper is the pinned document layer".into());
+                    }
+                    authoring::validate_layer_edit(
+                        &next.style_layers,
+                        &next.brushes,
+                        &s.locked_layers,
+                        &layer,
+                        &value,
+                    )?;
+                    *next
+                        .style_layers
+                        .layer_mut(&layer)
+                        .expect("layer checked above") = value;
+                    event = Some("layer_replaced");
+                }
+                NprPlaygroundIntent::SetLayerEnabled { layer, enabled } => {
+                    let current = next
+                        .style_layers
+                        .layer(&layer)
+                        .ok_or_else(|| format!("unknown layer `{layer}`"))?;
+                    if current.source == amigo_render_npr::NprGeometrySource::Paper && !enabled {
+                        return Err("Paper must remain enabled".into());
+                    }
+                    let mut value = current.clone();
+                    value.enabled = enabled;
+                    authoring::validate_layer_edit(
+                        &next.style_layers,
+                        &next.brushes,
+                        &s.locked_layers,
+                        &layer,
+                        &value,
+                    )?;
+                    *next
+                        .style_layers
+                        .layer_mut(&layer)
+                        .expect("layer checked above") = value;
+                    event = Some("layer_enabled_changed");
+                }
+                NprPlaygroundIntent::SetLayerBrush { layer, brush } => {
+                    let current = next
+                        .style_layers
+                        .layer(&layer)
+                        .ok_or_else(|| format!("unknown layer `{layer}`"))?
+                        .clone();
+                    if current.source == amigo_render_npr::NprGeometrySource::Paper {
+                        return Err("Paper cannot have a brush assignment".into());
+                    }
+                    let mut value = current;
+                    value.brush = brush;
+                    authoring::validate_layer_edit(
+                        &next.style_layers,
+                        &next.brushes,
+                        &s.locked_layers,
+                        &layer,
+                        &value,
+                    )?;
+                    *next
+                        .style_layers
+                        .layer_mut(&layer)
+                        .expect("layer checked above") = value;
+                    event = Some("layer_brush_changed");
+                }
+                NprPlaygroundIntent::DuplicateLayer { layer } => {
+                    let current = next
+                        .style_layers
+                        .layer(&layer)
+                        .ok_or_else(|| format!("unknown layer `{layer}`"))?;
+                    if current.source == amigo_render_npr::NprGeometrySource::Paper {
+                        return Err("Paper is the pinned document layer".into());
+                    }
+                    if s.locked_layers.contains(&layer) {
+                        return Err(format!("layer is locked: {layer}"));
+                    }
+                    let mut copy = current.clone();
+                    copy.id = authoring::next_layer_id(&next.style_layers, copy.source);
+                    copy.label = format!("{} copy", copy.label);
+                    let index = next
+                        .style_layers
+                        .layers
+                        .iter()
+                        .position(|candidate| candidate.id == layer)
+                        .expect("layer checked above");
+                    next.style_layers.layers.insert(index + 1, copy);
+                    next.style_layers.validate()?;
+                    next.style_layers.validate_brushes(&next.brushes)?;
+                    event = Some("layer_duplicated");
+                }
+                NprPlaygroundIntent::DeleteLayer { layer } => {
+                    let current = next
+                        .style_layers
+                        .layer(&layer)
+                        .ok_or_else(|| format!("unknown layer `{layer}`"))?;
+                    if current.source == amigo_render_npr::NprGeometrySource::Paper {
+                        return Err("Paper is the pinned document layer".into());
+                    }
+                    if s.locked_layers.contains(&layer) {
+                        return Err(format!("layer is locked: {layer}"));
+                    }
+                    next.style_layers
+                        .layers
+                        .retain(|candidate| candidate.id != layer);
+                    next.style_layers.validate()?;
+                    s.locked_layers.remove(&layer);
+                    let solo = self.state.solo_layer.lock().unwrap().clone();
+                    if solo.as_deref() == Some(layer.as_str()) {
+                        self.state.set_solo_layer(None);
+                    }
+                    event = Some("layer_deleted");
+                }
+                NprPlaygroundIntent::MoveLayer { layer, direction } => {
+                    if direction == 0 {
+                        return Err("layer move direction cannot be zero".into());
+                    }
+                    if s.locked_layers.contains(&layer) {
+                        return Err(format!("layer is locked: {layer}"));
+                    }
+                    let from = next
+                        .style_layers
+                        .layers
+                        .iter()
+                        .position(|candidate| candidate.id == layer)
+                        .ok_or_else(|| format!("unknown layer `{layer}`"))?;
+                    if from == 0 {
+                        return Err("Paper is pinned at the bottom of the layer stack".into());
+                    }
+                    let to = (from as i32 + direction.signum()) as usize;
+                    if to == 0 || to >= next.style_layers.layers.len() {
+                        return Err("layer cannot move beyond the stack".into());
+                    }
+                    if s.locked_layers.contains(&next.style_layers.layers[to].id) {
+                        return Err("cannot move a layer across a locked layer".into());
+                    }
+                    next.style_layers.layers.swap(from, to);
+                    event = Some("layer_moved");
                 }
                 NprPlaygroundIntent::SelectModel { model } => {
                     self.validate_source_model(&model)?;
@@ -903,31 +1316,23 @@ impl NprPlaygroundService {
                         }
                         s.drafts.insert(draft.source_model.clone(), draft);
                     }
-                    let defaults = Settings::for_scene();
-                    let template = if let Some(template) = defaults.objects.get(&model) {
-                        template.clone()
-                    } else {
-                        let mut template = defaults
-                            .objects
-                            .get(&defaults.selected)
-                            .ok_or("Drawing Studio default source model is missing")?
-                            .clone();
-                        template.model = model.clone();
-                        template.material_base_color = glam::Vec4::ONE;
-                        template
-                    };
-                    // Sources is a model explorer. Selecting a different
-                    // subject starts a clean, model-bound Drawing Studio
-                    // document; the previous document was checkpointed above.
-                    next = defaults;
+                    let mut object = next
+                        .objects
+                        .get(&next.selected)
+                        .cloned()
+                        .or_else(|| Settings::for_scene().objects.into_values().next())
+                        .ok_or("Drawing Studio source object is missing")?;
+                    object.model = model.clone();
+                    // Sources is a model explorer. Switching the source keeps
+                    // the current drawing style, brush pins, layers and look;
+                    // a new default document is an explicit reset action.
                     next.objects.clear();
                     let id = model.clone();
-                    next.objects.insert(id.clone(), template);
+                    next.objects.insert(id.clone(), object);
                     next.selected = id;
-                    s.active_look = None;
-                    s.baseline_look = None;
-                    s.variants.clear();
-                    s.locked_layers.clear();
+                    self.state.set_solo_layer(None);
+                    s.locked_layers
+                        .retain(|layer| next.style_layers.layer(layer).is_some());
                     s.baseline = next.clone();
                     s.undo.clear();
                     s.redo.clear();
@@ -951,6 +1356,7 @@ impl NprPlaygroundService {
                     s.undo.clear();
                     s.redo.clear();
                     s.locked_layers.clear();
+                    self.state.set_solo_layer(None);
                     record = false;
                     event = Some("draft_opened");
                 }
@@ -979,21 +1385,24 @@ impl NprPlaygroundService {
                 NprPlaygroundIntent::SaveAll => {
                     let mut profile =
                         NprSceneProfileDocument::from_settings(&next, s.active_look.clone())?;
-                    let old: NprSceneProfileDocument = serde_yaml::from_slice(
-                        &s.profile.as_ref().ok_or("no scene profile")?.pending,
-                    )
-                    .map_err(|e| e.to_string())?;
-                    profile.look = old.look;
-                    profile.look.merge(&NprLookPatch::changes(
-                        &NprResolvedLook {
-                            style: s.baseline.global,
-                            layers: s.baseline.style_layers.clone(),
-                        },
+                    let parent = s
+                        .active_look
+                        .as_deref()
+                        .map(|id| {
+                            resolve_preview_look(s.root.as_deref().ok_or("no active mod")?, id)
+                        })
+                        .transpose()?
+                        .unwrap_or(NprResolvedLook {
+                            style: ComicInk::default(),
+                            layers: NprStyleLayers::default(),
+                        });
+                    profile.look = NprLookPatch::changes(
+                        &parent,
                         &NprResolvedLook {
                             style: next.global,
                             layers: next.style_layers.clone(),
                         },
-                    )?)?;
+                    )?;
                     profile.variants = s
                         .variants
                         .iter()
@@ -1033,27 +1442,38 @@ impl NprPlaygroundService {
                     event = Some("save_completed");
                 }
                 NprPlaygroundIntent::SaveLook => {
+                    let id = s
+                        .active_look
+                        .clone()
+                        .ok_or("no active preset; use Save As")?;
+                    let saved =
+                        resolve_preview_look(s.root.as_deref().ok_or("no active mod")?, &id)?;
                     let changes = NprLookPatch::changes(
-                        &NprResolvedLook {
-                            style: s.baseline.global,
-                            layers: s.baseline.style_layers.clone(),
-                        },
+                        &saved,
                         &NprResolvedLook {
                             style: next.global,
                             layers: next.style_layers.clone(),
                         },
                     )?;
-                    let doc = s
+                    let mut doc = s
                         .look
-                        .as_mut()
-                        .ok_or("no active writable look; use Save As Look")?;
+                        .as_ref()
+                        .ok_or("no active writable look; use Save As Look")?
+                        .clone();
                     let mut look: NprLookDocument =
                         serde_yaml::from_slice(&doc.pending).map_err(|e| e.to_string())?;
                     look.look.merge(&changes)?;
+                    look.look.brushes = next.brushes.referenced_by(&next.style_layers)?;
                     doc.stage(&look)?;
                     doc.save()?;
-                    s.baseline.global = next.global;
-                    s.baseline.style_layers = next.style_layers.clone();
+                    s.look = Some(doc);
+                    s.look_baselines.insert(
+                        id,
+                        NprResolvedLook {
+                            style: next.global,
+                            layers: next.style_layers.clone(),
+                        },
+                    );
                     s.undo.clear();
                     s.redo.clear();
                     record = false;
@@ -1064,7 +1484,7 @@ impl NprPlaygroundService {
                     let root = s.root.as_ref().ok_or("no active mod")?;
                     let path =
                         authored_path(root, Path::new(&format!("npr/looks/{id}.npr-look.yml")))?;
-                    let look = NprLookDocument {
+                    let mut look = NprLookDocument {
                         id: id.clone(),
                         includes: vec![],
                         look: NprLookPatch::from_resolved(&NprResolvedLook {
@@ -1072,11 +1492,20 @@ impl NprPlaygroundService {
                             layers: next.style_layers.clone(),
                         })?,
                     };
+                    look.look.brushes = next.brushes.referenced_by(&next.style_layers)?;
                     let mut doc = NprTrackedDocument::new(path, vec![]);
                     doc.stage(&look)?;
                     doc.save()?;
                     s.available_looks.push(id.clone());
                     s.available_looks.sort();
+                    s.available_looks.dedup();
+                    s.look_baselines.insert(
+                        id.clone(),
+                        NprResolvedLook {
+                            style: next.global,
+                            layers: next.style_layers.clone(),
+                        },
+                    );
                     s.active_look = Some(id);
                     s.look = Some(doc);
                     s.undo.clear();
@@ -1112,8 +1541,15 @@ impl NprPlaygroundService {
                     s.baseline = next.clone();
                     s.baseline_look = profile.active_look.clone();
                     s.active_look = profile.active_look;
+                    s.look_baselines.clear();
+                    if let Some(id) = s.active_look.clone() {
+                        s.look_baselines
+                            .insert(id.clone(), resolve_preview_look(&root, &id)?);
+                    }
                     s.undo.clear();
                     s.redo.clear();
+                    s.locked_layers.clear();
+                    self.state.set_solo_layer(None);
                     record = false;
                 }
             }
@@ -1147,8 +1583,27 @@ impl NprPlaygroundService {
             s.redo.clear();
         }
         s.authored = next.clone();
+        s.preview_layer = layer_preview.clone();
         s.revision += 1;
+        if save_operation
+            || event == Some("appearance_saved")
+            || event == Some("brush_version_saved")
+        {
+            self.look_thumbnails.lock().unwrap().clear();
+            self.look_thumbnail_errors.lock().unwrap().clear();
+            self.look_thumbnail_retries.lock().unwrap().clear();
+            self.look_thumbnail_updates.lock().unwrap().clear();
+        }
         let mut runtime_settings = self.state.settings.lock().unwrap();
+        if next.selected == runtime_settings.selected
+            && next
+                .objects
+                .get(&next.selected)
+                .zip(runtime_settings.objects.get(&runtime_settings.selected))
+                .is_some_and(|(a, b)| a.model == b.model)
+        {
+            next.playback = playback_change.or_else(|| runtime_settings.playback.clone());
+        }
         if let Some(distance) = smoothed_distance {
             next.camera_distance = distance;
         } else if next.camera_distance == before.camera_distance {
@@ -1165,6 +1620,27 @@ impl NprPlaygroundService {
             {
                 if let Some(live) = runtime_settings.objects.get(id) {
                     object.rotation = live.rotation;
+                }
+            }
+        }
+        if let Some(layer) = layer_preview {
+            if let Some(target) = next.style_layers.layer_mut(&layer.id) {
+                *target = layer;
+            }
+        }
+        if let Some(playback) = next.playback.as_mut() {
+            if let Some(object) = next.objects.get_mut(&next.selected) {
+                if explicit_pose.as_ref() == Some(&next.selected)
+                    || before
+                        .objects
+                        .get(&next.selected)
+                        .zip(s.authored.objects.get(&next.selected))
+                        .is_some_and(|(a, b)| a.rotation != b.rotation)
+                {
+                    playback.rebase_rotation(object.rotation, object.angular_speed);
+                }
+                if playback.source == crate::playback::PlaybackSource::Turntable {
+                    object.rotation = playback.rotation(object.angular_speed);
                 }
             }
         }
@@ -1318,12 +1794,65 @@ pub(crate) fn resolve_preview_look(
     )
 }
 
+pub(crate) fn resolve_preview_brushes(
+    root: &Path,
+    id: &str,
+    base: &amigo_render_npr::BrushLibrary,
+) -> Result<amigo_render_npr::BrushLibrary, String> {
+    let mut library = base.clone();
+    for look in load_looks(root, Some(id))?.values() {
+        library.merge(&look.look.brushes)?;
+    }
+    Ok(library)
+}
+
+fn look_catalog_entry(
+    root: &Path,
+    id: &str,
+    preview: Option<String>,
+    preview_error: Option<String>,
+) -> Result<LookCatalogEntry, String> {
+    let looks = load_looks(root, Some(id))?;
+    let includes = looks
+        .get(id)
+        .ok_or_else(|| format!("missing look: {id}"))?
+        .includes
+        .clone();
+    let resolved_layers = resolve_preview_look(root, id)?.layers;
+    let mut brush_references = Vec::new();
+    for layer in &resolved_layers.layers {
+        let Some(reference) = layer.brush.as_ref().map(|instance| instance.brush.clone()) else {
+            continue;
+        };
+        if !brush_references
+            .iter()
+            .any(|existing| existing == &reference)
+        {
+            brush_references.push(reference);
+        }
+    }
+    Ok(LookCatalogEntry {
+        id: id.into(),
+        includes,
+        preview,
+        preview_error,
+        resolved_layers,
+        brush_references,
+    })
+}
+
 impl PlaygroundProvider for NprPlaygroundService {
     fn revision(&self) -> u64 {
         self.session.lock().unwrap().revision
     }
     fn cancel_interaction(&self) {
-        self.session.lock().unwrap().camera_gesture = None;
+        let mut session = self.session.lock().unwrap();
+        session.camera_gesture = None;
+        if session.preview_layer.take().is_some() {
+            self.state.settings.lock().unwrap().style_layers =
+                session.authored.style_layers.clone();
+            session.revision += 1;
+        }
     }
     fn open_scene(&self, root: &Path, scene: &Path) -> Result<(), String> {
         let value: serde_yaml::Value =
@@ -1516,6 +2045,44 @@ impl PlaygroundProvider for NprPlaygroundService {
             }
         }
         let snapshot = self.domain_snapshot();
+        let preview_layer = self.session.lock().unwrap().preview_layer.clone();
+        let mut samples = self.layer_samples.lock().unwrap();
+        samples.retain(|id, _| snapshot.settings.style_layers.layer(id).is_some());
+        let mut layer_previews = BTreeMap::new();
+        let mut layer_preview_errors = BTreeMap::new();
+        for authored in &snapshot.settings.style_layers.layers {
+            let layer = preview_layer
+                .as_ref()
+                .filter(|draft| draft.id == authored.id)
+                .unwrap_or(authored);
+            let definition = layer
+                .brush
+                .as_ref()
+                .and_then(|instance| snapshot.brushes.resolve(&instance.brush).ok());
+            let key = json!([layer, snapshot.settings.global, definition]);
+            if samples.get(&layer.id).is_none_or(|(old, _)| old != &key) {
+                samples.insert(
+                    layer.id.clone(),
+                    (
+                        key,
+                        crate::asset_browser::layer_thumbnail(
+                            layer,
+                            snapshot.settings.global,
+                            &snapshot.brushes,
+                        ),
+                    ),
+                );
+            }
+            match &samples[&layer.id].1 {
+                Ok(image) => {
+                    layer_previews.insert(layer.id.clone(), image.clone());
+                }
+                Err(error) => {
+                    layer_preview_errors.insert(layer.id.clone(), error.clone());
+                }
+            }
+        }
+        drop(samples);
         let assets = self.assets.lock().unwrap().clone();
         let mut models = assets
             .as_ref()
@@ -1526,7 +2093,9 @@ impl PlaygroundProvider for NprPlaygroundService {
         let mut errors = self.look_thumbnail_errors.lock().unwrap();
         let mut retries = self.look_thumbnail_retries.lock().unwrap();
         for id in &snapshot.available_looks {
-            let retry_ready = retries.get(id).is_some_and(|retry| *retry <= Instant::now());
+            let retry_ready = retries
+                .get(id)
+                .is_some_and(|retry| *retry <= Instant::now());
             if (!previews.contains_key(id) || retry_ready)
                 && self.look_thumbnail_updates.lock().unwrap().len() < 2
             {
@@ -1550,6 +2119,32 @@ impl PlaygroundProvider for NprPlaygroundService {
         drop(errors);
         drop(retries);
         let look_preview_errors = self.look_thumbnail_errors.lock().unwrap().clone();
+        let look_catalog = root
+            .as_deref()
+            .map(|root| {
+                snapshot
+                    .available_looks
+                    .iter()
+                    .map(|id| {
+                        look_catalog_entry(
+                            root,
+                            id,
+                            look_previews.get(id).cloned().flatten(),
+                            look_preview_errors.get(id).cloned(),
+                        )
+                        .unwrap_or_else(|error| LookCatalogEntry {
+                            id: id.clone(),
+                            includes: vec![],
+                            preview: look_previews.get(id).cloned().flatten(),
+                            preview_error: Some(error),
+                            resolved_layers: NprStyleLayers { layers: vec![] },
+                            brush_references: vec![],
+                        })
+                    })
+                    .map(|entry| (entry.id.clone(), entry))
+                    .collect::<BTreeMap<_, _>>()
+            })
+            .unwrap_or_default();
         let mut brush_previews = self.brush_thumbnails.lock().unwrap();
         let mut brush_errors = self.brush_thumbnail_errors.lock().unwrap();
         let mut brush_retries = self.brush_thumbnail_retries.lock().unwrap();
@@ -1627,6 +2222,29 @@ impl PlaygroundProvider for NprPlaygroundService {
         PlaygroundSnapshot {
             revision,
             values: BTreeMap::from([
+                ("playback".into(), {
+                    let runtime = self.state.snapshot();
+                    json!(
+                        runtime.playback.as_ref().cloned().unwrap_or_else(|| {
+                            crate::playback::ModelPlayback::for_settings(&runtime)
+                        })
+                    )
+                }),
+                ("animation_clips".into(), {
+                    let clips = snapshot
+                        .settings
+                        .objects
+                        .get(&snapshot.settings.selected)
+                        .and_then(|object| {
+                            self.render
+                                .lock()
+                                .unwrap()
+                                .as_ref()
+                                .map(|render| render.animations(&object.model))
+                        })
+                        .unwrap_or_default();
+                    json!(clips)
+                }),
                 (
                     "npr".into(),
                     serde_json::to_value(&snapshot).expect("validated NPR state"),
@@ -1636,17 +2254,15 @@ impl PlaygroundProvider for NprPlaygroundService {
                     serde_json::to_value(models).expect("model descriptors"),
                 ),
                 (
-                    "look_previews".into(),
-                    serde_json::to_value(look_previews).expect("look preview descriptors"),
-                ),
-                (
-                    "look_preview_errors".into(),
-                    serde_json::to_value(look_preview_errors).expect("look preview errors"),
+                    "look_catalog".into(),
+                    serde_json::to_value(look_catalog).expect("look catalog"),
                 ),
                 (
                     "brush_previews".into(),
                     serde_json::to_value(brush_preview_values).expect("brush preview descriptors"),
                 ),
+                ("layer_previews".into(), json!(layer_previews)),
+                ("layer_preview_errors".into(), json!(layer_preview_errors)),
                 (
                     "brush_preview_errors".into(),
                     serde_json::to_value(brush_preview_errors).expect("brush preview errors"),

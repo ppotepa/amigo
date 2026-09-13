@@ -2,7 +2,8 @@
 
 Opt-in NPR drawing with a Tauri/Svelte Drawing Studio companion and embedded
 WGPU viewport. One selected model owns one drawing document: paper, palette,
-an ordered stack of independently composited layers and pinned brush versions.
+an ordered stack presented as Lines, Paints and Paper. Tools are properties of
+these entries; pinned appearance revisions remain internal document references.
 
 Run `npm ci` in `plugins/gfx/npr-playground/playground-client`, then from
 the repository root:
@@ -10,7 +11,7 @@ the repository root:
 
 The viewport uses Native GPU when available and fails over to JPEG if required.
 Windows Native GPU uses a DX12 worker and a native child surface; Local RGBA
-remains a transport implementation detail rather than a Drawing Studio control.
+is also selectable in the Render diagnostics panel.
 Scenes without a companion use the ordinary Winit host and its own backend.
 
 See [client and authoring](docs/npr-playground-ui.md), [pipeline](docs/pipeline.md),
@@ -18,8 +19,12 @@ See [client and authoring](docs/npr-playground-ui.md), [pipeline](docs/pipeline.
 Measured results and remaining limits: [viewport validation](docs/viewport-validation.md).
 
 Selecting another model saves a changed drawing as a local, model-bound draft
-and opens a clean drawing. Save writes the authored scene sidecar. Look cards
-use asynchronous renderer-generated previews, never decorative HTML strokes.
+and preserves the current preset on the newly selected model. Save Drawing
+writes the authored scene sidecar. Save Preset preserves includes, explicit
+entry removals and the referenced appearance definitions. Save As creates a
+standalone reusable preset. Model/camera changes do not mark a preset modified.
+Tool cards use backend-generated reference strokes/surface samples, not CSS
+swatches. Full material evaluation is available through live viewport preview.
 The current curated choices are Comic Ink, Pencil Study and Watercolour Wash.
 
 The NPR domain owns surface interpretation, typed ComicInk and layer contracts,
@@ -40,3 +45,4 @@ playback. Existing render statistics and humanization tests remain applicable.
 Validation: `cargo test -p amigo-npr-playground-plugin`,
 `cargo test -p amigo-playground-api`, `cargo test -p amigo-assets browser`,
 and `npm run check`, `npm test`, `npm run build` in `playground-client`.
+Manual acceptance: [Drawing Studio QA](docs/manual-qa.md).

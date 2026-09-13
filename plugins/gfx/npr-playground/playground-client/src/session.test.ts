@@ -1,8 +1,22 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { applyDelta, LatestFrameDecoder, type FrameHeader } from './session';
+import { applyDelta } from './session';
+import { LatestFrameDecoder, type FrameHeader } from './frames';
+import { MutationQueue } from './mutation-queue';
 
 afterEach(() => vi.unstubAllGlobals());
 describe('session state', () => {
+  it('updates telemetry at the same revision without releasing a pending mutation', () => {
+    const queue = new MutationQueue();
+    queue.push('viewport',{kind:'navigate',mode:'orbit',dx:10,dy:0,wheel:0,x:0,y:0,width:640,height:360,focused:true});
+    const action=queue.take(2)!;
+    expect(queue.accepted(action.request_id,3,2)).toBe(false);
+    const snapshot=applyDelta({revision:2,values:{diagnostics:{fps:20}},metadata:null},
+      {base_revision:2,revision:2,changed:{diagnostics:{fps:60}},removed:[]});
+    expect(snapshot.values.diagnostics?.fps).toBe(60);
+    expect(queue.state(snapshot.revision)).toBe(false);
+    expect(queue.busy).toBe(true);
+    expect(queue.state(3)).toBe(true);
+  });
   it('acknowledges a failed old decode without failing the new surface', async () => {
     let reject: (reason: unknown) => void = () => {};
     vi.stubGlobal('createImageBitmap', () => new Promise((_, fail) => { reject=fail; }));

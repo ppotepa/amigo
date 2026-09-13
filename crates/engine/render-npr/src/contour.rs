@@ -26,6 +26,9 @@ pub(crate) struct ContourField {
     components: Vec<u32>,
 }
 impl ContourField {
+    pub(crate) fn normals(&self, face: usize) -> [Vec3; 3] {
+        self.normals[face]
+    }
     pub(crate) fn build(geometry: &NprGeometry, angle: f32) -> Self {
         Self {
             normals: smoothed_corner_normals(geometry, angle),

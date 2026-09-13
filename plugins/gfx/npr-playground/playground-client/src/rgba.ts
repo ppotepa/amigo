@@ -1,4 +1,4 @@
-import type { FrameAck, FrameHeader } from './session';
+import type { FrameAck, FrameHeader } from './frames';
 
 type SharedEvent = { getBuffer(): ArrayBuffer; additionalData: { generation: number; slot: number; size: [number, number] } };
 

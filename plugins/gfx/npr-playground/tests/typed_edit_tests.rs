@@ -19,6 +19,7 @@ fn edit(
 #[test]
 fn viewport_animation_tracks_visible_models_and_independent_sketch_clock() {
     let mut settings = Settings::for_scene();
+    settings.objects.get_mut("cube").unwrap().rotating = true;
     settings.paused = true;
     settings.sketch_paused = true;
     assert!(!settings.needs_temporal_frames());
@@ -39,6 +40,17 @@ fn viewport_animation_tracks_visible_models_and_independent_sketch_clock() {
     assert!(!settings.needs_temporal_frames());
     settings.objects.clear();
     assert!(!settings.needs_temporal_frames());
+}
+
+#[test]
+fn model_rotation_is_static_by_default_and_explicitly_opt_in() {
+    let state = NprPlaygroundState::default();
+    let before = state.snapshot().objects["cube"].rotation;
+    state.tick(0.25);
+    assert_eq!(state.snapshot().objects["cube"].rotation, before);
+    state.settings.lock().unwrap().objects.get_mut("cube").unwrap().rotating = true;
+    state.tick(0.25);
+    assert_ne!(state.snapshot().objects["cube"].rotation, before);
 }
 
 #[test]
@@ -235,6 +247,7 @@ fn sidecar_reload_retains_inheritance_and_rejects_unknown_style_fields() {
 #[test]
 fn sketch_pause_does_not_stop_model_playback() {
     let state = Arc::new(NprPlaygroundState::default());
+    state.settings.lock().unwrap().objects.get_mut("cube").unwrap().rotating = true;
     let service = NprPlaygroundService::new(state.clone());
     edit(
         &service,
@@ -254,6 +267,7 @@ fn sketch_pause_does_not_stop_model_playback() {
 #[test]
 fn explicit_pose_can_reset_animation_to_the_existing_authored_pose() {
     let state = Arc::new(NprPlaygroundState::default());
+    state.settings.lock().unwrap().objects.get_mut("cube").unwrap().rotating = true;
     let service = NprPlaygroundService::new(state.clone());
     let authored = service.domain_snapshot().settings.objects["cube"].clone();
     state.tick(0.25);

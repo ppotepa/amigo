@@ -1,7 +1,10 @@
 use crate::state::{ObjectSettings, Settings, style_preset_id};
+mod layers;
+mod model;
 use amigo_render_api::{NprBackgroundCommand, NprDrawCommand};
 use amigo_render_npr::*;
 use glam::{Mat4, Quat, Vec3};
+use model::ModelGeometry;
 use std::{
     collections::BTreeMap,
     path::Path,
@@ -18,6 +21,7 @@ struct SourceCommand {
 
 #[derive(Clone, PartialEq)]
 struct ObjectPacketKey {
+    surface: NprSurfaceContentId,
     object: ObjectSettings,
     camera: PerspectiveCamera,
     viewport: [u32; 2],
@@ -41,6 +45,9 @@ struct LayerGeometryKey(
         Option<StrokeTool>,
         Option<NprPaintMedium>,
         Option<BrushInstance>,
+        bool,
+        Option<NprHatchSettings>,
+        Option<NprLineSettings>,
     )>,
 );
 
@@ -56,6 +63,9 @@ fn layer_geometry_key(layers: &NprStyleLayers) -> LayerGeometryKey {
                     layer.tool,
                     layer.paint,
                     layer.brush.clone(),
+                    layer.enabled,
+                    layer.hatch,
+                    layer.line,
                 )
             })
             .collect(),
@@ -82,7 +92,7 @@ pub struct NprSurfacePick {
 }
 
 pub struct NprPlaygroundRenderService {
-    geometry: Arc<Mutex<BTreeMap<String, NprPreparedSurfaceVariants>>>,
+    geometry: Arc<Mutex<BTreeMap<String, ModelGeometry>>>,
     source: Mutex<Vec<SourceCommand>>,
     packet_keys: Mutex<BTreeMap<String, ObjectPacketKey>>,
     packet_builds: std::sync::atomic::AtomicU64,
@@ -104,7 +114,7 @@ impl Default for NprPlaygroundRenderService {
                     ("sphere", NprGeometry::icosphere()),
                 ]
                 .into_iter()
-                .map(|(name, g)| (name.into(), NprPreparedSurfaceVariants::new(g)))
+                .map(|(name, g)| (name.into(), ModelGeometry::builtin(g)))
                 .collect(),
             )),
             source: Mutex::new(vec![]),
@@ -133,12 +143,19 @@ impl NprPlaygroundRenderService {
             return Ok(());
         }
         let mesh = amigo_3d_mesh::load_gltf_geometry(path)?;
-        let geometry = NprGeometry::from_indexed(&mesh.positions, &mesh.indices)?;
         self.geometry
             .lock()
             .unwrap()
-            .insert(id.into(), NprPreparedSurfaceVariants::new(geometry));
+            .insert(id.into(), ModelGeometry::imported(mesh)?);
         Ok(())
+    }
+    pub fn animations(&self, model: &str) -> Vec<amigo_3d_mesh::MeshAnimationClip> {
+        self.geometry
+            .lock()
+            .unwrap()
+            .get(model)
+            .map(ModelGeometry::animations)
+            .unwrap_or_default()
     }
     pub fn clear(&self) {
         *self.last_input.lock().unwrap() = None;
@@ -153,21 +170,11 @@ impl NprPlaygroundRenderService {
         *self.output.lock().unwrap() = (vec![], None);
     }
     pub fn load_models(&self, root: &Path) -> Result<(), String> {
-        let mut cache = self.geometry.lock().unwrap();
         for (name, path) in [
             ("suzanne", "assets/models/suzanne/Suzanne.gltf"),
             ("avocado", "assets/models/avocado/Avocado.glb"),
         ] {
-            if !cache.contains_key(name) {
-                let mesh = amigo_3d_mesh::load_gltf_geometry(&root.join(path))?;
-                cache.insert(
-                    name.into(),
-                    NprPreparedSurfaceVariants::new(NprGeometry::from_indexed(
-                        &mesh.positions,
-                        &mesh.indices,
-                    )?),
-                );
-            }
+            self.load_model(name, &root.join(path))?;
         }
         Ok(())
     }
@@ -286,7 +293,7 @@ impl NprPlaygroundRenderService {
     ) -> Option<NprSurfacePick> {
         let camera = world_camera(settings, viewport)?;
         let (origin, direction) = camera.ray_from_screen(screen, viewport_vec(viewport))?;
-        let cache = self.geometry.lock().unwrap();
+        let mut cache = self.geometry.lock().unwrap();
         settings
             .objects
             .iter()
@@ -294,10 +301,15 @@ impl NprPlaygroundRenderService {
             .filter_map(|(id, object)| {
                 let transform = object_transform(object);
                 let inverse = transform.inverse();
-                let hit = cache.get(&object.model)?.source().raycast(
-                    inverse.transform_point3(origin),
-                    inverse.transform_vector3(direction).normalize_or_zero(),
-                )?;
+                let hit = cache
+                    .get_mut(&object.model)?
+                    .prepared(settings.playback.as_ref())
+                    .ok()?
+                    .source()
+                    .raycast(
+                        inverse.transform_point3(origin),
+                        inverse.transform_vector3(direction).normalize_or_zero(),
+                    )?;
                 let position = transform.transform_point3(hit.position);
                 let distance = (position - origin).length();
                 distance.is_finite().then_some((
@@ -399,7 +411,8 @@ impl NprPlaygroundRenderService {
                 let mut cache = self.geometry.lock().unwrap();
                 let prepared_variants = cache
                     .get_mut(&object.model)
-                    .ok_or_else(|| format!("model {} is not prepared", object.model))?;
+                    .ok_or_else(|| format!("model {} is not prepared", object.model))?
+                    .prepared(settings.playback.as_ref())?;
                 let source_surface = prepared_variants.source_shared();
                 let source_geometry = source_surface.geometry();
                 let source_vertices = source_geometry.vertices.len();
@@ -477,9 +490,22 @@ impl NprPlaygroundRenderService {
                     HatchLodPolicy::default(),
                 );
                 style.hatching_spacing *= decision.spacing_multiplier;
-                let layers = object.effective_layers(&settings.style_layers).clone();
+                let mut layers = object.effective_layers(&settings.style_layers).clone();
+                for layer in &mut layers.layers {
+                    if layer.paint.is_none()
+                        && matches!(
+                            layer.source,
+                            NprGeometrySource::Wash | NprGeometrySource::FlatFill
+                        )
+                    {
+                        if let Some(instance) = &layer.brush {
+                            layer.paint = settings.brushes.resolve(&instance.brush)?.paint;
+                        }
+                    }
+                }
                 let highlighted = false;
                 let key = ObjectPacketKey {
+                    surface: prepared.content_id(),
                     object: object.clone(),
                     camera,
                     viewport,
@@ -496,13 +522,42 @@ impl NprPlaygroundRenderService {
                         // Refresh compositor semantics while retaining the
                         // extracted packet and its tessellated paths.
                         entry.command.layers = layers;
+                        let mut diagnostics = self.layer_diagnostics.lock().unwrap();
+                        let refreshed = entry.command.layers.diagnostics(
+                            &entry.command.packet,
+                            &entry.command.packet,
+                            0,
+                            0,
+                        );
+                        for (layer_id, mut current) in refreshed {
+                            if let Some(previous) = diagnostics.get(&layer_id) {
+                                current.source_geometry = previous.source_geometry;
+                            }
+                            if entry
+                                .command
+                                .layers
+                                .layer(&layer_id)
+                                .is_some_and(|layer| !layer.target.includes(id, layer.source))
+                            {
+                                current.no_effect_reason =
+                                    Some(NprLayerNoEffectReason::TargetExcludesGeometry);
+                                current.mask_coverage = 0.0;
+                            }
+                            diagnostics.insert(layer_id, current);
+                        }
                         source.push(entry);
                         continue;
                     }
                 }
-                let extraction_started = std::time::Instant::now();
-                let mut packet = build_packet_for_surface(
+                let construction_marks = object
+                    .construction_marks
+                    .iter()
+                    .map(|mark| mark.resolve(&source_surface))
+                    .collect::<Result<Vec<_>, _>>()
+                    .map_err(|error| format!("object {id} construction marks: {error}"))?;
+                let (mut packet, mut diagnostics) = layers::build_drawing(
                     &prepared,
+                    &source_surface,
                     camera,
                     viewport,
                     style,
@@ -512,7 +567,10 @@ impl NprPlaygroundRenderService {
                         variant_strength,
                     ),
                     debug,
-                );
+                    &layers,
+                    &settings.brushes,
+                    &construction_marks,
+                )?;
                 packet.stats.surface_source_vertices = source_vertices;
                 packet.stats.surface_proxy_vertices = prepared.geometry().vertices.len();
                 packet.stats.surface_source_triangles = source_triangles;
@@ -526,38 +584,16 @@ impl NprPlaygroundRenderService {
                         glam::Vec4::new(0.15, 0.65, 0.85, 1.0),
                     );
                 }
-                let construction_marks = object
-                    .construction_marks
-                    .iter()
-                    .map(|mark| mark.resolve(&source_surface))
-                    .collect::<Result<Vec<_>, _>>()
-                    .map_err(|error| format!("object {id} construction marks: {error}"))?;
-                append_construction_marks(
-                    &mut packet,
-                    &source_surface,
-                    camera,
-                    viewport,
-                    style,
-                    settings.seed,
-                    &construction_marks,
-                )
-                .map_err(|error| format!("object {id} construction marks: {error}"))?;
-                let extraction_micros = extraction_started.elapsed().as_micros() as u64;
-                let tessellation_started = std::time::Instant::now();
-                let source_packet = packet.clone();
-                layers
-                    .validate_brushes(&settings.brushes)
-                    .map_err(|error| format!("object {id} brush: {error}"))?;
-                layers
-                    .apply_tools_with_library(&mut packet, style, Some(&settings.brushes))
-                    .map_err(|error| format!("object {id} brush: {error}"))?;
-                *self.layer_diagnostics.lock().unwrap() = layers.diagnostics(
-                    &source_packet,
-                    &packet,
-                    Some(object.material_base_color.to_array()),
-                    extraction_micros,
-                    tessellation_started.elapsed().as_micros() as u64,
-                );
+                for layer in &layers.layers {
+                    if !layer.target.includes(id, layer.source) {
+                        if let Some(diagnostic) = diagnostics.get_mut(&layer.id) {
+                            diagnostic.no_effect_reason =
+                                Some(NprLayerNoEffectReason::TargetExcludesGeometry);
+                            diagnostic.mask_coverage = 0.0;
+                        }
+                    }
+                }
+                *self.layer_diagnostics.lock().unwrap() = diagnostics;
                 source.push(SourceCommand {
                     object_id: id.clone(),
                     temporal_scope,
@@ -598,14 +634,27 @@ impl NprPlaygroundRenderService {
         } else {
             source
         };
+        let paper_color = settings
+            .style_layers
+            .layers
+            .iter()
+            .find(|layer| layer.source == NprGeometrySource::Paper)
+            .and_then(|layer| match layer.color_source {
+                NprLayerColorSource::Constant(color) => Some(color),
+                _ => None,
+            })
+            .unwrap_or(settings.global.paper);
         let commands = retain_strokes_under_budget(commands, &settings.selected)
             .into_iter()
-            .map(|entry| entry.command)
+            .map(|mut entry| {
+                entry.command.packet.background = paper_color;
+                entry.command
+            })
             .collect();
         *self.output.lock().unwrap() = (
             commands,
             Some(NprBackgroundCommand {
-                color: settings.global.paper.to_array(),
+                color: paper_color.to_array(),
                 grain: settings.global.paper_grain,
                 tooth: settings.global.paper_tooth,
                 seed: settings.seed,
@@ -787,6 +836,125 @@ mod tests {
     }
 
     #[test]
+    fn enabling_a_line_rebuilds_missing_geometry_and_local_edits_stay_local() {
+        let renderer = NprPlaygroundRenderService::default();
+        let mut settings = Settings::for_scene();
+        settings.style_layers.layer_mut("contours").unwrap().enabled = false;
+        settings.style_layers.layer_mut("contours").unwrap().tool = Some(StrokeTool::Pencil);
+        renderer.rebuild(&settings, [256, 256]).unwrap();
+        let builds = renderer.stats()["packet_builds"];
+        settings.style_layers.layer_mut("contours").unwrap().enabled = true;
+        renderer.rebuild(&settings, [256, 256]).unwrap();
+        assert_eq!(renderer.stats()["packet_builds"], builds + 1);
+        let before = renderer.commands()[0].packet.clone();
+        assert!(
+            before
+                .strokes
+                .iter()
+                .any(|s| s.layer_id.as_deref() == Some("contours"))
+        );
+        settings
+            .style_layers
+            .layer_mut("contours")
+            .unwrap()
+            .brush
+            .as_mut()
+            .unwrap()
+            .pressure_profile = Some(0.1);
+        renderer.rebuild(&settings, [256, 256]).unwrap();
+        let after = renderer.commands()[0].packet.clone();
+        let selected = |packet: &NprRenderPacket, id: &str| {
+            packet
+                .strokes
+                .iter()
+                .filter(|s| s.layer_id.as_deref() == Some(id))
+                .cloned()
+                .collect::<Vec<_>>()
+        };
+        assert_ne!(selected(&before, "contours"), selected(&after, "contours"));
+        assert_ne!(
+            selected(&before, "contours")[0].vertices[0].width,
+            selected(&after, "contours")[0].vertices[0].width
+        );
+        assert_eq!(selected(&before, "creases"), selected(&after, "creases"));
+    }
+
+    #[test]
+    fn independent_hatching_directions_coexist_with_paint() {
+        let renderer = NprPlaygroundRenderService::default();
+        let mut settings = Settings::for_scene();
+        let hatch = settings.style_layers.layer_mut("hatching").unwrap();
+        hatch.hatch = Some(NprHatchSettings {
+            angle: Some(-40.0),
+            cross: Some(0.0),
+            ..Default::default()
+        });
+        let mut second = hatch.clone();
+        second.id = "cross-lines".into();
+        second.hatch.as_mut().unwrap().angle = Some(60.0);
+        settings.style_layers.layers.push(second);
+        renderer.rebuild(&settings, [256, 256]).unwrap();
+        let packet = renderer.commands()[0].packet.clone();
+        let paths = |id: &str| {
+            packet
+                .strokes
+                .iter()
+                .filter(|s| s.layer_id.as_deref() == Some(id))
+                .flat_map(|s| s.vertices.iter().map(|v| v.position))
+                .collect::<Vec<_>>()
+        };
+        assert!(!paths("hatching").is_empty());
+        assert!(!paths("cross-lines").is_empty());
+        assert_ne!(paths("hatching"), paths("cross-lines"));
+        assert!(!packet.underpainting.is_empty());
+        let builds = renderer.stats()["packet_builds"];
+        settings
+            .style_layers
+            .layer_mut("hatching")
+            .unwrap()
+            .hatch
+            .as_mut()
+            .unwrap()
+            .spacing = 2.0;
+        renderer.rebuild(&settings, [256, 256]).unwrap();
+        assert_eq!(renderer.stats()["packet_builds"], builds + 1);
+    }
+
+    #[test]
+    fn paper_colour_and_geometry_targets_refresh_without_rebuilding_lines() {
+        let renderer = NprPlaygroundRenderService::default();
+        let mut settings = Settings::for_scene();
+        renderer.rebuild(&settings, [256, 256]).unwrap();
+        let builds = renderer.stats()["packet_builds"];
+        let color = Vec4::new(0.2, 0.3, 0.4, 1.0);
+        settings
+            .style_layers
+            .layer_mut("paper")
+            .unwrap()
+            .color_source = NprLayerColorSource::Constant(color);
+        settings.style_layers.layer_mut("contours").unwrap().target =
+            GeometryTarget::SurfaceFeatures {
+                features: vec!["shadow-hatch".into()],
+            };
+        renderer.rebuild(&settings, [256, 256]).unwrap();
+        assert_eq!(renderer.stats()["packet_builds"], builds);
+        assert_eq!(renderer.background().unwrap().color, color.to_array());
+        assert_eq!(renderer.commands()[0].packet.background, color);
+        assert_eq!(
+            renderer.layer_diagnostics()["contours"].no_effect_reason,
+            Some(NprLayerNoEffectReason::TargetExcludesGeometry)
+        );
+        settings.style_layers.layer_mut("contours").unwrap().target = GeometryTarget::All;
+        settings.style_layers.layer_mut("contours").unwrap().opacity = 0.0;
+        renderer.rebuild(&settings, [256, 256]).unwrap();
+        assert_eq!(renderer.stats()["packet_builds"], builds);
+        assert_eq!(
+            renderer.layer_diagnostics()["contours"].no_effect_reason,
+            Some(NprLayerNoEffectReason::ZeroOpacity)
+        );
+    }
+
+    #[test]
     fn layer_diagnostics_report_the_extracted_source_and_contribution() {
         let renderer = NprPlaygroundRenderService::default();
         renderer
@@ -802,6 +970,7 @@ mod tests {
         TessellatedStroke {
             vertices: vec![
                 StrokeVertex {
+                    surface: None,
                     position: Vec2::ZERO,
                     width: 1.0,
                     id: 1,

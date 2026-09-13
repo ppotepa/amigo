@@ -78,7 +78,8 @@ fn authored_underpainting_medium_is_kept_as_per_layer_compositor_state() {
             .wash,
         0.0
     );
-    assert!(!command.packet.fills.is_empty());
+    assert!(!command.packet.occluders.is_empty());
+    assert!(command.packet.fills.iter().all(|triangle| triangle.layer_id.is_some()));
 }
 
 #[test]

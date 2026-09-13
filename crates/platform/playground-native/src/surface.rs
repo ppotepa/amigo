@@ -17,7 +17,11 @@ pub struct NativeInput {
     pub button: u32,
     pub wheel: f64,
     pub key: u32,
-    pub modified: bool,
+    pub ctrl: bool,
+    pub shift: bool,
+    pub alt: bool,
+    pub meta: bool,
+    pub repeat: bool,
 }
 #[derive(Clone, Copy, Deserialize)]
 pub struct NativeViewportRect {
@@ -127,7 +131,11 @@ unsafe extern "system" fn window_proc(
                 button: 0,
                 wheel: 0.0,
                 key: 0,
-                modified: false,
+                ctrl: false,
+                shift: false,
+                alt: false,
+                meta: false,
+                repeat: false,
             };
             match message {
                 WM_LBUTTONDOWN | WM_RBUTTONDOWN | WM_MBUTTONDOWN => {
@@ -153,9 +161,12 @@ unsafe extern "system" fn window_proc(
                 WM_KEYDOWN => {
                     event.kind = "key";
                     event.key = wparam.0 as u32;
-                    event.modified = [VK_CONTROL, VK_MENU, VK_LWIN, VK_RWIN]
-                        .iter()
-                        .any(|key| GetKeyState(key.0 as i32) < 0);
+                    event.ctrl = GetKeyState(VK_CONTROL.0 as i32) < 0;
+                    event.shift = GetKeyState(VK_SHIFT.0 as i32) < 0;
+                    event.alt = GetKeyState(VK_MENU.0 as i32) < 0;
+                    event.meta = GetKeyState(VK_LWIN.0 as i32) < 0
+                        || GetKeyState(VK_RWIN.0 as i32) < 0;
+                    event.repeat = lparam.0 & (1 << 30) != 0;
                 }
                 WM_KILLFOCUS | WM_CAPTURECHANGED => event.kind = "cancel",
                 WM_SETFOCUS => event.kind = "focus",

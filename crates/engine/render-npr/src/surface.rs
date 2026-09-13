@@ -78,6 +78,7 @@ impl std::error::Error for NprSurfaceAnchorError {}
 #[derive(Debug, Clone, PartialEq)]
 pub struct NprPreparedSurface {
     contour_cache: ContourCache,
+    coverage_cache: CoverageCache,
     geometry: NprGeometry,
     topology: Vec<TopologyEdge>,
     direction_field: crate::SurfaceDirectionField,
@@ -90,6 +91,13 @@ pub struct NprPreparedSurface {
 struct ContourCache(
     std::sync::Arc<std::sync::Mutex<BTreeMap<u32, std::sync::Arc<crate::contour::ContourField>>>>,
 );
+#[derive(Debug, Default, Clone)]
+struct CoverageCache(std::sync::Arc<std::sync::OnceLock<crate::coverage::CoverageIndex>>);
+impl PartialEq for CoverageCache {
+    fn eq(&self, _: &Self) -> bool {
+        true
+    }
+}
 impl PartialEq for ContourCache {
     fn eq(&self, _: &Self) -> bool {
         true
@@ -244,6 +252,7 @@ impl NprPreparedSurface {
         Self {
             geometry,
             contour_cache: Default::default(),
+            coverage_cache: Default::default(),
             topology,
             direction_field,
             content_id,
@@ -259,6 +268,7 @@ impl NprPreparedSurface {
         Self {
             geometry: proxy.geometry,
             contour_cache: Default::default(),
+            coverage_cache: Default::default(),
             topology,
             direction_field,
             content_id,
@@ -273,6 +283,12 @@ impl NprPreparedSurface {
 
     pub fn geometry(&self) -> &NprGeometry {
         &self.geometry
+    }
+
+    pub(crate) fn coverage_index(&self) -> &crate::coverage::CoverageIndex {
+        self.coverage_cache
+            .0
+            .get_or_init(|| crate::coverage::CoverageIndex::build(&self.geometry))
     }
 
     pub fn topology(&self) -> &[TopologyEdge] {

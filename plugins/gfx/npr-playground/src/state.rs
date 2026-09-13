@@ -324,6 +324,9 @@ impl ObjectSettings {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Settings {
+    /// Runtime transport only: excluded from presets, drafts and authored history.
+    #[serde(skip)]
+    pub playback: Option<crate::playback::ModelPlayback>,
     pub global: ComicInk,
     /// Ordered scene-owned drawing layers. Object-level layer overrides are
     /// introduced separately from style-parameter inheritance so stable layer
@@ -367,7 +370,12 @@ impl Settings {
                 && self
                     .objects
                     .iter()
-                    .any(|entry| visible(entry) && entry.1.rotating))
+                    .any(|entry| visible(entry) && entry.1.rotating)
+                && self.playback.is_none())
+                || self
+                    .playback
+                    .as_ref()
+                    .is_some_and(|p| p.playing && p.speed > 0.0)
                 || (!self.sketch_paused
                     && self.motion.mode == StrokeMotionMode::RedrawContinuously))
     }
@@ -397,7 +405,10 @@ impl Settings {
                         },
                         smooth_weld_relative_tolerance: default_smooth_weld_relative_tolerance(),
                         visible: true,
-                        rotating: true,
+                        // Drawing Studio starts from a stable authored pose.
+                        // Rotation remains an explicit opt-in in the motion
+                        // controls and in serialized scene documents.
+                        rotating: false,
                         position: Vec3::ZERO,
                         rotation: Vec3::new(0.36_f32.to_degrees(), 0.71_f32.to_degrees(), 0.0),
                         scale: 1.0,
@@ -412,6 +423,7 @@ impl Settings {
             .collect();
         Self {
             global: ComicInk::default(),
+            playback: None,
             style_layers: NprStyleLayers::default(),
             brushes: BrushLibrary::drawing_studio(),
             objects,
@@ -901,6 +913,18 @@ impl NprPlaygroundState {
     }
     pub fn tick(&self, dt: f32) {
         let mut s = self.settings.lock().unwrap();
+        if let Some(mut playback) = s.playback.take() {
+            playback.advance(dt);
+            let selected = s.selected.clone();
+            if playback.source == crate::playback::PlaybackSource::Turntable {
+                if let Some(object) = s.objects.get_mut(&selected) {
+                    object.rotation = playback.rotation(object.angular_speed);
+                }
+            }
+            s.playback = Some(playback);
+            s.step = false;
+            return;
+        }
         let delta = if s.step && s.paused {
             1.0 / 60.0
         } else if s.paused {

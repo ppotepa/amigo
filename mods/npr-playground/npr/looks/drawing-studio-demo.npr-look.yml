@@ -1,8 +1,321 @@
 id: drawing-studio-demo
 includes:
-  - comic-ink
+- comic-ink
 look:
   style:
-    tone_density: 0.72
-    ink_dryness: 0.38
-    hatching_cross: 0.35
+    hatching_cross: 0.3499999940395355
+    ink_dryness: 0.3799999952316284
+    tone_density: 0.7200000286102295
+  layers:
+  - layer_id: wash
+    order: 2
+    parameters:
+      id: wash
+      label: Watercolour wash
+      source: wash
+      enabled: true
+      opacity: 0.45
+      blend: normal
+      color_source:
+        kind: style-palette
+      tool: null
+      paint:
+        wash: 0.82
+        granulation: 0.18
+      hatch: null
+      brush:
+        brush:
+          id: watercolour-wash
+          version: 1
+        width: null
+        taper: null
+        softness: null
+        irregularity: null
+        dryness: null
+        seed: null
+      target:
+        kind: all
+      mask:
+        kind: none
+  - layer_id: fill
+    order: 3
+    parameters:
+      id: fill
+      label: Flat fill
+      source: flat-fill
+      enabled: false
+      opacity: 1.0
+      blend: normal
+      color_source:
+        kind: style-palette
+      tool: null
+      paint: null
+      hatch: null
+      brush:
+        brush:
+          id: flat-fill
+          version: 1
+        width: null
+        taper: null
+        softness: null
+        irregularity: null
+        dryness: null
+        seed: null
+      target:
+        kind: all
+      mask:
+        kind: none
+  - layer_id: flat-fill
+    order: 4
+    parameters:
+      id: flat-fill
+      label: Flat fill
+      source: flat-fill
+      enabled: true
+      opacity: 0.72
+      blend: normal
+      color_source:
+        kind: style-palette
+      tool: null
+      paint: null
+      hatch: null
+      brush:
+        brush:
+          id: flat-fill
+          version: 1
+        width: null
+        taper: null
+        softness: null
+        irregularity: null
+        dryness: null
+        seed: null
+      target:
+        kind: all
+      mask:
+        kind: none
+  - layer_id: hatch
+    order: 5
+    parameters:
+      id: hatch
+      label: Shadow hatch
+      source: shadow-hatch
+      enabled: true
+      opacity: 1.0
+      blend: multiply
+      color_source:
+        kind: style-palette
+      tool: null
+      paint: null
+      hatch: null
+      brush:
+        brush:
+          id: surface-hatch
+          version: 1
+        width: null
+        taper: null
+        softness: null
+        irregularity: null
+        dryness: null
+        seed: null
+      target:
+        kind: all
+      mask:
+        kind: none
+  - layer_id: hatching
+    order: 6
+    parameters:
+      id: hatching
+      label: Hatching
+      source: shadow-hatch
+      enabled: true
+      opacity: 1.0
+      blend: multiply
+      color_source:
+        kind: style-palette
+      tool: pencil
+      paint: null
+      hatch:
+        density: 1.0
+        spacing: 1.0
+      brush:
+        brush:
+          id: surface-hatch
+          version: 1
+        width: null
+        taper: null
+        softness: null
+        irregularity: null
+        dryness: null
+        seed: null
+      target:
+        kind: all
+      mask:
+        kind: none
+  - layer_id: form-lines
+    order: 7
+    parameters:
+      id: form-lines
+      label: Form lines
+      source: form-lines
+      enabled: true
+      opacity: 1.0
+      blend: normal
+      color_source:
+        kind: style-palette
+      tool: fineliner
+      paint: null
+      hatch: null
+      brush:
+        brush:
+          id: ink-liner
+          version: 1
+        width: null
+        taper: null
+        softness: null
+        irregularity: null
+        dryness: null
+        seed: null
+      target:
+        kind: all
+      mask:
+        kind: none
+  - layer_id: graphite
+    order: 8
+    parameters:
+      id: graphite
+      label: Graphite form lines
+      source: form-lines
+      enabled: true
+      opacity: 0.72
+      blend: normal
+      color_source:
+        kind: style-palette
+      tool: pencil
+      paint: null
+      hatch: null
+      brush:
+        brush:
+          id: graphite-study
+          version: 1
+        width: null
+        taper: null
+        softness: null
+        irregularity: null
+        dryness: null
+        seed: null
+      target:
+        kind: all
+      mask:
+        kind: none
+  - layer_id: contours
+    order: 9
+    parameters:
+      id: contours
+      label: Contours
+      source: silhouette
+      enabled: true
+      opacity: 1.0
+      blend: normal
+      color_source:
+        kind: style-palette
+      tool: null
+      paint: null
+      hatch: null
+      brush:
+        brush:
+          id: ink-liner
+          version: 1
+        width: null
+        taper: null
+        softness: null
+        irregularity: null
+        dryness: null
+        seed: null
+      target:
+        kind: all
+      mask:
+        kind: none
+  - layer_id: ink
+    order: 10
+    parameters:
+      id: ink
+      label: Ink contours
+      source: silhouette
+      enabled: true
+      opacity: 1.0
+      blend: normal
+      color_source:
+        kind: style-palette
+      tool: fineliner
+      paint: null
+      hatch: null
+      brush:
+        brush:
+          id: ink-liner
+          version: 1
+        width: null
+        taper: null
+        softness: null
+        irregularity: null
+        dryness: null
+        seed: null
+      target:
+        kind: all
+      mask:
+        kind: none
+  - layer_id: creases
+    order: 11
+    parameters:
+      id: creases
+      label: Creases
+      source: creases
+      enabled: true
+      opacity: 1.0
+      blend: normal
+      color_source:
+        kind: style-palette
+      tool: null
+      paint: null
+      hatch: null
+      brush:
+        brush:
+          id: graphite-study
+          version: 1
+        width: null
+        taper: null
+        softness: null
+        irregularity: null
+        dryness: null
+        seed: null
+      target:
+        kind: all
+      mask:
+        kind: none
+  - layer_id: construction
+    order: 12
+    parameters:
+      id: construction
+      label: Construction
+      source: construction
+      enabled: true
+      opacity: 1.0
+      blend: normal
+      color_source:
+        kind: style-palette
+      tool: pencil
+      paint: null
+      hatch: null
+      brush:
+        brush:
+          id: graphite-study
+          version: 1
+        width: null
+        taper: null
+        softness: null
+        irregularity: null
+        dryness: null
+        seed: null
+      target:
+        kind: all
+      mask:
+        kind: none

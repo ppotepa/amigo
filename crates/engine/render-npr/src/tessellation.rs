@@ -4,6 +4,8 @@ use glam::Vec2;
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct StrokeVertex {
     pub position: Vec2,
+    /// Absent for a purely illustrative 2D stroke; filled by surface extraction.
+    pub surface: Option<crate::NprCoverageSample>,
     pub width: f32,
     pub id: u32,
     pub depth: f32,
@@ -253,6 +255,7 @@ fn tessellate_polyline_variant(
         for side in [-1.0, 1.0] {
             out.vertices.push(StrokeVertex {
                 position: point + normal * width * 0.5 * side,
+                surface: None,
                 width,
                 id,
                 depth,
@@ -289,6 +292,7 @@ fn tessellate_polyline_variant(
             let base = out.vertices.len() as u32;
             out.vertices.push(StrokeVertex {
                 position: center,
+                surface: None,
                 width,
                 id,
                 depth,
@@ -304,6 +308,7 @@ fn tessellate_polyline_variant(
                 let a = i as f32 * std::f32::consts::TAU / 12.0;
                 out.vertices.push(StrokeVertex {
                     position: center + Vec2::new(a.cos(), a.sin()) * width * 0.5,
+                    surface: None,
                     width,
                     id,
                     depth,

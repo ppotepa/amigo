@@ -112,7 +112,11 @@ impl amigo_runtime::RuntimePlugin for NprPlaygroundViewportPlugin {
                         .try_iter()
                         .collect::<Vec<_>>();
                     for (generation, error) in failures {
-                        companions.send_viewport_error(&id, generation, error);
+                        companions.send_viewport_error(
+                            &id,
+                            if generation == 0 { request.generation } else { generation },
+                            error,
+                        );
                     }
                     if let Some(stats) = bridge
                         .worker

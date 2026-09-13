@@ -7,8 +7,10 @@ not a layer collection and the migration preserves it unchanged. Repeated
 generator kinds can be represented with distinct IDs; independent brush
 generation and versioned brush resources are explicit domain contracts. Brush
 versions are immutable; instances hold local overrides, targets and masks.
-Groups apply opacity/blend over their children, and UpdateBrushVersion is one
-history operation.
+The Lines/Paints/Paper categories are presentation only, not document groups.
+`SaveAppearance` captures the selected entry's local settings, allocates the next
+immutable revision on the backend and optionally updates matching references as
+one history operation. A locked affected entry rejects the complete operation.
 
 The plugin contributes the `gfx.npr` capability, an `NprSettings` scene
 component, the `npr-playground` provider for typed intents/snapshots, and one
@@ -27,11 +29,24 @@ and tool). A local reorder is explicitly structural and records the full stable
 layer-ID order. Therefore later scene changes still reach object layers that did
 not override the relevant property.
 
-For stroke layers, an explicit tool is applied by `amigo-render-npr` after
-feature extraction and before backend submission. It retargets the pixel-space
-strip envelope, analytic edge softness, coverage and round caps while retaining
-the source stroke identity and topology. `inherit` keeps the scene `ComicInk`
-tool.
+For line entries, source parameters and appearance resolve before extraction
+and tessellation. A local tool overrides the appearance template's tool. Local
+pressure and gesture correction drive the same domain tessellator used by the
+viewport; remaining material parameters finish the contribution before backend
+submission. Contact spacing belongs to material deposition, whereas hatch
+spacing belongs to the surface-path generator. Existing pinned material recipes
+remain readable, but their names/discriminators never select geometric sources.
+
+`PreviewLayer` validates a local draft and updates render state, not the authored
+document. `CancelLayerPreview` or connection cancellation restores the authored
+entry. `ReplaceLayer` commits the draft as one undo operation. The snapshot
+exposes `preview_layer` and separate drawing/preset dirty states.
+
+`Playback` accepts a typed `source`, `playing`, `seek` or `options` command.
+Sources are a model turntable or a file clip index (display names may repeat).
+Clip metadata names every node path/property, interpolation and keyframe count;
+keyframe payloads remain on the backend. Playing, seeking and changing speed do
+not dirty the drawing, create undo entries or cancel a local layer preview.
 
 `ThreeBand` shading can also emit sparse `FormLine` marks. They are distinct
 from `Tone`/hatching in the render packet, diagnostics, budget priority and

@@ -1,6 +1,39 @@
 export type CameraMode = 'select' | 'orbit' | 'pan' | 'zoom';
 
-export type Intent = Record<string, unknown>;
+export type Shortcut = 'save' | 'undo' | 'redo' | 'cancel' | 'play' | 'orbit' | 'select';
+type ShortcutKey = { key: string; ctrl?: boolean; shift?: boolean; alt?: boolean; meta?: boolean; repeat?: boolean };
+export type NativeViewportInput = Omit<ShortcutKey, 'key'> & {
+  kind: 'down' | 'up' | 'move' | 'wheel' | 'cancel' | 'focus' | 'key';
+  x: number; y: number; button: number; wheel: number; key: number;
+};
+
+/** Both input transports obey the same shortcuts and leave controls' keys alone. */
+export function workspaceShortcut(input: ShortcutKey, editing = false, interactive = false): Shortcut | null {
+  if (input.repeat || input.alt) return null;
+  const key = input.key.toLowerCase();
+  if (input.ctrl || input.meta) {
+    if (key === 's') return 'save';
+    if (!editing && key === 'z') return input.shift ? 'redo' : 'undo';
+    return null;
+  }
+  if (key === 'escape') return 'cancel';
+  if (editing || interactive) return null;
+  return key === ' ' ? 'play' : key === 'o' ? 'orbit' : key === 'v' ? 'select' : null;
+}
+export function nativeShortcut(input: NativeViewportInput): Shortcut | null {
+  return workspaceShortcut({ ...input, key: input.key === 27 ? 'Escape' : String.fromCharCode(input.key) });
+}
+
+/** A wheel burst is one undo gesture, terminated after input goes idle. */
+export class WheelGestureEnd {
+  private timer: ReturnType<typeof setTimeout> | undefined;
+  constructor(private readonly finish: () => void) {}
+  touch() {
+    this.cancel();
+    this.timer = setTimeout(() => { this.timer = undefined; this.finish(); }, 180);
+  }
+  cancel() { clearTimeout(this.timer); this.timer = undefined; }
+}
 
 export function resolvePointerMode(button: number, mode: CameraMode): CameraMode {
   if (button === 2) return 'orbit';
@@ -41,8 +74,8 @@ export class CameraGestureController {
     p.dragging = true;
     const dx = x - p.x, dy = y - p.y;
     p.x = x; p.y = y;
-    if (p.mode === 'select') return null;
-    return { mode: p.mode, dx: p.mode === 'zoom' ? 0 : dx, dy: p.mode === 'zoom' ? 0 : dy, wheel: p.mode === 'zoom' ? zoomFromDrag(dy) : 0 };
+    const mode = p.mode === 'select' ? 'orbit' : p.mode;
+    return { mode, dx: mode === 'zoom' ? 0 : dx, dy: mode === 'zoom' ? 0 : dy, wheel: mode === 'zoom' ? zoomFromDrag(dy) : 0 };
   }
   up(id: number, x: number, y: number): boolean {
     const p = this.pointer;
@@ -51,43 +84,4 @@ export class CameraGestureController {
     return p.mode === 'select' && !p.dragging && isClick(x - p.startX, y - p.startY);
   }
   cancel(): number | undefined { const id = this.pointer?.id; this.pointer = null; return id; }
-}
-
-/** One domain mutation lane. Only a matching ACK and its state release it. */
-export class MutationQueue {
-  private queue: { control: string; intent: Intent; queued_at: number }[] = [];
-  private active: { request: number; revision?: number } | null = null;
-  private sequence = 0;
-  get busy(): boolean { return this.active !== null || this.queue.length > 0; }
-  push(control: string, intent: Intent) {
-    const last = this.queue.at(-1);
-    if (last?.intent.kind === 'navigate' && intent.kind === 'navigate'
-      && ['orbit', 'pan', 'zoom'].includes(String(intent.mode))
-      && last.intent.mode === intent.mode && last.intent.width === intent.width && last.intent.height === intent.height) {
-      for (const axis of ['dx', 'dy', 'wheel']) last.intent[axis] = Number(last.intent[axis]) + Number(intent[axis]);
-    } else this.queue.push({ control, intent, queued_at: performance.now() });
-  }
-  take(revision: number) {
-    if (this.active) return null;
-    const next = this.queue.shift();
-    if (!next) return null;
-    this.active = { request: ++this.sequence };
-    return { ...next, request_id: this.sequence, base_revision: revision };
-  }
-  accepted(request: number, revision: number, currentRevision: number): boolean {
-    if (this.active?.request !== request) return false;
-    this.active.revision = revision;
-    return this.state(currentRevision);
-  }
-  state(revision: number): boolean {
-    if (this.active?.revision === undefined || revision < this.active.revision) return false;
-    this.active = null;
-    return true;
-  }
-  rejected(request: number): boolean {
-    if (this.active?.request !== request) return false;
-    this.clear();
-    return true;
-  }
-  clear() { this.queue = []; this.active = null; }
 }

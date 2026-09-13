@@ -15,9 +15,14 @@ fn active_playground_snapshot_publishes_renderer_generated_preview_channels() {
         let snapshot = PlaygroundProvider::snapshot(&service);
         let looks = snapshot
             .values
-            .get("look_previews")
+            .get("look_catalog")
             .and_then(serde_json::Value::as_object)
-            .is_some_and(|items| items.values().any(serde_json::Value::is_string));
+            .is_some_and(|items| {
+                items.values().any(|entry| {
+                    entry.get("preview").is_some_and(serde_json::Value::is_string)
+                        && entry.get("resolved_layers").is_some()
+                })
+            });
         let brushes = snapshot
             .values
             .get("brush_previews")
@@ -138,6 +143,7 @@ fn build_up_is_editor_state_and_variants_are_undoable() {
         )
         .unwrap();
     assert_eq!(*state.build_up.lock().unwrap(), 0.25);
+    assert_eq!(service.domain_snapshot().build_up, 0.25);
     assert!(!service.domain_snapshot().dirty);
     service
         .dispatch_intent(
@@ -150,6 +156,15 @@ fn build_up_is_editor_state_and_variants_are_undoable() {
         )
         .unwrap();
     assert!(service.domain_snapshot().variants.contains_key("before"));
+    service
+        .dispatch_intent(
+            22,
+            service.revision(),
+            "solo".into(),
+            NprPlaygroundIntent::SetSoloLayer { layer: Some("contours".into()) },
+        )
+        .unwrap();
+    assert_eq!(service.domain_snapshot().solo_layer.as_deref(), Some("contours"));
     let mut changed = state.snapshot();
     changed.style_layers.layer_mut("contours").unwrap().opacity = 0.42;
     service
@@ -277,6 +292,106 @@ fn brush_version_update_uses_document_library_and_is_one_undo_operation() {
 }
 
 #[test]
+fn granular_layer_authoring_generates_ids_and_keeps_paper_pinned() {
+    let service = NprPlaygroundService::new(Arc::new(NprPlaygroundState::default()));
+    let initial = service.domain_snapshot().settings.style_layers.layers.len();
+    service
+        .dispatch_intent(
+            1,
+            service.revision(),
+            "layer.add".into(),
+            NprPlaygroundIntent::AddLayer {
+                source: amigo_render_npr::NprGeometrySource::Silhouette,
+                label: Some("Second contour".into()),
+                brush: Some(amigo_render_npr::BrushInstance {
+                    brush: amigo_render_npr::BrushReference { id: "ink-liner".into(), version: 1 },
+                    ..Default::default()
+                }),
+                target: Some(amigo_render_npr::GeometryTarget::All),
+                mask: Some(amigo_render_npr::CoverageMask::None),
+            },
+        )
+        .unwrap();
+    let snapshot = service.domain_snapshot();
+    assert_eq!(snapshot.settings.style_layers.layers.len(), initial + 1);
+    let added = snapshot.settings.style_layers.layers.last().unwrap();
+    assert_eq!(added.id, "silhouette");
+    assert_eq!(added.label, "Second contour");
+    assert!(snapshot.settings.style_layers.layer("paper").is_some());
+
+    let revision = service.revision();
+    assert!(service
+        .dispatch_intent(
+            2,
+            revision,
+            "layer.delete".into(),
+            NprPlaygroundIntent::DeleteLayer { layer: "paper".into() },
+        )
+        .is_err());
+    assert_eq!(service.domain_snapshot().settings.style_layers.layers.len(), initial + 1);
+}
+
+#[test]
+fn granular_layer_edit_is_atomic_and_respects_locks() {
+    let service = NprPlaygroundService::new(Arc::new(NprPlaygroundState::default()));
+    service
+        .dispatch_intent(
+            1,
+            0,
+            "lock".into(),
+            NprPlaygroundIntent::SetLayerLock { layer: "contours".into(), locked: true },
+        )
+        .unwrap();
+    let before = service.domain_snapshot().settings.style_layers.layer("contours").unwrap().clone();
+    let mut replacement = before.clone();
+    replacement.opacity = 0.2;
+    assert!(service
+        .dispatch_intent(
+            2,
+            service.revision(),
+            "replace".into(),
+            NprPlaygroundIntent::ReplaceLayer { layer: "contours".into(), value: replacement },
+        )
+        .is_err());
+    assert_eq!(service.domain_snapshot().settings.style_layers.layer("contours").unwrap(), &before);
+}
+
+#[test]
+fn layer_brush_assignment_is_granular_and_undoable() {
+    let service = NprPlaygroundService::new(Arc::new(NprPlaygroundState::default()));
+    service
+        .dispatch_intent(
+            1,
+            0,
+            "layer.brush".into(),
+            NprPlaygroundIntent::SetLayerBrush {
+                layer: "contours".into(),
+                brush: None,
+            },
+        )
+        .unwrap();
+    assert!(service
+        .domain_snapshot()
+        .settings
+        .style_layers
+        .layer("contours")
+        .unwrap()
+        .brush
+        .is_none());
+    service
+        .dispatch_intent(2, service.revision(), "history".into(), NprPlaygroundIntent::Undo)
+        .unwrap();
+    assert!(service
+        .domain_snapshot()
+        .settings
+        .style_layers
+        .layer("contours")
+        .unwrap()
+        .brush
+        .is_some());
+}
+
+#[test]
 fn custom_brush_version_survives_draft_checkpoint_and_restore() {
     let state = Arc::new(NprPlaygroundState::default());
     let service = NprPlaygroundService::new(state.clone());
@@ -343,6 +458,87 @@ fn custom_brush_version_survives_draft_checkpoint_and_restore() {
             version: 2,
         })
         .is_ok());
+}
+
+#[test]
+fn brush_lab_save_and_pin_is_one_atomic_history_operation() {
+    let service = NprPlaygroundService::new(Arc::new(NprPlaygroundState::default()));
+    let before = service.domain_snapshot();
+    let old_reference = before
+        .settings
+        .style_layers
+        .layer("contours")
+        .unwrap()
+        .brush
+        .as_ref()
+        .unwrap()
+        .brush
+        .clone();
+    let mut brush = before.brushes.resolve(&old_reference).unwrap().clone();
+    brush.version = old_reference.version + 1;
+    brush.name = "Brush Lab atomic".into();
+    brush.width = 3.5;
+
+    service
+        .dispatch_intent(
+            1,
+            service.revision(),
+            "brush.save-and-pin".into(),
+            NprPlaygroundIntent::SaveBrushVersionAndPin {
+                brush: brush.clone(),
+                layer: "contours".into(),
+                update_matching: true,
+            },
+        )
+        .unwrap();
+    assert_eq!(service.revision(), 1);
+    let after = service.domain_snapshot();
+    let pinned = &after
+        .settings
+        .style_layers
+        .layer("contours")
+        .unwrap()
+        .brush
+        .as_ref()
+        .unwrap()
+        .brush;
+    assert_eq!(pinned, &amigo_render_npr::BrushReference { id: brush.id.clone(), version: brush.version });
+    assert_eq!(after.brushes.resolve(pinned).unwrap().name, "Brush Lab atomic");
+    assert_eq!(
+        after
+            .settings
+            .style_layers
+            .layer("form-lines")
+            .unwrap()
+            .brush
+            .as_ref()
+            .unwrap()
+            .brush,
+        pinned.clone()
+    );
+
+    service
+        .dispatch_intent(
+            2,
+            service.revision(),
+            "history".into(),
+            NprPlaygroundIntent::Undo,
+        )
+        .unwrap();
+    let undone = service.domain_snapshot();
+    assert_eq!(
+        undone
+            .settings
+            .style_layers
+            .layer("contours")
+            .unwrap()
+            .brush
+            .as_ref()
+            .unwrap()
+            .brush,
+        old_reference
+    );
+    assert!(undone.brushes.resolve(&amigo_render_npr::BrushReference { id: brush.id, version: brush.version }).is_err());
 }
 
 #[test]
@@ -503,6 +699,27 @@ fn solo_layer_is_editor_state_and_keeps_paper_visible() {
             .unwrap()
             .enabled
     );
+    service
+        .dispatch_intent(
+            3,
+            service.revision(),
+            "layers".into(),
+            NprPlaygroundIntent::SetSoloLayer {
+                layer: Some("contours".into()),
+            },
+        )
+        .unwrap();
+    service
+        .dispatch_intent(
+            4,
+            service.revision(),
+            "layers".into(),
+            NprPlaygroundIntent::DeleteLayer {
+                layer: "contours".into(),
+            },
+        )
+        .unwrap();
+    assert_eq!(service.domain_snapshot().solo_layer, None);
 }
 
 #[test]
@@ -698,6 +915,55 @@ fn scene_model_browser_replaces_the_single_viewer_object() {
 }
 
 #[test]
+fn selecting_a_model_preserves_the_drawing_document() {
+    let state = Arc::new(NprPlaygroundState::default());
+    let service = NprPlaygroundService::new(state.clone());
+    let mut layer = state.snapshot().style_layers.layer("contours").unwrap().clone();
+    layer.opacity = 0.42;
+    service
+        .dispatch_intent(
+            1,
+            0,
+            "layer.edit".into(),
+            NprPlaygroundIntent::ReplaceLayer {
+                layer: "contours".into(),
+                value: layer,
+            },
+        )
+        .unwrap();
+    service
+        .dispatch_intent(
+            2,
+            service.revision(),
+            "layer.lock".into(),
+            NprPlaygroundIntent::SetLayerLock {
+                layer: "contours".into(),
+                locked: true,
+            },
+        )
+        .unwrap();
+    let before = service.domain_snapshot();
+
+    service
+        .dispatch_intent(
+            3,
+            service.revision(),
+            "models".into(),
+            NprPlaygroundIntent::SelectModel {
+                model: "sphere".into(),
+            },
+        )
+        .unwrap();
+
+    let after = service.domain_snapshot();
+    assert_eq!(after.settings.global, before.settings.global);
+    assert_eq!(after.settings.style_layers, before.settings.style_layers);
+    assert_eq!(after.settings.brushes, before.settings.brushes);
+    assert_eq!(after.locked_layers, before.locked_layers);
+    assert_eq!(after.settings.objects["sphere"].rotating, before.settings.objects["cube"].rotating);
+}
+
+#[test]
 fn source_selection_rejects_unknown_models_without_an_asset_catalog() {
     let state = Arc::new(NprPlaygroundState::default());
     let service = NprPlaygroundService::new(state.clone());
@@ -743,7 +1009,7 @@ fn object_updates_cannot_bypass_basic_source_selection() {
 }
 
 #[test]
-fn selecting_another_model_checkpoints_dirty_drawing_and_starts_clean_layers() {
+fn selecting_another_model_checkpoints_dirty_drawing_and_preserves_layers() {
     let state = Arc::new(NprPlaygroundState::default());
     let service = NprPlaygroundService::new(state.clone());
     service
@@ -793,8 +1059,13 @@ fn selecting_another_model_checkpoints_dirty_drawing_and_starts_clean_layers() {
     );
     assert_eq!(snapshot.settings.selected, "cube");
     assert_eq!(
-        snapshot.settings.style_layers,
-        amigo_render_npr::NprStyleLayers::default()
+        snapshot
+            .settings
+            .style_layers
+            .layer("contours")
+            .unwrap()
+            .opacity,
+        0.23
     );
     assert!(!snapshot.dirty);
 }
@@ -983,4 +1254,23 @@ fn locked_layers_reject_parameter_changes_from_any_adapter() {
             .contains("locked")
     );
     assert_eq!(service.domain_snapshot().revision, 1);
+}
+
+#[test]
+fn tagged_editor_contracts_serialize() {
+    use amigo_render_npr::{CoverageMask, GeometryTarget};
+    assert_eq!(
+        serde_json::to_value(GeometryTarget::Objects {
+            objects: vec!["mesh".into()]
+        })
+        .unwrap(),
+        serde_json::json!({"kind": "objects", "objects": ["mesh"]})
+    );
+    assert_eq!(
+        serde_json::to_value(CoverageMask::Multiply {
+            masks: vec![CoverageMask::None]
+        })
+        .unwrap(),
+        serde_json::json!({"kind": "multiply", "masks": [{"kind": "none"}]})
+    );
 }

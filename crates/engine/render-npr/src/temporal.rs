@@ -357,6 +357,7 @@ mod tests {
                     id,
                     class: FeatureClass::Crease,
                     vertices: vec![StrokeVertex {
+                        surface: None,
                         position: Vec2::ZERO,
                         width: 1.0,
                         id,

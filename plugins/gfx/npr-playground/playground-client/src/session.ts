@@ -1,5 +1,8 @@
-export type Snapshot = { revision: number; values: Record<string, any>; metadata: unknown };
-export type Delta = { base_revision: number; revision: number; changed: Record<string, any>; removed: string[]; metadata?: unknown };
+import type { CompanionBootstrap, NprIntent, PlaygroundValues } from './contracts';
+import { MutationQueue } from './mutation-queue';
+
+export type Snapshot = { revision: number; values: PlaygroundValues; metadata: unknown };
+export type Delta = { base_revision: number; revision: number; changed: Partial<PlaygroundValues>; removed: string[]; metadata?: unknown };
 export function applyDelta(snapshot: Snapshot, delta: Delta): Snapshot {
   if (snapshot.revision !== delta.base_revision) throw new Error('State revision mismatch; resynchronizing session.');
   const values = { ...snapshot.values, ...delta.changed };
@@ -7,75 +10,155 @@ export function applyDelta(snapshot: Snapshot, delta: Delta): Snapshot {
   return { revision: delta.revision, values, metadata: delta.metadata ?? snapshot.metadata };
 }
 
-export type PresentationMode = 'native_gpu' | 'local_rgba' | 'jpeg';
-export type FrameHeader = { sequence: number; revision: number; generation: number; size: [number, number]; format: 'rgba8_srgb'; mode: PresentationMode; input_id: number; stages: Record<string, number> };
-export type EncodedFrame = { header: FrameHeader; image: Blob };
-export type FrameAck = { sequence: number; generation: number; presented: boolean; decode_ms: number; present_ms: number };
-
-export async function parseFrame(blob: Blob): Promise<EncodedFrame> {
-  const prefix = new DataView(await blob.slice(0, 8).arrayBuffer());
-  if (prefix.byteLength !== 8 || prefix.getUint32(0) !== 0x41505646) throw new Error('Invalid viewport frame');
-  const length = prefix.getUint32(4, true);
-  if (!length || length > 16384 || length + 8 >= blob.size) throw new Error('Invalid viewport header length');
-  const header = JSON.parse(await blob.slice(8, 8 + length).text()) as FrameHeader;
-  if (header.mode !== 'jpeg' || header.format !== 'rgba8_srgb' || header.size.some(n => !Number.isInteger(n) || n < 1 || n > 16384)) throw new Error('Unsupported viewport frame');
-  return { header, image: blob.slice(8 + length, undefined, 'image/jpeg') };
+type WireMessage =
+  | { type: 'snapshot'; snapshot: Snapshot }
+  | ({ type: 'delta' } & Delta)
+  | { type: 'accepted'; request_id: number; revision: number }
+  | { type: 'rejected'; request_id: number; error: { code: string; message: string } }
+  | { type: 'domain'; name: string; payload: unknown };
+export interface SessionState {
+  snapshot: Snapshot | null;
+  connection: 'connecting' | 'connected' | 'resyncing' | 'disconnected';
+  pending: boolean;
+  error: string;
+}
+interface SessionHooks {
+  state: (state: SessionState) => void;
+  frame: (blob: Blob) => void;
+  connected?: () => void;
+  disconnected?: () => void;
+}
+interface SessionPlatform {
+  socket: (url: string) => WebSocket;
+  schedule: (callback: () => void) => number;
+  cancel: (id: number) => void;
 }
 
-/** One decoder, one newest waiting image and one newest ready bitmap. */
-export class LatestFrameDecoder {
-  private waiting: EncodedFrame | null = null;
-  private ready: { image: ImageBitmap; header: FrameHeader; decode: number } | null = null;
-  private animation: number | undefined;
-  private decoding = false;
+/** The sole WebSocket, snapshot and mutation owner. Never retries authored actions. */
+export class DrawingSession {
+  private socket: WebSocket | undefined;
+  private closedSocket: WebSocket | undefined;
+  private boot: CompanionBootstrap | undefined;
+  private reconnectTimer: ReturnType<typeof setTimeout> | undefined;
+  private mutations = new MutationQueue();
+  private scheduled: number | undefined;
   private disposed = false;
-  private newestSequence = -1;
-  constructor(private draw: (image: ImageBitmap, header: FrameHeader) => void, private error: (message: string) => void,
-    private acknowledge: (ack: FrameAck) => void, private current: (header: FrameHeader) => boolean) {}
-  private ack(header: FrameHeader, presented = false, decode_ms = 0, present_ms = 0) {
-    this.acknowledge({ sequence: header.sequence, generation: header.generation, presented, decode_ms, present_ms });
+  private current: SessionState = { snapshot: null, connection: 'connecting', pending: false, error: '' };
+  constructor(private hooks: SessionHooks, private platform: SessionPlatform = {
+    socket: url => new WebSocket(url), schedule: callback => requestAnimationFrame(callback), cancel: id => cancelAnimationFrame(id),
+  }) {}
+  get ready() { return this.current.connection === 'connected' && this.socket?.readyState === 1 && !!this.current.snapshot; }
+  private publish(patch: Partial<SessionState> = {}) {
+    if (this.disposed) return;
+    this.current = { ...this.current, ...patch, pending: this.mutations.busy };
+    this.hooks.state(this.current);
   }
-  push(frame: EncodedFrame) {
-    if (this.disposed || !this.current(frame.header) || frame.header.sequence <= this.newestSequence) { this.ack(frame.header); return; }
-    this.newestSequence = frame.header.sequence;
-    if (this.waiting) this.ack(this.waiting.header);
-    this.waiting = frame; void this.pump();
+  connect(boot: CompanionBootstrap) {
+    if (this.disposed || this.socket) return;
+    this.boot = boot;
+    try {
+      const socket = this.socket = this.platform.socket(boot.endpoint);
+      socket.binaryType = 'blob';
+      socket.onopen = () => {
+        if (!this.disposed) this.send({ version: boot.version, playground: boot.playground, token: boot.token });
+      };
+      socket.onmessage = event => {
+        if (this.disposed) return;
+        if (event.data instanceof Blob) { this.hooks.frame(event.data); return; }
+        try { this.receive(JSON.parse(String(event.data)) as WireMessage); }
+        catch (error) { this.publish({ error: `Błąd protokołu: ${String(error)}` }); this.refresh(); }
+      };
+      socket.onclose = () => {
+        if (this.socket === socket) { this.socket = undefined; this.closedSocket = socket; }
+        this.disconnected();
+        this.scheduleReconnect();
+      };
+      socket.onerror = () => {
+        this.disconnected('Błąd połączenia. Otwórz Drawing Studio ponownie ze sceny.');
+        socket.close();
+        this.scheduleReconnect();
+      };
+      this.publish();
+    } catch (error) { this.disconnected(String(error)); this.scheduleReconnect(); }
+    }
+  private scheduleReconnect() {
+    if (this.disposed || this.socket || this.reconnectTimer !== undefined || !this.boot) return;
+    this.reconnectTimer = setTimeout(() => {
+      this.reconnectTimer = undefined;
+      if (!this.disposed && this.boot) this.connect(this.boot);
+    }, 500);
+  }
+  send(message: unknown): boolean {
+    if (this.disposed || this.socket?.readyState !== 1) return false;
+    try { this.socket.send(JSON.stringify(message)); return true; }
+    catch (error) { this.disconnected(String(error)); return false; }
+  }
+  dispatch(control: string, intent: NprIntent): boolean {
+    if (!this.ready) return false;
+    this.mutations.push(control, intent);
+    this.publish({ error: '' });
+    this.schedule();
+    return true;
+  }
+  refresh() {
+    if (this.current.connection === 'resyncing') return;
+    if (this.send({ type: 'refresh' })) this.publish({ connection: 'resyncing' });
+  }
+  private receive(message: WireMessage) {
+    if (message.type === 'snapshot') {
+      if (!Number.isSafeInteger(message.snapshot?.revision) || !message.snapshot.values) throw new Error('Invalid snapshot');
+      const connected = this.current.connection !== 'connected';
+      this.mutations.state(message.snapshot.revision);
+      this.publish({ snapshot: message.snapshot, connection: 'connected' });
+      if (connected) this.hooks.connected?.();
+      this.schedule();
+    } else if (message.type === 'delta') {
+      if (this.current.connection === 'resyncing') return;
+      if (!this.current.snapshot || this.current.snapshot.revision !== message.base_revision) { this.refresh(); return; }
+      const snapshot = applyDelta(this.current.snapshot, message);
+      this.mutations.state(snapshot.revision);
+      this.publish({ snapshot });
+      this.schedule();
+    } else if (message.type === 'accepted') {
+      this.mutations.accepted(message.request_id, message.revision, this.current.snapshot?.revision ?? 0);
+      this.publish(); this.schedule();
+    } else if (message.type === 'rejected') {
+      if (!this.mutations.rejected(message.request_id)) return;
+      this.publish({ error: `${message.error.code}: ${message.error.message}` });
+      if (message.error.code === 'revision_conflict') this.refresh();
+    }
+  }
+  private schedule() {
+    if (!this.ready || this.scheduled !== undefined) return;
+    this.scheduled = this.platform.schedule(() => {
+      this.scheduled = undefined;
+      if (!this.ready) return;
+      const action = this.mutations.take(this.current.snapshot!.revision);
+      if (action) this.send({ type: 'action', action });
+      this.publish();
+    });
+  }
+  private disconnected(error = this.current.error || 'Połączenie przerwane. Otwórz Drawing Studio ponownie ze sceny.') {
+    if (this.disposed || this.current.connection === 'disconnected') return;
+    this.mutations.clear();
+    if (this.scheduled !== undefined) this.platform.cancel(this.scheduled);
+    this.scheduled = undefined;
+    this.publish({ connection: 'disconnected', error });
+    this.hooks.disconnected?.();
   }
   dispose() {
+    if (this.disposed) return;
     this.disposed = true;
-    if (this.animation !== undefined) cancelAnimationFrame(this.animation);
-    if (this.waiting) this.ack(this.waiting.header);
-    if (this.ready) { this.ready.image.close(); this.ack(this.ready.header); }
-    this.waiting = null; this.ready = null;
-  }
-  private present = () => {
-    this.animation = undefined;
-    const ready = this.ready; this.ready = null;
-    if (!ready) return;
-    const start = performance.now();
-    let presented = false;
-    try {
-      if (!this.disposed && this.current(ready.header)) { this.draw(ready.image, ready.header); presented = true; }
-    } catch (error) { this.error(String(error)); }
-    finally { ready.image.close(); this.ack(ready.header, presented, ready.decode, performance.now() - start); }
-  };
-  private async pump() {
-    if (this.decoding) return;
-    this.decoding = true;
-    while (this.waiting && !this.disposed) {
-      const frame = this.waiting; this.waiting = null;
-      const start = performance.now();
-      try {
-        const image = await createImageBitmap(frame.image);
-        if (image.width !== frame.header.size[0] || image.height !== frame.header.size[1]) {
-          image.close(); throw new Error('Viewport frame dimensions disagree with header');
-        }
-        if (this.disposed || !this.current(frame.header)) { image.close(); this.ack(frame.header); continue; }
-        if (this.ready) { this.ready.image.close(); this.ack(this.ready.header); }
-        this.ready = { image, header: frame.header, decode: performance.now() - start };
-        if (this.animation === undefined) this.animation = requestAnimationFrame(this.present);
-      } catch (error) { this.ack(frame.header); if(!this.disposed && this.current(frame.header))this.error(String(error)); }
+    if (this.reconnectTimer !== undefined) clearTimeout(this.reconnectTimer);
+    this.reconnectTimer = undefined;
+    if (this.scheduled !== undefined) this.platform.cancel(this.scheduled);
+    this.mutations.clear();
+    const socket = this.socket ?? this.closedSocket;
+    if (socket) {
+      socket.onopen = socket.onmessage = socket.onclose = socket.onerror = null;
+      socket.close();
     }
-    this.decoding = false;
+    this.socket = undefined;
+    this.closedSocket = undefined;
   }
 }

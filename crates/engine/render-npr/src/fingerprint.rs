@@ -13,7 +13,7 @@ use crate::{
 
 /// Increment when the byte order or field set hashed by [`NprPacketFingerprint`]
 /// changes.  Do not use this as a rendering version; it is a test-artifact format.
-pub const NPR_PACKET_FINGERPRINT_VERSION: u16 = 2;
+pub const NPR_PACKET_FINGERPRINT_VERSION: u16 = 3;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct NprPacketFingerprint {
@@ -63,6 +63,10 @@ impl NprPacketFingerprint {
 fn hash_paint_triangles(hasher: &mut PacketHasher, triangles: &[NprPaintTriangle]) {
     hasher.usize(triangles.len());
     for triangle in triangles {
+        triangle
+            .surface
+            .into_iter()
+            .for_each(|sample| hash_surface(hasher, sample));
         for position in triangle.positions {
             hasher.vec2(position.to_array());
         }
@@ -141,6 +145,10 @@ impl PacketHasher {
 fn hash_triangles(hasher: &mut PacketHasher, triangles: &[NprFillTriangle]) {
     hasher.usize(triangles.len());
     for triangle in triangles {
+        triangle
+            .surface
+            .into_iter()
+            .for_each(|sample| hash_surface(hasher, sample));
         for position in triangle.positions {
             hasher.vec2(position.to_array());
         }
@@ -173,6 +181,7 @@ fn hash_strokes(hasher: &mut PacketHasher, strokes: &[TessellatedStroke]) {
 }
 
 fn hash_vertex(hasher: &mut PacketHasher, vertex: StrokeVertex) {
+    hash_surface(hasher, vertex.surface);
     hasher.vec2(vertex.position.to_array());
     hasher.f32(vertex.width);
     hasher.u32(vertex.id);
@@ -184,6 +193,19 @@ fn hash_vertex(hasher: &mut PacketHasher, vertex: StrokeVertex) {
     hasher.f32(vertex.edge_softness);
     hasher.f32(vertex.paper_tooth);
     hasher.f32(vertex.dryness);
+}
+
+fn hash_surface(hasher: &mut PacketHasher, sample: Option<crate::NprCoverageSample>) {
+    hasher.bool(sample.is_some());
+    if let Some(sample) = sample {
+        sample
+            .position
+            .to_array()
+            .into_iter()
+            .chain(sample.normal.to_array())
+            .chain([sample.height, sample.tone])
+            .for_each(|value| hasher.f32(value));
+    }
 }
 
 fn hash_stats(hasher: &mut PacketHasher, stats: &NprRenderStats) {
@@ -257,6 +279,7 @@ mod tests {
     fn fingerprint_is_stable_and_changes_with_backend_packet_data() {
         let mut packet = NprRenderPacket {
             occluders: vec![NprFillTriangle {
+                surface: [None; 3],
                 positions: [Vec2::ZERO, Vec2::X, Vec2::Y],
                 color: Vec4::ONE,
                 depths: [0.1, 0.2, 0.3],

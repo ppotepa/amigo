@@ -17,6 +17,16 @@ pub struct ProjectedPoint {
 }
 
 impl PerspectiveCamera {
+    /// Inverts the packet's normalized perspective depth into camera-local space.
+    pub fn unproject(&self, screen: Vec2, depth: f32, viewport: Vec2) -> Option<Vec3> {
+        if !depth.is_finite() || !(0.0..1.0).contains(&depth) {
+            return None;
+        }
+        let (origin, direction) = self.ray_from_screen(screen, viewport)?;
+        let distance = self.near / (1.0 - depth);
+        let cosine = direction.dot(self.forward.normalize_or_zero());
+        (cosine > 1e-8).then(|| origin + direction * (distance / cosine))
+    }
     pub fn normalized_depth(&self, distance: f32) -> f32 {
         (1.0 - self.near / distance.max(self.near)).clamp(0.0, 1.0)
     }
@@ -153,11 +163,13 @@ mod tests {
         let camera = PerspectiveCamera::cube_default(1.0);
         assert!(camera.ray_from_screen(Vec2::ZERO, Vec2::ZERO).is_none());
         assert!(camera.ray_from_screen(Vec2::NAN, Vec2::ONE).is_none());
-        assert!(PerspectiveCamera {
-            forward: Vec3::ZERO,
-            ..camera
-        }
-        .ray_from_screen(Vec2::ZERO, Vec2::ONE)
-        .is_none());
+        assert!(
+            PerspectiveCamera {
+                forward: Vec3::ZERO,
+                ..camera
+            }
+            .ray_from_screen(Vec2::ZERO, Vec2::ONE)
+            .is_none()
+        );
     }
 }

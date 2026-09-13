@@ -1,23 +1,20 @@
-# Windows viewport validation — 2026-09-12
+# Windows viewport validation — historical record
 
-> Historical transport captures below predate the Basic Mode client and are not
-> acceptance evidence for its UI. `viewport_qa.py` and
-> `viewport_benchmark.py` now drive the current Basic Mode controls. The latter
-> records per-source/per-look readiness and live viewport status; it is not a
-> replacement for the retired transport p95 matrix below.
+> The measurements below are historical transport evidence, not current UI QA.
+> Use `docs/manual-qa.md` for the maintained Drawing Studio acceptance flow.
 
 ## Drawing Studio document-format checkpoint
 
 The unified authored layer list and explicit migration are implemented. Versioned
-brush resources, per-instance targets, procedural masks/groups, the Brush Editor,
+brush resources, per-instance targets, procedural masks/groups, Brush Lab,
 build-up and named variants are implemented and covered by owner-crate tests.
 The cache still keys packets by effective style/layers; zero path rebuilds on
 colour/opacity edits are covered by the owner-crate cache test, and the full
 4/8/16-layer performance matrix is recorded below. Performance acceptance still
 depends on the p95 and memory criteria.
 
-The measurements below are historical. They need a benchmark harness that drives
-Basic Mode instead of the retired transport controls.
+The measurements below are historical and are not a replacement for the manual
+Drawing Studio workflow.
 
 These captures do not freeze the same sketch epoch across launches. They verify
 transport agreement, not deterministic migration image equivalence or p95
@@ -37,18 +34,10 @@ case.
 
 ## Previous viewport measurements
 
-Lifecycle update: Gallery now displays only Tauri and exits its windowless engine
-when Tauri closes. Cube still displays one Winit window. The 216-case performance
-matrix and Winit comparisons below predate this change and describe the earlier
-two-window setup; they are retained as historical measurements. The real-window
-QA script now checks window count and engine exit for the single-window setup.
-That QA passed: Gallery showed exactly one Tauri window, Cube showed exactly one
-Winit window, and closing Tauri ended its engine process. The five lifecycle
-tests and three transport tests also passed with the new host policy.
-An additional nine-case cube smoke run covered orbit, spin and pause in all
-three modes and confirmed engine exit on close (`target/viewport-single-window.jsonl`).
-It was functional validation with existing user applications still running,
-not a replacement performance baseline.
+The measurements and Winit comparisons below are historical records from an
+earlier host configuration. They are retained for context and are not the
+current Drawing Studio acceptance criteria. Current interactive validation is
+maintained in `docs/manual-qa.md` and covers the single-window Tauri workflow.
 
 Native GPU, Local RGBA and JPEG are connected to the real NPR scene and Tauri
 companion. Functional validation passed on the machine below. The performance
@@ -61,31 +50,12 @@ From the repository root, after installing the frontend dependencies:
 
 ```powershell
 rtk cargo build --profile playground -p amigo-app
-rtk proxy python -m pip install -r plugins/gfx/npr-playground/tools/requirements.txt
-rtk proxy python plugins/gfx/npr-playground/tools/viewport_qa.py
+rtk cargo test -p amigo-npr-playground-plugin
+rtk npm run check --prefix plugins/gfx/npr-playground/playground-client
 ```
 
-The smoke test launches Cargo's current profile artifact,
-`target/playground/deps/amigo_app.exe`. It does not press Save, so it cannot
-rewrite the authored Gallery profile. To record Basic Mode readiness for every
-built-in source and look without creating Drafts, run:
-
-```powershell
-rtk proxy python plugins/gfx/npr-playground/tools/viewport_benchmark.py --seconds 2 --output target/viewport-basic-mode.jsonl
-```
-
-Each source is measured in a fresh process; the benchmark does not press Save
-or switch sources after a look has made the document dirty.
-
-The benchmark accepts `--layers 4,8,16` (the default) and records the selected
-stack size on every case. The current full matrix covers all three stack sizes;
-the raw output and aggregate table below are from that run.
-
-The scripts launch and close only their own processes, use an isolated WebView2
-profile and an ephemeral localhost DevTools port, and never save authored edits.
-Visual capture uses the owned native child window or canvas, not the desktop.
-Logs, raw samples and QA images are written under `target` and are not source
-artifacts. The resource-only run disables retained per-frame measurement data.
+The interactive acceptance path is maintained in `docs/manual-qa.md`; it does
+not write generated QA artifacts into the source tree.
 
 ## Method
 
@@ -236,7 +206,7 @@ Validation completed during implementation:
 | App `scene_loading_tests::threed::npr_` / `--test playground_lifecycle` | 3 / 5 passed |
 | Checks: render-wgpu, runtime-bundles, playground-tauri, app | Passed |
 | Frontend `npm run check`, `npm test`, `npm run build` | 0 errors, 3 DOM-reference warnings, 10 tests passed, build passed |
-| `cargo build --profile playground -p amigo-app` | Passed; Basic Mode QA uses Cargo's `deps/amigo_app.exe` artifact |
+| `cargo build --profile playground -p amigo-app` | Passed; historical viewport validation used Cargo's playground artifact |
 | `git diff --check` | Passed |
 
 Unit coverage includes accumulated small movements/wheel deltas, sticky drag

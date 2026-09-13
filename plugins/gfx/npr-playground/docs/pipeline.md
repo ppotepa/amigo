@@ -2,15 +2,25 @@
 
 Authored look patches use one `layers` list for all generators. Entries retain
 `layer_id`, `order` and typed `parameters`; inheritance replaces by stable ID,
-then sorts by `(order, layer_id)`. Duplicate IDs are rejected before merging any
-style or layer changes. The renderer consumes these layer declarations in global
-order, applies target filtering and procedural mask coverage, and composes group
-opacity with the layer result.
+then sorts by `(order, layer_id)`. `removed_layers` explicitly suppresses inherited
+entries and survives save/reload. Re-adding an entry clears its removal. Invalid
+or contradictory patches are rejected before merging. The renderer consumes
+these declarations in global order and applies per-entry targets and coverage.
+UI categories never reorder the document or introduce compositing groups.
+
+`NprStyleLayer::extraction_style` resolves each entry's `line` / `hatch` generator
+parameters and its tool, pressure and gesture parameters before tessellation.
+`render/layers.rs::build_drawing` reuses prepared surface analysis and a bounded
+source-packet cache. Hatching selects its own tonal generator independently of
+paint entries; two hatch entries can use different angles, spacing and density.
+Expanded stroke storage is capped before backend submission, with structural
+lines taking priority over tonal detail. All outputs retain their authored ID.
 
 Build-up is editor-only state applied by `NprPlaygroundState::render_snapshot`:
 it disables layers after the reveal fraction without changing authored visibility
 or dirty state. Named variants and brush definitions are persisted by the scene
-profile and restored before the render service receives a packet. Each layer
+profile; reusable presets also embed their referenced appearance definitions.
+These definitions are restored before the render service receives a packet. Each layer
 keeps a pinned brush reference; extraction resolves that definition first and
 then applies instance overrides, so a library update cannot silently alter an
 existing document. The definition seed is the fallback for procedural
@@ -36,12 +46,28 @@ Prepared source meshes, topology, smooth proxies, direction fields and corner
 normal/component caches are shared across views. Camera-dependent packets, LOD,
 variant clocks and temporal histories remain per view. Packet keys are per object
 and include effective style/layers, camera, viewport, seed and effective variant
-epoch. Sketch pause is applied before cache comparison. Fade advances from cached
+epoch. Geometry keys include enabled state, line/hatch settings and appearance
+references/overrides. Compositor-only edits refresh diagnostics without rebuilding
+paths. Sketch pause is applied before cache comparison. Fade advances from cached
 source geometry independently of packet generation; `packet_builds` counts rebuilds.
 Surface hatch traversal uses the canonical sorted topology for logarithmic edge
 lookup; triangle/plane intersection uses stack storage. The synchronous companion
 submission borrows the finished packets. Camera zoom stores an authored target;
 host-frame interpolation changes only render state, preserving action revisions.
+
+Imported glTF/GLB poses come from `amigo-3d-mesh`: hierarchical TRS curves,
+morph targets and joint skinning run before NPR feature extraction. Bind-pose
+normalization and triangle identities stay fixed. `render/model.rs` retains one
+replaceable sampled pose per asset; packet keys include surface content identity,
+so a changed pose invalidates extraction while a paused pose is reused. Picking
+uses that same sampled source surface.
+
+`playback.rs` owns the single-model clock, clip/turntable source, pause, seek,
+speed and looping. Transport is excluded from serialized `Settings` and history.
+Camera actions and layer previews preserve it; changing models drops it. The
+snapshot publishes `playback` and `animation_clips` separately from `npr` document
+values. Neutral host deltas can carry changed telemetry at the same edit revision:
+a frame advances the playhead, not the document's optimistic concurrency token.
 
 Native GPU copies the final offscreen texture into one of three shared DX12 slots.
 The platform presenter copies it to its child-window swapchain; readiness and

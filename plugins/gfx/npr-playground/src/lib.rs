@@ -1,5 +1,7 @@
 pub mod api;
 pub mod asset_browser;
+pub mod authoring;
+pub mod playback;
 pub mod diagnostics;
 pub mod documents;
 mod editor_provider;

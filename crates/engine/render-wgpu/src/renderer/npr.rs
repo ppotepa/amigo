@@ -4,6 +4,8 @@
 //! backend-friendly immutable buffers and shader sources.
 
 use std::hash::{Hash, Hasher};
+mod mask;
+pub use mask::NprGpuSurface;
 
 /// Shared execution of declared NPR packets for full scenes and companion targets.
 pub struct WgpuNprRenderer {
@@ -96,7 +98,9 @@ pub struct NprPipelineKey {
     pub color_format: wgpu::TextureFormat,
 }
 
-pub const NPR_FILL_SHADER: &str = r#"
+pub const NPR_FILL_SHADER: &str = concat!(
+    include_str!("npr/mask.wgsl"),
+    r#"
 struct Vertex {
     @location(0) position: vec2<f32>,
     @location(1) color: vec4<f32>,
@@ -104,29 +108,38 @@ struct Vertex {
     @location(3) coverage: f32,
     @location(4) phase: vec2<f32>,
     @location(5) material: vec4<f32>,
+    @location(6) surface_position: vec4<f32>,
+    @location(7) surface_normal: vec4<f32>,
 };
 struct Out {
     @builtin(position) position: vec4<f32>,
     @location(0) color: vec4<f32>,
     @location(1) coverage: f32,
+    @location(5) surface_position: vec4<f32>,
+    @location(6) surface_normal: vec4<f32>,
 };
 @vertex fn vs_main(v: Vertex) -> Out {
     var o: Out;
     o.position = vec4<f32>(v.position, v.depth, 1.0);
     o.color = v.color;
     o.coverage = v.coverage;
+    o.surface_position = v.surface_position * (1.0-v.depth);
+    o.surface_normal = v.surface_normal * (1.0-v.depth);
     return o;
 }
 @fragment fn fs_main(v: Out) -> @location(0) vec4<f32> {
-    let alpha = v.color.a * v.coverage;
+    let alpha = v.color.a * v.coverage * surface_coverage(v.surface_position,v.surface_normal,v.position.z);
     return vec4<f32>(v.color.rgb * alpha, alpha);
 }
-"#;
+"#
+);
 
 /// Underpainting uses continuous screen-space pigment granulation. The
 /// material coefficient is authored in `NprPaintMedium`; sampling here avoids
 /// discontinuities at source triangle boundaries.
-pub const NPR_PAINT_SHADER: &str = r#"
+pub const NPR_PAINT_SHADER: &str = concat!(
+    include_str!("npr/mask.wgsl"),
+    r#"
 struct Vertex {
     @location(0) position: vec2<f32>,
     @location(1) color: vec4<f32>,
@@ -134,18 +147,24 @@ struct Vertex {
     @location(3) coverage: f32,
     @location(4) phase: vec2<f32>,
     @location(5) material: vec4<f32>,
+    @location(6) surface_position: vec4<f32>,
+    @location(7) surface_normal: vec4<f32>,
 };
 struct Out {
     @builtin(position) position: vec4<f32>,
     @location(0) color: vec4<f32>,
     @location(1) coverage: f32,
     @location(2) granulation: f32,
+    @location(5) surface_position: vec4<f32>,
+    @location(6) surface_normal: vec4<f32>,
 };
 @vertex fn vs_main(v: Vertex) -> Out {
     var o: Out;
     o.position = vec4<f32>(v.position, v.depth, 1.0);
     o.color = v.color;
     o.coverage = v.coverage;
+    o.surface_position = v.surface_position * (1.0-v.depth);
+    o.surface_normal = v.surface_normal * (1.0-v.depth);
     o.granulation = v.material.x;
     return o;
 }
@@ -157,16 +176,19 @@ fn hash(p: vec2<f32>) -> f32 {
     let fine = hash(floor(v.position.xy * 0.71 + vec2<f32>(37.0, 19.0)));
     let variation = ((coarse - 0.5) * 0.72 + (fine - 0.5) * 0.28)
         * clamp(v.granulation, 0.0, 1.0) * 0.34;
-    let alpha = clamp(v.color.a * v.coverage * (1.0 + variation), 0.0, 1.0);
+    let alpha = clamp(v.color.a * v.coverage * surface_coverage(v.surface_position,v.surface_normal,v.position.z) * (1.0 + variation), 0.0, 1.0);
     return vec4<f32>(v.color.rgb * alpha, alpha);
 }
-"#;
+"#
+);
 
 /// A stroke is a geometric envelope plus an analytic material edge. `phase.x`
 /// is the signed lateral coordinate of the envelope and `phase.y` supplies a
 /// stable per-stroke grain phase. Material.x is edge softness and material.y is
 /// the local pressure response. This keeps paper detail out of the tessellator.
-pub const NPR_STROKE_SHADER: &str = r#"
+pub const NPR_STROKE_SHADER: &str = concat!(
+    include_str!("npr/mask.wgsl"),
+    r#"
 struct Vertex {
     @location(0) position: vec2<f32>,
     @location(1) color: vec4<f32>,
@@ -174,6 +196,8 @@ struct Vertex {
     @location(3) coverage: f32,
     @location(4) phase: vec2<f32>,
     @location(5) material: vec4<f32>,
+    @location(6) surface_position: vec4<f32>,
+    @location(7) surface_normal: vec4<f32>,
 };
 struct Out {
     @builtin(position) position: vec4<f32>,
@@ -182,12 +206,16 @@ struct Out {
     @location(2) lateral: f32,
     @location(3) grain: f32,
     @location(4) material: vec4<f32>,
+    @location(5) surface_position: vec4<f32>,
+    @location(6) surface_normal: vec4<f32>,
 };
 @vertex fn vs_main(v: Vertex) -> Out {
     var o: Out;
     o.position = vec4<f32>(v.position, v.depth, 1.0);
     o.color = v.color;
     o.coverage = v.coverage;
+    o.surface_position = v.surface_position * (1.0-v.depth);
+    o.surface_normal = v.surface_normal * (1.0-v.depth);
     o.lateral = v.phase.x;
     o.grain = v.phase.y;
     o.material = v.material;
@@ -218,10 +246,11 @@ fn hash(p: vec2<f32>) -> f32 {
     let dropout = smoothstep(0.79 - pressure * 0.16, 0.98, tooth)
         * dryness
         * (0.28 + tooth_amount * 0.54);
-    let alpha = clamp(v.color.a * v.coverage * edge * pigment * (1.0 - dropout), 0.0, 1.0);
+    let alpha = clamp(v.color.a * v.coverage * surface_coverage(v.surface_position,v.surface_normal,v.position.z) * edge * pigment * (1.0 - dropout), 0.0, 1.0);
     return vec4<f32>(v.color.rgb * alpha, alpha);
 }
-"#;
+"#
+);
 
 pub const NPR_PAPER_SHADER: &str = r#"
 struct Vertex {
@@ -270,6 +299,7 @@ pub struct NprGpuVertex {
     pub coverage: f32,
     pub phase: [f32; 2],
     pub material: [f32; 4],
+    pub surface: NprGpuSurface,
 }
 
 impl NprGpuVertex {
@@ -308,12 +338,23 @@ impl NprGpuVertex {
                     offset: 40,
                     shader_location: 5,
                 },
+                wgpu::VertexAttribute {
+                    format: wgpu::VertexFormat::Float32x4,
+                    offset: 56,
+                    shader_location: 6,
+                },
+                wgpu::VertexAttribute {
+                    format: wgpu::VertexFormat::Float32x4,
+                    offset: 72,
+                    shader_location: 7,
+                },
             ],
         }
     }
 }
 
 pub struct NprPipelines {
+    mask_layout: wgpu::BindGroupLayout,
     pub depth: wgpu::RenderPipeline,
     pub paper: wgpu::RenderPipeline,
     pub fill_normal: wgpu::RenderPipeline,
@@ -381,9 +422,10 @@ impl NprPipelines {
             label: Some("amigo-npr-paper-shader"),
             source: wgpu::ShaderSource::Wgsl(NPR_PAPER_SHADER.into()),
         });
+        let mask_layout = mask::layout(device);
         let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("amigo-npr-pipeline-layout"),
-            bind_group_layouts: &[],
+            bind_group_layouts: &[Some(&mask_layout)],
             immediate_size: 0,
         });
         let buffers = [NprGpuVertex::layout()];
@@ -557,6 +599,7 @@ impl NprPipelines {
                 false,
                 Some(screen),
             ),
+            mask_layout,
         }
     }
 
@@ -695,6 +738,9 @@ mod tests {
         assert_eq!(layout.attributes[5].shader_location, 5);
         assert_eq!(layout.attributes[5].offset, 40);
         assert_eq!(layout.attributes[5].format, wgpu::VertexFormat::Float32x4);
+        assert_eq!(layout.attributes[6].offset, 56);
+        assert_eq!(layout.attributes[7].offset, 72);
+        assert_eq!(layout.array_stride, 88);
     }
 
     #[test]
@@ -705,7 +751,10 @@ mod tests {
 
         let multiply = npr_blend_state(amigo_render_npr::NprBlendMode::Multiply);
         assert_eq!(multiply.color.src_factor, wgpu::BlendFactor::Dst);
-        assert_eq!(multiply.color.dst_factor, wgpu::BlendFactor::OneMinusSrcAlpha);
+        assert_eq!(
+            multiply.color.dst_factor,
+            wgpu::BlendFactor::OneMinusSrcAlpha
+        );
 
         let screen = npr_blend_state(amigo_render_npr::NprBlendMode::Screen);
         assert_eq!(screen.color.src_factor, wgpu::BlendFactor::One);

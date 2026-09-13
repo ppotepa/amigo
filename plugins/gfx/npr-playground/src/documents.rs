@@ -35,6 +35,12 @@ pub struct NprLookPatch {
     pub style: BTreeMap<String, Value>,
     #[serde(default)]
     pub layers: Vec<NprLayerDocument>,
+    /// Explicit removals survive includes, save/reload and later parent edits.
+    #[serde(default, skip_serializing_if = "BTreeSet::is_empty")]
+    pub removed_layers: BTreeSet<String>,
+    /// Referenced immutable appearances travel with the reusable preset.
+    #[serde(default)]
+    pub brushes: BrushLibrary,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -185,17 +191,34 @@ impl NprLookPatch {
         }
         let mut seen = BTreeSet::new();
         for layer in &patch.layers {
-            if layer.layer_id != layer.parameters.id || !seen.insert(&layer.layer_id) {
+            if layer.layer_id != layer.parameters.id
+                || !seen.insert(&layer.layer_id)
+                || patch.removed_layers.contains(&layer.layer_id)
+            {
                 return Err(format!("invalid or duplicate layer_id: {}", layer.layer_id));
             }
         }
+        if patch
+            .removed_layers
+            .iter()
+            .any(|id| id.trim().is_empty() || id == "paper")
+        {
+            return Err("cannot remove Paper or an empty layer identity".into());
+        }
+        let mut brushes = self.brushes.clone();
+        brushes.merge(&patch.brushes)?;
+        self.brushes = brushes;
         for (key, value) in &patch.style {
             merge_value(self.style.entry(key.clone()).or_insert(Value::Null), value);
         }
         {
+            self.removed_layers
+                .extend(patch.removed_layers.iter().cloned());
             let target = &mut self.layers;
+            target.retain(|layer| !patch.removed_layers.contains(&layer.layer_id));
             let source = &patch.layers;
             for layer in source {
+                self.removed_layers.remove(&layer.layer_id);
                 if let Some(existing) = target.iter_mut().find(|p| p.layer_id == layer.layer_id) {
                     *existing = layer.clone();
                 } else {
@@ -223,12 +246,29 @@ impl NprLookPatch {
                 parameters: layer.clone(),
             });
         }
+        patch.removed_layers = NprStyleLayers::default()
+            .layers
+            .into_iter()
+            .filter(|layer| resolved.layers.layer(&layer.id).is_none())
+            .map(|layer| layer.id)
+            .collect();
         Ok(patch)
     }
 
     pub fn changes(before: &NprResolvedLook, after: &NprResolvedLook) -> Result<Self, String> {
         let before = Self::from_resolved(before)?;
         let mut after = Self::from_resolved(after)?;
+        after.removed_layers = before
+            .layers
+            .iter()
+            .filter(|layer| {
+                !after
+                    .layers
+                    .iter()
+                    .any(|next| next.layer_id == layer.layer_id)
+            })
+            .map(|layer| layer.layer_id.clone())
+            .collect();
         after
             .style
             .retain(|key, value| before.style.get(key) != Some(value));
@@ -378,11 +418,15 @@ impl NprSceneProfileDocument {
         )?;
         settings.global = global.style;
         settings.style_layers = global.layers;
-        let brush_library = if self.brushes.brushes.is_empty() {
+        let mut brush_library = if self.brushes.brushes.is_empty() {
             builtin_brush_library()
         } else {
             self.brushes.clone()
         };
+        for look in looks.values() {
+            brush_library.merge(&look.look.brushes)?;
+        }
+        brush_library.merge(&self.look.brushes)?;
         settings.brushes = brush_library.clone();
         settings.style_layers.validate_brushes(&brush_library)?;
         for (id, object) in &mut settings.objects {

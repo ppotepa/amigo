@@ -4,7 +4,7 @@ use amigo_assets::{
     AssetCatalog, AssetKey, AssetManifest, AssetSourceKind, PreparedAsset, PreparedAssetKind,
 };
 use amigo_render_npr::{
-    BrushDefinition, BrushInstance, BrushMedium, BrushReference, NprBlendMode, NprGeometrySource,
+    BrushDefinition, BrushInstance, BrushReference, NprBlendMode, NprGeometrySource,
     NprLayerColorSource, NprStyleLayer, NprStyleLayers,
 };
 
@@ -124,7 +124,7 @@ pub fn look_thumbnail(
     let mut settings = crate::state::Settings::for_scene();
     settings.global = resolved.style;
     settings.style_layers = resolved.layers;
-    settings.brushes = brushes.clone();
+    settings.brushes = crate::playground::resolve_preview_brushes(root, look_id, brushes)?;
     settings.paused = true;
     settings.sketch_paused = true;
     settings.camera_distance = 4.5;
@@ -139,61 +139,130 @@ pub fn look_thumbnail(
     )
 }
 
-/// A renderer-generated Brush Lab sample.  Each medium receives its own
-/// compatible NPR source; this prevents a wash or flat fill from being shown
-/// as a misleading line-only swatch.
-pub fn brush_thumbnail(root: &Path, brush: &BrushDefinition) -> Result<String, String> {
+/// All line tools draw the same reference path; paints use the same surface
+/// patch. A material never selects a model's geometric features.
+pub fn brush_thumbnail(_root: &Path, brush: &BrushDefinition) -> Result<String, String> {
     brush.validate()?;
-    let resolved = crate::playground::resolve_preview_look(root, "comic-ink")?;
-    let source = match brush.medium {
-        BrushMedium::Ink => NprGeometrySource::Silhouette,
-        BrushMedium::Graphite => NprGeometrySource::FormLines,
-        BrushMedium::Hatching => NprGeometrySource::ShadowHatch,
-        BrushMedium::FlatFill => NprGeometrySource::FlatFill,
-        BrushMedium::WatercolourWash => NprGeometrySource::Wash,
+    let mut library = amigo_render_npr::BrushLibrary::default();
+    library.add_version(brush.clone())?;
+    let layers = NprStyleLayers::default();
+    let key = if brush
+        .applications
+        .contains(&amigo_render_npr::BrushApplication::Stroke)
+    {
+        "contours"
+    } else {
+        "underpainting"
     };
-    let mut settings = crate::state::Settings::for_scene();
-    settings.global = resolved.style;
-    settings.style_layers = resolved.layers;
-    for layer in &mut settings.style_layers.layers {
-        layer.enabled = layer.source == source;
-        if layer.source == source {
-            layer.brush = Some(BrushInstance {
-                brush: BrushReference {
-                    id: brush.id.clone(),
-                    version: brush.version,
-                },
-                width: None,
-                taper: None,
-                softness: None,
-                irregularity: None,
-                dryness: None,
-                seed: None,
+    let mut layer = layers.layer(key).expect("reference source").clone();
+    layer.tool = brush.tool;
+    layer.paint = brush.paint;
+    layer.brush = Some(BrushInstance {
+        brush: BrushReference {
+            id: brush.id.clone(),
+            version: brush.version,
+        },
+        ..Default::default()
+    });
+    layer_thumbnail(&layer, amigo_render_npr::ComicInk::default(), &library)
+}
+
+/// A compact geometry/material sample. The actual-model live preview uses the
+/// viewport backend (including GPU paper and analytic edges), not this SVG.
+pub fn layer_thumbnail(
+    layer: &NprStyleLayer,
+    style: amigo_render_npr::ComicInk,
+    library: &amigo_render_npr::BrushLibrary,
+) -> Result<String, String> {
+    use amigo_render_npr::*;
+    use glam::{Vec2, Vec4};
+    let mut sample = layer.clone();
+    sample.enabled = true;
+    sample.mask = CoverageMask::None;
+    sample.target = GeometryTarget::All;
+    sample.hatch = None;
+    let effective = sample.extraction_style(style, library)?;
+    let mut packet = NprRenderPacket {
+        occluders: vec![],
+        fills: vec![],
+        underpainting: vec![],
+        strokes: vec![],
+        background: style.paper,
+        ink: style.ink,
+        debug_view: NprDebugView::Final,
+        stats: NprRenderStats {
+            viewport: [96, 96],
+            ..Default::default()
+        },
+    };
+    if sample.source == NprGeometrySource::Paper {
+        packet.background = match layer.color_source {
+            NprLayerColorSource::Constant(color) => color,
+            _ => style.paper,
+        };
+    } else if matches!(
+        sample.source,
+        NprGeometrySource::Wash | NprGeometrySource::FlatFill
+    ) {
+        let color = Vec4::new(0.35, 0.43, 0.54, 1.0);
+        for points in [
+            [(12., 20.), (84., 20.), (84., 76.)],
+            [(12., 20.), (84., 76.), (12., 76.)],
+        ] {
+            let positions = points.map(|(x, y)| Vec2::new(x, y));
+            packet.fills.push(NprFillTriangle {
+                surface: [None; 3],
+                positions,
+                color,
+                depths: [0.5; 3],
+                layer_id: None,
+            });
+            packet.underpainting.push(NprPaintTriangle {
+                surface: [None; 3],
+                positions,
+                color,
+                depths: [0.5; 3],
+                coverage: 1.0,
+                layer_id: None,
             });
         }
+    } else {
+        // A straight stroke and an S curve expose pressure, nib angle and taper.
+        for lane in 0..2 {
+            let points = (0..=24)
+                .map(|i| {
+                    let t = i as f32 / 24.0;
+                    let y = if lane == 0 {
+                        25.0
+                    } else {
+                        64.0 + (t * std::f32::consts::TAU).sin() * 13.0
+                    };
+                    (Vec2::new(9.0 + t * 78.0, y), 0.5)
+                })
+                .collect::<Vec<_>>();
+            let mut stroke = tessellate_polyline(
+                100 + lane,
+                FeatureClass::Silhouette,
+                &points,
+                false,
+                effective,
+                17,
+            );
+            match sample.source {
+                NprGeometrySource::ShadowHatch => stroke.role = StrokeRole::Tone,
+                NprGeometrySource::FormLines => stroke.role = StrokeRole::FormLine,
+                NprGeometrySource::Construction => stroke.role = StrokeRole::Construction,
+                NprGeometrySource::Creases => stroke.class = FeatureClass::Crease,
+                _ => (),
+            }
+            packet.strokes.push(stroke);
+        }
     }
-    let mut library = crate::documents::builtin_brush_library();
-    library
-        .brushes
-        .entry(brush.id.clone())
-        .or_default()
-        .retain(|entry| entry.version != brush.version);
-    library.add_version(brush.clone())?;
-    settings.brushes = library;
-    settings.paused = true;
-    settings.sketch_paused = true;
-    settings.camera_distance = 4.5;
-    settings.validate()?;
-    let render = crate::NprPlaygroundRenderService::default();
-    render.load_models(root)?;
-    render.rebuild(&settings, [96, 96])?;
-    packet_svg(
-        render
-            .snapshot()
-            .ok_or("missing brush preview packet")?
-            .packet,
-        &settings.style_layers,
-    )
+    let layers = NprStyleLayers {
+        layers: vec![sample],
+    };
+    layers.apply_tools_with_library(&mut packet, effective, Some(library))?;
+    packet_svg(packet, &layers)
 }
 
 /// CPU preview compositor mirroring the authored layer order, colour, opacity,
@@ -214,6 +283,7 @@ fn packet_svg(
         background[0], background[1], background[2]
     );
     for layer in layers.layers.iter().filter(|layer| layer.enabled) {
+        layer.validate_mask_inputs(&packet)?;
         let blend = match layer.blend {
             NprBlendMode::Normal => "normal",
             NprBlendMode::Multiply => "multiply",
@@ -229,18 +299,14 @@ fn packet_svg(
                     .filter(|triangle| triangle.layer_id.as_deref() == Some(layer.id.as_str()))
                 {
                     let color = preview_color(layer, triangle.color.to_array());
-                    let coverage = triangle
-                        .positions
-                        .iter()
-                        .zip(triangle.depths)
-                        .map(|(position, depth)| preview_mask(layer, color, depth, *position))
-                        .sum::<f32>()
-                        / 3.0;
-                    write_svg_triangle(
+                    write_masked_triangle(
                         &mut svg,
                         triangle.positions,
+                        triangle.depths,
+                        triangle.surface,
+                        layer,
                         color,
-                        layer.opacity * coverage,
+                        layer.opacity,
                     )?;
                 }
             }
@@ -251,21 +317,14 @@ fn packet_svg(
                     .filter(|triangle| triangle.layer_id.as_deref() == Some(layer.id.as_str()))
                 {
                     let color = preview_color(layer, triangle.color.to_array());
-                    let coverage = triangle
-                        .positions
-                        .iter()
-                        .zip(triangle.depths)
-                        .map(|(position, depth)| preview_mask(layer, color, depth, *position))
-                        .sum::<f32>()
-                        / 3.0;
-                    write_svg_triangle(
+                    write_masked_triangle(
                         &mut svg,
                         triangle.positions,
+                        triangle.depths,
+                        triangle.surface,
+                        layer,
                         color,
-                        layer.opacity
-                            * triangle.coverage
-                            * layer.paint.unwrap_or_default().wash
-                            * coverage,
+                        layer.opacity * triangle.coverage * layer.paint.unwrap_or_default().wash,
                     )?;
                 }
             }
@@ -288,17 +347,14 @@ fn packet_svg(
                         ) else {
                             continue;
                         };
-                        let coverage = [a, b, c]
-                            .iter()
-                            .map(|vertex| {
-                                vertex.coverage
-                                    * preview_mask(layer, color, vertex.depth, vertex.position)
-                            })
-                            .sum::<f32>()
-                            / 3.0;
-                        write_svg_triangle(
+                        let coverage =
+                            [a, b, c].iter().map(|vertex| vertex.coverage).sum::<f32>() / 3.0;
+                        write_masked_triangle(
                             &mut svg,
                             [a.position, b.position, c.position],
+                            [a.depth, b.depth, c.depth],
+                            [a.surface, b.surface, c.surface],
+                            layer,
                             color,
                             layer.opacity * coverage,
                         )?;
@@ -323,13 +379,89 @@ fn preview_color(layer: &NprStyleLayer, fallback: [f32; 4]) -> [f32; 4] {
     }
 }
 
-fn preview_mask(layer: &NprStyleLayer, color: [f32; 4], depth: f32, position: glam::Vec2) -> f32 {
-    let tone = (color[0] * 0.2126 + color[1] * 0.7152 + color[2] * 0.0722).clamp(0.0, 1.0);
-    let noise =
-        (position.x.mul_add(12.9898, position.y * 78.233) + depth * 37.719).sin() * 0.5 + 0.5;
-    layer
-        .mask
-        .evaluate(tone, depth.clamp(0.0, 1.0), [0.0, 0.0, 1.0], noise)
+/// Small projected triangles approximate fragment coverage in the illustrative
+/// SVG transport. Corner-only masking would erase interior height/tone bands.
+fn write_masked_triangle(
+    svg: &mut String,
+    positions: [glam::Vec2; 3],
+    depths: [f32; 3],
+    samples: [Option<amigo_render_npr::NprCoverageSample>; 3],
+    layer: &NprStyleLayer,
+    color: [f32; 4],
+    opacity: f32,
+) -> Result<(), String> {
+    use amigo_render_npr::NprCoverageSample;
+    if !layer.mask.requires_surface() {
+        return write_svg_triangle(svg, positions, color, opacity);
+    }
+    let mut pending = vec![(positions, depths, samples)];
+    while let Some((points, depths, samples)) = pending.pop() {
+        let min = points[0].min(points[1]).min(points[2]);
+        let max = points[0].max(points[1]).max(points[2]);
+        if max.x < 0.0
+            || max.y < 0.0
+            || min.x > 96.0
+            || min.y > 96.0
+            || !layer.mask.triangle_may_cover(samples)
+        {
+            continue;
+        }
+        let edges = [(0, 1), (1, 2), (2, 0)];
+        if edges
+            .iter()
+            .any(|(a, b)| points[*a].distance_squared(points[*b]) > 9.0)
+        {
+            let mid_points = edges.map(|(a, b)| (points[a] + points[b]) * 0.5);
+            let mid_depths = edges.map(|(a, b)| (depths[a] + depths[b]) * 0.5);
+            let mid_samples = edges.map(|(a, b)| {
+                let mut weights = [0.0; 3];
+                weights[a] = 0.5;
+                weights[b] = 0.5;
+                NprCoverageSample::interpolate(samples, depths, weights)
+            });
+            let p = [
+                points[0],
+                points[1],
+                points[2],
+                mid_points[0],
+                mid_points[1],
+                mid_points[2],
+            ];
+            let d = [
+                depths[0],
+                depths[1],
+                depths[2],
+                mid_depths[0],
+                mid_depths[1],
+                mid_depths[2],
+            ];
+            let s = [
+                samples[0],
+                samples[1],
+                samples[2],
+                mid_samples[0],
+                mid_samples[1],
+                mid_samples[2],
+            ];
+            for indices in [[0, 3, 5], [3, 1, 4], [5, 4, 2], [3, 4, 5]] {
+                pending.push((
+                    indices.map(|i| p[i]),
+                    indices.map(|i| d[i]),
+                    indices.map(|i| s[i]),
+                ));
+            }
+        } else {
+            let coverage = layer.mask.evaluate(NprCoverageSample::interpolate(
+                samples,
+                depths,
+                [1.0 / 3.0; 3],
+            ));
+            if coverage > 0.0 {
+                write_svg_triangle(svg, points, color, opacity * coverage)?;
+            }
+        }
+    }
+    Ok(())
 }
 
 fn write_svg_triangle(
@@ -417,6 +549,43 @@ fn model_tags(model: &str) -> Vec<String> {
 mod tests {
     use super::{brush_thumbnail, look_thumbnail};
     use std::path::PathBuf;
+    #[test]
+    fn preview_preserves_a_height_band_inside_a_large_triangle() {
+        use amigo_render_npr::*;
+        let mut layer = NprStyleLayers::default().layer("fill").unwrap().clone();
+        layer.mask = CoverageMask::Height {
+            min: 0.45,
+            max: 0.55,
+            invert: false,
+        };
+        let sample = |height| {
+            Some(NprCoverageSample {
+                position: glam::Vec3::Y * height,
+                normal: glam::Vec3::Z,
+                height,
+                tone: 0.5,
+            })
+        };
+        let mut svg = String::new();
+        super::write_masked_triangle(
+            &mut svg,
+            [
+                glam::Vec2::ZERO,
+                glam::Vec2::new(96.0, 0.0),
+                glam::Vec2::new(0.0, 96.0),
+            ],
+            [0.5; 3],
+            [sample(0.0), sample(0.0), sample(1.0)],
+            &layer,
+            [0.0, 0.0, 0.0, 1.0],
+            1.0,
+        )
+        .unwrap();
+        assert!(
+            svg.matches("<path").count() > 1,
+            "mask preview must retain the interior, not just test the corners"
+        );
+    }
 
     fn mod_root() -> PathBuf {
         PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../../mods/npr-playground")
@@ -425,12 +594,9 @@ mod tests {
     #[test]
     fn curated_looks_have_renderer_generated_preview_images() {
         for id in ["comic-ink", "pencil-study", "watercolour-wash"] {
-            let preview = look_thumbnail(
-                &mod_root(),
-                id,
-                &crate::documents::builtin_brush_library(),
-            )
-            .expect("curated look preview");
+            let preview =
+                look_thumbnail(&mod_root(), id, &crate::documents::builtin_brush_library())
+                    .expect("curated look preview");
             assert!(preview.starts_with("data:image/svg+xml,"));
             assert!(
                 preview.len() > 200,

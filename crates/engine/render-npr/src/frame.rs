@@ -62,6 +62,7 @@ struct SurfaceHatchCandidate {
 #[derive(Debug, Clone, PartialEq)]
 pub struct NprFillTriangle {
     pub positions: [Vec2; 3],
+    pub surface: [Option<crate::NprCoverageSample>; 3],
     pub color: Vec4,
     pub depths: [f32; 3],
     /// Assigned only after a source surface has been expanded into an authored
@@ -73,6 +74,7 @@ pub struct NprFillTriangle {
 #[derive(Debug, Clone, PartialEq)]
 pub struct NprPaintTriangle {
     pub positions: [Vec2; 3],
+    pub surface: [Option<crate::NprCoverageSample>; 3],
     pub color: Vec4,
     pub depths: [f32; 3],
     pub coverage: f32,
@@ -212,6 +214,7 @@ impl NprRenderPacket {
         ];
         for positions in [positions, [positions[2], positions[1], positions[0]]] {
             self.fills.push(NprFillTriangle {
+                surface: [None; 3],
                 positions,
                 color,
                 depths: [0.0; 3],
@@ -366,6 +369,13 @@ fn build_packet_with_identity(
         uncached_field = SurfaceDirectionField::build(geometry, topology, 0.85);
         &uncached_field
     };
+    let uncached_coverage;
+    let coverage_index = if let Some(surface) = surface {
+        surface.coverage_index()
+    } else {
+        uncached_coverage = crate::coverage::CoverageIndex::build(geometry);
+        &uncached_coverage
+    };
     for (face_index, tri) in geometry.triangles.iter().enumerate() {
         for clipped in camera.clip_triangle(tri.map(|i| geometry.vertices[i as usize].position)) {
             if let (Some(a), Some(b), Some(c)) = (
@@ -383,8 +393,18 @@ fn build_packet_with_identity(
                 };
                 let positions = [a.screen, b.screen, c.screen];
                 let depths = [a.depth, b.depth, c.depth].map(|d| camera.normalized_depth(d));
+                let surface_samples = clipped.map(|point| {
+                    Some(coverage_index.sample_face(
+                        geometry,
+                        contour_field.as_deref(),
+                        face_index,
+                        point,
+                        light_direction,
+                    ))
+                });
                 let occluder = NprFillTriangle {
                     positions,
+                    surface: surface_samples,
                     depths,
                     // The depth pass does not read colour. Retaining it makes
                     // the primitive self-contained for neutral consumers.
@@ -396,6 +416,7 @@ fn build_packet_with_identity(
                     let coverage = underpainting_coverage(seed, face_index as u32);
                     underpainting.push(NprPaintTriangle {
                         positions,
+                        surface: surface_samples,
                         depths,
                         color,
                         coverage,
@@ -565,8 +586,25 @@ fn build_packet_with_identity(
     let hatching_budget_exhausted = hatching_budget == 0;
     let mut candidates = strokes;
     candidates.extend(hatching.strokes);
-    let (strokes, retained_stroke_data_bytes, stroke_budget_rejected, stroke_budget_rejected_tone) =
-        retain_strokes_under_budget(candidates, MAX_STROKE_DATA_BYTES_PER_PACKET);
+    let (
+        mut strokes,
+        retained_stroke_data_bytes,
+        stroke_budget_rejected,
+        stroke_budget_rejected_tone,
+    ) = retain_strokes_under_budget(candidates, MAX_STROKE_DATA_BYTES_PER_PACKET);
+    for stroke in &mut strokes {
+        for vertex in &mut stroke.vertices {
+            vertex.surface = coverage_index.sample_screen(
+                geometry,
+                contour_field.as_deref(),
+                camera,
+                vp,
+                vertex.position,
+                vertex.depth,
+                light_direction,
+            );
+        }
+    }
     let silhouettes = if style.surface_mode == NprSurfaceMode::Smooth {
         smooth_contours.len()
     } else {
@@ -949,6 +987,19 @@ pub fn append_construction_marks(
             continue;
         }
         stroke.role = StrokeRole::Construction;
+        let normals = (style.surface_mode == NprSurfaceMode::Smooth)
+            .then(|| source_surface.contour_field(style.smooth_crease_angle));
+        for vertex in &mut stroke.vertices {
+            vertex.surface = source_surface.coverage_index().sample_screen(
+                source_surface.geometry(),
+                normals.as_deref(),
+                camera,
+                viewport,
+                vertex.position,
+                vertex.depth,
+                style.light_direction,
+            );
+        }
         apply_stroke_opacity(std::slice::from_mut(&mut stroke), mark.opacity);
         candidates.push(stroke);
     }
@@ -1801,6 +1852,7 @@ mod tests {
     #[test]
     fn stroke_payload_budget_preserves_feature_strokes_before_tone() {
         let vertex = crate::StrokeVertex {
+            surface: None,
             position: Vec2::ZERO,
             width: 1.0,
             id: 7,

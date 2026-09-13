@@ -36,7 +36,7 @@ fn unified_stack_preserves_interleaved_paint_strokes_and_repeated_generators() {
 }
 
 #[test]
-fn shipped_drawing_presets_resolve_to_pinned_brushes_for_all_five_media() {
+fn shipped_drawing_presets_separate_hatching_sources_from_graphite_appearances() {
     let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("../../../mods/npr-playground/npr/looks");
     let mut looks = BTreeMap::new();
@@ -66,6 +66,7 @@ fn shipped_drawing_presets_resolve_to_pinned_brushes_for_all_five_media() {
             .collect::<Vec<_>>();
         assert!(media.contains(&amigo_render_npr::BrushMedium::Ink));
         assert!(media.contains(&amigo_render_npr::BrushMedium::Graphite));
+        // Existing pinned recipes remain readable; they no longer select geometry.
         assert!(media.contains(&amigo_render_npr::BrushMedium::Hatching));
         assert!(media.contains(&amigo_render_npr::BrushMedium::FlatFill));
         assert!(media.contains(&amigo_render_npr::BrushMedium::WatercolourWash));
@@ -466,16 +467,113 @@ fn save_all_preflights_conflicts_before_writing_any_document() {
 }
 
 #[test]
+fn removed_lines_survive_includes_serialization_and_can_be_readded() {
+    let empty = NprLookPatch::default();
+    let before = NprResolvedLook {
+        style: Default::default(),
+        layers: NprStyleLayers::default(),
+    };
+    let mut after = before.clone();
+    after.layers.layers.retain(|layer| layer.id != "contours");
+    let changes = NprLookPatch::changes(&before, &after).unwrap();
+    assert!(changes.removed_layers.contains("contours"));
+    let mut looks = BTreeMap::from([
+        (
+            "base".into(),
+            NprLookDocument {
+                id: "base".into(),
+                includes: vec![],
+                look: NprLookPatch::from_resolved(&before).unwrap(),
+            },
+        ),
+        (
+            "drawing".into(),
+            NprLookDocument {
+                id: "drawing".into(),
+                includes: vec!["base".into()],
+                look: changes,
+            },
+        ),
+    ]);
+    let yaml = serde_yaml::to_string(&looks["drawing"]).unwrap();
+    looks.insert("drawing".into(), serde_yaml::from_str(&yaml).unwrap());
+    assert_eq!(
+        resolve_look(&looks, &empty, Some("drawing"), &empty, &empty, &empty).unwrap(),
+        after
+    );
+    looks
+        .get_mut("drawing")
+        .unwrap()
+        .look
+        .merge(&NprLookPatch::changes(&after, &before).unwrap())
+        .unwrap();
+    assert!(looks["drawing"].look.removed_layers.is_empty());
+    assert_eq!(
+        resolve_look(&looks, &empty, Some("drawing"), &empty, &empty, &empty).unwrap(),
+        before
+    );
+}
+
+#[test]
+fn standalone_and_custom_line_removals_roundtrip() {
+    let empty = NprLookPatch::default();
+    let mut before = NprResolvedLook {
+        style: Default::default(),
+        layers: NprStyleLayers::default(),
+    };
+    let mut custom = before.layers.layer("contours").unwrap().clone();
+    custom.id = "custom-outline".into();
+    before.layers.layers.push(custom);
+    let mut after = before.clone();
+    after
+        .layers
+        .layers
+        .retain(|layer| layer.id != "custom-outline" && layer.id != "contours");
+    let mut saved = NprLookPatch::from_resolved(&before).unwrap();
+    saved
+        .merge(&NprLookPatch::changes(&before, &after).unwrap())
+        .unwrap();
+    for patch in [saved, NprLookPatch::from_resolved(&after).unwrap()] {
+        let encoded = serde_yaml::to_string(&patch).unwrap();
+        let decoded = serde_yaml::from_str(&encoded).unwrap();
+        assert_eq!(
+            resolve_look(&BTreeMap::new(), &empty, None, &decoded, &empty, &empty).unwrap(),
+            after
+        );
+    }
+}
+
+#[test]
+fn contradictory_removal_is_rejected_without_partial_merge() {
+    let mut patch = NprLookPatch::from_resolved(&NprResolvedLook {
+        style: Default::default(),
+        layers: NprStyleLayers::default(),
+    })
+    .unwrap();
+    let original = patch.clone();
+    let mut invalid = original.clone();
+    invalid.removed_layers.insert("contours".into());
+    assert!(patch.merge(&invalid).is_err());
+    assert_eq!(patch, original);
+    invalid = NprLookPatch::default();
+    invalid.removed_layers.insert("paper".into());
+    assert!(patch.merge(&invalid).is_err());
+    assert_eq!(patch, original);
+}
+
+#[test]
 fn drawing_draft_requires_its_selected_source_model() {
     let mut draft = NprDrawingDraft {
         version: 1,
         source_model: "sphere".into(),
         settings: Settings::for_scene(),
     };
-    assert!(draft
-        .validate()
-        .unwrap_err()
-        .contains("source model does not match"));
+    assert!(
+        draft
+            .validate()
+            .unwrap_err()
+            .contains("source model does not match")
+    );
 
     draft.source_model = "cube".into();
     draft.validate().unwrap();
@@ -508,9 +606,11 @@ fn explicit_profile_migration_requires_a_source_model_and_keeps_a_durable_backup
     migration.apply(&backup).unwrap();
     assert_eq!(fs::read_to_string(&backup).unwrap(), original);
     let saved: NprSceneProfileDocument = serde_yaml::from_slice(&fs::read(&path).unwrap()).unwrap();
-    assert!(saved
-        .resolve(&BTreeMap::new(), &BTreeMap::new(), &NprLookPatch::default())
-        .is_ok());
+    assert!(
+        saved
+            .resolve(&BTreeMap::new(), &BTreeMap::new(), &NprLookPatch::default())
+            .is_ok()
+    );
 }
 
 #[test]
@@ -537,8 +637,10 @@ fn drawing_studio_profile_rejects_multiple_sources_even_without_legacy_flag() {
     sphere.model = "sphere".into();
     profile.objects.insert("sphere".into(), sphere);
 
-    assert!(profile
-        .resolve(&BTreeMap::new(), &BTreeMap::new(), &NprLookPatch::default())
-        .unwrap_err()
-        .contains("only one source model"));
+    assert!(
+        profile
+            .resolve(&BTreeMap::new(), &BTreeMap::new(), &NprLookPatch::default())
+            .unwrap_err()
+            .contains("only one source model")
+    );
 }

@@ -20,6 +20,8 @@ use tungstenite::{
     handshake::server::{Request, Response},
 };
 
+const COMPANION_HANDSHAKE_TIMEOUT: Duration = Duration::from_secs(120);
+
 #[derive(Clone, Serialize, Deserialize)]
 pub struct PlaygroundClientBootstrap {
     pub native: Option<amigo_playground_native::NativeBootstrap>,
@@ -503,7 +505,9 @@ fn spawn_companion(
             "tauri://localhost"
         };
         let mut guard = PlaygroundHandshakeGuard::new(descriptor.id.clone(), token, origin.into());
-        while !worker_stop.load(Ordering::Acquire) && started.elapsed() < Duration::from_secs(30) {
+        while !worker_stop.load(Ordering::Acquire)
+            && started.elapsed() < COMPANION_HANDSHAKE_TIMEOUT
+        {
             match listener.accept() {
                 Ok((stream, peer)) if peer.ip().is_loopback() => {
                     match accept_client(stream, origin, &mut guard) {
