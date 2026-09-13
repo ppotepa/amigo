@@ -161,8 +161,13 @@ dependencies = [
  "amigo-scene",
  "amigo-scripting-api",
  "amigo-session",
+ "base64 0.22.1",
  "glam 0.30.10",
  "gltf",
+ "percent-encoding",
+ "serde",
+ "serde_json",
+ "tempfile",
 ]
 
 [[package]]
