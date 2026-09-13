@@ -158,6 +158,37 @@ impl SceneService {
         true
     }
 
+    /// Replaces an entity's world-space position and orientation while retaining
+    /// its authored scale. This is the appropriate operation for cinematic
+    /// choreography: callers can evaluate a pose from absolute time without
+    /// accumulating transform deltas or accidentally changing asset scale.
+    pub fn set_entity_pose_3d(
+        &self,
+        entity_name: &str,
+        translation: Vec3,
+        rotation_euler: Vec3,
+    ) -> bool {
+        if !translation.x.is_finite()
+            || !translation.y.is_finite()
+            || !translation.z.is_finite()
+            || !rotation_euler.x.is_finite()
+            || !rotation_euler.y.is_finite()
+            || !rotation_euler.z.is_finite()
+        {
+            return false;
+        }
+        let mut state = self
+            .state
+            .lock()
+            .expect("scene state mutex should not be poisoned");
+        let Some(entity) = state.entity_by_name_mut(entity_name) else {
+            return false;
+        };
+        entity.transform.translation = translation;
+        entity.transform.rotation_euler = rotation_euler;
+        true
+    }
+
     pub fn lifecycle_of(&self, entity_name: &str) -> Option<SceneEntityLifecycle> {
         self.entity_by_name(entity_name)
             .map(|entity| entity.lifecycle)

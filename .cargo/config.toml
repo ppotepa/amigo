@@ -1,2 +1,5 @@
 [build]
-incremental = true
+# The repository can be placed on exFAT volumes (including the default D:
+# workspace used on Windows). Rust's incremental cache requires hard links,
+# which exFAT does not provide and otherwise emits one warning per crate.
+incremental = false

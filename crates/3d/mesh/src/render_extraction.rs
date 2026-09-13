@@ -33,6 +33,12 @@ pub fn extract_mesh3d_render_commands(
         .commands()
         .into_iter()
         .filter(|command| is_entity_render_visible(ctx.scene_service, &command.entity_name))
+        .map(|mut command| {
+            command.mesh.geometry = ctx
+                .mesh_scene_service
+                .geometry_for(&command.mesh.mesh_asset);
+            command
+        })
         .collect()
 }
 

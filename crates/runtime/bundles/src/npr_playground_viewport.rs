@@ -114,7 +114,11 @@ impl amigo_runtime::RuntimePlugin for NprPlaygroundViewportPlugin {
                     for (generation, error) in failures {
                         companions.send_viewport_error(
                             &id,
-                            if generation == 0 { request.generation } else { generation },
+                            if generation == 0 {
+                                request.generation
+                            } else {
+                                generation
+                            },
                             error,
                         );
                     }
@@ -278,7 +282,10 @@ fn start_worker(
                 if let Some(native) = &mut native {
                     native.retire_failed();
                 }
-                let _ = failure.try_send((active_configuration.map_or(0, |(_, generation, _)| generation), error));
+                let _ = failure.try_send((
+                    active_configuration.map_or(0, |(_, generation, _)| generation),
+                    error,
+                ));
             }
             #[cfg(windows)]
             if let Some(native) = &mut native {
@@ -314,7 +321,8 @@ fn start_worker(
                                 header.stages.readback_ms = frame.milliseconds;
                                 header.stages.stale_readback_drops = stale_readback_drops;
                                 let mut stats = stats;
-                                stats["stale_readback_drops"] = serde_json::json!(stale_readback_drops);
+                                stats["stale_readback_drops"] =
+                                    serde_json::json!(stale_readback_drops);
                                 if header.mode == PlaygroundViewportMode::Jpeg {
                                     let _ = encode.try_send((job, header, frame.rgba, stats));
                                 } else {
@@ -430,7 +438,13 @@ fn start_worker(
                 };
                 let target = target.as_mut().unwrap();
                 let submit = Instant::now();
-                extractor.with_commands(|commands, background| renderer.as_mut().unwrap().render(target, commands, background))
+                extractor
+                    .with_commands(|commands, background| {
+                        renderer
+                            .as_mut()
+                            .unwrap()
+                            .render(target, commands, background)
+                    })
                     .map_err(|e| e.to_string())?;
                 if let Some(error) = device_failure
                     .as_ref()

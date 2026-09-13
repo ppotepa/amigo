@@ -7,9 +7,45 @@ pub(crate) fn append_mesh_triangles(
     camera_settings: amigo_render_api::Camera3dRenderSettings,
     light_settings: amigo_render_api::Light3dRenderSettings,
     transform: Transform3,
+    geometry: Option<&amigo_render_api::MeshGeometry3d>,
     base_color: ColorRgba,
     render_order: i32,
 ) {
+    if let Some(geometry) = geometry {
+        for indices in geometry.indices.chunks_exact(3) {
+            let Some(points) = indices
+                .iter()
+                .map(|index| geometry.positions.get(*index as usize).copied())
+                .collect::<Option<Vec<_>>>()
+            else {
+                continue;
+            };
+            append_world_triangle(
+                triangles,
+                viewport,
+                camera,
+                camera_settings,
+                light_settings,
+                [
+                    transform_point_3d(
+                        Vec3::new(points[0][0], points[0][1], points[0][2]),
+                        transform,
+                    ),
+                    transform_point_3d(
+                        Vec3::new(points[1][0], points[1][1], points[1][2]),
+                        transform,
+                    ),
+                    transform_point_3d(
+                        Vec3::new(points[2][0], points[2][1], points[2][2]),
+                        transform,
+                    ),
+                ],
+                base_color,
+                render_order,
+            );
+        }
+        return;
+    }
     let corners = [
         Vec3::new(-0.5, -0.5, -0.5),
         Vec3::new(0.5, -0.5, -0.5),
@@ -32,60 +68,65 @@ pub(crate) fn append_mesh_triangles(
 
     for face_triangles in faces {
         for [a, b, c] in face_triangles {
-            let world = [corners[a], corners[b], corners[c]];
-            let projected = [
-                project_point_with_camera(
-                    world[0],
-                    camera,
-                    *viewport,
-                    camera_settings.fov_y_degrees,
-                    camera_settings.near_clip,
-                    camera_settings.far_clip,
-                ),
-                project_point_with_camera(
-                    world[1],
-                    camera,
-                    *viewport,
-                    camera_settings.fov_y_degrees,
-                    camera_settings.near_clip,
-                    camera_settings.far_clip,
-                ),
-                project_point_with_camera(
-                    world[2],
-                    camera,
-                    *viewport,
-                    camera_settings.fov_y_degrees,
-                    camera_settings.near_clip,
-                    camera_settings.far_clip,
-                ),
-            ];
-            let [Some(a), Some(b), Some(c)] = projected else {
-                continue;
-            };
-            let normal = normalize(cross(sub(world[1], world[0]), sub(world[2], world[0])));
-            let center = triangle_center(world);
-            if dot(normal, sub(camera.translation, center)) <= 0.0 {
-                continue;
-            }
-            if !projected_triangle_is_sane([a.position, b.position, c.position]) {
-                continue;
-            }
-            let light_dir = normalize(Vec3::new(
-                -light_settings.direction.x,
-                -light_settings.direction.y,
-                -light_settings.direction.z,
-            ));
-            let lit = dot(normal, light_dir).max(0.0) * light_settings.intensity.max(0.0);
-            let brightness: f32 = (light_settings.ambient.max(0.0) + lit).clamp(0.0, 1.25);
-            let shaded = force_opaque(modulate_color(base_color, brightness));
-            triangles.push(ProjectedTriangle {
-                points: [a.position, b.position, c.position],
-                color: multiply_color(shaded, light_settings.color),
-                depth: (a.depth + b.depth + c.depth) / 3.0,
+            append_world_triangle(
+                triangles,
+                viewport,
+                camera,
+                camera_settings,
+                light_settings,
+                [corners[a], corners[b], corners[c]],
+                base_color,
                 render_order,
-            });
+            );
         }
     }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn append_world_triangle(
+    triangles: &mut Vec<ProjectedTriangle>,
+    viewport: &Viewport,
+    camera: Transform3,
+    camera_settings: amigo_render_api::Camera3dRenderSettings,
+    light_settings: amigo_render_api::Light3dRenderSettings,
+    world: [Vec3; 3],
+    base_color: ColorRgba,
+    render_order: i32,
+) {
+    let projected = world.map(|point| {
+        project_point_with_camera(
+            point,
+            camera,
+            *viewport,
+            camera_settings.fov_y_degrees,
+            camera_settings.near_clip,
+            camera_settings.far_clip,
+        )
+    });
+    let [Some(a), Some(b), Some(c)] = projected else {
+        return;
+    };
+    let normal = normalize(cross(sub(world[1], world[0]), sub(world[2], world[0])));
+    let center = triangle_center(world);
+    if dot(normal, sub(camera.translation, center)) <= 0.0
+        || !projected_triangle_is_sane([a.position, b.position, c.position])
+    {
+        return;
+    }
+    let light_dir = normalize(Vec3::new(
+        -light_settings.direction.x,
+        -light_settings.direction.y,
+        -light_settings.direction.z,
+    ));
+    let lit = dot(normal, light_dir).max(0.0) * light_settings.intensity.max(0.0);
+    let brightness: f32 = (light_settings.ambient.max(0.0) + lit).clamp(0.0, 1.25);
+    let shaded = force_opaque(modulate_color(base_color, brightness));
+    triangles.push(ProjectedTriangle {
+        points: [a.position, b.position, c.position],
+        color: multiply_color(shaded, light_settings.color),
+        depth: (a.depth + b.depth + c.depth) / 3.0,
+        render_order,
+    });
 }
 
 fn triangle_center(points: [Vec3; 3]) -> Vec3 {

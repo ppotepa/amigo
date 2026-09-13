@@ -1,10 +1,11 @@
 //! 3D mesh scene service for referencing authored geometry.
 //! It stores mesh bindings that the renderer resolves into GPU-ready draw data.
 
-use std::sync::Mutex;
+use std::{collections::BTreeMap, path::Path, sync::Mutex};
 
+use amigo_assets::AssetKey;
 use amigo_capabilities::{DEFAULT_CAPABILITY_VERSION, register_domain_plugin};
-pub use amigo_render_api::{Mesh3d, MeshDrawCommand};
+pub use amigo_render_api::{Mesh3d, MeshDrawCommand, MeshGeometry3d};
 use amigo_runtime::{RuntimePlugin, ServiceRegistry};
 use amigo_scene::{Mesh3dSceneCommand, SceneEntityId, SceneService};
 mod editor_capability;
@@ -25,6 +26,7 @@ pub use script_command::*;
 #[derive(Debug, Default)]
 pub struct MeshSceneService {
     commands: Mutex<Vec<MeshDrawCommand>>,
+    geometry: Mutex<BTreeMap<AssetKey, MeshGeometry3d>>,
 }
 
 impl MeshSceneService {
@@ -57,6 +59,29 @@ impl MeshSceneService {
             .into_iter()
             .map(|command| command.entity_name)
             .collect()
+    }
+
+    pub fn load_source_geometry(&self, key: AssetKey, path: &Path) -> Result<(), String> {
+        let asset = load_gltf_geometry_source_space(path)?;
+        self.geometry
+            .lock()
+            .expect("mesh geometry mutex should not be poisoned")
+            .insert(
+                key,
+                MeshGeometry3d {
+                    positions: asset.positions,
+                    indices: asset.indices,
+                },
+            );
+        Ok(())
+    }
+
+    pub fn geometry_for(&self, key: &AssetKey) -> Option<MeshGeometry3d> {
+        self.geometry
+            .lock()
+            .expect("mesh geometry mutex should not be poisoned")
+            .get(key)
+            .cloned()
     }
 }
 
@@ -115,6 +140,7 @@ pub fn queue_mesh_scene_command(
         mesh: Mesh3d {
             mesh_asset: command.mesh_asset.clone(),
             transform: command.transform,
+            geometry: None,
         },
     });
     entity
@@ -140,6 +166,7 @@ mod tests {
             mesh: Mesh3d {
                 mesh_asset: AssetKey::new("playground-3d/meshes/probe"),
                 transform: Transform3::default(),
+                geometry: None,
             },
         });
 

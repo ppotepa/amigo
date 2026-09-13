@@ -38,9 +38,16 @@ impl Default for Light3dRenderSettings {
 }
 
 #[derive(Debug, Clone)]
+pub struct MeshGeometry3d {
+    pub positions: Vec<[f32; 3]>,
+    pub indices: Vec<u32>,
+}
+
+#[derive(Debug, Clone)]
 pub struct Mesh3d {
     pub mesh_asset: AssetKey,
     pub transform: Transform3,
+    pub geometry: Option<MeshGeometry3d>,
 }
 
 #[derive(Debug, Clone)]

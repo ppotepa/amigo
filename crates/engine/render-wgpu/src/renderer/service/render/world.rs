@@ -229,6 +229,7 @@ pub(super) fn execute_world_to_offscreen(
                 camera_settings,
                 light_settings,
                 transform,
+                command.mesh.geometry.as_ref(),
                 color,
                 render_order,
             );
@@ -547,8 +548,13 @@ impl crate::renderer::npr::WgpuNprRenderer {
                 if !layer.target.includes(&command.object_id, layer.source) {
                     continue;
                 }
-                layer.validate_mask_inputs(&command.packet).map_err(amigo_core::AmigoError::Message)?;
-                let mask = renderer.npr_pipelines.mask_binding(&mut buffers,&target.device,&target.queue,&layer.mask).map_err(amigo_core::AmigoError::Message)?;
+                layer
+                    .validate_mask_inputs(&command.packet)
+                    .map_err(amigo_core::AmigoError::Message)?;
+                let mask = renderer
+                    .npr_pipelines
+                    .mask_binding(&mut buffers, &target.device, &target.queue, &layer.mask)
+                    .map_err(amigo_core::AmigoError::Message)?;
                 match layer.source {
                     amigo_render_npr::NprGeometrySource::Wash => {
                         let paint = layer.paint.unwrap_or_default();
@@ -735,7 +741,15 @@ impl crate::renderer::npr::WgpuNprRenderer {
             return Ok(());
         }
 
-        let no_mask = renderer.npr_pipelines.mask_binding(&mut buffers,&target.device,&target.queue,&amigo_render_npr::CoverageMask::None).map_err(amigo_core::AmigoError::Message)?;
+        let no_mask = renderer
+            .npr_pipelines
+            .mask_binding(
+                &mut buffers,
+                &target.device,
+                &target.queue,
+                &amigo_render_npr::CoverageMask::None,
+            )
+            .map_err(amigo_core::AmigoError::Message)?;
         let occluder_buffers = NprPipelines::vertex_buffers(
             &mut buffers,
             &target.device,
@@ -776,7 +790,7 @@ impl crate::renderer::npr::WgpuNprRenderer {
                 multiview_mask: None,
             });
             pass.set_pipeline(&renderer.npr_pipelines.depth);
-            pass.set_bind_group(0,&no_mask,&[]);
+            pass.set_bind_group(0, &no_mask, &[]);
             for buffer in &occluder_buffers {
                 pass.set_vertex_buffer(0, buffer.buffer.slice(..));
                 pass.draw(0..buffer.vertex_count, 0..1);
@@ -818,27 +832,39 @@ impl crate::renderer::npr::WgpuNprRenderer {
             });
             if let Some(paper_buffer) = &paper_buffer {
                 pass.set_pipeline(&renderer.npr_pipelines.paper);
-                pass.set_bind_group(0,&no_mask,&[]);
+                pass.set_bind_group(0, &no_mask, &[]);
                 pass.set_vertex_buffer(0, paper_buffer.slice(..));
                 pass.draw(0..paper_vertices.len() as u32, 0..1);
             }
             for batch in &color_batches {
                 match batch {
-                    NprColorBatch::Paint { buffer, blend, mask } => {
+                    NprColorBatch::Paint {
+                        buffer,
+                        blend,
+                        mask,
+                    } => {
                         pass.set_pipeline(renderer.npr_pipelines.paint_for(*blend));
-                        pass.set_bind_group(0,mask,&[]);
+                        pass.set_bind_group(0, mask, &[]);
                         pass.set_vertex_buffer(0, buffer.buffer.slice(..));
                         pass.draw(0..buffer.vertex_count, 0..1);
                     }
-                    NprColorBatch::Fill { buffer, blend, mask } => {
+                    NprColorBatch::Fill {
+                        buffer,
+                        blend,
+                        mask,
+                    } => {
                         pass.set_pipeline(renderer.npr_pipelines.fill_for(*blend));
-                        pass.set_bind_group(0,mask,&[]);
+                        pass.set_bind_group(0, mask, &[]);
                         pass.set_vertex_buffer(0, buffer.buffer.slice(..));
                         pass.draw(0..buffer.vertex_count, 0..1);
                     }
-                    NprColorBatch::Stroke { buffer, blend, mask } => {
+                    NprColorBatch::Stroke {
+                        buffer,
+                        blend,
+                        mask,
+                    } => {
                         pass.set_pipeline(renderer.npr_pipelines.stroke_for(*blend));
-                        pass.set_bind_group(0,mask,&[]);
+                        pass.set_bind_group(0, mask, &[]);
                         pass.set_vertex_buffer(0, buffer.vertices.slice(..));
                         pass.set_index_buffer(buffer.indices.slice(..), wgpu::IndexFormat::Uint32);
                         pass.draw_indexed(0..buffer.index_count, 0, 0..1);

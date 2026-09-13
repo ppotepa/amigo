@@ -1,0 +1,4 @@
+Creative Commons Zero v1.0 Universal
+
+The Kenney assets in this mod are dedicated to the public domain under CC0 1.0.
+Full license text: https://creativecommons.org/publicdomain/zero/1.0/legalcode

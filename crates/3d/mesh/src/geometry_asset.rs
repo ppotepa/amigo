@@ -9,7 +9,7 @@ mod validation;
 pub use animation::{
     MeshAnimationClip, MeshAnimationInterpolation, MeshAnimationProperty, MeshAnimationTrack,
 };
-pub use import::load_gltf_geometry;
+pub use import::{load_gltf_geometry, load_gltf_geometry_source_space};
 use pose::GeometryDefinition;
 
 #[derive(Debug, Clone, Default)]

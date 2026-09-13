@@ -1,0 +1,48 @@
+# NPR City source assets
+
+Retrieved: 2026-09-13
+Conversion: none; original GLB files are committed unchanged.
+
+## Kenney — CC0 1.0
+
+Author: Kenney (Kenney.nl)
+Original packs:
+- City Kit (Roads): https://kenney.nl/assets/city-kit-roads
+- City Kit (Commercial): https://kenney.nl/assets/city-kit-commercial
+- City Kit (Suburban): https://kenney.nl/assets/city-kit-suburban
+- Car Kit: https://kenney.nl/assets/car-kit
+Exact binary mirror: https://github.com/bevyengine/bevy_asset_files/tree/main/kenney
+
+Committed files:
+- city-kit-roads/road-crossroad-path.glb
+- city-kit-roads/road-straight.glb
+- city-kit-roads/tile-low.glb
+- city-kit-roads/light-curved.glb
+- city-kit-commercial/building-a.glb
+- city-kit-commercial/building-d.glb
+- city-kit-commercial/building-g.glb
+- city-kit-commercial/building-k.glb
+- city-kit-commercial/building-skyscraper-b.glb
+- city-kit-suburban/building-type-c.glb
+- city-kit-suburban/building-type-h.glb
+- city-kit-suburban/building-type-m.glb
+- city-kit-suburban/building-type-u.glb
+- city-kit-suburban/tree-large.glb
+- city-kit-suburban/tree-small.glb
+- car-kit/police.glb
+- car-kit/taxi.glb
+- car-kit/sedan.glb
+
+## Quaternius — CC0 1.0
+
+Author: Quaternius
+Original pack: Ultimate Modular Men, https://quaternius.com/packs/ultimatemodularcharacters.html
+Exact binary mirror: https://github.com/euuuuuuan/fatal-funnel-public/tree/main/packages/renderer/assets/models/quaternius-men
+
+Committed files:
+- characters/swat.glb
+- characters/casual-character.glb
+
+Verified embedded clips for both files:
+- CharacterArmature|Idle
+- CharacterArmature|Walk

@@ -17,7 +17,22 @@ const MAX_BUFFER_BYTES: usize = 128 * 1024 * 1024;
 const MAX_NODES: usize = 65_536;
 const MAX_VERTICES: usize = 4_000_000;
 
+/// Loads a model using the historical unit-normalized import policy used by
+/// the NPR playground.
 pub fn load_gltf_geometry(path: &Path) -> Result<MeshGeometryAsset, String> {
+    load_gltf_geometry_with_normalization(path, true)
+}
+
+/// Loads a model in the authored glTF coordinate system. This is the normal
+/// Mesh3D path: callers own a single, comprehensible world-scale transform.
+pub fn load_gltf_geometry_source_space(path: &Path) -> Result<MeshGeometryAsset, String> {
+    load_gltf_geometry_with_normalization(path, false)
+}
+
+fn load_gltf_geometry_with_normalization(
+    path: &Path,
+    normalize_to_unit: bool,
+) -> Result<MeshGeometryAsset, String> {
     if std::fs::metadata(path).map_err(|e| e.to_string())?.len() > MAX_BUFFER_BYTES as u64 {
         return Err("model file exceeds import budget".into());
     }
@@ -80,19 +95,21 @@ pub fn load_gltf_geometry(path: &Path) -> Result<MeshGeometryAsset, String> {
     if bind.positions.is_empty() || bind.indices.is_empty() {
         return Err("model contains no triangles".into());
     }
-    let min = bind
-        .positions
-        .iter()
-        .map(|p| Vec3::from_array(*p))
-        .fold(Vec3::splat(f32::INFINITY), Vec3::min);
-    let max = bind
-        .positions
-        .iter()
-        .map(|p| Vec3::from_array(*p))
-        .fold(Vec3::splat(f32::NEG_INFINITY), Vec3::max);
-    let scale = 2.0 / (max - min).max_element().max(1e-6);
-    definition.normalization =
-        Mat4::from_scale(Vec3::splat(scale)) * Mat4::from_translation(-(min + max) * 0.5);
+    if normalize_to_unit {
+        let min = bind
+            .positions
+            .iter()
+            .map(|p| Vec3::from_array(*p))
+            .fold(Vec3::splat(f32::INFINITY), Vec3::min);
+        let max = bind
+            .positions
+            .iter()
+            .map(|p| Vec3::from_array(*p))
+            .fold(Vec3::splat(f32::NEG_INFINITY), Vec3::max);
+        let scale = 2.0 / (max - min).max_element().max(1e-6);
+        definition.normalization =
+            Mat4::from_scale(Vec3::splat(scale)) * Mat4::from_translation(-(min + max) * 0.5);
+    }
     let bind = definition.sample(None, 0.0)?;
     Ok(MeshGeometryAsset {
         positions: bind.positions,

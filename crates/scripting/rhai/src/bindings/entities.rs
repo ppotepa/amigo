@@ -57,8 +57,34 @@ impl EntitiesApi {
         )
     }
 
+    pub fn set_pose_3d(
+        &mut self,
+        entity_name: &str,
+        x: rhai::FLOAT,
+        y: rhai::FLOAT,
+        z: rhai::FLOAT,
+        rotation_x: rhai::FLOAT,
+        rotation_y: rhai::FLOAT,
+        rotation_z: rhai::FLOAT,
+    ) -> bool {
+        set_entity_pose_3d(
+            self.scene.as_ref(),
+            entity_name,
+            x as f32,
+            y as f32,
+            z as f32,
+            rotation_x as f32,
+            rotation_y as f32,
+            rotation_z as f32,
+        )
+    }
+
     pub fn position_2d(&mut self, entity_name: &str) -> rhai::Map {
         entity_position_2d(self.scene.as_ref(), entity_name)
+    }
+
+    pub fn position_3d(&mut self, entity_name: &str) -> rhai::Map {
+        entity_position_3d(self.scene.as_ref(), entity_name)
     }
 
     pub fn set_rotation_2d(&mut self, entity_name: &str, radians: rhai::FLOAT) -> bool {
@@ -297,6 +323,41 @@ pub fn set_entity_position_3d(
     scene.set_transform(entity_name, transform)
 }
 
+pub fn entity_position_3d(scene: Option<&Arc<SceneService>>, entity_name: &str) -> rhai::Map {
+    let mut position = rhai::Map::new();
+    if let Some(transform) = scene.and_then(|scene| scene.transform_of(entity_name)) {
+        position.insert("x".into(), (transform.translation.x as rhai::FLOAT).into());
+        position.insert("y".into(), (transform.translation.y as rhai::FLOAT).into());
+        position.insert("z".into(), (transform.translation.z as rhai::FLOAT).into());
+    } else {
+        position.insert("x".into(), (0.0 as rhai::FLOAT).into());
+        position.insert("y".into(), (0.0 as rhai::FLOAT).into());
+        position.insert("z".into(), (0.0 as rhai::FLOAT).into());
+    }
+    position
+}
+
+pub fn set_entity_pose_3d(
+    scene: Option<&Arc<SceneService>>,
+    entity_name: &str,
+    x: f32,
+    y: f32,
+    z: f32,
+    rotation_x: f32,
+    rotation_y: f32,
+    rotation_z: f32,
+) -> bool {
+    scene
+        .map(|scene| {
+            scene.set_entity_pose_3d(
+                entity_name,
+                Vec3::new(x, y, z),
+                Vec3::new(rotation_x, rotation_y, rotation_z),
+            )
+        })
+        .unwrap_or(false)
+}
+
 pub fn set_entity_rotation_2d(
     scene: Option<&Arc<SceneService>>,
     entity_name: &str,
@@ -523,7 +584,9 @@ pub(crate) fn register_api(engine: &mut rhai::Engine) {
         .register_fn("distance", EntitiesApi::distance)
         .register_fn("set_position_2d", EntitiesApi::set_position_2d)
         .register_fn("set_position_3d", EntitiesApi::set_position_3d)
+        .register_fn("set_pose_3d", EntitiesApi::set_pose_3d)
         .register_fn("position_2d", EntitiesApi::position_2d)
+        .register_fn("position_3d", EntitiesApi::position_3d)
         .register_fn("set_rotation_2d", EntitiesApi::set_rotation_2d)
         .register_fn("set_scale_2d", EntitiesApi::set_scale_2d)
         .register_fn("hide", EntitiesApi::hide)

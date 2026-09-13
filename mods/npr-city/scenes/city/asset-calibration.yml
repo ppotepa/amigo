@@ -1,0 +1,41 @@
+# Source-space measurements and the single uniform scales used by city/scene.yml.
+# Bounds are evaluated from the GLB rest pose; values are world metres after scale.
+world_units: metres
+road_step: 14.0
+assets:
+  road-crossroad:
+    source: assets/kenney/city-kit-roads/road-crossroad-path.glb
+    uniform_scale: 14.0
+    target_horizontal_extent: 14.0
+  road-straight:
+    source: assets/kenney/city-kit-roads/road-straight.glb
+    uniform_scale: 14.0
+  tile-low:
+    source: assets/kenney/city-kit-roads/tile-low.glb
+    uniform_scale: 14.0
+  lamp:
+    source: assets/kenney/city-kit-roads/light-curved.glb
+    uniform_scale: 8.955224
+    target_height: 6.0
+  police:
+    source: assets/kenney/car-kit/police.glb
+    uniform_scale: 1.603448
+    target_length: 4.65
+  taxi:
+    source: assets/kenney/car-kit/taxi.glb
+    uniform_scale: 1.636364
+    target_length: 4.5
+  sedan:
+    source: assets/kenney/car-kit/sedan.glb
+    uniform_scale: 1.784314
+    target_length: 4.55
+  swat:
+    source: assets/quaternius/characters/swat.glb
+    idle_clip: "CharacterArmature|Idle"
+    walk_clip: "CharacterArmature|Walk"
+    root_motion: in_place
+  civilian:
+    source: assets/quaternius/characters/casual-character.glb
+    idle_clip: "CharacterArmature|Idle"
+    walk_clip: "CharacterArmature|Walk"
+    root_motion: in_place

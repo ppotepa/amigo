@@ -140,7 +140,10 @@ fn npr_canvas_zoom_uses_host_frames_and_survives_pause_and_fit() {
             .unwrap();
     }
     let settled = state.snapshot().camera_distance;
-    assert_eq!(service.domain_snapshot().settings.camera_distance, authored.settings.camera_distance);
+    assert_eq!(
+        service.domain_snapshot().settings.camera_distance,
+        authored.settings.camera_distance
+    );
     assert!(settled < first && first < before);
     assert!((settled - before * (-0.12_f32).exp()).abs() < 0.0001);
     edit(&service, navigate("zoom", -76.));

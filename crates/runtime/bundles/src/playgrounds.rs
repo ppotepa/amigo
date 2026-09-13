@@ -59,7 +59,9 @@ struct Companion {
 impl Drop for Companion {
     fn drop(&mut self) {
         #[cfg(windows)]
-        if let Some(native) = &self.native { native.close(); }
+        if let Some(native) = &self.native {
+            native.close();
+        }
         self.stop.store(true, Ordering::Release);
         let _ = self.child.kill();
         let _ = self.child.wait();
@@ -198,8 +200,16 @@ impl PlaygroundCompanionService {
         state.owns_primary_window && state.companions.is_empty()
     }
     #[cfg(windows)]
-    pub(crate) fn native(&self, id: &PlaygroundId) -> Option<Arc<amigo_playground_native::NativeLink>> {
-        self.0.lock().unwrap().companions.get(id).and_then(|c| c.native.clone())
+    pub(crate) fn native(
+        &self,
+        id: &PlaygroundId,
+    ) -> Option<Arc<amigo_playground_native::NativeLink>> {
+        self.0
+            .lock()
+            .unwrap()
+            .companions
+            .get(id)
+            .and_then(|c| c.native.clone())
     }
     pub fn connections(&self) -> Vec<PlaygroundConnectionSnapshot> {
         self.0
@@ -265,10 +275,14 @@ impl PlaygroundCompanionService {
     pub(crate) fn send_viewport_error(&self, id: &PlaygroundId, generation: u64, message: String) {
         eprintln!("playground: {message}");
         if let Some(companion) = self.0.lock().unwrap().companions.get(id) {
-            if companion.outgoing.try_send(PlaygroundEvent::Domain {
-                name: "viewport_failed".into(),
-                payload: serde_json::json!({"generation":generation,"message":message}),
-            }).is_err() {
+            if companion
+                .outgoing
+                .try_send(PlaygroundEvent::Domain {
+                    name: "viewport_failed".into(),
+                    payload: serde_json::json!({"generation":generation,"message":message}),
+                })
+                .is_err()
+            {
                 companion.stop.store(true, Ordering::Release);
             }
         }
@@ -302,7 +316,12 @@ impl PlaygroundCompanionService {
             .and_then(|c| c.viewport)
     }
     pub(crate) fn input_id(&self, id: &PlaygroundId) -> u64 {
-        self.0.lock().unwrap().companions.get(id).map_or(0, |c| c.input_id)
+        self.0
+            .lock()
+            .unwrap()
+            .companions
+            .get(id)
+            .map_or(0, |c| c.input_id)
     }
     pub fn load_scene(
         &self,
@@ -359,17 +378,17 @@ impl PlaygroundCompanionService {
             for message in companion.incoming.try_iter().take(64) {
                 match message {
                     ClientMessage::Refresh => {
-                        if let Ok(event) = host.refresh(id) { let _ = companion.outgoing.try_send(event); }
+                        if let Ok(event) = host.refresh(id) {
+                            let _ = companion.outgoing.try_send(event);
+                        }
                     }
                     ClientMessage::Action { action } => {
                         let request_id = action.request_id;
                         let response = host.dispatch(id, action);
-                        if matches!(&response, PlaygroundEvent::Accepted { .. }) { companion.input_id = request_id; }
-                        if companion
-                            .outgoing
-                            .try_send(response)
-                            .is_err()
-                        {
+                        if matches!(&response, PlaygroundEvent::Accepted { .. }) {
+                            companion.input_id = request_id;
+                        }
+                        if companion.outgoing.try_send(response).is_err() {
                             failure = Some("playground control queue full".into());
                             closed.push(id.clone());
                             break;
@@ -381,7 +400,9 @@ impl PlaygroundCompanionService {
                             companion.viewport = Some(request);
                         }
                     }
-                    ClientMessage::FrameAck { ack } => { companion.frames.acknowledge(&ack); }
+                    ClientMessage::FrameAck { ack } => {
+                        companion.frames.acknowledge(&ack);
+                    }
                     ClientMessage::Close => {
                         closed.push(id.clone());
                         break;
@@ -453,7 +474,9 @@ fn spawn_companion(
     let native_session = amigo_playground_native::native_server().ok();
     let bootstrap = PlaygroundClientBootstrap {
         #[cfg(windows)]
-        native: native_session.as_ref().map(|(bootstrap, _)| bootstrap.clone()),
+        native: native_session
+            .as_ref()
+            .map(|(bootstrap, _)| bootstrap.clone()),
         #[cfg(not(windows))]
         native: None,
         endpoint: format!(
@@ -479,7 +502,9 @@ fn spawn_companion(
     }
     let mut child = command.spawn().map_err(|e| e.to_string())?;
     #[cfg(windows)]
-    if let Some((_, native)) = &native_session { native.peer_pid.store(child.id(), Ordering::Release); }
+    if let Some((_, native)) = &native_session {
+        native.peer_pid.store(child.id(), Ordering::Release);
+    }
     let encoded = serde_json::to_vec(&bootstrap).map_err(|e| e.to_string())?;
     let mut input = child.stdin.take().ok_or("missing child stdin")?;
     let sent = input
@@ -707,13 +732,8 @@ pub fn dispatch_playground_client() -> Option<amigo_core::AmigoResult<()>> {
         let mut web_bootstrap = serde_json::to_value(&bootstrap)
             .map_err(|e| amigo_core::AmigoError::Message(e.to_string()))?;
         web_bootstrap.as_object_mut().unwrap().remove("native");
-        amigo_playground_tauri::run(
-            bootstrap.label.clone(),
-            web_bootstrap,
-            native,
-            assets,
-        )
-        .map_err(amigo_core::AmigoError::Message)
+        amigo_playground_tauri::run(bootstrap.label.clone(), web_bootstrap, native, assets)
+            .map_err(amigo_core::AmigoError::Message)
     })
 }
 
@@ -726,13 +746,21 @@ mod tests {
     fn playground_transport_backpressure_preserves_actions_replies_and_shutdown() {
         let listener = TcpListener::bind("127.0.0.1:0").unwrap();
         let stream = TcpStream::connect(listener.local_addr().unwrap()).unwrap();
-        stream.set_read_timeout(Some(Duration::from_secs(2))).unwrap();
+        stream
+            .set_read_timeout(Some(Duration::from_secs(2)))
+            .unwrap();
         let mut client = tungstenite::WebSocket::from_raw_socket(
-            stream, tungstenite::protocol::Role::Client, None,
+            stream,
+            tungstenite::protocol::Role::Client,
+            None,
         );
         let (stream, _) = listener.accept().unwrap();
-        stream.set_read_timeout(Some(Duration::from_millis(5))).unwrap();
-        stream.set_write_timeout(Some(Duration::from_millis(100))).unwrap();
+        stream
+            .set_read_timeout(Some(Duration::from_millis(5)))
+            .unwrap();
+        stream
+            .set_write_timeout(Some(Duration::from_millis(100)))
+            .unwrap();
         let (input_tx, input_rx) = mpsc::sync_channel(1);
         input_tx.send(ClientMessage::Refresh).unwrap();
         let (output_tx, output_rx) = mpsc::sync_channel(1);
@@ -741,40 +769,63 @@ mod tests {
         let (done_tx, done_rx) = mpsc::channel();
         let worker = thread::spawn(move || {
             let mut socket = tungstenite::WebSocket::from_raw_socket(
-                stream, tungstenite::protocol::Role::Server, None,
+                stream,
+                tungstenite::protocol::Role::Server,
+                None,
             );
-            let result = pump_client(&mut socket, &output_rx, &input_tx,
-                &PlaygroundFrameQueue::default(), &stopped);
+            let result = pump_client(
+                &mut socket,
+                &output_rx,
+                &input_tx,
+                &PlaygroundFrameQueue::default(),
+                &stopped,
+            );
             done_tx.send(result).unwrap();
         });
         for request_id in 0..128 {
-            client.send(Message::Text(serde_json::json!({
-                "type":"action", "action": {
-                    "request_id":request_id, "base_revision":0,
-                    "control":"camera", "intent":null
-                }
-            }).to_string().into())).unwrap();
+            client
+                .send(Message::Text(
+                    serde_json::json!({
+                        "type":"action", "action": {
+                            "request_id":request_id, "base_revision":0,
+                            "control":"camera", "intent":null
+                        }
+                    })
+                    .to_string()
+                    .into(),
+                ))
+                .unwrap();
         }
         // The host has not consumed anything. A full input channel must not
         // terminate the connection or prevent a reply from reaching the UI.
         thread::sleep(Duration::from_millis(30));
-        output_tx.send(PlaygroundEvent::Domain {
-            name: "alive".into(), payload: serde_json::Value::Null,
-        }).unwrap();
+        output_tx
+            .send(PlaygroundEvent::Domain {
+                name: "alive".into(),
+                payload: serde_json::Value::Null,
+            })
+            .unwrap();
         let reply = client.read().unwrap();
         assert!(reply.to_text().unwrap().contains("alive"));
         assert!(matches!(input_rx.recv().unwrap(), ClientMessage::Refresh));
         for expected in 0..128 {
             let message = input_rx.recv_timeout(Duration::from_secs(2)).unwrap();
-            assert!(matches!(message, ClientMessage::Action { action } if action.request_id == expected));
+            assert!(
+                matches!(message, ClientMessage::Action { action } if action.request_id == expected)
+            );
         }
         // Closing the host must remain possible even while input is full.
         for _ in 0..3 {
-            client.send(Message::Text("{\"type\":\"refresh\"}".into())).unwrap();
+            client
+                .send(Message::Text("{\"type\":\"refresh\"}".into()))
+                .unwrap();
         }
         thread::sleep(Duration::from_millis(30));
         stop.store(true, Ordering::Release);
-        done_rx.recv_timeout(Duration::from_secs(2)).unwrap().unwrap();
+        done_rx
+            .recv_timeout(Duration::from_secs(2))
+            .unwrap()
+            .unwrap();
         worker.join().unwrap();
     }
 

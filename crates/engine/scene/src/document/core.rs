@@ -87,8 +87,16 @@ mod panel_tests {
         assert!(document.playgrounds[0].auto_open);
         assert!(!document.playgrounds[1].auto_open);
         let encoded = serde_yaml::to_string(&document).unwrap();
-        assert_eq!(crate::load_scene_document_from_str(&encoded).unwrap(), document);
-        assert!(crate::load_scene_document_from_str("scene: {id: cube}").unwrap().playgrounds.is_empty());
+        assert_eq!(
+            crate::load_scene_document_from_str(&encoded).unwrap(),
+            document
+        );
+        assert!(
+            crate::load_scene_document_from_str("scene: {id: cube}")
+                .unwrap()
+                .playgrounds
+                .is_empty()
+        );
     }
 
     #[test]

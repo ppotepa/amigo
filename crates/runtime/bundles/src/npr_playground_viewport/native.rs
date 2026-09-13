@@ -152,7 +152,9 @@ impl NativeProducer {
                             .peer_pid
                             .load(std::sync::atomic::Ordering::Acquire),
                     )?;
-                    gpu.export_resources(|resources| self.link.send(NativeMessage::GpuConfigure { resources }))?;
+                    gpu.export_resources(|resources| {
+                        self.link.send(NativeMessage::GpuConfigure { resources })
+                    })?;
                     self.gpu = Some(gpu);
                 }
                 PlaygroundViewportMode::Jpeg => return Ok(true),

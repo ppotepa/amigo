@@ -1,0 +1,354 @@
+version: 1
+scene:
+  id: city
+  label: NPR City
+  description: Deterministic 30-second cinematic city scene.
+entities:
+  - id: city-camera
+    name: city-camera
+    transform3:
+      translation: { x: 30.0, y: 16.5, z: 31.0 }
+    components:
+      - type: Camera3D
+        fov_y_degrees: 43.0
+        near_clip: 0.1
+        far_clip: 180.0
+
+  - id: city-sun
+    name: city-sun
+    components:
+      - type: Light3D
+        kind: directional
+        direction: { x: -18.0, y: -25.0, z: -12.0 }
+        color: "#FFF8EDFF"
+        intensity: 1.0
+        ambient: 0.55
+
+  - id: road-crossroad
+    name: road-crossroad
+    transform3: { scale: { x: 14.0, y: 14.0, z: 14.0 } }
+    components:
+      - { type: Mesh3D, mesh: npr-city/assets/kenney/city-kit-roads/road-crossroad-path.glb }
+      - { type: Material3D, label: source-road, source: npr-city/assets/kenney/city-kit-roads/road-crossroad-path.glb, albedo: "#FFFFFFFF" }
+
+  - id: road-x-neg-01
+    name: road-x-neg-01
+    transform3: { translation: { x: -14.0, y: 0.0, z: 0.0 }, rotation_euler: { x: 0.0, y: 1.5707963, z: 0.0 }, scale: { x: 14.0, y: 14.0, z: 14.0 } }
+    components: [ { type: Mesh3D, mesh: npr-city/assets/kenney/city-kit-roads/road-straight.glb } ]
+  - id: road-x-neg-02
+    name: road-x-neg-02
+    transform3: { translation: { x: -28.0, y: 0.0, z: 0.0 }, rotation_euler: { x: 0.0, y: 1.5707963, z: 0.0 }, scale: { x: 14.0, y: 14.0, z: 14.0 } }
+    components: [ { type: Mesh3D, mesh: npr-city/assets/kenney/city-kit-roads/road-straight.glb } ]
+  - id: road-x-neg-03
+    name: road-x-neg-03
+    transform3: { translation: { x: -42.0, y: 0.0, z: 0.0 }, rotation_euler: { x: 0.0, y: 1.5707963, z: 0.0 }, scale: { x: 14.0, y: 14.0, z: 14.0 } }
+    components: [ { type: Mesh3D, mesh: npr-city/assets/kenney/city-kit-roads/road-straight.glb } ]
+  - id: road-x-pos-01
+    name: road-x-pos-01
+    transform3: { translation: { x: 14.0, y: 0.0, z: 0.0 }, rotation_euler: { x: 0.0, y: 1.5707963, z: 0.0 }, scale: { x: 14.0, y: 14.0, z: 14.0 } }
+    components: [ { type: Mesh3D, mesh: npr-city/assets/kenney/city-kit-roads/road-straight.glb } ]
+  - id: road-x-pos-02
+    name: road-x-pos-02
+    transform3: { translation: { x: 28.0, y: 0.0, z: 0.0 }, rotation_euler: { x: 0.0, y: 1.5707963, z: 0.0 }, scale: { x: 14.0, y: 14.0, z: 14.0 } }
+    components: [ { type: Mesh3D, mesh: npr-city/assets/kenney/city-kit-roads/road-straight.glb } ]
+  - id: road-x-pos-03
+    name: road-x-pos-03
+    transform3: { translation: { x: 42.0, y: 0.0, z: 0.0 }, rotation_euler: { x: 0.0, y: 1.5707963, z: 0.0 }, scale: { x: 14.0, y: 14.0, z: 14.0 } }
+    components: [ { type: Mesh3D, mesh: npr-city/assets/kenney/city-kit-roads/road-straight.glb } ]
+  - id: road-z-neg-01
+    name: road-z-neg-01
+    transform3: { translation: { x: 0.0, y: 0.0, z: -14.0 }, scale: { x: 14.0, y: 14.0, z: 14.0 } }
+    components: [ { type: Mesh3D, mesh: npr-city/assets/kenney/city-kit-roads/road-straight.glb } ]
+  - id: road-z-neg-02
+    name: road-z-neg-02
+    transform3: { translation: { x: 0.0, y: 0.0, z: -28.0 }, scale: { x: 14.0, y: 14.0, z: 14.0 } }
+    components: [ { type: Mesh3D, mesh: npr-city/assets/kenney/city-kit-roads/road-straight.glb } ]
+  - id: road-z-neg-03
+    name: road-z-neg-03
+    transform3: { translation: { x: 0.0, y: 0.0, z: -42.0 }, scale: { x: 14.0, y: 14.0, z: 14.0 } }
+    components: [ { type: Mesh3D, mesh: npr-city/assets/kenney/city-kit-roads/road-straight.glb } ]
+  - id: road-z-pos-01
+    name: road-z-pos-01
+    transform3: { translation: { x: 0.0, y: 0.0, z: 14.0 }, scale: { x: 14.0, y: 14.0, z: 14.0 } }
+    components: [ { type: Mesh3D, mesh: npr-city/assets/kenney/city-kit-roads/road-straight.glb } ]
+  - id: road-z-pos-02
+    name: road-z-pos-02
+    transform3: { translation: { x: 0.0, y: 0.0, z: 28.0 }, scale: { x: 14.0, y: 14.0, z: 14.0 } }
+    components: [ { type: Mesh3D, mesh: npr-city/assets/kenney/city-kit-roads/road-straight.glb } ]
+  - id: road-z-pos-03
+    name: road-z-pos-03
+    transform3: { translation: { x: 0.0, y: 0.0, z: 42.0 }, scale: { x: 14.0, y: 14.0, z: 14.0 } }
+    components: [ { type: Mesh3D, mesh: npr-city/assets/kenney/city-kit-roads/road-straight.glb } ]
+
+  - id: tile-neg03-neg03
+    name: tile-neg03-neg03
+    transform3: { translation: { x: -42.0, y: 0.0, z: -42.0 }, scale: { x: 14.0, y: 14.0, z: 14.0 } }
+    components: [ { type: Mesh3D, mesh: npr-city/assets/kenney/city-kit-roads/tile-low.glb } ]
+  - id: tile-neg03-neg02
+    name: tile-neg03-neg02
+    transform3: { translation: { x: -42.0, y: 0.0, z: -28.0 }, scale: { x: 14.0, y: 14.0, z: 14.0 } }
+    components: [ { type: Mesh3D, mesh: npr-city/assets/kenney/city-kit-roads/tile-low.glb } ]
+  - id: tile-neg03-neg01
+    name: tile-neg03-neg01
+    transform3: { translation: { x: -42.0, y: 0.0, z: -14.0 }, scale: { x: 14.0, y: 14.0, z: 14.0 } }
+    components: [ { type: Mesh3D, mesh: npr-city/assets/kenney/city-kit-roads/tile-low.glb } ]
+  - id: tile-neg03-pos01
+    name: tile-neg03-pos01
+    transform3: { translation: { x: -42.0, y: 0.0, z: 14.0 }, scale: { x: 14.0, y: 14.0, z: 14.0 } }
+    components: [ { type: Mesh3D, mesh: npr-city/assets/kenney/city-kit-roads/tile-low.glb } ]
+  - id: tile-neg03-pos02
+    name: tile-neg03-pos02
+    transform3: { translation: { x: -42.0, y: 0.0, z: 28.0 }, scale: { x: 14.0, y: 14.0, z: 14.0 } }
+    components: [ { type: Mesh3D, mesh: npr-city/assets/kenney/city-kit-roads/tile-low.glb } ]
+  - id: tile-neg03-pos03
+    name: tile-neg03-pos03
+    transform3: { translation: { x: -42.0, y: 0.0, z: 42.0 }, scale: { x: 14.0, y: 14.0, z: 14.0 } }
+    components: [ { type: Mesh3D, mesh: npr-city/assets/kenney/city-kit-roads/tile-low.glb } ]
+  - id: tile-neg02-neg03
+    name: tile-neg02-neg03
+    transform3: { translation: { x: -28.0, y: 0.0, z: -42.0 }, scale: { x: 14.0, y: 14.0, z: 14.0 } }
+    components: [ { type: Mesh3D, mesh: npr-city/assets/kenney/city-kit-roads/tile-low.glb } ]
+  - id: tile-neg02-neg02
+    name: tile-neg02-neg02
+    transform3: { translation: { x: -28.0, y: 0.0, z: -28.0 }, scale: { x: 14.0, y: 14.0, z: 14.0 } }
+    components: [ { type: Mesh3D, mesh: npr-city/assets/kenney/city-kit-roads/tile-low.glb } ]
+  - id: tile-neg02-neg01
+    name: tile-neg02-neg01
+    transform3: { translation: { x: -28.0, y: 0.0, z: -14.0 }, scale: { x: 14.0, y: 14.0, z: 14.0 } }
+    components: [ { type: Mesh3D, mesh: npr-city/assets/kenney/city-kit-roads/tile-low.glb } ]
+  - id: tile-neg02-pos01
+    name: tile-neg02-pos01
+    transform3: { translation: { x: -28.0, y: 0.0, z: 14.0 }, scale: { x: 14.0, y: 14.0, z: 14.0 } }
+    components: [ { type: Mesh3D, mesh: npr-city/assets/kenney/city-kit-roads/tile-low.glb } ]
+  - id: tile-neg02-pos02
+    name: tile-neg02-pos02
+    transform3: { translation: { x: -28.0, y: 0.0, z: 28.0 }, scale: { x: 14.0, y: 14.0, z: 14.0 } }
+    components: [ { type: Mesh3D, mesh: npr-city/assets/kenney/city-kit-roads/tile-low.glb } ]
+  - id: tile-neg02-pos03
+    name: tile-neg02-pos03
+    transform3: { translation: { x: -28.0, y: 0.0, z: 42.0 }, scale: { x: 14.0, y: 14.0, z: 14.0 } }
+    components: [ { type: Mesh3D, mesh: npr-city/assets/kenney/city-kit-roads/tile-low.glb } ]
+  - id: tile-neg01-neg03
+    name: tile-neg01-neg03
+    transform3: { translation: { x: -14.0, y: 0.0, z: -42.0 }, scale: { x: 14.0, y: 14.0, z: 14.0 } }
+    components: [ { type: Mesh3D, mesh: npr-city/assets/kenney/city-kit-roads/tile-low.glb } ]
+  - id: tile-neg01-neg02
+    name: tile-neg01-neg02
+    transform3: { translation: { x: -14.0, y: 0.0, z: -28.0 }, scale: { x: 14.0, y: 14.0, z: 14.0 } }
+    components: [ { type: Mesh3D, mesh: npr-city/assets/kenney/city-kit-roads/tile-low.glb } ]
+  - id: tile-neg01-neg01
+    name: tile-neg01-neg01
+    transform3: { translation: { x: -14.0, y: 0.0, z: -14.0 }, scale: { x: 14.0, y: 14.0, z: 14.0 } }
+    components: [ { type: Mesh3D, mesh: npr-city/assets/kenney/city-kit-roads/tile-low.glb } ]
+  - id: tile-neg01-pos01
+    name: tile-neg01-pos01
+    transform3: { translation: { x: -14.0, y: 0.0, z: 14.0 }, scale: { x: 14.0, y: 14.0, z: 14.0 } }
+    components: [ { type: Mesh3D, mesh: npr-city/assets/kenney/city-kit-roads/tile-low.glb } ]
+  - id: tile-neg01-pos02
+    name: tile-neg01-pos02
+    transform3: { translation: { x: -14.0, y: 0.0, z: 28.0 }, scale: { x: 14.0, y: 14.0, z: 14.0 } }
+    components: [ { type: Mesh3D, mesh: npr-city/assets/kenney/city-kit-roads/tile-low.glb } ]
+  - id: tile-neg01-pos03
+    name: tile-neg01-pos03
+    transform3: { translation: { x: -14.0, y: 0.0, z: 42.0 }, scale: { x: 14.0, y: 14.0, z: 14.0 } }
+    components: [ { type: Mesh3D, mesh: npr-city/assets/kenney/city-kit-roads/tile-low.glb } ]
+  - id: tile-pos01-neg03
+    name: tile-pos01-neg03
+    transform3: { translation: { x: 14.0, y: 0.0, z: -42.0 }, scale: { x: 14.0, y: 14.0, z: 14.0 } }
+    components: [ { type: Mesh3D, mesh: npr-city/assets/kenney/city-kit-roads/tile-low.glb } ]
+  - id: tile-pos01-neg02
+    name: tile-pos01-neg02
+    transform3: { translation: { x: 14.0, y: 0.0, z: -28.0 }, scale: { x: 14.0, y: 14.0, z: 14.0 } }
+    components: [ { type: Mesh3D, mesh: npr-city/assets/kenney/city-kit-roads/tile-low.glb } ]
+  - id: tile-pos01-neg01
+    name: tile-pos01-neg01
+    transform3: { translation: { x: 14.0, y: 0.0, z: -14.0 }, scale: { x: 14.0, y: 14.0, z: 14.0 } }
+    components: [ { type: Mesh3D, mesh: npr-city/assets/kenney/city-kit-roads/tile-low.glb } ]
+  - id: tile-pos01-pos01
+    name: tile-pos01-pos01
+    transform3: { translation: { x: 14.0, y: 0.0, z: 14.0 }, scale: { x: 14.0, y: 14.0, z: 14.0 } }
+    components: [ { type: Mesh3D, mesh: npr-city/assets/kenney/city-kit-roads/tile-low.glb } ]
+  - id: tile-pos01-pos02
+    name: tile-pos01-pos02
+    transform3: { translation: { x: 14.0, y: 0.0, z: 28.0 }, scale: { x: 14.0, y: 14.0, z: 14.0 } }
+    components: [ { type: Mesh3D, mesh: npr-city/assets/kenney/city-kit-roads/tile-low.glb } ]
+  - id: tile-pos01-pos03
+    name: tile-pos01-pos03
+    transform3: { translation: { x: 14.0, y: 0.0, z: 42.0 }, scale: { x: 14.0, y: 14.0, z: 14.0 } }
+    components: [ { type: Mesh3D, mesh: npr-city/assets/kenney/city-kit-roads/tile-low.glb } ]
+  - id: tile-pos02-neg03
+    name: tile-pos02-neg03
+    transform3: { translation: { x: 28.0, y: 0.0, z: -42.0 }, scale: { x: 14.0, y: 14.0, z: 14.0 } }
+    components: [ { type: Mesh3D, mesh: npr-city/assets/kenney/city-kit-roads/tile-low.glb } ]
+  - id: tile-pos02-neg02
+    name: tile-pos02-neg02
+    transform3: { translation: { x: 28.0, y: 0.0, z: -28.0 }, scale: { x: 14.0, y: 14.0, z: 14.0 } }
+    components: [ { type: Mesh3D, mesh: npr-city/assets/kenney/city-kit-roads/tile-low.glb } ]
+  - id: tile-pos02-neg01
+    name: tile-pos02-neg01
+    transform3: { translation: { x: 28.0, y: 0.0, z: -14.0 }, scale: { x: 14.0, y: 14.0, z: 14.0 } }
+    components: [ { type: Mesh3D, mesh: npr-city/assets/kenney/city-kit-roads/tile-low.glb } ]
+  - id: tile-pos02-pos01
+    name: tile-pos02-pos01
+    transform3: { translation: { x: 28.0, y: 0.0, z: 14.0 }, scale: { x: 14.0, y: 14.0, z: 14.0 } }
+    components: [ { type: Mesh3D, mesh: npr-city/assets/kenney/city-kit-roads/tile-low.glb } ]
+  - id: tile-pos02-pos02
+    name: tile-pos02-pos02
+    transform3: { translation: { x: 28.0, y: 0.0, z: 28.0 }, scale: { x: 14.0, y: 14.0, z: 14.0 } }
+    components: [ { type: Mesh3D, mesh: npr-city/assets/kenney/city-kit-roads/tile-low.glb } ]
+  - id: tile-pos02-pos03
+    name: tile-pos02-pos03
+    transform3: { translation: { x: 28.0, y: 0.0, z: 42.0 }, scale: { x: 14.0, y: 14.0, z: 14.0 } }
+    components: [ { type: Mesh3D, mesh: npr-city/assets/kenney/city-kit-roads/tile-low.glb } ]
+  - id: tile-pos03-neg03
+    name: tile-pos03-neg03
+    transform3: { translation: { x: 42.0, y: 0.0, z: -42.0 }, scale: { x: 14.0, y: 14.0, z: 14.0 } }
+    components: [ { type: Mesh3D, mesh: npr-city/assets/kenney/city-kit-roads/tile-low.glb } ]
+  - id: tile-pos03-neg02
+    name: tile-pos03-neg02
+    transform3: { translation: { x: 42.0, y: 0.0, z: -28.0 }, scale: { x: 14.0, y: 14.0, z: 14.0 } }
+    components: [ { type: Mesh3D, mesh: npr-city/assets/kenney/city-kit-roads/tile-low.glb } ]
+  - id: tile-pos03-neg01
+    name: tile-pos03-neg01
+    transform3: { translation: { x: 42.0, y: 0.0, z: -14.0 }, scale: { x: 14.0, y: 14.0, z: 14.0 } }
+    components: [ { type: Mesh3D, mesh: npr-city/assets/kenney/city-kit-roads/tile-low.glb } ]
+  - id: tile-pos03-pos01
+    name: tile-pos03-pos01
+    transform3: { translation: { x: 42.0, y: 0.0, z: 14.0 }, scale: { x: 14.0, y: 14.0, z: 14.0 } }
+    components: [ { type: Mesh3D, mesh: npr-city/assets/kenney/city-kit-roads/tile-low.glb } ]
+  - id: tile-pos03-pos02
+    name: tile-pos03-pos02
+    transform3: { translation: { x: 42.0, y: 0.0, z: 28.0 }, scale: { x: 14.0, y: 14.0, z: 14.0 } }
+    components: [ { type: Mesh3D, mesh: npr-city/assets/kenney/city-kit-roads/tile-low.glb } ]
+  - id: tile-pos03-pos03
+    name: tile-pos03-pos03
+    transform3: { translation: { x: 42.0, y: 0.0, z: 42.0 }, scale: { x: 14.0, y: 14.0, z: 14.0 } }
+    components: [ { type: Mesh3D, mesh: npr-city/assets/kenney/city-kit-roads/tile-low.glb } ]
+
+  - id: lamp-01
+    name: lamp-01
+    transform3: { translation: { x: -8.8, y: 0.0, z: -8.8 }, scale: { x: 8.955224, y: 8.955224, z: 8.955224 } }
+    components: [ { type: Mesh3D, mesh: npr-city/assets/kenney/city-kit-roads/light-curved.glb } ]
+  - id: lamp-02
+    name: lamp-02
+    transform3: { translation: { x: 8.8, y: 0.0, z: -8.8 }, rotation_euler: { x: 0.0, y: 3.1415927, z: 0.0 }, scale: { x: 8.955224, y: 8.955224, z: 8.955224 } }
+    components: [ { type: Mesh3D, mesh: npr-city/assets/kenney/city-kit-roads/light-curved.glb } ]
+  - id: lamp-03
+    name: lamp-03
+    transform3: { translation: { x: 3.2, y: 0.0, z: -9.4 }, rotation_euler: { x: 0.0, y: 3.1415927, z: 0.0 }, scale: { x: 8.955224, y: 8.955224, z: 8.955224 } }
+    components: [ { type: Mesh3D, mesh: npr-city/assets/kenney/city-kit-roads/light-curved.glb } ]
+  - id: lamp-04
+    name: lamp-04
+    transform3: { translation: { x: -8.8, y: 0.0, z: 8.8 }, scale: { x: 8.955224, y: 8.955224, z: 8.955224 } }
+    components: [ { type: Mesh3D, mesh: npr-city/assets/kenney/city-kit-roads/light-curved.glb } ]
+  - id: lamp-05
+    name: lamp-05
+    transform3: { translation: { x: 8.8, y: 0.0, z: 8.8 }, rotation_euler: { x: 0.0, y: 3.1415927, z: 0.0 }, scale: { x: 8.955224, y: 8.955224, z: 8.955224 } }
+    components: [ { type: Mesh3D, mesh: npr-city/assets/kenney/city-kit-roads/light-curved.glb } ]
+  - id: lamp-06
+    name: lamp-06
+    transform3: { translation: { x: -23.0, y: 0.0, z: -8.8 }, scale: { x: 8.955224, y: 8.955224, z: 8.955224 } }
+    components: [ { type: Mesh3D, mesh: npr-city/assets/kenney/city-kit-roads/light-curved.glb } ]
+  - id: lamp-07
+    name: lamp-07
+    transform3: { translation: { x: 23.0, y: 0.0, z: 8.8 }, rotation_euler: { x: 0.0, y: 3.1415927, z: 0.0 }, scale: { x: 8.955224, y: 8.955224, z: 8.955224 } }
+    components: [ { type: Mesh3D, mesh: npr-city/assets/kenney/city-kit-roads/light-curved.glb } ]
+  - id: lamp-08
+    name: lamp-08
+    transform3: { translation: { x: -8.8, y: 0.0, z: 23.0 }, rotation_euler: { x: 0.0, y: 1.5707963, z: 0.0 }, scale: { x: 8.955224, y: 8.955224, z: 8.955224 } }
+    components: [ { type: Mesh3D, mesh: npr-city/assets/kenney/city-kit-roads/light-curved.glb } ]
+  - id: lamp-09
+    name: lamp-09
+    transform3: { translation: { x: 8.8, y: 0.0, z: -23.0 }, rotation_euler: { x: 0.0, y: -1.5707963, z: 0.0 }, scale: { x: 8.955224, y: 8.955224, z: 8.955224 } }
+    components: [ { type: Mesh3D, mesh: npr-city/assets/kenney/city-kit-roads/light-curved.glb } ]
+
+  - id: building-01
+    name: building-01
+    transform3: { translation: { x: -19.04, y: 0.0, z: -19.04 }, scale: { x: 14.0, y: 14.0, z: 14.0 } }
+    components: [ { type: Mesh3D, mesh: npr-city/assets/kenney/city-kit-commercial/building-a.glb } ]
+  - id: building-02
+    name: building-02
+    transform3: { translation: { x: -33.04, y: 0.0, z: -19.04 }, rotation_euler: { x: 0.0, y: 1.5707963, z: 0.0 }, scale: { x: 14.0, y: 14.0, z: 14.0 } }
+    components: [ { type: Mesh3D, mesh: npr-city/assets/kenney/city-kit-commercial/building-d.glb } ]
+  - id: building-03
+    name: building-03
+    transform3: { translation: { x: 19.04, y: 0.0, z: -19.04 }, scale: { x: 14.0, y: 14.0, z: 14.0 } }
+    components: [ { type: Mesh3D, mesh: npr-city/assets/kenney/city-kit-commercial/building-g.glb } ]
+  - id: building-04
+    name: building-04
+    transform3: { translation: { x: 33.04, y: 0.0, z: -19.04 }, rotation_euler: { x: 0.0, y: -1.5707963, z: 0.0 }, scale: { x: 5.357143, y: 5.357143, z: 5.357143 } }
+    components: [ { type: Mesh3D, mesh: npr-city/assets/kenney/city-kit-commercial/building-skyscraper-b.glb } ]
+  - id: building-05
+    name: building-05
+    transform3: { translation: { x: -19.04, y: 0.0, z: 19.04 }, rotation_euler: { x: 0.0, y: 3.1415927, z: 0.0 }, scale: { x: 14.0, y: 14.0, z: 14.0 } }
+    components: [ { type: Mesh3D, mesh: npr-city/assets/kenney/city-kit-suburban/building-type-c.glb } ]
+  - id: building-06
+    name: building-06
+    transform3: { translation: { x: 19.04, y: 0.0, z: 19.04 }, rotation_euler: { x: 0.0, y: 3.1415927, z: 0.0 }, scale: { x: 14.0, y: 14.0, z: 14.0 } }
+    components: [ { type: Mesh3D, mesh: npr-city/assets/kenney/city-kit-suburban/building-type-h.glb } ]
+  - id: building-07
+    name: building-07
+    transform3: { translation: { x: -33.04, y: 0.0, z: 19.04 }, rotation_euler: { x: 0.0, y: 1.5707963, z: 0.0 }, scale: { x: 14.0, y: 14.0, z: 14.0 } }
+    components: [ { type: Mesh3D, mesh: npr-city/assets/kenney/city-kit-suburban/building-type-m.glb } ]
+  - id: building-08
+    name: building-08
+    transform3: { translation: { x: 33.04, y: 0.0, z: 19.04 }, rotation_euler: { x: 0.0, y: -1.5707963, z: 0.0 }, scale: { x: 14.0, y: 14.0, z: 14.0 } }
+    components: [ { type: Mesh3D, mesh: npr-city/assets/kenney/city-kit-suburban/building-type-u.glb } ]
+  - id: building-09
+    name: building-09
+    transform3: { translation: { x: -19.04, y: 0.0, z: 33.04 }, rotation_euler: { x: 0.0, y: 3.1415927, z: 0.0 }, scale: { x: 14.0, y: 14.0, z: 14.0 } }
+    components: [ { type: Mesh3D, mesh: npr-city/assets/kenney/city-kit-commercial/building-k.glb } ]
+  - id: building-10
+    name: building-10
+    transform3: { translation: { x: 19.04, y: 0.0, z: -33.04 }, scale: { x: 14.0, y: 14.0, z: 14.0 } }
+    components: [ { type: Mesh3D, mesh: npr-city/assets/kenney/city-kit-commercial/building-d.glb } ]
+
+  - id: tree-01
+    name: tree-01
+    transform3: { translation: { x: -13.2, y: 0.0, z: 13.5 }, scale: { x: 9.74026, y: 9.74026, z: 9.74026 } }
+    components: [ { type: Mesh3D, mesh: npr-city/assets/kenney/city-kit-suburban/tree-large.glb } ]
+  - id: tree-02
+    name: tree-02
+    transform3: { translation: { x: 13.2, y: 0.0, z: 13.5 }, scale: { x: 13.157895, y: 13.157895, z: 13.157895 } }
+    components: [ { type: Mesh3D, mesh: npr-city/assets/kenney/city-kit-suburban/tree-small.glb } ]
+  - id: tree-03
+    name: tree-03
+    transform3: { translation: { x: -13.2, y: 0.0, z: -13.5 }, scale: { x: 13.157895, y: 13.157895, z: 13.157895 } }
+    components: [ { type: Mesh3D, mesh: npr-city/assets/kenney/city-kit-suburban/tree-small.glb } ]
+  - id: tree-04
+    name: tree-04
+    transform3: { translation: { x: 13.2, y: 0.0, z: -13.5 }, scale: { x: 9.74026, y: 9.74026, z: 9.74026 } }
+    components: [ { type: Mesh3D, mesh: npr-city/assets/kenney/city-kit-suburban/tree-large.glb } ]
+  - id: tree-05
+    name: tree-05
+    transform3: { translation: { x: -27.5, y: 0.0, z: 13.5 }, scale: { x: 13.157895, y: 13.157895, z: 13.157895 } }
+    components: [ { type: Mesh3D, mesh: npr-city/assets/kenney/city-kit-suburban/tree-small.glb } ]
+  - id: tree-06
+    name: tree-06
+    transform3: { translation: { x: 27.5, y: 0.0, z: -13.5 }, scale: { x: 9.74026, y: 9.74026, z: 9.74026 } }
+    components: [ { type: Mesh3D, mesh: npr-city/assets/kenney/city-kit-suburban/tree-large.glb } ]
+
+  - id: hero-officer
+    name: hero-officer
+    transform3: { translation: { x: -1.0, y: 0.0, z: -8.0 } }
+    components: [ { type: Mesh3D, mesh: npr-city/assets/quaternius/characters/swat.glb } ]
+  - id: support-officer
+    name: support-officer
+    transform3: { translation: { x: 8.75, y: 0.0, z: 7.85 }, rotation_euler: { x: 0.0, y: -0.45, z: 0.0 } }
+    components: [ { type: Mesh3D, mesh: npr-city/assets/quaternius/characters/swat.glb } ]
+  - id: civilian-01
+    name: civilian-01
+    transform3: { translation: { x: -18.0, y: 0.0, z: -10.5 }, rotation_euler: { x: 0.0, y: 1.5707963, z: 0.0 } }
+    components: [ { type: Mesh3D, mesh: npr-city/assets/quaternius/characters/casual-character.glb } ]
+  - id: police-car
+    name: police-car
+    transform3: { translation: { x: 9.5, y: 0.0, z: 5.55 }, scale: { x: 1.603448, y: 1.603448, z: 1.603448 } }
+    components: [ { type: Mesh3D, mesh: npr-city/assets/kenney/car-kit/police.glb } ]
+  - id: taxi-01
+    name: taxi-01
+    transform3: { translation: { x: -32.0, y: 0.0, z: -2.75 }, scale: { x: 1.636364, y: 1.636364, z: 1.636364 } }
+    components: [ { type: Mesh3D, mesh: npr-city/assets/kenney/car-kit/taxi.glb } ]
+  - id: sedan-wipe
+    name: sedan-wipe
+    transform3: { translation: { x: 60.0, y: 0.0, z: 4.25 }, scale: { x: 1.784314, y: 1.784314, z: 1.784314 } }
+    components: [ { type: Mesh3D, mesh: npr-city/assets/kenney/car-kit/sedan.glb } ]

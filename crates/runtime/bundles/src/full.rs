@@ -57,7 +57,8 @@ where
             .with_plugin(amigo_panels::PanelsPlugin)?;
 
         let builder = if enable_npr_playground {
-            builder.with_plugin(amigo_npr_playground_plugin::NprPlaygroundPlugin)?
+            builder
+                .with_plugin(amigo_npr_playground_plugin::NprPlaygroundPlugin)?
                 .with_plugin(crate::npr_playground_viewport::NprPlaygroundViewportPlugin)?
         } else {
             builder

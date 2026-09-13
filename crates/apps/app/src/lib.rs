@@ -12,7 +12,7 @@ use amigo_app_host_api::{
 };
 use amigo_assets::{
     AssetCatalog, AssetKey, AssetLoadPriority, AssetLoadRequest, AssetManifest, AssetSourceKind,
-    prepare_asset_from_contents,
+    PreparedAsset, PreparedAssetKind, prepare_asset_from_contents,
 };
 use amigo_core::{AmigoError, AmigoResult, LaunchSelection, RuntimeDiagnostics};
 use amigo_file_watch_api::FileWatchService;

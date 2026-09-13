@@ -413,3 +413,44 @@ fn projectiles_release_returns_pooled_projectile_without_teleporting() {
     assert_eq!(scene.transform_of("bullet-a"), Some(projectile_transform));
     assert!(pool_scene.active_members("bullets").is_empty());
 }
+
+#[test]
+fn npr_city_choreography_compiles_against_the_public_world_api() {
+    let scene = Arc::new(SceneService::default());
+    for entity in [
+        "city-camera",
+        "hero-officer",
+        "support-officer",
+        "civilian-01",
+        "police-car",
+        "taxi-01",
+        "sedan-wipe",
+    ] {
+        scene.spawn(entity);
+    }
+    let runtime = RhaiScriptRuntime::new(
+        Some(scene),
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+    );
+
+    runtime
+        .execute(
+            "npr-city-choreography",
+            include_str!("../../../../../mods/npr-city/scenes/city/scene.rhai"),
+        )
+        .expect("npr-city choreography must compile with the public world API");
+    runtime
+        .call_on_enter("npr-city-choreography")
+        .expect("npr-city choreography must enter");
+    runtime
+        .call_update("npr-city-choreography", 1.0 / 60.0)
+        .expect("npr-city choreography must evaluate");
+}

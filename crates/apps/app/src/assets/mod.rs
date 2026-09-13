@@ -197,6 +197,24 @@ fn prepare_loaded_asset(
     loaded_asset: &amigo_assets::LoadedAsset,
     dev_console_state: &DevConsoleState,
 ) -> Result<(), String> {
+    if loaded_asset
+        .resolved_path
+        .extension()
+        .and_then(|extension| extension.to_str())
+        .is_some_and(|extension| extension.eq_ignore_ascii_case("glb"))
+    {
+        asset_catalog.mark_prepared(PreparedAsset {
+            key: loaded_asset.key.clone(),
+            source: loaded_asset.source.clone(),
+            resolved_path: loaded_asset.resolved_path.clone(),
+            byte_len: loaded_asset.byte_len,
+            kind: PreparedAssetKind::Mesh3d,
+            label: None,
+            format: Some("glb".to_owned()),
+            metadata: Default::default(),
+        });
+        return Ok(());
+    }
     let contents = fs::read_to_string(&loaded_asset.resolved_path).map_err(|error| {
         format!(
             "failed to read loaded asset path `{}`: {error}",

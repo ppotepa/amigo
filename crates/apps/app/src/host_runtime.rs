@@ -462,14 +462,19 @@ impl HostHandler for SummaryHostHandler {
 
 impl HostHandler for InteractiveRuntimeHostHandler {
     fn primary_window_enabled(&self) -> bool {
-        !self.runtime().resolve::<amigo_runtime_bundles::PlaygroundCompanionService>()
+        !self
+            .runtime()
+            .resolve::<amigo_runtime_bundles::PlaygroundCompanionService>()
             .is_some_and(|service| service.owns_primary_window())
     }
 
     fn on_background_tick(&mut self) -> AmigoResult<HostControl> {
         self.tick_host_frame(std::time::Instant::now())?;
         self.clear_host_frame_transients();
-        if let Some(service) = self.runtime().resolve::<amigo_runtime_bundles::PlaygroundCompanionService>() {
+        if let Some(service) = self
+            .runtime()
+            .resolve::<amigo_runtime_bundles::PlaygroundCompanionService>()
+        {
             if service.primary_window_closed() {
                 if let Some(error) = service.error() {
                     return Err(amigo_core::AmigoError::Message(error));
@@ -502,7 +507,9 @@ impl HostHandler for InteractiveRuntimeHostHandler {
             }
         }
         if (matches!(event, HostLifecycleEvent::WindowCreated)
-            || matches!(event, HostLifecycleEvent::Resumed) && !self.primary_window_enabled()) && !self.printed {
+            || matches!(event, HostLifecycleEvent::Resumed) && !self.primary_window_enabled())
+            && !self.printed
+        {
             println!("{}", self.summary);
             if !self.primary_window_enabled() {
                 println!("host: scene companion owns the application window");

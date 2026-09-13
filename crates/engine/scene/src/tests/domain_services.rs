@@ -23,3 +23,26 @@ fn scene_service_can_rotate_3d_entity_by_name() {
     assert_eq!(transform.rotation_euler.x, 1.0);
     assert_eq!(transform.rotation_euler.y, 2.0);
 }
+
+#[test]
+fn scene_service_sets_absolute_pose_without_changing_authored_scale() {
+    let scene = SceneService::default();
+    scene.spawn_with_transform(
+        "actor",
+        Transform3 {
+            scale: Vec3::new(1.82, 1.82, 1.82),
+            ..Transform3::default()
+        },
+    );
+
+    assert!(scene.set_entity_pose_3d(
+        "actor",
+        Vec3::new(-4.8, 0.0, 4.2),
+        Vec3::new(0.0, -2.34, 0.0),
+    ));
+
+    let transform = scene.transform_of("actor").expect("entity should exist");
+    assert_eq!(transform.translation, Vec3::new(-4.8, 0.0, 4.2));
+    assert_eq!(transform.rotation_euler, Vec3::new(0.0, -2.34, 0.0));
+    assert_eq!(transform.scale, Vec3::new(1.82, 1.82, 1.82));
+}

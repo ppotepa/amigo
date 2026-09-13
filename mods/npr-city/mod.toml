@@ -1,0 +1,17 @@
+id = "npr-city"
+name = "NPR City"
+version = "0.1.0"
+description = "Cinematic city scene used as the clean source fixture for NPR rendering."
+authors = ["Amigo Engine Team"]
+dependencies = ["core"]
+capabilities = ["rendering_3d", "materials_3d"]
+
+[scripting]
+mod_script_mode = "disabled"
+
+[[scenes]]
+id = "city"
+label = "NPR City"
+description = "Deterministic 30-second cinematic city scene."
+path = "scenes/city"
+launcher_visible = true

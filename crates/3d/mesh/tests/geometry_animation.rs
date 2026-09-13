@@ -1,4 +1,4 @@
-use amigo_3d_mesh::{MeshGeometryAsset, load_gltf_geometry};
+use amigo_3d_mesh::{MeshGeometryAsset, load_gltf_geometry, load_gltf_geometry_source_space};
 use base64::Engine;
 use serde_json::{Value, json};
 
@@ -110,7 +110,19 @@ impl Fixture {
             .unwrap()
             .push(json!({"sampler":sampler,"target":{"node":node,"path":path}}));
     }
-    fn load(mut self, glb: bool) -> Result<MeshGeometryAsset, String> {
+    fn load(self, glb: bool) -> Result<MeshGeometryAsset, String> {
+        self.load_with_space(glb, false)
+    }
+
+    fn load_source_space(self, glb: bool) -> Result<MeshGeometryAsset, String> {
+        self.load_with_space(glb, true)
+    }
+
+    fn load_with_space(
+        mut self,
+        glb: bool,
+        source_space: bool,
+    ) -> Result<MeshGeometryAsset, String> {
         self.document["buffers"] = json!([{"byteLength":self.bytes.len()}]);
         let dir = tempfile::tempdir().unwrap();
         let path = dir
@@ -146,7 +158,11 @@ impl Fixture {
             ));
             std::fs::write(&path, serde_json::to_vec(&self.document).unwrap()).unwrap();
         }
-        load_gltf_geometry(&path)
+        if source_space {
+            load_gltf_geometry_source_space(&path)
+        } else {
+            load_gltf_geometry(&path)
+        }
     }
 }
 fn close(a: f32, b: f32) {
@@ -182,6 +198,25 @@ fn gltf_and_glb_preserve_hierarchy_clip_metadata_and_fixed_normalization() {
         assert!(asset.sample_animation(9, 0.0).is_err());
         assert!(asset.sample_animation(0, f32::NAN).is_err());
     }
+}
+
+#[test]
+fn source_space_import_preserves_authored_geometry_scale() {
+    let mut f = Fixture::new();
+    f.document["nodes"][0]["translation"] = json!([10.0, 0.0, 0.0]);
+    let source = f.load_source_space(true).unwrap();
+    let min_x = source
+        .positions
+        .iter()
+        .map(|position| position[0])
+        .fold(f32::INFINITY, f32::min);
+    let max_x = source
+        .positions
+        .iter()
+        .map(|position| position[0])
+        .fold(f32::NEG_INFINITY, f32::max);
+    assert!((min_x - 10.0).abs() < 1e-5);
+    assert!((max_x - 11.0).abs() < 1e-5);
 }
 
 #[test]

@@ -1,4 +1,6 @@
-use amigo_assets::AssetKey;
+use amigo_assets::{
+    AssetCatalog, AssetKey, AssetLoadPriority, AssetLoadRequest, AssetManifest, AssetSourceKind,
+};
 use amigo_core::{AmigoError, AmigoResult};
 use amigo_scene::{SceneCommand, SceneEvent, SceneEventQueue, SceneService, format_scene_command};
 
@@ -69,6 +71,26 @@ impl amigo_scene::RuntimeSceneCommandHandler for Mesh3dSceneCommandHandler {
     }
 
     fn handle(&self, runtime: &amigo_runtime::Runtime, command: SceneCommand) -> AmigoResult<()> {
+        if let SceneCommand::Plugin {
+            command: plugin_command,
+        } = &command
+        {
+            if let Some(mesh_command) =
+                plugin_command.payload_as::<amigo_scene::Mesh3dSceneCommand>()
+            {
+                if let Some(asset_catalog) = runtime.resolve::<AssetCatalog>() {
+                    asset_catalog.register_manifest(AssetManifest {
+                        key: mesh_command.mesh_asset.clone(),
+                        source: AssetSourceKind::Mod(mesh_command.source_mod.clone()),
+                        tags: vec!["mesh-3d".to_owned(), "gltf".to_owned()],
+                    });
+                    asset_catalog.request_load(AssetLoadRequest::new(
+                        mesh_command.mesh_asset.clone(),
+                        AssetLoadPriority::Interactive,
+                    ));
+                }
+            }
+        }
         let scene_service = runtime.required::<SceneService>()?;
         let mesh_scene_service = runtime.required::<MeshSceneService>()?;
         let scene_event_queue = runtime.required::<SceneEventQueue>()?;

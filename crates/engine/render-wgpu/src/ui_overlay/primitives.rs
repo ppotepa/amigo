@@ -1,10 +1,10 @@
 use crate::ui_overlay::overlay_layout::group_box_label_height;
 use crate::ui_overlay::{
+    UiDrawPrimitive, UiLayoutNode, UiOverlayNodeKind, UiOverlayStyle, UiRect, UiTextAnchor,
     append_color_picker_rgb_primitives, append_curve_editor_primitives,
     append_dropdown_header_primitives, append_dropdown_popup_primitives,
     append_option_set_primitives, append_slider_primitives, append_tab_view_header_primitives,
-    append_toggle_primitives, UiDrawPrimitive, UiLayoutNode, UiOverlayNodeKind, UiOverlayStyle,
-    UiRect, UiTextAnchor,
+    append_toggle_primitives,
 };
 use amigo_assets::AssetKey;
 use amigo_math::ColorRgba;
