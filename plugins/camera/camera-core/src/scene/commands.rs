@@ -1,14 +1,18 @@
 use amigo_core::{AmigoError, AmigoResult};
 use amigo_render_api::{render_contribution_roles as roles, RenderContributionSet};
 use amigo_scene::{
-    format_scene_command, Camera2dSceneCommand, CameraExposureMode2dSceneCommand,
-    CameraFocus2dSceneCommand, CameraFollow2dSceneCommand, Parallax2dSceneCommand,
-    RuntimeSceneCommandHandler, SceneCommand, SceneEvent, SceneEventQueue, SceneService,
-    CAMERA_2D_PLUGIN_SCENE_COMMAND_TYPE, CAMERA_FOLLOW_2D_PLUGIN_SCENE_COMMAND_TYPE,
+    format_scene_command, Camera2dSceneCommand, CameraController3dSceneCommand,
+    CameraExposureMode2dSceneCommand, CameraFocus2dSceneCommand, CameraFollow2dSceneCommand,
+    Parallax2dSceneCommand, RuntimeSceneCommandHandler, SceneCommand, SceneEvent, SceneEventQueue,
+    SceneService, CAMERA_2D_PLUGIN_SCENE_COMMAND_TYPE,
+    CAMERA_CONTROLLER_3D_PLUGIN_SCENE_COMMAND_TYPE, CAMERA_FOLLOW_2D_PLUGIN_SCENE_COMMAND_TYPE,
     PARALLAX_2D_PLUGIN_SCENE_COMMAND_TYPE,
 };
 
-use crate::{CameraFollow2dSceneService, CameraId, CameraService, Parallax2dSceneService};
+use crate::{
+    CameraController3dSceneService, CameraFollow2dSceneService, CameraId, CameraService,
+    Parallax2dSceneService,
+};
 use amigo_camera_optics_plugin::runtime::{
     Camera2dRuntimeState, CameraAperture2d, CameraAutoExposure2d, CameraDepthOfField2d,
     CameraExposure2d, CameraExposureMode2d, CameraFilm2d, CameraFocus2d, CameraLens2d,
@@ -40,6 +44,7 @@ impl RuntimeSceneCommandHandler for CameraSceneCommandHandler {
                     command.command_type.as_str(),
                     CAMERA_2D_PLUGIN_SCENE_COMMAND_TYPE
                         | CAMERA_FOLLOW_2D_PLUGIN_SCENE_COMMAND_TYPE
+                        | CAMERA_CONTROLLER_3D_PLUGIN_SCENE_COMMAND_TYPE
                         | PARALLAX_2D_PLUGIN_SCENE_COMMAND_TYPE
                 )
         )
@@ -49,6 +54,8 @@ impl RuntimeSceneCommandHandler for CameraSceneCommandHandler {
         let scene_service = runtime.required::<SceneService>()?;
         let camera_service = runtime.required::<CameraService>()?;
         let camera_follow_scene_service = runtime.required::<CameraFollow2dSceneService>()?;
+        let camera_controller_3d_scene_service =
+            runtime.required::<CameraController3dSceneService>()?;
         let parallax_scene_service = runtime.required::<Parallax2dSceneService>()?;
         let scene_event_queue = runtime.required::<SceneEventQueue>()?;
 
@@ -220,6 +227,22 @@ impl RuntimeSceneCommandHandler for CameraSceneCommandHandler {
                     camera_id: command.camera_id.clone(),
                 });
 
+                Ok(())
+            }
+            SceneCommand::Plugin { command }
+                if command.command_type == CAMERA_CONTROLLER_3D_PLUGIN_SCENE_COMMAND_TYPE =>
+            {
+                let command = command
+                    .payload_as::<CameraController3dSceneCommand>()
+                    .ok_or_else(|| {
+                        AmigoError::Message(
+                            "camera controller 3d plugin scene command payload type mismatch"
+                                .to_owned(),
+                        )
+                    })?
+                    .clone();
+                let _entity = scene_service.find_or_spawn_named_entity(command.entity_name.clone());
+                camera_controller_3d_scene_service.queue(command);
                 Ok(())
             }
             SceneCommand::Plugin { command }

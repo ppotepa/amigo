@@ -13,15 +13,16 @@ use super::post_fx::{
 use crate::{
     AabbCollider2dSceneCommand, ActivationEntrySceneCommand, ActivationSetSceneCommand,
     AudioCueSceneCommand, BehaviorConditionSceneCommand, BehaviorSceneCommand,
-    Bounds2dSceneCommand, BoxCollider3dSceneCommand, CameraFollow2dSceneCommand,
-    CircleCollider2dSceneCommand, CollisionEventRule2dSceneCommand, DepthCurve2dSceneCommand,
-    DepthSpace2dSceneCommand, EntityPoolSceneCommand, EventPipelineSceneCommand,
-    FreeflightMotion2dSceneCommand, InputActionMapSceneCommand, KinematicBody2dSceneCommand,
-    LifetimeSceneCommand, LightGroup2dSceneCommand, LightGroup2dSourceDocument,
-    LightGroup2dSourceKindSceneCommand, LightGroup2dSourceSceneCommand, LightMap2dChannelDocument,
-    LightMap2dChannelSceneCommand, LightMap2dSourceKindSceneCommand, LightMap2dSourceRefDocument,
-    LightMap2dSourceRefSceneCommand, LightMap2dSourceSceneCommand, LightRoute2dSceneCommand,
-    Material3dSceneCommand, Mesh3dSceneCommand, MotionController2dSceneCommand,
+    Bounds2dSceneCommand, BoxCollider3dSceneCommand, CameraController3dModeSceneCommand,
+    CameraController3dSceneCommand, CameraFollow2dSceneCommand, CircleCollider2dSceneCommand,
+    CollisionEventRule2dSceneCommand, DepthCurve2dSceneCommand, DepthSpace2dSceneCommand,
+    EntityPoolSceneCommand, EventPipelineSceneCommand, FreeflightMotion2dSceneCommand,
+    InputActionMapSceneCommand, KinematicBody2dSceneCommand, LifetimeSceneCommand,
+    LightGroup2dSceneCommand, LightGroup2dSourceDocument, LightGroup2dSourceKindSceneCommand,
+    LightGroup2dSourceSceneCommand, LightMap2dChannelDocument, LightMap2dChannelSceneCommand,
+    LightMap2dSourceKindSceneCommand, LightMap2dSourceRefDocument, LightMap2dSourceRefSceneCommand,
+    LightMap2dSourceSceneCommand, LightRoute2dSceneCommand, Material3dSceneCommand,
+    Mesh3dSceneCommand, MotionController2dSceneCommand, NprPreset3dSceneCommand,
     OpticalLayerRole2dDocument, OpticalLayerRole2dSceneCommand, Parallax2dSceneCommand,
     PhysicsSpawner3dSceneCommand, PhysicsWorld3dSceneCommand, PostFx2dDocument,
     ProjectileEmitter2dSceneCommand, RenderContributions2dSceneCommand,
@@ -34,14 +35,15 @@ use crate::{
     UiModelBindingsSceneCommand, UiSceneCommand, UiThemeSetSceneCommand, Velocity2dSceneCommand,
     aabb_collider_2d_plugin_scene_command, audio_cue_plugin_scene_command,
     behavior_plugin_scene_command, bounds_2d_plugin_scene_command,
-    box_collider_3d_plugin_scene_command, camera_follow_2d_plugin_scene_command,
-    circle_collider_2d_plugin_scene_command, collision_event_rule_2d_plugin_scene_command,
-    entity_pool_plugin_scene_command, event_pipeline_plugin_scene_command,
-    freeflight_motion_2d_plugin_scene_command, input_action_map_plugin_scene_command,
-    kinematic_body_2d_plugin_scene_command, lifetime_plugin_scene_command,
-    light_group_2d_plugin_scene_command, light_route_2d_plugin_scene_command,
-    lightmap_2d_source_plugin_scene_command, material_3d_plugin_scene_command,
-    mesh_3d_plugin_scene_command, motion_controller_2d_plugin_scene_command,
+    box_collider_3d_plugin_scene_command, camera_controller_3d_plugin_scene_command,
+    camera_follow_2d_plugin_scene_command, circle_collider_2d_plugin_scene_command,
+    collision_event_rule_2d_plugin_scene_command, entity_pool_plugin_scene_command,
+    event_pipeline_plugin_scene_command, freeflight_motion_2d_plugin_scene_command,
+    input_action_map_plugin_scene_command, kinematic_body_2d_plugin_scene_command,
+    lifetime_plugin_scene_command, light_group_2d_plugin_scene_command,
+    light_route_2d_plugin_scene_command, lightmap_2d_source_plugin_scene_command,
+    material_3d_plugin_scene_command, mesh_3d_plugin_scene_command,
+    motion_controller_2d_plugin_scene_command, npr_preset_3d_plugin_scene_command,
     parallax_2d_plugin_scene_command, physics_spawner_3d_plugin_scene_command,
     physics_world_3d_plugin_scene_command, projectile_emitter_2d_plugin_scene_command,
     render_layer_2d_plugin_scene_command, rigid_body_3d_plugin_scene_command,
@@ -95,6 +97,7 @@ pub fn build_scene_hydration_plan_with_component_hydrators(
     let mut commands = Vec::new();
 
     hydrate_visual2d(source_mod, document, &mut commands)?;
+    hydrate_npr_presets(source_mod, document, &mut commands)?;
 
     for entity in &document.entities {
         let entity_name = entity.display_name();
@@ -211,6 +214,33 @@ pub fn build_scene_hydration_plan_with_component_hydrators(
     }
 
     Ok(SceneHydrationPlan { commands })
+}
+
+fn hydrate_npr_presets(
+    source_mod: &str,
+    document: &SceneDocument,
+    commands: &mut Vec<SceneCommand>,
+) -> SceneDocumentResult<()> {
+    for preset in &document.npr_presets {
+        let crate::document::NprPreset3dDocument::Definition(preset) = preset else {
+            continue;
+        };
+        let settings = npr_line_settings_3d_from_settings_document(
+            &preset.settings,
+            &document.scene.id,
+            &preset.id,
+            "NprPreset3D",
+        )?;
+        commands.push(SceneCommand::Plugin {
+            command: npr_preset_3d_plugin_scene_command(NprPreset3dSceneCommand {
+                source_mod: source_mod.to_owned(),
+                id: preset.id.clone(),
+                label: preset.label.clone(),
+                settings,
+            }),
+        });
+    }
+    Ok(())
 }
 
 fn hydrate_plugin_component_payload(
@@ -502,6 +532,7 @@ fn runtime_properties_for_entity(
                 fov_y_degrees,
                 near_clip,
                 far_clip,
+                background_color,
             } => {
                 properties.insert(
                     "camera3d.fov_y_degrees".to_owned(),
@@ -515,6 +546,12 @@ fn runtime_properties_for_entity(
                     "camera3d.far_clip".to_owned(),
                     ScenePropertyValue::Float(f64::from(*far_clip)),
                 );
+                if let Some(background_color) = background_color {
+                    properties.insert(
+                        "camera3d.background_color".to_owned(),
+                        ScenePropertyValue::String(background_color.clone()),
+                    );
+                }
             }
             SceneComponentDocument::Light3d {
                 direction,

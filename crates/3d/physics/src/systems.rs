@@ -298,6 +298,7 @@ fn submit_spawned_cube(
             entity_name: entity_name.clone(),
             mesh_asset: AssetKey::new(command.spawner.mesh.clone()),
             transform,
+            npr: None,
         }),
     });
     scene_command_queue.submit(SceneCommand::Plugin {
@@ -308,6 +309,7 @@ fn submit_spawned_cube(
             albedo: ColorRgba::WHITE,
             source: Some(AssetKey::new(command.spawner.material.clone())),
             render_order: 0,
+            shading: Default::default(),
         }),
     });
     scene_command_queue.submit(SceneCommand::Plugin {

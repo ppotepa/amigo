@@ -23,6 +23,24 @@ impl ConsoleCommandHandler for RenderConsoleCommandHandler {
                 dev_only: true,
             },
             ConsoleCommandDescriptor {
+                name: "render.npr",
+                aliases: &["npr.stats"],
+                category: "render",
+                help: "Show focused NPR stroke rendering diagnostics.",
+                usage: "render.npr",
+                examples: &["render.npr", "npr.stats"],
+                dev_only: true,
+            },
+            ConsoleCommandDescriptor {
+                name: "npr.trace",
+                aliases: &["render.npr.trace"],
+                category: "render",
+                help: "Enable, disable, or show persistent NPR GPU realtime trace logging.",
+                usage: "npr.trace [on|off|status]",
+                examples: &["npr.trace", "npr.trace on", "npr.trace off", "render.npr.trace status"],
+                dev_only: true,
+            },
+            ConsoleCommandDescriptor {
                 name: "render.plan",
                 aliases: &[],
                 category: "render",
@@ -149,6 +167,9 @@ impl ConsoleCommandHandler for RenderConsoleCommandHandler {
                 command.name.as_str(),
                 "render.stats"
                     | "fps"
+                    | "npr.stats"
+                    | "npr.trace"
+                    | "render.npr.trace"
                     | "render.window"
                     | "camera.capture"
                     | "camera.focus.plan"
@@ -188,7 +209,7 @@ impl ConsoleCommandHandler for RenderConsoleCommandHandler {
                     Err(error) => return ConsoleCommandResult::error(error.to_string()),
                 };
                 ConsoleCommandResult::ok(format!(
-                    "frame={} window={}x{} tilemaps={} sprites={} layered={} layers={} routes={} global_lights={} lightmaps={} light_groups={} vectors={} beacons={} text2d={} particles={} meshes3d={} materials3d={} text3d={} game_ui={} debug_ui={} ui_overlays={} post_fx={} graph_nodes={}",
+                    "frame={} window={}x{} tilemaps={} sprites={} layered={} layers={} routes={} global_lights={} lightmaps={} light_groups={} vectors={} beacons={} text2d={} particles={} meshes3d={} npr3d={} npr_gpu={} npr_cpu={} npr_paths={} npr_boundary={} npr_silhouette={} npr_crease={} npr_seam={} npr_feature={} npr_contact={} npr_samples={} npr_vertices={} npr_primary_passes={} npr_search_passes={} npr_dropout_intervals={} npr_cache_hit={} npr_cache_miss={} npr_path_build_us={:.2} npr_stabilize_us={:.2} npr_stroke_vertices_us={:.2} npr_path_project_us={:.2} npr_path_visibility_us={:.2} npr_path_edge_sample_us={:.2} npr_path_stitch_us={:.2} npr_visible_edges={} npr_fragments={} offscreen_color_writes={} offscreen_color_reallocs={} offscreen_color_upload_bytes={} offscreen_color_capacity_bytes={} materials3d={} text3d={} game_ui={} debug_ui={} ui_overlays={} post_fx={} graph_nodes={}",
                     stats.frame_index,
                     stats.window_width,
                     stats.window_height,
@@ -205,6 +226,36 @@ impl ConsoleCommandHandler for RenderConsoleCommandHandler {
                     stats.world_2d_text,
                     stats.world_2d_particles,
                     stats.world_3d_meshes,
+                    stats.world_3d_npr_meshes,
+                    stats.world_3d_npr_gpu_realtime_meshes,
+                    stats.world_3d_npr_cpu_reference_meshes,
+                    stats.world_3d_npr_paths,
+                    stats.world_3d_npr_boundary_paths,
+                    stats.world_3d_npr_silhouette_paths,
+                    stats.world_3d_npr_crease_paths,
+                    stats.world_3d_npr_seam_paths,
+                    stats.world_3d_npr_feature_paths,
+                    stats.world_3d_npr_contact_paths,
+                    stats.world_3d_npr_brush_samples,
+                    stats.world_3d_npr_strip_vertices,
+                    stats.world_3d_npr_primary_passes,
+                    stats.world_3d_npr_search_passes,
+                    stats.world_3d_npr_dropout_intervals,
+                    stats.world_3d_npr_cached_plan_hits,
+                    stats.world_3d_npr_cached_plan_misses,
+                    stats.world_3d_npr_path_build_us,
+                    stats.world_3d_npr_stabilize_us,
+                    stats.world_3d_npr_stroke_vertices_us,
+                    stats.world_3d_npr_path_project_us,
+                    stats.world_3d_npr_path_visibility_us,
+                    stats.world_3d_npr_path_edge_sample_us,
+                    stats.world_3d_npr_path_stitch_us,
+                    stats.world_3d_npr_path_visible_edges,
+                    stats.world_3d_npr_path_fragments,
+                    stats.offscreen_color_buffer_writes,
+                    stats.offscreen_color_buffer_reallocs,
+                    stats.offscreen_color_upload_bytes,
+                    stats.offscreen_color_buffer_capacity_bytes,
                     stats.world_3d_materials,
                     stats.world_3d_text,
                     stats.game_ui_overlays,
@@ -214,6 +265,55 @@ impl ConsoleCommandHandler for RenderConsoleCommandHandler {
                     stats.render_graph_nodes
                 ))
             }
+            "render.npr" | "npr.stats" => {
+                let stats = match ctx.required::<RenderFrameStatsService>() {
+                    Ok(service) => service.snapshot(),
+                    Err(error) => return ConsoleCommandResult::error(error.to_string()),
+                };
+                ConsoleCommandResult::ok(format!(
+                    "npr meshes={} gpu_meshes={} cpu_meshes={} plan=[{}] gpu(edges={} triangles={} topology_uploads={} buffer_capacity={}) paths={} kinds(boundary={} silhouette={} crease={} seam={} feature={} contact={}) samples={} vertices={} passes(primary={} search={}) dropout_intervals={} cache(hit={} miss={}) stage_us(path_build={:.2} stabilize={:.2} stroke_vertices={:.2}) path_build_breakdown_us(project={:.2} visibility={:.2} edge_sample={:.2} stitch={:.2}) visible_edges={} fragments={} upload(color_writes={} color_reallocs={} color_bytes={} color_capacity={})",
+                    stats.world_3d_npr_meshes,
+                    stats.world_3d_npr_gpu_realtime_meshes,
+                    stats.world_3d_npr_cpu_reference_meshes,
+                    if stats.world_3d_npr_pipeline_plan.is_empty() {
+                        "none"
+                    } else {
+                        stats.world_3d_npr_pipeline_plan.as_str()
+                    },
+                    stats.world_3d_npr_gpu_realtime_enqueued_edges,
+                    stats.world_3d_npr_gpu_realtime_enqueued_triangles,
+                    stats.world_3d_npr_gpu_realtime_topology_uploads,
+                    stats.world_3d_npr_gpu_realtime_buffer_capacity_bytes,
+                    stats.world_3d_npr_paths,
+                    stats.world_3d_npr_boundary_paths,
+                    stats.world_3d_npr_silhouette_paths,
+                    stats.world_3d_npr_crease_paths,
+                    stats.world_3d_npr_seam_paths,
+                    stats.world_3d_npr_feature_paths,
+                    stats.world_3d_npr_contact_paths,
+                    stats.world_3d_npr_brush_samples,
+                    stats.world_3d_npr_strip_vertices,
+                    stats.world_3d_npr_primary_passes,
+                    stats.world_3d_npr_search_passes,
+                    stats.world_3d_npr_dropout_intervals,
+                    stats.world_3d_npr_cached_plan_hits,
+                    stats.world_3d_npr_cached_plan_misses,
+                    stats.world_3d_npr_path_build_us,
+                    stats.world_3d_npr_stabilize_us,
+                    stats.world_3d_npr_stroke_vertices_us,
+                    stats.world_3d_npr_path_project_us,
+                    stats.world_3d_npr_path_visibility_us,
+                    stats.world_3d_npr_path_edge_sample_us,
+                    stats.world_3d_npr_path_stitch_us,
+                    stats.world_3d_npr_path_visible_edges,
+                    stats.world_3d_npr_path_fragments,
+                    stats.offscreen_color_buffer_writes,
+                    stats.offscreen_color_buffer_reallocs,
+                    stats.offscreen_color_upload_bytes,
+                    stats.offscreen_color_buffer_capacity_bytes,
+                ))
+            }
+            "npr.trace" | "render.npr.trace" => handle_npr_trace_command(&command),
             "render.plan" => {
                 let diagnostics = match ctx.required::<RenderCompositionDiagnosticsService>() {
                     Ok(service) => service.snapshot(),
@@ -423,6 +523,69 @@ fn render_camera_capture_diagnostics(summary: &str) -> String {
     }
 }
 
+fn handle_npr_trace_command(command: &ParsedConsoleCommand) -> ConsoleCommandResult {
+    let action = command.args.first().map(String::as_str).unwrap_or("status");
+    match action {
+        "on" | "true" | "1" => {
+            set_npr_trace_env("AMIGO_NPR_GPU_TRACE", "1");
+            ConsoleCommandResult::ok(npr_trace_status_message("enabled"))
+        }
+        "off" | "false" | "0" => {
+            set_npr_trace_env("AMIGO_NPR_GPU_TRACE", "0");
+            ConsoleCommandResult::ok(npr_trace_status_message("disabled"))
+        }
+        "status" => ConsoleCommandResult::ok(npr_trace_status_message("status")),
+        other => ConsoleCommandResult::error(format!(
+            "usage: npr.trace [on|off|status], got `{other}`"
+        )),
+    }
+}
+
+fn npr_trace_status_message(prefix: &str) -> String {
+    format!(
+        "npr.trace {prefix}: persistent={} clear={} color={} env AMIGO_NPR_GPU_TRACE={}",
+        on_off(npr_trace_env_is_true("AMIGO_NPR_GPU_TRACE")),
+        on_off(!npr_trace_env_is_false("AMIGO_NPR_GPU_TRACE_CLEAR")),
+        on_off(std::env::var_os("NO_COLOR").is_none()
+            && !npr_trace_env_is_false("AMIGO_NPR_GPU_TRACE_COLOR")),
+        std::env::var("AMIGO_NPR_GPU_TRACE").unwrap_or_else(|_| "unset".to_owned())
+    )
+}
+
+fn on_off(value: bool) -> &'static str {
+    if value { "on" } else { "off" }
+}
+
+fn npr_trace_env_is_true(name: &str) -> bool {
+    std::env::var(name)
+        .map(|value| {
+            matches!(
+                value.trim().to_ascii_lowercase().as_str(),
+                "1" | "true" | "yes" | "on"
+            )
+        })
+        .unwrap_or(false)
+}
+
+fn npr_trace_env_is_false(name: &str) -> bool {
+    std::env::var(name)
+        .map(|value| {
+            matches!(
+                value.trim().to_ascii_lowercase().as_str(),
+                "0" | "false" | "no" | "off"
+            )
+        })
+        .unwrap_or(false)
+}
+
+fn set_npr_trace_env(name: &str, value: &str) {
+    // This debug command intentionally mutates a process-wide diagnostic flag.
+    // The renderer reads the same env var per frame; no renderer state fallback is introduced.
+    unsafe {
+        std::env::set_var(name, value);
+    }
+}
+
 fn normalize_render_command(command: &mut ParsedConsoleCommand) {
     if command.name != "render" {
         return;
@@ -509,6 +672,24 @@ mod tests {
     }
 
     #[test]
+    fn render_console_handles_npr_trace() {
+        let handler = RenderConsoleCommandHandler;
+        let command = ParsedConsoleCommand {
+            raw: "npr.trace on".to_owned(),
+            name: "npr.trace".to_owned(),
+            args: vec!["on".to_owned()],
+        };
+        let render_alias = ParsedConsoleCommand {
+            raw: "render.npr.trace status".to_owned(),
+            name: "render.npr.trace".to_owned(),
+            args: vec!["status".to_owned()],
+        };
+
+        assert!(handler.can_handle(&command));
+        assert!(handler.can_handle(&render_alias));
+    }
+
+    #[test]
     fn render_console_handles_render_materials() {
         let handler = RenderConsoleCommandHandler;
         let command = ParsedConsoleCommand {
@@ -519,6 +700,24 @@ mod tests {
         let alias = ParsedConsoleCommand {
             raw: "materials".to_owned(),
             name: "materials".to_owned(),
+            args: Vec::new(),
+        };
+
+        assert!(handler.can_handle(&command));
+        assert!(handler.can_handle(&alias));
+    }
+
+    #[test]
+    fn render_console_handles_npr_stats() {
+        let handler = RenderConsoleCommandHandler;
+        let command = ParsedConsoleCommand {
+            raw: "render.npr".to_owned(),
+            name: "render.npr".to_owned(),
+            args: Vec::new(),
+        };
+        let alias = ParsedConsoleCommand {
+            raw: "npr.stats".to_owned(),
+            name: "npr.stats".to_owned(),
             args: Vec::new(),
         };
 

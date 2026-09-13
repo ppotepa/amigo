@@ -115,6 +115,7 @@ pub fn queue_material_scene_command(
             albedo: command.albedo,
             source: command.source.clone(),
             render_order: command.render_order,
+            shading: command.shading,
         },
     });
     entity
@@ -143,6 +144,7 @@ mod tests {
                 albedo: ColorRgba::WHITE,
                 source: Some(AssetKey::new("playground-3d/materials/debug-surface")),
                 render_order: 0,
+                shading: Default::default(),
             },
         });
 

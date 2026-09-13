@@ -1,0 +1,27 @@
+kind: npr-brush-3d
+schema_version: 1
+id: toriyama_hatch_pen
+label: Toriyama Hatch Pen
+profile:
+  tool: technical_pen
+  tip: maru_pen
+  ink_color: "#0B0907E6"
+  width_multiplier: 0.42
+  alpha_multiplier: 0.90
+  pressure_jitter_multiplier: 0.20
+  dropout_multiplier: 0.08
+  search_multiplier: 0.0
+  path_wobble_multiplier: 0.36
+  micro_wobble_multiplier: 0.22
+  hand_arc_multiplier: 0.68
+  tangent_drift_multiplier: 0.44
+  detail_crispness_multiplier: 1.22
+  taper_multiplier: 0.62
+  overshoot_px: 0.04
+  width_curve: [0.72, 1.0, 0.92, 0.58]
+  alpha_curve: [0.82, 0.94, 0.90, 0.72]
+  angle_bias_degrees: -18.0
+  angle_influence: 0.22
+  nib_width_base_scale: 0.85
+  nib_width_angle_scale: 0.30
+  path_adherence_multiplier: 0.82

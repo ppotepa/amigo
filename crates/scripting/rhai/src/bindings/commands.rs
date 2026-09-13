@@ -46,6 +46,93 @@ pub fn queue_asset_reload(
     queue_placeholder_command(command_queue, "asset", "reload", vec![asset_key.to_owned()])
 }
 
+pub fn queue_mesh3d_apply_npr_preset(
+    command_queue: Option<&Arc<ScriptCommandQueue>>,
+    entity_name: &str,
+    preset_id: &str,
+) -> bool {
+    queue_placeholder_command(
+        command_queue,
+        "3d.mesh",
+        "apply_npr_preset",
+        vec![entity_name.to_owned(), preset_id.to_owned()],
+    )
+}
+
+pub fn queue_mesh3d_set_npr_temporal_path_smoothing(
+    command_queue: Option<&Arc<ScriptCommandQueue>>,
+    entity_name: &str,
+    enabled: bool,
+) -> bool {
+    queue_placeholder_command(
+        command_queue,
+        "3d.mesh",
+        "set_npr_temporal_path_smoothing",
+        vec![entity_name.to_owned(), enabled.to_string()],
+    )
+}
+
+pub fn queue_mesh3d_set_npr_render_strategy(
+    command_queue: Option<&Arc<ScriptCommandQueue>>,
+    entity_name: &str,
+    strategy: &str,
+) -> bool {
+    queue_placeholder_command(
+        command_queue,
+        "3d.mesh",
+        "set_npr_render_strategy",
+        vec![entity_name.to_owned(), strategy.to_owned()],
+    )
+}
+
+pub fn queue_mesh3d_set_npr_gpu_debug_mode(
+    command_queue: Option<&Arc<ScriptCommandQueue>>,
+    entity_name: &str,
+    debug_mode: &str,
+) -> bool {
+    queue_placeholder_command(
+        command_queue,
+        "3d.mesh",
+        "set_npr_gpu_debug_mode",
+        vec![entity_name.to_owned(), debug_mode.to_owned()],
+    )
+}
+
+pub fn queue_mesh3d_set_mesh_asset(
+    command_queue: Option<&Arc<ScriptCommandQueue>>,
+    entity_name: &str,
+    mesh_key: &str,
+) -> bool {
+    queue_placeholder_command(
+        command_queue,
+        "3d.mesh",
+        "set_mesh_asset",
+        vec![entity_name.to_owned(), mesh_key.to_owned()],
+    )
+}
+
+pub fn queue_mesh3d_set_mesh_animation(
+    command_queue: Option<&Arc<ScriptCommandQueue>>,
+    entity_name: &str,
+    clip_index: rhai::INT,
+    time_seconds: rhai::FLOAT,
+    speed: rhai::FLOAT,
+    playing: bool,
+) -> bool {
+    queue_placeholder_command(
+        command_queue,
+        "3d.mesh",
+        "set_mesh_animation",
+        vec![
+            entity_name.to_owned(),
+            clip_index.to_string(),
+            time_seconds.to_string(),
+            speed.to_string(),
+            playing.to_string(),
+        ],
+    )
+}
+
 pub fn queue_audio_play(command_queue: Option<&Arc<ScriptCommandQueue>>, clip_name: &str) -> bool {
     queue_placeholder_command(command_queue, "audio", "play", vec![clip_name.to_owned()])
 }

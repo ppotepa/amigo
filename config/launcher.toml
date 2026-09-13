@@ -59,32 +59,6 @@ startup_scene = "bootstrap"
 hosted_default = true
 
 [[profiles]]
-id = "rotten-club-dev"
-label = "Rotten Club Main Menu"
-description = "Clean-room hosted Rotten Club scene for engine-path validation."
-cargo_profile = "dev"
-window_backend = "winit"
-input_backend = "winit"
-render_backend = "wgpu"
-script_backend = "rhai"
-root_mod = "rotten-club"
-startup_scene = "main-menu"
-hosted_default = true
-
-[[profiles]]
-id = "rotten-club-release"
-label = "Rotten Club Main Menu (Release)"
-description = "Release-hosted clean-room Rotten Club performance profile."
-cargo_profile = "release"
-window_backend = "winit"
-input_backend = "winit"
-render_backend = "wgpu"
-script_backend = "rhai"
-root_mod = "rotten-club"
-startup_scene = "main-menu"
-hosted_default = true
-
-[[profiles]]
 id = "wgpu-playground"
 label = "Renderer Lab"
 description = "Hosted rendering validation profile targeting the rotating cube scene."
@@ -121,6 +95,32 @@ render_backend = "wgpu"
 script_backend = "rhai"
 root_mod = "playground-3d"
 startup_scene = "hello-world-cube"
+hosted_default = true
+
+[[profiles]]
+id = "playground-npr"
+label = "NPR Comic Lines"
+description = "Hosted NPR profile targeting the comic line rendering workbench."
+cargo_profile = "dev"
+window_backend = "winit"
+input_backend = "winit"
+render_backend = "wgpu"
+script_backend = "rhai"
+root_mod = "playground-npr"
+startup_scene = "comic-lines"
+hosted_default = true
+
+[[profiles]]
+id = "playground-npr-release"
+label = "NPR Comic Lines Release"
+description = "Release NPR profile targeting the comic line rendering workbench."
+cargo_profile = "release"
+window_backend = "winit"
+input_backend = "winit"
+render_backend = "wgpu"
+script_backend = "rhai"
+root_mod = "playground-npr"
+startup_scene = "comic-lines"
 hosted_default = true
 
 [[profiles]]

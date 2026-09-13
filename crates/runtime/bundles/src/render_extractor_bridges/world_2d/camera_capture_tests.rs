@@ -57,6 +57,7 @@ fn camera_capture_input_includes_scene_color_depth_and_layers() {
         &[],
         amigo_2d_spatial::DepthSpace2d::default(),
         amigo_camera_core_plugin::api::CameraDepthMotion2d::default(),
+        false,
     );
 
     assert_eq!(
@@ -113,6 +114,7 @@ fn camera_capture_input_applies_camera_z_to_distance_layers() {
             camera_z_m: 2.0,
             ..Default::default()
         },
+        false,
     );
 
     assert_eq!(input.layers[0].distance_m, Some(75.0));
@@ -151,6 +153,7 @@ fn camera_capture_input_does_not_set_highlight_for_lightmaps_without_candidates(
         &[],
         amigo_2d_spatial::DepthSpace2d::default(),
         amigo_camera_core_plugin::api::CameraDepthMotion2d::default(),
+        false,
     );
 
     assert!(input.highlight.is_none());
@@ -185,6 +188,7 @@ fn camera_capture_input_sets_highlight_from_active_optical_candidate() {
         candidates.as_slice(),
         amigo_2d_spatial::DepthSpace2d::default(),
         amigo_camera_core_plugin::api::CameraDepthMotion2d::default(),
+        false,
     );
 
     assert_eq!(
@@ -224,6 +228,7 @@ fn camera_capture_input_ignores_unsupported_optical_candidate() {
         candidates.as_slice(),
         amigo_2d_spatial::DepthSpace2d::default(),
         amigo_camera_core_plugin::api::CameraDepthMotion2d::default(),
+        false,
     );
 
     assert!(input.highlight.is_none());
@@ -254,6 +259,7 @@ fn camera_capture_input_uses_role_aware_candidate_targets() {
         bloom_candidates.as_slice(),
         amigo_2d_spatial::DepthSpace2d::default(),
         amigo_camera_core_plugin::api::CameraDepthMotion2d::default(),
+        false,
     );
     assert!(bloom_input.highlight.is_none());
     assert_eq!(
@@ -277,6 +283,7 @@ fn camera_capture_input_uses_role_aware_candidate_targets() {
         camera_fx_candidates.as_slice(),
         amigo_2d_spatial::DepthSpace2d::default(),
         amigo_camera_core_plugin::api::CameraDepthMotion2d::default(),
+        false,
     );
     assert_eq!(
         camera_fx_input.highlight.as_ref().map(|source| source.kind),
@@ -311,6 +318,7 @@ fn camera_capture_input_sets_wetness_from_active_wet_reflections_mask() {
         &[],
         amigo_2d_spatial::DepthSpace2d::default(),
         amigo_camera_core_plugin::api::CameraDepthMotion2d::default(),
+        false,
     );
 
     assert_eq!(
@@ -356,6 +364,7 @@ fn camera_capture_input_sets_normal_from_wet_reflections_noise_normal() {
         &[],
         amigo_2d_spatial::DepthSpace2d::default(),
         amigo_camera_core_plugin::api::CameraDepthMotion2d::default(),
+        false,
     );
 
     assert_eq!(
@@ -396,6 +405,30 @@ fn camera_capture_input_sets_motion_from_active_shutter_blur() {
         &[],
         amigo_2d_spatial::DepthSpace2d::default(),
         CameraDepthMotion2d::default(),
+        false,
+    );
+
+    assert_eq!(
+        input.motion.as_ref().map(|source| source.kind),
+        Some(amigo_render_api::VisualSourceKind2d::SceneMotion)
+    );
+    assert_eq!(
+        input.motion.as_ref().map(|source| source.id.0.as_str()),
+        Some("world.motion")
+    );
+}
+
+#[test]
+fn camera_capture_input_sets_motion_from_active_camera_shutter() {
+    let packet = WgpuRenderFramePacket::default();
+    let runtime = test_runtime();
+    let input = build_camera_capture_input(
+        &runtime,
+        &packet,
+        &[],
+        amigo_2d_spatial::DepthSpace2d::default(),
+        CameraDepthMotion2d::default(),
+        true,
     );
 
     assert_eq!(

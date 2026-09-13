@@ -25,6 +25,7 @@ amigo-material-api.workspace = true
 amigo-ui-layout.workspace = true
 amigo-window-api.workspace = true
 image.workspace = true
+gltf.workspace = true
 wgpu.workspace = true
 bytemuck.workspace = true
 fontdue.workspace = true

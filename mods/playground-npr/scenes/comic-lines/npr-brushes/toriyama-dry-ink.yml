@@ -1,0 +1,27 @@
+kind: npr-brush-3d
+schema_version: 1
+id: toriyama_dry_ink
+label: Toriyama Dry Ink
+profile:
+  tool: brush
+  tip: dry_brush
+  ink_color: "#0B0907E8"
+  width_multiplier: 1.02
+  alpha_multiplier: 0.88
+  pressure_jitter_multiplier: 1.18
+  dropout_multiplier: 1.45
+  search_multiplier: 0.2
+  path_wobble_multiplier: 0.94
+  micro_wobble_multiplier: 1.08
+  hand_arc_multiplier: 1.22
+  tangent_drift_multiplier: 0.96
+  detail_crispness_multiplier: 0.78
+  taper_multiplier: 1.10
+  overshoot_px: 0.58
+  width_curve: [0.46, 1.28, 1.06, 0.42]
+  alpha_curve: [0.72, 0.95, 0.90, 0.62]
+  angle_bias_degrees: 4.0
+  angle_influence: 0.32
+  nib_width_base_scale: 0.92
+  nib_width_angle_scale: 1.55
+  path_adherence_multiplier: 0.72

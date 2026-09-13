@@ -475,6 +475,30 @@ mod tests {
     }
 
     #[test]
+    fn fixed_sampled_render_at_12fps_holds_between_game_frames() {
+        let clock = RuntimeFrameClockService::default();
+        clock.configure(config(
+            ResolvedFrameClockStrategy::FixedSimulationSampledRender,
+            12.0,
+            12.0,
+            1,
+        ));
+        let start = Instant::now();
+
+        let snapshot = clock.begin_host_frame(start);
+        assert!(snapshot.should_render_game_frame);
+        clock.mark_game_frame_rendered_at(start);
+        clock.mark_host_presented_cached_frame();
+
+        let snapshot = clock.begin_host_frame(start + Duration::from_millis(16));
+        assert!(!snapshot.should_render_game_frame);
+        assert!(snapshot.holding_cached_game_frame);
+
+        let snapshot = clock.begin_host_frame(start + Duration::from_millis(84));
+        assert!(snapshot.should_render_game_frame);
+    }
+
+    #[test]
     fn realtime_sampled_render_uses_host_delta_for_simulation() {
         let clock = RuntimeFrameClockService::default();
         clock.configure(config(

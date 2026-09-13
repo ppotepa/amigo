@@ -20,7 +20,7 @@ pub fn scan_text_occurrences(root: &Path, files: &[FileEntry]) -> Result<Vec<Tex
     for file in files {
         if !matches!(
             file.language.as_str(),
-            "rs" | "ts" | "tsx" | "js" | "jsx" | "yaml" | "yml" | "toml" | "cargo" | "css"
+            "rs" | "ts" | "tsx" | "js" | "jsx" | "yaml" | "yml" | "toml" | "cargo" | "css" | "wgsl"
         ) {
             continue;
         }

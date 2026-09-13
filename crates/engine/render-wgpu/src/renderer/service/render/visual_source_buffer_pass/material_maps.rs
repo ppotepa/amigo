@@ -201,6 +201,7 @@ fn render_per_draw_visual_map_buffer(
         &texture_batches,
         &color_batches,
         &[],
+        &[],
     )?;
     Ok(true)
 }

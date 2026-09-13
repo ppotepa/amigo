@@ -1,7 +1,7 @@
 use amigo_math::{ColorRgba, Vec2};
 use amigo_render_api::{ParticleBlendMode2dPrimitive, ParticleLineAnchor2dPrimitive};
 
-use crate::renderer::vertices::{ColorVertex, TextureVertex};
+use crate::renderer::vertices::{ColorVertex, NprStrokeSegmentVertex, TextureVertex};
 
 pub(crate) type ParticleBlendMode2d = ParticleBlendMode2dPrimitive;
 pub(crate) type ParticleLineAnchor2d = ParticleLineAnchor2dPrimitive;
@@ -50,6 +50,12 @@ pub(crate) enum TextureBlendMode {
 pub(crate) struct ColorBatch {
     pub(crate) blend_mode: ParticleBlendMode2d,
     pub(crate) vertices: Vec<ColorVertex>,
+}
+
+#[derive(Clone)]
+pub(crate) struct NprStrokeSegmentBatch {
+    pub(crate) blend_mode: ParticleBlendMode2d,
+    pub(crate) vertices: Vec<NprStrokeSegmentVertex>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]

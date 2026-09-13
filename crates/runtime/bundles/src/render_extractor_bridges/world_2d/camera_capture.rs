@@ -11,18 +11,26 @@ pub(super) fn update_camera_2d_capture(
         .map(|service| service.depth_space())
         .unwrap_or_default();
 
-    let (quality_settings, camera_motion) = if let Some(camera) = camera_service.main_camera2d() {
-        let settings = camera_service.quality_profile_2d(&camera.id).settings();
-        let camera_motion = camera_service.camera_depth_motion_2d(&camera.id);
-        packet.set_active_camera_2d_entity(Some(camera.entity_name));
-        packet.set_camera_debug_view_2d(camera_service.debug_view_2d(&camera.id));
-        (settings, camera_motion)
-    } else {
-        (
-            amigo_camera_core_plugin::CameraQualityProfile2d::default().settings(),
-            amigo_camera_core_plugin::api::CameraDepthMotion2d::default(),
-        )
-    };
+    let (quality_settings, camera_motion, camera_shutter_active) =
+        if let Some(camera) = camera_service.main_camera2d() {
+            let settings = camera_service.quality_profile_2d(&camera.id).settings();
+            let camera_motion = camera_service.camera_depth_motion_2d(&camera.id);
+            let camera_shutter_active = camera.render_contributions.enabled_or(
+                amigo_render_api::render_contribution_roles::CAMERA_SHUTTER,
+                false,
+            ) && camera.shutter.enabled
+                && camera.shutter.opacity > 0.0
+                && camera.shutter.exposure_seconds() > 0.0;
+            packet.set_active_camera_2d_entity(Some(camera.entity_name));
+            packet.set_camera_debug_view_2d(camera_service.debug_view_2d(&camera.id));
+            (settings, camera_motion, camera_shutter_active)
+        } else {
+            (
+                amigo_camera_core_plugin::CameraQualityProfile2d::default().settings(),
+                amigo_camera_core_plugin::api::CameraDepthMotion2d::default(),
+                false,
+            )
+        };
 
     let assets = runtime.resolve::<amigo_assets::AssetCatalog>();
     let camera_stacks =
@@ -47,6 +55,7 @@ pub(super) fn update_camera_2d_capture(
         camera_optical_candidates.as_slice(),
         depth_space,
         camera_motion,
+        camera_shutter_active,
     ));
     packet.set_visual_source_flags_2d(build_visual_source_flags_2d(packet, quality_settings));
 }
@@ -118,6 +127,7 @@ pub(super) fn build_camera_capture_input(
     camera_optical_candidates: &[amigo_camera_optics_plugin::api::CameraOpticalCandidate2d],
     depth_space: amigo_2d_spatial::DepthSpace2d,
     camera_motion: amigo_camera_core_plugin::api::CameraDepthMotion2d,
+    camera_shutter_active: bool,
 ) -> amigo_render_api::CameraCaptureInput2d {
     let depth_space = depth_space.normalized();
     let camera_motion = camera_motion.normalized();
@@ -204,7 +214,7 @@ pub(super) fn build_camera_capture_input(
     } else if let Some(mask) = wetness_mask_source(packet.post_fx_stacks()) {
         builder = builder.with_wetness_asset(mask);
     }
-    if motion_source(packet.post_fx_stacks()).is_some() {
+    if camera_shutter_active || motion_source(packet.post_fx_stacks()).is_some() {
         // V1 limitation: produced from previous per-draw transform positions and shutter active state.
         // Final target: typed motion-vector source from motion/runtime systems.
         builder = builder.with_motion_produced("world.motion");

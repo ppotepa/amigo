@@ -21,7 +21,23 @@ $cm = "target\debug\amigo-codemap-stable.exe"
 & $cm open-set "<symbols / paths / topic>" --why --limit 20
 ```
 
+`amigo-codemap` is the primary repository-aware navigation tool. Use it first for task scope, architecture boundaries, changed-file context, verification planning, move/rename planning, and Amigo-specific guardrails.
+
+Use `codegraph` as a secondary symbol/callgraph tool when it is initialized and the question is about precise code structure, for example:
+
+```text
+where is this symbol defined?
+what calls this function?
+what does this function call?
+what source implements this narrow flow?
+what is the likely blast radius of this symbol-level change?
+```
+
+Do not use `codegraph` to replace `amigo-codemap` planning. Do not initialize or rebuild a large external index by default; only do so when the task clearly benefits from symbol/callgraph precision and the user-facing cost is lower than manual exploration.
+
 If `amigo-codemap` is unavailable, use narrowly scoped `rg` commands and report that fallback explicitly. Never start with broad file-by-file browsing.
+
+If `codegraph` is unavailable or not initialized, continue with `amigo-codemap` plus narrow `rg` and report that limitation only when it affects confidence.
 
 Do not open generated concat snapshots during normal repository work. A concat snapshot is only an external review artifact, not a source file.
 
@@ -132,9 +148,18 @@ Use this order:
 
 1. `amigo-codemap change-plan` for task scope.
 2. `amigo-codemap open-set --why` for candidate files.
-3. `amigo-codemap symbols` or `rg -n "SymbolName" <narrow-path>`.
-4. `amigo-codemap slice` or a narrow line range.
-5. Full file read only if the file is small or the symbol context is insufficient.
+3. `codegraph_explore`, `codegraph_search`, `codegraph_callers`, or `codegraph_callees` only for initialized symbol/callgraph questions where it avoids multiple file reads.
+4. `amigo-codemap symbols` or `rg -n "SymbolName" <narrow-path>`.
+5. `amigo-codemap slice` or a narrow line range.
+6. Full file read only if the file is small or the symbol context is insufficient.
+
+Choose the tool by job:
+
+```text
+amigo-codemap = repository scope, architecture, changed files, worksets, verify plans, move plans, guardrails
+codegraph     = initialized symbol definitions, callers/callees, narrow source bodies, symbol-level impact
+rg            = narrow fallback or literal text check after the scope is known
+```
 
 Avoid opening large files such as renderer init, metadata registries, generated docs, or snapshots unless the task requires a specific range.
 
@@ -190,6 +215,14 @@ diagnostics/stats path
 ```
 
 Do not treat those as one problem class.
+
+If the next step would be very expensive in tokens, file reads, rebuild time, generated output, or broad validation, stop before doing it and say:
+
+```text
+hej stop mam pomsysl jak ulepszyc narzedzie zeby zuzywac jeszcze mniej tokenow
+```
+
+Then propose the specific tool or workflow improvement that would reduce cost, for example a new `amigo-codemap` query, narrower `codegraph` lookup, targeted invariant check, smaller slice command, or missing index/metadata feature. Do not use this stop phrase for routine cheap commands.
 
 ## Layer rules
 

@@ -41,6 +41,18 @@ pub(crate) fn ndc_from_screen(point: Vec2, viewport: &Viewport) -> Vec2 {
     )
 }
 
+pub(crate) fn projected_triangle_is_sane(points: [Vec2; 3]) -> bool {
+    points.iter().all(|point| {
+        point.x.is_finite() && point.y.is_finite() && point.x.abs() < 8.0 && point.y.abs() < 8.0
+    })
+}
+
+pub(crate) fn screen_segment_length_px(start: Vec2, end: Vec2, viewport: &Viewport) -> f32 {
+    let dx = (end.x - start.x) * viewport.half_width;
+    let dy = (end.y - start.y) * viewport.half_height;
+    (dx * dx + dy * dy).sqrt()
+}
+
 pub(crate) fn ndc_from_world_2d(point: Vec2, camera: Transform2, viewport: &Viewport) -> Vec2 {
     let relative = Vec2::new(
         point.x - camera.translation.x,
@@ -272,4 +284,12 @@ pub(crate) fn normalize(value: Vec3) -> Vec3 {
     } else {
         Vec3::new(value.x / length, value.y / length, value.z / length)
     }
+}
+
+pub(crate) fn triangle_center(points: [Vec3; 3]) -> Vec3 {
+    Vec3::new(
+        (points[0].x + points[1].x + points[2].x) / 3.0,
+        (points[0].y + points[1].y + points[2].y) / 3.0,
+        (points[0].z + points[1].z + points[2].z) / 3.0,
+    )
 }

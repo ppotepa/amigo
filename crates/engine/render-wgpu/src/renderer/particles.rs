@@ -15,6 +15,32 @@ fn with_alpha_scale(color: ColorRgba, scale: f32) -> ColorRgba {
     )
 }
 
+fn particle_line_length_with_motion_stretch(
+    particle: &Particle2dPrimitive,
+    base_length: f32,
+) -> f32 {
+    let Some(stretch) = particle.motion_stretch else {
+        return base_length.max(0.0);
+    };
+
+    if !stretch.enabled {
+        return base_length.max(0.0);
+    }
+
+    let velocity_len = (particle.velocity.x * particle.velocity.x
+        + particle.velocity.y * particle.velocity.y)
+        .sqrt();
+    let shutter_len =
+        velocity_len * stretch.velocity_scale.max(0.0) * stretch.shutter_seconds.max(0.0);
+    let max_length = if stretch.max_length > 0.0 {
+        stretch.max_length
+    } else {
+        base_length.max(0.0)
+    };
+
+    base_length.max(shutter_len).clamp(0.0, max_length)
+}
+
 fn push_particle_line_quad_gradient(
     vertices: &mut Vec<ColorVertex>,
     a: Vec2,
@@ -128,7 +154,7 @@ pub(crate) fn append_particle_primitive_vertices(
             }
         }
         ParticleShape2dPrimitive::Line { length } => {
-            let mut line_length = length;
+            let line_length = particle_line_length_with_motion_stretch(particle, length);
             let mut rotation_radians = particle.transform.rotation_radians;
             let mut tail_alpha = 1.0;
             let mut head_alpha = 1.0;
@@ -150,7 +176,6 @@ pub(crate) fn append_particle_primitive_vertices(
                     );
                     let distance = (delta.x * delta.x + delta.y * delta.y).sqrt();
                     if distance > f32::EPSILON {
-                        line_length = (length + distance).min(stretch.max_length.max(length));
                         rotation_radians = delta.y.atan2(delta.x);
                     }
                     tail_alpha = stretch.tail_alpha;
@@ -340,6 +365,10 @@ fn append_particle_line_vertices(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use amigo_render_api::{
+        ParticleMaterial2dPrimitive, ParticleMaterialLightingMode2dPrimitive,
+        ParticleMotionStretch2dPrimitive,
+    };
 
     #[test]
     fn particle_line_gradient_pushes_tail_and_head_alpha() {
@@ -358,5 +387,53 @@ mod tests {
         assert_eq!(vertices[0].color[3], 0.0);
         assert_eq!(vertices[1].color[3], 1.0);
         assert_eq!(vertices[2].color[3], 1.0);
+    }
+
+    #[test]
+    fn particle_line_length_uses_motion_stretch_velocity_and_shutter() {
+        let particle = Particle2dPrimitive {
+            emitter_entity_name: "rain".to_owned(),
+            render_layer: "weather.rain.near".to_owned(),
+            previous_position: Vec2::ZERO,
+            position: Vec2::ZERO,
+            velocity: Vec2::new(1500.0, 0.0),
+            size: 2.0,
+            color: ColorRgba::new(1.0, 1.0, 1.0, 1.0),
+            shape: ParticleShape2dPrimitive::Line { length: 20.0 },
+            line_anchor: ParticleLineAnchor2dPrimitive::Center,
+            blend_mode: ParticleBlendMode2dPrimitive::Alpha,
+            motion_stretch: Some(ParticleMotionStretch2dPrimitive {
+                enabled: true,
+                velocity_scale: 1.0,
+                max_length: 70.0,
+                shutter_seconds: 1.0 / 30.0,
+                tail_alpha: 0.25,
+                head_alpha: 1.0,
+            }),
+            material: ParticleMaterial2dPrimitive {
+                lighting_mode: ParticleMaterialLightingMode2dPrimitive::Unlit,
+                receives_light: false,
+                light_response: 0.0,
+                light_receiver: None,
+            },
+            light: None,
+            light_position: None,
+            transform: Transform2::default(),
+        };
+
+        let stretched = particle_line_length_with_motion_stretch(&particle, 20.0);
+        let disabled = particle_line_length_with_motion_stretch(
+            &Particle2dPrimitive {
+                motion_stretch: Some(ParticleMotionStretch2dPrimitive {
+                    enabled: false,
+                    ..particle.motion_stretch.unwrap()
+                }),
+                ..particle.clone()
+            },
+            20.0,
+        );
+
+        assert!((stretched - 50.0).abs() < 0.001);
+        assert_eq!(disabled, 20.0);
     }
 }

@@ -1,11 +1,16 @@
 use std::sync::Arc;
 
 use amigo_core::{AmigoError, AmigoResult};
-use amigo_math::Vec2;
+use amigo_input_actions::InputActionService;
+use amigo_input_api::{InputState, KeyCode, MouseButton};
+use amigo_math::{Transform3, Vec2, Vec3};
 use amigo_runtime::Runtime;
-use amigo_scene::SceneService;
+use amigo_scene::{CameraController3dModeSceneCommand, SceneService};
 
-use crate::{CameraFollow2dSceneService, CameraService, Parallax2dSceneService};
+use crate::{
+    CameraController3dRuntimeState, CameraController3dSceneService, CameraFollow2dSceneService,
+    CameraService, Parallax2dSceneService,
+};
 
 fn required<T: Send + Sync + 'static>(runtime: &Runtime) -> AmigoResult<Arc<T>> {
     runtime.resolve::<T>().ok_or_else(|| {
@@ -18,6 +23,62 @@ fn required<T: Send + Sync + 'static>(runtime: &Runtime) -> AmigoResult<Arc<T>> 
 
 pub fn tick_camera_follow_2d_system(runtime: &Runtime) -> AmigoResult<()> {
     tick_camera_follow_world(runtime, amigo_session::simulation_delta_seconds(runtime))
+}
+
+pub fn tick_camera_controller_3d_system(runtime: &Runtime) -> AmigoResult<()> {
+    let scene_service = required::<SceneService>(runtime)?;
+    let controller_service = required::<CameraController3dSceneService>(runtime)?;
+    let Some(input) = runtime.resolve::<InputState>() else {
+        return Ok(());
+    };
+    let actions = runtime.resolve::<InputActionService>();
+    let delta_seconds = amigo_session::simulation_delta_seconds(runtime).max(0.0);
+
+    for controller in controller_service.controllers() {
+        let mut next = controller.clone();
+        if action_pressed(
+            &input,
+            actions.as_deref(),
+            next.command.switch_action.as_deref(),
+        ) {
+            next.mode = match next.mode {
+                CameraController3dModeSceneCommand::Orbit => {
+                    CameraController3dModeSceneCommand::Freelook
+                }
+                CameraController3dModeSceneCommand::Freelook => {
+                    CameraController3dModeSceneCommand::Orbit
+                }
+            };
+            next.last_cursor = None;
+        }
+
+        let cursor = input.cursor_position();
+        let cursor_delta = cursor_delta(next.last_cursor, cursor);
+        next.last_cursor = cursor;
+
+        match next.mode {
+            CameraController3dModeSceneCommand::Orbit => {
+                apply_orbit_controller(&scene_service, &input, cursor_delta, &mut next);
+            }
+            CameraController3dModeSceneCommand::Freelook => {
+                apply_freelook_controller(
+                    &scene_service,
+                    &input,
+                    actions.as_deref(),
+                    cursor_delta,
+                    delta_seconds,
+                    &mut next,
+                );
+            }
+        }
+
+        let entity_name = next.command.entity_name.clone();
+        let _ = controller_service.update_controller(&entity_name, |state| {
+            *state = next;
+        });
+    }
+
+    Ok(())
 }
 
 pub fn tick_camera_follow_world(runtime: &Runtime, delta_seconds: f32) -> AmigoResult<()> {
@@ -75,6 +136,189 @@ pub fn tick_camera_follow_world(runtime: &Runtime, delta_seconds: f32) -> AmigoR
     }
 
     Ok(())
+}
+
+fn action_pressed(
+    input: &InputState,
+    actions: Option<&InputActionService>,
+    action: Option<&str>,
+) -> bool {
+    let Some(action) = action else {
+        return input.was_pressed(KeyCode::F);
+    };
+    actions
+        .map(|actions| actions.pressed(input, action))
+        .unwrap_or(false)
+}
+
+fn action_axis(input: &InputState, actions: Option<&InputActionService>, action: &str) -> f32 {
+    actions
+        .map(|actions| actions.axis(input, action))
+        .unwrap_or(0.0)
+}
+
+fn cursor_delta(previous: Option<(f32, f32)>, current: Option<(f32, f32)>) -> Vec2 {
+    match (previous, current) {
+        (Some(previous), Some(current)) => {
+            Vec2::new(current.0 - previous.0, current.1 - previous.1)
+        }
+        _ => Vec2::ZERO,
+    }
+}
+
+fn apply_orbit_controller(
+    scene: &SceneService,
+    input: &InputState,
+    cursor_delta: Vec2,
+    state: &mut CameraController3dRuntimeState,
+) {
+    let shift_down = input.modifiers().shift;
+    if (shift_down && input.is_mouse_down(MouseButton::Left))
+        || input.is_mouse_down(MouseButton::Middle)
+    {
+        let (right, up, _) = camera_basis(state.yaw, state.pitch);
+        let pan_scale = state.distance
+            * state.command.orbit_pan_sensitivity.max(0.0)
+            * state.command.orbit_sensitivity.max(0.0001)
+            / 0.006;
+        state.orbit_target_offset = add_vec3(
+            state.orbit_target_offset,
+            add_vec3(
+                scale_vec3(right, -cursor_delta.x * pan_scale),
+                scale_vec3(up, cursor_delta.y * pan_scale),
+            ),
+        );
+    } else if input.is_mouse_down(MouseButton::Left) {
+        state.yaw -= cursor_delta.x * state.command.orbit_sensitivity.max(0.0);
+        state.pitch = (state.pitch - cursor_delta.y * state.command.orbit_sensitivity.max(0.0))
+            .clamp(-1.45, 1.45);
+    }
+
+    let min_distance = state.command.orbit_min_distance.max(0.01);
+    let max_distance = state.command.orbit_max_distance.max(min_distance);
+    state.distance = (state.distance
+        * zoom_factor_from_wheel(
+            normalized_wheel_steps(input),
+            state.command.orbit_zoom_speed,
+        ))
+    .clamp(min_distance, max_distance);
+
+    let target = state
+        .command
+        .orbit_target
+        .as_deref()
+        .and_then(|target| scene.transform_of(target))
+        .map(|transform| transform.translation)
+        .unwrap_or(Vec3::ZERO);
+    let target = add_vec3(target, state.orbit_target_offset);
+
+    let cos_pitch = state.pitch.cos();
+    let offset = Vec3::new(
+        state.yaw.sin() * cos_pitch * state.distance,
+        state.pitch.sin() * state.distance,
+        state.yaw.cos() * cos_pitch * state.distance,
+    );
+    let transform = Transform3 {
+        translation: add_vec3(target, offset),
+        rotation_euler: Vec3::new(-state.pitch, state.yaw, 0.0),
+        scale: Vec3::ONE,
+    };
+    let _ = scene.set_transform(&state.command.camera, transform);
+}
+
+fn apply_freelook_controller(
+    scene: &SceneService,
+    input: &InputState,
+    actions: Option<&InputActionService>,
+    cursor_delta: Vec2,
+    delta_seconds: f32,
+    state: &mut CameraController3dRuntimeState,
+) {
+    let Some(mut transform) = scene.transform_of(&state.command.camera) else {
+        return;
+    };
+
+    if input.is_mouse_down(MouseButton::Right) || input.is_mouse_down(MouseButton::Left) {
+        state.yaw -= cursor_delta.x * state.command.freelook_sensitivity.max(0.0);
+        state.pitch = (state.pitch - cursor_delta.y * state.command.freelook_sensitivity.max(0.0))
+            .clamp(-1.45, 1.45);
+        transform.rotation_euler = Vec3::new(-state.pitch, state.yaw, 0.0);
+    }
+
+    let forward_axis = action_axis(input, actions, &state.command.move_forward_action);
+    let strafe_axis = action_axis(input, actions, &state.command.move_strafe_action);
+    let lift_axis = action_axis(input, actions, &state.command.move_lift_action);
+    let wheel_steps = normalized_wheel_steps(input);
+    if wheel_steps.abs() > f32::EPSILON {
+        state.freelook_speed_multiplier = (state.freelook_speed_multiplier
+            * zoom_factor_from_wheel(-wheel_steps, state.command.orbit_zoom_speed))
+        .clamp(0.15, 6.0);
+    }
+    let fast_multiplier = if input.modifiers().shift {
+        state.command.freelook_fast_multiplier.max(1.0)
+    } else {
+        1.0
+    };
+    let speed = state.command.freelook_speed.max(0.0)
+        * state.freelook_speed_multiplier
+        * fast_multiplier
+        * delta_seconds;
+    let (right, up, forward) = camera_basis(state.yaw, state.pitch);
+    let movement = normalize_or_zero(add_vec3(
+        add_vec3(
+            scale_vec3(forward, forward_axis),
+            scale_vec3(right, strafe_axis),
+        ),
+        scale_vec3(up, lift_axis),
+    ));
+    transform.translation = add_vec3(transform.translation, scale_vec3(movement, speed));
+
+    let _ = scene.set_transform(&state.command.camera, transform);
+}
+
+fn add_vec3(left: Vec3, right: Vec3) -> Vec3 {
+    Vec3::new(left.x + right.x, left.y + right.y, left.z + right.z)
+}
+
+fn scale_vec3(value: Vec3, scale: f32) -> Vec3 {
+    Vec3::new(value.x * scale, value.y * scale, value.z * scale)
+}
+
+fn camera_basis(yaw: f32, pitch: f32) -> (Vec3, Vec3, Vec3) {
+    let sin_yaw = yaw.sin();
+    let cos_yaw = yaw.cos();
+    let sin_pitch = pitch.sin();
+    let cos_pitch = pitch.cos();
+    let right = Vec3::new(cos_yaw, 0.0, -sin_yaw);
+    let up = Vec3::new(-sin_pitch * sin_yaw, cos_pitch, -sin_pitch * cos_yaw);
+    let forward = Vec3::new(-sin_yaw * cos_pitch, -sin_pitch, -cos_yaw * cos_pitch);
+    (
+        normalize_or_zero(right),
+        normalize_or_zero(up),
+        normalize_or_zero(forward),
+    )
+}
+
+fn normalize_or_zero(value: Vec3) -> Vec3 {
+    let length = (value.x * value.x + value.y * value.y + value.z * value.z).sqrt();
+    if length <= f32::EPSILON {
+        Vec3::ZERO
+    } else {
+        scale_vec3(value, 1.0 / length)
+    }
+}
+
+fn normalized_wheel_steps(input: &InputState) -> f32 {
+    let delta = input.mouse_wheel_delta_y();
+    if delta.is_finite() {
+        delta.clamp(-3.0, 3.0)
+    } else {
+        0.0
+    }
+}
+
+fn zoom_factor_from_wheel(steps: f32, speed: f32) -> f32 {
+    (1.0 - steps * speed.max(0.0)).clamp(0.84, 1.19)
 }
 
 pub fn tick_parallax_2d_system(runtime: &Runtime) -> AmigoResult<()> {

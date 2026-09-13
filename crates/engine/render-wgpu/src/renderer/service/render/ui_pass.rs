@@ -160,25 +160,23 @@ impl WgpuSceneRenderer {
         let color_vertex_buffers = color_batches
             .iter()
             .map(|batch| {
-                target
-                    .device
-                    .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                        label: Some("amigo-offscreen-ui-color-vertices"),
-                        contents: vertices_as_bytes(&batch.vertices),
-                        usage: wgpu::BufferUsages::VERTEX,
-                    })
+                create_uploaded_vertex_buffer(
+                    &target.device,
+                    &target.queue,
+                    "amigo-offscreen-ui-color-vertices",
+                    vertices_as_bytes(&batch.vertices),
+                )
             })
             .collect::<Vec<_>>();
         let ui_texture_vertex_buffers = ui_texture_batches
             .iter()
             .map(|batch| {
-                target
-                    .device
-                    .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                        label: Some("amigo-offscreen-ui-texture-vertices"),
-                        contents: texture_vertices_as_bytes(&batch.vertices),
-                        usage: wgpu::BufferUsages::VERTEX,
-                    })
+                create_uploaded_vertex_buffer(
+                    &target.device,
+                    &target.queue,
+                    "amigo-offscreen-ui-texture-vertices",
+                    texture_vertices_as_bytes(&batch.vertices),
+                )
             })
             .collect::<Vec<_>>();
 
@@ -223,4 +221,22 @@ impl WgpuSceneRenderer {
         target.queue.submit(Some(encoder.finish()));
         Ok(())
     }
+}
+
+fn create_uploaded_vertex_buffer(
+    device: &wgpu::Device,
+    queue: &wgpu::Queue,
+    label: &'static str,
+    contents: &[u8],
+) -> wgpu::Buffer {
+    let buffer = device.create_buffer(&wgpu::BufferDescriptor {
+        label: Some(label),
+        size: (contents.len() as u64).max(4),
+        usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
+        mapped_at_creation: false,
+    });
+    if !contents.is_empty() {
+        queue.write_buffer(&buffer, 0, contents);
+    }
+    buffer
 }

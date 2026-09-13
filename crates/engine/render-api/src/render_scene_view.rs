@@ -1,16 +1,23 @@
 use std::collections::BTreeMap;
 
-use amigo_math::{Transform2, Transform3, Vec2};
+use amigo_math::{ColorRgba, Transform2, Transform3, Vec2};
 
 use crate::{Camera3dRenderSettings, Light3dRenderSettings};
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 pub struct RenderSceneView {
     camera_2d: Transform2,
     camera_3d: Transform3,
     camera_3d_settings: Camera3dRenderSettings,
     light_3d_settings: Light3dRenderSettings,
+    background_color: ColorRgba,
     entity_transforms: BTreeMap<String, Transform3>,
+}
+
+impl Default for RenderSceneView {
+    fn default() -> Self {
+        Self::new(Transform2::default(), Transform3::default())
+    }
 }
 
 impl RenderSceneView {
@@ -20,6 +27,7 @@ impl RenderSceneView {
             camera_3d,
             camera_3d_settings: Camera3dRenderSettings::default(),
             light_3d_settings: Light3dRenderSettings::default(),
+            background_color: ColorRgba::new(0.0, 0.0, 0.0, 1.0),
             entity_transforms: BTreeMap::new(),
         }
     }
@@ -40,12 +48,20 @@ impl RenderSceneView {
         self.light_3d_settings
     }
 
+    pub fn background_color(&self) -> ColorRgba {
+        self.background_color
+    }
+
     pub fn set_camera_3d_settings(&mut self, settings: Camera3dRenderSettings) {
         self.camera_3d_settings = settings;
     }
 
     pub fn set_light_3d_settings(&mut self, settings: Light3dRenderSettings) {
         self.light_3d_settings = settings;
+    }
+
+    pub fn set_background_color(&mut self, color: ColorRgba) {
+        self.background_color = color;
     }
 
     pub fn insert_entity_transform(

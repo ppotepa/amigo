@@ -1,0 +1,114 @@
+kind: npr-preset-3d
+schema_version: 1
+id: toriyama_ink_cpu_reference
+label: Toriyama Ink CPU Reference
+settings:
+  strategy: cpu_reference
+  fill_mode: none
+  style_preset: rough_comic_ink
+  stroke_tool: ink_pen
+  pipeline:
+    path_strategy: stable_stroked_paths
+    fill_strategy: none
+    hatching_strategy: none
+  cpu_strategy_profile:
+    stroke_synthesis:
+      single_pass_alpha: 1.0
+      single_pass_width_multiplier: 1.0
+    tessellation:
+      rail_tangent_smoothing: true
+      resample_spacing_px: 1.25
+      taper_endpoint_floor: 0.52
+      angle_alpha_influence: 0.08
+      min_sample_width_px: 1.05
+      long_stroke_detail_crispness: 0.88
+  brushes:
+    - mod:scenes/comic-lines/npr-brushes/toriyama-g-pen-dark.yml
+  families:
+    - id: main_contour
+      label: MAIN CONTOUR
+      role: outer_contour
+      priority: 100
+      sources: [silhouette, boundary]
+      brush: toriyama_g_pen_dark
+      preferred_stroke_length_px: 140.0
+      stroke_join_gap_px: 7.0
+      stroke_join_max_angle_degrees: 48.0
+      technical_detail_keep: 0.0
+      technical_detail_preference: 0.0
+      min_screen_length_px: 2.0
+      min_stroke_length_px: 26.0
+      continuation_bias: 0.94
+      breakup_bias: 0.02
+      width_multiplier: 1.0
+      alpha_multiplier: 1.0
+      taper_multiplier: 1.0
+      overshoot_px: 0.55
+    - id: key_features
+      label: KEY FEATURES
+      role: detail_ink
+      priority: 88
+      sources: [feature, crease]
+      brush: toriyama_g_pen_dark
+      preferred_stroke_length_px: 136.0
+      stroke_join_gap_px: 8.2
+      stroke_join_max_angle_degrees: 56.0
+      technical_detail_keep: 0.58
+      technical_detail_preference: 0.66
+      ink_detail_material_preference: 0.74
+      material_seam_preference: 0.08
+      min_screen_length_px: 2.8
+      min_stroke_length_px: 26.0
+      continuation_bias: 0.95
+      breakup_bias: 0.005
+      width_multiplier: 0.72
+      alpha_multiplier: 1.0
+      taper_multiplier: 0.96
+      overshoot_px: 0.28
+  boundary: true
+  silhouette: true
+  feature: true
+  suggestive: false
+  contact: false
+  ink_color: "#050403FF"
+  width_px: 1.9
+  silhouette_width_multiplier: 1.0
+  boundary_width_multiplier: 0.92
+  feature_width_multiplier: 0.46
+  distance_width_falloff: 0.0
+  depth_pressure: 0.0
+  depth_alpha: 0.0
+  camera_response:
+    enabled: false
+    auto_focus: false
+    near_width_boost: 0.0
+    near_detail_boost: 0.0
+    near_hatching_boost: 0.0
+    far_width_falloff: 0.0
+    far_alpha_falloff: 0.0
+    far_detail_suppression: 0.0
+    rim_silhouette_boost: 0.0
+    front_feature_suppression: 0.0
+  width_pressure_curve: [0.58, 1.12, 1.04, 0.48]
+  alpha_pressure_curve: [0.94, 1.0, 1.0, 0.90]
+  humanization: 0.20
+  line_confidence: 0.96
+  temporal_stability: 0.96
+  temporal_path_smoothing: false
+  endpoint_snap_px: 1.2
+  path_simplify_px: 0.95
+  straightness: 0.78
+  taper: 0.72
+  stroke_wobble_px: 0.12
+  stroke_wobble_frequency: 0.14
+  micro_wobble_px: 0.025
+  micro_wobble_frequency: 0.80
+  pressure_jitter: 0.035
+  local_angular_drift_degrees: 0.24
+  overshoot_px: 0.55
+  undershoot_px: 0.0
+  pass_offset_px: 0.0
+  dropout: 0.0
+  passes: 1
+  search_line_count: 0
+  seed: 19890401

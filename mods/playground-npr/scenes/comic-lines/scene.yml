@@ -1,0 +1,375 @@
+version: 1
+scene:
+  id: comic-lines
+  label: Comic Lines Workbench
+  description: >
+    NPR workbench based on npr.html. Press 1-2 to switch staged GLB models
+    and inspect mesh-cache comic line rendering.
+
+npr_presets:
+  - ./npr-presets/toriyama-ink-cpu-reference.yml
+
+entities:
+  - id: controls
+    name: playground-npr-controls
+    components:
+      - type: InputActionMap
+        id: playground-npr
+        active: true
+        actions:
+          npr.select_1:
+            kind: button
+            pressed: ["1"]
+          npr.select_2:
+            kind: button
+            pressed: ["2"]
+          npr.model_previous:
+            kind: button
+            pressed: ["<", ","]
+          npr.model_next:
+            kind: button
+            pressed: [">", "."]
+          npr.model_scale_down:
+            kind: button
+            pressed: ["-", "NumpadSubtract"]
+          npr.model_scale_up:
+            kind: button
+            pressed: ["+", "=", "NumpadAdd"]
+          npr.animation_previous:
+            kind: button
+            pressed: ["["]
+          npr.animation_next:
+            kind: button
+            pressed: ["]"]
+          npr.camera_toggle:
+            kind: button
+            pressed: ["F"]
+          npr.model_autorotate_toggle:
+            kind: button
+            pressed: ["R"]
+          npr.temporal_smoothing_toggle:
+            kind: button
+            pressed: ["T"]
+          npr.strategy_toggle:
+            kind: button
+            pressed: ["G"]
+          npr.preset_previous:
+            kind: button
+            pressed: ["ArrowDown"]
+          npr.preset_next:
+            kind: button
+            pressed: ["ArrowUp"]
+          npr.debug_final:
+            kind: button
+            pressed: ["7"]
+          npr.debug_cycle:
+            kind: button
+            pressed: ["V"]
+          npr.debug_line_kinds:
+            kind: button
+            pressed: ["8"]
+          npr.debug_dropout:
+            kind: button
+            pressed: ["9"]
+          npr.debug_width_alpha:
+            kind: button
+            pressed: ["0"]
+          npr.fly_forward:
+            kind: axis
+            positive: ["W"]
+            negative: ["S"]
+          npr.fly_strafe:
+            kind: axis
+            positive: ["D"]
+            negative: ["A"]
+          npr.fly_lift:
+            kind: axis
+            positive: ["Space", "E"]
+            negative: ["Q"]
+      - type: CameraController3D
+        camera: playground-npr-camera
+        mode: orbit
+        switch_action: npr.camera_toggle
+        orbit_target: playground-npr-model-1-soldier
+        orbit_distance: 4.2
+        orbit_min_distance: 1.2
+        orbit_max_distance: 18.0
+        orbit_yaw: 0.0
+        orbit_pitch: 0.08
+        orbit_sensitivity: 0.006
+        orbit_pan_sensitivity: 0.0014
+        orbit_zoom_speed: 0.035
+        freelook_speed: 3.8
+        freelook_sensitivity: 0.004
+        freelook_fast_multiplier: 3.0
+        move_forward_action: npr.fly_forward
+        move_strafe_action: npr.fly_strafe
+        move_lift_action: npr.fly_lift
+
+  - id: camera
+    name: playground-npr-camera
+    transform3:
+      translation: { x: 0.0, y: 0.0, z: 4.2 }
+      rotation_euler: { x: 0.0, y: 0.0, z: 0.0 }
+      scale: { x: 1.0, y: 1.0, z: 1.0 }
+    components:
+      - type: Camera3D
+        fov_y_degrees: 38.0
+        near_clip: 0.1
+        far_clip: 100.0
+        background_color: "#FFFFFFFF"
+
+  - id: key-light
+    name: playground-npr-key-light
+    components:
+      - type: Light3D
+        kind: directional
+        direction: { x: -0.35, y: -0.82, z: -0.42 }
+        color: "#FFF2D6FF"
+        intensity: 0.86
+        ambient: 0.28
+
+  - id: model-1-soldier
+    name: playground-npr-model-1-soldier
+    visible: true
+    transform3:
+      translation: { x: 0.0, y: -0.05, z: 0.0 }
+      rotation_euler: { x: 0.0, y: 0.35, z: 0.0 }
+      scale: { x: 1.55, y: 1.55, z: 1.55 }
+    components:
+      - type: Mesh3D
+        mesh: playground-npr/meshes/soldier
+        npr:
+          strategy: cpu_reference
+          fill_mode: none
+          style_preset: gpu_stable_comic
+          stroke_tool: technical_pen
+          feature_angle_degrees: 42.0
+          min_screen_length_px: 2.4
+          visibility_max_dimension_px: 720.0
+          width_px: 2.0
+          humanization: 0.16
+          line_confidence: 0.94
+          temporal_stability: 0.97
+          temporal_path_smoothing: false
+          visibility_hysteresis_frames: 3
+          endpoint_snap_px: 1.1
+          endpoint_lock_start_px: 6.0
+          endpoint_lock_end_px: 7.0
+          path_simplify_px: 1.25
+          straightness: 0.88
+          taper: 0.32
+          stroke_wobble_px: 0.10
+          micro_wobble_px: 0.02
+          pressure_jitter: 0.02
+          local_angular_drift_degrees: 0.15
+          overshoot_px: 0.25
+          undershoot_px: 0.02
+          passes: 1
+          search_line_count: 0
+          search_line_alpha: 0.0
+          seed: 1101
+          gpu_realtime_tuning:
+            max_render_length_px: 56.0
+            max_segment_length_px: 18.0
+            max_terminal_walk_edges: 0
+            max_chained_walk_edges: 0
+            max_chain_angle_degrees: 32.0
+            search_enabled: false
+            search_max_render_length_px: 24.0
+            search_alpha_multiplier: 0.35
+            feature_min_length_multiplier: 1.65
+            feature_alpha_multiplier: 0.72
+            silhouette_min_length_multiplier: 0.75
+      - type: Material3D
+        label: soldier-paper-fill
+        albedo: "#F4F1E8FF"
+        render_order: 0
+        shading: unlit
+
+  - id: model-2-khronos-male
+    name: playground-npr-model-2-khronos-male
+    visible: false
+    transform3:
+      translation: { x: 0.0, y: -0.05, z: 0.0 }
+      rotation_euler: { x: 0.0, y: 0.35, z: 0.0 }
+      scale: { x: 1.55, y: 1.55, z: 1.55 }
+    components:
+      - type: Mesh3D
+        mesh: playground-npr/meshes/khronos-male
+        npr:
+          strategy: cpu_reference
+          fill_mode: none
+          style_preset: gpu_stable_comic
+          stroke_tool: technical_pen
+          black_mass_material_ids: [4, 5, 6, 7, 11, 12, 13]
+          ink_detail_material_ids: [6, 7, 11, 12, 13]
+          feature_angle_degrees: 42.0
+          min_screen_length_px: 2.4
+          visibility_max_dimension_px: 720.0
+          width_px: 2.0
+          humanization: 0.16
+          line_confidence: 0.94
+          temporal_stability: 0.97
+          temporal_path_smoothing: false
+          visibility_hysteresis_frames: 3
+          endpoint_snap_px: 1.1
+          endpoint_lock_start_px: 6.0
+          endpoint_lock_end_px: 7.0
+          path_simplify_px: 1.25
+          straightness: 0.88
+          taper: 0.32
+          stroke_wobble_px: 0.10
+          micro_wobble_px: 0.02
+          pressure_jitter: 0.02
+          local_angular_drift_degrees: 0.15
+          overshoot_px: 0.25
+          undershoot_px: 0.02
+          passes: 1
+          search_line_count: 0
+          search_line_alpha: 0.0
+          seed: 1202
+          gpu_realtime_tuning:
+            max_render_length_px: 56.0
+            max_segment_length_px: 18.0
+            max_terminal_walk_edges: 0
+            max_chained_walk_edges: 0
+            max_chain_angle_degrees: 32.0
+            search_enabled: false
+            search_max_render_length_px: 24.0
+            search_alpha_multiplier: 0.35
+            feature_min_length_multiplier: 1.65
+            feature_alpha_multiplier: 0.72
+            silhouette_min_length_multiplier: 0.75
+      - type: Material3D
+        label: khronos-male-paper-fill
+        albedo: "#F4F1E8FF"
+        render_order: 0
+        shading: unlit
+
+  - id: hud
+    name: playground-npr-hud
+    components:
+      - type: UiDocument
+        target:
+          type: screen-space
+          layer: hud
+          viewport:
+            width: 1280.0
+            height: 720.0
+            scaling: fit
+        root:
+          type: column
+          id: root
+          style:
+            left: 930.0
+            top: 24.0
+            width: 326.0
+            padding: 14.0
+            gap: 8.0
+            background: "#F4F1E6E0"
+            border_color: "#1C171033"
+            border_width: 1.0
+            border_radius: 10.0
+          children:
+            - type: text
+              id: title
+              text: "PLAYGROUND NPR"
+              font: playground-npr/fonts/debug-ui
+              style:
+                width: 298.0
+                font_size: 20.0
+                color: "#17120CFF"
+                fit_to_width: true
+            - type: text
+              id: model
+              text: "Model    Soldier"
+              font: playground-npr/fonts/debug-ui
+              style:
+                width: 298.0
+                font_size: 15.0
+                color: "#17120CFF"
+            - type: text
+              id: preset
+              text: "Preset   Default GPU Comic"
+              font: playground-npr/fonts/debug-ui
+              style:
+                width: 298.0
+                font_size: 15.0
+                color: "#17120CFF"
+            - type: text
+              id: animation
+              text: "Anim     Static | no clips"
+              font: playground-npr/fonts/debug-ui
+              style:
+                width: 298.0
+                font_size: 15.0
+                color: "#17120CFF"
+            - type: text
+              id: strategy
+              text: "Strategy cpu_reference"
+              font: playground-npr/fonts/debug-ui
+              style:
+                width: 298.0
+                font_size: 15.0
+                color: "#17120CFF"
+            - type: text
+              id: camera
+              text: "Camera   Orbit | auto off"
+              font: playground-npr/fonts/debug-ui
+              style:
+                width: 298.0
+                font_size: 15.0
+                color: "#17120CFF"
+            - type: text
+              id: debug
+              text: "Debug    Final | Temporal off"
+              font: playground-npr/fonts/debug-ui
+              style:
+                width: 298.0
+                font_size: 15.0
+                color: "#17120CFF"
+            - type: text
+              id: frame
+              text: "Frame    0 ms | 0 fps"
+              font: playground-npr/fonts/debug-ui
+              style:
+                width: 298.0
+                font_size: 15.0
+                color: "#5A4A34FF"
+            - type: text
+              id: runtime
+              text: "Runtime  wgpu | map playground-npr"
+              font: playground-npr/fonts/debug-ui
+              style:
+                width: 298.0
+                font_size: 14.0
+                color: "#5A4A34FF"
+                word_wrap: true
+            - type: text
+              id: stats_a
+              text: "NPR      gpu 0 cpu 0 | paths 0"
+              font: playground-npr/fonts/debug-ui
+              style:
+                width: 298.0
+                font_size: 14.0
+                color: "#5A4A34FF"
+                word_wrap: true
+            - type: text
+              id: stats_b
+              text: "Render   edges 0 tris 0 | buffers 0/0/0"
+              font: playground-npr/fonts/debug-ui
+              style:
+                width: 298.0
+                font_size: 14.0
+                color: "#5A4A34FF"
+                word_wrap: true
+            - type: text
+              id: help
+              text: "1-2 model | Up/Down style | CPU only | F camera | R rotate | T temporal"
+              font: playground-npr/fonts/debug-ui
+              style:
+                width: 298.0
+                font_size: 13.0
+                color: "#786752FF"
+                word_wrap: true

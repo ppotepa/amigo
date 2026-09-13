@@ -1,0 +1,8 @@
+kind: material-3d
+schema_version: 1
+id: ink-fill
+label: Ink Fill
+format: debug-placeholder
+npr:
+  fill_role: silhouette-test
+  ink_group: black-ink

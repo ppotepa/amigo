@@ -1,0 +1,17 @@
+id = "playground-npr"
+name = "NPR Comic Lines"
+version = "0.1.0"
+description = "Workbench for mesh-driven comic line rendering experiments."
+authors = ["Amigo Engine Team"]
+dependencies = ["core"]
+capabilities = ["rendering_3d", "materials_3d", "text_3d"]
+
+[scripting]
+mod_script_mode = "disabled"
+
+[[scenes]]
+id = "comic-lines"
+label = "Comic Lines Workbench"
+description = "3D scene shell for the mesh-to-hand-drawn-line NPR pipeline."
+path = "scenes/comic-lines"
+launcher_visible = true

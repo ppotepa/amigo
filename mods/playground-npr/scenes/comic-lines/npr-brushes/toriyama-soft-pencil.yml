@@ -1,0 +1,27 @@
+kind: npr-brush-3d
+schema_version: 1
+id: toriyama_soft_pencil
+label: Toriyama Soft Pencil
+profile:
+  tool: pencil
+  tip: round
+  ink_color: "#3A3530C0"
+  width_multiplier: 0.72
+  alpha_multiplier: 0.70
+  pressure_jitter_multiplier: 1.35
+  dropout_multiplier: 1.25
+  search_multiplier: 1.4
+  path_wobble_multiplier: 1.10
+  micro_wobble_multiplier: 1.35
+  hand_arc_multiplier: 1.18
+  tangent_drift_multiplier: 1.05
+  detail_crispness_multiplier: 0.82
+  taper_multiplier: 0.90
+  overshoot_px: 0.22
+  width_curve: [0.68, 1.0, 0.92, 0.60]
+  alpha_curve: [0.56, 0.82, 0.76, 0.48]
+  angle_bias_degrees: 0.0
+  angle_influence: 0.0
+  nib_width_base_scale: 1.0
+  nib_width_angle_scale: 0.2
+  path_adherence_multiplier: 0.62

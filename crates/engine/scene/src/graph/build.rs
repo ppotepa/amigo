@@ -525,7 +525,7 @@ fn add_component_references(
                 true,
             );
         }
-        ComponentDocument::Mesh3d { mesh } => {
+        ComponentDocument::Mesh3d { mesh, .. } => {
             add_external_ref(
                 graph,
                 component_node,
