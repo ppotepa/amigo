@@ -273,7 +273,6 @@ impl Material3dSceneCommand {
             albedo: ColorRgba::WHITE,
             source,
             render_order: 0,
-            shading: amigo_render_api::Material3dShadingMode::Lit,
         }
     }
 }

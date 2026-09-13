@@ -4,7 +4,6 @@
 mod catalog;
 mod browser;
 mod model;
-mod model_discovery;
 mod plugin;
 mod prepare;
 mod runtime_capabilities;
@@ -13,7 +12,6 @@ mod script_command;
 pub use catalog::*;
 pub use browser::*;
 pub use model::*;
-pub use model_discovery::*;
 pub use plugin::*;
 pub use prepare::*;
 pub use runtime_capabilities::*;

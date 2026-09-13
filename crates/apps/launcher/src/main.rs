@@ -157,15 +157,24 @@ fn launch_in_process(
     );
     println!("mods: {}", display_list(&summary.loaded_mods));
     println!("scene entities: {}", display_list(&summary.scene_entities));
-    print_list("registered assets", &summary.registered_assets);
-    print_list("loaded assets", &summary.loaded_assets);
-    print_list("prepared assets", &summary.prepared_assets);
+    println!(
+        "registered assets: {}",
+        display_list(&summary.registered_assets)
+    );
+    println!("loaded assets: {}", display_list(&summary.loaded_assets));
+    println!(
+        "prepared assets: {}",
+        display_list(&summary.prepared_assets)
+    );
     println!("failed assets: {}", display_list(&summary.failed_assets));
     println!(
         "pending asset loads: {}",
         display_list(&summary.pending_asset_loads)
     );
-    print_list("watched reload targets", &summary.watched_reload_targets);
+    println!(
+        "watched reload targets: {}",
+        display_list(&summary.watched_reload_targets)
+    );
     println!(
         "2d sprite entities: {}",
         display_list(&summary.sprite_entities_2d)
@@ -186,11 +195,23 @@ fn launch_in_process(
         "3d text entities: {}",
         display_list(&summary.text_entities_3d)
     );
-    print_list("script commands", &summary.processed_script_commands);
-    print_list("scene commands", &summary.processed_scene_commands);
-    print_list("script events", &summary.processed_script_events);
-    print_list("console commands", &summary.console_commands);
-    print_list("console output", &summary.console_output);
+    println!(
+        "script commands: {}",
+        display_list(&summary.processed_script_commands)
+    );
+    println!(
+        "scene commands: {}",
+        display_list(&summary.processed_scene_commands)
+    );
+    println!(
+        "script events: {}",
+        display_list(&summary.processed_script_events)
+    );
+    println!(
+        "console commands: {}",
+        display_list(&summary.console_commands)
+    );
+    println!("console output: {}", display_list(&summary.console_output));
     let executed_scripts = summary
         .executed_scripts
         .iter()
@@ -202,7 +223,7 @@ fn launch_in_process(
             )
         })
         .collect::<Vec<_>>();
-    print_list("scripts", &executed_scripts);
+    println!("scripts: {}", display_list(&executed_scripts));
 
     Ok(())
 }
@@ -310,18 +331,6 @@ fn display_list(values: &[String]) -> String {
         "none".to_owned()
     } else {
         values.join(", ")
-    }
-}
-
-fn print_list(label: &str, values: &[String]) {
-    if values.is_empty() {
-        println!("{label}: none");
-        return;
-    }
-
-    println!("{label}:");
-    for value in values {
-        println!("  - {value}");
     }
 }
 

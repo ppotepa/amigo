@@ -266,7 +266,6 @@ mod tests {
             audio_cues: Vec::new(),
             activation_sets: Vec::new(),
             visual2d: Default::default(),
-            npr_presets: Vec::new(),
             state: Default::default(),
             entities: Vec::new(),
         };
@@ -304,7 +303,6 @@ mod tests {
             audio_cues: Vec::new(),
             activation_sets: Vec::new(),
             visual2d: Default::default(),
-            npr_presets: Vec::new(),
             state: Default::default(),
             entities: Vec::new(),
         };
@@ -342,7 +340,6 @@ mod tests {
             audio_cues: Vec::new(),
             activation_sets: Vec::new(),
             visual2d: Default::default(),
-            npr_presets: Vec::new(),
             state: Default::default(),
             entities: Vec::new(),
         };

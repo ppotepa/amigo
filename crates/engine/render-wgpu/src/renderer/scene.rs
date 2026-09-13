@@ -23,7 +23,6 @@ pub(crate) fn resolve_camera2d_transform(scene_view: &RenderSceneView) -> Transf
 pub(crate) struct Material3dRenderInfo {
     pub(crate) albedo: ColorRgba,
     pub(crate) render_order: i32,
-    pub(crate) shading: amigo_render_api::Material3dShadingMode,
 }
 
 pub(crate) fn material_lookup_from_commands(
@@ -38,7 +37,6 @@ pub(crate) fn material_lookup_from_commands(
                 Material3dRenderInfo {
                     albedo: command.material.albedo,
                     render_order: command.material.render_order,
-                    shading: command.material.shading,
                 },
             )
         })

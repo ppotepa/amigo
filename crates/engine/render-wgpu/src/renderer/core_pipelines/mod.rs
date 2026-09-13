@@ -5,7 +5,7 @@ mod texture;
 
 use color::{
     ColorAdditivePipelineProvider, ColorAlphaPipelineProvider, ColorMultiplyPipelineProvider,
-    ColorScreenPipelineProvider, NprStrokeSegmentAlphaPipelineProvider,
+    ColorScreenPipelineProvider,
 };
 use texture::{
     TextureAdditivePipelineProvider, TextureAlphaPipelineProvider, TextureLightenPipelineProvider,
@@ -16,7 +16,6 @@ pub(crate) const CORE_COLOR_ALPHA_PIPELINE: &str = "core.color.alpha";
 pub(crate) const CORE_COLOR_ADDITIVE_PIPELINE: &str = "core.color.additive";
 pub(crate) const CORE_COLOR_MULTIPLY_PIPELINE: &str = "core.color.multiply";
 pub(crate) const CORE_COLOR_SCREEN_PIPELINE: &str = "core.color.screen";
-pub(crate) const CORE_NPR_STROKE_SEGMENT_ALPHA_PIPELINE: &str = "core.npr.stroke_segment.alpha";
 
 pub(crate) const CORE_TEXTURE_ALPHA_PIPELINE: &str = "core.texture.alpha";
 pub(crate) const CORE_TEXTURE_OPAQUE_PIPELINE: &str = "core.texture.opaque";
@@ -45,7 +44,6 @@ pub(crate) fn build_default_core_pipelines(
         Box::new(ColorAdditivePipelineProvider),
         Box::new(ColorMultiplyPipelineProvider),
         Box::new(ColorScreenPipelineProvider),
-        Box::new(NprStrokeSegmentAlphaPipelineProvider),
         Box::new(TextureAlphaPipelineProvider),
         Box::new(TextureOpaquePipelineProvider),
         Box::new(TextureAdditivePipelineProvider),
