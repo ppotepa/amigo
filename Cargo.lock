@@ -948,7 +948,7 @@ name = "amigo-playground-native"
 version = "0.1.0"
 dependencies = [
  "amigo-playground-api",
- "getrandom 0.3.4",
+ "getrandom 0.4.3",
  "serde",
  "serde_json",
  "windows 0.62.2",
@@ -1153,7 +1153,7 @@ dependencies = [
  "amigo-ui",
  "amigo-vector-2d-plugin",
  "amigo-window-winit",
- "getrandom 0.3.4",
+ "getrandom 0.4.3",
  "image",
  "serde",
  "serde_json",
