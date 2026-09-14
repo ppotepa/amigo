@@ -162,7 +162,7 @@ dependencies = [
  "amigo-scripting-api",
  "amigo-session",
  "base64 0.22.1",
- "glam 0.30.10",
+ "glam 0.32.1",
  "gltf",
  "percent-encoding",
  "serde",
@@ -182,7 +182,7 @@ dependencies = [
  "amigo-scene",
  "amigo-scripting-api",
  "amigo-session",
- "glam 0.30.10",
+ "glam 0.32.1",
  "rapier3d",
 ]
 
@@ -851,7 +851,7 @@ dependencies = [
  "amigo-scene",
  "amigo-session",
  "amigo-ui",
- "glam 0.30.10",
+ "glam 0.32.1",
  "percent-encoding",
  "reqwest 0.12.28",
  "serde",
@@ -1050,7 +1050,7 @@ dependencies = [
 name = "amigo-render-npr"
 version = "0.1.0"
 dependencies = [
- "glam 0.30.10",
+ "glam 0.32.1",
  "serde",
 ]
 
@@ -1254,7 +1254,7 @@ dependencies = [
  "amigo-core",
  "amigo-runtime",
  "camino",
- "glam 0.30.10",
+ "glam 0.32.1",
  "serde",
  "serde_yaml",
  "toml 1.1.6+spec-1.1.0",
@@ -3685,7 +3685,6 @@ checksum = "19fc433e8437a212d1b6f1e68c7824af3aed907da60afa994e7f542d18d12aa9"
 dependencies = [
  "approx",
  "libm",
- "serde_core",
 ]
 
 [[package]]
@@ -3699,6 +3698,9 @@ name = "glam"
 version = "0.32.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f70749695b063ecbf6b62949ccccde2e733ec3ecbbd71d467dca4e5c6c97cca0"
+dependencies = [
+ "serde_core",
+]
 
 [[package]]
 name = "glamx"
