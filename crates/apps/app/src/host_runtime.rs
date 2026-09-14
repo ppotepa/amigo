@@ -9,6 +9,7 @@ use amigo_runtime_bundles::{
 use amigo_session::RuntimeSession;
 
 const HOT_RELOAD_POLL_INTERVAL: std::time::Duration = std::time::Duration::from_secs(1);
+const WINDOW_TITLE_REFRESH_INTERVAL: std::time::Duration = std::time::Duration::from_millis(250);
 
 fn start_audio_output(runtime: &Runtime) -> AmigoResult<()> {
     let audio_backend = required::<AudioOutputBackendService>(runtime)?;
@@ -47,6 +48,7 @@ pub(crate) struct SummaryHostHandler {
     summary: BootstrapSummary,
     surface: Option<WgpuSurfaceState>,
     printed: bool,
+    last_window_title: Option<String>,
 }
 
 impl SummaryHostHandler {
@@ -55,6 +57,7 @@ impl SummaryHostHandler {
             summary,
             surface: None,
             printed: false,
+            last_window_title: None,
         }
     }
 }
@@ -71,6 +74,8 @@ pub(crate) struct InteractiveRuntimeHostHandler {
     last_hot_reload_poll: Option<std::time::Instant>,
     printed: bool,
     modifiers: InputModifiers,
+    last_window_title_refresh: Option<std::time::Instant>,
+    last_window_title: Option<String>,
 }
 
 struct CachedGameFrame {
@@ -109,6 +114,8 @@ impl InteractiveRuntimeHostHandler {
             printed: false,
             last_hot_reload_poll: None,
             modifiers: InputModifiers::default(),
+            last_window_title_refresh: None,
+            last_window_title: None,
         })
     }
 
@@ -410,6 +417,16 @@ impl HostHandler for SummaryHostHandler {
         }
     }
 
+    fn window_title(&mut self) -> Option<String> {
+        let title = self.config().window.title;
+        if self.last_window_title.as_deref() == Some(title.as_str()) {
+            None
+        } else {
+            self.last_window_title = Some(title.clone());
+            Some(title)
+        }
+    }
+
     fn on_lifecycle(&mut self, event: HostLifecycleEvent) -> AmigoResult<HostControl> {
         if matches!(event, HostLifecycleEvent::WindowCreated) && !self.printed {
             println!("{}", self.summary);
@@ -494,6 +511,31 @@ impl HostHandler for InteractiveRuntimeHostHandler {
             },
             exit_strategy: HostExitStrategy::Manual,
             max_frame_rate_fps: self.summary.frame_cap_fps,
+        }
+    }
+
+    fn window_title(&mut self) -> Option<String> {
+        let now = std::time::Instant::now();
+        if self
+            .last_window_title_refresh
+            .is_some_and(|last| now.duration_since(last) < WINDOW_TITLE_REFRESH_INTERVAL)
+        {
+            return None;
+        }
+
+        let fps = required::<amigo_session::RuntimeFrameClockService>(self.runtime())
+            .ok()
+            .map(|clock| clock.snapshot().actual_host_fps)
+            .filter(|fps| fps.is_finite() && *fps >= 0.0)
+            .unwrap_or(0.0);
+        let title = format!("Amigo Hosted Dev | FPS: {fps:.1}");
+
+        self.last_window_title_refresh = Some(now);
+        if self.last_window_title.as_deref() == Some(title.as_str()) {
+            None
+        } else {
+            self.last_window_title = Some(title.clone());
+            Some(title)
         }
     }
 

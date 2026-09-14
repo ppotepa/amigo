@@ -9,6 +9,11 @@ capabilities = ["rendering_3d", "materials_3d"]
 [scripting]
 mod_script_mode = "disabled"
 
+[loading]
+title = "Preparing NPR City"
+mode = "overlay"
+accent = "#F6B44C"
+
 [[scenes]]
 id = "city"
 label = "NPR City"

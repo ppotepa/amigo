@@ -34,3 +34,6 @@ amigo-editor-api.workspace = true
 amigo-editor-authoring.workspace = true
 amigo-editor-ingame.workspace = true
 glam = {workspace = true, features = ["serde"]}
+
+[dev-dependencies]
+amigo-math.workspace = true

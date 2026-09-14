@@ -1,6 +1,8 @@
 //! Authored NPR documents and deterministic inheritance, independent of UI hosts.
 pub mod migration;
-use amigo_render_npr::{BrushLibrary, ComicInk, NprStyleLayer, NprStyleLayers};
+use amigo_render_npr::{
+    BrushLibrary, ComicInk, ComicInkOverrides, NprStyleLayer, NprStyleLayers,
+};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sha2::{Digest, Sha256};
@@ -60,6 +62,26 @@ pub struct NprModelOverrideDocument {
     pub look: NprLookPatch,
 }
 
+/// Explicit runtime-scene appearance for one scene entity. The plugin resolves
+/// this authored identity; the renderer never guesses a role from its name.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct NprRuntimeObjectStyleDocument {
+    pub preset: Option<String>,
+    pub style: ComicInkOverrides,
+    pub hatching: Option<bool>,
+    /// Role-level line policy. `None` inherits the scene layer decision.
+    pub creases: Option<bool>,
+    pub material_seams: Option<bool>,
+    /// Optional quality controls for the runtime stroke synthesizer.
+    pub stroke_segments: Option<u8>,
+    pub pressure_variation: Option<f32>,
+    pub join_strokes: Option<bool>,
+    /// Retained for authored document compatibility. Runtime NPR redraws every
+    /// object at the global artistic cadence, including architecture.
+    pub temporal: Option<bool>,
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct NprSceneProfileDocument {
@@ -79,6 +101,8 @@ pub struct NprSceneProfileDocument {
     pub seed: u64,
     #[serde(default)]
     pub object_overrides: BTreeMap<String, NprModelOverrideDocument>,
+    #[serde(default)]
+    pub runtime_objects: BTreeMap<String, NprRuntimeObjectStyleDocument>,
     #[serde(default)]
     pub variants: BTreeMap<String, NprLookPatch>,
     #[serde(default)]
@@ -369,6 +393,7 @@ impl NprSceneProfileDocument {
             objects: settings.objects.clone(),
             seed: settings.seed,
             object_overrides: BTreeMap::new(),
+            runtime_objects: settings.runtime_objects.clone(),
             variants: BTreeMap::new(),
             brushes: builtin_brush_library(),
         })
@@ -407,6 +432,14 @@ impl NprSceneProfileDocument {
         settings.sketch_paused = self.motion.sketch_paused;
         settings.speed = self.motion.speed;
         settings.motion = self.motion.policy;
+        settings.runtime_objects = self.runtime_objects.clone();
+        for (entity, runtime_style) in &settings.runtime_objects {
+            if let Some(preset) = runtime_style.preset.as_deref()
+                && crate::state::style_preset(preset).is_none()
+            {
+                return Err(format!("runtime object `{entity}` uses unknown preset `{preset}`"));
+            }
+        }
         let empty = NprLookPatch::default();
         let global = resolve_look(
             looks,

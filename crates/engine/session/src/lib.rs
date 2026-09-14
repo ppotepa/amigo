@@ -7,6 +7,7 @@
 pub mod bootstrap;
 pub mod frame;
 pub mod frame_clock;
+pub mod loading;
 pub mod options;
 pub mod performance;
 pub mod render_session;
@@ -24,6 +25,7 @@ mod session_runtime_capabilities;
 pub use bootstrap::*;
 pub use frame::*;
 pub use frame_clock::*;
+pub use loading::*;
 pub use options::*;
 pub use performance::*;
 pub use render_session::*;

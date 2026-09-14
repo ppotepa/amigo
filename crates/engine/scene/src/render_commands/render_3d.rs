@@ -2,6 +2,8 @@ pub const MESH_3D_PLUGIN_SCENE_COMMAND_TYPE: &str = "amigo.rendering.3d.scene-co
 pub const MATERIAL_3D_PLUGIN_SCENE_COMMAND_TYPE: &str =
     "amigo.rendering.3d.scene-command.Material3d";
 pub const TEXT_3D_PLUGIN_SCENE_COMMAND_TYPE: &str = "amigo.rendering.3d.scene-command.Text3d";
+pub const MESH_ANIMATION_3D_PLUGIN_SCENE_COMMAND_TYPE: &str =
+    "amigo.rendering.3d.scene-command.MeshAnimation3d";
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Mesh3dSceneCommand {
@@ -39,6 +41,48 @@ impl crate::PluginSceneCommandPayload for Mesh3dPluginSceneCommandPayload {
             "mesh-3d",
         )]
     }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct MeshAnimation3dSceneCommand {
+    pub source_mod: String,
+    pub entity_name: String,
+    pub clip: String,
+    pub speed: f32,
+    pub looped: bool,
+    pub sample_fps: Option<f32>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct MeshAnimation3dPluginSceneCommandPayload(pub MeshAnimation3dSceneCommand);
+
+impl crate::PluginSceneCommandPayload for MeshAnimation3dPluginSceneCommandPayload {
+    fn command_type(&self) -> &'static str {
+        MESH_ANIMATION_3D_PLUGIN_SCENE_COMMAND_TYPE
+    }
+
+    fn command_as_any(&self) -> &dyn std::any::Any {
+        &self.0
+    }
+
+    fn eq_payload(&self, other: &dyn crate::PluginSceneCommandPayload) -> bool {
+        other
+            .command_as_any()
+            .downcast_ref::<MeshAnimation3dSceneCommand>()
+            .is_some_and(|command| command == &self.0)
+    }
+
+    fn asset_dependencies(&self) -> Vec<crate::SceneAssetDependency> {
+        Vec::new()
+    }
+}
+
+pub fn mesh_animation_3d_plugin_scene_command(
+    command: MeshAnimation3dSceneCommand,
+) -> crate::PluginSceneCommand {
+    crate::PluginSceneCommand::new(std::sync::Arc::new(
+        MeshAnimation3dPluginSceneCommandPayload(command),
+    ))
 }
 
 pub fn mesh_3d_plugin_scene_command(command: Mesh3dSceneCommand) -> crate::PluginSceneCommand {

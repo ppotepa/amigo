@@ -94,6 +94,44 @@ fn tracks_prepared_asset_states() {
 }
 
 #[test]
+fn external_preparation_retains_asset_metadata_until_domain_cache_is_ready() {
+    let catalog = AssetCatalog::default();
+    let key = AssetKey::new("npr/city.glb");
+    catalog.mark_prepared(PreparedAsset {
+        key: key.clone(),
+        source: AssetSourceKind::Mod("npr".to_owned()),
+        resolved_path: PathBuf::from("mods/npr/city.glb"),
+        byte_len: 12,
+        kind: PreparedAssetKind::Mesh3d,
+        label: None,
+        format: Some("glb".to_owned()),
+        metadata: BTreeMap::new(),
+    });
+
+    catalog.begin_external_prepare(key.clone());
+    assert!(catalog.prepared_asset(&key).is_some());
+    assert_eq!(catalog.loading_summary().external_loading_assets, 1);
+
+    let prepared = catalog.prepared_asset(&key).expect("metadata should remain");
+    catalog.mark_prepared(prepared);
+    assert_eq!(catalog.loading_summary().external_loading_assets, 0);
+}
+
+#[test]
+fn loading_summary_counts_an_instanced_asset_once() {
+    let catalog = AssetCatalog::default();
+    let key = AssetKey::new("npr/city.glb");
+    catalog.request_load(AssetLoadRequest::new(key.clone(), AssetLoadPriority::Background));
+    // Repeated request represents another scene instance and must not expand
+    // loading work.
+    catalog.request_load(AssetLoadRequest::new(key.clone(), AssetLoadPriority::Immediate));
+    let summary = catalog.loading_summary();
+    assert_eq!(summary.total_assets, 1);
+    assert_eq!(summary.pending_assets, 1);
+    assert_eq!(summary.current_asset, Some(key));
+}
+
+#[test]
 fn request_reload_requeues_loaded_and_prepared_asset() {
     let catalog = AssetCatalog::default();
     let key = AssetKey::new("playground-2d/spritesheets/sprite-lab");

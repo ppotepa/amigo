@@ -12,6 +12,13 @@ service. Relevant values include geometry, topology edges, feature segments,
 silhouettes, creases, strokes, stroke vertices/indices, hatching, construction
 marks and stroke-budget rejections.
 
+During a hydrated scene load, the engine overlay reports missing GLB geometry
+and then `Preparing dynamic NPR scene`. Presentation becomes ready only after a
+covered loading frame has been emitted. Runtime diagnostics distinguish prepared
+Drawing Studio packets (`npr`) from animated model-space contributions
+(`npr_meshes`); camera and actor motion must change the latter's rendered image
+without increasing `packet_builds`.
+
 The NPR domain supports `Final`, `FeatureClasses` and `StrokeIds` debug views.
 These are resolved in the NPR domain packet, not by renderer-side inspection.
 
@@ -21,8 +28,9 @@ generation, scene revision and processed input ID. `stages` separates extraction
 CPU submit, readback wait/copy and JPEG encoding. Native GPU has zero readback and
 encoding time. Consumer acknowledgments contain decode/presentation durations;
 these describe submission to the presentation API, not physical monitor scanout.
-`packet_builds` distinguishes geometry rebuilds from fade-only frames. Stroke redraw cadence
-is controlled by `NprMotionPolicy`, not by display FPS. `Pause sketch` affects
+`packet_builds` distinguishes Drawing Studio geometry rebuilds from fade-only frames.
+Runtime mesh NPR follows host frames and is not rate-limited by `NprMotionPolicy`.
+`Pause sketch` affects
 gesture variation independently from object animation playback.
 
 Action errors carry request IDs and control identifiers. Import/catalog failures

@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use amigo_assets::AssetKey;
 use amigo_math::{ColorRgba, Transform3, Vec3};
 
@@ -40,14 +42,33 @@ impl Default for Light3dRenderSettings {
 #[derive(Debug, Clone)]
 pub struct MeshGeometry3d {
     pub positions: Vec<[f32; 3]>,
+    /// Immutable reference pose, shared by all sampled animation frames.
+    /// Surface-attached procedural coordinates must not follow camera space.
+    pub reference_positions: Arc<[[f32; 3]]>,
     pub indices: Vec<u32>,
+    /// Stable glTF material index for each indexed triangle. `u32::MAX` means
+    /// the source primitive had no material assignment.
+    pub material_indices: Vec<u32>,
+    /// glTF base-color factors indexed by `material_indices`; NPR uses their
+    /// luminance as a tone cue while retaining its authored graphite palette.
+    pub material_colors: Arc<[[f32; 4]]>,
+    /// Immutable indexed-edge adjacency prepared once when the asset is loaded.
+    pub topology_edges: Vec<MeshTopologyEdge3d>,
+    /// Edge indices corresponding to each source triangle's AB, BC and CA edges.
+    pub triangle_edges: Vec<[u32; 3]>,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct MeshTopologyEdge3d {
+    pub vertices: [u32; 2],
+    pub faces: [Option<u32>; 2],
 }
 
 #[derive(Debug, Clone)]
 pub struct Mesh3d {
     pub mesh_asset: AssetKey,
     pub transform: Transform3,
-    pub geometry: Option<MeshGeometry3d>,
+    pub geometry: Option<Arc<MeshGeometry3d>>,
 }
 
 #[derive(Debug, Clone)]

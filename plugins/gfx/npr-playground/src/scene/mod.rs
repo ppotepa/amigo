@@ -20,7 +20,7 @@ impl amigo_scene::SceneComponentPluginSpec for NprPlaygroundSceneComponentSpec {
     type Payload = NprPlaygroundSceneDocument;
     type DescriptorProvider = descriptors::NprPlaygroundSceneDescriptorProvider;
     type SchemaProvider = document::NprPlaygroundSceneSchemaProvider;
-    type PluginHydrator = hydration::NprPlaygroundPluginComponentHydrator;
-    type GraphProvider = graph::NprPlaygroundPluginGraphProvider;
+    type PluginHydrator = hydration::NprComponentHydrator;
+    type GraphProvider = graph::NprGraphProvider;
     type MetadataProvider = metadata::NprPlaygroundComponentMetadataProvider;
 }

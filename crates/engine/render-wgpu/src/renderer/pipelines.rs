@@ -9,6 +9,19 @@ pub fn create_color_pipeline(
     blend: BlendState,
     vertices: &[wgpu::VertexBufferLayout<'_>],
 ) -> wgpu::RenderPipeline {
+    create_color_pipeline_with_depth(device, shader, layout, format, label, blend, vertices, None)
+}
+
+pub(crate) fn create_color_pipeline_with_depth(
+    device: &wgpu::Device,
+    shader: &wgpu::ShaderModule,
+    layout: &wgpu::PipelineLayout,
+    format: wgpu::TextureFormat,
+    label: &'static str,
+    blend: BlendState,
+    vertices: &[wgpu::VertexBufferLayout<'_>],
+    depth_stencil: Option<wgpu::DepthStencilState>,
+) -> wgpu::RenderPipeline {
     device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
         label: Some(label),
         layout: Some(layout),
@@ -37,7 +50,7 @@ pub fn create_color_pipeline(
             polygon_mode: wgpu::PolygonMode::Fill,
             conservative: false,
         },
-        depth_stencil: None,
+        depth_stencil,
         multisample: wgpu::MultisampleState::default(),
         multiview_mask: None,
         cache: None,

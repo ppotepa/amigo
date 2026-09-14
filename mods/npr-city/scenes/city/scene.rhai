@@ -26,7 +26,7 @@ fn camera(world, x, y, z, tx, ty, tz, fov) {
   let dx = tx - x;
   let dy = ty - y;
   let dz = tz - z;
-  let horizontal = if dx * dx + dz * dz > 0.0001 { dx * dx + dz * dz } else { 0.0001 };
+  let horizontal = if dx * dx + dz * dz > 0.0001 { (dx * dx + dz * dz).sqrt() } else { 0.01 };
   let pitch = atan_approx(dy / horizontal);
   let yaw = atan2_approx(-dx, -dz);
   world.entities.set_pose_3d("city-camera", x, y, z, pitch, yaw, 0.0);
@@ -76,7 +76,7 @@ fn shot(world, t) {
   let hx = hero_x(world); let hz = hero_z(world);
   if t < 4.0 {
     let u = smootherstep(t / 4.0);
-    camera(world, lerp(30.0, 22.0, u), lerp(16.5, 10.5, u), lerp(31.0, 23.0, u), 0.0, lerp(1.0, 1.25, u), lerp(1.0, -1.5, u), lerp(43.0, 39.0, u));
+    camera(world, hx + lerp(4.5, 3.8, u), lerp(1.9, 1.7, u), hz + lerp(4.0, 3.4, u), hx, 1.15, hz, 36.0);
   } else if t < 8.0 {
     let u = smoothstep((t - 4.0) / 4.0);
     camera(world, lerp(7.4, 3.9, u), 1.72, lerp(-12.6, -11.1, u), hx, 1.28, hz, 36.0);
@@ -101,8 +101,23 @@ fn shot(world, t) {
   }
 }
 
-fn on_enter() { world.state.set_float("npr-city.start", world.time.elapsed()); }
+fn update_actor_animation(world, t) {
+  let hero_clip = if t >= 4.0 && t < 21.0 { "CharacterArmature|Walk" } else { "CharacterArmature|Idle" };
+  let support_clip = if t >= 21.0 && t < 23.2 { "CharacterArmature|Walk" } else { "CharacterArmature|Idle" };
+  let civilian_clip = if t >= 5.0 && t < 20.0 { "CharacterArmature|Walk" } else { "CharacterArmature|Idle" };
+  world.mesh3d.play_animation("hero-officer", hero_clip, 1.0, true, 8.0);
+  world.mesh3d.play_animation("support-officer", support_clip, 1.0, true, 8.0);
+  world.mesh3d.play_animation("civilian-01", civilian_clip, 1.0, true, 8.0);
+}
+
+fn on_enter() {
+  world.state.set_float("npr-city.start", world.time.elapsed());
+  update_actor_animation(world, 0.0);
+}
 fn update(dt) {
-  let t = timeline_time(world);
+  // Hold character, traffic and camera poses at 8 Hz while the host keeps
+  // processing input and presenting frames independently.
+  let t = (timeline_time(world) * 8.0).floor() / 8.0;
+  update_actor_animation(world, t);
   hero(world, t); support(world, t); civilian(world, t); traffic(world, t); shot(world, t);
 }

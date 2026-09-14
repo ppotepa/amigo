@@ -2,6 +2,70 @@
 
 use amigo_render_npr::{NprDebugView, NprRenderPacket, NprStyleLayers};
 
+use crate::MeshDrawCommand;
+
+/// A camera-independent NPR mesh contribution. Geometry remains in model space
+/// so an animated runtime can submit current camera and instance transforms
+/// every frame without rebuilding a screen-space drawing packet.
+#[derive(Debug, Clone)]
+pub struct NprMeshDrawCommand {
+    pub mesh: MeshDrawCommand,
+    pub style: NprMeshStyle,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct NprMeshStyle {
+    pub background: [f32; 4],
+    pub fill: [f32; 4],
+    pub shadow: [f32; 4],
+    pub ink: [f32; 4],
+    pub light_direction: [f32; 3],
+    /// Stable redraw epoch. It advances at the authored stroke cadence rather
+    /// than at host FPS, so line boiling holds between artistic frames.
+    pub artistic_frame: u64,
+    /// Whether this contribution participates in the global artistic redraw
+    /// cadence. Runtime NPR sets this for every mesh so stationary geometry
+    /// also receives fresh hand-drawn realizations.
+    pub temporal: bool,
+    pub draw_silhouettes: bool,
+    pub draw_creases: bool,
+    pub draw_material_seams: bool,
+    /// Emits restrained interior form lines for smooth/suggestive presets.
+    /// This is an explicit domain contribution, not a renderer guess.
+    pub draw_form_lines: bool,
+    /// Emits sparse contact/value boundaries where adjacent visible faces
+    /// cross a meaningful lighting transition.
+    pub draw_contact_lines: bool,
+    pub outline_width_pixels: f32,
+    pub boundary_width_pixels: f32,
+    pub crease_width_pixels: f32,
+    pub form_line_width_pixels: f32,
+    pub contact_line_width_pixels: f32,
+    pub crease_angle_radians: f32,
+    pub wobble_pixels: f32,
+    /// Number of correlated samples used to turn a straight projected edge
+    /// into a hand gesture. This is deliberately an authored quality knob.
+    pub stroke_segments: u8,
+    /// Enables topology-chain synthesis for an authored character/object.
+    /// Large architectural meshes intentionally keep the cheaper edge path.
+    pub join_strokes: bool,
+    /// Local pressure variation, separate from the average tool pressure.
+    pub pressure_variation: f32,
+    pub taper: f32,
+    pub overstroke: f32,
+    pub pressure: f32,
+    pub hardness: f32,
+    pub dryness: f32,
+    /// Graphite grain amount for pencil-like strokes. Zero keeps the ink path.
+    pub pencil_grain: f32,
+    pub redraw_strength: f32,
+    pub hatching_enabled: bool,
+    pub hatching_angle_degrees: f32,
+    pub hatching_spacing_pixels: f32,
+    pub hatching_cross: f32,
+    pub hatching_density: f32,
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct NprDrawCommand {
     pub object_id: String,

@@ -1,1 +1,1 @@
-//! Runtime-owned state is registered by [`crate::NprPlaygroundPlugin`].
+//! Runtime-owned state is registered by [`crate::NprPlugin`].

@@ -8,7 +8,7 @@ use amigo_render_api::{
     RenderSceneView, ScopedPostFx2dStack,
 };
 use amigo_render_api::{LightRoute2dCommand, RenderLayer2dCommand};
-use amigo_render_api::{NprBackgroundCommand, NprDrawCommand};
+use amigo_render_api::{NprBackgroundCommand, NprDrawCommand, NprMeshDrawCommand};
 
 use crate::{
     Renderable2dItem, UiOverlayDocument, WgpuOffscreenTarget, WgpuSurfaceState,
@@ -131,6 +131,7 @@ pub struct WgpuWorld3dRenderInput<'a> {
     pub meshes: &'a [MeshDrawCommand],
     pub materials: &'a [MaterialDrawCommand],
     pub text3d: Option<&'a [Text3dDrawCommand]>,
+    pub npr_meshes: &'a [NprMeshDrawCommand],
     pub npr: &'a [NprDrawCommand],
     pub npr_background: Option<NprBackgroundCommand>,
 }

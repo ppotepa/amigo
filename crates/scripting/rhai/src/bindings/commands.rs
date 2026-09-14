@@ -562,6 +562,32 @@ pub fn queue_mesh3d_spawn(
     )
 }
 
+pub fn queue_mesh3d_animation(
+    command_queue: Option<&Arc<ScriptCommandQueue>>,
+    entity_name: &str,
+    clip: &str,
+    speed: f32,
+    looped: bool,
+) -> bool {
+    queue_placeholder_command(command_queue, "3d.mesh", "play_animation", vec![
+        entity_name.to_owned(), clip.to_owned(), speed.to_string(), looped.to_string(),
+    ])
+}
+
+pub fn queue_mesh3d_sampled_animation(
+    command_queue: Option<&Arc<ScriptCommandQueue>>,
+    entity_name: &str,
+    clip: &str,
+    speed: f32,
+    looped: bool,
+    sample_fps: f32,
+) -> bool {
+    queue_placeholder_command(command_queue, "3d.mesh", "play_animation", vec![
+        entity_name.to_owned(), clip.to_owned(), speed.to_string(), looped.to_string(),
+        sample_fps.to_string(),
+    ])
+}
+
 pub fn queue_material3d_bind(
     launch_selection: Option<&Arc<LaunchSelection>>,
     command_queue: Option<&Arc<ScriptCommandQueue>>,

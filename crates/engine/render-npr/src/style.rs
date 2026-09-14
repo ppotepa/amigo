@@ -359,6 +359,51 @@ impl ComicInkOverrides {
         inherited
     }
 
+    /// Keeps the scene's paper, palette and lighting while importing only the
+    /// drawing-tool behavior of a named preset. Runtime role presets use this
+    /// boundary so characters and architecture share one visual medium.
+    pub fn technique_only(style: ComicInk) -> Self {
+        Self {
+            tool: Some(style.tool),
+            tone_mode: Some(style.tone_mode),
+            surface_mode: Some(style.surface_mode),
+            crease_angle: Some(style.crease_angle),
+            smooth_crease_angle: Some(style.smooth_crease_angle),
+            smooth_draw_creases: Some(style.smooth_draw_creases),
+            outline_width: Some(style.outline_width),
+            crease_width: Some(style.crease_width),
+            boundary_width: Some(style.boundary_width),
+            min_crease_length_pixels: Some(style.min_crease_length_pixels),
+            min_smooth_contour_length_pixels: Some(style.min_smooth_contour_length_pixels),
+            smooth_contour_simplification_pixels: Some(style.smooth_contour_simplification_pixels),
+            taper: Some(style.taper),
+            wobble: Some(style.wobble),
+            gesture_confidence: Some(style.gesture_confidence),
+            gesture_simplification: Some(style.gesture_simplification),
+            gesture_correction: Some(style.gesture_correction),
+            gesture_overstroke: Some(style.gesture_overstroke),
+            tool_pressure: Some(style.tool_pressure),
+            tool_hardness: Some(style.tool_hardness),
+            paper_tooth: Some(style.paper_tooth),
+            paper_grain: Some(style.paper_grain),
+            nib_angle: Some(style.nib_angle),
+            nib_aspect: Some(style.nib_aspect),
+            ink_dryness: Some(style.ink_dryness),
+            tone_density: Some(style.tone_density),
+            min_form_line_confidence: Some(style.min_form_line_confidence),
+            suggestive_contours: Some(style.suggestive_contours),
+            suggestive_contour_confidence: Some(style.suggestive_contour_confidence),
+            suggestive_contour_width_scale: Some(style.suggestive_contour_width_scale),
+            suggestive_contour_opacity: Some(style.suggestive_contour_opacity),
+            form_line_width_scale: Some(style.form_line_width_scale),
+            form_line_opacity: Some(style.form_line_opacity),
+            hatching_angle: Some(style.hatching_angle),
+            hatching_spacing: Some(style.hatching_spacing),
+            hatching_cross: Some(style.hatching_cross),
+            ..Self::default()
+        }
+    }
+
     /// Captures every property explicitly. This is reserved for callers that
     /// intentionally detach a style; ordinary local editing should set just
     /// the edited field and preserve inheritance.

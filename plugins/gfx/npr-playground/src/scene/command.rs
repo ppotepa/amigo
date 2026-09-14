@@ -16,9 +16,9 @@ pub struct NprPlaygroundSceneCommand {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-struct NprPlaygroundPluginSceneCommandPayload(NprPlaygroundSceneCommand);
+struct NprPluginSceneCommandPayload(NprPlaygroundSceneCommand);
 
-impl PluginSceneCommandPayload for NprPlaygroundPluginSceneCommandPayload {
+impl PluginSceneCommandPayload for NprPluginSceneCommandPayload {
     fn command_type(&self) -> &'static str { NPR_PLAYGROUND_SCENE_COMMAND_TYPE }
     fn command_as_any(&self) -> &dyn Any { &self.0 }
     fn eq_payload(&self, other: &dyn PluginSceneCommandPayload) -> bool {
@@ -30,7 +30,7 @@ impl PluginSceneCommandPayload for NprPlaygroundPluginSceneCommandPayload {
 }
 
 pub fn npr_playground_plugin_scene_command(command: NprPlaygroundSceneCommand) -> PluginSceneCommand {
-    PluginSceneCommand::new(Arc::new(NprPlaygroundPluginSceneCommandPayload(command)))
+    PluginSceneCommand::new(Arc::new(NprPluginSceneCommandPayload(command)))
 }
 
 pub struct NprPlaygroundSceneCommandHandler;

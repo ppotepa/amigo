@@ -6,6 +6,7 @@ use amigo_scripting_api::{
     ScriptComponentService, ScriptExecutionRole, ScriptLifecycleState, ScriptRuntimeService,
 };
 use amigo_state::SceneTimerService;
+use amigo_session::{RuntimeLoadingService, RuntimeLoadingState};
 
 use crate::bindings::ScriptTimeState;
 
@@ -71,6 +72,16 @@ pub fn tick_active_scripts(runtime: &Runtime, delta_seconds: f32) -> AmigoResult
     let script_runtime = required::<ScriptRuntimeService>(runtime)?;
     let lifecycle = required::<ScriptLifecycleState>(runtime)?;
     let frame_clock = required::<RhaiFrameClock>(runtime)?;
+
+    // Scene scripts must not consume their timeline while the engine is still
+    // preparing the first presentable frame. Otherwise a cinematic can finish
+    // its opening shot behind the loading overlay and appear frozen on entry.
+    if runtime
+        .resolve::<RuntimeLoadingService>()
+        .is_some_and(|loading| loading.snapshot().state == RuntimeLoadingState::Loading)
+    {
+        return Ok(());
+    }
 
     // Shared scripting time is a frame-level concern, not a script-level concern.
     // Advance it exactly once before dispatching any active script callbacks.

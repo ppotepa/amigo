@@ -3,7 +3,9 @@ use std::sync::Arc;
 use amigo_core::LaunchSelection;
 use amigo_scripting_api::ScriptCommandQueue;
 
-use crate::bindings::commands::queue_mesh3d_spawn;
+use crate::bindings::commands::{
+    queue_mesh3d_animation, queue_mesh3d_sampled_animation, queue_mesh3d_spawn,
+};
 
 #[derive(Clone)]
 pub struct Mesh3dApi {
@@ -20,10 +22,30 @@ impl Mesh3dApi {
             mesh_key,
         )
     }
+
+    pub fn play_animation(&mut self, entity_name: &str, clip: &str, speed: f64, looped: bool) -> bool {
+        queue_mesh3d_animation(self.command_queue.as_ref(), entity_name, clip, speed as f32, looped)
+    }
+
+    pub fn play_animation_sampled(
+        &mut self,
+        entity_name: &str,
+        clip: &str,
+        speed: f64,
+        looped: bool,
+        sample_fps: f64,
+    ) -> bool {
+        queue_mesh3d_sampled_animation(
+            self.command_queue.as_ref(), entity_name, clip, speed as f32, looped,
+            sample_fps as f32,
+        )
+    }
 }
 
 pub(crate) fn register_api(engine: &mut rhai::Engine) {
     engine
         .register_type_with_name::<Mesh3dApi>("WorldMesh3d")
-        .register_fn("queue", Mesh3dApi::queue);
+        .register_fn("queue", Mesh3dApi::queue)
+        .register_fn("play_animation", Mesh3dApi::play_animation)
+        .register_fn("play_animation", Mesh3dApi::play_animation_sampled);
 }

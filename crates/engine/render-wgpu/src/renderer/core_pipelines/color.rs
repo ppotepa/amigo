@@ -12,7 +12,6 @@ pub(crate) struct ColorAlphaPipelineProvider;
 pub(crate) struct ColorAdditivePipelineProvider;
 pub(crate) struct ColorMultiplyPipelineProvider;
 pub(crate) struct ColorScreenPipelineProvider;
-
 impl WgpuCorePipelineProvider for ColorAlphaPipelineProvider {
     fn pipeline_id(&self) -> &'static str {
         CORE_COLOR_ALPHA_PIPELINE

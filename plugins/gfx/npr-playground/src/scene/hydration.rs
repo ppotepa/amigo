@@ -9,9 +9,9 @@ use super::{
 };
 
 #[derive(Default)]
-pub struct NprPlaygroundPluginComponentHydrator;
+pub struct NprComponentHydrator;
 
-impl PluginComponentHydrator for NprPlaygroundPluginComponentHydrator {
+impl PluginComponentHydrator for NprComponentHydrator {
     fn provider_id(&self) -> &'static str { "amigo.gfx.npr-playground" }
     fn component_type(&self) -> &'static str { NPR_SETTINGS_COMPONENT_TYPE }
 

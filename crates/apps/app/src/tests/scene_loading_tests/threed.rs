@@ -1,7 +1,10 @@
 use super::super::*;
 
 use amigo_npr_playground_plugin::playground::{NprPlaygroundIntent, NprPlaygroundService};
-use std::fs;
+use std::{
+    fs, thread,
+    time::{Duration, Instant},
+};
 
 fn npr_edit(service: &NprPlaygroundService, intent: NprPlaygroundIntent) {
     service
@@ -32,6 +35,80 @@ fn pencil_fixture(service: &NprPlaygroundService) {
             speed: 1.,
             sketch_paused: false,
         },
+    );
+}
+
+/// Runtime scenes publish camera-independent NPR meshes while Drawing Studio
+/// fixtures continue to publish prepared drawing packets.
+fn capture_ready_npr_frame(preview: &mut crate::ScenePreviewHost) -> crate::ScenePreviewFrame {
+    let deadline = Instant::now() + Duration::from_secs(120);
+    let mut ready_before_frame = false;
+    while Instant::now() < deadline {
+        let frame = preview
+            .capture_next_frame()
+            .expect("NPR preview frame should render offscreen");
+        let packet = amigo_runtime_bundles::default_wgpu_render_extractor_registry_for_runtime(
+            preview.runtime().unwrap(),
+        )
+        .extract_all(preview.runtime().unwrap());
+        let loading_ready = preview
+            .runtime()
+            .unwrap()
+            .required::<amigo_session::RuntimeLoadingService>()
+            .unwrap()
+            .snapshot()
+            .state
+            == amigo_session::RuntimeLoadingState::Ready;
+        if ready_before_frame && (!packet.npr().is_empty() || !packet.npr_meshes().is_empty()) {
+            return frame;
+        }
+        ready_before_frame = loading_ready;
+        thread::sleep(Duration::from_millis(10));
+    }
+    let loading = preview
+        .runtime()
+        .unwrap()
+        .required::<amigo_session::RuntimeLoadingService>()
+        .unwrap()
+        .snapshot();
+    let assets = preview
+        .runtime()
+        .unwrap()
+        .required::<amigo_assets::AssetCatalog>()
+        .unwrap();
+    let mesh_service = preview
+        .runtime()
+        .unwrap()
+        .required::<amigo_3d_mesh::MeshSceneService>()
+        .unwrap();
+    let meshes = mesh_service.commands();
+    let geometries = meshes
+        .iter()
+        .filter(|command| {
+            mesh_service
+                .geometry_for(&command.mesh.mesh_asset)
+                .is_some()
+        })
+        .count();
+    let geometry_sizes = meshes
+        .iter()
+        .filter_map(|command| {
+            mesh_service
+                .geometry_for(&command.mesh.mesh_asset)
+                .map(|geometry| (geometry.positions.len(), geometry.indices.len()))
+        })
+        .collect::<std::collections::BTreeSet<_>>();
+    panic!(
+        "NPR preparation did not publish a render contribution: state={:?}, stage={}, item={:?}, error={:?}, assets={:?}, failures={:?}, meshes={}, source_geometries={}, geometry_sizes={:?}",
+        loading.state,
+        loading.stage,
+        loading.current_item,
+        loading.error,
+        assets.loading_summary(),
+        assets.failed_assets(),
+        meshes.len(),
+        geometries,
+        geometry_sizes,
     );
 }
 
@@ -127,6 +204,189 @@ fn playground_3d_main_scene_bootstraps() {
 }
 
 #[test]
+fn npr_city_resolves_loading_presentation_before_hydration() {
+    let (runtime, summary) = bootstrap_with_options(
+        BootstrapOptions::new(mods_root())
+            .with_active_mods(vec!["core".to_owned(), "npr-city".to_owned()])
+            .with_startup_mod("npr-city")
+            .with_startup_scene("city")
+            .with_dev_mode(true),
+    )
+    .expect("NPR city bootstrap should succeed");
+
+    assert!(summary.failed_assets.is_empty());
+    let presentation = runtime
+        .required::<amigo_session::RuntimeLoadingService>()
+        .unwrap()
+        .snapshot()
+        .presentation;
+    assert_eq!(presentation.title, "Preparing city blocks");
+    assert_eq!(presentation.accent.as_deref(), Some("#F6B44C"));
+    assert_eq!(presentation.background.as_deref(), Some("#101827E8"));
+}
+
+#[test]
+fn npr_city_publishes_a_complete_npr_packet_after_loading() {
+    let options = crate::ScenePreviewOptions::new(mods_root(), "npr-city", "city", 512, 512)
+        .with_active_mods(vec!["core".to_owned(), "npr-city".to_owned()])
+        .with_warmup_frames(0)
+        .with_playback_delta_seconds(1.0 / 30.0);
+    let mut preview = crate::ScenePreviewHost::new(options);
+    preview.warmup(1).unwrap();
+
+    let first_frame = preview
+        .capture_next_frame()
+        .expect("NPR city should render its loading frame");
+    let first_packet = amigo_runtime_bundles::default_wgpu_render_extractor_registry_for_runtime(
+        preview.runtime().unwrap(),
+    )
+    .extract_all(preview.runtime().unwrap());
+    assert!(
+        first_packet.world_3d_meshes().is_empty(),
+        "NPR city must not expose standard Mesh3D content during preparation"
+    );
+    assert!(
+        first_packet.world_3d_materials().is_empty(),
+        "NPR city must not expose standard material content during preparation"
+    );
+    assert!(
+        first_packet.world_3d_text().is_empty(),
+        "NPR city must not expose standard text content during preparation"
+    );
+    assert!(
+        !first_packet.game_ui_overlay().is_empty(),
+        "NPR city must keep the engine loading overlay visible during preparation"
+    );
+    assert!(
+        !first_frame.pixels_rgba8.is_empty(),
+        "loading frame should be valid"
+    );
+    let loading_black_pixels = first_frame
+        .pixels_rgba8
+        .chunks_exact(4)
+        .filter(|pixel| pixel[0] < 16 && pixel[1] < 16 && pixel[2] < 16)
+        .count();
+    assert!(
+        loading_black_pixels > 512 * 512 * 3 / 4,
+        "loading presentation must cover scene rendering with a black screen"
+    );
+
+    let frame = capture_ready_npr_frame(&mut preview);
+    capture_npr_candidate("npr-city-ink", &frame.pixels_rgba8);
+    let packet = amigo_runtime_bundles::default_wgpu_render_extractor_registry_for_runtime(
+        preview.runtime().unwrap(),
+    )
+    .extract_all(preview.runtime().unwrap());
+    assert!(
+        packet.npr_meshes().len() >= 80,
+        "NPR city should publish every model-space mesh every frame"
+    );
+    let style_for = |entity: &str| {
+        packet
+            .npr_meshes()
+            .iter()
+            .find(|command| command.mesh.entity_name == entity)
+            .map(|command| command.style)
+            .expect("authored NPR runtime entity should publish its style")
+    };
+    let hero_style = style_for("hero-officer");
+    let support_style = style_for("support-officer");
+    let civilian_style = style_for("civilian-01");
+    assert!(hero_style.hatching_enabled && support_style.hatching_enabled);
+    assert!(hero_style.join_strokes);
+    assert!(!support_style.join_strokes);
+    assert_ne!(hero_style.wobble_pixels, support_style.wobble_pixels);
+    assert_ne!(hero_style.hatching_angle_degrees, civilian_style.hatching_angle_degrees);
+    assert!(
+        packet.npr().is_empty(),
+        "animated NPR scenes must not retain camera-dependent drawing packets"
+    );
+    assert!(
+        packet.world_3d_meshes().is_empty(),
+        "NPR city must not also publish the standard Mesh3D presentation"
+    );
+    assert!(
+        packet.world_3d_materials().is_empty(),
+        "NPR city must not also publish the standard material presentation"
+    );
+    assert!(
+        packet.world_3d_text().is_empty(),
+        "NPR city must not also publish the standard text presentation"
+    );
+    assert_eq!(
+        preview
+            .runtime()
+            .unwrap()
+            .required::<amigo_session::RuntimeLoadingService>()
+            .unwrap()
+            .snapshot()
+            .state,
+        amigo_session::RuntimeLoadingState::Ready
+    );
+    // Pencil coverage is deliberately translucent. The previous near-black
+    // threshold counted stacked, incorrectly unoccluded contours as success.
+    // Require clearly contrasting graphite (at least 60 levels below paper),
+    // while keeping the independent light-ground and animation checks below.
+    let graphite_pixels = frame
+        .pixels_rgba8
+        .chunks_exact(4)
+        .filter(|pixel| pixel[0] < 180 && pixel[1] < 180 && pixel[2] < 180)
+        .count();
+    let white_pixels = frame
+        .pixels_rgba8
+        .chunks_exact(4)
+        .filter(|pixel| pixel[0] > 235 && pixel[1] > 235 && pixel[2] > 235)
+        .count();
+    assert!(
+        graphite_pixels > 200,
+        "Graphite contours must contrast with the paper in the completed frame"
+    );
+    assert!(
+        white_pixels > 512 * 512 / 2,
+        "Ink scene must have a light paper ground"
+    );
+
+    let next = preview
+        .capture_next_frame()
+        .expect("animated NPR city frame should render");
+    let mut advanced = next;
+    for _ in 0..4 {
+        advanced = preview
+            .capture_next_frame()
+            .expect("animated NPR city frame should render");
+    }
+    assert_ne!(
+        frame.pixels_rgba8, advanced.pixels_rgba8,
+        "camera, sampled pose and line boiling must advance at the authored 8 FPS cadence"
+    );
+
+    let hero_positions = |preview: &crate::ScenePreviewHost| {
+        let packet = amigo_runtime_bundles::default_wgpu_render_extractor_registry_for_runtime(
+            preview.runtime().unwrap(),
+        )
+        .extract_all(preview.runtime().unwrap());
+        packet
+            .npr_meshes()
+            .iter()
+            .find(|command| command.mesh.entity_name == "hero-officer")
+            .and_then(|command| command.mesh.mesh.geometry.as_ref())
+            .map(|geometry| geometry.positions.clone())
+            .expect("hero NPR mesh should expose sampled geometry")
+    };
+    let before_animation = hero_positions(&preview);
+    for frame_index in 0..180 {
+        let animation_frame = preview
+            .capture_next_frame()
+            .expect("animated NPR city frame should render");
+        if [30, 90, 179].contains(&frame_index) {
+            capture_npr_candidate(&format!("npr-city-animation-{frame_index:03}"), &animation_frame.pixels_rgba8);
+        }
+    }
+    let after_animation = hero_positions(&preview);
+    assert_ne!(before_animation, after_animation, "GLB animation must deform hero vertices over time");
+}
+
+#[test]
 fn npr_playground_offscreen_matches_packet_contract() {
     let options = crate::ScenePreviewOptions::new(mods_root(), "npr-playground", "cube", 512, 512)
         .with_active_mods(vec!["core".to_owned(), "npr-playground".to_owned()])
@@ -159,9 +419,7 @@ fn npr_playground_offscreen_matches_packet_contract() {
         },
     );
     npr_edit(&service, NprPlaygroundIntent::SetSeed { seed: 42 });
-    let first = preview
-        .capture_rgba8()
-        .expect("NPR preview should render offscreen");
+    let first = capture_ready_npr_frame(&mut preview);
     capture_npr_candidate("cube-512-candidate", &first.pixels_rgba8);
     verify_reviewed_npr_image("cube-512", &first.pixels_rgba8);
     let packet = amigo_runtime_bundles::default_wgpu_render_extractor_registry_for_runtime(
@@ -175,7 +433,7 @@ fn npr_playground_offscreen_matches_packet_contract() {
     assert_eq!(stats.viewport, [512, 512]);
     assert_eq!(
         packet.npr()[0].packet.fingerprint().hash,
-        1_855_321_817_102_543_714
+        12_131_211_759_204_130_156
     );
     assert!(
         first
@@ -199,9 +457,7 @@ fn npr_pencil_profile_uses_depth_occluders_without_color_bands() {
         .required::<NprPlaygroundService>()
         .unwrap();
     pencil_fixture(&service);
-    let image = preview
-        .capture_rgba8()
-        .expect("pencil profile should render offscreen");
+    let image = capture_ready_npr_frame(&mut preview);
     capture_npr_candidate("pencil-cube-512-candidate", &image.pixels_rgba8);
     verify_reviewed_npr_image("pencil-cube-512", &image.pixels_rgba8);
     let packet = amigo_runtime_bundles::default_wgpu_render_extractor_registry_for_runtime(
@@ -212,7 +468,7 @@ fn npr_pencil_profile_uses_depth_occluders_without_color_bands() {
     assert!(!command.packet.occluders.is_empty());
     assert!(command.packet.fills.is_empty());
     assert!(command.packet.stats.hatching_strokes > 0);
-    assert_eq!(command.packet.fingerprint().hash, 3_120_497_883_406_475_149);
+    assert_eq!(command.packet.fingerprint().hash, 5_823_521_104_577_903_901);
     let darkest = image
         .pixels_rgba8
         .chunks_exact(4)
@@ -276,9 +532,7 @@ fn npr_pencil_cylinder_streamlines_match_reviewed_golden() {
         },
     );
     pencil_fixture(&service);
-    let image = preview
-        .capture_rgba8()
-        .expect("pencil cylinder should render offscreen");
+    let image = capture_ready_npr_frame(&mut preview);
     capture_npr_candidate("pencil-cylinder-512-candidate", &image.pixels_rgba8);
     verify_reviewed_npr_image("pencil-cylinder-512", &image.pixels_rgba8);
     let packet = amigo_runtime_bundles::default_wgpu_render_extractor_registry_for_runtime(
@@ -291,7 +545,7 @@ fn npr_pencil_cylinder_streamlines_match_reviewed_golden() {
     assert!(!command.packet.occluders.is_empty());
     assert!(command.packet.fills.is_empty());
     assert!(command.packet.stats.hatching_strokes > 0);
-    assert_eq!(command.packet.fingerprint().hash, 4_859_497_068_049_137_257);
+    assert_eq!(command.packet.fingerprint().hash, 8_103_697_224_930_990_954);
     assert!(
         command
             .packet

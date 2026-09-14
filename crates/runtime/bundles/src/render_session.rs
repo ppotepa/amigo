@@ -157,6 +157,7 @@ pub fn prepare_wgpu_world_3d_render_input(
         meshes: render_packet.world_3d_meshes(),
         materials: render_packet.world_3d_materials(),
         text3d: Some(render_packet.world_3d_text()),
+        npr_meshes: render_packet.npr_meshes(),
         npr: render_packet.npr(),
         npr_background: render_packet.npr_background(),
     }

@@ -215,11 +215,11 @@ impl Display for BootstrapSummary {
             "plugins: {}",
             app_helpers::display_string_list(&self.plugins)
         )?;
-        write!(
-            f,
-            "services: {}",
-            app_helpers::display_string_list(&self.services)
-        )
+        // The registry contains fully-qualified Rust type names (including
+        // generic parameters). Printing that vector inline makes the startup
+        // banner unreadable. Diagnostics still expose the complete list; the
+        // bootstrap banner only needs the useful health signal.
+        write!(f, "services: {} registered", self.services.len())
     }
 }
 

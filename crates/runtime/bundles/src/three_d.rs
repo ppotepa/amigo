@@ -6,7 +6,9 @@ use amigo_3d_physics::Physics3dPlugin;
 use amigo_3d_text::Text3dPlugin;
 use amigo_assets::PreparedAssetKind;
 use amigo_core::AmigoResult;
-use amigo_runtime::{PluginBundle, RuntimeBuilder, RuntimePlugin, ServiceRegistry};
+use amigo_runtime::{
+    PluginBundle, RuntimeBuilder, RuntimePlugin, ServiceRegistry, SystemPhase,
+};
 use amigo_session::RuntimeSession;
 
 use crate::{LoadedAssetDomainPreparer, LoadedAssetDomainPreparerRegistry};
@@ -52,11 +54,30 @@ impl LoadedAssetDomainPreparer for MeshLoadedAssetPreparer {
         {
             return;
         }
-        if let Err(reason) = self
+        if self
             .meshes
-            .load_source_geometry(key.clone(), &prepared.resolved_path)
+            .request_source_geometry(key.clone(), &prepared.resolved_path)
         {
-            catalog.mark_failed(key.clone(), format!("failed to import GLB mesh: {reason}"));
+            // The asset is parsed asynchronously. Keep it in the catalog's
+            // external-loading set until the mesh service reports completion.
+            catalog.begin_external_prepare(key.clone());
+        }
+    }
+
+    fn poll(&self, catalog: &amigo_assets::AssetCatalog) {
+        for (key, result) in self.meshes.poll_source_geometry() {
+            match result {
+                Ok(()) => {
+                    if let Some(prepared) = catalog.prepared_asset(&key) {
+                        // Re-publishing the prepared record removes the
+                        // external-loading marker while retaining metadata.
+                        catalog.mark_prepared(prepared);
+                    }
+                }
+                Err(reason) => {
+                    catalog.mark_failed(key, format!("failed to import GLB mesh: {reason}"));
+                }
+            }
         }
     }
 }
@@ -70,6 +91,16 @@ impl RuntimePlugin for ThreeDMeshAssetPreparerPlugin {
         let preparers = registry.required::<LoadedAssetDomainPreparerRegistry>()?;
         let meshes = registry.required::<MeshSceneService>()?;
         preparers.register(Arc::new(MeshLoadedAssetPreparer { meshes }));
+        registry.required::<amigo_runtime::SystemRegistry>()?.register_fn(
+            SystemPhase::RenderExtract,
+            "amigo-3d-poll-asset-preparers",
+            |runtime| {
+                let catalog = runtime.required::<amigo_assets::AssetCatalog>()?;
+                let preparers = runtime.required::<LoadedAssetDomainPreparerRegistry>()?;
+                preparers.poll_all(catalog.as_ref());
+                Ok(())
+            },
+        );
         Ok(())
     }
 }

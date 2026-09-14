@@ -4,6 +4,7 @@ use amigo_runtime::{Runtime, SystemPhase, SystemRegistry};
 use crate::{
     RenderFrameErrorSummary, RenderFrameLifecycleSummary, RenderFrameSummary,
     RenderSessionLifecycleState, RenderSessionService, RenderTargetInfo, RuntimeCapabilityRegistry,
+    RuntimeLoadingPresentation, RuntimeLoadingService, RuntimeLoadingSnapshot,
     RuntimeFrameInput, RuntimeFrameOutput, RuntimeSessionOptions, RuntimeSessionProfile,
     SceneClearSummary, SceneCommandSummary, SceneHydrationQueueSummary, SceneHydrationSummary,
     SceneLifecycleSummary, SceneLoadRequest, SceneLoadSummary, SceneSession,
@@ -17,6 +18,7 @@ pub struct RuntimeSession {
     runtime: Runtime,
     profile: RuntimeSessionProfile,
     scene_session: SceneSessionService,
+    loading: RuntimeLoadingService,
     render_session: RenderSessionService,
     scheduler_session: SchedulerSessionService,
     script_session: ScriptSessionService,
@@ -33,6 +35,10 @@ impl RuntimeSession {
             .resolve::<RenderSessionService>()
             .map(|service| service.as_ref().clone())
             .unwrap_or_default();
+        let loading = runtime
+            .resolve::<RuntimeLoadingService>()
+            .map(|service| service.as_ref().clone())
+            .unwrap_or_default();
         let scheduler_session = runtime
             .resolve::<SchedulerSessionService>()
             .map(|service| service.as_ref().clone())
@@ -46,11 +52,26 @@ impl RuntimeSession {
             runtime,
             profile,
             scene_session,
+            loading,
             render_session,
             scheduler_session,
             script_session,
             runtime_capabilities: RuntimeCapabilityRegistry::new(),
         }
+    }
+
+    /// Engine-owned loading telemetry shared with runtime composition.
+    pub fn loading_service(&self) -> &RuntimeLoadingService {
+        &self.loading
+    }
+
+    pub fn set_loading_presentation(&self, presentation: RuntimeLoadingPresentation) {
+        self.loading.set_presentation(presentation);
+    }
+
+    /// Runs bounded domain preparation work for one frame.
+    pub fn advance_loading(&self, work_budget: u64) -> RuntimeLoadingSnapshot {
+        self.loading.run_frame(work_budget)
     }
 
     pub fn script_session_service(&self) -> &ScriptSessionService {
@@ -198,6 +219,11 @@ impl RuntimeSession {
     }
 
     pub fn begin_scene_load(&mut self, request: &SceneLoadRequest) -> SceneLifecycleSummary {
+        self.loading.begin("Discovering scene", 4);
+        self.loading.set_stage(
+            "Discovering scene",
+            Some(format!("{}/{}", request.mod_id, request.scene_id)),
+        );
         self.scene_session.begin_scene_load(request)
     }
 
@@ -205,6 +231,8 @@ impl RuntimeSession {
         &mut self,
         document: SceneSessionLoadedDocument,
     ) -> SceneLoadSummary {
+        self.loading.complete_work(2);
+        self.loading.set_stage("Parsing scene", None);
         self.scene_session.complete_scene_load(document)
     }
 
@@ -213,10 +241,15 @@ impl RuntimeSession {
         request: &SceneLoadRequest,
         error: impl Into<String>,
     ) -> SceneLifecycleSummary {
+        let error = error.into();
+        self.loading.fail(format!("scene `{}`: {error}", request.scene_id));
         self.scene_session.fail_scene_load(request, error)
     }
 
     pub fn complete_scene_hydration_queue(&mut self) -> SceneHydrationQueueSummary {
+        self.loading.complete_work(1);
+        self.loading.set_stage("Hydrating scene", None);
+        self.loading.ready();
         self.scene_session.complete_hydration_queue()
     }
 
@@ -228,6 +261,8 @@ impl RuntimeSession {
     }
 
     pub fn mark_scene_hydration_queued(&mut self) -> SceneHydrationSummary {
+        self.loading.complete_work(1);
+        self.loading.set_stage("Hydrating scene", None);
         self.scene_session.mark_hydration_queued()
     }
 

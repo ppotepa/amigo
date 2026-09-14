@@ -158,6 +158,37 @@ fn column_fill_height_uses_remaining_space_and_root_honours_top_and_bottom() {
 }
 
 #[test]
+fn root_edges_resolve_width_from_viewport() {
+    let root = node(
+        "root",
+        LayoutKind::Panel,
+        LayoutStyle {
+            left: Some(12.0),
+            right: Some(18.0),
+            top: Some(8.0),
+            bottom: Some(10.0),
+            ..LayoutStyle::default()
+        },
+        vec![leaf(
+            "content",
+            LayoutLeafKind::Spacer,
+            LayoutStyle {
+                width: Some(24.0),
+                height: Some(16.0),
+                ..LayoutStyle::default()
+            },
+        )],
+    );
+
+    let layout = compute_layout("doc", LayoutViewport::new(320.0, 200.0), &root, None);
+
+    assert_eq!(layout.rect.x, 12.0);
+    assert_eq!(layout.rect.width, 290.0);
+    assert_eq!(layout.rect.y, 8.0);
+    assert_eq!(layout.rect.height, 182.0);
+}
+
+#[test]
 fn hit_test_returns_deepest_node() {
     let root = node(
         "root",

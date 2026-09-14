@@ -786,7 +786,10 @@ fn draw_plate_relight_debug_skip(
         ColorVertex::new(Vec2::new(-1.0, 1.0), color),
     ];
     let batch = ColorBatch {
+        world_depth: false,
+        depth_write: false,
         blend_mode: ParticleBlendMode2d::Alpha,
+        pencil: false,
         vertices,
     };
     renderer.render_offscreen_batches(

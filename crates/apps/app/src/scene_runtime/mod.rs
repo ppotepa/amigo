@@ -11,7 +11,9 @@ use amigo_scene::{
     SceneFrameClockDocument, SceneFramePresentationDocument, SceneSchedulingDocument,
 };
 use amigo_session::{
-    RuntimeSession, SceneLoadRequest, SceneSessionLoadedDocument, SceneSessionService,
+    RuntimeLoadingService, RuntimeSession, SceneLoadRequest, SceneSessionLoadedDocument,
+    SceneSessionService, loading_presentation_from_mod_toml,
+    loading_presentation_from_scene_yaml, resolve_loading_presentation,
 };
 
 /// Registry and dispatch plumbing for scene command handlers.
@@ -80,6 +82,11 @@ pub(super) fn load_scene_document_for_mod(
             )))
         };
     }
+    apply_loading_presentation_from_documents(
+        runtime,
+        &discovered_mod.root_path,
+        &document_path,
+    )?;
     let relative_document_path =
         crate::app_helpers::relative_path_within_root(&discovered_mod.root_path, &document_path)?;
     let component_schemas = runtime.resolve::<amigo_scene::ComponentSchemaRegistry>();
@@ -146,6 +153,25 @@ pub(super) fn load_scene_document_for_mod(
         runtime_control_metadata,
         timelines_2d,
     }))
+}
+
+/// The host resolves authored files; loading presentation remains an engine
+/// contract and is installed before parsing/hydration begins.
+fn apply_loading_presentation_from_documents(
+    runtime: &Runtime,
+    mod_root_path: &Path,
+    scene_document_path: &Path,
+) -> AmigoResult<()> {
+    let manifest_source = std::fs::read_to_string(mod_root_path.join("mod.toml"))?;
+    let scene_source = std::fs::read_to_string(scene_document_path)?;
+    let mod_patch = loading_presentation_from_mod_toml(&manifest_source)
+        .map_err(|error| AmigoError::Message(format!("invalid mod loading configuration: {error}")))?;
+    let scene_patch = loading_presentation_from_scene_yaml(&scene_source)
+        .map_err(|error| AmigoError::Message(format!("invalid scene loading configuration: {error}")))?;
+    runtime
+        .required::<RuntimeLoadingService>()?
+        .set_presentation(resolve_loading_presentation(mod_patch, scene_patch));
+    Ok(())
 }
 
 fn load_timeline_2d_documents(
@@ -564,11 +590,11 @@ fn register_scene_command_asset_references(
 // Internal migration seam: app-hosted scene hydration remains in this module while
 // P0.1 exposes it through `RuntimeSession` lifecycle tracking.
 pub(crate) fn queue_scene_document_hydration_for_session(
-    session: &RuntimeSession,
+    session: &mut RuntimeSession,
     loaded_scene_document: &LoadedSceneDocument,
 ) -> AmigoResult<()> {
     queue_scene_document_hydration_for_runtime(session.runtime(), loaded_scene_document)?;
-    session.scene_session_service().complete_hydration_queue();
+    session.complete_scene_hydration_queue();
     Ok(())
 }
 

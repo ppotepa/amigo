@@ -20,6 +20,12 @@ fn required<T: Send + Sync + 'static>(runtime: &Runtime) -> Arc<T> {
         .expect("render extractor required service should be registered")
 }
 
+fn npr_scene_active(runtime: &Runtime) -> bool {
+    runtime
+        .resolve::<amigo_npr_playground_plugin::NprPlaygroundRenderService>()
+        .is_some_and(|service| service.scene_is_npr())
+}
+
 pub struct WgpuMesh3dRenderExtractorBridge;
 
 impl RenderFrameExtractor<Runtime, WgpuRenderFramePacket> for WgpuMesh3dRenderExtractorBridge {
@@ -28,6 +34,9 @@ impl RenderFrameExtractor<Runtime, WgpuRenderFramePacket> for WgpuMesh3dRenderEx
     }
 
     fn extract(&self, runtime: &Runtime, packet: &mut WgpuRenderFramePacket) {
+        if npr_scene_active(runtime) {
+            return;
+        }
         let scene_service = required::<SceneService>(runtime);
         let mesh_scene_service = required::<amigo_3d_mesh::MeshSceneService>(runtime);
         amigo_3d_mesh::Mesh3dRenderExtractor.extract(
@@ -48,6 +57,9 @@ impl RenderFrameExtractor<Runtime, WgpuRenderFramePacket> for WgpuMaterial3dRend
     }
 
     fn extract(&self, runtime: &Runtime, packet: &mut WgpuRenderFramePacket) {
+        if npr_scene_active(runtime) {
+            return;
+        }
         let scene_service = required::<SceneService>(runtime);
         let material_scene_service = required::<amigo_3d_material::MaterialSceneService>(runtime);
         amigo_3d_material::Material3dRenderExtractor.extract(
@@ -68,6 +80,9 @@ impl RenderFrameExtractor<Runtime, WgpuRenderFramePacket> for WgpuText3dRenderEx
     }
 
     fn extract(&self, runtime: &Runtime, packet: &mut WgpuRenderFramePacket) {
+        if npr_scene_active(runtime) {
+            return;
+        }
         let scene_service = required::<SceneService>(runtime);
         let text3d_scene_service = required::<amigo_3d_text::Text3dSceneService>(runtime);
         amigo_3d_text::Text3dRenderExtractor.extract(
@@ -93,6 +108,27 @@ impl RenderFrameExtractor<Runtime, WgpuRenderFramePacket> for WgpuNprRenderExtra
         else {
             return;
         };
+        if service.scene_is_npr() {
+            let scene_service = required::<SceneService>(runtime);
+            let mesh_scene_service = required::<amigo_3d_mesh::MeshSceneService>(runtime);
+            let npr_state = required::<amigo_npr_playground_plugin::NprPlaygroundState>(runtime);
+            let meshes = amigo_3d_mesh::extract_mesh3d_render_commands(
+                amigo_3d_mesh::Mesh3dRenderExtractionContext {
+                    scene_service: scene_service.as_ref(),
+                    mesh_scene_service: mesh_scene_service.as_ref(),
+                },
+            );
+            let styles = npr_state.runtime_mesh_styles(&meshes);
+            for (mesh, style) in meshes.iter().cloned().zip(styles) {
+                packet.push_npr_mesh_draw_command(amigo_render_api::NprMeshDrawCommand {
+                    mesh,
+                    style,
+                });
+            }
+            if !meshes.is_empty() {
+                return;
+            }
+        }
         for command in service.commands() {
             packet.push_npr_draw_command(command);
         }

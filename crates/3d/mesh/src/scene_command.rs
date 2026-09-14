@@ -67,7 +67,9 @@ pub fn handle_mesh_scene_command(
 
 impl amigo_scene::RuntimeSceneCommandHandler for Mesh3dSceneCommandHandler {
     fn can_handle(&self, command: &SceneCommand) -> bool {
-        can_handle_mesh_scene_command(command)
+        matches!(command, SceneCommand::Plugin { command }
+            if command.command_type == amigo_scene::MESH_3D_PLUGIN_SCENE_COMMAND_TYPE
+            || command.command_type == amigo_scene::MESH_ANIMATION_3D_PLUGIN_SCENE_COMMAND_TYPE)
     }
 
     fn handle(&self, runtime: &amigo_runtime::Runtime, command: SceneCommand) -> AmigoResult<()> {
@@ -75,6 +77,19 @@ impl amigo_scene::RuntimeSceneCommandHandler for Mesh3dSceneCommandHandler {
             command: plugin_command,
         } = &command
         {
+            if let Some(animation) = plugin_command
+                .payload_as::<amigo_scene::MeshAnimation3dSceneCommand>()
+            {
+                let meshes = runtime.required::<MeshSceneService>()?;
+                meshes.play_animation_sampled(
+                    animation.entity_name.clone(),
+                    animation.clip.clone(),
+                    animation.speed,
+                    animation.looped,
+                    animation.sample_fps,
+                ).map_err(AmigoError::Message)?;
+                return Ok(());
+            }
             if let Some(mesh_command) =
                 plugin_command.payload_as::<amigo_scene::Mesh3dSceneCommand>()
             {

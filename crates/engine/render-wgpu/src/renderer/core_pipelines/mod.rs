@@ -1,6 +1,7 @@
 use std::collections::BTreeMap;
 
 mod color;
+mod world_depth;
 mod texture;
 
 use color::{
@@ -41,6 +42,10 @@ pub(crate) fn build_default_core_pipelines(
 ) -> BTreeMap<&'static str, wgpu::RenderPipeline> {
     let providers: Vec<Box<dyn WgpuCorePipelineProvider>> = vec![
         Box::new(ColorAlphaPipelineProvider),
+        Box::new(world_depth::WorldDepthPipelineProvider { pencil: false, depth_write: true }),
+        Box::new(world_depth::WorldDepthPipelineProvider { pencil: true, depth_write: true }),
+        Box::new(world_depth::WorldDepthPipelineProvider { pencil: false, depth_write: false }),
+        Box::new(world_depth::WorldDepthPipelineProvider { pencil: true, depth_write: false }),
         Box::new(ColorAdditivePipelineProvider),
         Box::new(ColorMultiplyPipelineProvider),
         Box::new(ColorScreenPipelineProvider),

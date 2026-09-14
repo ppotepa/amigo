@@ -17,7 +17,16 @@ pub fn compute_layout<T: Clone>(
     };
 
     let measured = measure_element(root);
-    let width = root.style.width.unwrap_or(measured.0).max(0.0);
+    let width = root
+        .style
+        .width
+        .or_else(|| {
+            root.style.left.zip(root.style.right).map(|(left, right)| {
+                (layout_viewport.width - left.max(0.0) - right.max(0.0)).max(0.0)
+            })
+        })
+        .unwrap_or(measured.0)
+        .max(0.0);
     let height = root
         .style
         .height

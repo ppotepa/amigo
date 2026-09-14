@@ -13,6 +13,169 @@ pub fn style_preset(name: &str) -> Option<ComicInk> {
     let mut style = ComicInk::default();
     match name {
         "Comic Ink" => {}
+        "Hand Ink" => {
+            style.tool = StrokeTool::Fineliner;
+            style.outline_width = 2.8;
+            style.boundary_width = 2.0;
+            style.crease_width = 1.1;
+            style.crease_angle = 0.85;
+            style.taper = 0.22;
+            style.wobble = 0.85;
+            style.gesture_confidence = 0.82;
+            style.gesture_simplification = 0.08;
+            style.gesture_correction = 0.12;
+            style.gesture_overstroke = 0.14;
+            style.tool_pressure = 0.82;
+            style.tool_hardness = 0.72;
+            style.paper_tooth = 0.12;
+            style.paper_grain = 0.08;
+            style.ink_dryness = 0.10;
+        }
+        "Rough Pencil Keys" => {
+            style.tool = StrokeTool::Pencil;
+            style.tone_mode = NprToneMode::Hatching;
+            style.outline_width = 3.2;
+            style.boundary_width = 2.3;
+            style.crease_width = 1.2;
+            style.taper = 0.34;
+            style.wobble = 1.8;
+            style.gesture_confidence = 0.52;
+            style.gesture_simplification = 0.15;
+            style.gesture_correction = 0.48;
+            style.gesture_overstroke = 0.30;
+            style.tool_pressure = 0.68;
+            style.tool_hardness = 0.38;
+            style.paper_tooth = 0.55;
+            style.paper_grain = 0.42;
+            style.ink_dryness = 0.24;
+            style.tone_density = 0.58;
+            style.hatching_spacing = 8.0;
+            style.hatching_cross = 0.16;
+        }
+        "Pencil Art Animation" => {
+            style.tool = StrokeTool::Pencil;
+            style.tone_mode = NprToneMode::Hatching;
+            style.surface_mode = NprSurfaceMode::Smooth;
+            style.ink = glam::Vec4::new(0.11, 0.095, 0.078, 0.76);
+            style.paper = glam::Vec4::new(0.93, 0.90, 0.84, 1.0);
+            style.shadow = glam::Vec4::new(0.24, 0.25, 0.27, 1.0);
+            style.mid = glam::Vec4::new(0.55, 0.55, 0.56, 1.0);
+            style.light = glam::Vec4::new(0.86, 0.84, 0.79, 1.0);
+            style.outline_width = 3.1;
+            style.boundary_width = 2.1;
+            style.crease_width = 1.25;
+            style.crease_angle = 0.82;
+            style.taper = 0.38;
+            style.wobble = 1.65;
+            style.gesture_confidence = 0.48;
+            style.gesture_simplification = 0.14;
+            style.gesture_correction = 0.38;
+            style.gesture_overstroke = 0.22;
+            style.tool_pressure = 0.72;
+            style.tool_hardness = 0.30;
+            style.paper_tooth = 0.70;
+            style.paper_grain = 0.82;
+            style.ink_dryness = 0.26;
+            style.tone_density = 0.52;
+            style.hatching_spacing = 8.0;
+            style.hatching_cross = 0.18;
+            style.suggestive_contours = true;
+            style.suggestive_contour_confidence = 0.28;
+            style.suggestive_contour_width_scale = 0.52;
+            style.suggestive_contour_opacity = 0.42;
+            style.form_line_width_scale = 0.42;
+            style.form_line_opacity = 0.34;
+            style.min_form_line_confidence = 0.30;
+        }
+        "Pencil Character" => {
+            style.tool = StrokeTool::Pencil;
+            style.tone_mode = NprToneMode::Hatching;
+            style.ink = Vec4::new(0.075, 0.062, 0.050, 0.86);
+            style.paper = Vec4::new(0.93, 0.90, 0.84, 1.0);
+            style.shadow = Vec4::new(0.20, 0.19, 0.18, 1.0);
+            style.outline_width = 3.2;
+            style.boundary_width = 2.3;
+            style.crease_width = 1.15;
+            style.taper = 0.42;
+            style.wobble = 2.1;
+            style.gesture_confidence = 0.42;
+            style.gesture_overstroke = 0.20;
+            style.tool_pressure = 0.74;
+            style.tool_hardness = 0.34;
+            style.paper_tooth = 0.72;
+            style.paper_grain = 0.86;
+            style.ink_dryness = 0.22;
+            style.tone_density = 0.55;
+            style.hatching_spacing = 7.5;
+            style.hatching_cross = 0.20;
+        }
+        "Pencil Architecture" => {
+            style.tool = StrokeTool::Pencil;
+            style.tone_mode = NprToneMode::Hatching;
+            style.ink = Vec4::new(0.10, 0.09, 0.08, 0.68);
+            style.shadow = Vec4::new(0.30, 0.28, 0.25, 1.0);
+            style.outline_width = 2.1;
+            style.boundary_width = 1.55;
+            style.crease_width = 0.85;
+            style.taper = 0.20;
+            // Architectural lines are confident, not ruler-perfect. The
+            // renderer keeps the realization stable until camera/motion
+            // invalidates it, so this remains a quiet pencil bias.
+            style.wobble = 0.72;
+            style.gesture_confidence = 0.90;
+            style.gesture_simplification = 0.05;
+            style.gesture_overstroke = 0.02;
+            style.tool_pressure = 0.62;
+            style.tool_hardness = 0.52;
+            style.paper_tooth = 0.54;
+            style.paper_grain = 0.58;
+            style.ink_dryness = 0.12;
+            style.tone_density = 0.28;
+            style.hatching_spacing = 10.0;
+            style.hatching_cross = 0.10;
+            style.suggestive_contours = true;
+            style.suggestive_contour_confidence = 0.22;
+            style.suggestive_contour_width_scale = 0.34;
+            style.suggestive_contour_opacity = 0.24;
+            style.form_line_width_scale = 0.30;
+            style.form_line_opacity = 0.22;
+            style.min_form_line_confidence = 0.42;
+        }
+        "Pencil Background" => {
+            style.tool = StrokeTool::Pencil;
+            style.tone_mode = NprToneMode::Hatching;
+            style.ink = Vec4::new(0.18, 0.17, 0.16, 0.42);
+            style.shadow = Vec4::new(0.42, 0.40, 0.37, 1.0);
+            style.outline_width = 1.25;
+            style.boundary_width = 0.9;
+            style.crease_width = 0.5;
+            style.taper = 0.12;
+            style.wobble = 0.42;
+            style.gesture_confidence = 0.96;
+            style.gesture_overstroke = 0.0;
+            style.tool_pressure = 0.48;
+            style.tool_hardness = 0.62;
+            style.paper_tooth = 0.42;
+            style.paper_grain = 0.40;
+            style.ink_dryness = 0.08;
+            style.tone_density = 0.14;
+            style.hatching_spacing = 13.0;
+            style.hatching_cross = 0.035;
+        }
+        "Clean TV Ink" => {
+            style.tool = StrokeTool::Fineliner;
+            style.outline_width = 2.4;
+            style.boundary_width = 1.8;
+            style.crease_width = 0.9;
+            style.taper = 0.16;
+            style.wobble = 0.35;
+            style.gesture_confidence = 0.94;
+            style.gesture_simplification = 0.04;
+            style.gesture_overstroke = 0.05;
+            style.tool_pressure = 0.86;
+            style.tool_hardness = 0.88;
+            style.ink_dryness = 0.04;
+        }
         "Pencil Study" => {
             style.tool = StrokeTool::Pencil;
             style.tone_mode = NprToneMode::Hatching;
@@ -40,6 +203,16 @@ pub fn style_preset(name: &str) -> Option<ComicInk> {
             style.tone_density = 0.44;
             style.hatching_spacing = 7.0;
             style.hatching_cross = 0.10;
+            // Smooth suggestive contours supply readable form detail between
+            // the silhouette and topology creases; keep them subordinate to
+            // the main contour hierarchy.
+            style.suggestive_contours = true;
+            style.suggestive_contour_confidence = 0.28;
+            style.suggestive_contour_width_scale = 0.52;
+            style.suggestive_contour_opacity = 0.42;
+            style.form_line_width_scale = 0.42;
+            style.form_line_opacity = 0.34;
+            style.min_form_line_confidence = 0.30;
             // Keep the reviewed Pencil Study streamlines stable. Surface
             // cleanup is an authored object policy (`Natural Smooth`), not an
             // incidental consequence of picking a pigment tool.
@@ -133,6 +306,172 @@ pub fn style_preset(name: &str) -> Option<ComicInk> {
     Some(style)
 }
 
+#[cfg(test)]
+mod runtime_mesh_style_tests {
+    use super::{style_preset, NprPlaygroundState};
+    use crate::documents::NprRuntimeObjectStyleDocument;
+    use glam::Vec4;
+
+    #[test]
+    fn runtime_redraw_advances_on_stop_and_detects_deformation() {
+        let state = NprPlaygroundState::default();
+        state.settings.lock().unwrap().runtime_objects.insert("hero".into(),
+            NprRuntimeObjectStyleDocument { temporal: Some(true), ..Default::default() });
+        let mut mesh = amigo_render_api::MeshDrawCommand {
+            entity_id: 1, entity_name: "hero".into(),
+            mesh: amigo_render_api::Mesh3d {
+                mesh_asset: amigo_assets::AssetKey::new("hero.glb"),
+                transform: Default::default(),
+                geometry: Some(std::sync::Arc::new(amigo_render_api::MeshGeometry3d {
+                    positions: vec![[0.0; 3]], indices: vec![], material_indices: vec![], material_colors: std::sync::Arc::new([]), topology_edges: vec![], triangle_edges: vec![],
+                    reference_positions: vec![[0.0; 3]].into(),
+                })),
+            },
+        };
+        let epoch = |mesh: &amigo_render_api::MeshDrawCommand| state.runtime_mesh_styles(std::slice::from_ref(mesh))[0].artistic_frame;
+        assert_eq!(epoch(&mesh), 0);
+        state.tick(0.13);
+        let stationary = epoch(&mesh);
+        assert!(stationary > 0, "time alone must redraw a stationary subject");
+        mesh.mesh.transform.translation.x = 0.1;
+        state.tick(0.13);
+        let moved = epoch(&mesh);
+        assert!(moved > stationary);
+        // Reallocation of identical geometry must not look like deformation.
+        mesh.mesh.geometry = mesh.mesh.geometry.as_ref().map(|g| std::sync::Arc::new((**g).clone()));
+        assert_eq!(epoch(&mesh), moved);
+        std::sync::Arc::make_mut(mesh.mesh.geometry.as_mut().unwrap()).positions[0][1] = 0.2;
+        state.tick(0.13);
+        let deformed = epoch(&mesh);
+        assert!(deformed > moved);
+        assert_eq!(epoch(&mesh), deformed, "multiple extraction consumers share a drawing");
+        state.runtime_mesh_styles(&[]);
+        assert!(state.runtime_drawing_poses.lock().unwrap().is_empty());
+    }
+
+    #[test]
+    fn artistic_frame_advances_at_redraw_rate_instead_of_host_rate() {
+        let state = NprPlaygroundState::default();
+        state.settings.lock().unwrap().runtime_objects.insert(
+            "moving".into(),
+            NprRuntimeObjectStyleDocument {
+                temporal: Some(true),
+                ..Default::default()
+            },
+        );
+        assert_eq!(state.runtime_mesh_style_for("moving").artistic_frame, 0);
+        state.tick(0.05);
+        assert_eq!(state.runtime_mesh_style_for("moving").artistic_frame, 0);
+        state.tick(0.08);
+        assert_eq!(state.runtime_mesh_style_for("moving").artistic_frame, 1);
+        assert_eq!(state.runtime_mesh_style_for("moving").artistic_frame, 1);
+    }
+
+    #[test]
+    fn static_entities_receive_the_global_drawing_epoch() {
+        let state = NprPlaygroundState::default();
+        state.tick(1.0);
+        let static_style = state.runtime_mesh_style_for("building");
+        assert!(static_style.temporal);
+        assert!(static_style.artistic_frame > 0);
+    }
+
+    #[test]
+    fn pencil_art_animation_preset_uses_graphite_parameters() {
+        let state = NprPlaygroundState::default();
+        state.settings.lock().unwrap().runtime_objects.insert(
+            "hero".into(),
+            NprRuntimeObjectStyleDocument {
+                preset: Some("Pencil Art Animation".into()),
+                temporal: Some(true),
+                ..Default::default()
+            },
+        );
+        let style = state.runtime_mesh_style_for("hero");
+        assert!(style.temporal);
+        assert!(style.pencil_grain > 0.7);
+        assert!(style.hardness < 0.5);
+        assert!(style.pressure_variation > 0.3);
+        assert!(style.draw_form_lines);
+        assert!(style.form_line_width_pixels > 0.0);
+    }
+
+    #[test]
+    fn pencil_role_presets_keep_character_and_background_distinct() {
+        let character = style_preset("Pencil Character").unwrap();
+        let architecture = style_preset("Pencil Architecture").unwrap();
+        let background = style_preset("Pencil Background").unwrap();
+        assert!(character.wobble > architecture.wobble);
+        assert!(architecture.outline_width > background.outline_width);
+        assert!(character.paper_grain > background.paper_grain);
+        assert!(character.hatching_spacing < background.hatching_spacing);
+        assert!(architecture.suggestive_contours);
+    }
+
+    #[test]
+    fn runtime_preset_inherits_scene_palette_and_can_enable_role_creases() {
+        let state = NprPlaygroundState::default();
+        let mut settings = state.settings.lock().unwrap();
+        settings.global.paper = Vec4::new(0.12, 0.13, 0.14, 1.0);
+        settings.global.ink = Vec4::new(0.21, 0.22, 0.23, 1.0);
+        settings.runtime_objects.insert(
+            "building".into(),
+            NprRuntimeObjectStyleDocument {
+                preset: Some("Pencil Architecture".into()),
+                creases: Some(true),
+                ..Default::default()
+            },
+        );
+        drop(settings);
+        let style = state.runtime_mesh_style_for("building");
+        assert_eq!(style.background, [0.12, 0.13, 0.14, 1.0]);
+        assert_eq!(style.ink, [0.21, 0.22, 0.23, 1.0]);
+        assert!(style.draw_creases);
+        assert!(style.draw_contact_lines);
+    }
+
+    #[test]
+    fn runtime_entity_style_is_explicit_and_inherits_its_preset() {
+        let state = NprPlaygroundState::default();
+        let mut authored = NprRuntimeObjectStyleDocument {
+            preset: Some("Rough Pencil Keys".into()),
+            hatching: Some(true),
+            stroke_segments: Some(7),
+            pressure_variation: Some(0.42),
+            ..Default::default()
+        };
+        authored.style.outline_width = Some(5.0);
+        state
+            .settings
+            .lock()
+            .unwrap()
+            .runtime_objects
+            .insert("hero-officer".into(), authored);
+
+        let hero = state.runtime_mesh_style_for("hero-officer");
+        let building = state.runtime_mesh_style_for("city-block-a");
+        assert_eq!(hero.outline_width_pixels, 5.0);
+        assert!(hero.hatching_enabled);
+        assert_eq!(hero.stroke_segments, 7);
+        assert!((hero.pressure_variation - 0.42).abs() < f32::EPSILON);
+        assert!(hero.wobble_pixels > building.wobble_pixels);
+        assert_ne!(building.outline_width_pixels, 5.0);
+    }
+
+    #[test]
+    fn runtime_entity_rejects_an_unknown_preset() {
+        let mut settings = super::Settings::for_scene();
+        settings.runtime_objects.insert(
+            "hero-officer".into(),
+            NprRuntimeObjectStyleDocument {
+                preset: Some("Missing Brush".into()),
+                ..Default::default()
+            },
+        );
+        assert!(settings.validate().unwrap_err().contains("unknown preset"));
+    }
+}
+
 /// Stable diagnostic id for the effective typed look. The render contract
 /// carries an id rather than the UI label so diagnostics remain useful when
 /// labels are localized or renamed.
@@ -147,6 +486,10 @@ pub fn style_preset_id(style: ComicInk) -> &'static str {
     let normalized = normalize(style);
     [
         ("comic-ink", "Comic Ink"),
+        ("hand-ink", "Hand Ink"),
+        ("rough-pencil-keys", "Rough Pencil Keys"),
+        ("pencil-art-animation", "Pencil Art Animation"),
+        ("clean-tv-ink", "Clean TV Ink"),
         ("pencil-study", "Pencil Study"),
         ("loose-study", "Loose Study"),
         ("confident-ink", "Confident Ink"),
@@ -338,6 +681,8 @@ pub struct Settings {
     #[serde(default)]
     pub brushes: BrushLibrary,
     pub objects: BTreeMap<String, ObjectSettings>,
+    #[serde(default)]
+    pub runtime_objects: BTreeMap<String, crate::documents::NprRuntimeObjectStyleDocument>,
     pub selected: String,
     pub paused: bool,
     /// Stops time-driven gesture variants without affecting model playback or
@@ -427,6 +772,7 @@ impl Settings {
             style_layers: NprStyleLayers::default(),
             brushes: BrushLibrary::drawing_studio(),
             objects,
+            runtime_objects: BTreeMap::new(),
             selected: "cube".into(),
             paused: false,
             sketch_paused: false,
@@ -537,6 +883,28 @@ impl Settings {
                 }
             }
         }
+        for (entity, runtime_style) in &self.runtime_objects {
+            if entity.trim().is_empty() {
+                return Err("runtime NPR object id cannot be empty".into());
+            }
+            let inherited = match runtime_style.preset.as_deref() {
+                Some(preset) => style_preset(preset).ok_or_else(|| {
+                    format!("runtime object `{entity}` uses unknown preset `{preset}`")
+                })?,
+                None => self.global,
+            };
+            validate_style(runtime_style.style.resolve(inherited))
+                .map_err(|error| format!("invalid runtime object `{entity}` style: {error}"))?;
+            if runtime_style.stroke_segments.is_some_and(|value| !(2..=8).contains(&value)) {
+                return Err(format!("runtime object `{entity}` has invalid stroke_segments"));
+            }
+            if runtime_style
+                .pressure_variation
+                .is_some_and(|value| !value.is_finite() || !(0.0..=1.0).contains(&value))
+            {
+                return Err(format!("runtime object `{entity}` has invalid pressure_variation"));
+            }
+        }
         Ok(())
     }
 }
@@ -623,6 +991,8 @@ pub struct NprPlaygroundState {
     pub solo_layer: Mutex<Option<String>>,
     defaults: Mutex<Settings>,
     pub fps: Mutex<f64>,
+    artistic_elapsed_seconds: Mutex<f32>,
+    runtime_drawing_poses: Mutex<BTreeMap<u64, (amigo_render_api::MeshDrawCommand, u64)>>,
     last_frame: Mutex<Option<std::time::Instant>>,
     benchmark: Mutex<Option<(std::time::Instant, Vec<f64>)>>,
     pub viewport: Mutex<[u32; 2]>,
@@ -640,6 +1010,8 @@ impl Default for NprPlaygroundState {
             solo_layer: Mutex::new(None),
             defaults: Mutex::new(s),
             fps: Mutex::new(0.0),
+            artistic_elapsed_seconds: Mutex::new(0.0),
+            runtime_drawing_poses: Mutex::new(BTreeMap::new()),
             last_frame: Mutex::new(None),
             benchmark: Mutex::new(
                 std::env::var_os("AMIGO_NPR_BENCHMARK")
@@ -713,6 +1085,8 @@ impl NprPlaygroundState {
         let settings = authored.resolve(&BTreeMap::new(), &BTreeMap::new(), &Default::default())?;
         *self.defaults.lock().unwrap() = settings.clone();
         *self.settings.lock().unwrap() = settings;
+        *self.artistic_elapsed_seconds.lock().unwrap() = 0.0;
+        self.runtime_drawing_poses.lock().unwrap().clear();
         *self.construction_authoring.lock().unwrap() = ConstructionAuthoringState::default();
         *self.selected_construction_mark.lock().unwrap() = None;
         Ok(())
@@ -908,6 +1282,8 @@ impl NprPlaygroundState {
         let settings = Settings::for_scene();
         *self.defaults.lock().unwrap() = settings.clone();
         *self.settings.lock().unwrap() = settings;
+        *self.artistic_elapsed_seconds.lock().unwrap() = 0.0;
+        self.runtime_drawing_poses.lock().unwrap().clear();
         *self.construction_authoring.lock().unwrap() = ConstructionAuthoringState::default();
         *self.selected_construction_mark.lock().unwrap() = None;
     }
@@ -932,6 +1308,9 @@ impl NprPlaygroundState {
         } else {
             dt * s.speed
         };
+        if delta > 0.0 {
+            *self.artistic_elapsed_seconds.lock().unwrap() += delta;
+        }
         s.step = false;
         for o in s.objects.values_mut() {
             if delta > 0.0 && o.rotating {
@@ -970,6 +1349,141 @@ impl NprPlaygroundState {
     }
     pub fn snapshot(&self) -> Settings {
         self.settings.lock().unwrap().clone()
+    }
+
+    pub fn runtime_mesh_style(&self) -> amigo_render_api::NprMeshStyle {
+        self.runtime_mesh_style_for("")
+    }
+
+    /// Resolve a frame's drawing epochs in the NPR domain. The camera is not
+    /// part of a subject pose: moving the camera must not redraw its graphite.
+    pub fn runtime_mesh_styles(
+        &self,
+        meshes: &[amigo_render_api::MeshDrawCommand],
+    ) -> Vec<amigo_render_api::NprMeshStyle> {
+        let mut styles: Vec<_> = meshes.iter()
+            .map(|mesh| self.runtime_mesh_style_for(&mesh.entity_name)).collect();
+        let mut poses = self.runtime_drawing_poses.lock().unwrap();
+        let active: std::collections::BTreeSet<_> = meshes.iter()
+            .zip(&styles).filter(|(_, style)| style.temporal)
+            .map(|(mesh, _)| mesh.entity_id).collect();
+        poses.retain(|id, _| active.contains(id));
+        for (mesh, style) in meshes.iter().zip(&mut styles) {
+            if !style.temporal { continue; }
+            let candidate_epoch = style.artistic_frame;
+            let entry = poses.entry(mesh.entity_id).or_insert_with(|| (mesh.clone(), candidate_epoch));
+            // Every NPR subject receives a new realization at the authored
+            // drawing cadence. Pose changes still update the cached source,
+            // but they are no longer required to permit a new sketch frame.
+            if candidate_epoch < entry.1 || candidate_epoch > entry.1 {
+                *entry = (mesh.clone(), candidate_epoch);
+            }
+            style.artistic_frame = entry.1;
+        }
+        styles
+    }
+
+    pub fn runtime_mesh_style_for(&self, entity_name: &str) -> amigo_render_api::NprMeshStyle {
+        let settings = self.settings.lock().unwrap();
+        let runtime_style = settings.runtime_objects.get(entity_name);
+        let inherited = runtime_style
+            .and_then(|runtime| runtime.preset.as_deref())
+            .and_then(style_preset)
+            .map(ComicInkOverrides::technique_only)
+            .map(|overrides| overrides.resolve(settings.global))
+            .unwrap_or(settings.global);
+        let style = runtime_style
+            .map(|runtime| runtime.style.resolve(inherited))
+            .unwrap_or(inherited);
+        let layer_enabled = |source| {
+            settings
+                .style_layers
+                .layers
+                .iter()
+                .any(|layer| layer.enabled && layer.source == source)
+        };
+        let hatching_enabled = runtime_style
+            .and_then(|runtime| runtime.hatching)
+            .unwrap_or_else(|| layer_enabled(amigo_render_npr::NprGeometrySource::ShadowHatch));
+        let redraw_hz = settings.motion.redraw_hz.clamp(0.25, 20.0);
+        // NPR is an animated drawing medium: even a stationary mesh gets a
+        // fresh hand realization at `redraw_hz`. The document field remains
+        // accepted for authored data compatibility, but no longer suppresses
+        // the global sketch cadence.
+        let temporal = true;
+        let artistic_frame = if temporal {
+            (*self.artistic_elapsed_seconds.lock().unwrap() * redraw_hz).floor() as u64
+        } else {
+            0
+        };
+        let stroke_segments = if runtime_style.is_some() {
+            if style.wobble >= 1.3 { 6 } else if style.wobble >= 0.7 { 5 } else { 4 }
+        } else {
+            // Long architectural strokes still receive a small gesture curve;
+            // the higher-quality character path is reserved for explicit
+            // runtime identities.
+            3
+        };
+        let stroke_segments = runtime_style
+            .and_then(|runtime| runtime.stroke_segments)
+            .unwrap_or(stroke_segments)
+            .clamp(2, 8);
+        let pressure_variation = runtime_style
+            .and_then(|runtime| runtime.pressure_variation)
+            .unwrap_or_else(|| {
+                (0.10
+                    + (1.0 - style.tool_hardness).clamp(0.0, 1.0) * 0.35
+                    + (1.0 - style.gesture_confidence).clamp(0.0, 1.0) * 0.15)
+                    .clamp(0.08, 0.55)
+            })
+            .clamp(0.0, 1.0);
+        amigo_render_api::NprMeshStyle {
+            background: style.paper.to_array(),
+            fill: style.light.to_array(),
+            shadow: style.shadow.to_array(),
+            ink: style.ink.to_array(),
+            light_direction: style.light_direction.to_array(),
+            artistic_frame,
+            temporal,
+            draw_silhouettes: layer_enabled(amigo_render_npr::NprGeometrySource::Silhouette),
+            draw_creases: runtime_style
+                .and_then(|runtime| runtime.creases)
+                .unwrap_or_else(|| layer_enabled(amigo_render_npr::NprGeometrySource::Creases)),
+            draw_material_seams: runtime_style
+                .and_then(|runtime| runtime.material_seams)
+                .unwrap_or(false),
+            draw_form_lines: style.suggestive_contours,
+            draw_contact_lines: style.tone_density >= 0.20,
+            outline_width_pixels: style.outline_width,
+            boundary_width_pixels: style.boundary_width,
+            crease_width_pixels: style.crease_width,
+            form_line_width_pixels: (style.crease_width * style.suggestive_contour_width_scale)
+                .clamp(0.35, 1.5),
+            contact_line_width_pixels: (style.crease_width * 0.42).clamp(0.35, 1.1),
+            crease_angle_radians: style.crease_angle,
+            wobble_pixels: style.wobble,
+            stroke_segments,
+            join_strokes: runtime_style
+                .and_then(|runtime| runtime.join_strokes)
+                .unwrap_or(false),
+            pressure_variation,
+            taper: style.taper,
+            overstroke: style.gesture_overstroke,
+            pressure: style.tool_pressure,
+            hardness: style.tool_hardness,
+            dryness: style.ink_dryness,
+            pencil_grain: if style.tool == StrokeTool::Pencil {
+                (style.paper_grain * 0.72 + style.paper_tooth * 0.28).clamp(0.0, 1.0)
+            } else {
+                0.0
+            },
+            redraw_strength: settings.motion.redraw_strength,
+            hatching_enabled,
+            hatching_angle_degrees: style.hatching_angle,
+            hatching_spacing_pixels: style.hatching_spacing,
+            hatching_cross: style.hatching_cross,
+            hatching_density: style.tone_density,
+        }
     }
     pub fn render_snapshot(&self) -> Settings {
         let mut settings = self.snapshot();

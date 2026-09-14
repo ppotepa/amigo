@@ -1,0 +1,230 @@
+version: 1
+active_look: null
+camera:
+  target: [0.0, 0.0, 0.0]
+  yaw: 44.0
+  pitch: 21.0
+  distance: 46.0
+  fov: 43.0
+look:
+  layers:
+    - layer_id: paper
+      order: 0
+      parameters:
+        id: paper
+        label: Paper
+        source: paper
+        enabled: true
+        opacity: 1.0
+        blend: normal
+        color_source: { kind: style-palette }
+        paint: null
+        tool: null
+    - layer_id: underpainting
+      order: 1
+      parameters:
+        id: underpainting
+        label: White surfaces
+        source: wash
+        enabled: false
+        opacity: 1.0
+        blend: normal
+        color_source: { kind: style-palette }
+        paint: { wash: 1.0, granulation: 0.0 }
+        tool: null
+    - layer_id: hatching
+      order: 2
+      parameters:
+        id: hatching
+        label: Shadow hatch
+        source: shadow-hatch
+        enabled: true
+        opacity: 1.0
+        blend: multiply
+        color_source: { kind: style-palette }
+        paint: null
+        tool: pencil
+    - layer_id: contours
+      order: 3
+      parameters:
+        id: contours
+        label: Silhouettes
+        source: silhouette
+        enabled: true
+        opacity: 1.0
+        blend: normal
+        color_source: { kind: style-palette }
+        paint: null
+        tool: pencil
+    - layer_id: creases
+      order: 4
+      parameters:
+        id: creases
+        label: Architectural creases
+        source: creases
+        enabled: false
+        opacity: 1.0
+        blend: normal
+        color_source: { kind: style-palette }
+        paint: null
+        tool: pencil
+  style:
+    paper: [0.965, 0.955, 0.94, 1.0]
+    light: [0.965, 0.955, 0.94, 1.0]
+    mid: [0.965, 0.955, 0.94, 1.0]
+    shadow: [0.22, 0.20, 0.18, 1.0]
+    ink: [0.055, 0.05, 0.045, 1.0]
+    light_direction: [-0.4, 0.7, 1.0]
+    outline_width: 2.8
+    boundary_width: 2.0
+    crease_width: 1.1
+    crease_angle: 0.85
+    hatching_angle: -28.0
+    hatching_spacing: 14.0
+    hatching_cross: 0.12
+    tone_density: 0.24
+    taper: 0.34
+    wobble: 0.9
+    gesture_confidence: 0.82
+    gesture_simplification: 0.08
+    gesture_correction: 0.12
+    gesture_overstroke: 0.08
+    paper_grain: 0.65
+    paper_tooth: 0.55
+    tool: pencil
+    tool_hardness: 0.55
+    tool_pressure: 0.80
+    ink_dryness: 0.14
+motion:
+  paused: false
+  sketch_paused: false
+  speed: 1.0
+  policy:
+    mode: redraw-continuously
+    redraw_hz: 8.0
+    redraw_strength: 0.85
+    appearance_fade_seconds: 0.0
+objects: {}
+runtime_objects:
+  police-car:
+    temporal: true
+  taxi-01:
+    temporal: true
+  sedan-wipe:
+    temporal: true
+  hero-officer:
+    preset: Pencil Art Animation
+    temporal: true
+    hatching: true
+    stroke_segments: 7
+    pressure_variation: 0.42
+    join_strokes: true
+    style:
+      outline_width: 3.4
+      boundary_width: 2.5
+      wobble: 3.0
+      gesture_overstroke: 0.22
+      tool_pressure: 0.72
+      tool_hardness: 0.42
+      ink_dryness: 0.18
+      tone_density: 0.58
+      hatching_spacing: 8.0
+      hatching_cross: 0.12
+  support-officer:
+    preset: Pencil Art Animation
+    temporal: true
+    hatching: true
+    stroke_segments: 5
+    pressure_variation: 0.22
+    style:
+      outline_width: 2.7
+      boundary_width: 2.0
+      wobble: 1.15
+      gesture_overstroke: 0.04
+      tone_density: 0.34
+      hatching_angle: -18.0
+      hatching_spacing: 10.0
+  civilian-01:
+    preset: Pencil Art Animation
+    temporal: true
+    hatching: true
+    stroke_segments: 6
+    pressure_variation: 0.36
+    style:
+      outline_width: 3.0
+      boundary_width: 2.1
+      wobble: 2.6
+      gesture_overstroke: 0.14
+      tone_density: 0.46
+      hatching_angle: -36.0
+      hatching_spacing: 9.0
+  building-01:
+    preset: Pencil Architecture
+    creases: true
+    material_seams: true
+  building-02:
+    preset: Pencil Architecture
+    creases: true
+    material_seams: true
+  building-03:
+    preset: Pencil Architecture
+    creases: true
+    material_seams: true
+  building-04:
+    preset: Pencil Architecture
+    creases: true
+    material_seams: true
+  building-05:
+    preset: Pencil Architecture
+    creases: true
+    material_seams: true
+  building-06:
+    preset: Pencil Architecture
+    creases: true
+    material_seams: true
+  building-07:
+    preset: Pencil Architecture
+    creases: true
+    material_seams: true
+  building-08:
+    preset: Pencil Architecture
+    creases: true
+    material_seams: true
+  building-09:
+    preset: Pencil Architecture
+    creases: true
+    material_seams: true
+  building-10:
+    preset: Pencil Architecture
+    creases: true
+    material_seams: true
+  tree-01:
+    preset: Pencil Background
+  tree-02:
+    preset: Pencil Background
+  tree-03:
+    preset: Pencil Background
+  tree-04:
+    preset: Pencil Background
+  tree-05:
+    preset: Pencil Background
+  tree-06:
+    preset: Pencil Background
+  lamp-01:
+    preset: Pencil Background
+  lamp-02:
+    preset: Pencil Background
+  lamp-03:
+    preset: Pencil Background
+  lamp-04:
+    preset: Pencil Background
+  lamp-05:
+    preset: Pencil Background
+  lamp-06:
+    preset: Pencil Background
+  lamp-07:
+    preset: Pencil Background
+  lamp-08:
+    preset: Pencil Background
+  lamp-09:
+    preset: Pencil Background

@@ -13,6 +13,11 @@ pub(super) fn process_pending_asset_loads(runtime: &Runtime) -> AmigoResult<()> 
     let dev_console_state = ctx.required::<DevConsoleState>()?;
     let domain_preparers = ctx.required::<LoadedAssetDomainPreparerRegistry>()?;
 
+    // Complete asynchronous domain preparation from previous frames before
+    // starting more file work. This keeps GLB import off the host thread while
+    // still making failures visible through the catalog and loading overlay.
+    domain_preparers.poll_all(asset_catalog.as_ref());
+
     for request in asset_catalog.drain_pending_loads() {
         let Some(manifest) = asset_catalog.manifest(&request.key) else {
             asset_catalog.mark_failed(
@@ -84,6 +89,10 @@ pub(super) fn process_pending_asset_loads(runtime: &Runtime) -> AmigoResult<()> 
             }
         }
     }
+
+    // A small second poll catches imports that completed while this frame was
+    // resolving file requests without introducing a blocking wait.
+    domain_preparers.poll_all(asset_catalog.as_ref());
 
     Ok(())
 }

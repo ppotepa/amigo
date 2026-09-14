@@ -1,18 +1,23 @@
 use crate::{render::NprPlaygroundRenderService, state::NprPlaygroundState};
 use amigo_capabilities::{DEFAULT_CAPABILITY_VERSION, register_domain_plugin};
 use amigo_runtime::{RuntimePlugin, ServiceRegistry, SystemPhase, SystemRegistry};
-use std::sync::{Arc, Mutex};
+use std::{
+    path::Path,
+    sync::{Arc, Mutex},
+};
 #[derive(Default)]
 struct Lifecycle {
     scene: Mutex<Option<String>>,
+    npr_active: Mutex<bool>,
     mouse: Mutex<Option<(f32, f32)>>,
     zoom: Mutex<crate::zoom::SmoothZoom>,
     zoom_center: Mutex<Option<glam::Vec3>>,
+    dynamic_ready: Mutex<bool>,
 }
-pub struct NprPlaygroundPlugin;
-impl RuntimePlugin for NprPlaygroundPlugin {
+pub struct NprPlugin;
+impl RuntimePlugin for NprPlugin {
     fn name(&self) -> &'static str {
-        "amigo-npr-playground-plugin"
+        "amigo-npr-plugin"
     }
     fn register(&self, registry: &mut ServiceRegistry) -> amigo_core::AmigoResult<()> {
         registry.register(NprPlaygroundState::default())?;
@@ -79,27 +84,16 @@ impl RuntimePlugin for NprPlaygroundPlugin {
                         );
                         let mut active = lifecycle.scene.lock().unwrap();
                         if active.as_ref() != Some(&key) {
+                            // A finished worker from the previous scene must
+                            // never publish its packet into this scene. Dropping
+                            // its receiver is a cheap cancellation boundary;
+                            // the worker owns only immutable input snapshots.
+                            *lifecycle.dynamic_ready.lock().unwrap() = false;
                             *lifecycle.zoom.lock().unwrap() = Default::default();
                             *lifecycle.mouse.lock().unwrap() = None;
-                            if let Some(source) = mods.mod_by_id(&doc.source_mod) {
-                                if doc.source_mod == "npr-playground" {
-                                    runtime
-                                        .required::<NprPlaygroundRenderService>()?
-                                        .load_models(&source.root_path)
-                                        .map_err(amigo_core::AmigoError::Message)?;
-                                    if let Some(assets) =
-                                        runtime.resolve::<amigo_assets::AssetCatalog>()
-                                    {
-                                        crate::asset_browser::register_models(
-                                            assets.as_ref(),
-                                            &source.root_path,
-                                        );
-                                    }
-                                    // Hydrate the authored sidecar during the scene activation
-                                    // frame. The companion lifecycle runs in PostUpdate, so
-                                    // waiting for its transport callback would expose the
-                                    // state's built-in defaults to a newly connected client.
-                                    let scene_path = source.root_path.join(&doc.relative_path);
+                            let npr_active = if let Some(source) = mods.mod_by_id(&doc.source_mod) {
+                                let scene_path = source.root_path.join(&doc.relative_path);
+                                if scene_uses_npr(&scene_path)? {
                                     let service = runtime
                                         .required::<crate::playground::NprPlaygroundService>()?;
                                     amigo_playground_api::PlaygroundProvider::open_scene(
@@ -108,13 +102,25 @@ impl RuntimePlugin for NprPlaygroundPlugin {
                                         &scene_path,
                                     )
                                     .map_err(amigo_core::AmigoError::Message)?;
-                                    // The scene command remains useful to generic hydration,
-                                    // but the service now owns the authoritative sidecar load.
                                     let _ = state.take_staged_authored_scene();
+                                    true
+                                } else {
+                                    false
                                 }
-                            }
+                            } else {
+                                false
+                            };
+                            *lifecycle.npr_active.lock().unwrap() = npr_active;
+                            runtime
+                                .required::<NprPlaygroundRenderService>()?
+                                .set_scene_is_npr(npr_active);
                             *active = Some(key);
                         }
+                    } else {
+                        *lifecycle.npr_active.lock().unwrap() = false;
+                        let render = runtime.required::<NprPlaygroundRenderService>()?;
+                        render.set_scene_is_npr(false);
+                        render.clear();
                     }
                 }
                 state.tick(amigo_session::simulation_delta_seconds(runtime));
@@ -130,12 +136,7 @@ impl RuntimePlugin for NprPlaygroundPlugin {
                 runtime
                     .required::<crate::playground::NprPlaygroundService>()?
                     .advance_camera(amigo_session::host_delta_seconds(runtime));
-                if !runtime
-                    .required::<amigo_session::SceneSessionService>()?
-                    .snapshot()
-                    .loaded_scene_document()
-                    .is_some_and(|doc| doc.source_mod == "npr-playground")
-                {
+                if !*runtime.required::<Lifecycle>()?.npr_active.lock().unwrap() {
                     return Ok(());
                 }
                 let state = runtime.required::<NprPlaygroundState>()?;
@@ -200,32 +201,75 @@ impl RuntimePlugin for NprPlaygroundPlugin {
             SystemPhase::RenderExtract,
             "npr_playground_extract",
             |runtime| {
-                let active = runtime
-                    .required::<amigo_session::SceneSessionService>()?
-                    .snapshot()
-                    .loaded_scene_document()
-                    .is_some_and(|doc| doc.source_mod == "npr-playground");
+                let active = *runtime.required::<Lifecycle>()?.npr_active.lock().unwrap();
                 if !active {
+                    *runtime
+                        .required::<Lifecycle>()?
+                        .dynamic_ready
+                        .lock()
+                        .unwrap() = false;
                     runtime.required::<NprPlaygroundRenderService>()?.clear();
                     return Ok(());
                 }
-                runtime.required::<NprPlaygroundState>()?.record_frame();
+                let state = runtime.required::<NprPlaygroundState>()?;
+                state.record_frame();
                 let viewport = runtime.required::<amigo_ui::UiInputViewportState>()?.get();
                 if let Some(viewport) = viewport {
-                    *runtime
-                        .required::<NprPlaygroundState>()?
-                        .viewport
-                        .lock()
-                        .unwrap() = [viewport.width as u32, viewport.height as u32];
-                    let settings = runtime.required::<NprPlaygroundState>()?.render_snapshot();
-                    runtime
-                        .required::<NprPlaygroundRenderService>()?
-                        .rebuild_with_delta(
-                            &settings,
-                            [viewport.width as u32, viewport.height as u32],
-                            amigo_session::host_delta_seconds(runtime),
-                        )
-                        .map_err(amigo_core::AmigoError::Message)?;
+                    let viewport = [viewport.width as u32, viewport.height as u32];
+                    *state.viewport.lock().unwrap() = viewport;
+                    let lifecycle = runtime.required::<Lifecycle>()?;
+                    let loading = runtime.resolve::<amigo_session::RuntimeLoadingService>();
+                    let scene_service = runtime.required::<amigo_scene::SceneService>()?;
+                    let mesh_scene_service =
+                        runtime.required::<amigo_3d_mesh::MeshSceneService>()?;
+                    let meshes = amigo_3d_mesh::extract_mesh3d_render_commands(
+                        amigo_3d_mesh::Mesh3dRenderExtractionContext {
+                            scene_service: scene_service.as_ref(),
+                            mesh_scene_service: mesh_scene_service.as_ref(),
+                        },
+                    );
+                    if meshes.is_empty() {
+                        let render = runtime.required::<NprPlaygroundRenderService>()?;
+                        let view = render.fork_view();
+                        view.rebuild_with_delta(&state.render_snapshot(), viewport, 0.0)
+                            .map_err(amigo_core::AmigoError::Message)?;
+                        render.publish_scene_snapshot(view.commands(), view.background());
+                    }
+                    let missing_geometry = meshes
+                        .iter()
+                        .filter(|mesh| mesh.mesh.geometry.is_none())
+                        .count();
+                    if missing_geometry > 0 {
+                        if let Some(loading) = loading.as_ref() {
+                            loading.set_stage(
+                                "Loading mesh geometry",
+                                Some(format!(
+                                    "{} mesh instances waiting for GLB import",
+                                    missing_geometry
+                                )),
+                            );
+                        }
+                    } else {
+                        let mut ready = lifecycle.dynamic_ready.lock().unwrap();
+                        if !*ready {
+                            if let Some(loading) = loading.as_ref() {
+                                loading.add_work(1);
+                                loading.set_stage(
+                                    "Preparing dynamic NPR scene",
+                                    Some(format!("{} mesh instances", meshes.len())),
+                                );
+                            }
+                            *ready = true;
+                        } else if let Some(loading) = loading.as_ref() {
+                            if loading.snapshot().state
+                                == amigo_session::RuntimeLoadingState::Loading
+                            {
+                                loading.complete_work(1);
+                                loading.ready();
+                            }
+                        }
+                    }
+
                     let rendered = runtime.required::<NprPlaygroundRenderService>()?.stats();
                     for (key, value) in runtime
                         .required::<NprPlaygroundState>()?
@@ -252,4 +296,26 @@ impl RuntimePlugin for NprPlaygroundPlugin {
         )?;
         Ok(())
     }
+}
+
+fn scene_uses_npr(path: &Path) -> Result<bool, amigo_core::AmigoError> {
+    let document: serde_yaml::Value = serde_yaml::from_slice(
+        &std::fs::read(path).map_err(|error| amigo_core::AmigoError::Message(error.to_string()))?,
+    )
+    .map_err(|error| amigo_core::AmigoError::Message(error.to_string()))?;
+    Ok(document
+        .get("entities")
+        .and_then(serde_yaml::Value::as_sequence)
+        .into_iter()
+        .flatten()
+        .filter_map(|entity| {
+            entity
+                .get("components")
+                .and_then(serde_yaml::Value::as_sequence)
+        })
+        .flatten()
+        .any(|component| {
+            component.get("type").and_then(serde_yaml::Value::as_str)
+                == Some(crate::scene::NPR_SETTINGS_COMPONENT_TYPE)
+        }))
 }

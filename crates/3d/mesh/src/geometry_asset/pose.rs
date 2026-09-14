@@ -19,6 +19,7 @@ pub(super) struct Skin {
 #[derive(Debug, Clone)]
 pub(super) struct Primitive {
     pub node: usize,
+    pub material_index: Option<usize>,
     pub positions: Vec<Vec3>,
     pub indices: Vec<u32>,
     pub morph_targets: Vec<Vec<Vec3>>,
@@ -124,6 +125,9 @@ impl GeometryDefinition {
                     indices.swap(1, 2);
                 }
                 frame.indices.extend(indices);
+                frame
+                    .material_indices
+                    .push(primitive.material_index.unwrap_or(usize::MAX) as u32);
             }
         }
         Ok(frame)

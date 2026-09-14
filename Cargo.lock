@@ -841,6 +841,7 @@ dependencies = [
  "amigo-editor-api",
  "amigo-editor-authoring",
  "amigo-editor-ingame",
+ "amigo-math",
  "amigo-modding",
  "amigo-playground-api",
  "amigo-plugin-api",
@@ -1254,6 +1255,9 @@ dependencies = [
  "amigo-runtime",
  "camino",
  "glam 0.30.10",
+ "serde",
+ "serde_yaml",
+ "toml 1.1.6+spec-1.1.0",
 ]
 
 [[package]]

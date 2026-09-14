@@ -5,9 +5,9 @@ use amigo_scene::{
 use super::document::NPR_SETTINGS_COMPONENT_TYPE;
 
 #[derive(Default)]
-pub struct NprPlaygroundPluginGraphProvider;
+pub struct NprGraphProvider;
 
-impl PluginComponentGraphProvider for NprPlaygroundPluginGraphProvider {
+impl PluginComponentGraphProvider for NprGraphProvider {
     fn provider_id(&self) -> &'static str { "amigo.gfx.npr-playground" }
     fn component_type(&self) -> &'static str { NPR_SETTINGS_COMPONENT_TYPE }
     fn primary_render_layer(&self, _payload: &dyn SceneComponentPayload) -> Option<String> { None }

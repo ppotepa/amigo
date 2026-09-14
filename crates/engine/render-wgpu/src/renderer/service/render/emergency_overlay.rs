@@ -84,7 +84,10 @@ pub(super) fn emergency_overlay_color_batches(
     }
 
     vec![ColorBatch {
+        world_depth: false,
+        depth_write: false,
         blend_mode: ParticleBlendMode2d::Alpha,
+        pencil: false,
         vertices,
     }]
 }

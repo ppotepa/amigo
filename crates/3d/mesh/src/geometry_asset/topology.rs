@@ -50,7 +50,6 @@ pub(super) fn weld(primitive: &mut Primitive) -> Result<usize, String> {
         .collect::<Vec<_>>();
     let mut indices = Vec::new();
     let mut dropped = 0;
-    let mut edges = BTreeMap::new();
     for tri in primitive.indices.chunks_exact(3) {
         let t = [
             remap[tri[0] as usize],
@@ -66,13 +65,11 @@ pub(super) fn weld(primitive: &mut Primitive) -> Result<usize, String> {
             dropped += 1;
             continue;
         }
-        for (a, b) in [(t[0], t[1]), (t[1], t[2]), (t[2], t[0])] {
-            let count = edges.entry((a.min(b), a.max(b))).or_insert(0);
-            *count += 1;
-            if *count > 2 {
-                return Err("non-manifold mesh edge".into());
-            }
-        }
+        // A glTF mesh remains valid render input when more than two faces
+        // share an edge. Rejecting it here made ordinary third-party city
+        // assets disappear before either Mesh3D or NPR could prepare them.
+        // Consumers that need a closed manifold (for example a topology tool)
+        // must validate that requirement explicitly at their own boundary.
         indices.extend(t);
     }
     primitive.positions = positions;

@@ -16,12 +16,15 @@ use pose::GeometryDefinition;
 pub struct MeshGeometryFrame {
     pub positions: Vec<[f32; 3]>,
     pub indices: Vec<u32>,
+    pub material_indices: Vec<u32>,
 }
 
 #[derive(Debug, Clone, Default)]
 pub struct MeshGeometryAsset {
     pub positions: Vec<[f32; 3]>,
     pub indices: Vec<u32>,
+    pub material_indices: Vec<u32>,
+    pub material_colors: Vec<[f32; 4]>,
     pub dropped_degenerate_triangles: usize,
     animations: Vec<MeshAnimationClip>,
     definition: GeometryDefinition,

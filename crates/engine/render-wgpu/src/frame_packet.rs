@@ -7,7 +7,7 @@ use amigo_render_api::{
     RenderLightMap2dSource, Renderable2dItem, Renderable2dKind, ScopedPostFx2dStack,
 };
 use amigo_render_api::{LightRoute2dCommand, RenderLayer2dCommand};
-use amigo_render_api::{NprBackgroundCommand, NprDrawCommand, NprRenderOutput};
+use amigo_render_api::{NprBackgroundCommand, NprDrawCommand, NprMeshDrawCommand, NprRenderOutput};
 
 use crate::UiOverlayDocument;
 
@@ -32,6 +32,7 @@ pub struct WgpuRenderFramePacket {
     world_3d_meshes: Vec<MeshDrawCommand>,
     world_3d_materials: Vec<MaterialDrawCommand>,
     world_3d_text: Vec<Text3dDrawCommand>,
+    npr_meshes: Vec<NprMeshDrawCommand>,
     npr: Vec<NprDrawCommand>,
     npr_background: Option<NprBackgroundCommand>,
     game_ui_overlay: Vec<UiOverlayDocument>,
@@ -74,6 +75,10 @@ impl WgpuRenderFramePacket {
 
     pub fn push_npr_draw_command(&mut self, command: NprDrawCommand) {
         self.npr.push(command);
+    }
+
+    pub fn push_npr_mesh_draw_command(&mut self, command: NprMeshDrawCommand) {
+        self.npr_meshes.push(command);
     }
     pub fn set_npr_background(&mut self, background: NprBackgroundCommand) {
         self.npr_background = Some(background);
@@ -142,6 +147,7 @@ impl WgpuRenderFramePacket {
         self.world_3d_meshes.clear();
         self.world_3d_materials.clear();
         self.world_3d_text.clear();
+        self.npr_meshes.clear();
         self.npr.clear();
         self.npr_background = None;
         self.post_fx_stacks.clear();
@@ -267,6 +273,10 @@ impl WgpuRenderFramePacket {
 
     pub fn npr(&self) -> &[NprDrawCommand] {
         &self.npr
+    }
+
+    pub fn npr_meshes(&self) -> &[NprMeshDrawCommand] {
+        &self.npr_meshes
     }
     pub fn npr_background(&self) -> Option<NprBackgroundCommand> {
         self.npr_background

@@ -80,6 +80,15 @@ where
             }
         }
     }
+
+    fn refresh_window_title(&mut self) {
+        let Some(window) = self.window.as_ref() else {
+            return;
+        };
+        if let Some(title) = self.handler.window_title() {
+            window.set_title(&title);
+        }
+    }
 }
 
 impl<H> ApplicationHandler for HostedApp<H>
@@ -244,6 +253,7 @@ where
                 }
                 let outcome = self.handler.on_redraw_requested();
                 self.apply_control(event_loop, outcome);
+                self.refresh_window_title();
 
                 if self.exit_after_redraw {
                     event_loop.exit();

@@ -22,12 +22,57 @@ pub struct AssetCatalog {
     state: Mutex<AssetCatalogState>,
 }
 
+/// Deduplicated catalog progress for a loading contribution. A key is counted
+/// once even when it is instanced by many scene entities.
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct AssetCatalogLoadingSummary {
+    pub total_assets: usize,
+    pub completed_assets: usize,
+    pub pending_assets: usize,
+    pub external_loading_assets: usize,
+    pub failed_assets: usize,
+    pub current_asset: Option<AssetKey>,
+}
+
 impl AssetCatalog {
+    /// Returns the current catalog lifecycle as unique-asset progress. Domains
+    /// can feed this into their `RuntimeLoadingJob` without duplicating work
+    /// for repeated GLB instances.
+    pub fn loading_summary(&self) -> AssetCatalogLoadingSummary {
+        let state = self.state.lock().expect("asset catalog mutex poisoned");
+        let mut keys = BTreeSet::new();
+        keys.extend(state.pending_loads.keys().cloned());
+        keys.extend(state.external_loads.iter().cloned());
+        keys.extend(state.loaded_assets.keys().cloned());
+        keys.extend(state.prepared_assets.keys().cloned());
+        keys.extend(state.failed_assets.keys().cloned());
+        let completed_assets = keys.iter().filter(|key| {
+            state.loaded_assets.contains_key(*key) || state.prepared_assets.contains_key(*key)
+        }).count();
+        AssetCatalogLoadingSummary {
+            total_assets: keys.len(),
+            completed_assets,
+            pending_assets: state.pending_loads.len(),
+            external_loading_assets: state.external_loads.len(),
+            failed_assets: state.failed_assets.len(),
+            current_asset: state.pending_loads.keys().next().cloned()
+                .or_else(|| state.external_loads.iter().next().cloned()),
+        }
+    }
     /// Records work owned by a domain loader without queuing it for the file loader.
     pub fn begin_external_load(&self, key: AssetKey) {
         let mut state = self.state.lock().expect("asset catalog mutex poisoned");
         state.failed_assets.remove(&key);
         state.prepared_assets.remove(&key);
+        state.external_loads.insert(key);
+    }
+
+    /// Marks domain-owned preparation as in flight while retaining the parsed
+    /// asset metadata. This is used when a loader has already produced a
+    /// `PreparedAsset` record but still needs to build a heavy runtime cache.
+    pub fn begin_external_prepare(&self, key: AssetKey) {
+        let mut state = self.state.lock().expect("asset catalog mutex poisoned");
+        state.failed_assets.remove(&key);
         state.external_loads.insert(key);
     }
 

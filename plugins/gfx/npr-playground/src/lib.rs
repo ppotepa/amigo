@@ -19,6 +19,6 @@ mod zoom;
 include!(concat!(env!("OUT_DIR"), "/playground_client.rs"));
 
 pub use editor_provider::NprPlaygroundEditorRuntimeApplyProvider;
-pub use plugin::NprPlaygroundPlugin;
+pub use plugin::NprPlugin;
 pub use render::{NprPlaygroundRenderService, NprSurfacePick};
 pub use state::NprPlaygroundState;

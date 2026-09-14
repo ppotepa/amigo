@@ -73,6 +73,7 @@ impl WgpuSceneRenderer {
             wet_reflections_uniform_bind_group_layout,
             pipelines,
             npr: crate::renderer::npr::WgpuNprRenderer::new(device, format),
+            npr_stroke_history: crate::renderer::NprStrokeHistory::default(),
             post_fx_executors:
                 crate::renderer::service::post_fx::default_wgpu_screen_effect_executors(),
             shutter_blur_runtimes: BTreeMap::new(),

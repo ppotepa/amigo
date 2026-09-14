@@ -35,6 +35,11 @@ pub enum HostControl {
 pub trait HostHandler {
     fn config(&self) -> HostConfig;
 
+    /// Returns a changed native window title, when the host should apply one.
+    fn window_title(&mut self) -> Option<String> {
+        None
+    }
+
     /// False when another UI owns presentation. The host keeps ticking without
     /// creating a primary window or depending on window redraw events.
     fn primary_window_enabled(&self) -> bool {

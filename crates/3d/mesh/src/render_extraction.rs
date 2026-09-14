@@ -34,9 +34,18 @@ pub fn extract_mesh3d_render_commands(
         .into_iter()
         .filter(|command| is_entity_render_visible(ctx.scene_service, &command.entity_name))
         .map(|mut command| {
-            command.mesh.geometry = ctx
-                .mesh_scene_service
-                .geometry_for(&command.mesh.mesh_asset);
+            // Scene scripts and lifecycle systems mutate the authoritative
+            // entity transform after the mesh binding is queued. Copy that
+            // latest transform into the render command so animated scenes do
+            // not remain frozen at their authored pose.
+            if let Some(entity) = ctx.scene_service.entity_by_name(&command.entity_name) {
+                command.mesh.transform = entity.transform;
+            }
+            if command.mesh.geometry.is_none() {
+                command.mesh.geometry = ctx
+                    .mesh_scene_service
+                    .geometry_for(&command.mesh.mesh_asset);
+            }
             command
         })
         .collect()

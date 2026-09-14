@@ -3,7 +3,18 @@ scene:
   id: city
   label: NPR City
   description: Deterministic 30-second cinematic city scene.
+loading:
+  title: Preparing city blocks
+  show_asset: true
+  theme:
+    background: "#101827E8"
 entities:
+  - id: npr-settings
+    name: npr-settings
+    components:
+      - type: amigo.gfx.npr-playground.NprSettings
+        profile: npr.scene.yml
+
   - id: city-camera
     name: city-camera
     transform3:

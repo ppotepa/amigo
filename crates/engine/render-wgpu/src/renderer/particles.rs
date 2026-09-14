@@ -38,11 +38,14 @@ pub(crate) fn color_batch_vertices(
 ) -> &mut Vec<ColorVertex> {
     let needs_new_batch = batches
         .last()
-        .map(|batch| batch.blend_mode != blend_mode)
+        .map(|batch| batch.blend_mode != blend_mode || batch.pencil || batch.world_depth)
         .unwrap_or(true);
     if needs_new_batch {
         batches.push(ColorBatch {
+            world_depth: false,
+            depth_write: false,
             blend_mode,
+            pencil: false,
             vertices: Vec::new(),
         });
     }

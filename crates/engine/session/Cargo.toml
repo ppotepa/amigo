@@ -11,3 +11,6 @@ amigo-core.workspace = true
 amigo-runtime.workspace = true
 camino.workspace = true
 glam.workspace = true
+serde.workspace = true
+serde_yaml.workspace = true
+toml.workspace = true

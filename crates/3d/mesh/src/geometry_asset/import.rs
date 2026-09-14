@@ -90,6 +90,10 @@ fn load_gltf_geometry_with_normalization(
         });
     }
     let dropped = read_primitives(&document, &buffers, &active, &mut definition)?;
+    let material_colors = document
+        .materials()
+        .map(|material| material.pbr_metallic_roughness().base_color_factor())
+        .collect::<Vec<_>>();
     let animations = read_animations(&document, &buffers, &definition)?;
     let bind = definition.sample(None, 0.0)?;
     if bind.positions.is_empty() || bind.indices.is_empty() {
@@ -114,6 +118,8 @@ fn load_gltf_geometry_with_normalization(
     Ok(MeshGeometryAsset {
         positions: bind.positions,
         indices: bind.indices,
+        material_indices: bind.material_indices,
+        material_colors,
         dropped_degenerate_triangles: dropped,
         animations,
         definition,
@@ -477,6 +483,7 @@ fn read_primitives(
             }
             let mut primitive = Primitive {
                 node: node.index(),
+                material_index: primitive.material().index(),
                 positions,
                 indices,
                 morph_targets,

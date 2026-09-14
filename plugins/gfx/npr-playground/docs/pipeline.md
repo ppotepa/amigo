@@ -28,14 +28,54 @@ humanization; an instance seed explicitly overrides it.
 
 The scene's `NprSettings.profile` refers to the authored NPR sidecar. The shared
 `NprPlaygroundService` resolves it into `NprPlaygroundState`. The plugin owns object
-selection, camera intent, style inheritance and typed drawing policy. During
-`RenderExtract`, it resolves scene layers plus sparse object overrides into an
-`NprDrawCommand` and submits it through the registered extractor bridge.
+selection, camera intent, style inheritance and typed drawing policy. Drawing
+Studio resolves that state into `NprDrawCommand`; animated runtime scenes instead
+emit camera-independent `NprMeshDrawCommand` contributions with explicit layer
+visibility, silhouette/boundary/crease weights, tool pressure, hardness, dryness,
+taper, overstroke and wobble. A time-derived artistic frame advances at authored
+`motion.policy.redraw_hz`, so deterministic stroke variants remain fixed between
+redraw ticks even when the host presents at a higher refresh rate.
+Runtime mesh styles also declare correlated gesture samples and pressure
+variation. WGPU turns those samples into a curved ribbon, rather than drawing
+each projected edge as one perfectly straight quad.
+High-value authored entities may opt into `join_strokes`; this joins their
+silhouette edges into one continuous gesture while keeping large background
+meshes on the bounded per-edge path.
+Silhouette strokes also use a bounded renderer history: a briefly occluded edge
+is held for two artistic frames and fades, preventing one-frame contour pops
+without permanently ghosting topology changes.
 
-`amigo-render-npr` owns projection, visible features, strokes and tessellation.
-`amigo-render-wgpu` only executes the resulting packet in declared layer order:
-depth, then colour batches. The backend does not infer style from mesh names or
-topology.
+For prepared Drawing Studio packets, `amigo-render-npr` owns projection, visible
+features, strokes and tessellation. `amigo-render-wgpu` executes the packet's
+declared layers. Runtime mesh contributions use the dynamic path below; neither
+path infers a style from mesh names.
+
+Hydrated NPR scenes do not build camera-dependent drawing packets. Mesh import
+prepares immutable indexed topology once per unique asset and stores geometry
+behind `Arc`; extraction therefore clones only references. The runtime bridge
+copies current entity transforms into model-space NPR mesh contributions every
+frame. WGPU projects the current camera, fills front faces and derives visible
+boundary/silhouette edges from the prepared adjacency. Loading remains covered
+by the engine overlay until every referenced GLB has geometry and the dynamic
+NPR contribution is ready. Runtime GLB playback may additionally declare a sample
+rate; this quantizes skeletal sampling without slowing the host loop. `npr-city`
+uses eight pose samples and eight stroke redraws per second for held, hand-ink
+motion. The host loop remains uncapped, so input and presentation stay responsive
+between artistic frames.
+
+Dynamic world rendering separates background/2D, depth-tested world, and final
+UI passes. World surfaces establish per-pixel reversed depth before graphite
+is drawn. Stroke pipelines read that depth without writing it, so transparent
+graphite coverage cannot hide a later stroke. The offscreen target owns and
+reuses the depth attachment across frames and resizes; no per-frame depth
+texture is allocated. Surface and stroke vertices share one upload buffer.
+
+`world_depth_resolves_crossings_preserves_graphite_overlap_and_ui` verifies GPU
+pixels for crossing surfaces, overlapping translucent strokes, UI above the
+world, and a subsequent UI-only frame. The city integration capture separately
+checks loading, runtime mesh contributions and animation progression. These
+checks do not prove art quality or stable temporal contour correspondence;
+the screen-space stroke history still requires reprojection/invalidation work.
 
 The companion bridge uses the same explicit NPR extraction and packet contracts
 with its own offscreen target. `WgpuNprRenderer` executes NPR for both full scenes

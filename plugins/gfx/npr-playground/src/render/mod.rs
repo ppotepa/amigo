@@ -1,7 +1,7 @@
 use crate::state::{ObjectSettings, Settings, style_preset_id};
 mod layers;
 mod model;
-use amigo_render_api::{NprBackgroundCommand, NprDrawCommand};
+use amigo_render_api::{MeshDrawCommand, NprBackgroundCommand, NprDrawCommand};
 use amigo_render_npr::*;
 use glam::{Mat4, Quat, Vec3};
 use model::ModelGeometry;
@@ -97,6 +97,7 @@ pub struct NprPlaygroundRenderService {
     packet_keys: Mutex<BTreeMap<String, ObjectPacketKey>>,
     packet_builds: std::sync::atomic::AtomicU64,
     output: Mutex<(Vec<NprDrawCommand>, Option<NprBackgroundCommand>)>,
+    scene_is_npr: std::sync::atomic::AtomicBool,
     last_input: Mutex<Option<(Settings, [u32; 2])>>,
     temporal: Mutex<DrawingHistory>,
     variants: Mutex<StrokeVariantClock>,
@@ -121,6 +122,7 @@ impl Default for NprPlaygroundRenderService {
             packet_keys: Mutex::default(),
             packet_builds: std::sync::atomic::AtomicU64::new(0),
             output: Mutex::new((vec![], None)),
+            scene_is_npr: std::sync::atomic::AtomicBool::new(false),
             last_input: Mutex::new(None),
             temporal: Mutex::new(DrawingHistory::default()),
             variants: Mutex::new(StrokeVariantClock::default()),
@@ -130,6 +132,18 @@ impl Default for NprPlaygroundRenderService {
     }
 }
 impl NprPlaygroundRenderService {
+    /// Returns whether the active scene owns the world presentation through
+    /// the NPR extractor. The regular mesh bridge uses this to avoid leaking
+    /// a standard shaded frame while the NPR packet is still preparing.
+    pub fn scene_is_npr(&self) -> bool {
+        self.scene_is_npr.load(std::sync::atomic::Ordering::Acquire)
+    }
+
+    pub fn set_scene_is_npr(&self, active: bool) {
+        self.scene_is_npr
+            .store(active, std::sync::atomic::Ordering::Release);
+    }
+
     /// Immutable surfaces and their revision caches are shared; every camera
     /// retains independent packet, LOD, variant and fade state.
     pub fn fork_view(&self) -> Self {
@@ -183,6 +197,16 @@ impl NprPlaygroundRenderService {
     }
     pub fn commands(&self) -> Vec<NprDrawCommand> {
         self.output.lock().unwrap().0.clone()
+    }
+
+    /// Publishes a fully prepared scene snapshot. Runtime preparation owns
+    /// packet construction; render extraction only reads this completed output.
+    pub fn publish_scene_snapshot(
+        &self,
+        commands: Vec<NprDrawCommand>,
+        background: Option<NprBackgroundCommand>,
+    ) {
+        *self.output.lock().unwrap() = (commands, background);
     }
     pub fn layer_diagnostics(&self) -> BTreeMap<String, NprLayerDiagnostics> {
         self.layer_diagnostics.lock().unwrap().clone()
@@ -331,7 +355,7 @@ impl NprPlaygroundRenderService {
     /// Rebuilds a frozen reference frame. Tests and deterministic screenshots
     /// use this entry point; interactive extraction uses `rebuild_with_delta`.
     pub fn rebuild(&self, settings: &Settings, viewport: [u32; 2]) -> Result<(), String> {
-        self.rebuild_internal(settings, viewport, 0.0, false)
+        self.rebuild_internal(settings, viewport, 0.0, false, true)
     }
 
     /// Applies session-owned temporal continuity after rebuilding (only when
@@ -342,7 +366,75 @@ impl NprPlaygroundRenderService {
         viewport: [u32; 2],
         delta_seconds: f32,
     ) -> Result<(), String> {
-        self.rebuild_internal(settings, viewport, delta_seconds, true)
+        self.rebuild_internal(settings, viewport, delta_seconds, true, true)
+    }
+
+    /// Builds NPR packets from the hydrated scene geometry. Scene meshes remain
+    /// the source of truth; this plugin only turns their explicit NPR profile
+    /// into neutral render commands.
+    pub fn rebuild_scene_with_delta(
+        &self,
+        settings: &Settings,
+        meshes: &[MeshDrawCommand],
+        viewport: [u32; 2],
+        delta_seconds: f32,
+    ) -> Result<(), String> {
+        let mut scene = settings.clone();
+        scene.objects.clear();
+        let mut geometry_cache = self.geometry.lock().unwrap();
+        for command in meshes {
+            let Some(geometry) = command.mesh.geometry.as_ref() else {
+                continue;
+            };
+            let id = command.entity_name.clone();
+            // City scenes commonly instance one GLB dozens of times. Keep one
+            // prepared NPR surface per asset, never one per entity or frame.
+            let model = command.mesh.mesh_asset.as_str().to_owned();
+            if !geometry_cache.contains_key(&model) {
+                geometry_cache.insert(
+                    model.clone(),
+                    ModelGeometry::builtin(NprGeometry::from_indexed(
+                        &geometry.positions,
+                        &geometry.indices,
+                    )?),
+                );
+            }
+            let transform = command.mesh.transform;
+            scene.objects.insert(
+                id.clone(),
+                ObjectSettings {
+                    model,
+                    material_base_color: glam::Vec4::ONE,
+                    surface_intent: Default::default(),
+                    surface_mode: Default::default(),
+                    surface_subdivision_level: 0,
+                    smooth_weld_relative_tolerance: 0.001,
+                    visible: true,
+                    rotating: false,
+                    position: glam::Vec3::new(
+                        transform.translation.x,
+                        transform.translation.y,
+                        transform.translation.z,
+                    ),
+                    rotation: glam::Vec3::new(
+                        transform.rotation_euler.x.to_degrees(),
+                        transform.rotation_euler.y.to_degrees(),
+                        transform.rotation_euler.z.to_degrees(),
+                    ),
+                    scale: transform.scale.x,
+                    angular_speed: glam::Vec3::ZERO,
+                    gesture_variant: 0,
+                    style_overrides: Default::default(),
+                    style_layer_overrides: Default::default(),
+                    construction_marks: vec![],
+                },
+            );
+        }
+        drop(geometry_cache);
+        scene.selected = scene.objects.keys().next().cloned().unwrap_or_default();
+        // The scene adapter builds one transient entry per Mesh3D command.
+        // That is valid render input, but not a Drawing Studio document.
+        self.rebuild_internal(&scene, viewport, delta_seconds, true, false)
     }
 
     fn rebuild_internal(
@@ -351,6 +443,7 @@ impl NprPlaygroundRenderService {
         viewport: [u32; 2],
         delta_seconds: f32,
         apply_temporal: bool,
+        validate_drawing_document: bool,
     ) -> Result<(), String> {
         if viewport.contains(&0) {
             self.clear();
@@ -362,10 +455,18 @@ impl NprPlaygroundRenderService {
             .unwrap()
             .as_ref()
             .is_some_and(|(last, size)| last == settings && *size == viewport);
-        if input_changed {
+        if input_changed && validate_drawing_document {
             settings.validate()?;
         }
-        {
+        // Packet construction is deliberately outside the per-frame path. A
+        // scene may contain dozens of instances and `build_drawing` is CPU
+        // intensive; running it here when neither scene input nor viewport
+        // changed starves the window event loop. Temporal presentation below
+        // still advances every frame from the last complete packet.
+        // The drawing studio retains its continuous redraw semantics. Hydrated
+        // runtime scenes (`validate_drawing_document == false`) publish a
+        // stable snapshot and rebuild only after an actual scene/camera change.
+        if input_changed || validate_drawing_document {
             let yaw = settings.camera_yaw.to_radians();
             let pitch = settings.camera_pitch.to_radians();
             let position = settings.camera_target
@@ -397,7 +498,7 @@ impl NprPlaygroundRenderService {
                 .collect();
             let mut source = Vec::new();
             for (id, object) in &settings.objects {
-                if !object.visible || *id != settings.selected {
+                if !object.visible {
                     continue;
                 }
                 let mut style = object.effective_style(settings.global);
