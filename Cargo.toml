@@ -116,7 +116,7 @@ amigo-math = { path = "crates/foundation/math" }
 amigo-fx = { path = "crates/foundation/fx" }
 amigo-runtime = { path = "crates/engine/runtime" }
 camino = "1.1"
-glam = "0.30"
+glam = "0.32"
 bytemuck = { version = "1.23", features = ["derive"] }
 amigo-session = { path = "crates/engine/session" }
 amigo-capabilities = { path = "crates/engine/capabilities" }
