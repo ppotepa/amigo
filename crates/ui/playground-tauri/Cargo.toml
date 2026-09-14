@@ -12,7 +12,7 @@ amigo-playground-api.workspace = true
 serde.workspace = true
 tauri = { version = "2", features = [] }
 serde_json.workspace = true
-rfd = "0.15"
+rfd = "0.17"
 
 [target.'cfg(windows)'.dependencies]
 webview2-com = "0.38"
