@@ -127,7 +127,7 @@ impl Default for PencilAnimationPipeline {
         Self {
             inner: MinimalInkPipeline::with_strategies(
                 Arc::new(TopologySurfaceStrategy),
-                Arc::new(SilhouetteFeatureStrategy),
+                Arc::new(PencilContourFeatureStrategy::default()),
                 Arc::new(AllFeatureSalienceStrategy),
                 Arc::new(CameraProjectionStrategy),
                 Arc::new(NoValueStrategy),
@@ -163,16 +163,45 @@ impl NprFeatureStrategy for ContourFeatureStrategy {
 }
 
 /// Pencil animation starts from the drawn silhouette, not from the source
-/// mesh's triangulation. Structural interior marks need an authored feature
-/// source (or a future curvature-based strategy); a generic dihedral test is
-/// too eager for smooth, triangulated assets such as Suzanne.
-pub struct SilhouetteFeatureStrategy;
-impl NprFeatureStrategy for SilhouetteFeatureStrategy {
+/// mesh's triangulation. It may add only genuinely structural creases; smooth
+/// triangulation must never become an interior drawing grid.
+pub struct PencilContourFeatureStrategy {
+    pub structural_crease_angle: f32,
+}
+
+impl Default for PencilContourFeatureStrategy {
+    fn default() -> Self { Self { structural_crease_angle: 1.10 } }
+}
+
+impl NprFeatureStrategy for PencilContourFeatureStrategy {
     fn detect(&self, context: &NprPipelineContext<'_>, topology: &[TopologyEdge]) -> Vec<crate::FeatureSegment> {
-        classify_features(context.input.geometry, topology, -context.input.camera.forward(), 0.35)
+        let geometry = context.input.geometry;
+        let view = -context.input.camera.forward();
+        let mut features = classify_features(geometry, topology, view, 0.35)
             .into_iter()
             .filter(|feature| matches!(feature.class, FeatureClass::Silhouette | FeatureClass::Boundary))
-            .collect()
+            .collect::<Vec<_>>();
+        features.extend(topology.iter().filter_map(|edge| {
+            if edge.faces[1] == u32::MAX {
+                return None;
+            }
+            let first = face_normal(geometry, edge.faces[0]);
+            let second = face_normal(geometry, edge.faces[1]);
+            // Silhouettes are already emitted above. Interior contours only
+            // describe a deliberate hard structural change.
+            if (first.dot(view) >= 0.0) != (second.dot(view) >= 0.0)
+                || first.dot(second) >= self.structural_crease_angle.cos()
+            {
+                return None;
+            }
+            Some(crate::FeatureSegment {
+                edge: *edge,
+                class: FeatureClass::Crease,
+                midpoint: (geometry.vertices[edge.a as usize].position
+                    + geometry.vertices[edge.b as usize].position) * 0.5,
+            })
+        }));
+        features
     }
 }
 
@@ -605,7 +634,7 @@ mod tests {
     }
 
     #[test]
-    fn pencil_animation_excludes_mesh_crease_lines() {
+    fn pencil_animation_emits_contours_without_hatching_or_fills() {
         let packet = PencilAnimationPipeline::default().build(NprPipelineInput {
             geometry: &NprGeometry::canonical_cube(),
             camera: NprCamera::Perspective(crate::PerspectiveCamera::cube_default(1.0)),
@@ -618,9 +647,36 @@ mod tests {
 
         assert!(!packet.strokes.is_empty());
         assert!(packet.strokes.iter().all(|stroke| {
-            matches!(stroke.class, FeatureClass::Silhouette | FeatureClass::Boundary)
+            matches!(stroke.class, FeatureClass::Silhouette | FeatureClass::Boundary | FeatureClass::Crease)
         }));
-        assert_eq!(packet.stats.creases, 0);
+        assert!(!packet.strokes.iter().any(|stroke| stroke.class == FeatureClass::Hatching));
+        assert!(packet.fills.is_empty());
+    }
+
+    #[test]
+    fn pencil_contours_reject_low_dihedral_triangulation() {
+        let geometry = NprGeometry::from_indexed(
+            &[
+                [0.0, 0.0, 0.0],
+                [1.0, 0.0, 0.0],
+                [0.0, 1.0, 0.0],
+                [1.0, 1.0, 0.08],
+            ],
+            &[0, 1, 2, 1, 3, 2],
+        ).unwrap();
+        let input = NprPipelineInput {
+            geometry: &geometry,
+            camera: NprCamera::Perspective(crate::PerspectiveCamera::cube_default(1.0)),
+            viewport: [512, 512],
+            style: ComicInk::default(),
+            seed: 7,
+            debug_view: NprDebugView::Final,
+            temporal: crate::NprTemporalState::default(),
+        };
+        let context = NprPipelineContext::new(input);
+        let features = PencilContourFeatureStrategy::default().detect(&context, &build_topology(&geometry));
+
+        assert!(!features.iter().any(|feature| feature.class == FeatureClass::Crease));
     }
 
     #[test]
