@@ -577,10 +577,8 @@ impl Default for GraphiteGestureStrategy {
 
 impl NprGestureStrategy for GraphiteGestureStrategy {
     fn realize(&self, context: &NprPipelineContext<'_>, marks: &[NprLogicalMark]) -> Vec<TessellatedStroke> {
-        marks.iter().filter(|mark| mark.points.len() >= 2).map(|mark| {
-            let seed = context.input.seed
-                ^ context.input.temporal.path_epoch.wrapping_mul(0xA24B_AED4)
-                ^ (mark.id as u64).wrapping_mul(0x9E37_79B9);
+        let mut strokes = Vec::new();
+        for mark in marks.iter().filter(|mark| mark.points.len() >= 2) {
             let mut style = context.input.style;
             let brush = self.brushes.brush_for(mark.class);
             match mark.class {
@@ -589,36 +587,43 @@ impl NprGestureStrategy for GraphiteGestureStrategy {
             }
             style.taper = style.taper.max(brush.taper);
             let source = resample_mark(mark, 28.0);
-            let mut points = Vec::with_capacity(source.len());
-            // A low-frequency, deterministic hand path. Consecutive points
-            // share a slowly changing drift rather than independent white
-            // noise, so a line looks hand-drawn but stays surface-stable.
-            let mut carried_drift = 0.0;
-            for knot in 0..source.len() {
-                let t = knot as f32 / (source.len() - 1) as f32;
-                let direction = if knot + 1 < source.len() {
-                    (source[knot + 1].0 - source[knot].0).normalize_or_zero()
-                } else {
-                    (source[knot].0 - source[knot - 1].0).normalize_or_zero()
-                };
-                let normal = Vec2::new(-direction.y, direction.x);
-                let hash = (seed ^ (knot as u64).wrapping_mul(0xD1B5_4A32))
-                    .wrapping_mul(0x94D0_49BB);
-                let random = ((hash ^ (hash >> 29)) >> 32) as f32 / u32::MAX as f32 - 0.5;
-                carried_drift = carried_drift * 0.58 + random * self.drift_pixels;
-                let envelope = (std::f32::consts::PI * t).sin().max(0.0).powf(0.45);
-                let correction = direction * random * self.drift_pixels * 0.18;
-                let overshoot = if knot == 0 { -self.overshoot_pixels } else if knot + 1 == source.len() { self.overshoot_pixels } else { 0.0 };
-                let position = source[knot].0
-                    + direction * overshoot
-                    + normal * carried_drift * envelope
-                    + correction * envelope;
-                points.push((position, source[knot].1));
+            for trace in 0..brush.trace_count.max(1) {
+                let stroke_id = mark.id.wrapping_mul(4).wrapping_add(trace as u32);
+                let seed = context.input.seed
+                    ^ context.input.temporal.path_epoch.wrapping_mul(0xA24B_AED4)
+                    ^ (stroke_id as u64).wrapping_mul(0x9E37_79B9);
+                let mut points = Vec::with_capacity(source.len());
+                // A low-frequency, deterministic hand path. Consecutive points
+                // share a slowly changing drift rather than independent white
+                // noise, so a line looks hand-drawn but stays surface-stable.
+                let mut carried_drift = 0.0;
+                for knot in 0..source.len() {
+                    let t = knot as f32 / (source.len() - 1) as f32;
+                    let direction = if knot + 1 < source.len() {
+                        (source[knot + 1].0 - source[knot].0).normalize_or_zero()
+                    } else {
+                        (source[knot].0 - source[knot - 1].0).normalize_or_zero()
+                    };
+                    let normal = Vec2::new(-direction.y, direction.x);
+                    let hash = (seed ^ (knot as u64).wrapping_mul(0xD1B5_4A32))
+                        .wrapping_mul(0x94D0_49BB);
+                    let random = ((hash ^ (hash >> 29)) >> 32) as f32 / u32::MAX as f32 - 0.5;
+                    carried_drift = carried_drift * 0.58 + random * self.drift_pixels;
+                    let envelope = (std::f32::consts::PI * t).sin().max(0.0).powf(0.45);
+                    let correction = direction * random * self.drift_pixels * 0.18;
+                    let overshoot = if knot == 0 { -self.overshoot_pixels } else if knot + 1 == source.len() { self.overshoot_pixels } else { 0.0 };
+                    let position = source[knot].0
+                        + direction * overshoot
+                        + normal * carried_drift * envelope
+                        + correction * envelope;
+                    points.push((position, source[knot].1));
+                }
+                let mut stroke = tessellate_polyline_with_depth(stroke_id, mark.class, &points, style);
+                stroke.medium = Some(brush.medium);
+                strokes.push(stroke);
             }
-            let mut stroke = tessellate_polyline_with_depth(mark.id, mark.class, &points, style);
-            stroke.medium = Some(brush.medium);
-            stroke
-        }).collect()
+        }
+        strokes
     }
 }
 

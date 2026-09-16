@@ -15,6 +15,9 @@ pub struct NprBrushDefinition {
     pub medium: NprMediumDefinition,
     pub width_scale: f32,
     pub taper: f32,
+    /// Number of physical traces for one logical drawing mark. Soft graphite
+    /// can leave a restrained bundle; construction marks stay single-trace.
+    pub trace_count: u8,
 }
 
 pub trait NprBrushLibrary: Send + Sync {
@@ -39,6 +42,7 @@ impl NprBrushLibrary for PencilBrushLibrary {
                 }),
                 width_scale: 1.18,
                 taper: 0.30,
+                trace_count: 2,
             },
             FeatureClass::Crease => NprBrushDefinition {
                 role: NprBrushRole::Crease,
@@ -51,6 +55,7 @@ impl NprBrushLibrary for PencilBrushLibrary {
                 }),
                 width_scale: 0.82,
                 taper: 0.20,
+                trace_count: 1,
             },
             FeatureClass::SuggestiveContour => NprBrushDefinition {
                 role: NprBrushRole::Crease,
@@ -63,6 +68,7 @@ impl NprBrushLibrary for PencilBrushLibrary {
                 }),
                 width_scale: 0.68,
                 taper: 0.42,
+                trace_count: 1,
             },
             FeatureClass::Hatching => NprBrushDefinition {
                 role: NprBrushRole::Hatching,
@@ -75,6 +81,7 @@ impl NprBrushLibrary for PencilBrushLibrary {
                 }),
                 width_scale: 0.62,
                 taper: 0.34,
+                trace_count: 1,
             },
         }
     }
@@ -90,6 +97,8 @@ mod tests {
         let contour = brushes.brush_for(FeatureClass::Silhouette);
         let hatch = brushes.brush_for(FeatureClass::Hatching);
         assert!(contour.width_scale > hatch.width_scale);
+        assert_eq!(contour.trace_count, 2);
+        assert_eq!(hatch.trace_count, 1);
         let NprMediumDefinition::Graphite(contour_medium) = contour.medium else { panic!("expected graphite") };
         let NprMediumDefinition::Graphite(hatch_medium) = hatch.medium else { panic!("expected graphite") };
         assert!(contour_medium.deposit_gain > hatch_medium.deposit_gain);
