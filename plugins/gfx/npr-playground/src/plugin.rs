@@ -279,3 +279,16 @@ impl RuntimePlugin for NprPlaygroundPlugin {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn playground_opens_in_pencil_animation_not_raw_topology_ink() {
+        assert_eq!(
+            NprPlaygroundSnapshot::default().style_profile,
+            NprPlaygroundStyleProfile::PencilAnimation,
+        );
+    }
+}
