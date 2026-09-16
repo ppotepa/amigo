@@ -1,7 +1,7 @@
 use crate::render::{NprPlaygroundRenderProfile, NprPlaygroundRenderService};
 use amigo_capabilities::{DEFAULT_CAPABILITY_VERSION, register_domain_plugin};
 use amigo_input_api::{InputState, KeyCode, MouseButton};
-use amigo_render_npr::{NprCamera, OrthographicCamera, PerspectiveCamera};
+use amigo_render_npr::{NprCamera, NprDebugView, OrthographicCamera, PerspectiveCamera};
 use amigo_runtime::{RuntimePlugin, ServiceRegistry, SystemPhase, SystemRegistry};
 use glam::Vec3;
 use std::sync::Mutex;
@@ -39,6 +39,7 @@ pub struct NprPlaygroundSnapshot {
     pub camera_distance: f32,
     pub projection: NprPlaygroundProjection,
     pub style_profile: NprPlaygroundStyleProfile,
+    pub debug_view: NprDebugView,
     pub auto_rotate: bool,
     pub elapsed_seconds: f32,
 }
@@ -57,6 +58,7 @@ impl Default for NprPlaygroundSnapshot {
             // profile remains available on `3`, but must never be mistaken
             // for the drawing result shown on first launch.
             style_profile: NprPlaygroundStyleProfile::PencilAnimation,
+            debug_view: NprDebugView::Final,
             auto_rotate: true,
             elapsed_seconds: 0.0,
         }
@@ -159,6 +161,12 @@ impl NprPlaygroundState {
         if input.was_pressed(KeyCode::Digit4) {
             snapshot.style_profile = NprPlaygroundStyleProfile::PencilAnimation;
         }
+        if input.was_pressed(KeyCode::Digit5) {
+            snapshot.debug_view = NprDebugView::FeatureClasses;
+        }
+        if input.was_pressed(KeyCode::Digit6) {
+            snapshot.debug_view = NprDebugView::Final;
+        }
         if input.was_pressed(KeyCode::Space) {
             snapshot.auto_rotate = !snapshot.auto_rotate;
         }
@@ -259,6 +267,7 @@ impl RuntimePlugin for NprPlaygroundPlugin {
                             NprPlaygroundStyleProfile::MinimalInk => NprPlaygroundRenderProfile::MinimalInk,
                             NprPlaygroundStyleProfile::PencilAnimation => NprPlaygroundRenderProfile::PencilAnimation,
                         },
+                        snapshot.debug_view,
                         snapshot.elapsed_seconds,
                     )
                     .map_err(amigo_core::AmigoError::Message)?;

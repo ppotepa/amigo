@@ -121,6 +121,7 @@ impl NprPlaygroundRenderService {
         position: Vec3,
         camera: NprCamera,
         profile: NprPlaygroundRenderProfile,
+        debug_view: NprDebugView,
         elapsed_seconds: f32,
     ) -> Result<(), String> {
         let mut geometry = {
@@ -170,7 +171,7 @@ impl NprPlaygroundRenderService {
         }
         let packet = match profile {
             NprPlaygroundRenderProfile::MinimalInk => build_packet_with_camera(
-                &geometry, camera, viewport, profile.style(), seed, NprDebugView::Final,
+                &geometry, camera, viewport, profile.style(), seed, debug_view,
             ),
             NprPlaygroundRenderProfile::PencilAnimation => build_pencil_animation_packet_with_camera_and_temporal(
                 &geometry,
@@ -178,7 +179,7 @@ impl NprPlaygroundRenderService {
                 viewport,
                 profile.style(),
                 seed,
-                NprDebugView::Final,
+                debug_view,
                 profile.temporal(elapsed_seconds),
             ),
         };
@@ -209,6 +210,7 @@ mod tests {
             Vec3::ZERO,
             PerspectiveCamera::cube_default(1280.0 / 720.0).into(),
             NprPlaygroundRenderProfile::PencilAnimation,
+            NprDebugView::Final,
             0.0,
         ).unwrap();
         let packet = service.snapshot().expect("Pencil packet").packet;
@@ -225,12 +227,12 @@ mod tests {
         let camera = PerspectiveCamera::cube_default(1280.0 / 720.0).into();
         service.rebuild_suzanne_rotated(
             [1280, 720], 0x4E5052, 0.0, 0.0, Vec3::ZERO, camera,
-            NprPlaygroundRenderProfile::PencilAnimation, 0.0,
+            NprPlaygroundRenderProfile::PencilAnimation, NprDebugView::Final, 0.0,
         ).unwrap();
         let first = service.snapshot().expect("first pencil packet").packet;
         service.rebuild_suzanne_rotated(
             [1280, 720], 0x4E5052, 0.0, 0.0, Vec3::ZERO, camera,
-            NprPlaygroundRenderProfile::PencilAnimation, 0.034,
+            NprPlaygroundRenderProfile::PencilAnimation, NprDebugView::Final, 0.034,
         ).unwrap();
         let second = service.snapshot().expect("second pencil packet").packet;
 

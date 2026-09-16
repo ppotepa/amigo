@@ -7,4 +7,6 @@ Suzanne rotates automatically. Controls: arrows rotate Suzanne manually, left dr
 drag moves the model, Shift + right drag moves it vertically, R resets the model
 and Home resets the camera. Press 1 for Perspective or 2 for Orthographic.
 Press 3 for Minimal Ink or 4 for Pencil Animation.
+Press 5 to inspect feature classes (green silhouette, blue structural contour,
+orange suggestive contour) and 6 to return to final graphite.
 Space pauses or resumes automatic rotation.
