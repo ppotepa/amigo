@@ -395,19 +395,23 @@ fn render_npr_commands(
                     depth: to_depth(triangle.depth),
                     mark: [0.0; 4],
                     paper: [1.0, 0.0],
+                    medium: [1.0, 0.0],
                 });
             }
         }
         for stroke in &command.packet.strokes {
             let paper = command.packet.paper.normalized();
             let medium = stroke.medium.unwrap_or(command.packet.medium);
-            let graphite_deposit = match medium {
-                NprMediumDefinition::Ink(_) => 1.0,
+            let (graphite_deposit, graphite_filaments) = match medium {
+                NprMediumDefinition::Ink(_) => (1.0, [1.0, 0.0]),
                 NprMediumDefinition::Graphite(medium) => {
                     let medium = medium.normalized();
-                    medium.max_optical_density
-                        * medium.deposit_gain
-                        * (0.35 + 0.65 * medium.paper_coupling)
+                    (
+                        medium.max_optical_density
+                            * medium.deposit_gain
+                            * (0.35 + 0.65 * medium.paper_coupling),
+                        [medium.filament_count as f32, medium.filament_spread],
+                    )
                 }
             };
             let mut color = match command.packet.debug_view {
@@ -453,6 +457,7 @@ fn render_npr_commands(
                         stroke_seed,
                     ],
                     paper: [paper.tooth_scale, paper.fibre_strength],
+                    medium: graphite_filaments,
                 });
             }
         }

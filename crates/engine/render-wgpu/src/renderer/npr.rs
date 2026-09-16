@@ -59,12 +59,15 @@ struct Vertex {
     @location(3) mark: vec4<f32>,
     // x = paper tooth scale, y = fibre strength.
     @location(4) paper: vec2<f32>,
+    // x = analytic graphite filament count, y = lateral filament spread.
+    @location(5) medium: vec2<f32>,
 };
 struct Out {
     @builtin(position) position: vec4<f32>,
     @location(0) color: vec4<f32>,
     @location(1) mark: vec4<f32>,
     @location(2) paper: vec2<f32>,
+    @location(3) medium: vec2<f32>,
 };
 fn hash21(p: vec2<f32>) -> f32 {
     return fract(sin(dot(p, vec2<f32>(127.1, 311.7))) * 43758.5453);
@@ -75,6 +78,7 @@ fn hash21(p: vec2<f32>) -> f32 {
     o.color = v.color;
     o.mark = v.mark;
     o.paper = v.paper;
+    o.medium = v.medium;
     return o;
 }
 @fragment fn fs_main(v: Out) -> @location(0) vec4<f32> {
@@ -93,7 +97,12 @@ fn hash21(p: vec2<f32>) -> f32 {
     let pressure_envelope = 0.58 + 0.42 * sin(v.mark.x * 3.14159265);
     let pressure_drift = 0.88 + 0.12 * sin(v.mark.x * 10.7 + seed.x * 41.0);
     let pressure = pressure_envelope * pressure_drift;
-    let deposit = clamp(tooth * grain * fibres * edge * pressure * v.mark.z, 0.0, 1.0);
+    // A few overlapping graphite contacts break the analytically perfect
+    // ribbon without allocating separate geometry for every filament.
+    let filament_count = max(v.medium.x, 1.0);
+    let filament_wave = 0.76 + 0.24 * sin((v.mark.y + 1.0) * 3.14159265 * filament_count + seed.y * 29.0);
+    let filaments = mix(1.0, filament_wave, v.medium.y);
+    let deposit = clamp(tooth * grain * fibres * filaments * edge * pressure * v.mark.z, 0.0, 1.0);
     return vec4<f32>(v.color.rgb * (0.72 + 0.28 * grain), v.color.a * deposit);
 }
 "#;
@@ -106,6 +115,7 @@ pub struct NprGpuVertex {
     pub depth: f32,
     pub mark: [f32; 4],
     pub paper: [f32; 2],
+    pub medium: [f32; 2],
 }
 
 impl NprGpuVertex {
@@ -138,6 +148,11 @@ impl NprGpuVertex {
                     format: wgpu::VertexFormat::Float32x2,
                     offset: 44,
                     shader_location: 4,
+                },
+                wgpu::VertexAttribute {
+                    format: wgpu::VertexFormat::Float32x2,
+                    offset: 52,
+                    shader_location: 5,
                 },
             ],
         }
