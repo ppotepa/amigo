@@ -111,7 +111,14 @@ pub fn tessellate_polyline_with_depth(
         } else {
             1.0
         };
-        let width = style.width(class) * envelope.max(0.1);
+        let t = index as f32 / (points.len() - 1) as f32;
+        // One continuous pressure gesture, with an ID-stable low-frequency
+        // correction. Width changes belong to the planned physical mark,
+        // while the graphite shader separately controls pigment deposition.
+        let base_pressure = 0.78 + 0.22 * (std::f32::consts::PI * t).sin();
+        let phase = (id.wrapping_mul(2_654_435_761) % 10_007) as f32 / 10_007.0;
+        let hand_correction = 0.92 + 0.08 * (t * 8.3 + phase * 6.2831853).sin();
+        let width = style.width(class) * envelope.max(0.1) * base_pressure * hand_correction;
         vertices.push(StrokeVertex { position: position + normal * width * 0.5, width, id, depth });
         vertices.push(StrokeVertex { position: position - normal * width * 0.5, width, id, depth });
     }
@@ -137,5 +144,22 @@ mod tests {
         );
         assert_eq!(stroke.vertices.len(), 6);
         assert_eq!(stroke.indices.len(), 12);
+    }
+
+    #[test]
+    fn graphite_ready_polyline_has_a_continuous_pressure_width_profile() {
+        let stroke = tessellate_polyline_with_depth(
+            19,
+            FeatureClass::Silhouette,
+            &[
+                (Vec2::ZERO, 0.2),
+                (Vec2::X, 0.2),
+                (Vec2::new(2.0, 0.2), 0.2),
+                (Vec2::new(3.0, 0.2), 0.2),
+            ],
+            ComicInk::default(),
+        );
+        assert!(stroke.vertices[2].width > stroke.vertices[0].width);
+        assert_ne!(stroke.vertices[2].width, stroke.vertices[4].width);
     }
 }
