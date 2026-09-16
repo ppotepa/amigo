@@ -15,6 +15,7 @@ pub enum NprPipelineStage {
     Value,
     Marks,
     Hatching,
+    StrokeChains,
     Gesture,
     Paper,
     Medium,
@@ -27,6 +28,7 @@ pub const DEFAULT_NPR_PIPELINE_STAGES: &[NprPipelineStage] = &[
     NprPipelineStage::Value,
     NprPipelineStage::Marks,
     NprPipelineStage::Hatching,
+    NprPipelineStage::StrokeChains,
     NprPipelineStage::Gesture,
     NprPipelineStage::Paper,
     NprPipelineStage::Medium,
@@ -48,8 +50,10 @@ pub struct NprPipelineInput<'a> {
 pub struct NprLogicalMark {
     pub id: u32,
     pub class: FeatureClass,
-    pub segment: (Vec2, Vec2),
-    pub depths: (f32, f32),
+    /// A projected paper-space path. Feature and hatching strategies may
+    /// start with two points; a stroke-chain strategy may turn neighbouring
+    /// segments into a single human gesture before tessellation.
+    pub points: Vec<(Vec2, f32)>,
 }
 
 /// Data shared between pipeline stages. It deliberately contains no WGPU types.

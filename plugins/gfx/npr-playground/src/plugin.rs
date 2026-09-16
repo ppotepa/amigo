@@ -53,7 +53,10 @@ impl Default for NprPlaygroundSnapshot {
             orbit_pitch: 0.0,
             camera_distance: DEFAULT_CAMERA_DISTANCE,
             projection: NprPlaygroundProjection::Perspective,
-            style_profile: NprPlaygroundStyleProfile::MinimalInk,
+            // The playground is a pencil-animation study. The raw ink
+            // profile remains available on `3`, but must never be mistaken
+            // for the drawing result shown on first launch.
+            style_profile: NprPlaygroundStyleProfile::PencilAnimation,
             auto_rotate: true,
             elapsed_seconds: 0.0,
         }

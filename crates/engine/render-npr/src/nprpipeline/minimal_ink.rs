@@ -4,13 +4,13 @@ use super::{
     strategies::{
         NprFeatureStrategy, NprGestureStrategy, NprHatchingStrategy, NprMarkStrategy, NprMediumStrategy, NprPaperStrategy,
         NprProjectionStrategy, NprSurfaceStrategy, NprValueStrategy,
-        NprSalienceStrategy,
+        NprSalienceStrategy, NprStrokeChainStrategy,
     },
 };
 use crate::{
     FeatureClass, GraphiteMedium, InkMedium, NprBrushLibrary, NprFillTriangle, NprMediumDefinition, NprPaperDefinition, NprRenderPacket, NprRenderStats, NprSurfaceDirectionField, PencilBrushLibrary, ProjectedPoint,
     TessellatedStroke, TopologyEdge, build_topology, classify_features, face_normal,
-    tessellate_polyline_with_depth, tessellate_segment_with_depth, DEFAULT_NPR_PIPELINE_STAGES, NprSaliencePolicy,
+    tessellate_polyline_with_depth, DEFAULT_NPR_PIPELINE_STAGES, NprSaliencePolicy,
     NprValueField, select_salient_features,
 };
 use glam::{Vec2, Vec3, Vec4};
@@ -27,6 +27,7 @@ pub struct MinimalInkPipeline {
     values: Arc<dyn NprValueStrategy>,
     marks: Arc<dyn NprMarkStrategy>,
     hatching: Arc<dyn NprHatchingStrategy>,
+    chains: Arc<dyn NprStrokeChainStrategy>,
     gesture: Arc<dyn NprGestureStrategy>,
     paper: Arc<dyn NprPaperStrategy>,
     medium: Arc<dyn NprMediumStrategy>,
@@ -42,6 +43,7 @@ impl Default for MinimalInkPipeline {
             values: Arc::new(ThreeBandValueStrategy),
             marks: Arc::new(FeatureMarkStrategy),
             hatching: Arc::new(NoHatchingStrategy),
+            chains: Arc::new(NoStrokeChainStrategy),
             gesture: Arc::new(FlatInkGestureStrategy),
             paper: Arc::new(FlatPaperStrategy),
             medium: Arc::new(InkMediumStrategy),
@@ -58,11 +60,12 @@ impl MinimalInkPipeline {
         values: Arc<dyn NprValueStrategy>,
         marks: Arc<dyn NprMarkStrategy>,
         hatching: Arc<dyn NprHatchingStrategy>,
+        chains: Arc<dyn NprStrokeChainStrategy>,
         gesture: Arc<dyn NprGestureStrategy>,
         paper: Arc<dyn NprPaperStrategy>,
         medium: Arc<dyn NprMediumStrategy>,
     ) -> Self {
-        Self { surface, features, salience, projection, values, marks, hatching, gesture, paper, medium }
+        Self { surface, features, salience, projection, values, marks, hatching, chains, gesture, paper, medium }
     }
 }
 
@@ -78,6 +81,8 @@ impl NprPipeline for MinimalInkPipeline {
         context.fills = self.values.plan_fills(&context, self.projection.as_ref());
         context.marks = self.marks.plan_marks(&context, self.projection.as_ref());
         context.marks.extend(self.hatching.plan_hatching(&context, self.projection.as_ref()));
+        let marks = std::mem::take(&mut context.marks);
+        context.marks = self.chains.chain(&context, marks);
         context.strokes = self.gesture.realize(&context, &context.marks);
         let silhouettes = context.features.iter().filter(|feature| feature.class == FeatureClass::Silhouette).count();
         let creases = context.features.iter().filter(|feature| feature.class == FeatureClass::Crease).count();
@@ -122,12 +127,13 @@ impl Default for PencilAnimationPipeline {
         Self {
             inner: MinimalInkPipeline::with_strategies(
                 Arc::new(TopologySurfaceStrategy),
-                Arc::new(ContourFeatureStrategy),
-                Arc::new(SelectiveContourSalienceStrategy { minimum_crease_length_px: 34.0 }),
+                Arc::new(SilhouetteFeatureStrategy),
+                Arc::new(AllFeatureSalienceStrategy),
                 Arc::new(CameraProjectionStrategy),
                 Arc::new(NoValueStrategy),
                 Arc::new(FeatureMarkStrategy),
                 Arc::new(NoHatchingStrategy),
+                Arc::new(ScreenSpaceStrokeChainStrategy::default()),
                 Arc::new(GraphiteGestureStrategy::default()),
                 Arc::new(GraphitePaperStrategy),
                 Arc::new(GraphiteMediumStrategy),
@@ -153,6 +159,20 @@ pub struct ContourFeatureStrategy;
 impl NprFeatureStrategy for ContourFeatureStrategy {
     fn detect(&self, context: &NprPipelineContext<'_>, topology: &[TopologyEdge]) -> Vec<crate::FeatureSegment> {
         classify_features(context.input.geometry, topology, -context.input.camera.forward(), 0.35)
+    }
+}
+
+/// Pencil animation starts from the drawn silhouette, not from the source
+/// mesh's triangulation. Structural interior marks need an authored feature
+/// source (or a future curvature-based strategy); a generic dihedral test is
+/// too eager for smooth, triangulated assets such as Suzanne.
+pub struct SilhouetteFeatureStrategy;
+impl NprFeatureStrategy for SilhouetteFeatureStrategy {
+    fn detect(&self, context: &NprPipelineContext<'_>, topology: &[TopologyEdge]) -> Vec<crate::FeatureSegment> {
+        classify_features(context.input.geometry, topology, -context.input.camera.forward(), 0.35)
+            .into_iter()
+            .filter(|feature| matches!(feature.class, FeatureClass::Silhouette | FeatureClass::Boundary))
+            .collect()
     }
 }
 
@@ -268,7 +288,11 @@ impl NprMarkStrategy for FeatureMarkStrategy {
                 geometry.vertices[feature.edge.a as usize].position,
                 geometry.vertices[feature.edge.b as usize].position,
                 viewport,
-            ).map(|(a, b)| NprLogicalMark { id: id as u32, class: feature.class, segment: (a.screen, b.screen), depths: (a.depth, b.depth) })
+            ).map(|(a, b)| NprLogicalMark {
+                id: id as u32,
+                class: feature.class,
+                points: vec![(a.screen, a.depth), (b.screen, b.depth)],
+            })
         }).collect()
     }
 }
@@ -349,8 +373,7 @@ impl NprHatchingStrategy for TriangleHatchingStrategy {
                     marks.push(NprLogicalMark {
                         id,
                         class: FeatureClass::Hatching,
-                        segment: (intersections[0].0, intersections[1].0),
-                        depths: (intersections[0].1, intersections[1].1),
+                        points: intersections,
                     });
                 }
             }
@@ -362,7 +385,73 @@ impl NprHatchingStrategy for TriangleHatchingStrategy {
 pub struct FlatInkGestureStrategy;
 impl NprGestureStrategy for FlatInkGestureStrategy {
     fn realize(&self, context: &NprPipelineContext<'_>, marks: &[NprLogicalMark]) -> Vec<TessellatedStroke> {
-        marks.iter().map(|mark| tessellate_segment_with_depth(mark.id, mark.class, mark.segment, mark.depths, context.input.style, context.input.seed)).collect()
+        marks.iter()
+            .filter(|mark| mark.points.len() >= 2)
+            .map(|mark| tessellate_polyline_with_depth(mark.id, mark.class, &mark.points, context.input.style))
+            .collect()
+    }
+}
+
+/// Keeps independent marks unchanged. Useful for technical ink and for tests
+/// that need the raw projected candidates.
+pub struct NoStrokeChainStrategy;
+impl NprStrokeChainStrategy for NoStrokeChainStrategy {
+    fn chain(&self, _: &NprPipelineContext<'_>, marks: Vec<NprLogicalMark>) -> Vec<NprLogicalMark> { marks }
+}
+
+/// Chains projected contour segments that share a paper-space endpoint. This
+/// intentionally works after projection: it respects clipping and visibility,
+/// and does not need renderer-specific access to the source mesh.
+pub struct ScreenSpaceStrokeChainStrategy {
+    pub endpoint_tolerance_px: f32,
+}
+
+impl Default for ScreenSpaceStrokeChainStrategy {
+    fn default() -> Self { Self { endpoint_tolerance_px: 0.75 } }
+}
+
+impl NprStrokeChainStrategy for ScreenSpaceStrokeChainStrategy {
+    fn chain(&self, _: &NprPipelineContext<'_>, mut pending: Vec<NprLogicalMark>) -> Vec<NprLogicalMark> {
+        let mut chained = Vec::new();
+        while let Some(mut path) = pending.pop() {
+            if path.class == FeatureClass::Hatching || path.points.len() < 2 {
+                chained.push(path);
+                continue;
+            }
+            loop {
+                let Some(last) = path.points.last().copied() else { break };
+                let Some(first) = path.points.first().copied() else { break };
+                let next = pending.iter().position(|candidate| {
+                    candidate.class == path.class
+                        && candidate.points.len() >= 2
+                        && [candidate.points[0], *candidate.points.last().expect("two points")]
+                            .iter()
+                            .any(|point| point.0.distance(last.0) <= self.endpoint_tolerance_px
+                                || point.0.distance(first.0) <= self.endpoint_tolerance_px)
+                });
+                let Some(next) = next else { break };
+                let mut candidate = pending.swap_remove(next);
+                let candidate_first = candidate.points[0];
+                let candidate_last = *candidate.points.last().expect("two points");
+                if candidate_first.0.distance(last.0) <= self.endpoint_tolerance_px {
+                    path.points.extend(candidate.points.drain(1..));
+                } else if candidate_last.0.distance(last.0) <= self.endpoint_tolerance_px {
+                    candidate.points.reverse();
+                    path.points.extend(candidate.points.drain(1..));
+                } else if candidate_last.0.distance(first.0) <= self.endpoint_tolerance_px {
+                    candidate.points.pop();
+                    candidate.points.extend(path.points);
+                    path.points = candidate.points;
+                } else {
+                    candidate.points.reverse();
+                    candidate.points.pop();
+                    candidate.points.extend(path.points);
+                    path.points = candidate.points;
+                }
+            }
+            chained.push(path);
+        }
+        chained
     }
 }
 
@@ -381,9 +470,7 @@ impl Default for GraphiteGestureStrategy {
 
 impl NprGestureStrategy for GraphiteGestureStrategy {
     fn realize(&self, context: &NprPipelineContext<'_>, marks: &[NprLogicalMark]) -> Vec<TessellatedStroke> {
-        marks.iter().map(|mark| {
-            let direction = (mark.segment.1 - mark.segment.0).normalize_or_zero();
-            let normal = Vec2::new(-direction.y, direction.x);
+        marks.iter().filter(|mark| mark.points.len() >= 2).map(|mark| {
             let seed = context.input.seed
                 ^ context.input.temporal.path_epoch.wrapping_mul(0xA24B_AED4)
                 ^ (mark.id as u64).wrapping_mul(0x9E37_79B9);
@@ -394,33 +481,51 @@ impl NprGestureStrategy for GraphiteGestureStrategy {
                 FeatureClass::Crease | FeatureClass::Hatching => style.crease_width *= brush.width_scale,
             }
             style.taper = style.taper.max(brush.taper);
-            let length = mark.segment.0.distance(mark.segment.1);
-            let knots = (length / 28.0).ceil().clamp(3.0, 7.0) as usize;
-            let mut points = Vec::with_capacity(knots);
+            let source = resample_mark(mark, 28.0);
+            let mut points = Vec::with_capacity(source.len());
             // A low-frequency, deterministic hand path. Consecutive points
             // share a slowly changing drift rather than independent white
             // noise, so a line looks hand-drawn but stays surface-stable.
             let mut carried_drift = 0.0;
-            for knot in 0..knots {
-                let t = knot as f32 / (knots - 1) as f32;
+            for knot in 0..source.len() {
+                let t = knot as f32 / (source.len() - 1) as f32;
+                let direction = if knot + 1 < source.len() {
+                    (source[knot + 1].0 - source[knot].0).normalize_or_zero()
+                } else {
+                    (source[knot].0 - source[knot - 1].0).normalize_or_zero()
+                };
+                let normal = Vec2::new(-direction.y, direction.x);
                 let hash = (seed ^ (knot as u64).wrapping_mul(0xD1B5_4A32))
                     .wrapping_mul(0x94D0_49BB);
                 let random = ((hash ^ (hash >> 29)) >> 32) as f32 / u32::MAX as f32 - 0.5;
                 carried_drift = carried_drift * 0.58 + random * self.drift_pixels;
                 let envelope = (std::f32::consts::PI * t).sin().max(0.0).powf(0.45);
                 let correction = direction * random * self.drift_pixels * 0.18;
-                let overshoot = if knot == 0 { -self.overshoot_pixels } else if knot + 1 == knots { self.overshoot_pixels } else { 0.0 };
-                let position = mark.segment.0.lerp(mark.segment.1, t)
+                let overshoot = if knot == 0 { -self.overshoot_pixels } else if knot + 1 == source.len() { self.overshoot_pixels } else { 0.0 };
+                let position = source[knot].0
                     + direction * overshoot
                     + normal * carried_drift * envelope
                     + correction * envelope;
-                points.push((position, mark.depths.0 + (mark.depths.1 - mark.depths.0) * t));
+                points.push((position, source[knot].1));
             }
             let mut stroke = tessellate_polyline_with_depth(mark.id, mark.class, &points, style);
             stroke.medium = Some(brush.medium);
             stroke
         }).collect()
     }
+}
+
+fn resample_mark(mark: &NprLogicalMark, spacing_px: f32) -> Vec<(Vec2, f32)> {
+    let mut samples = vec![mark.points[0]];
+    for pair in mark.points.windows(2) {
+        let length = pair[0].0.distance(pair[1].0);
+        let segments = (length / spacing_px).ceil().max(1.0) as usize;
+        for step in 1..=segments {
+            let t = step as f32 / segments as f32;
+            samples.push((pair[0].0.lerp(pair[1].0, t), pair[0].1 + (pair[1].1 - pair[0].1) * t));
+        }
+    }
+    samples
 }
 
 pub struct FlatPaperStrategy;
@@ -475,6 +580,7 @@ mod tests {
             Arc::new(ThreeBandValueStrategy),
             Arc::new(FeatureMarkStrategy),
             Arc::new(NoHatchingStrategy),
+            Arc::new(NoStrokeChainStrategy),
             Arc::new(FlatInkGestureStrategy),
             Arc::new(BlackPaper),
             Arc::new(InkMediumStrategy),
@@ -496,5 +602,54 @@ mod tests {
     fn profiles_expose_the_same_composable_stage_contract() {
         assert_eq!(MinimalInkPipeline::default().stages(), PencilAnimationPipeline::default().stages());
         assert_eq!(MinimalInkPipeline::default().stages(), DEFAULT_NPR_PIPELINE_STAGES);
+    }
+
+    #[test]
+    fn pencil_animation_excludes_mesh_crease_lines() {
+        let packet = PencilAnimationPipeline::default().build(NprPipelineInput {
+            geometry: &NprGeometry::canonical_cube(),
+            camera: NprCamera::Perspective(crate::PerspectiveCamera::cube_default(1.0)),
+            viewport: [512, 512],
+            style: ComicInk::default(),
+            seed: 7,
+            debug_view: NprDebugView::Final,
+            temporal: crate::NprTemporalState::default(),
+        });
+
+        assert!(!packet.strokes.is_empty());
+        assert!(packet.strokes.iter().all(|stroke| {
+            matches!(stroke.class, FeatureClass::Silhouette | FeatureClass::Boundary)
+        }));
+        assert_eq!(packet.stats.creases, 0);
+    }
+
+    #[test]
+    fn screen_space_chain_turns_adjacent_contours_into_one_path() {
+        let input = NprPipelineInput {
+            geometry: &NprGeometry::canonical_cube(),
+            camera: NprCamera::Perspective(crate::PerspectiveCamera::cube_default(1.0)),
+            viewport: [512, 512],
+            style: ComicInk::default(),
+            seed: 7,
+            debug_view: NprDebugView::Final,
+            temporal: crate::NprTemporalState::default(),
+        };
+        let context = NprPipelineContext::new(input);
+        let marks = vec![
+            NprLogicalMark {
+                id: 1,
+                class: FeatureClass::Silhouette,
+                points: vec![(Vec2::new(10.0, 10.0), 1.0), (Vec2::new(20.0, 10.0), 1.0)],
+            },
+            NprLogicalMark {
+                id: 2,
+                class: FeatureClass::Silhouette,
+                points: vec![(Vec2::new(20.4, 10.1), 1.0), (Vec2::new(30.0, 15.0), 1.0)],
+            },
+        ];
+
+        let chained = ScreenSpaceStrokeChainStrategy::default().chain(&context, marks);
+        assert_eq!(chained.len(), 1);
+        assert_eq!(chained[0].points.len(), 3);
     }
 }

@@ -70,6 +70,17 @@ pub trait NprHatchingStrategy: Send + Sync {
     ) -> Vec<NprLogicalMark>;
 }
 
+/// Joins projected candidates into the paths a draughtsperson would execute
+/// as one gesture. It runs after hatching so a profile can chain contours
+/// while deliberately leaving short hatch marks independent.
+pub trait NprStrokeChainStrategy: Send + Sync {
+    fn chain(
+        &self,
+        context: &NprPipelineContext<'_>,
+        marks: Vec<NprLogicalMark>,
+    ) -> Vec<NprLogicalMark>;
+}
+
 pub trait NprGestureStrategy: Send + Sync {
     fn realize(
         &self,
