@@ -52,6 +52,18 @@ impl NprBrushLibrary for PencilBrushLibrary {
                 width_scale: 0.82,
                 taper: 0.20,
             },
+            FeatureClass::SuggestiveContour => NprBrushDefinition {
+                role: NprBrushRole::Crease,
+                medium: NprMediumDefinition::Graphite(GraphiteMedium {
+                    hardness: 0.66,
+                    deposit_gain: 0.38,
+                    tip_radius: 0.26,
+                    filament_count: 2,
+                    ..Default::default()
+                }),
+                width_scale: 0.68,
+                taper: 0.42,
+            },
             FeatureClass::Hatching => NprBrushDefinition {
                 role: NprBrushRole::Hatching,
                 medium: NprMediumDefinition::Graphite(GraphiteMedium {

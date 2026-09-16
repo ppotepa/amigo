@@ -127,7 +127,10 @@ impl Default for PencilAnimationPipeline {
         Self {
             inner: MinimalInkPipeline::with_strategies(
                 Arc::new(TopologySurfaceStrategy),
-                Arc::new(PencilContourFeatureStrategy::default()),
+                Arc::new(CompositeFeatureStrategy::new(vec![
+                    Arc::new(PencilContourFeatureStrategy::default()),
+                    Arc::new(SuggestiveContourFeatureStrategy::default()),
+                ])),
                 Arc::new(AllFeatureSalienceStrategy),
                 Arc::new(CameraProjectionStrategy),
                 Arc::new(NoValueStrategy),
@@ -202,6 +205,80 @@ impl NprFeatureStrategy for PencilContourFeatureStrategy {
             })
         }));
         features
+    }
+}
+
+/// Combines independent sources of drawing evidence. A preset can therefore
+/// use topology for silhouettes, a curvature/view strategy for form lines,
+/// and later authored semantic seams without creating a parallel pipeline.
+pub struct CompositeFeatureStrategy {
+    strategies: Vec<Arc<dyn NprFeatureStrategy>>,
+}
+
+impl CompositeFeatureStrategy {
+    pub fn new(strategies: Vec<Arc<dyn NprFeatureStrategy>>) -> Self { Self { strategies } }
+}
+
+impl NprFeatureStrategy for CompositeFeatureStrategy {
+    fn detect(&self, context: &NprPipelineContext<'_>, topology: &[TopologyEdge]) -> Vec<crate::FeatureSegment> {
+        self.strategies
+            .iter()
+            .flat_map(|strategy| strategy.detect(context, topology))
+            .collect()
+    }
+}
+
+/// Conservative screen-relevant form-line candidates on smooth geometry.
+/// Both adjacent faces must be visible, turn gradually (not a structural
+/// crease), and sit close to the view-tangent band. This gives sparse hints
+/// of turning form without promoting every triangle edge to a stroke.
+pub struct SuggestiveContourFeatureStrategy {
+    pub min_dihedral: f32,
+    pub max_dihedral: f32,
+    pub tangent_band: f32,
+    pub min_view_delta: f32,
+}
+
+impl Default for SuggestiveContourFeatureStrategy {
+    fn default() -> Self {
+        Self {
+            min_dihedral: 0.06,
+            max_dihedral: 0.42,
+            tangent_band: 0.24,
+            min_view_delta: 0.035,
+        }
+    }
+}
+
+impl NprFeatureStrategy for SuggestiveContourFeatureStrategy {
+    fn detect(&self, context: &NprPipelineContext<'_>, topology: &[TopologyEdge]) -> Vec<crate::FeatureSegment> {
+        let geometry = context.input.geometry;
+        let view = -context.input.camera.forward();
+        topology.iter().filter_map(|edge| {
+            if edge.faces[1] == u32::MAX {
+                return None;
+            }
+            let first = face_normal(geometry, edge.faces[0]);
+            let second = face_normal(geometry, edge.faces[1]);
+            let first_view = first.dot(view);
+            let second_view = second.dot(view);
+            let dihedral = first.dot(second).clamp(-1.0, 1.0).acos();
+            if first_view <= 0.0
+                || second_view <= 0.0
+                || dihedral < self.min_dihedral
+                || dihedral > self.max_dihedral
+                || first_view.min(second_view) > self.tangent_band
+                || (first_view - second_view).abs() < self.min_view_delta
+            {
+                return None;
+            }
+            Some(crate::FeatureSegment {
+                edge: *edge,
+                class: FeatureClass::SuggestiveContour,
+                midpoint: (geometry.vertices[edge.a as usize].position
+                    + geometry.vertices[edge.b as usize].position) * 0.5,
+            })
+        }).collect()
     }
 }
 
@@ -507,7 +584,7 @@ impl NprGestureStrategy for GraphiteGestureStrategy {
             let brush = self.brushes.brush_for(mark.class);
             match mark.class {
                 FeatureClass::Boundary | FeatureClass::Silhouette => style.boundary_width *= brush.width_scale,
-                FeatureClass::Crease | FeatureClass::Hatching => style.crease_width *= brush.width_scale,
+                FeatureClass::Crease | FeatureClass::SuggestiveContour | FeatureClass::Hatching => style.crease_width *= brush.width_scale,
             }
             style.taper = style.taper.max(brush.taper);
             let source = resample_mark(mark, 28.0);
@@ -677,6 +754,41 @@ mod tests {
         let features = PencilContourFeatureStrategy::default().detect(&context, &build_topology(&geometry));
 
         assert!(!features.iter().any(|feature| feature.class == FeatureClass::Crease));
+    }
+
+    #[test]
+    fn suggestive_contours_select_a_smooth_view_tangent_turn() {
+        let geometry = NprGeometry::from_indexed(
+            &[
+                [0.0, -1.0, 0.0],
+                [0.0, 1.0, 0.0],
+                [-0.20, 0.0, 0.98],
+                [0.10, 0.0, -0.995],
+            ],
+            &[0, 1, 2, 1, 0, 3],
+        ).unwrap();
+        let input = NprPipelineInput {
+            geometry: &geometry,
+            camera: NprCamera::Perspective(crate::PerspectiveCamera {
+                position: Vec3::new(0.0, 0.0, 5.0),
+                forward: -Vec3::Z,
+                up: Vec3::Y,
+                vertical_fov: 45.0_f32.to_radians(),
+                near: 0.05,
+                aspect: 1.0,
+            }),
+            viewport: [512, 512],
+            style: ComicInk::default(),
+            seed: 7,
+            debug_view: NprDebugView::Final,
+            temporal: crate::NprTemporalState::default(),
+        };
+        let context = NprPipelineContext::new(input);
+        let features = SuggestiveContourFeatureStrategy::default()
+            .detect(&context, &build_topology(&geometry));
+
+        assert_eq!(features.len(), 1);
+        assert_eq!(features[0].class, FeatureClass::SuggestiveContour);
     }
 
     #[test]

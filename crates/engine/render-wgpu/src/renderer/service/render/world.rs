@@ -416,6 +416,7 @@ fn render_npr_commands(
                     amigo_render_npr::FeatureClass::Boundary => [0.9, 0.15, 0.1, 1.0],
                     amigo_render_npr::FeatureClass::Silhouette => [0.1, 0.75, 0.2, 1.0],
                     amigo_render_npr::FeatureClass::Crease => [0.15, 0.3, 0.95, 1.0],
+                    amigo_render_npr::FeatureClass::SuggestiveContour => [0.95, 0.55, 0.12, 1.0],
                     amigo_render_npr::FeatureClass::Hatching => [0.8, 0.3, 0.85, 1.0],
                 },
                 NprDebugView::StrokeIds => {

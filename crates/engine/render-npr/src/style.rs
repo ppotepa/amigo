@@ -34,6 +34,7 @@ impl ComicInk {
         match class {
             FeatureClass::Boundary | FeatureClass::Silhouette => self.boundary_width,
             FeatureClass::Crease => self.crease_width,
+            FeatureClass::SuggestiveContour => (self.crease_width * 0.72).max(0.7),
             FeatureClass::Hatching => (self.crease_width * 0.55).max(0.65),
         }
     }

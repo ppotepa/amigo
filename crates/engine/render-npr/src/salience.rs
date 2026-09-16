@@ -45,6 +45,10 @@ pub fn evaluate_feature_salience(
             let crease_strength = (1.0 - first.dot(second)).clamp(0.0, 1.0);
             length_score * (0.35 + policy.crease_weight * crease_strength)
         }
+        // Suggestive contours should be sparse, light construction marks.
+        // The feature strategy already establishes view relevance; salience
+        // further rejects very short projected fragments.
+        FeatureClass::SuggestiveContour => length_score * 0.58,
         // Hatching is authored by the mark planner, never supplied as an edge
         // detector candidate.
         FeatureClass::Hatching => 0.0,

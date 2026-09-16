@@ -9,6 +9,9 @@ pub enum FeatureClass {
     Boundary,
     Silhouette,
     Crease,
+    /// A visibility-aware form line on a smooth surface. Unlike a crease it
+    /// is a drawing candidate, not a topological seam.
+    SuggestiveContour,
     /// A value-driven surface mark, rather than a topological edge.
     Hatching,
 }
