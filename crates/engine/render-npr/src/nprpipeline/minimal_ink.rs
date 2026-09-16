@@ -131,7 +131,7 @@ impl Default for PencilAnimationPipeline {
                     Arc::new(PencilContourFeatureStrategy::default()),
                     Arc::new(SuggestiveContourFeatureStrategy::default()),
                 ])),
-                Arc::new(AllFeatureSalienceStrategy),
+                Arc::new(SelectiveContourSalienceStrategy { minimum_crease_length_px: 28.0 }),
                 Arc::new(CameraProjectionStrategy),
                 Arc::new(NoValueStrategy),
                 Arc::new(FeatureMarkStrategy),
@@ -289,8 +289,9 @@ impl NprSalienceStrategy for AllFeatureSalienceStrategy {
     }
 }
 
-/// A first drawing-oriented filter: preserve silhouettes/boundaries and keep
-/// only creases with enough visible paper-space length to read as intentional.
+/// A drawing-oriented filter: preserve silhouettes/boundaries and keep only
+/// interior contours with enough visible paper-space length to read as an
+/// intentional gesture rather than mesh noise.
 pub struct SelectiveContourSalienceStrategy {
     pub minimum_crease_length_px: f32,
 }
