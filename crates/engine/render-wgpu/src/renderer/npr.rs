@@ -87,7 +87,12 @@ fn hash21(p: vec2<f32>) -> f32 {
     // A pencil ribbon is not a perfectly opaque marker: it has a soft, uneven
     // centre and fades slightly at the two physical sides of the stroke.
     let edge = smoothstep(1.08, 0.28, abs(v.mark.y));
-    let pressure = 0.58 + 0.42 * sin(v.mark.x * 3.14159265);
+    // Pressure is a whole-hand gesture, not independent noise per pixel.
+    // The stable seed changes only with the packet material epoch, so a mark
+    // retains its identity while graphite can breathe subtly between frames.
+    let pressure_envelope = 0.58 + 0.42 * sin(v.mark.x * 3.14159265);
+    let pressure_drift = 0.88 + 0.12 * sin(v.mark.x * 10.7 + seed.x * 41.0);
+    let pressure = pressure_envelope * pressure_drift;
     let deposit = clamp(tooth * grain * fibres * edge * pressure * v.mark.z, 0.0, 1.0);
     return vec4<f32>(v.color.rgb * (0.72 + 0.28 * grain), v.color.a * deposit);
 }
