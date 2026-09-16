@@ -188,3 +188,34 @@ impl NprPlaygroundRenderService {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn suzanne_path() -> PathBuf {
+        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../../../mods/npr-playground/assets/models/suzanne/Suzanne.gltf")
+    }
+
+    #[test]
+    fn pencil_suzanne_is_not_a_topology_wireframe() {
+        let service = NprPlaygroundRenderService::with_suzanne_path(suzanne_path());
+        service.rebuild_suzanne_rotated(
+            [1280, 720],
+            0x4E5052,
+            0.0,
+            0.0,
+            Vec3::ZERO,
+            PerspectiveCamera::cube_default(1280.0 / 720.0).into(),
+            NprPlaygroundRenderProfile::PencilAnimation,
+            0.0,
+        ).unwrap();
+        let packet = service.snapshot().expect("Pencil packet").packet;
+
+        assert!(packet.stats.topology_edges > 0);
+        assert!(packet.strokes.len() * 4 < packet.stats.topology_edges as usize,
+            "pencil generated {} strokes from {} topology edges", packet.strokes.len(), packet.stats.topology_edges);
+        assert!(packet.fills.is_empty());
+    }
+}
