@@ -218,4 +218,23 @@ mod tests {
             "pencil generated {} strokes from {} topology edges", packet.strokes.len(), packet.stats.topology_edges);
         assert!(packet.fills.is_empty());
     }
+
+    #[test]
+    fn pencil_suzanne_redraws_the_hand_path_each_animation_frame() {
+        let service = NprPlaygroundRenderService::with_suzanne_path(suzanne_path());
+        let camera = PerspectiveCamera::cube_default(1280.0 / 720.0).into();
+        service.rebuild_suzanne_rotated(
+            [1280, 720], 0x4E5052, 0.0, 0.0, Vec3::ZERO, camera,
+            NprPlaygroundRenderProfile::PencilAnimation, 0.0,
+        ).unwrap();
+        let first = service.snapshot().expect("first pencil packet").packet;
+        service.rebuild_suzanne_rotated(
+            [1280, 720], 0x4E5052, 0.0, 0.0, Vec3::ZERO, camera,
+            NprPlaygroundRenderProfile::PencilAnimation, 0.034,
+        ).unwrap();
+        let second = service.snapshot().expect("second pencil packet").packet;
+
+        assert!(!first.strokes.is_empty());
+        assert_ne!(first.strokes, second.strokes);
+    }
 }
