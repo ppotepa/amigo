@@ -1,0 +1,20 @@
+[package]
+name = "amigo-npr-playground-plugin"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[dependencies]
+amigo-capabilities.workspace = true
+amigo-core.workspace = true
+amigo-input-api.workspace = true
+amigo-modding.workspace = true
+amigo-plugin-api.workspace = true
+amigo-render-api.workspace = true
+amigo-render-npr.workspace = true
+amigo-runtime.workspace = true
+amigo-session.workspace = true
+glam.workspace = true
+gltf = "1.4.1"

@@ -3,6 +3,7 @@ mod tests;
 
 use super::*;
 use amigo_session::RuntimeSession;
+use amigo_runtime::SystemPhase;
 
 pub(crate) use amigo_render_api::RenderCompositionDiagnosticsService;
 pub(crate) use amigo_render_api::RenderFrameStats;
@@ -52,6 +53,7 @@ pub(crate) fn build_render_frame_for_session(
     );
 
     session.begin_render_frame_extract();
+    session.run_phase(SystemPhase::RenderExtract)?;
     let mut render_packet =
         amigo_runtime_bundles::default_wgpu_render_extractor_registry_for_runtime(runtime)
             .extract_all(runtime);
@@ -104,6 +106,17 @@ pub(crate) fn build_render_frame_for_session(
     }
     if let Ok(stats_service) = required::<RenderFrameStatsService>(runtime) {
         let previous = stats_service.snapshot();
+        let npr_geometry = render_packet.npr().iter().map(|command| command.packet.stats.geometry).sum();
+        let npr_topology_edges = render_packet.npr().iter().map(|command| command.packet.stats.topology_edges).sum();
+        let npr_feature_segments = render_packet.npr().iter().map(|command| command.packet.stats.feature_segments).sum();
+        let npr_silhouettes = render_packet.npr().iter().map(|command| command.packet.stats.silhouettes).sum();
+        let npr_creases = render_packet.npr().iter().map(|command| command.packet.stats.creases).sum();
+        let npr_strokes = render_packet.npr().iter().map(|command| command.packet.stats.strokes).sum();
+        let npr_stroke_vertices = render_packet.npr().iter().map(|command| command.packet.stats.stroke_vertices).sum();
+        let npr_stroke_indices = render_packet.npr().iter().map(|command| command.packet.stats.stroke_indices).sum();
+        let npr_viewport = render_packet.npr().first().map(|command| command.packet.stats.viewport).unwrap_or([0, 0]);
+        let npr_preset = render_packet.npr().first().map(|command| command.preset);
+        let npr_debug_view = render_packet.npr().first().map(|command| command.packet.debug_view);
         let stats = RenderFrameStats {
             frame_index: previous.frame_index + 1,
             window_width: surface_size.width,
@@ -134,6 +147,17 @@ pub(crate) fn build_render_frame_for_session(
                 .iter()
                 .map(|stack| stack.effects.len())
                 .sum(),
+            npr_geometry,
+            npr_topology_edges,
+            npr_feature_segments,
+            npr_silhouettes,
+            npr_creases,
+            npr_strokes,
+            npr_stroke_vertices,
+            npr_stroke_indices,
+            npr_viewport,
+            npr_preset,
+            npr_debug_view,
         };
         stats_service.set(stats.clone());
         if debug_overlay_enabled || dev_console_open {

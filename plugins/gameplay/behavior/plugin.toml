@@ -24,3 +24,12 @@ consumes = []
 
 [diagnostics]
 channels = ["gameplay.behavior"]
+
+[docs]
+pipeline = "README.md"
+contributions = "README.md"
+diagnostics = "README.md"
+
+[tests]
+waterfall = "tests/waterfall_tests.rs"
+diagnostics = "tests/waterfall_tests.rs"

@@ -80,7 +80,6 @@ pub use component_schema_registry::*;
 pub use document::*;
 pub use domain_services::*;
 pub use entity::*;
-pub use editor_property_semantics::*;
 pub use error::*;
 pub use graph::*;
 pub use hydration::*;

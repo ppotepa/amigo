@@ -1,7 +1,9 @@
 use super::material_candidates::WgpuMaterialCandidate2d;
 use super::*;
 use amigo_material_api::MaterialCandidateDecision2d;
-use amigo_render_api::{LightSource2dCommon, RenderAssetSource, RenderLightMap2dSource};
+use amigo_render_api::{LightSource2dCommon, NprBackgroundCommand, NprDrawCommand, RenderAssetSource, RenderLightMap2dSource};
+use amigo_render_npr::{NprDebugView, NprMedium, NprMediumDefinition};
+use crate::renderer::npr::{NprGpuVertex, NprPipelines};
 
 #[derive(Clone, Copy)]
 pub(super) struct WorldRenderContext<'a> {
@@ -13,6 +15,8 @@ pub(super) struct WorldRenderContext<'a> {
     pub meshes: &'a [MeshDrawCommand],
     pub materials: &'a [MaterialDrawCommand],
     pub text3d: Option<&'a [Text3dDrawCommand]>,
+    pub npr: &'a [NprDrawCommand],
+    pub npr_background: Option<NprBackgroundCommand>,
     pub render_layers: &'a [RenderLayer2dCommand],
     pub light_routes: &'a [LightRoute2dCommand],
 }
@@ -28,6 +32,8 @@ impl<'a> WorldRenderContext<'a> {
             meshes: request.world_3d.meshes,
             materials: request.world_3d.materials,
             text3d: request.world_3d.text3d,
+            npr: request.world_3d.npr,
+            npr_background: request.world_3d.npr_background,
             render_layers: request.world_2d.render_layers,
             light_routes: request.world_2d.light_routes,
         }
@@ -346,6 +352,10 @@ pub(super) fn execute_world_to_offscreen(
         &color_batches,
         &ui_texture_batches,
     )?;
+
+    if !ctx.npr.is_empty() {
+        render_npr_commands(renderer, target, ctx.npr, ctx.npr_background)?;
+    }
     if material_candidates.is_empty() {
         return Ok(());
     }
@@ -358,6 +368,173 @@ pub(super) fn execute_world_to_offscreen(
         &material_candidates,
         &material_decisions,
     )
+}
+
+fn render_npr_commands(
+    renderer: &WgpuSceneRenderer,
+    target: &mut WgpuOffscreenTarget,
+    commands: &[NprDrawCommand],
+    background: Option<NprBackgroundCommand>,
+) -> AmigoResult<()> {
+    let width = target.width as f32;
+    let height = target.height as f32;
+    let to_clip = |position: amigo_render_npr::Point2| {
+        [position.x / width * 2.0 - 1.0, 1.0 - position.y / height * 2.0]
+    };
+    let to_depth = |depth: f32| (1.0 - 1.0 / (depth.max(0.001) + 1.0)).clamp(0.0, 1.0);
+    let mut fill_vertices = Vec::new();
+    let mut ink_stroke_vertices = Vec::new();
+    let mut graphite_stroke_vertices = Vec::new();
+    for command in commands {
+        for triangle in &command.packet.fills {
+            let color = triangle.color.to_array();
+            for position in triangle.positions {
+                fill_vertices.push(NprGpuVertex {
+                    position: to_clip(position),
+                    color,
+                    depth: to_depth(triangle.depth),
+                    mark: [0.0; 4],
+                    paper: [1.0, 0.0],
+                });
+            }
+        }
+        for stroke in &command.packet.strokes {
+            let paper = command.packet.paper.normalized();
+            let medium = stroke.medium.unwrap_or(command.packet.medium);
+            let graphite_deposit = match medium {
+                NprMediumDefinition::Ink(_) => 1.0,
+                NprMediumDefinition::Graphite(medium) => {
+                    let medium = medium.normalized();
+                    medium.max_optical_density
+                        * medium.deposit_gain
+                        * (0.35 + 0.65 * medium.paper_coupling)
+                }
+            };
+            let mut color = match command.packet.debug_view {
+                NprDebugView::Final => [0.035, 0.025, 0.02, 1.0],
+                NprDebugView::FeatureClasses => match stroke.class {
+                    amigo_render_npr::FeatureClass::Boundary => [0.9, 0.15, 0.1, 1.0],
+                    amigo_render_npr::FeatureClass::Silhouette => [0.1, 0.75, 0.2, 1.0],
+                    amigo_render_npr::FeatureClass::Crease => [0.15, 0.3, 0.95, 1.0],
+                    amigo_render_npr::FeatureClass::Hatching => [0.8, 0.3, 0.85, 1.0],
+                },
+                NprDebugView::StrokeIds => {
+                    let hue = (stroke.id.wrapping_mul(97) % 255) as f32 / 255.0;
+                    [hue, 1.0 - hue, 0.8, 1.0]
+                }
+            };
+            if matches!(medium, NprMediumDefinition::Graphite(_)) {
+                color[3] *= paper.absorption;
+            }
+            let material_epoch = command.packet.material_epoch as u32;
+            let stroke_seed = (stroke.id.wrapping_mul(747_796_405).wrapping_add(material_epoch.wrapping_mul(2_654_435_761)) % 65_521) as f32 / 65_521.0;
+            let stroke_point_count = (stroke.vertices.len() / 2).max(1) as f32;
+            let target_vertices = match medium.kind() {
+                NprMedium::Ink => &mut ink_stroke_vertices,
+                NprMedium::Graphite => &mut graphite_stroke_vertices,
+            };
+            // The CPU tessellator owns topology. Expand its index buffer here
+            // because this small NPR path uses a non-indexed WGPU draw call.
+            // Drawing raw vertices used to omit the second triangle of every
+            // ribbon and produced visibly broken strokes.
+            for &source_index in &stroke.indices {
+                let index = source_index as usize;
+                let Some(vertex) = stroke.vertices.get(index) else { continue };
+                let lateral = if index % 2 == 0 { -1.0 } else { 1.0 };
+                target_vertices.push(NprGpuVertex {
+                    position: to_clip(vertex.position),
+                    color,
+                    depth: (to_depth(vertex.depth) - 0.0005).max(0.0),
+                    mark: [
+                        (index / 2) as f32 / (stroke_point_count - 1.0).max(1.0),
+                        lateral,
+                        graphite_deposit,
+                        stroke_seed,
+                    ],
+                    paper: [paper.tooth_scale, paper.fibre_strength],
+                });
+            }
+        }
+    }
+    if fill_vertices.is_empty() && ink_stroke_vertices.is_empty() && graphite_stroke_vertices.is_empty() {
+        return Ok(());
+    }
+
+    let fill_buffer = (!fill_vertices.is_empty()).then(|| NprPipelines::vertex_buffer(&target.device, &fill_vertices, "amigo-npr-fill-vertices"));
+    let ink_stroke_buffer = (!ink_stroke_vertices.is_empty()).then(|| NprPipelines::vertex_buffer(&target.device, &ink_stroke_vertices, "amigo-npr-ink-stroke-vertices"));
+    let graphite_stroke_buffer = (!graphite_stroke_vertices.is_empty()).then(|| NprPipelines::vertex_buffer(&target.device, &graphite_stroke_vertices, "amigo-npr-graphite-stroke-vertices"));
+    let background_load = background.map(|background| {
+        let color = background.color;
+        wgpu::LoadOp::Clear(wgpu::Color {
+            r: color[0] as f64,
+            g: color[1] as f64,
+            b: color[2] as f64,
+            a: color[3] as f64,
+        })
+    }).unwrap_or(wgpu::LoadOp::Load);
+    let mut encoder = target.device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some("amigo-npr-passes") });
+    {
+        let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            label: Some("amigo-npr-depth-pass"),
+            color_attachments: &[],
+            depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                view: &target.depth_view,
+                depth_ops: Some(wgpu::Operations { load: wgpu::LoadOp::Clear(1.0), store: wgpu::StoreOp::Store }),
+                stencil_ops: None,
+            }),
+            occlusion_query_set: None,
+            timestamp_writes: None,
+            multiview_mask: None,
+        });
+        pass.set_pipeline(&renderer.npr_pipelines.depth);
+        if let Some(fill_buffer) = &fill_buffer {
+            pass.set_vertex_buffer(0, fill_buffer.slice(..));
+            pass.draw(0..fill_vertices.len() as u32, 0..1);
+        }
+    }
+    {
+        let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            label: Some("amigo-npr-fill-pass"),
+            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                view: &target.view, resolve_target: None, depth_slice: None,
+                ops: wgpu::Operations { load: background_load, store: wgpu::StoreOp::Store },
+            })],
+            depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                view: &target.depth_view, depth_ops: Some(wgpu::Operations { load: wgpu::LoadOp::Load, store: wgpu::StoreOp::Store }), stencil_ops: None,
+            }),
+            occlusion_query_set: None, timestamp_writes: None, multiview_mask: None,
+        });
+        pass.set_pipeline(&renderer.npr_pipelines.fill);
+        if let Some(fill_buffer) = &fill_buffer {
+            pass.set_vertex_buffer(0, fill_buffer.slice(..));
+            pass.draw(0..fill_vertices.len() as u32, 0..1);
+        }
+    }
+    {
+        let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            label: Some("amigo-npr-stroke-pass"),
+            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                view: &target.view, resolve_target: None, depth_slice: None,
+                ops: wgpu::Operations { load: wgpu::LoadOp::Load, store: wgpu::StoreOp::Store },
+            })],
+            depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                view: &target.depth_view, depth_ops: Some(wgpu::Operations { load: wgpu::LoadOp::Load, store: wgpu::StoreOp::Store }), stencil_ops: None,
+            }),
+            occlusion_query_set: None, timestamp_writes: None, multiview_mask: None,
+        });
+        pass.set_pipeline(&renderer.npr_pipelines.stroke);
+        if let Some(ink_stroke_buffer) = &ink_stroke_buffer {
+            pass.set_vertex_buffer(0, ink_stroke_buffer.slice(..));
+            pass.draw(0..ink_stroke_vertices.len() as u32, 0..1);
+        }
+        if let Some(graphite_stroke_buffer) = &graphite_stroke_buffer {
+            pass.set_pipeline(&renderer.npr_pipelines.graphite_stroke);
+            pass.set_vertex_buffer(0, graphite_stroke_buffer.slice(..));
+            pass.draw(0..graphite_stroke_vertices.len() as u32, 0..1);
+        }
+    }
+    target.queue.submit(Some(encoder.finish()));
+    Ok(())
 }
 
 fn render_layer_opacity(

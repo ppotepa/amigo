@@ -1,0 +1,17 @@
+id = "npr-playground"
+name = "NPR Playground"
+version = "0.1.0"
+description = "Small NPR renderer playground built around a rotating Suzanne model."
+authors = ["Amigo Engine Team"]
+dependencies = ["core"]
+capabilities = ["rendering_3d", "materials_3d"]
+
+[scripting]
+mod_script_mode = "disabled"
+
+[[scenes]]
+id = "suzanne"
+label = "Rotating Suzanne"
+description = "The first minimal NPR scene: a rotating Suzanne with flat fill and ink contours."
+path = "scenes/suzanne"
+launcher_visible = true

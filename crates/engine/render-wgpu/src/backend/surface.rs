@@ -107,6 +107,17 @@ impl WgpuRenderBackend {
             view_formats: &[],
         });
         let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
+        let depth_texture = context.device.create_texture(&wgpu::TextureDescriptor {
+            label: Some("amigo-offscreen-depth"),
+            size: wgpu::Extent3d { width, height, depth_or_array_layers: 1 },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: wgpu::TextureFormat::Depth32Float,
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+            view_formats: &[],
+        });
+        let depth_view = depth_texture.create_view(&wgpu::TextureViewDescriptor::default());
 
         Ok(WgpuOffscreenTarget {
             report: context.report,
@@ -117,6 +128,8 @@ impl WgpuRenderBackend {
             format,
             texture,
             view,
+            _depth_texture: depth_texture,
+            depth_view,
         })
     }
 }
@@ -234,6 +247,17 @@ impl WgpuSurfaceState {
             view_formats: &[],
         });
         let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
+        let depth_texture = self.device.create_texture(&wgpu::TextureDescriptor {
+            label: Some(label),
+            size: wgpu::Extent3d { width, height, depth_or_array_layers: 1 },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: wgpu::TextureFormat::Depth32Float,
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+            view_formats: &[],
+        });
+        let depth_view = depth_texture.create_view(&wgpu::TextureViewDescriptor::default());
 
         WgpuOffscreenTarget {
             report: self.report.clone(),
@@ -244,6 +268,8 @@ impl WgpuSurfaceState {
             format,
             texture,
             view,
+            _depth_texture: depth_texture,
+            depth_view,
         }
     }
 }

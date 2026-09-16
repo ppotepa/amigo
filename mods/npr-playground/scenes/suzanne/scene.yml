@@ -1,0 +1,6 @@
+version: 1
+scene:
+  id: suzanne
+  label: Rotating Suzanne
+  description: Minimal NPR renderer validation scene.
+entities: []

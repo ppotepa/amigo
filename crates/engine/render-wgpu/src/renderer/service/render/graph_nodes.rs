@@ -60,6 +60,7 @@ pub(super) fn execute_world_graph_node(
         .cloned()
         .collect::<std::collections::BTreeSet<_>>();
     let world_ctx = WorldRenderContext::from_request(request);
+    let _npr_commands = world_ctx.npr;
     let selection = base_world_selection(request.post_fx_stacks, request.world_2d.render_layers)
         .with_excluded_layers(&beacon_layers);
     world::execute_world_to_offscreen(renderer, target, world_ctx, selection.borrowed(), &[])?;

@@ -20,7 +20,8 @@ contributes = ["SceneHighlight", "SceneEmissive"]
 
 [contributions]
 emits = [
-  { domain = "camera.optics", type = "CameraOpticsContribution2d", policy = "ExplicitOnly" }
+  { domain = "camera.optics", type = "CameraOpticsContribution2d", policy = "ExplicitOnly" },
+  { domain = "lighting", type = "LightContribution2d", policy = "ExplicitOnly" }
 ]
 consumes = []
 

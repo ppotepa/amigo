@@ -19,7 +19,7 @@ use amigo_render_wgpu::{
     UiOverlayDocument, WgpuEmergencyOverlayLine, WgpuFrameRenderTarget, WgpuGameViewportPlacement,
     WgpuRenderFramePacket, WgpuSceneRenderer, WgpuWorld2dRenderInput, WgpuWorld3dRenderInput,
 };
-use amigo_runtime::Runtime;
+use amigo_runtime::{Runtime, SystemPhase};
 use amigo_scene::SceneService;
 use amigo_scripting_api::DevConsoleState;
 use amigo_session::RuntimeSession;
@@ -61,6 +61,7 @@ pub fn extract_game_frame_packet(
     include_game_ui: bool,
 ) -> AmigoResult<amigo_render_wgpu::WgpuRenderFramePacket> {
     session.begin_render_frame_extract();
+    session.run_phase(SystemPhase::RenderExtract)?;
     let mut render_packet =
         crate::default_wgpu_render_extractor_registry_for_runtime(session.runtime())
             .extract_all(session.runtime());
@@ -156,6 +157,8 @@ pub fn prepare_wgpu_world_3d_render_input(
         meshes: render_packet.world_3d_meshes(),
         materials: render_packet.world_3d_materials(),
         text3d: Some(render_packet.world_3d_text()),
+        npr: render_packet.npr(),
+        npr_background: render_packet.npr_background(),
     }
 }
 
@@ -293,6 +296,17 @@ pub fn render_game_frame_to_cache(
                 .iter()
                 .map(|stack| stack.effects.len())
                 .sum(),
+            npr_geometry: render_packet.npr().iter().map(|command| command.packet.stats.geometry).sum(),
+            npr_topology_edges: render_packet.npr().iter().map(|command| command.packet.stats.topology_edges).sum(),
+            npr_feature_segments: render_packet.npr().iter().map(|command| command.packet.stats.feature_segments).sum(),
+            npr_silhouettes: render_packet.npr().iter().map(|command| command.packet.stats.silhouettes).sum(),
+            npr_creases: render_packet.npr().iter().map(|command| command.packet.stats.creases).sum(),
+            npr_strokes: render_packet.npr().iter().map(|command| command.packet.stats.strokes).sum(),
+            npr_stroke_vertices: render_packet.npr().iter().map(|command| command.packet.stats.stroke_vertices).sum(),
+            npr_stroke_indices: render_packet.npr().iter().map(|command| command.packet.stats.stroke_indices).sum(),
+            npr_viewport: render_packet.npr().first().map(|command| command.packet.stats.viewport).unwrap_or([0, 0]),
+            npr_preset: render_packet.npr().first().map(|command| command.preset),
+            npr_debug_view: render_packet.npr().first().map(|command| command.packet.debug_view),
         };
         stats_service.set(stats.clone());
         if debug_overlay_enabled || dev_console_open {

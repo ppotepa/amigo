@@ -128,12 +128,16 @@ impl CapabilityRegistry {
 
         for &capability_id in plugin.capabilities {
             if let Some(existing) = state.runtime_capabilities.get(capability_id) {
-                if existing.provider != plugin.provider || existing.version != plugin.version {
+                if existing.version != plugin.version {
                     return Err(AmigoError::Message(format!(
-                        "runtime capability `{capability_id}` is already provided by `{}`@{}",
+                        "runtime capability `{capability_id}` has incompatible versions: `{}`@{} and `{}`@{}",
                         existing.provider, existing.version
+                        , plugin.provider, plugin.version
                     )));
                 }
+                // Capabilities such as `rendering_2d` are intentionally shared by
+                // several domain plugins. Keep the first descriptor as the
+                // canonical provider while allowing additional same-version users.
                 continue;
             }
 

@@ -62,6 +62,30 @@ fn playground_3d_main_scene_bootstraps() {
 }
 
 #[test]
+fn npr_playground_offscreen_golden_is_deterministic() {
+    let options = crate::ScenePreviewOptions::new(mods_root(), "npr-playground", "cube", 512, 512)
+        .with_active_mods(vec!["core".to_owned(), "npr-playground".to_owned()])
+        .with_warmup_frames(1)
+        .with_playback_delta_seconds(1.0 / 60.0);
+    let mut preview = crate::ScenePreviewHost::new(options);
+    let first = preview
+        .capture_rgba8()
+        .expect("NPR preview should render offscreen");
+    let second = preview
+        .capture_rgba8()
+        .expect("NPR preview should render the same frame again");
+    let diff = amigo_render_api::compare_golden_rgba8(
+        512,
+        512,
+        &first.pixels_rgba8,
+        &second.pixels_rgba8,
+    )
+    .expect("NPR preview buffers should have golden dimensions");
+    assert!(diff.passes(amigo_render_api::GoldenImageTolerance::EXACT));
+    assert!(first.pixels_rgba8.chunks_exact(4).any(|pixel| pixel[0] != 0));
+}
+
+#[test]
 fn playground_3d_material_scene_populates_3d_material_domain_and_assets() {
     let (_runtime, summary) = bootstrap_with_options(
         BootstrapOptions::new(mods_root())

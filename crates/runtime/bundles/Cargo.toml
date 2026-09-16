@@ -36,6 +36,7 @@ amigo-2d-composition.workspace = true
 amigo-composite-plugin.workspace = true
 amigo-text-2d-plugin.workspace = true
 amigo-vector-2d-plugin.workspace = true
+amigo-npr-playground-plugin.workspace = true
 amigo-beacon-light-2d-plugin.workspace = true
 amigo-particles-2d-plugin.workspace = true
 amigo-2d-physics.workspace = true

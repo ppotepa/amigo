@@ -4,6 +4,7 @@ use amigo_input_api::InputState;
 use amigo_render_api::{FrameGraphBuildInfo, RenderTargetPlan, build_frame_graph_from_plan};
 use amigo_render_wgpu::{WgpuEmergencyOverlayLine, WgpuOffscreenTarget, WgpuSceneRenderer};
 use amigo_runtime::Runtime;
+use amigo_runtime::{SystemPhase, SystemRegistry};
 use amigo_scene::SceneService;
 
 use crate::{
@@ -50,6 +51,10 @@ pub fn render_wgpu_runtime_frame_to_offscreen(
         .required::<amigo_2d_composition::LightRoute2dSceneService>()?;
     require_wgpu_runtime_frame_services(input.runtime)?;
 
+    input
+        .runtime
+        .required::<SystemRegistry>()?
+        .run_phase(SystemPhase::RenderExtract, input.runtime)?;
     let render_packet = default_wgpu_render_extractor_registry_for_runtime(input.runtime)
         .extract_all(input.runtime);
     let composition_plan = WgpuFrameCompositionBuilder::build_for_target(

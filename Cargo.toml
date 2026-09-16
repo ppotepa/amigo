@@ -28,6 +28,7 @@ members = [
     "crates/engine/editor-authoring",
     "crates/engine/editor-ingame",
     "crates/engine/render-api",
+    "crates/engine/render-npr",
     "crates/engine/overlay-api",
     "crates/engine/render-wgpu",
     "crates/engine/session",
@@ -74,6 +75,7 @@ members = [
     "plugins/gfx/sprite-2d",
     "plugins/gfx/text-2d",
     "plugins/gfx/vector-2d",
+    "plugins/gfx/npr-playground",
     "plugins/gfx/layered-image-2d",
     "plugins/gfx/tilemap-2d",
     "plugins/lighting/light-2d",
@@ -109,6 +111,7 @@ amigo-fx = { path = "crates/foundation/fx" }
 amigo-runtime = { path = "crates/engine/runtime" }
 camino = "1.1"
 glam = "0.30"
+bytemuck = { version = "1.23", features = ["derive"] }
 amigo-session = { path = "crates/engine/session" }
 amigo-capabilities = { path = "crates/engine/capabilities" }
 amigo-assets = { path = "crates/engine/assets" }
@@ -132,6 +135,7 @@ amigo-camera-profiles-plugin = { path = "plugins/camera/camera-profiles" }
 amigo-sprite-2d-plugin = { path = "plugins/gfx/sprite-2d" }
 amigo-text-2d-plugin = { path = "plugins/gfx/text-2d" }
 amigo-vector-2d-plugin = { path = "plugins/gfx/vector-2d" }
+amigo-npr-playground-plugin = { path = "plugins/gfx/npr-playground" }
 amigo-layered-image-2d-plugin = { path = "plugins/gfx/layered-image-2d" }
 amigo-tilemap-2d-plugin = { path = "plugins/gfx/tilemap-2d" }
 amigo-light-2d-plugin = { path = "plugins/lighting/light-2d" }
@@ -155,6 +159,7 @@ amigo-editor-session = { path = "crates/engine/editor-session" }
 amigo-editor-authoring = { path = "crates/engine/editor-authoring" }
 amigo-editor-ingame = { path = "crates/engine/editor-ingame" }
 amigo-render-api = { path = "crates/engine/render-api" }
+amigo-render-npr = { path = "crates/engine/render-npr" }
 amigo-overlay-api = { path = "crates/engine/overlay-api" }
 amigo-render-wgpu = { path = "crates/engine/render-wgpu" }
 amigo-window-api = { path = "crates/platform/window-api" }

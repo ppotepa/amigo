@@ -1,2 +1,5 @@
 [build]
-incremental = true
+# This workspace is built on a Windows filesystem/session configuration where
+# Cargo cannot create incremental-cache hard links. Disabling the cache avoids
+# one warning per crate and its slower copy fallback.
+incremental = false

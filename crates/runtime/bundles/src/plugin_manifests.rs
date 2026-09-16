@@ -11,6 +11,68 @@ pub struct RuntimePluginCompositionPlan {
 }
 
 const MANIFESTS: &[(&str, &str)] = &[
+    // Host-owned contracts are represented in the composition index while their
+    // implementations are installed by the application/backend bundle.
+    ("host/render-backend", r#"
+id = "amigo.host.render-backend"
+family = "host"
+kind = "target-consumer"
+renderable = false
+render_participation = "none"
+[capabilities]
+provides = ["render.backend@1"]
+requires = []
+[slots]
+implements = ["render.backend"]
+requires = []
+replaces = []
+[targets]
+reads = []
+writes = []
+contributes = []
+[contributions]
+emits = []
+consumes = []
+[diagnostics]
+channels = []
+[docs]
+pipeline = "host"
+contributions = "host"
+diagnostics = "host"
+[tests]
+waterfall = "host"
+diagnostics = "host"
+"#),
+    ("host/scene-hydrator", r#"
+id = "amigo.host.scene-hydrator"
+family = "host"
+kind = "semantic-source"
+renderable = false
+render_participation = "none"
+[capabilities]
+provides = []
+requires = []
+[slots]
+implements = ["scene.component_hydrator"]
+requires = []
+replaces = []
+[targets]
+reads = []
+writes = []
+contributes = []
+[contributions]
+emits = []
+consumes = []
+[diagnostics]
+channels = []
+[docs]
+pipeline = "host"
+contributions = "host"
+diagnostics = "host"
+[tests]
+waterfall = "host"
+diagnostics = "host"
+"#),
     ("camera/camera-core", include_str!("../../../../plugins/camera/camera-core/plugin.toml")),
     ("camera/camera-optics", include_str!("../../../../plugins/camera/camera-optics/plugin.toml")),
     ("camera/focus-depth", include_str!("../../../../plugins/camera/focus-depth/plugin.toml")),
@@ -23,6 +85,7 @@ const MANIFESTS: &[(&str, &str)] = &[
     ("gfx/vector-2d", include_str!("../../../../plugins/gfx/vector-2d/plugin.toml")),
     ("gfx/layered-image-2d", include_str!("../../../../plugins/gfx/layered-image-2d/plugin.toml")),
     ("gfx/tilemap-2d", include_str!("../../../../plugins/gfx/tilemap-2d/plugin.toml")),
+    ("gfx/npr-playground", include_str!("../../../../plugins/gfx/npr-playground/plugin.toml")),
     ("lighting/light-2d", include_str!("../../../../plugins/lighting/light-2d/plugin.toml")),
     ("lighting/light-groups-2d", include_str!("../../../../plugins/lighting/light-groups-2d/plugin.toml")),
     ("lighting/lightmaps-2d", include_str!("../../../../plugins/lighting/lightmaps-2d/plugin.toml")),

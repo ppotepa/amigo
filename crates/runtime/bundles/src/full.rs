@@ -42,6 +42,7 @@ where
     }
 
     fn register(self, builder: RuntimeBuilder) -> AmigoResult<RuntimeBuilder> {
+        let enable_npr_playground = self.launch_selection.startup_mod.as_deref() == Some("npr-playground");
         let builder = builder
             .with_plugin(EmbeddedPluginManifestsPlugin)?
             .with_bundle(CoreRuntimeBundle)?
@@ -55,6 +56,12 @@ where
             .with_bundle(ScriptingRuntimeBundle {
                 modding_plugin: self.modding_plugin,
             })?;
+
+        let builder = if enable_npr_playground {
+            builder.with_plugin(amigo_npr_playground_plugin::NprPlaygroundPlugin)?
+        } else {
+            builder
+        };
 
         let builder = if self.enable_devtools {
             builder.with_bundle(DevtoolsRuntimeBundle)?
